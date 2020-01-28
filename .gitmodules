@@ -1,0 +1,3 @@
+[submodule "vulndb"]
+	path = vulndb
+	url = https://github.com/AppThreat/vulndb
