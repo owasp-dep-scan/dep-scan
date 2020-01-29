@@ -8,6 +8,7 @@ import os
 import re
 
 import depscan.lib.utils as utils
+from depscan.lib.bom import get_pkg_list
 
 import vulndb.lib.config as config
 from vulndb.lib.nvd import NvdSource
@@ -71,10 +72,20 @@ def build_args():
     return parser.parse_args()
 
 
+def scan(db, pkg_list):
+    """
+    Method to search packages in our vulnerability database
+
+    :param pkg_list: List of packages
+    """
+    search_res = utils.search_pkgs(db, pkg_list)
+
+
 def main():
     args = build_args()
     print(at_logo, flush=True)
-    db, table = dbLib.get()
+    db = dbLib.get()
+    reload_db = False
     run_cacher = args.cache
     if not len(db):
         run_cacher = True
@@ -91,12 +102,19 @@ def main():
         for s in sources_list:
             LOG.info("Refreshing {}".format(s.__class__.__name__))
             s.refresh()
+        reload_db = True
     elif args.sync:
         for s in sources_list:
             LOG.info("Syncing {}".format(s.__class__.__name__))
             s.download_recent()
-    db, table = dbLib.get()
+        reload_db = True
+    if reload_db:
+        db = dbLib.get()
     LOG.debug("Vulnerability database contains {} records".format(len(db)))
+    if args.bom:
+        LOG.debug("Scanning using the bom file {}".format(args.bom))
+        pkg_list = get_pkg_list(args.bom)
+        scan(db, pkg_list)
     proj_type = utils.detect_project_type(args.src_dir)
 
 

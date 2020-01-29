@@ -1,0 +1,635 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.1" serialNumber="urn:uuid:fa0d8018-0ff8-4a84-98c3-d186c112ae6b" version="1">
+  <components>
+    <component type="library" bom-ref="pkg:pypi/atomicwrites@1.3.0">
+      <name>atomicwrites</name>
+      <version>1.3.0</version>
+      <description>
+        <![CDATA[Atomic file writes.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">d37e3bd9cdf479bd9ce5dd5b6bddb6edee1cd9c6bae9a6fcdbcedf6df6db75adfcf3c69af7775cd9edbc7dcebcd756f8</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/atomicwrites@1.3.0</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/untitaker/python-atomicwrites</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/attrs@19.3.0">
+      <name>attrs</name>
+      <version>19.3.0</version>
+      <description>
+        <![CDATA[Classes Without Boilerplate]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">d3c6bde9ceb8d5cddaef87b8e1e6f9f5a7dbeb56b6e1fd9c6fd7f877bd7cf3be3c7bbe9b6b86dbe5e75f6b771beddd5c</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/attrs@19.3.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.attrs.org/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/certifi@2019.9.11">
+      <name>certifi</name>
+      <version>2019.9.11</version>
+      <description>
+        <![CDATA[Python package for providing Mozilla's CA Bundle.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">7ddedcedcef8ef6edd75c7f4d1ef5a71ddba6db6bc75aeb4e1f7de73de5b7f5736d78e1eebb69f7fb6bc6f9d1ee9c79f</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MPL-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/certifi@2019.9.11</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://certifi.io/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/chardet@3.0.4">
+      <name>chardet</name>
+      <version>3.0.4</version>
+      <description>
+        <![CDATA[Universal encoding detector for Python 2 and 3]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">7dcdf6ddf7dc69e69e7747b46b4d9b7f8775d7bef9edbf7c69e779df477d79de39df57b77b5e78eb4d76e1cd74ebaf75</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <name>LGPL</name>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/chardet@3.0.4</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/chardet/chardet</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/colorama@0.4.1">
+      <name>colorama</name>
+      <version>0.4.1</version>
+      <description>
+        <![CDATA[Cross-platform colored terminal text.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">7fc69cf3875eefce347f96fd7387b7df8edbddcd5e69ae747fb7b8f5cd9bd3be7deb6db575a79ce5e75a69b6ddedce3c</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <name>BSD</name>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/colorama@0.4.1</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/tartley/colorama</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/coverage@4.5.4">
+      <name>coverage</name>
+      <version>4.5.4</version>
+      <description>
+        <![CDATA[Code coverage measurement for Python]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">79e7bae1ceb5e9a75e7dfedd6f7edc737edd6b8d7cd1addae5beb5efb7f9738e9bd7cefcf787badf77f4f3c7dbe5bdbc</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/coverage@4.5.4</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/nedbat/coveragepy</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/coveralls@1.8.2">
+      <name>coveralls</name>
+      <version>1.8.2</version>
+      <description>
+        <![CDATA[Show coverage stats online via coveralls.io]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">f5b7396b57fddbaf3679e7f9f5febcf1af1fdbcd36d3bd7dd1df5ae9a7dbf3871e7fc7f9ebb7dae3beb7d5aefce34eb4</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/coveralls@1.8.2</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>http://github.com/coveralls-clients/coveralls-python</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/docopt@0.6.2">
+      <name>docopt</name>
+      <version>0.6.2</version>
+      <description>
+        <![CDATA[Pythonic argument parser, that will make you smile]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">e3d6f76bcdb9dbcd1b77ae9bdda6bcdf9f3979fe7d7386bc73cd9fd9cf1ae76d9d6deef9e1af1b73c774f1cf39738f75</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/docopt@0.6.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>http://docopt.org</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/idna@2.8">
+      <name>idna</name>
+      <version>2.8</version>
+      <description>
+        <![CDATA[Internationalized Domain Names in Applications (IDNA)]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">79af1bedfeb5f3c7ba7dad75ef9dfb73775fedd6bd7dcebce9de3ce74f3b69b7fa69cd7dedff5ce3ae37d9fedee1addc</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <name>BSD-like</name>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/idna@2.8</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/kjd/idna</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/importlib-metadata@0.23">
+      <name>importlib-metadata</name>
+      <version>0.23</version>
+      <description>
+        <![CDATA[Read metadata from Python packages]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">7797f5f1aefdefbedfdda6b5efd735e39ef7efbf34dbcd9edbb6f9d3c7dcf1f77af3c71bd7b73b6bcd777bc6dddfd69f</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/importlib-metadata@0.23</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>http://importlib-metadata.readthedocs.io/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/more-itertools@7.2.0">
+      <name>more-itertools</name>
+      <version>7.2.0</version>
+      <description>
+        <![CDATA[More routines for operating on iterables, beyond itertools]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">f766fc7386f4e9d69ce1fd3ad75734ef6f5bd9fd9e75ee766f67b56da73569be3c7f4f3d73b75d735d9edba6dbeb4738</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/more-itertools@7.2.0</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/erikrose/more-itertools</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/mypy@0.740">
+      <name>mypy</name>
+      <version>0.740</version>
+      <description>
+        <![CDATA[Optional static typing for Python]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">f77ef5dbdd1a6b671a77969dd77ddee1c75ce37f3ddbbefc79f775df6f77e34e9fef7e346fd7df7bdf5de5e73b73577d</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/mypy@0.740</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>http://www.mypy-lang.org/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/mypy-extensions@0.4.3">
+      <name>mypy-extensions</name>
+      <version>0.4.3</version>
+      <description>
+        <![CDATA[Experimental type system extensions for programs checked with the mypy typechecker.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">d3dd1f79d77be7de396baf5a7bdd5c7b5df4ddbe7cdb87f8dbc75a7f96b4dbc7767fa69bf1adbdf76e746bce3a7f5e5d</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/mypy-extensions@0.4.3</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/python/mypy_extensions</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/packaging@19.2">
+      <name>packaging</name>
+      <version>19.2</version>
+      <description>
+        <![CDATA[Core utilities for Python packages]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">77de79d79e3973a77beb57f775e7f5ebbedb69fd3c69bd9addc6b5edce7af3bf5eef47de71b6b67dce1d75ee1e775d3c</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/packaging@19.2</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/pypa/packaging</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pathlib2@2.3.5">
+      <name>pathlib2</name>
+      <version>2.3.5</version>
+      <description>
+        <![CDATA[Object-oriented filesystem paths]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">d1e73cdb4e5ad79edcf3477b69c737d357346f5f1f6dde5de387deeb9e7debc7f977de3b6fa79c79fe76f747dcdf975b</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pathlib2@2.3.5</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/mcmtroffaes/pathlib2</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pluggy@%3E">
+      <name>pluggy</name>
+      <version>&gt;</version>
+      <description>
+        <![CDATA[plugin and hook calling mechanisms for python]]>
+      </description>
+      <purl>pkg:pypi/pluggy@%3E</purl>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/py@1.8.0">
+      <name>py</name>
+      <version>1.8.0</version>
+      <description>
+        <![CDATA[library with cross-python path, ini-parsing, io, code, log facilities]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">eb87fae7be7969e7b96f7f3571e6b6efbeba6b76b5e3b7377f5e5bf5be9bf5a73cf3aefa75eeba6dad9a7b7ebbf777da</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/py@1.8.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>http://py.readthedocs.io/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pycodestyle@2.5.0">
+      <name>pycodestyle</name>
+      <version>2.5.0</version>
+      <description>
+        <![CDATA[Python style guide checker]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">f796b6db5f5dd76dfbd9fd39ef4e39eb66b5e1e737d1b73be9bd396b96f6f7b6f6d5ae5d7deddfe9f69cdf8f7569ee7a</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <name>Expat license</name>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pycodestyle@2.5.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://pycodestyle.readthedocs.io/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pyparsing@2.4.5">
+      <name>pyparsing</name>
+      <version>2.4.5</version>
+      <description>
+        <![CDATA[Python parsing module]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">db47fdf7979c77bd9fd9ad5fe1b7fa6f4ef66faddbdb67b679be39efcdfaeb4d5eefa77a7b975f71def9e37e9a71cd5f</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pyparsing@2.4.5</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/pyparsing/pyparsing/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pytest@%3E">
+      <name>pytest</name>
+      <version>&gt;</version>
+      <description>
+        <![CDATA[pytest: simple powerful testing with Python]]>
+      </description>
+      <purl>pkg:pypi/pytest@%3E</purl>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pytest-azurepipelines@0.8.0">
+      <name>pytest-azurepipelines</name>
+      <version>0.8.0</version>
+      <description>
+        <![CDATA[Formatting PyTest output for Azure Pipelines UI]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">dfc6fce356bdd1ef3c775f7aebbd79f7ae9dede6b7e7ad7d79def5d37f3ad77f1ae9ad1bf1f6f9f79e1cf7dd5c6b87f5</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pytest-azurepipelines@0.8.0</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/tonybaloney/pytest-azurepipelines</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pytest-codestyle@1.4.0">
+      <name>pytest-codestyle</name>
+      <version>1.4.0</version>
+      <description>
+        <![CDATA[pytest plugin to run pycodestyle]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">e7571ddbbd77d1f7ddddadfa7f8eb871a6b9ebce3669c69de34e3ceb969d7da7bbdb96fdefcd38f3ae1f75eedee77df6</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pytest-codestyle@1.4.0</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/henry0312/pytest-codestyle</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pytest-cov@2.8.1">
+      <name>pytest-cov</name>
+      <version>2.8.1</version>
+      <description>
+        <![CDATA[Pytest plugin for measuring coverage.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">71d6dd79fe1ff3bd38d3c79b75b7de6f8e1eeb77b4ede6f5f1b6f8eb5f5f69ef39d9fe9eefad3ae397dadfad7bdbadba</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pytest-cov@2.8.1</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/pytest-dev/pytest-cov</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pytest-mypy@%3E">
+      <name>pytest-mypy</name>
+      <version>&gt;</version>
+      <description>
+        <![CDATA[Mypy static type checker plugin for Pytest]]>
+      </description>
+      <purl>pkg:pypi/pytest-mypy@%3E</purl>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/pyyaml@5.1.2">
+      <name>pyyaml</name>
+      <version>5.1.2</version>
+      <description>
+        <![CDATA[YAML parser and emitter for Python]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">e75db8dfbdfdeb46f46f77f869aedd7f5ef4edeeb77bd7f5d3d6f9dbadde71ae7defa73ae9ed3c6f5739e7677879a7fc</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/pyyaml@5.1.2</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/yaml/pyyaml</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/requests@2.22.0">
+      <name>requests</name>
+      <version>2.22.0</version>
+      <description>
+        <![CDATA[Python HTTP for Humans.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">f5c7f9dbdd9f71dd1fe7df1cebbd5c7dcd5ed1deddd5aedfd776dbf34f397bd6b9f747f8f1cd35d39e7575ce9ce1bdf5</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/requests@2.22.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>http://python-requests.org</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/six@1.13.0">
+      <name>six</name>
+      <version>1.13.0</version>
+      <description>
+        <![CDATA[Python 2 and 3 compatibility utilities]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">d5fd5bedde367b6e78d3cd9af5d6fadbbf5d79a7baf1a7dbe36d5c79b6bad79f1e7daeb5df575eedbdf4d3779ef777dd</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/six@1.13.0</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/benjaminp/six</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/typed-ast@1.4.0">
+      <name>typed-ast</name>
+      <version>1.4.0</version>
+      <description>
+        <![CDATA[a fork of Python 2 and 3 ast modules with type comment support]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">dbad9cdb8edaf36774d397b8ddbe5bedfebd69f7fbe3adfbd39dfc7b5efad77d5cdf675d6bd71bd1fdf6e1ddbbd78d5e</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/typed-ast@1.4.0</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/python/typed_ast</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/typing-extensions@3.7.4.1">
+      <name>typing-extensions</name>
+      <version>3.7.4.1</version>
+      <description>
+        <![CDATA[Backported and Experimental Type Hints for Python 3.5+]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">f75d1fe3ae7a7f9e1d7b9f7ddda77ddf4e3de7d71ef5b6fdd377fdd1a69d73b73aedad1b79fd3b7baefcd35e1ef3dd9d</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <name>PSF</name>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/typing-extensions@3.7.4.1</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/python/typing/blob/master/typing_extensions/README.rst</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/urllib3@1.25.7">
+      <name>urllib3</name>
+      <version>1.25.7</version>
+      <description>
+        <![CDATA[HTTP library with thread-safe connection pooling, file post, and more.]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">6bc6b7d7cf36e1c73beddd5f7786f66de73675e77ddbae3aeb7d1dedf7bceb5f78f7b6f5e3673ce1af5ee9fe5aef6f77</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/urllib3@1.25.7</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://urllib3.readthedocs.io/</url>
+          </url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:pypi/wcwidth@0.1.7">
+      <name>wcwidth</name>
+      <version>0.1.7</version>
+      <description>
+        <![CDATA[Measures number of Terminal column cells of wide-character codes]]>
+      </description>
+      <hashes>
+        <hash alg="SHA-256">7f879b7bbd7ddb969fedbe346bceb8e79ddfefad5e779e7d6f8df9e387fc7fbd7be3a73677be7a73b7deefcf1a75eedc</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:pypi/wcwidth@0.1.7</purl>
+      <externalReferences>
+        <reference type="vcs">
+          <url>https://github.com/jquast/wcwidth</url>
+        </reference>
+      </externalReferences>
+    </component>
+  </components>
+</bom>
