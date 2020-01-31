@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import json
 import logging
 import os
-import re
+import sys
 
+from depscan.lib.analysis import print_results, analyse, jsonl_report
 import depscan.lib.utils as utils
 from depscan.lib.bom import get_pkg_list
 
@@ -14,8 +14,6 @@ import vulndb.lib.config as config
 from vulndb.lib.nvd import NvdSource
 from vulndb.lib.gha import GitHubSource
 import vulndb.lib.db as dbLib
-
-from tabulate import tabulate
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
@@ -61,7 +59,9 @@ def build_args():
         help="Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument("--src", dest="src_dir", help="Source directory", required=True)
-    parser.add_argument("--out_dir", dest="reports_dir", help="Reports directory")
+    parser.add_argument(
+        "--report_file", dest="report_file", help="Report filename with directory"
+    )
     parser.add_argument(
         "--no-error",
         action="store_true",
@@ -72,38 +72,17 @@ def build_args():
     return parser.parse_args()
 
 
-def print_results(results):
-    """Pretty print report summary
-    """
-    table = []
-    headers = ["Id", "Package", "Version", "CWE", "Severity", "Score", "Description"]
-    for res in results:
-        vuln_occ_dict = res.to_dict()
-        id = vuln_occ_dict.get("id")
-        package_issue = res.package_issue
-        table.append(
-            [
-                id,
-                package_issue.affected_location.package,
-                package_issue.affected_location.version,
-                vuln_occ_dict.get("problem_type"),
-                vuln_occ_dict.get("severity"),
-                vuln_occ_dict.get("cvss_score"),
-                vuln_occ_dict.get("short_description"),
-            ]
-        )
-    print(tabulate(table, headers, tablefmt="grid"))
-    print("Total vulnerabilites found:", len(results))
-
-
-def scan(db, pkg_list):
+def scan(db, pkg_list, report_file):
     """
     Method to search packages in our vulnerability database
 
     :param pkg_list: List of packages
     """
     results = utils.search_pkgs(db, pkg_list)
+    jsonl_report(results, report_file)
     print_results(results)
+    summary = analyse(results)
+    return summary
 
 
 def main():
@@ -111,6 +90,7 @@ def main():
     print(at_logo, flush=True)
     db = dbLib.get()
     run_cacher = args.cache
+    summary = None
     if not dbLib.index_count(db["index_file"]):
         run_cacher = True
     else:
@@ -136,10 +116,17 @@ def main():
         )
     )
     if args.bom:
+        if not os.path.isfile(args.bom):
+            LOG.error("Invalid bom file specified: {}".format(args.bom))
+            return
         LOG.debug("Scanning using the bom file {}".format(args.bom))
         pkg_list = get_pkg_list(args.bom)
-        scan(db, pkg_list)
-    proj_type = utils.detect_project_type(args.src_dir)
+        summary = scan(db, pkg_list, args.report_file)
+    # proj_type = utils.detect_project_type(args.src_dir)
+    if summary and not args.noerror:
+        # Hard coded build break logic for now
+        if summary.get("CRITICAL") > 0:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -45,7 +45,7 @@ Following environment variables can be used to customise the behaviour.
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app appthreat/dep-scan scan --src /app --out_dir /app/reports
+docker run --rm -v $PWD:/app appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
 ```
 
 To scan with custom environment variables based configuration
@@ -57,7 +57,7 @@ docker run --rm \
     -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
-    -v $PWD:/app appthreat/dep-scan scan --src /app --out_dir /app/reports
+    -v $PWD:/app appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VULNDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
