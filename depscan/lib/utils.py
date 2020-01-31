@@ -69,12 +69,8 @@ def search_pkgs(db, pkg_list):
     :param db: DB instance
     :param pkg_list: List of packages to search
     """
-    results = []
     quick_list = [
         {"name": pkg.get("name"), "version": pkg.get("version")} for pkg in pkg_list
     ]
     quick_res = dbLib.bulk_index_search(quick_list)
-    for res in quick_res:
-        name_ver = res.split("|")
-        results.append(dbLib.pkg_search(db, *name_ver))
-    return results
+    return dbLib.pkg_bulk_search(db, quick_res)

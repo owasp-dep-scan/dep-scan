@@ -13,11 +13,18 @@
 
 dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories. The output is fully compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
 
+**NOT READY**
+
+The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonostration purposes. There are a number of unresolved problems:
+
+- Large number of false positives due to overly jealous version matching (ignores any excludes :()), in-ability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
+
 ## Features
 
-- Package vulnerability scanning is performed locally. No server is used!
-- Configurable `cache` and `sync` functionality to manage vulnerabilities locally
+- Package vulnerability scanning is performed locally and is quite fast. No server is used!
+- Configurable `cache` and `sync` functionality to manage local cache data
 - Supports direct input from [sast-scan](https://github.com/AppThreat/sast-scan/)
+- Automatic submission to grafeas server (Coming soon!)
 
 ## Usage
 

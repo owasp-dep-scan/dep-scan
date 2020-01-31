@@ -72,25 +72,49 @@ def build_args():
     return parser.parse_args()
 
 
+def print_results(results):
+    """Pretty print report summary
+    """
+    table = []
+    headers = ["Id", "Package", "Version", "CWE", "Severity", "Score", "Description"]
+    for res in results:
+        vuln_occ_dict = res.to_dict()
+        id = vuln_occ_dict.get("id")
+        package_issue = res.package_issue
+        table.append(
+            [
+                id,
+                package_issue.affected_location.package,
+                package_issue.affected_location.version,
+                vuln_occ_dict.get("problem_type"),
+                vuln_occ_dict.get("severity"),
+                vuln_occ_dict.get("cvss_score"),
+                vuln_occ_dict.get("short_description"),
+            ]
+        )
+    print(tabulate(table, headers, tablefmt="grid"))
+    print("Total vulnerabilites found:", len(results))
+
+
 def scan(db, pkg_list):
     """
     Method to search packages in our vulnerability database
 
     :param pkg_list: List of packages
     """
-    search_res = utils.search_pkgs(db, pkg_list)
+    results = utils.search_pkgs(db, pkg_list)
+    print_results(results)
 
 
 def main():
     args = build_args()
     print(at_logo, flush=True)
     db = dbLib.get()
-    reload_db = False
     run_cacher = args.cache
-    if not len(db):
+    if not dbLib.index_count(db["index_file"]):
         run_cacher = True
     else:
-        LOG.info("Vulnerability database loaded from {}".format(config.vulndb_file))
+        LOG.info("Vulnerability database loaded from {}".format(config.vulndb_bin_file))
     sources_list = [NvdSource()]
     if os.environ.get("GITHUB_TOKEN"):
         sources_list.insert(0, GitHubSource())
@@ -102,15 +126,15 @@ def main():
         for s in sources_list:
             LOG.info("Refreshing {}".format(s.__class__.__name__))
             s.refresh()
-        reload_db = True
     elif args.sync:
         for s in sources_list:
             LOG.info("Syncing {}".format(s.__class__.__name__))
             s.download_recent()
-        reload_db = True
-    if reload_db:
-        db = dbLib.get()
-    LOG.debug("Vulnerability database contains {} records".format(len(db)))
+    LOG.debug(
+        "Vulnerability database contains {} records".format(
+            dbLib.index_count(db["index_file"])
+        )
+    )
     if args.bom:
         LOG.debug("Scanning using the bom file {}".format(args.bom))
         pkg_list = get_pkg_list(args.bom)
