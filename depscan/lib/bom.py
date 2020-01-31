@@ -1,5 +1,38 @@
 from defusedxml.ElementTree import parse
 
+import logging
+import os
+import shutil
+import subprocess
+import xml
+
+logging.basicConfig(
+    level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
+)
+LOG = logging.getLogger(__name__)
+
+
+def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
+    """
+    Convenience method to invoke cli tools
+
+    Args:
+      args cli command and args
+    """
+    try:
+        LOG.info('⚡︎ Executing "{}"'.format(" ".join(args)))
+        subprocess.run(
+            args,
+            stdout=stdout,
+            stderr=subprocess.STDOUT,
+            cwd=cwd,
+            check=False,
+            shell=False,
+            encoding="utf-8",
+        )
+    except Exception as e:
+        LOG.exception(e)
+
 
 def parse_bom_ref(bomstr):
     """Method to parse bom ref string into individual constituents
@@ -34,13 +67,36 @@ def get_pkg_list(xmlfile):
     :return list of package dict
     """
     pkgs = []
-    et = parse(xmlfile)
-    root = et.getroot()
-    for child in root:
-        if child.tag.endswith("components"):
-            for ele in child.iter():
-                if ele.tag.endswith("component"):
-                    bom_ref = ele.attrib.get("bom-ref")
-                    if bom_ref:
-                        pkgs.append(parse_bom_ref(bom_ref))
+    try:
+        et = parse(xmlfile)
+        root = et.getroot()
+        for child in root:
+            if child.tag.endswith("components"):
+                for ele in child.iter():
+                    if ele.tag.endswith("component"):
+                        bom_ref = ele.attrib.get("bom-ref")
+                        if bom_ref:
+                            pkgs.append(parse_bom_ref(bom_ref))
+    except xml.etree.ElementTree.ParseError as pe:
+        LOG.warning("Unable to parse {}".format(xmlfile))
     return pkgs
+
+
+def create_bom(bom_file, src_dir="."):
+    """Method to create BOM file by executing cdxgen command
+
+    :param src_dir: Source directory
+    :param True if the command was executed. False if the executable was not found.
+    """
+    cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
+    if not shutil.which(cdxgen_cmd):
+        LOG.warning(
+            "{} command not found. Please install using npm install @appthreat/cdxgen or set PATH variable".format(
+                cdxgen_cmd
+            )
+        )
+        return False
+    with open(bom_file, mode="w") as fp:
+        args = [cdxgen_cmd, "-o", fp.name, src_dir]
+        exec_tool(args)
+        return True

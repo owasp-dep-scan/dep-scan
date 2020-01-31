@@ -15,10 +15,10 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 **NOT READY**
 
-The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are a number of unresolved problems:
+The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are therefore a number of unresolved issues:
 
 - Large number of false positives due to overly jealous version matching (ignores any excludes :())
-- in-ability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
+- Inability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
@@ -29,13 +29,33 @@ The tool is a work-in-progress and is not ready for production use. Consider thi
 - Supports direct input from [sast-scan](https://github.com/AppThreat/sast-scan/)
 - Automatic submission to grafeas server (Coming soon!)
 
+## Supported languages and package format
+
+dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally to create Software Bill-of-Materials (SBoM) file for the project. This is then used for performing the scans.
+
+The following projects and package-dependency format is supported by cdxgen.
+
+| Language | Package format                              |
+| -------- | ------------------------------------------- |
+| node.js  | package-lock.json                           |
+| java (*) | maven (pom.xml), gradle (build.gradle)      |
+| python   | requirements.txt, Pipfile.lock, poetry.lock |
+| golang   | go.sum, Gopkg.lock                          |
+
+**NOTE**
+
+The docker image for dep-scan currently doesn't bundle suitable java and maven commands required for bom generation. To workaround this limitation, you can -
+
+1. Use python-based execution from a VM containing the correct versions for java, maven and gradle.
+2. Generate the bom file by invoking `cdxgen` command locally and subsequently passing this to `dep-scan` via the `--bom` argument.
+
 ## Usage
 
-dep-scan is ideal for use with CI and also as a tool for local development.
+dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
 
 ### Customisation through environment variables
 
-Following environment variables can be used to customise the behaviour.
+The following environment variables can be used to customise the behaviour.
 
 - VULNDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
 - NVD_START_YEAR - Default: 2018. Supports upto 2002
@@ -44,10 +64,13 @@ Following environment variables can be used to customise the behaviour.
 ### Scanning projects locally (Python version)
 
 ```bash
+npm install -g @appthreat/cdxgen
 pip install appthreat-depscan
 ```
 
-This would install a command called `scan`. You can invoke this command directly with the various options.
+This would install two commands called `cdxgen` and `scan`.
+
+You can invoke the scan command directly with the various options.
 
 ```bash
 scan --src /app --report_file /app/reports/depscan.json
@@ -77,7 +100,7 @@ docker run --rm \
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VULNDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
 
-## GitHub security advisory
+## GitHub Security Advisory
 
 To download security advisories from GitHub, a personal access token with the following scope is necessary.
 
@@ -87,10 +110,10 @@ To download security advisories from GitHub, a personal access token with the fo
 export GITHUB_TOKEN="<PAT token>"
 ```
 
-This environment variable is not required when dep-scan is executed via GitHub action.
+This environment variable is not required when dep-scan is executed via GitHub Actions.
 
 ## Alternatives
 
 [Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than dependency check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool
 
-There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is completely private and does no tracking!
+There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!

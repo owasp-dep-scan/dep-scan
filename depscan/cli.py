@@ -8,7 +8,7 @@ import sys
 
 from depscan.lib.analysis import print_results, analyse, jsonl_report
 import depscan.lib.utils as utils
-from depscan.lib.bom import get_pkg_list
+from depscan.lib.bom import get_pkg_list, create_bom
 
 import vulndb.lib.config as config
 from vulndb.lib.nvd import NvdSource
@@ -60,7 +60,10 @@ def build_args():
     )
     parser.add_argument("--src", dest="src_dir", help="Source directory", required=True)
     parser.add_argument(
-        "--report_file", dest="report_file", help="Report filename with directory"
+        "--report_file",
+        dest="report_file",
+        help="Report filename with directory",
+        default="reports" + os.sep + "depscan.json",
     )
     parser.add_argument(
         "--no-error",
@@ -91,6 +94,12 @@ def main():
     db = dbLib.get()
     run_cacher = args.cache
     summary = None
+    reports_dir = os.path.dirname(args.report_file)
+    bom_file = os.path.join(reports_dir, "bom.xml")
+    # Create reports directory
+    if not os.path.exists(reports_dir):
+        os.makedirs(reports_dir)
+
     if not dbLib.index_count(db["index_file"]):
         run_cacher = True
     else:
@@ -115,14 +124,22 @@ def main():
             dbLib.index_count(db["index_file"])
         )
     )
+
     if args.bom:
-        if not os.path.isfile(args.bom):
-            LOG.error("Invalid bom file specified: {}".format(args.bom))
+        bom_file = args.bom
+        if not os.path.isfile(bom_file):
+            LOG.error("Invalid bom file specified: {}".format(bom_file))
             return
-        LOG.debug("Scanning using the bom file {}".format(args.bom))
-        pkg_list = get_pkg_list(args.bom)
-        summary = scan(db, pkg_list, args.report_file)
-    # proj_type = utils.detect_project_type(args.src_dir)
+    else:
+        # Only create the bom file if it doesn't exist
+        if not os.path.isfile(bom_file):
+            create_bom(bom_file, args.src_dir)
+    LOG.debug("Scanning using the bom file {}".format(bom_file))
+    pkg_list = get_pkg_list(bom_file)
+    if not pkg_list:
+        LOG.warning("No packages found in the project!")
+        return
+    summary = scan(db, pkg_list, args.report_file)
     if summary and not args.noerror:
         # Hard coded build break logic for now
         if summary.get("CRITICAL") > 0:
