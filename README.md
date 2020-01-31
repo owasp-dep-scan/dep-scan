@@ -15,27 +15,26 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 **NOT READY**
 
-The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are a number of unresolved problems:
+The tool is a work-in-progress and is not ready for production use. Consider this a preview for demonstration purposes. There are therefore a number of unresolved issues:
 
-- Large number of false positives due to overly jealous version matching (ignores any excludes :())
-- in-ability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
-
-[![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
+- Large number of false positives due to overzealous version matching (ignores any excludes :())
+- Inability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
 
 ## Features
 
-- Package vulnerability scanning is performed locally and is quite fast. No server is used!
+- Local execution of package vulnerability scanning is used for real-time feedback and maximum speed
+- No server or additional infrastructure is required at all: scans simply run as part of the build
 - Configurable `cache` and `sync` functionality to manage local cache data
-- Supports direct input from [sast-scan](https://github.com/AppThreat/sast-scan/)
+- Supports direct input from our sister tool [sast-scan](https://github.com/AppThreat/sast-scan/)
 - Automatic submission to grafeas server (Coming soon!)
 
 ## Usage
 
-dep-scan is ideal for use with CI and also as a tool for local development.
+dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
 
 ### Customisation through environment variables
 
-Following environment variables can be used to customise the behaviour.
+The following environment variables can be used to customise the behaviour:
 
 - VULNDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
 - NVD_START_YEAR - Default: 2018. Supports upto 2002
@@ -77,7 +76,7 @@ docker run --rm \
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VULNDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
 
-## GitHub security advisory
+## GitHub Security Advisory
 
 To download security advisories from GitHub, a personal access token with the following scope is necessary.
 
@@ -87,10 +86,10 @@ To download security advisories from GitHub, a personal access token with the fo
 export GITHUB_TOKEN="<PAT token>"
 ```
 
-This environment variable is not required when dep-scan is executed via GitHub action.
+This environment variable is not required when dep-scan is executed via GitHub Actions.
 
 ## Alternatives
 
-[Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than dependency check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool
+[Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than Dependency-Check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool.
 
-There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is completely private and does no tracking!
+There are a number of other tools that piggy-back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!
