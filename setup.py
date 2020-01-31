@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="depscan",
+    name="appthreat-depscan",
     version="1.0.0",
     author="Team AppThreat",
     author_email="cloud@appthreat.com",
@@ -14,7 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/appthreat/dep-scan",
     packages=setuptools.find_packages(),
-    install_requires=["defusedxml", "tabulate"],
+    install_requires=["appthreat-vulndb", "defusedxml", "tabulate"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",

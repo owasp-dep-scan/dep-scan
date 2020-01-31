@@ -15,9 +15,10 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 **NOT READY**
 
-The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonostration purposes. There are a number of unresolved problems:
+The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are a number of unresolved problems:
 
-- Large number of false positives due to overly jealous version matching (ignores any excludes :()), in-ability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
+- Large number of false positives due to overly jealous version matching (ignores any excludes :())
+- in-ability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
@@ -40,7 +41,19 @@ Following environment variables can be used to customise the behaviour.
 - NVD_START_YEAR - Default: 2018. Supports upto 2002
 - GITHUB_PAGE_COUNT - Default: 2. Supports upto 20
 
-### Scanning projects locally
+### Scanning projects locally (Python version)
+
+```bash
+pip install appthreat-depscan
+```
+
+This would install a command called `scan`. You can invoke this command directly with the various options.
+
+```bash
+scan --src /app --report_file /app/reports/depscan.json
+```
+
+### Scanning projects locally (Docker container)
 
 `appthreat/dep-scan` or `quay.io/appthreat/dep-scan` container image can be used to perform the scan.
 

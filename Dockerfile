@@ -6,13 +6,9 @@ ARG BUILD_DATE
 COPY setup.py /appthreat/
 COPY README.md /appthreat/
 COPY depscan /appthreat/depscan
-COPY vulndb /appthreat/vulndb
 USER root
 
 WORKDIR /appthreat
-RUN python3 setup.py install
-
-WORKDIR /appthreat/vulndb
 RUN python3 setup.py install \
     && rm -rf /appthreat/*
 
