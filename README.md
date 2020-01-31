@@ -15,7 +15,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 **NOT READY**
 
-The tool is a work-in-progress and is not ready for production use. Consider this a preview for demonostration purposes. There are therefore a number of unresolved issues:
+The tool is a work-in-progress and is not ready for production use. Consider this a preview for demonstration purposes. There are therefore a number of unresolved issues:
 
 - Large number of false positives due to overzealous version matching (ignores any excludes :())
 - Inability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
@@ -80,4 +80,4 @@ This environment variable is not required when dep-scan is executed via GitHub A
 
 [Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than Dependency-Check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool.
 
-There are a number of other tools that piggy-back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is completely private and guarantees never to perform tracking!
+There are a number of other tools that piggy-back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!
