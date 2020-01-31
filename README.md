@@ -19,6 +19,8 @@ The tool is a work-in-progress and is not ready for production use. Consider thi
 
 - Large number of false positives due to overly jealous version matching (ignores any excludes :()), in-ability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
 
+[![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
+
 ## Features
 
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
