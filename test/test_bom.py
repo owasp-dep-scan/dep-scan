@@ -1,9 +1,18 @@
 import os
+import tempfile
 
+import pytest
 
 from depscan.lib.bom import get_pkg_list, parse_bom_ref
 from depscan.lib.utils import search_pkgs
 import vulndb.lib.db as dbLib
+
+
+@pytest.fixture
+def test_db():
+    with tempfile.NamedTemporaryFile(delete=False) as fp:
+        with tempfile.NamedTemporaryFile(delete=False) as indexfp:
+            return dbLib.get(db_file=fp.name, index_file=indexfp.name)
 
 
 def test_get_pkg():
@@ -47,11 +56,10 @@ def test_parse():
     }
 
 
-def test_search():
+def test_search(test_db):
     test_bom = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml"
     )
     pkg_list = get_pkg_list(test_bom)
-    db = dbLib.get()
-    search_res = search_pkgs(db, pkg_list)
-    assert len(search_res)
+    search_res = search_pkgs(test_db, pkg_list)
+    assert not len(search_res)
