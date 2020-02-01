@@ -78,7 +78,7 @@ def get_pkg_list(xmlfile):
                         if bom_ref:
                             pkgs.append(parse_bom_ref(bom_ref))
     except xml.etree.ElementTree.ParseError as pe:
-        LOG.warning("Unable to parse {}".format(xmlfile))
+        LOG.warning("Unable to parse {} {}".format(xmlfile, pe))
     return pkgs
 
 
