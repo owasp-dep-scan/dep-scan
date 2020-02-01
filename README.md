@@ -35,12 +35,12 @@ dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language | Package format                              |
-| -------- | ------------------------------------------- |
-| node.js  | package-lock.json                           |
-| java (*) | maven (pom.xml), gradle (build.gradle)      |
-| python   | requirements.txt, Pipfile.lock, poetry.lock |
-| golang   | go.sum, Gopkg.lock                          |
+| Language  | Package format                              |
+| --------- | ------------------------------------------- |
+| node.js   | package-lock.json                           |
+| java (\*) | maven (pom.xml), gradle (build.gradle)      |
+| python    | requirements.txt, Pipfile.lock, poetry.lock |
+| golang    | go.sum, Gopkg.lock                          |
 
 **NOTE**
 
@@ -108,7 +108,21 @@ Refer to [this example yaml](https://github.com/AppThreat/WebGoat/blob/develop/a
 
 ![Azure DevOps integration](docs/dep-scan-azure.png)
 
-Should I mention the fact that dep-scan took *only 43 seconds* for WebGoat compared to dependency-check which takes over 2 minutes!
+Should I mention the fact that dep-scan took _only 43 seconds_ for WebGoat compared to dependency-check which takes over 2 minutes!
+
+### Integration with GitHub Actions
+
+This tool can be used with GitHub Actions using this [action](https://github.com/marketplace/actions/dep-scan).
+
+This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [workflow file](https://github.com/AppThreat/dep-scan/blob/master/.github/workflows/pythonapp.yml) of this repo.
+
+```yaml
+- name: Self dep-scan
+  uses: AppThreat/dep-scan-action@master
+  env:
+    VULNDB_HOME: ${{ github.workspace }}/db
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
 
 ## GitHub Security Advisory
 

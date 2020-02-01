@@ -15,6 +15,8 @@ LOG = logging.getLogger(__name__)
 def print_results(results):
     """Pretty print report summary
     """
+    if not len(results):
+        return
     table = []
     headers = ["Id", "Package", "Version", "CWE", "Severity", "Score", "Description"]
     for res in results:
