@@ -127,13 +127,9 @@ def main():
 
     if args.bom:
         bom_file = args.bom
-        if not os.path.isfile(bom_file):
-            LOG.error("Invalid bom file specified: {}".format(bom_file))
-            return
-    else:
-        # Only create the bom file if it doesn't exist
-        if not os.path.isfile(bom_file):
-            create_bom(bom_file, args.src_dir)
+    # Only create the bom file if it doesn't exist
+    if not os.path.isfile(bom_file):
+        create_bom(bom_file, args.src_dir)
     LOG.debug("Scanning using the bom file {}".format(bom_file))
     pkg_list = get_pkg_list(bom_file)
     if not pkg_list:
