@@ -17,7 +17,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are therefore a number of unresolved issues:
 
-- Large number of false positives due to overly jealous version matching (ignores any excludes :()
+- Large number of false positives due to overzealous version matching (ignores any excludes :()
 - Inability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
@@ -99,6 +99,16 @@ docker run --rm \
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VULNDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
+
+## Integration with CI environments
+
+### Integration with Azure DevOps
+
+Refer to [this example yaml](https://github.com/AppThreat/WebGoat/blob/develop/azure-pipelines.yml#L33) configuration for integrating dep-scan with Azure Pipelines. The build step would perform the scan and display the report inline as shown below:
+
+![Azure DevOps integration](docs/dep-scan-azure.png)
+
+Should I mention the fact that dep-scan took *only 43 seconds* for WebGoat compared to dependency-check which takes over 2 minutes!
 
 ## GitHub Security Advisory
 
