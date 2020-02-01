@@ -26,7 +26,7 @@ The tool is a work-in-progress and is not ready for production use. Consider thi
 
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Configurable `cache` and `sync` functionality to manage local cache data
-- Supports direct input from [sast-scan](https://github.com/AppThreat/sast-scan/)
+- Pre-installed and integrated with [sast-scan](https://github.com/AppThreat/sast-scan/)
 - Automatic submission to grafeas server (Coming soon!)
 
 ## Supported languages and package format
@@ -53,13 +53,16 @@ The docker image for dep-scan currently doesn't bundle suitable java and maven c
 
 dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
 
-### Customisation through environment variables
+### Use with sast-scan
 
-The following environment variables can be used to customise the behaviour.
+dep-scan is integrated with [sast-scan](https://github.com/AppThreat/sast-scan/), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [See here](https://github.com/AppThreat/sast-scan/blob/master/.github/workflows/pythonapp.yml#L38) for an example.
 
-- VULNDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
-- NVD_START_YEAR - Default: 2018. Supports upto 2002
-- GITHUB_PAGE_COUNT - Default: 2. Supports upto 20
+```yaml
+...
+--type python,depscan,credscan
+```
+
+This approach should work for all CI environments supported by sast-scan.
 
 ### Scanning projects locally (Python version)
 
@@ -123,6 +126,14 @@ This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [
     VULNDB_HOME: ${{ github.workspace }}/db
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+## Customisation through environment variables
+
+The following environment variables can be used to customise the behaviour.
+
+- VULNDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
+- NVD_START_YEAR - Default: 2018. Supports upto 2002
+- GITHUB_PAGE_COUNT - Default: 2. Supports upto 20
 
 ## GitHub Security Advisory
 
