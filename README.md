@@ -11,7 +11,7 @@
       |_|   |_|
 ```
 
-dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories. The output is fully compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
+dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories. The output is compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
 
 **NOT READY**
 
@@ -133,8 +133,6 @@ To download security advisories from GitHub, a personal access token with the fo
 ```bash
 export GITHUB_TOKEN="<PAT token>"
 ```
-
-This environment variable is not required when dep-scan is executed via GitHub Actions.
 
 ## Alternatives
 
