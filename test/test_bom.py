@@ -22,7 +22,7 @@ def test_get_pkg():
     pkg_list = get_pkg_list(test_bom)
     assert len(pkg_list) == 157
     for pkg in pkg_list:
-        assert pkg["group"]
+        assert pkg["vendor"]
         assert pkg["name"]
         assert pkg["version"]
     test_py_bom = os.path.join(
@@ -31,26 +31,26 @@ def test_get_pkg():
     pkg_list = get_pkg_list(test_py_bom)
     assert len(pkg_list) == 31
     for pkg in pkg_list:
-        assert not pkg["group"]
+        assert not pkg["vendor"]
         assert pkg["name"]
         assert pkg["version"]
 
 
 def test_parse():
     assert parse_bom_ref("pkg:maven/org.projectlombok/lombok@1.18.4?type=jar") == {
-        "group": "org.projectlombok",
+        "vendor": "org.projectlombok",
         "name": "lombok",
         "version": "1.18.4",
     }
 
     assert parse_bom_ref("pkg:maven/org.projectlombok/lombok@1.18.4") == {
-        "group": "org.projectlombok",
+        "vendor": "org.projectlombok",
         "name": "lombok",
         "version": "1.18.4",
     }
 
     assert parse_bom_ref("pkg:pypi/atomicwrites@1.3.0") == {
-        "group": "",
+        "vendor": "",
         "name": "atomicwrites",
         "version": "1.3.0",
     }

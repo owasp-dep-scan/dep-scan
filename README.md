@@ -13,12 +13,6 @@
 
 dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories. The output is compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
 
-**NOT READY**
-
-The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are therefore a number of unresolved issues:
-
-- Large number of false positives due to overzealous version matching (ignores any excludes :()
-
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
 ## Features
@@ -27,6 +21,10 @@ The tool is a work-in-progress and is not ready for production use. Consider thi
 - Configurable `cache` and `sync` functionality to manage local cache data
 - Pre-installed and integrated with [sast-scan](https://github.com/AppThreat/sast-scan/)
 - Automatic submission to grafeas server (Coming soon!)
+
+Known issue:
+
+- Possibility of false positives due to the version matching logic currently ignoring [package exclude information in CVE](https://github.com/AppThreat/vulndb/issues/1)
 
 ## Supported languages and package format
 
@@ -57,7 +55,8 @@ dep-scan is ideal for use during continuous integration (CI) and also as a tool 
 dep-scan is integrated with [sast-scan](https://github.com/AppThreat/sast-scan/), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [See here](https://github.com/AppThreat/sast-scan/blob/master/.github/workflows/pythonapp.yml#L38) for an example.
 
 ```yaml
-...
+
+---
 --type python,depscan,credscan
 ```
 
@@ -110,8 +109,6 @@ Refer to [this example yaml](https://github.com/AppThreat/WebGoat/blob/develop/a
 
 ![Azure DevOps integration](docs/dep-scan-azure.png)
 
-Should I mention the fact that dep-scan took _only 43 seconds_ for WebGoat compared to dependency-check which takes over 2 minutes!
-
 ### Integration with GitHub Actions
 
 This tool can be used with GitHub Actions using this [action](https://github.com/marketplace/actions/dep-scan).
@@ -148,4 +145,4 @@ export GITHUB_TOKEN="<PAT token>"
 
 [Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than dependency check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool
 
-There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/). For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!
+There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/) API server. For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!
