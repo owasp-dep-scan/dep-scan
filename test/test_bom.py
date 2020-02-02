@@ -2,10 +2,10 @@ import os
 import tempfile
 
 import pytest
+import vulndb.lib.db as dbLib
 
 from depscan.lib.bom import get_pkg_list, parse_bom_ref
 from depscan.lib.utils import search_pkgs
-import vulndb.lib.db as dbLib
 
 
 @pytest.fixture

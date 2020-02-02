@@ -5,7 +5,6 @@ import logging
 
 from tabulate import tabulate
 
-
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
 )

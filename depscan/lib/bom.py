@@ -1,10 +1,10 @@
-from defusedxml.ElementTree import parse
-
 import logging
 import os
 import shutil
 import subprocess
 import xml
+
+from defusedxml.ElementTree import parse
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
@@ -42,7 +42,7 @@ def parse_bom_ref(bomstr):
     :return dict containing group, name and version for the package
     """
     tmpl = bomstr.split("/")
-    group = ""
+    vendor = ""
     version = "*"
     name_ver = ""
     if len(tmpl) == 2:
@@ -50,14 +50,14 @@ def parse_bom_ref(bomstr):
         if "@" in tmpl[1]:
             name_ver = tmpl[1].split("@")
     elif len(tmpl) == 3:
-        group = tmpl[1]
+        vendor = tmpl[1]
         if "@" in tmpl[2]:
             name_ver = tmpl[2].split("@")
     name = name_ver[0]
     version = name_ver[1]
     if "?" in version:
         version = version.split("?")[0]
-    return {"group": group, "name": name, "version": version}
+    return {"vendor": vendor, "name": name, "version": version}
 
 
 def get_pkg_list(xmlfile):

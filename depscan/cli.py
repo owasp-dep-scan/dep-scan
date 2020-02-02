@@ -6,14 +6,14 @@ import logging
 import os
 import sys
 
-from depscan.lib.analysis import print_results, analyse, jsonl_report
-import depscan.lib.utils as utils
-from depscan.lib.bom import get_pkg_list, create_bom
-
 import vulndb.lib.config as config
-from vulndb.lib.nvd import NvdSource
-from vulndb.lib.gha import GitHubSource
 import vulndb.lib.db as dbLib
+from vulndb.lib.gha import GitHubSource
+from vulndb.lib.nvd import NvdSource
+
+import depscan.lib.utils as utils
+from depscan.lib.analysis import print_results, analyse, jsonl_report
+from depscan.lib.bom import get_pkg_list, create_bom
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
@@ -38,6 +38,13 @@ def build_args():
     """
     parser = argparse.ArgumentParser(
         description="Vulnerability database and package search for sources such as CVE, GitHub, and so on. Uses a built-in tinydb based storage engine."
+    )
+    parser.add_argument(
+        "--no-banner",
+        action="store_true",
+        default=False,
+        dest="no_banner",
+        help="Do not display banner",
     )
     parser.add_argument(
         "--cache",
@@ -90,7 +97,8 @@ def scan(db, pkg_list, report_file):
 
 def main():
     args = build_args()
-    print(at_logo, flush=True)
+    if not args.no_banner:
+        print(at_logo, flush=True)
     db = dbLib.get()
     run_cacher = args.cache
     summary = None

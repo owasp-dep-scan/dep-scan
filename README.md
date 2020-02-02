@@ -18,7 +18,6 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 The tool is a work-in-progress and is not ready for production use. Consider this as a preview for demonstration purposes. There are therefore a number of unresolved issues:
 
 - Large number of false positives due to overzealous version matching (ignores any excludes :()
-- Inability to distinguish package names belonging to different groups (since the matching is purely based on names and versions!)
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
