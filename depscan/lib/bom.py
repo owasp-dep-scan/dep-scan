@@ -43,18 +43,19 @@ def parse_bom_ref(bomstr):
     """
     tmpl = bomstr.split("/")
     vendor = ""
-    version = "*"
     name_ver = ""
     if len(tmpl) == 2:
         # Just name and version
+        vendor = tmpl[0].replace("pkg:", "")
         if "@" in tmpl[1]:
             name_ver = tmpl[1].split("@")
     elif len(tmpl) == 3:
         vendor = tmpl[1]
         if "@" in tmpl[2]:
             name_ver = tmpl[2].split("@")
-    name = name_ver[0]
-    version = name_ver[1]
+    # If name starts with @ this will make sure the name still gets captured
+    name = name_ver[len(name_ver) - 2]
+    version = name_ver[len(name_ver) - 1]
     if "?" in version:
         version = version.split("?")[0]
     return {"vendor": vendor, "name": name, "version": version}

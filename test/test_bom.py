@@ -22,7 +22,7 @@ def test_get_pkg():
     pkg_list = get_pkg_list(test_bom)
     assert len(pkg_list) == 157
     for pkg in pkg_list:
-        assert pkg["vendor"]
+        assert pkg["vendor"] != "maven"
         assert pkg["name"]
         assert pkg["version"]
     test_py_bom = os.path.join(
@@ -31,7 +31,7 @@ def test_get_pkg():
     pkg_list = get_pkg_list(test_py_bom)
     assert len(pkg_list) == 31
     for pkg in pkg_list:
-        assert not pkg["vendor"]
+        assert pkg["vendor"] == "pypi"
         assert pkg["name"]
         assert pkg["version"]
 
@@ -50,9 +50,21 @@ def test_parse():
     }
 
     assert parse_bom_ref("pkg:pypi/atomicwrites@1.3.0") == {
-        "vendor": "",
+        "vendor": "pypi",
         "name": "atomicwrites",
         "version": "1.3.0",
+    }
+
+    assert parse_bom_ref("pkg:npm/body-parser@1.18.3") == {
+        "vendor": "npm",
+        "name": "body-parser",
+        "version": "1.18.3",
+    }
+
+    assert parse_bom_ref("pkg:npm/@appthreat/cdxgen@1.10.0") == {
+        "vendor": "@appthreat",
+        "name": "cdxgen",
+        "version": "1.10.0",
     }
 
 

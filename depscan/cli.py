@@ -13,6 +13,7 @@ from vulndb.lib.nvd import NvdSource
 
 import depscan.lib.utils as utils
 from depscan.lib.analysis import print_results, analyse, jsonl_report
+from depscan.lib.audit import audit, type_audit_map
 from depscan.lib.bom import get_pkg_list, create_bom
 
 logging.basicConfig(
@@ -82,15 +83,28 @@ def build_args():
     return parser.parse_args()
 
 
-def scan(db, pkg_list, report_file):
+def scan(db, pkg_list):
     """
     Method to search packages in our vulnerability database
 
+    :param db: Reference to db
     :param pkg_list: List of packages
     """
-    results = utils.search_pkgs(db, pkg_list)
-    jsonl_report(results, report_file)
-    print_results(results)
+    return utils.search_pkgs(db, pkg_list)
+
+
+def summarise(results, report_file=None, print=True):
+    """
+    Method to summarise the results
+    :param results: Scan or audit results
+    :param report_file: Output report file
+    :param print: Boolean to indicate if the results should get printed to the console
+    :return: Summary of the results
+    """
+    if report_file:
+        jsonl_report(results, report_file)
+    if print:
+        print_results(results)
     summary = analyse(results)
     return summary
 
@@ -102,37 +116,13 @@ def main():
     db = dbLib.get()
     run_cacher = args.cache
     summary = None
+    results = None
     reports_dir = os.path.dirname(args.report_file)
-    bom_file = os.path.join(reports_dir, "bom.xml")
     # Create reports directory
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
 
-    if not dbLib.index_count(db["index_file"]):
-        run_cacher = True
-    else:
-        LOG.info("Vulnerability database loaded from {}".format(config.vulndb_bin_file))
-    sources_list = [NvdSource()]
-    if os.environ.get("GITHUB_TOKEN"):
-        sources_list.insert(0, GitHubSource())
-    else:
-        LOG.info(
-            "To use GitHub advisory source please set the environment variable GITHUB_TOKEN!"
-        )
-    if run_cacher:
-        for s in sources_list:
-            LOG.info("Refreshing {}".format(s.__class__.__name__))
-            s.refresh()
-    elif args.sync:
-        for s in sources_list:
-            LOG.info("Syncing {}".format(s.__class__.__name__))
-            s.download_recent()
-    LOG.debug(
-        "Vulnerability database contains {} records".format(
-            dbLib.index_count(db["index_file"])
-        )
-    )
-
+    bom_file = os.path.join(reports_dir, "bom.xml")
     if args.bom:
         bom_file = args.bom
     # Only create the bom file if it doesn't exist
@@ -143,11 +133,52 @@ def main():
     if not pkg_list:
         LOG.warning("No packages found in the project!")
         return
-    summary = scan(db, pkg_list, args.report_file)
-    if summary and not args.noerror:
-        # Hard coded build break logic for now
-        if summary.get("CRITICAL") > 0:
-            sys.exit(1)
+    # Detect the project types and perform the right type of scan
+    project_types_list = utils.detect_project_type(args.src_dir)
+    for project_type in project_types_list:
+        if project_type in type_audit_map.keys():
+            LOG.info(
+                "Performing remote audit for {} of type {}".format(
+                    args.src_dir, project_type
+                )
+            )
+            results = audit(project_type, pkg_list, args.report_file)
+        else:
+            if not dbLib.index_count(db["index_file"]):
+                run_cacher = True
+            else:
+                LOG.info(
+                    "Vulnerability database loaded from {}".format(
+                        config.vulndb_bin_file
+                    )
+                )
+            sources_list = [NvdSource()]
+            if os.environ.get("GITHUB_TOKEN"):
+                sources_list.insert(0, GitHubSource())
+            else:
+                LOG.info(
+                    "To use GitHub advisory source please set the environment variable GITHUB_TOKEN!"
+                )
+            if run_cacher:
+                for s in sources_list:
+                    LOG.info("Refreshing {}".format(s.__class__.__name__))
+                    s.refresh()
+            elif args.sync:
+                for s in sources_list:
+                    LOG.info("Syncing {}".format(s.__class__.__name__))
+                    s.download_recent()
+            LOG.debug(
+                "Vulnerability database contains {} records".format(
+                    dbLib.index_count(db["index_file"])
+                )
+            )
+            results = scan(db, pkg_list)
+        # Summarise and print results
+        summary = summarise(results, args.report_file)
+        if summary and not args.noerror:
+            # Hard coded build break logic for now
+            if summary.get("CRITICAL") > 0:
+                sys.exit(1)
 
 
 if __name__ == "__main__":
