@@ -12,9 +12,11 @@ from vulndb.lib.gha import GitHubSource
 from vulndb.lib.nvd import NvdSource
 
 import depscan.lib.utils as utils
-from depscan.lib.analysis import print_results, analyse, jsonl_report
+from depscan.lib.analysis import print_results, analyse, analyse_licenses, jsonl_report
 from depscan.lib.audit import audit, type_audit_map
 from depscan.lib.bom import get_pkg_list, create_bom
+from depscan.lib.config import license_data_dir
+from depscan.lib.license import build_license_data, bulk_lookup
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
@@ -93,19 +95,21 @@ def scan(db, pkg_list):
     return utils.search_pkgs(db, pkg_list)
 
 
-def summarise(results, report_file=None, print=True):
+def summarise(results, licenses_results, report_file=None, console_print=True):
     """
     Method to summarise the results
     :param results: Scan or audit results
+    :param licenses_results: License scan result
     :param report_file: Output report file
     :param print: Boolean to indicate if the results should get printed to the console
     :return: Summary of the results
     """
     if report_file:
         jsonl_report(results, report_file)
-    if print:
+    if console_print:
         print_results(results)
     summary = analyse(results)
+    analyse_licenses(licenses_results)
     return summary
 
 
@@ -115,8 +119,6 @@ def main():
         print(at_logo, flush=True)
     db = dbLib.get()
     run_cacher = args.cache
-    summary = None
-    results = None
     reports_dir = os.path.dirname(args.report_file)
     # Create reports directory
     if not os.path.exists(reports_dir):
@@ -143,6 +145,9 @@ def main():
                 )
             )
             results = audit(project_type, pkg_list, args.report_file)
+            licenses_results = bulk_lookup(
+                build_license_data(license_data_dir), pkg_list=pkg_list
+            )
         else:
             if not dbLib.index_count(db["index_file"]):
                 run_cacher = True
@@ -173,8 +178,11 @@ def main():
                 )
             )
             results = scan(db, pkg_list)
+            licenses_results = bulk_lookup(
+                build_license_data(license_data_dir), pkg_list=pkg_list
+            )
         # Summarise and print results
-        summary = summarise(results, args.report_file)
+        summary = summarise(results, licenses_results, args.report_file)
         if summary and not args.noerror:
             # Hard coded build break logic for now
             if summary.get("CRITICAL") > 0:

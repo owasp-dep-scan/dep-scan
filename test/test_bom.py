@@ -41,30 +41,35 @@ def test_parse():
         "vendor": "org.projectlombok",
         "name": "lombok",
         "version": "1.18.4",
+        "licenses": None,
     }
 
     assert parse_bom_ref("pkg:maven/org.projectlombok/lombok@1.18.4") == {
         "vendor": "org.projectlombok",
         "name": "lombok",
         "version": "1.18.4",
+        "licenses": None,
     }
 
     assert parse_bom_ref("pkg:pypi/atomicwrites@1.3.0") == {
         "vendor": "pypi",
         "name": "atomicwrites",
         "version": "1.3.0",
+        "licenses": None,
     }
 
     assert parse_bom_ref("pkg:npm/body-parser@1.18.3") == {
         "vendor": "npm",
         "name": "body-parser",
         "version": "1.18.3",
+        "licenses": None,
     }
 
     assert parse_bom_ref("pkg:npm/@appthreat/cdxgen@1.10.0") == {
         "vendor": "@appthreat",
         "name": "cdxgen",
         "version": "1.10.0",
+        "licenses": None,
     }
 
 

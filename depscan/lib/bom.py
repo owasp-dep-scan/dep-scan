@@ -34,11 +34,11 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
         LOG.exception(e)
 
 
-def parse_bom_ref(bomstr):
+def parse_bom_ref(bomstr, licenses=None):
     """Method to parse bom ref string into individual constituents
 
     :param bomstr: Bom ref string
-
+    :param licenses: Licenses
     :return dict containing group, name and version for the package
     """
     tmpl = bomstr.split("/")
@@ -58,7 +58,22 @@ def parse_bom_ref(bomstr):
     version = name_ver[len(name_ver) - 1]
     if "?" in version:
         version = version.split("?")[0]
-    return {"vendor": vendor, "name": name, "version": version}
+    return {"vendor": vendor, "name": name, "version": version, "licenses": licenses}
+
+
+def get_licenses(ele):
+    license_list = []
+    namespace = "{http://cyclonedx.org/schema/bom/1.1}"
+    for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
+        license_list.append(data.text)
+    if not license_list:
+        for data in ele.findall("{0}licenses/{0}license/{0}name".format(namespace)):
+            ld_list = data.text.upper().split(" OR ")
+            if "/" in data.text:
+                ld_list = data.text.split("/")
+            for ld in ld_list:
+                license_list.append(ld.strip())
+    return license_list
 
 
 def get_pkg_list(xmlfile):
@@ -76,8 +91,9 @@ def get_pkg_list(xmlfile):
                 for ele in child.iter():
                     if ele.tag.endswith("component"):
                         bom_ref = ele.attrib.get("bom-ref")
+                        licenses = get_licenses(ele)
                         if bom_ref:
-                            pkgs.append(parse_bom_ref(bom_ref))
+                            pkgs.append(parse_bom_ref(bom_ref, licenses))
     except xml.etree.ElementTree.ParseError as pe:
         LOG.warning("Unable to parse {} {}".format(xmlfile, pe))
     return pkgs

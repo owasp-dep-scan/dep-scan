@@ -11,7 +11,7 @@
       |_|   |_|
 ```
 
-dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories. The output is compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
+dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. The output is compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
@@ -20,7 +20,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Configurable `cache` and `sync` functionality to manage local cache data
 - Pre-installed and integrated with [sast-scan](https://github.com/AppThreat/sast-scan/)
-- Automatic submission to grafeas server (Coming soon!)
+- (Alpha) Reports packages with license limitations (such as [copyleft](https://www.gnu.org/licenses/copyleft.en.html))
 
 Known issue:
 
@@ -55,7 +55,6 @@ dep-scan is ideal for use during continuous integration (CI) and also as a tool 
 dep-scan is integrated with [sast-scan](https://github.com/AppThreat/sast-scan/), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [See here](https://github.com/AppThreat/sast-scan/blob/master/.github/workflows/pythonapp.yml#L38) for an example.
 
 ```yaml
-
 ---
 --type python,depscan,credscan
 ```
@@ -140,6 +139,12 @@ To download security advisories from GitHub, a personal access token with the fo
 ```bash
 export GITHUB_TOKEN="<PAT token>"
 ```
+
+## License scan (alpha)
+
+dep-scan can automatically scan the dependencies for any license limitations and report them directly on the console log. The licenses data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behaviour could change in the future once the detection logic gets improved.
+
+![License scan](docs/license-scan.png)
 
 ## Alternatives
 

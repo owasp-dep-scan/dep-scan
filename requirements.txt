@@ -1,3 +1,4 @@
 appthreat-vulndb
 tabulate
 defusedxml
+PyYAML

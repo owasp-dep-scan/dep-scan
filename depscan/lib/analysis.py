@@ -33,6 +33,7 @@ def print_results(results):
                 vuln_occ_dict.get("short_description"),
             ]
         )
+    print("\n===Scan results===\n")
     print(tabulate(table, headers, tablefmt="grid"))
 
 
@@ -49,7 +50,9 @@ def analyse(results):
         elif k in ["HIGH", "CRITICAL"] and v > 0:
             status = "❌"
         table.append([k, v, status])
-    print(tabulate(table, headers, tablefmt="grid"))
+    if len(table):
+        print("\n===Scan summary===\n")
+        print(tabulate(table, headers, tablefmt="grid"))
     return summary
 
 
@@ -63,3 +66,20 @@ def jsonl_report(results, out_file_name):
         for data in results:
             json.dump(data.to_dict(), outfile)
             outfile.write("\n")
+
+
+def analyse_licenses(licenses_results):
+    if not licenses_results:
+        return
+    table = []
+    headers = ["Package", "License Id", "Limitations"]
+    for pkg, ll in licenses_results.items():
+        for lic in ll:
+            if not lic:
+                table.append([pkg, "Unknown license"])
+            elif lic["condition_flag"]:
+                table.append([pkg, lic["spdx-id"], ", ".join(lic["conditions"])])
+
+    if len(table):
+        print("\n===License scan findings===\n")
+        print(tabulate(table, headers, tablefmt="grid"))
