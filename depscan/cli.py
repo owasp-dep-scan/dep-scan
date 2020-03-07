@@ -6,10 +6,10 @@ import logging
 import os
 import sys
 
-import vulndb.lib.config as config
-import vulndb.lib.db as dbLib
-from vulndb.lib.gha import GitHubSource
-from vulndb.lib.nvd import NvdSource
+import vdb.lib.config as config
+import vdb.lib.db as dbLib
+from vdb.lib.gha import GitHubSource
+from vdb.lib.nvd import NvdSource
 
 import depscan.lib.utils as utils
 from depscan.lib.analysis import print_results, analyse, analyse_licenses, jsonl_report
@@ -40,7 +40,7 @@ def build_args():
     Constructs command line arguments for the vulndb tool
     """
     parser = argparse.ArgumentParser(
-        description="Vulnerability database and package search for sources such as CVE, GitHub, and so on. Uses a built-in tinydb based storage engine."
+        description="Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
     )
     parser.add_argument(
         "--no-banner",

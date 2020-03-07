@@ -1,4 +1,4 @@
-appthreat-vulndb
+appthreat-vulnerability-db
 tabulate
 defusedxml
 PyYAML

@@ -1,6 +1,6 @@
 import os
 
-import vulndb.lib.db as dbLib
+import vdb.lib.db as dbLib
 
 
 def find_python_reqfiles(path):

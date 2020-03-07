@@ -1,4 +1,4 @@
-from vulndb.lib.npm import NpmSource
+from vdb.lib.npm import NpmSource
 
 # Dict mapping project type to the audit source
 type_audit_map = {"nodejs": NpmSource()}
