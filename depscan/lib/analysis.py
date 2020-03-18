@@ -43,15 +43,21 @@ def analyse(results):
         summary[res.severity] += 1
     table = []
     headers = ["Severity", "Count", "Status"]
+    hasValues = False
     for k, v in summary.items():
         status = "✅"
         if k in ["MEDIUM"] and v > 10:
             status = "❕"
         elif k in ["HIGH", "CRITICAL"] and v > 0:
             status = "❌"
+        if v:
+            hasValues = True
         table.append([k, v, status])
+    if not hasValues:
+        LOG.info("No oss vulnerabilities detected ✅")
+        return None
     if len(table):
-        print("\n===Scan summary===\n")
+        print("\n===Dependency scan summary===\n")
         print(tabulate(table, headers, tablefmt="grid"))
     return summary
 
@@ -83,3 +89,5 @@ def analyse_licenses(licenses_results):
     if len(table):
         print("\n===License scan findings===\n")
         print(tabulate(table, headers, tablefmt="grid"))
+    else:
+        LOG.info("No license violation detected ✅")

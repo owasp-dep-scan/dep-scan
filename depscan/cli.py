@@ -92,6 +92,7 @@ def scan(db, pkg_list):
     :param db: Reference to db
     :param pkg_list: List of packages
     """
+    LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
     return utils.search_pkgs(db, pkg_list)
 
 
@@ -137,6 +138,8 @@ def main():
         return
     # Detect the project types and perform the right type of scan
     project_types_list = utils.detect_project_type(args.src_dir)
+    if len(project_types_list) > 1:
+        LOG.info("Multiple project types found: {}".format(project_types_list))
     for project_type in project_types_list:
         if project_type in type_audit_map.keys():
             LOG.info(
@@ -153,9 +156,7 @@ def main():
                 run_cacher = True
             else:
                 LOG.info(
-                    "Vulnerability database loaded from {}".format(
-                        config.vulndb_bin_file
-                    )
+                    "Vulnerability database loaded from {}".format(config.vdb_bin_file)
                 )
             sources_list = [NvdSource()]
             if os.environ.get("GITHUB_TOKEN"):
@@ -177,13 +178,18 @@ def main():
                     dbLib.index_count(db["index_file"])
                 )
             )
+            LOG.info(
+                "Performing regular scan for {} using plugin {}".format(
+                    args.src_dir, project_type
+                )
+            )
             results = scan(db, pkg_list)
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir), pkg_list=pkg_list
             )
         # Summarise and print results
         summary = summarise(results, licenses_results, args.report_file)
-        if summary and not args.noerror:
+        if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
             if summary.get("CRITICAL") > 0:
                 sys.exit(1)

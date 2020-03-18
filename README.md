@@ -38,6 +38,7 @@ The following projects and package-dependency format is supported by cdxgen.
 | java (\*) | maven (pom.xml), gradle (build.gradle)      |
 | python    | requirements.txt, Pipfile.lock, poetry.lock |
 | golang    | go.sum, Gopkg.lock                          |
+| rust      | Cargo.lock                                  |
 
 **NOTE**
 
@@ -73,7 +74,8 @@ This would install two commands called `cdxgen` and `scan`.
 You can invoke the scan command directly with the various options.
 
 ```bash
-scan --src /app --report_file /app/reports/depscan.json
+cd <project to scan>
+scan --src $PWD --report_file $PWD/reports/depscan.json
 ```
 
 ### Scanning projects locally (Docker container)

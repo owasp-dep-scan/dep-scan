@@ -7,6 +7,8 @@ lic_symbol_regex = re.compile(r"[\(\)\,]")
 
 
 def build_license_data(license_dir):
+    """
+    """
     licenses_dict = {}
     license_files = find_files(license_dir, "txt")
     for lfile in license_files:
@@ -28,6 +30,8 @@ def build_license_data(license_dir):
 
 
 def bulk_lookup(license_dict, pkg_list):
+    """
+    """
     pkg_licenses = {}
     for pkg in pkg_list:
         for lic in pkg["licenses"]:
