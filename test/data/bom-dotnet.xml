@@ -1,0 +1,911 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.1" serialNumber="urn:uuid:ff3b316d-317e-4da5-93ba-37f8a298653a" version="1">
+  <components>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore/Blazor@3.2.0-preview1.20073.1">
+      <group>Microsoft.AspNetCore</group>
+      <name>Blazor</name>
+      <version>3.2.0-preview1.20073.1</version>
+      <description>
+        <![CDATA[Package Description
+This package was built from the source at:
+https://github.com/aspnet/blazor/tree/5deb85df8784800742e7a6d68575c67dd6fedb5a]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/aspnet/Home/2.0.0/LICENSE.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore/Blazor@3.2.0-preview1.20073.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Blazor/3.2.0-preview1.20073.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Blazor/Build@3.2.0-preview1.20073.1">
+      <group>Microsoft.AspNetCore.Blazor</group>
+      <name>Build</name>
+      <version>3.2.0-preview1.20073.1</version>
+      <description>
+        <![CDATA[Build mechanism for Blazor applications.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/aspnet/Home/2.0.0/LICENSE.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Blazor/Build@3.2.0-preview1.20073.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Blazor.Build/3.2.0-preview1.20073.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Blazor/HttpClient@3.2.0-preview1.20073.1">
+      <group>Microsoft.AspNetCore.Blazor</group>
+      <name>HttpClient</name>
+      <version>3.2.0-preview1.20073.1</version>
+      <description/>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Blazor/HttpClient@3.2.0-preview1.20073.1</purl>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/MatBlazor@2.2.0-preview">
+      <name>MatBlazor</name>
+      <version>2.2.0-preview</version>
+      <description>
+        <![CDATA[Material Design components for Blazor and Razor Components]]>
+      </description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/MatBlazor@2.2.0-preview</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/MatBlazor/2.2.0-preview/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://www.matblazor.com/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore/Components@3.1.2">
+      <group>Microsoft.AspNetCore</group>
+      <name>Components</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Components feature for ASP.NET Core.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/e276c8174b8bfdeb70efceafa81c75f8badbc8db]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore/Components@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Components/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Components/Authorization@3.1.2">
+      <group>Microsoft.AspNetCore.Components</group>
+      <name>Authorization</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Authentication and authorization support for Blazor applications.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/e276c8174b8bfdeb70efceafa81c75f8badbc8db]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Components/Authorization@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Components.Authorization/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Components/Web@3.1.2">
+      <group>Microsoft.AspNetCore.Components</group>
+      <name>Web</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Support for rendering ASP.NET Core components for browsers.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/e276c8174b8bfdeb70efceafa81c75f8badbc8db]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Components/Web@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Components.Web/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Http/Extensions@2.2.0">
+      <group>Microsoft.AspNetCore.Http</group>
+      <name>Extensions</name>
+      <version>2.2.0</version>
+      <description>
+        <![CDATA[ASP.NET Core common extension methods for HTTP abstractions, HTTP headers, HTTP request/response, and session state.
+
+This package was built from the source code at https://github.com/aspnet/HttpAbstractions/tree/91db78cf926939821bc96e8e60616cf5dde0b489]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/aspnet/AspNetCore/2.0.0/LICENSE.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Http/Extensions@2.2.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Http.Extensions/2.2.0/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Toolbelt.Blazor/LoadingBar@10.0.0">
+      <group>Toolbelt.Blazor</group>
+      <name>LoadingBar</name>
+      <version>10.0.0</version>
+      <description>
+        <![CDATA[Insert loading bar UI automatically into a client side Blazor application.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>MPL-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Toolbelt.Blazor/LoadingBar@10.0.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Toolbelt.Blazor.LoadingBar/10.0.0/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/jsakamoto/Toolbelt.Blazor.LoadingBar/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/MessagePack@1.9.10">
+      <name>MessagePack</name>
+      <version>1.9.10</version>
+      <description>
+        <![CDATA[Extremely Fast MessagePack(MsgPack) Serializer for C#(.NET, .NET Core, Unity, Xamarin).]]>
+      </description>
+      <purl>pkg:nuget/MessagePack@1.9.10</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/MessagePack/1.9.10/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/neuecc/MessagePack-CSharp/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Auth0/AuthenticationApi@5.8.1">
+      <group>Auth0</group>
+      <name>AuthenticationApi</name>
+      <version>5.8.1</version>
+      <description>
+        <![CDATA[Auth0 .NET SDK]]>
+      </description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Auth0/AuthenticationApi@5.8.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Auth0.AuthenticationApi/5.8.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/auth0/auth0.net</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/MetadataExtractor@2.0.0">
+      <name>MetadataExtractor</name>
+      <version>2.0.0</version>
+      <description>
+        <![CDATA[A straightforward and lightweight library for reading metadata from image and video files.
+
+      MetadataExtractor reads Exif, IPTC, XMP, ICC, Photoshop, WebP, PNG, BMP, GIF, ICO, PCX metadata from JPEG, TIFF WebP, PSD, PNG, BMP, GIF, ICO, PCX and camera RAW files.
+      In addition, MOV and related QuickTime video formats such as MP4, M4V, 3G2, 3GP are supported.
+
+      Camera manufacturer specific support exists for Agfa, Canon, Casio, DJI, Epson, Fujifilm, Kodak, Kyocera, Leica, Minolta, Nikon, Olympus, Panasonic, Pentax, Reconyx, Sanyo, Sigma/Foveon and Sony models.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/MetadataExtractor@2.0.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/MetadataExtractor/2.0.0/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/drewnoakes/metadata-extractor-dotnet</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/DotNetNuke/Core@9.3.0">
+      <group>DotNetNuke</group>
+      <name>Core</name>
+      <version>9.3.0</version>
+      <description>
+        <![CDATA[Provides basic references to the DotNetNuke.dll to develop extensions for the DNN Platform.  For MVC or WebAPI please see other packages available as well]]>
+      </description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/DotNetNuke/Core@9.3.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/DotNetNuke.Core/9.3.0/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/dnnsoftware/Dnn.Platform</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Accord.MachineLearning/GPL@3.8.2-alpha">
+      <group>Accord.MachineLearning</group>
+      <name>GPL</name>
+      <version>3.8.2-alpha</version>
+      <description>
+        <![CDATA[This package contains libraries of the Accord.NET Framework that are NOT available under the LGPL. It currently includes Accord.MachineLearning.GPL, which contains GPL code and thus can only be used inside GPL-compliant applications. Please take extra care before including this library in your projects.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>http://www.gnu.org/licenses/gpl-3.0.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Accord.MachineLearning/GPL@3.8.2-alpha</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Accord.MachineLearning.GPL/3.8.2-alpha/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>http://accord-framework.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Accord.Video/FFMPEG@3.8.2-alpha">
+      <group>Accord.Video</group>
+      <name>FFMPEG</name>
+      <version>3.8.2-alpha</version>
+      <description>
+        <![CDATA[Contains classes and methods to handle video sources using FFMPEG. For this reason, this package is available under the GPL license only. This package originated from the AForge.NET Framework and is part of the Accord.NET Framework.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>http://accord-framework.net/gpl.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Accord.Video/FFMPEG@3.8.2-alpha</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Accord.Video.FFMPEG/3.8.2-alpha/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>http://accord-framework.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Accord.Imaging/Noncommercial@3.8.2-alpha">
+      <group>Accord.Imaging</group>
+      <name>Noncommercial</name>
+      <version>3.8.2-alpha</version>
+      <description>
+        <![CDATA[Contains image processing algorithms which can only be used for educational applications, and cannot be used in commercial products without express permission of its authors. Currently contains the Fast Guided Filter. This package is part of the Accord.NET Framework.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>http://accord-framework.net/license.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Accord.Imaging/Noncommercial@3.8.2-alpha</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Accord.Imaging.Noncommercial/3.8.2-alpha/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>http://accord-framework.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Sturmovik/RConClient@1.5.0">
+      <group>Sturmovik</group>
+      <name>RConClient</name>
+      <version>1.5.0</version>
+      <description>
+        <![CDATA[Client for remote console of IL-2 Sturmovik's dedicated server.]]>
+      </description>
+      <purl>pkg:nuget/Sturmovik/RConClient@1.5.0</purl>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/IdentityServer4@3.1.2">
+      <name>IdentityServer4</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[OpenID Connect and OAuth 2.0 Framework for ASP.NET Core]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/IdentityServer4@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/IdentityServer4/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/IdentityServer/IdentityServer4</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/IdentityServer4/AccessTokenValidation@3.0.1">
+      <group>IdentityServer4</group>
+      <name>AccessTokenValidation</name>
+      <version>3.0.1</version>
+      <description>
+        <![CDATA[ASP.NET Core authentication handler to validate JWT and reference tokens from IdentityServer4]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/IdentityServer4/AccessTokenValidation@3.0.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/IdentityServer4.AccessTokenValidation/3.0.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/IdentityServer/IdentityServer4.AccessTokenValidation</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/IdentityServer4/EntityFramework@3.1.2">
+      <group>IdentityServer4</group>
+      <name>EntityFramework</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[EntityFramework persistence layer for IdentityServer4]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/IdentityServer4/EntityFramework@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/IdentityServer4.EntityFramework/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/IdentityServer/IdentityServer4</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/IdentityServer4/AspNetIdentity@3.1.2">
+      <group>IdentityServer4</group>
+      <name>AspNetIdentity</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[ASP.NET Core Identity Integration for IdentityServer4]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/IdentityServer4/AspNetIdentity@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/IdentityServer4.AspNetIdentity/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/IdentityServer/IdentityServer4</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Authentication/Google@3.1.2">
+      <group>Microsoft.AspNetCore.Authentication</group>
+      <name>Google</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[ASP.NET Core contains middleware to support Google's OpenId and OAuth 2.0 authentication workflows.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/e276c8174b8bfdeb70efceafa81c75f8badbc8db]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Authentication/Google@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.Google/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Blazor/Server@3.2.0-preview1.20073.1">
+      <group>Microsoft.AspNetCore.Blazor</group>
+      <name>Server</name>
+      <version>3.2.0-preview1.20073.1</version>
+      <description>
+        <![CDATA[Runtime server features for ASP.NET Core Blazor applications.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/b88e768f54eb7dfa053386614c8d2634c5ca7234]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/aspnet/AspNetCore/2.0.0/LICENSE.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Blazor/Server@3.2.0-preview1.20073.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Blazor.Server/3.2.0-preview1.20073.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Mvc/NewtonsoftJson@3.1.2">
+      <group>Microsoft.AspNetCore.Mvc</group>
+      <name>NewtonsoftJson</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[ASP.NET Core MVC features that use Newtonsoft.Json. Includes input and output formatters for JSON and JSON PATCH.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/e276c8174b8bfdeb70efceafa81c75f8badbc8db]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Mvc/NewtonsoftJson@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Mvc.NewtonsoftJson/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.Azure/KeyVault@3.0.5">
+      <group>Microsoft.Azure</group>
+      <name>KeyVault</name>
+      <version>3.0.5</version>
+      <description>
+        <![CDATA[Azure Key Vault enables users to store and use cryptographic keys within the Microsoft Azure environment. Azure Key Vault supports multiple key types and algorithms and enables the use of Hardware Security Modules (HSM) for high value customer keys. In addition, Azure Key Vault allows users to securely store secrets in a Key Vault; secrets are limited size octet objects and Azure Key Vault applies no specific semantics to these objects. A Key Vault may contain a mix of keys and secrets at the same time, and access control for the two types of object is independently controlled. Users, subject to appropriate authorization, may: 1) Manage cryptographic keys using Create, Import, Update, Delete and other operations 2) Manage secrets using Get, Set, Delete and other operations 3) Use cryptographic keys with Sign/Verify, WrapKey/UnwrapKey and Encrypt/Decrypt operations. Operations against Key Vaults are authenticated and authorized using Azure Active Directory. Key Vault now supports certificates, a complex type that makes use of existing key and secret infrastructure for certificate operations. KV certificates also support notification and auto-renewal as well as other management features.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.Azure/KeyVault@3.0.5</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.Azure.KeyVault/3.0.5/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/Azure/azure-sdk-for-net</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.Azure.Services/AppAuthentication@1.4.0">
+      <group>Microsoft.Azure.Services</group>
+      <name>AppAuthentication</name>
+      <version>1.4.0</version>
+      <description>
+        <![CDATA[Enables a service to authenticate to Azure services using the developer's Azure Active Directory/ Microsoft account during development, and authenticate as itself (using OAuth 2.0 Client Credentials flow) when deployed to Azure.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/Microsoft/dotnet/master/LICENSE</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.Azure.Services/AppAuthentication@1.4.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.Azure.Services.AppAuthentication/1.4.0/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/Azure/azure-sdk-for-net</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft/EntityFrameworkCore@3.1.2">
+      <group>Microsoft</group>
+      <name>EntityFrameworkCore</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Entity Framework Core is a lightweight and extensible version of the popular Entity Framework data access technology.
+
+Commonly Used Types:
+Microsoft.EntityFrameworkCore.DbContext
+Microsoft.EntityFrameworkCore.DbSet]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft/EntityFrameworkCore@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.EntityFrameworkCore/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://docs.microsoft.com/ef/core/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.EntityFrameworkCore/Design@3.1.2">
+      <group>Microsoft.EntityFrameworkCore</group>
+      <name>Design</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Shared design-time components for Entity Framework Core tools.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.EntityFrameworkCore/Design@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Design/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://docs.microsoft.com/ef/core/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.EntityFrameworkCore/Sqlite@3.1.2">
+      <group>Microsoft.EntityFrameworkCore</group>
+      <name>Sqlite</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[SQLite database provider for Entity Framework Core.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.EntityFrameworkCore/Sqlite@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Sqlite/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://docs.microsoft.com/ef/core/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Identity/EntityFrameworkCore@3.1.2">
+      <group>Microsoft.AspNetCore.Identity</group>
+      <name>EntityFrameworkCore</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[ASP.NET Core Identity provider that uses Entity Framework Core.
+
+This package was built from the source code at https://github.com/aspnet/AspNetCore/tree/e276c8174b8bfdeb70efceafa81c75f8badbc8db]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Identity/EntityFrameworkCore@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Identity.EntityFrameworkCore/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.EntityFrameworkCore/SqlServer@3.1.2">
+      <group>Microsoft.EntityFrameworkCore</group>
+      <name>SqlServer</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Microsoft SQL Server database provider for Entity Framework Core.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.EntityFrameworkCore/SqlServer@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.SqlServer/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://docs.microsoft.com/ef/core/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.EntityFrameworkCore/Tools@3.1.2">
+      <group>Microsoft.EntityFrameworkCore</group>
+      <name>Tools</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Entity Framework Core Tools for the NuGet Package Manager Console in Visual Studio.
+
+Enables these commonly used commands:
+Add-Migration
+Drop-Database
+Get-DbContext
+Scaffold-DbContext
+Script-Migrations
+Update-Database]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.EntityFrameworkCore/Tools@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.EntityFrameworkCore.Tools/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://docs.microsoft.com/ef/core/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Npgsql.EntityFrameworkCore/PostgreSQL@3.1.2">
+      <group>Npgsql.EntityFrameworkCore</group>
+      <name>PostgreSQL</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[PostgreSQL/Npgsql provider for Entity Framework Core.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>PostgreSQL</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Npgsql.EntityFrameworkCore/PostgreSQL@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Npgsql.EntityFrameworkCore.PostgreSQL/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/npgsql/efcore.pg</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.Extensions.Logging/Debug@3.1.2">
+      <group>Microsoft.Extensions.Logging</group>
+      <name>Debug</name>
+      <version>3.1.2</version>
+      <description>
+        <![CDATA[Debug output logger provider implementation for Microsoft.Extensions.Logging. This logger logs messages to a debugger monitor by writing messages with System.Diagnostics.Debug.WriteLine().]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.Extensions.Logging/Debug@3.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.Extensions.Logging.Debug/3.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.VisualStudio.Web.CodeGeneration/Design@3.1.1">
+      <group>Microsoft.VisualStudio.Web.CodeGeneration</group>
+      <name>Design</name>
+      <version>3.1.1</version>
+      <description>
+        <![CDATA[Code Generation tool for ASP.NET Core. Contains the dotnet-aspnet-codegenerator command used for generating controllers and views.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.VisualStudio.Web.CodeGeneration/Design@3.1.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.VisualStudio.Web.CodeGeneration.Design/3.1.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/aspnet/scaffolding</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Serilog/AspNetCore@3.2.1-dev-00147">
+      <group>Serilog</group>
+      <name>AspNetCore</name>
+      <version>3.2.1-dev-00147</version>
+      <description>
+        <![CDATA[Serilog support for ASP.NET Core logging]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Serilog/AspNetCore@3.2.1-dev-00147</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Serilog.AspNetCore/3.2.1-dev-00147/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/serilog/serilog-aspnetcore</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Serilog.Settings/Configuration@3.1.1-dev-00216">
+      <group>Serilog.Settings</group>
+      <name>Configuration</name>
+      <version>3.1.1-dev-00216</version>
+      <description>
+        <![CDATA[Microsoft.Extensions.Configuration (appsettings.json) support for Serilog.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Serilog.Settings/Configuration@3.1.1-dev-00216</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Serilog.Settings.Configuration/3.1.1-dev-00216/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/serilog/serilog-settings-configuration</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Serilog.Sinks/File@5.0.0-dev-00864">
+      <group>Serilog.Sinks</group>
+      <name>File</name>
+      <version>5.0.0-dev-00864</version>
+      <description>
+        <![CDATA[Write Serilog events to text files in plain or JSON format.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>http://www.apache.org/licenses/LICENSE-2.0</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Serilog.Sinks/File@5.0.0-dev-00864</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Serilog.Sinks.File/5.0.0-dev-00864/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>http://serilog.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+  </components>
+</bom>

@@ -26,27 +26,6 @@ Known issue:
 
 - Possibility of false positives due to the version matching logic currently ignoring [package exclude information in CVE](https://github.com/AppThreat/vulndb/issues/1)
 
-## Supported languages and package format
-
-dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally to create Software Bill-of-Materials (SBoM) file for the project. This is then used for performing the scans.
-
-The following projects and package-dependency format is supported by cdxgen.
-
-| Language  | Package format                              |
-| --------- | ------------------------------------------- |
-| node.js   | package-lock.json                           |
-| java (\*) | maven (pom.xml), gradle (build.gradle)      |
-| python    | requirements.txt, Pipfile.lock, poetry.lock |
-| golang    | go.sum, Gopkg.lock                          |
-| rust      | Cargo.lock                                  |
-
-**NOTE**
-
-The docker image for dep-scan currently doesn't bundle suitable java and maven commands required for bom generation. To workaround this limitation, you can -
-
-1. Use python-based execution from a VM containing the correct versions for java, maven and gradle.
-2. Generate the bom file by invoking `cdxgen` command locally and subsequently passing this to `dep-scan` via the `--bom` argument.
-
 ## Usage
 
 dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
@@ -101,6 +80,28 @@ docker run --rm \
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VULNDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
+
+## Supported languages and package format
+
+dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally to create Software Bill-of-Materials (SBoM) file for the project. This is then used for performing the scans.
+
+The following projects and package-dependency format is supported by cdxgen.
+
+| Language  | Package format                              |
+| --------- | ------------------------------------------- |
+| node.js   | package-lock.json                           |
+| java (\*) | maven (pom.xml), gradle (build.gradle)      |
+| python    | requirements.txt, Pipfile.lock, poetry.lock |
+| golang    | go.sum, Gopkg.lock                          |
+| rust      | Cargo.lock                                  |
+| .Net core | .csproj                                     |
+
+**NOTE**
+
+The docker image for dep-scan currently doesn't bundle suitable java and maven commands required for bom generation. To workaround this limitation, you can -
+
+1. Use python-based execution from a VM containing the correct versions for java, maven and gradle.
+2. Generate the bom file by invoking `cdxgen` command locally and subsequently passing this to `dep-scan` via the `--bom` argument.
 
 ## Integration with CI environments
 

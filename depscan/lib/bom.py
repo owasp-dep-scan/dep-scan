@@ -58,7 +58,12 @@ def parse_bom_ref(bomstr, licenses=None):
     version = name_ver[len(name_ver) - 1]
     if "?" in version:
         version = version.split("?")[0]
-    return {"vendor": vendor, "name": name, "version": version, "licenses": licenses}
+    return {
+        "vendor": vendor.lower(),
+        "name": name.lower(),
+        "version": version,
+        "licenses": licenses,
+    }
 
 
 def get_licenses(ele):
@@ -69,10 +74,14 @@ def get_licenses(ele):
     if not license_list:
         for data in ele.findall("{0}licenses/{0}license/{0}name".format(namespace)):
             ld_list = data.text.upper().split(" OR ")
-            if "/" in data.text:
+            if "http" in data.text:
+                ld_list = [
+                    os.path.basename(data.text).replace(".txt", "").replace(".html", "")
+                ]
+            elif "/" in data.text:
                 ld_list = data.text.split("/")
             for ld in ld_list:
-                license_list.append(ld.strip())
+                license_list.append(ld.strip().upper())
     return license_list
 
 
@@ -114,6 +123,6 @@ def create_bom(bom_file, src_dir="."):
         )
         return False
     with open(bom_file, mode="w") as fp:
-        args = [cdxgen_cmd, "-o", fp.name, src_dir]
+        args = [cdxgen_cmd, "-r", "-o", fp.name, src_dir]
         exec_tool(args)
         return True

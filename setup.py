@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="appthreat-depscan",
-    version="1.1.1",
+    version="1.1.2",
     author="Team AppThreat",
     author_email="cloud@appthreat.com",
     description="Fully open-source security audit for project dependencies based on known vulnerabilities and advisories.",
@@ -13,7 +13,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/appthreat/dep-scan",
-    packages=setuptools.find_packages(),
+    packages=["depscan", "depscan.lib", "vendor"],
+    include_package_data=True,
     install_requires=["appthreat-vulnerability-db", "defusedxml", "tabulate", "PyYAML"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",

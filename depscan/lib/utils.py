@@ -57,6 +57,8 @@ def detect_project_type(src_dir):
         project_types.append("golang")
     if find_files(src_dir, "Cargo.lock"):
         project_types.append("rust")
+    if find_files(src_dir, ".csproj"):
+        project_types.append("dotnet")
     return project_types
 
 

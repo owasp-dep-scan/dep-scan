@@ -17,7 +17,7 @@ def print_results(results):
     if not len(results):
         return
     table = []
-    headers = ["Id", "Package", "Version", "CWE", "Severity", "Score", "Description"]
+    headers = ["Id", "Package", "Version", "Severity", "Score", "Description"]
     for res in results:
         vuln_occ_dict = res.to_dict()
         id = vuln_occ_dict.get("id")
@@ -27,7 +27,6 @@ def print_results(results):
                 id,
                 package_issue.affected_location.package,
                 package_issue.affected_location.version,
-                vuln_occ_dict.get("problem_type"),
                 vuln_occ_dict.get("severity"),
                 vuln_occ_dict.get("cvss_score"),
                 vuln_occ_dict.get("short_description"),
@@ -70,7 +69,19 @@ def jsonl_report(results, out_file_name):
     """
     with open(out_file_name, "w") as outfile:
         for data in results:
-            json.dump(data.to_dict(), outfile)
+            vuln_occ_dict = data.to_dict()
+            id = vuln_occ_dict.get("id")
+            package_issue = data.package_issue
+            data_obj = {
+                "id": id,
+                "package": package_issue.affected_location.package,
+                "version": package_issue.affected_location.version,
+                "severity": vuln_occ_dict.get("severity"),
+                "cvss_score": vuln_occ_dict.get("cvss_score"),
+                "short_description": vuln_occ_dict.get("short_description"),
+                "related_urls": vuln_occ_dict.get("related_urls"),
+            }
+            json.dump(data_obj, outfile)
             outfile.write("\n")
 
 
@@ -78,13 +89,14 @@ def analyse_licenses(licenses_results):
     if not licenses_results:
         return
     table = []
-    headers = ["Package", "License Id", "Limitations"]
+    headers = ["Package", "Version", "License Id", "Limitations"]
     for pkg, ll in licenses_results.items():
+        pkg_ver = pkg.split("@")
         for lic in ll:
             if not lic:
-                table.append([pkg, "Unknown license"])
+                table.append([*pkg_ver, "Unknown license"])
             elif lic["condition_flag"]:
-                table.append([pkg, lic["spdx-id"], ", ".join(lic["conditions"])])
+                table.append([*pkg_ver, lic["spdx-id"], ", ".join(lic["conditions"])])
 
     if len(table):
         print("\n===License scan findings===\n")

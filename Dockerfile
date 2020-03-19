@@ -49,8 +49,10 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && npm install -g @appthreat/cdxgen
 
 COPY setup.py /appthreat/
+COPY MANIFEST.in /appthreat/
 COPY README.md /appthreat/
 COPY depscan /appthreat/depscan
+COPY vendor /appthreat/vendor
 USER root
 
 WORKDIR /appthreat

@@ -1,4 +1,5 @@
 import re
+
 import yaml
 
 from depscan.lib.utils import find_files
@@ -25,7 +26,7 @@ def build_license_data(license_dir):
                 ]:
                     ldata["condition_flag"] = True
 
-            licenses_dict[ldata.get("spdx-id").upper()] = ldata
+            licenses_dict[ldata.get("spdx-id").strip().upper()] = ldata
     return licenses_dict
 
 
@@ -34,6 +35,7 @@ def bulk_lookup(license_dict, pkg_list):
     """
     pkg_licenses = {}
     for pkg in pkg_list:
+        pkg_key = pkg["vendor"] + ":" + pkg["name"] + "@" + pkg["version"]
         for lic in pkg["licenses"]:
             lic = lic.replace(" ", "-")
             lic = lic_symbol_regex.sub("", lic)
@@ -42,9 +44,9 @@ def bulk_lookup(license_dict, pkg_list):
                 lic = "MIT"
             elif "MIT" in lic:
                 lic = "MIT"
-            curr_list = pkg_licenses.get(pkg["name"], [])
+            curr_list = pkg_licenses.get(pkg_key, [])
             match_lic = license_dict.get(lic)
             if match_lic:
                 curr_list.append(match_lic)
-            pkg_licenses[pkg["name"]] = curr_list
+            pkg_licenses[pkg_key] = curr_list
     return pkg_licenses
