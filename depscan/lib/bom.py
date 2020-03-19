@@ -59,8 +59,8 @@ def parse_bom_ref(bomstr, licenses=None):
     if "?" in version:
         version = version.split("?")[0]
     return {
-        "vendor": vendor.lower(),
-        "name": name.lower(),
+        "vendor": vendor,
+        "name": name,
         "version": version,
         "licenses": licenses,
     }
