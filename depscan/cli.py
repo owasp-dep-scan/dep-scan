@@ -66,7 +66,7 @@ def build_args():
     parser.add_argument(
         "--bom",
         dest="bom",
-        help="Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
+        help="UNUSED: Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument("--src", dest="src_dir", help="Source directory", required=True)
     parser.add_argument(
@@ -96,7 +96,7 @@ def scan(db, pkg_list):
     return utils.search_pkgs(db, pkg_list)
 
 
-def summarise(results, licenses_results, report_file=None, console_print=True):
+def summarise(results, report_file=None, console_print=True):
     """
     Method to summarise the results
     :param results: Scan or audit results
@@ -110,7 +110,6 @@ def summarise(results, licenses_results, report_file=None, console_print=True):
     if console_print:
         print_results(results)
     summary = analyse(results)
-    analyse_licenses(licenses_results)
     return summary
 
 
@@ -124,23 +123,23 @@ def main():
     # Create reports directory
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
-
-    bom_file = os.path.join(reports_dir, "bom.xml")
-    if args.bom:
-        bom_file = args.bom
-    # Only create the bom file if it doesn't exist
-    if not os.path.isfile(bom_file):
-        create_bom(bom_file, args.src_dir)
-    LOG.debug("Scanning using the bom file {}".format(bom_file))
-    pkg_list = get_pkg_list(bom_file)
-    if not pkg_list:
-        LOG.warning("No packages found in the project!")
-        return
     # Detect the project types and perform the right type of scan
     project_types_list = utils.detect_project_type(args.src_dir)
     if len(project_types_list) > 1:
         LOG.info("Multiple project types found: {}".format(project_types_list))
     for project_type in project_types_list:
+        LOG.info("=" * 80)
+        bom_file = os.path.join(reports_dir, "bom-" + project_type + ".xml")
+        create_bom(project_type, bom_file, args.src_dir)
+        LOG.debug("Scanning using the bom file {}".format(bom_file))
+        pkg_list = get_pkg_list(bom_file)
+        if not pkg_list:
+            LOG.warning("No packages found in the project!")
+            return
+        licenses_results = bulk_lookup(
+            build_license_data(license_data_dir), pkg_list=pkg_list
+        )
+        analyse_licenses(licenses_results)
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(
@@ -148,14 +147,11 @@ def main():
                 )
             )
             results = audit(project_type, pkg_list, args.report_file)
-            licenses_results = bulk_lookup(
-                build_license_data(license_data_dir), pkg_list=pkg_list
-            )
         else:
             if not dbLib.index_count(db["index_file"]):
                 run_cacher = True
             else:
-                LOG.info(
+                LOG.debug(
                     "Vulnerability database loaded from {}".format(config.vdb_bin_file)
                 )
             sources_list = [NvdSource()]
@@ -167,11 +163,11 @@ def main():
                 )
             if run_cacher:
                 for s in sources_list:
-                    LOG.info("Refreshing {}".format(s.__class__.__name__))
+                    LOG.debug("Refreshing {}".format(s.__class__.__name__))
                     s.refresh()
             elif args.sync:
                 for s in sources_list:
-                    LOG.info("Syncing {}".format(s.__class__.__name__))
+                    LOG.debug("Syncing {}".format(s.__class__.__name__))
                     s.download_recent()
             LOG.debug(
                 "Vulnerability database contains {} records".format(
@@ -184,11 +180,8 @@ def main():
                 )
             )
             results = scan(db, pkg_list)
-            licenses_results = bulk_lookup(
-                build_license_data(license_data_dir), pkg_list=pkg_list
-            )
         # Summarise and print results
-        summary = summarise(results, licenses_results, args.report_file)
+        summary = summarise(results, args.report_file)
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
             if summary.get("CRITICAL") > 0:

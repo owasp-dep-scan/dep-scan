@@ -108,11 +108,14 @@ def get_pkg_list(xmlfile):
     return pkgs
 
 
-def create_bom(bom_file, src_dir="."):
+def create_bom(project_type, bom_file, src_dir="."):
     """Method to create BOM file by executing cdxgen command
 
+    :param project_type: Project type
+    :param bom_file: BOM file
     :param src_dir: Source directory
-    :param True if the command was executed. False if the executable was not found.
+
+    :returns True if the command was executed. False if the executable was not found.
     """
     cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
     if not shutil.which(cdxgen_cmd):
@@ -123,6 +126,6 @@ def create_bom(bom_file, src_dir="."):
         )
         return False
     with open(bom_file, mode="w") as fp:
-        args = [cdxgen_cmd, "-r", "-o", fp.name, src_dir]
+        args = [cdxgen_cmd, "-r", "-t", project_type, "-o", fp.name, src_dir]
         exec_tool(args)
         return True

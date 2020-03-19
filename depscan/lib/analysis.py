@@ -32,7 +32,7 @@ def print_results(results):
                 vuln_occ_dict.get("short_description"),
             ]
         )
-    print("\n===Scan results===\n")
+    print("\n===Dependency scan results===\n")
     print(tabulate(table, headers, tablefmt="grid"))
 
 
@@ -57,7 +57,7 @@ def analyse(results):
         return None
     if len(table):
         print("\n===Dependency scan summary===\n")
-        print(tabulate(table, headers, tablefmt="grid"))
+        print(tabulate(table, headers, tablefmt="simple"))
     return summary
 
 
@@ -89,7 +89,7 @@ def analyse_licenses(licenses_results):
     if not licenses_results:
         return
     table = []
-    headers = ["Package", "Version", "License Id", "Limitations"]
+    headers = ["Package", "Version", "License Id", "License conditions"]
     for pkg, ll in licenses_results.items():
         pkg_ver = pkg.split("@")
         for lic in ll:
