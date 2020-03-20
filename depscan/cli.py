@@ -135,7 +135,6 @@ def main():
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.warning("No packages found in the project!")
-            return
         licenses_results = bulk_lookup(
             build_license_data(license_data_dir), pkg_list=pkg_list
         )
