@@ -135,7 +135,8 @@ def main():
         LOG.debug("Scanning using the bom file {}".format(bom_file))
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
-            LOG.warning("No packages found in the project!")
+            LOG.debug("No packages found in the project!")
+            continue
         licenses_results = bulk_lookup(
             build_license_data(license_data_dir), pkg_list=pkg_list
         )
