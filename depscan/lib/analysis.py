@@ -85,21 +85,32 @@ def jsonl_report(results, out_file_name):
             outfile.write("\n")
 
 
-def analyse_licenses(licenses_results):
+def analyse_licenses(licenses_results, license_report_file=None):
     if not licenses_results:
         return
     table = []
     headers = ["Package", "Version", "License Id", "License conditions"]
+    report_data = []
     for pkg, ll in licenses_results.items():
         pkg_ver = pkg.split("@")
         for lic in ll:
             if not lic:
-                table.append([*pkg_ver, "Unknown license"])
+                data = [*pkg_ver, "Unknown license"]
+                table.append(data)
+                report_data.append(dict(zip(headers, data)))
             elif lic["condition_flag"]:
-                table.append([*pkg_ver, lic["spdx-id"], ", ".join(lic["conditions"])])
+                data = [*pkg_ver, lic["spdx-id"], ", ".join(lic["conditions"])]
+                table.append(data)
+                report_data.append(dict(zip(headers, data)))
 
     if len(table):
         print("\n===License scan findings===\n")
         print(tabulate(table, headers, tablefmt="grid"))
+        # Store the license scan findings in jsonl format
+        if license_report_file:
+            with open(license_report_file, "w") as outfile:
+                for row in report_data:
+                    json.dump(row, outfile)
+                    outfile.write("\n")
     else:
         LOG.info("No license violation detected ✅")

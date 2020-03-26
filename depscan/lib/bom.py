@@ -107,7 +107,7 @@ def get_pkg_list(xmlfile):
     except xml.etree.ElementTree.ParseError as pe:
         LOG.debug("Unable to parse {} {}".format(xmlfile, pe))
         LOG.warning(
-            "Unable to produce Software Bill-of-Materials for this project. Dependency scan results would be empty!"
+            "Unable to produce Software Bill-of-Materials for this project. Execute the scan after installing the dependencies for your project!"
         )
     return pkgs
 
