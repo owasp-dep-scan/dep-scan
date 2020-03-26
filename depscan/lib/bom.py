@@ -26,6 +26,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
             stdout=stdout,
             stderr=subprocess.STDOUT,
             cwd=cwd,
+            env=os.environ,
             check=False,
             shell=False,
             encoding="utf-8",
@@ -104,7 +105,10 @@ def get_pkg_list(xmlfile):
                         if bom_ref:
                             pkgs.append(parse_bom_ref(bom_ref, licenses))
     except xml.etree.ElementTree.ParseError as pe:
-        LOG.warning("Unable to parse {} {}".format(xmlfile, pe))
+        LOG.debug("Unable to parse {} {}".format(xmlfile, pe))
+        LOG.warning(
+            "Unable to produce Software Bill-of-Materials for this project. Dependency scan results would be empty!"
+        )
     return pkgs
 
 
