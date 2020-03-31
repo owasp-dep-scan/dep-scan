@@ -92,7 +92,7 @@ The following projects and package-dependency format is supported by cdxgen.
 | node.js   | package-lock.json                           |
 | java (\*) | maven (pom.xml), gradle (build.gradle)      |
 | python    | requirements.txt, Pipfile.lock, poetry.lock |
-| golang    | go.sum, Gopkg.lock                          |
+| go        | go.sum, Gopkg.lock                          |
 | rust      | Cargo.lock                                  |
 | .Net core | .csproj                                     |
 
