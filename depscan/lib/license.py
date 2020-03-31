@@ -19,6 +19,7 @@ def build_license_data(license_dir):
             ldata["condition_flag"] = False
             for cond in ldata["conditions"]:
                 if cond in [
+                    "network-use-disclose",
                     "disclose-source",
                     "same-license",
                     "same-license--file",
