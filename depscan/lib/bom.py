@@ -20,7 +20,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
       args cli command and args
     """
     try:
-        LOG.info('⚡︎ Executing "{}"'.format(" ".join(args)))
+        LOG.debug('⚡︎ Executing "{}"'.format(" ".join(args)))
         subprocess.run(
             args,
             stdout=stdout,

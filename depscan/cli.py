@@ -126,7 +126,7 @@ def main():
     # Detect the project types and perform the right type of scan
     project_types_list = utils.detect_project_type(args.src_dir)
     if len(project_types_list) > 1:
-        LOG.info("Multiple project types found: {}".format(project_types_list))
+        LOG.debug("Multiple project types found: {}".format(project_types_list))
     for project_type in project_types_list:
         report_file = args.report_file.replace(".json", "-{}.json".format(project_type))
         LOG.info("=" * 80)
