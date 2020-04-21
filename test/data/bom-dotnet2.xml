@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.1" serialNumber="urn:uuid:2b6b0ae2-84e6-4b69-a6bd-ac59d7834123" version="1">
+  <components>
+    <component type="library" bom-ref="pkg:nuget/EntityFramework@6.2.0">
+      <name>EntityFramework</name>
+      <version>6.2.0</version>
+      <description>
+        <![CDATA[Entity Framework is Microsoft's recommended data access technology for new applications.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>http://www.microsoft.com/web/webpi/eula/net_library_eula_enu.htm</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/EntityFramework@6.2.0</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/EntityFramework/6.2.0/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>http://www.asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore/App">
+      <group>Microsoft.AspNetCore</group>
+      <name>App</name>
+      <description>
+        <![CDATA[Provides a default set of APIs for building an ASP.NET Core application.
+
+This package requires the ASP.NET Core runtime. This runtime is installed by the .NET Core SDK, or can be acquired separately using installers available at https://aka.ms/dotnet-download.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/aspnet/AspNetCore/2.0.0/LICENSE.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore/App</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.App/undefined/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.AspNetCore.Razor/Design@2.1.2">
+      <group>Microsoft.AspNetCore.Razor</group>
+      <name>Design</name>
+      <version>2.1.2</version>
+      <description>
+        <![CDATA[Razor is a markup syntax for adding server-side logic to web pages. This package contains MSBuild support for Razor.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://raw.githubusercontent.com/aspnet/AspNetCore/2.0.0/LICENSE.txt</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.AspNetCore.Razor/Design@2.1.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.AspNetCore.Razor.Design/2.1.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://asp.net/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.Data/SQLite@2.2.1">
+      <group>Microsoft.Data</group>
+      <name>SQLite</name>
+      <version>2.2.1</version>
+      <description>
+        <![CDATA[SQLite implementation of the System.Data.Common provider model.
+
+Commonly Used Types:
+Microsoft.Data.Sqlite.SqliteCommand
+Microsoft.Data.Sqlite.SqliteConnection
+Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+Microsoft.Data.Sqlite.SqliteDataReader
+Microsoft.Data.Sqlite.SqliteException
+Microsoft.Data.Sqlite.SqliteFactory
+Microsoft.Data.Sqlite.SqliteParameter
+Microsoft.Data.Sqlite.SqliteTransaction]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.Data/SQLite@2.2.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.Data.SQLite/2.2.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://docs.microsoft.com/ef/core/</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/Microsoft.VisualStudio.Web.CodeGeneration/Design@2.1.1">
+      <group>Microsoft.VisualStudio.Web.CodeGeneration</group>
+      <name>Design</name>
+      <version>2.1.1</version>
+      <description>
+        <![CDATA[Code Generation tool for ASP.NET Core. Contains the dotnet-aspnet-codegenerator command used for generating controllers and views.]]>
+      </description>
+      <licenses>
+        <license>
+          <id>Apache-2.0</id>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/Microsoft.VisualStudio.Web.CodeGeneration/Design@2.1.1</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/Microsoft.VisualStudio.Web.CodeGeneration.Design/2.1.1/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://github.com/aspnet/scaffolding</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:nuget/System.Data.SQLite/Core@1.0.109.2">
+      <group>System.Data.SQLite</group>
+      <name>Core</name>
+      <version>1.0.109.2</version>
+      <description>
+        <![CDATA[The official SQLite database engine for both x86 and x64 along with the ADO.NET provider.]]>
+      </description>
+      <licenses>
+        <license>
+          <name>https://www.sqlite.org/copyright.html</name>
+        </license>
+      </licenses>
+      <purl>pkg:nuget/System.Data.SQLite/Core@1.0.109.2</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>
+            <url>https://www.nuget.org/packages/System.Data.SQLite.Core/1.0.109.2/</url>
+          </url>
+        </reference>
+        <reference type="vcs">
+          <url>https://system.data.sqlite.org/</url>
+        </reference>
+      </externalReferences>
+    </component>
+  </components>
+</bom>

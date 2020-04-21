@@ -34,6 +34,25 @@ def test_get_pkg():
         assert pkg["vendor"] == "pypi"
         assert pkg["name"]
         assert pkg["version"]
+    test_dn_bom = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom-dotnet.xml"
+    )
+    pkg_list = get_pkg_list(test_dn_bom)
+    assert len(pkg_list) == 38
+    for pkg in pkg_list:
+        assert pkg["vendor"]
+        assert pkg["name"]
+        assert pkg["version"]
+
+    test_dn_bom = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom-dotnet2.xml"
+    )
+    pkg_list = get_pkg_list(test_dn_bom)
+    assert len(pkg_list) == 6
+    for pkg in pkg_list:
+        assert pkg["vendor"]
+        assert pkg["name"]
+        assert pkg["version"]
 
 
 def test_parse():
