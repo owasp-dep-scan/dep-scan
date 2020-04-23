@@ -70,10 +70,7 @@ def build_args():
     )
     parser.add_argument("--src", dest="src_dir", help="Source directory", required=True)
     parser.add_argument(
-        "--report_file",
-        dest="report_file",
-        help="Report filename with directory",
-        default="reports" + os.sep + "depscan.json",
+        "--report_file", dest="report_file", help="Report filename with directory",
     )
     parser.add_argument(
         "--no-error",
@@ -92,7 +89,12 @@ def scan(db, pkg_list):
     :param db: Reference to db
     :param pkg_list: List of packages
     """
-    LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
+    if not pkg_list or len(pkg_list) < 10:
+        LOG.info(
+            "Only a small number of packages were detected. Scan results therefore will be incomplete!"
+        )
+    else:
+        LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
     return utils.search_pkgs(db, pkg_list)
 
 
@@ -117,21 +119,32 @@ def main():
     args = build_args()
     if not args.no_banner:
         print(at_logo, flush=True)
+    src_dir = args.src_dir
+    if not args.src_dir:
+        src_dir = os.getcwd()
     db = dbLib.get()
     run_cacher = args.cache
-    reports_dir = os.path.dirname(args.report_file)
+    areport_file = (
+        args.report_file
+        if args.report_file
+        else os.path.join(src_dir, "reports", "depscan.json")
+    )
+    reports_dir = os.path.dirname(areport_file)
     # Create reports directory
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
     # Detect the project types and perform the right type of scan
-    project_types_list = utils.detect_project_type(args.src_dir)
+    project_types_list = utils.detect_project_type(src_dir)
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: {}".format(project_types_list))
     for project_type in project_types_list:
-        report_file = args.report_file.replace(".json", "-{}.json".format(project_type))
+        report_file = areport_file.replace(".json", "-{}.json".format(project_type))
         LOG.info("=" * 80)
         bom_file = os.path.join(reports_dir, "bom-" + project_type + ".xml")
-        create_bom(project_type, bom_file, args.src_dir)
+        creation_status = create_bom(project_type, bom_file, src_dir)
+        if not creation_status:
+            LOG.debug("Bom file {} was not created successfully".format(bom_file))
+            continue
         LOG.debug("Scanning using the bom file {}".format(bom_file))
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
@@ -147,7 +160,7 @@ def main():
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(
-                    args.src_dir, project_type
+                    src_dir, project_type
                 )
             )
             results = audit(project_type, pkg_list, report_file)
@@ -180,7 +193,7 @@ def main():
             )
             LOG.info(
                 "Performing regular scan for {} using plugin {}".format(
-                    args.src_dir, project_type
+                    src_dir, project_type
                 )
             )
             results = scan(db, pkg_list)

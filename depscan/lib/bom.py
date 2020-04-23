@@ -110,7 +110,7 @@ def get_pkg_list(xmlfile):
     except xml.etree.ElementTree.ParseError as pe:
         LOG.debug("Unable to parse {} {}".format(xmlfile, pe))
         LOG.warning(
-            "Unable to produce Software Bill-of-Materials for this project. Execute the scan after installing the dependencies for your project!"
+            "Unable to produce Software Bill-of-Materials for this project. Execute the scan after installing the dependencies!"
         )
     return pkgs
 
@@ -132,7 +132,6 @@ def create_bom(project_type, bom_file, src_dir="."):
             )
         )
         return False
-    with open(bom_file, mode="w") as fp:
-        args = [cdxgen_cmd, "-r", "-t", project_type, "-o", fp.name, src_dir]
-        exec_tool(args)
-        return True
+    args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file, src_dir]
+    exec_tool(args)
+    return os.path.exists(bom_file)
