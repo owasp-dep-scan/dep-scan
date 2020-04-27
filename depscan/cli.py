@@ -90,7 +90,7 @@ def scan(db, pkg_list):
     :param pkg_list: List of packages
     """
     if not pkg_list or len(pkg_list) < 10:
-        LOG.info(
+        LOG.debug(
             "Only a small number of packages were detected. Scan results therefore will be incomplete!"
         )
     else:
@@ -119,6 +119,9 @@ def main():
     args = build_args()
     if not args.no_banner:
         print(at_logo, flush=True)
+    # Set logging level
+    if os.environ.get("SCAN_DEBUG_MODE") == "debug":
+        LOG.setLevel(logging.DEBUG)
     src_dir = args.src_dir
     if not args.src_dir:
         src_dir = os.getcwd()

@@ -90,11 +90,48 @@ def test_parse():
         "version": "1.10.0",
         "licenses": None,
     }
+    assert parse_bom_ref("pkg:golang/cloud.google.com/go@v0.34.0") == {
+        "vendor": "cloud.google.com",
+        "name": "go",
+        "version": "0.34.0",
+        "licenses": None,
+    }
+    assert parse_bom_ref("pkg:golang/cloud.google.com/go/bigquery@v1.0.1") == {
+        "vendor": "go",
+        "name": "bigquery",
+        "version": "1.0.1",
+        "licenses": None,
+    }
+    assert parse_bom_ref(
+        "pkg:golang/github.com%2FAzure%2Fazure-amqp-common-go/v2@v2.1.0"
+    ) == {
+        "vendor": "azure-amqp-common-go",
+        "name": "v2",
+        "version": "2.1.0",
+        "licenses": None,
+    }
+    assert parse_bom_ref(
+        "pkg:golang/github.com%2FAzure/go-autorest@v13.0.0%2Bincompatible"
+    ) == {
+        "vendor": "Azure",
+        "name": "go-autorest",
+        "version": "13.0.0+incompatible",
+        "licenses": None,
+    }
 
 
 def test_search(test_db):
     test_bom = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml"
+    )
+    pkg_list = get_pkg_list(test_bom)
+    search_res = search_pkgs(test_db, pkg_list)
+    assert not len(search_res)
+
+
+def test_go_search(test_db):
+    test_bom = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom-go.xml"
     )
     pkg_list = get_pkg_list(test_bom)
     search_res = search_pkgs(test_db, pkg_list)

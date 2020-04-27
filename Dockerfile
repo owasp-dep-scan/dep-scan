@@ -82,6 +82,7 @@ COPY --from=build-env /usr/local/bin/node /usr/local/bin/node
 COPY --from=build-env /usr/local/bin/npm /usr/local/bin/npm
 
 ENV VULNDB_HOME=/appthreat \
+    PYTHONUNBUFFERED=1 \
     NVD_START_YEAR=2018 \
     GITHUB_PAGE_COUNT=2 \
     CDXGEN_CMD=/usr/local/lib/node_modules/@appthreat/cdxgen/bin/cdxgen

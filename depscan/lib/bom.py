@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import xml
+from urllib.parse import unquote_plus
 
 from defusedxml.ElementTree import parse
 
@@ -42,26 +43,34 @@ def parse_bom_ref(bomstr, licenses=None):
     :param licenses: Licenses
     :return dict containing group, name and version for the package
     """
+    if bomstr:
+        bomstr = unquote_plus(bomstr)
     tmpl = bomstr.split("/")
     vendor = ""
     name_ver = []
+
     if len(tmpl) == 2:
         # Just name and version
         vendor = tmpl[0]
         name_ver = tmpl[1].split("@")
     elif len(tmpl) == 3:
         vendor = tmpl[1]
-        name_ver = tmpl[2].split("@")
+        name_ver = tmpl[-1].split("@")
+    elif len(tmpl) > 3:
+        vendor = tmpl[-2]
+        name_ver = tmpl[-1].split("@")
     vendor = vendor.replace("pkg:", "")
     # If name starts with @ this will make sure the name still gets captured
     if len(name_ver) >= 2:
-        name = name_ver[len(name_ver) - 2]
-        version = name_ver[len(name_ver) - 1]
+        name = name_ver[-2]
+        version = name_ver[-1]
     else:
         name = name_ver[0]
         version = "*"
     if "?" in version:
         version = version.split("?")[0]
+    if version.startswith("v"):
+        version = version[1:]
     return {
         "vendor": vendor,
         "name": name,
