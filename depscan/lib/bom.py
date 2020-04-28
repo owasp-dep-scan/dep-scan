@@ -98,6 +98,24 @@ def get_licenses(ele):
     return license_list
 
 
+def get_package(componentEle, licenses):
+    bom_ref = componentEle.attrib.get("bom-ref")
+    pkg = {"licenses": licenses, "vendor": "", "name": "", "version": ""}
+    if bom_ref:
+        pkg = parse_bom_ref(bom_ref, licenses)
+    for ele in componentEle.iter():
+        if ele.tag.endswith("group") and ele.text:
+            pkg["vendor"] = ele.text
+        elif ele.tag.endswith("name") and ele.text:
+            pkg["name"] = ele.text
+        if ele.tag.endswith("version") and ele.text:
+            version = ele.text
+            if version.startswith("v"):
+                version = version[1:]
+            pkg["version"] = version
+    return pkg
+
+
 def get_pkg_list(xmlfile):
     """Method to parse the bom xml file and convert into packages list
 
@@ -112,10 +130,8 @@ def get_pkg_list(xmlfile):
             if child.tag.endswith("components"):
                 for ele in child.iter():
                     if ele.tag.endswith("component"):
-                        bom_ref = ele.attrib.get("bom-ref")
                         licenses = get_licenses(ele)
-                        if bom_ref:
-                            pkgs.append(parse_bom_ref(bom_ref, licenses))
+                        pkgs.append(get_package(ele, licenses))
     except xml.etree.ElementTree.ParseError as pe:
         LOG.debug("Unable to parse {} {}".format(xmlfile, pe))
         LOG.warning(

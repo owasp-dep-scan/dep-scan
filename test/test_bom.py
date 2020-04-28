@@ -118,6 +118,14 @@ def test_parse():
         "version": "13.0.0+incompatible",
         "licenses": None,
     }
+    assert parse_bom_ref(
+        "pkg:golang/github.com%2Fdocker/docker@v0.7.3-0.20190327010347-be7ac8be2ae0"
+    ) == {
+        "vendor": "docker",
+        "name": "docker",
+        "version": "0.7.3-0.20190327010347-be7ac8be2ae0",
+        "licenses": None,
+    }
 
 
 def test_search(test_db):
