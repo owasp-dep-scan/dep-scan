@@ -106,7 +106,7 @@ def get_package(componentEle, licenses):
     for ele in componentEle.iter():
         if ele.tag.endswith("group") and ele.text:
             pkg["vendor"] = ele.text
-        elif ele.tag.endswith("name") and ele.text:
+        elif ele.tag.endswith("name") and ele.text and not pkg["name"]:
             pkg["name"] = ele.text
         if ele.tag.endswith("version") and ele.text:
             version = ele.text

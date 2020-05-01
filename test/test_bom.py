@@ -23,7 +23,7 @@ def test_get_pkg():
     assert len(pkg_list) == 157
     for pkg in pkg_list:
         assert pkg["vendor"] != "maven"
-        assert pkg["name"]
+        assert not " " in pkg["name"]
         assert pkg["version"]
     test_py_bom = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml"
@@ -32,7 +32,7 @@ def test_get_pkg():
     assert len(pkg_list) == 31
     for pkg in pkg_list:
         assert pkg["vendor"] == "pypi"
-        assert pkg["name"]
+        assert not " " in pkg["name"]
         assert pkg["version"]
     test_dn_bom = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-dotnet.xml"
@@ -41,7 +41,7 @@ def test_get_pkg():
     assert len(pkg_list) == 38
     for pkg in pkg_list:
         assert pkg["vendor"]
-        assert pkg["name"]
+        assert not " " in pkg["name"]
         assert pkg["version"]
 
     test_dn_bom = os.path.join(
@@ -51,7 +51,7 @@ def test_get_pkg():
     assert len(pkg_list) == 6
     for pkg in pkg_list:
         assert pkg["vendor"]
-        assert pkg["name"]
+        assert not " " in pkg["name"]
         assert pkg["version"]
 
 
