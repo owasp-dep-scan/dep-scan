@@ -7,6 +7,8 @@ from urllib.parse import unquote_plus
 
 from defusedxml.ElementTree import parse
 
+from depscan.lib.utils import cleanup_license_string
+
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
 )
@@ -86,13 +88,13 @@ def get_licenses(ele):
         license_list.append(data.text)
     if not license_list:
         for data in ele.findall("{0}licenses/{0}license/{0}name".format(namespace)):
-            ld_list = data.text.upper().split(" OR ")
+            ld_list = [data.text]
             if "http" in data.text:
                 ld_list = [
                     os.path.basename(data.text).replace(".txt", "").replace(".html", "")
                 ]
             elif "/" in data.text:
-                ld_list = data.text.split("/")
+                ld_list = [cleanup_license_string(data.text)]
             for ld in ld_list:
                 license_list.append(ld.strip().upper())
     return license_list

@@ -1,6 +1,9 @@
 import os
+import re
 
 import vdb.lib.db as dbLib
+
+lic_symbol_regex = re.compile(r"[\(\)\,]")
 
 
 def find_python_reqfiles(path):
@@ -71,3 +74,21 @@ def search_pkgs(db, pkg_list):
     """
     quick_res = dbLib.bulk_index_search(pkg_list)
     return dbLib.pkg_bulk_search(db, quick_res)
+
+
+def cleanup_license_string(license_str):
+    """
+    Method to cleanup license string by removing problematic symbols and making certain keywords consistent
+    :param license_str: String to clean up
+    :return: Cleaned up version
+    """
+    if not license_str:
+        license_str = ""
+    license_str = (
+        license_str.replace(" / ", " OR ")
+        .replace("/", " OR ")
+        .replace(" & ", " OR ")
+        .replace("&", " OR ")
+    )
+    license_str = lic_symbol_regex.sub("", license_str)
+    return license_str.upper()

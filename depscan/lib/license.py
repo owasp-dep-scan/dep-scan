@@ -1,10 +1,6 @@
-import re
-
 import yaml
 
 from depscan.lib.utils import find_files
-
-lic_symbol_regex = re.compile(r"[\(\)\,]")
 
 
 def build_license_data(license_dir):
@@ -38,9 +34,6 @@ def bulk_lookup(license_dict, pkg_list):
     for pkg in pkg_list:
         pkg_key = pkg["vendor"] + ":" + pkg["name"] + "@" + pkg["version"]
         for lic in pkg["licenses"]:
-            lic = lic.replace(" ", "-")
-            lic = lic_symbol_regex.sub("", lic)
-            lic = lic.upper()
             if lic == "X11":
                 lic = "MIT"
             elif "MIT" in lic:
