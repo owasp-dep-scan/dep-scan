@@ -8,6 +8,7 @@ from urllib.parse import unquote_plus
 from defusedxml.ElementTree import parse
 
 from depscan.lib.utils import cleanup_license_string
+from depscan.lib.normalize import normalize_pkg
 
 logging.basicConfig(
     level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
@@ -115,7 +116,7 @@ def get_package(componentEle, licenses):
             if version.startswith("v"):
                 version = version[1:]
             pkg["version"] = version
-    return pkg
+    return normalize_pkg(pkg)
 
 
 def get_pkg_list(xmlfile):

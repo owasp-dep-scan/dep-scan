@@ -8,3 +8,9 @@ license_data_dir = os.path.join(
     "choosealicense.com",
     "_licenses",
 )
+
+# CPE Vendor aliases
+vendor_alias = {"org.apache": "apache"}
+
+# Package aliases
+package_alias = {"struts2-core": "struts"}
