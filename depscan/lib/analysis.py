@@ -22,10 +22,16 @@ def print_results(results):
         vuln_occ_dict = res.to_dict()
         id = vuln_occ_dict.get("id")
         package_issue = res.package_issue
+        full_pkg = package_issue.affected_location.package
+        if package_issue.affected_location.vendor:
+            full_pkg = "{}:{}".format(
+                package_issue.affected_location.vendor,
+                package_issue.affected_location.package,
+            )
         table.append(
             [
                 id,
-                package_issue.affected_location.package,
+                full_pkg,
                 package_issue.affected_location.version,
                 vuln_occ_dict.get("severity"),
                 vuln_occ_dict.get("cvss_score"),
@@ -72,9 +78,15 @@ def jsonl_report(results, out_file_name):
             vuln_occ_dict = data.to_dict()
             id = vuln_occ_dict.get("id")
             package_issue = data.package_issue
+            full_pkg = package_issue.affected_location.package
+            if package_issue.affected_location.vendor:
+                full_pkg = "{}:{}".format(
+                    package_issue.affected_location.vendor,
+                    package_issue.affected_location.package,
+                )
             data_obj = {
                 "id": id,
-                "package": package_issue.affected_location.package,
+                "package": full_pkg,
                 "version": package_issue.affected_location.version,
                 "severity": vuln_occ_dict.get("severity"),
                 "cvss_score": vuln_occ_dict.get("cvss_score"),
