@@ -2,8 +2,19 @@ import os
 import re
 
 import vdb.lib.db as dbLib
+import depscan.lib.config as config
 
 lic_symbol_regex = re.compile(r"[\(\)\,]")
+
+
+def filter_ignored_dirs(dirs):
+    """
+    Method to filter directory list to remove ignored directories
+    :param dirs: Directories to ignore
+    :return: Filtered directory list
+    """
+    [dirs.remove(d) for d in list(dirs) if d.lower() in config.ignore_directories]
+    return dirs
 
 
 def find_python_reqfiles(path):
@@ -24,21 +35,25 @@ def find_python_reqfiles(path):
         "conda.yml",
     ]
     for root, dirs, files in os.walk(path):
+        filter_ignored_dirs(dirs)
         for name in req_files:
             if name in files:
                 result.append(os.path.join(root, name))
     return result
 
 
-def find_files(src, src_ext_name):
+def find_files(src, src_ext_name, quick=False):
     """
     Method to find files with given extenstion
     """
     result = []
     for root, dirs, files in os.walk(src):
+        filter_ignored_dirs(dirs)
         for file in files:
             if file == src_ext_name or file.endswith(src_ext_name):
                 result.append(os.path.join(root, file))
+                if quick:
+                    return result
     return result
 
 
@@ -52,15 +67,25 @@ def detect_project_type(src_dir):
     project_types = []
     if find_python_reqfiles(src_dir):
         project_types.append("python")
-    if find_files(src_dir, "pom.xml") or find_files(src_dir, ".gradle"):
+    if find_files(src_dir, "pom.xml", quick=True) or find_files(
+        src_dir, ".gradle", quick=True
+    ):
         project_types.append("java")
-    if find_files(src_dir, "package.json"):
+    if (
+        find_files(src_dir, "package.json", quick=True)
+        or find_files(src_dir, "yarn.lock", quick=True)
+        or find_files(src_dir, "rush.json", quick=True)
+    ):
         project_types.append("nodejs")
-    if find_files(src_dir, "go.sum") or find_files(src_dir, "Gopkg.lock"):
+    if find_files(src_dir, "go.sum", quick=True) or find_files(
+        src_dir, "Gopkg.lock", quick=True
+    ):
         project_types.append("go")
-    if find_files(src_dir, "Cargo.lock"):
+    if find_files(src_dir, "Cargo.lock", quick=True):
         project_types.append("rust")
-    if find_files(src_dir, ".csproj"):
+    if find_files(src_dir, "composer.json", quick=True):
+        project_types.append("php")
+    if find_files(src_dir, ".csproj", quick=True):
         project_types.append("dotnet")
     return project_types
 
