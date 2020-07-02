@@ -71,9 +71,7 @@ def detect_project_type(src_dir):
         src_dir, ".gradle", quick=True
     ):
         project_types.append("java")
-    if find_files(src_dir, ".gradle", quick=True) or find_files(
-        src_dir, ".gradle.kts", quick=True
-    ):
+    if find_files(src_dir, ".gradle.kts", quick=True):
         project_types.append("kotlin")
     if (
         find_files(src_dir, "package.json", quick=True)
