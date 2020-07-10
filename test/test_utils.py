@@ -1,4 +1,4 @@
-import depscan.lib.utils as utils
+from depscan.lib import utils as utils
 
 
 def test_cleanup_license_string():
