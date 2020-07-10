@@ -1,8 +1,9 @@
 import os
 import re
 
-import vdb.lib.db as dbLib
-import depscan.lib.config as config
+from vdb.lib import db as dbLib
+
+from depscan.lib import config as config
 
 lic_symbol_regex = re.compile(r"[\(\)\,]")
 

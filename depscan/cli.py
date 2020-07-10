@@ -6,15 +6,15 @@ import logging
 import os
 import sys
 
-import vdb.lib.config as config
-import vdb.lib.db as dbLib
+from vdb.lib import config as config
+from vdb.lib import db as dbLib
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 
-import depscan.lib.utils as utils
-from depscan.lib.analysis import print_results, analyse, analyse_licenses, jsonl_report
+from depscan.lib import utils as utils
+from depscan.lib.analysis import analyse, analyse_licenses, jsonl_report, print_results
 from depscan.lib.audit import audit, type_audit_map
-from depscan.lib.bom import get_pkg_list, create_bom
+from depscan.lib.bom import create_bom, get_pkg_list
 from depscan.lib.config import license_data_dir
 from depscan.lib.license import build_license_data, bulk_lookup
 

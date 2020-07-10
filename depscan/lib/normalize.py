@@ -1,4 +1,4 @@
-import depscan.lib.config as config
+from depscan.lib import config as config
 
 
 def normalize_pkg(pkg_dict):
