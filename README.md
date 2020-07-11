@@ -20,11 +20,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Configurable `cache` and `sync` functionality to manage local cache data
 - Pre-installed and integrated with [sast-scan](https://github.com/AppThreat/sast-scan/)
-- (Alpha) Reports packages with license limitations (such as [copyleft](https://www.gnu.org/licenses/copyleft.en.html))
-
-Known issue:
-
-- Possibility of false positives due to the version matching logic currently ignoring [package exclude information in CVE](https://github.com/AppThreat/vulndb/issues/1)
+- Suggest optimal fix version by package group (See suggest mode)
 
 ## Usage
 
@@ -142,6 +138,18 @@ To download security advisories from GitHub, a personal access token with the fo
 ```bash
 export GITHUB_TOKEN="<PAT token>"
 ```
+
+## Suggest mode
+
+Fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
+
+![Normal mode](docs/depscan-normal.png)
+
+By passing an argument `--suggest` it is possible to force depscan to recheck the fix suggestions. This way the suggestion becomes more optimal for a given package group.
+
+![Suggest mode](docs/depscan-suggest.png)
+
+Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
 
 ## License scan (alpha)
 
