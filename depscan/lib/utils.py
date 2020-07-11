@@ -2,6 +2,7 @@ import os
 import re
 
 from vdb.lib import db as dbLib
+from vdb.lib.utils import version_compare
 
 from depscan.lib import config as config
 
@@ -120,3 +121,20 @@ def cleanup_license_string(license_str):
     )
     license_str = lic_symbol_regex.sub("", license_str)
     return license_str.upper()
+
+
+def max_version(version_list):
+    """Method to return the highest version from the list
+    """
+    if isinstance(version_list, str):
+        return version_list
+    if isinstance(version_list, set):
+        version_list = list(version_list)
+    if len(version_list) == 1:
+        return version_list[0]
+    min_ver = "0"
+    max_ver = version_list[0]
+    for i in range(len(version_list)):
+        if not version_compare(version_list[i], min_ver, max_ver):
+            max_ver = version_list[i]
+    return max_ver

@@ -3,12 +3,14 @@
 import json
 import logging
 
+from depscan.lib.utils import max_version
+
 from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.markdown import Markdown
 from rich.table import Table
 from rich.theme import Theme
-from rich.markdown import Markdown
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
 console = Console(
@@ -24,7 +26,7 @@ logging.basicConfig(
 LOG = logging.getLogger(__name__)
 
 
-def print_results(results):
+def print_results(results, sug_version_dict):
     """Pretty print report summary
     """
     if not len(results):
@@ -64,6 +66,7 @@ def print_results(results):
                 package_issue.affected_location.vendor,
                 package_issue.affected_location.package,
             )
+        fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         table.add_row(
             "{}{}".format(
                 "[bright_red]" if vuln_occ_dict.get("severity") == "CRITICAL" else "",
@@ -71,7 +74,7 @@ def print_results(results):
             ),
             full_pkg,
             package_issue.affected_location.version,
-            package_issue.fixed_location,
+            fixed_location,
             vuln_occ_dict.get("severity"),
             "{}{}".format(
                 "[bright_red]" if vuln_occ_dict.get("severity") == "CRITICAL" else "",
@@ -113,7 +116,7 @@ def analyse(results):
     return summary
 
 
-def jsonl_report(results, out_file_name):
+def jsonl_report(results, sug_version_dict, out_file_name):
     """Produce vulnerability occurrence report in jsonl format
 
     :param results: List of vulnerabilities found
@@ -130,11 +133,14 @@ def jsonl_report(results, out_file_name):
                     package_issue.affected_location.vendor,
                     package_issue.affected_location.package,
                 )
+            fixed_location = sug_version_dict.get(
+                full_pkg, package_issue.fixed_location
+            )
             data_obj = {
                 "id": id,
                 "package": full_pkg,
                 "version": package_issue.affected_location.version,
-                "fix_version": package_issue.fixed_location,
+                "fix_version": fixed_location,
                 "severity": vuln_occ_dict.get("severity"),
                 "cvss_score": vuln_occ_dict.get("cvss_score"),
                 "short_description": vuln_occ_dict.get("short_description"),
@@ -182,3 +188,34 @@ def analyse_licenses(licenses_results, license_report_file=None):
                     outfile.write("\n")
     else:
         LOG.info("No license violation detected ✅")
+
+
+def suggest_version(results):
+    """Provide version suggestions
+    """
+    pkg_fix_map = {}
+    sug_map = {}
+    for res in results:
+        if isinstance(res, dict):
+            vuln_occ_dict = res
+            full_pkg = res.get("package")
+            fixed_location = res.get("fix_version")
+        else:
+            vuln_occ_dict = res.to_dict()
+            package_issue = res.package_issue
+            full_pkg = package_issue.affected_location.package
+            fixed_location = package_issue.fixed_location
+            if package_issue.affected_location.vendor:
+                full_pkg = "{}:{}".format(
+                    package_issue.affected_location.vendor,
+                    package_issue.affected_location.package,
+                )
+        id = vuln_occ_dict.get("id")
+        version_upgrades = pkg_fix_map.get(full_pkg, set())
+        version_upgrades.add(fixed_location)
+        pkg_fix_map[full_pkg] = version_upgrades
+    for k, v in pkg_fix_map.items():
+        sug_map[k] = None
+        if v:
+            sug_map[k] = max_version(list(v))
+    return sug_map

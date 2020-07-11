@@ -12,7 +12,13 @@ from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 
 from depscan.lib import utils as utils
-from depscan.lib.analysis import analyse, analyse_licenses, jsonl_report, print_results
+from depscan.lib.analysis import (
+    analyse,
+    analyse_licenses,
+    jsonl_report,
+    print_results,
+    suggest_version,
+)
 from depscan.lib.audit import audit, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_list
 from depscan.lib.config import license_data_dir
@@ -64,6 +70,13 @@ def build_args():
         help="Sync to receive the latest vulnerability data. Should have invoked cache first.",
     )
     parser.add_argument(
+        "--suggest",
+        action="store_true",
+        default=False,
+        dest="suggest",
+        help="Suggest appropriate fix version for each identified vulnerability.",
+    )
+    parser.add_argument(
         "--bom",
         dest="bom",
         help="UNUSED: Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
@@ -82,7 +95,7 @@ def build_args():
     return parser.parse_args()
 
 
-def scan(db, pkg_list):
+def scan(db, pkg_list, suggest_mode):
     """
     Method to search packages in our vulnerability database
 
@@ -95,22 +108,60 @@ def scan(db, pkg_list):
         )
     else:
         LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
-    return utils.search_pkgs(db, pkg_list)
+    results = utils.search_pkgs(db, pkg_list)
+    sug_version_dict = {}
+    if suggest_mode:
+        # From the results identify optimal max version
+        sug_version_dict = suggest_version(results)
+        if sug_version_dict:
+            LOG.debug(
+                "Adjusting fix version based on the initial suggestion {}".format(
+                    sug_version_dict
+                )
+            )
+            # Recheck packages
+            sug_pkg_list = []
+            for k, v in sug_version_dict.items():
+                if not v:
+                    continue
+                vendor = None
+                name = None
+                version = v
+                tmpA = k.split(":")
+                if len(tmpA) == 2:
+                    vendor = tmpA[0]
+                    name = tmpA[1]
+                else:
+                    name = tmpA[0]
+                sug_pkg_list.append(
+                    {"vendor": vendor, "name": name, "version": version}
+                )
+            LOG.debug(
+                "Re-checking our suggestion to ensure there are no vulnerabilities"
+            )
+            override_results = utils.search_pkgs(db, sug_pkg_list)
+            if override_results:
+                new_sug_dict = suggest_version(override_results)
+                LOG.debug("Received override results: {}".format(new_sug_dict))
+                for nk, nv in new_sug_dict.items():
+                    sug_version_dict[nk] = nv
+    return results, sug_version_dict
 
 
-def summarise(results, report_file=None, console_print=True):
+def summarise(results, sug_version_dict, report_file=None, console_print=True):
     """
     Method to summarise the results
     :param results: Scan or audit results
-    :param licenses_results: License scan result
+    :param sug_version_dict: Dictionary containing version suggestions
     :param report_file: Output report file
     :param print: Boolean to indicate if the results should get printed to the console
     :return: Summary of the results
     """
+
     if report_file and len(results):
-        jsonl_report(results, report_file)
+        jsonl_report(results, sug_version_dict, report_file)
     if console_print:
-        print_results(results)
+        print_results(results, sug_version_dict)
     summary = analyse(results)
     return summary
 
@@ -141,6 +192,7 @@ def main():
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: {}".format(project_types_list))
     for project_type in project_types_list:
+        sug_version_dict = {}
         report_file = areport_file.replace(".json", "-{}.json".format(project_type))
         LOG.info("=" * 80)
         bom_file = os.path.join(reports_dir, "bom-" + project_type + ".xml")
@@ -199,9 +251,9 @@ def main():
                     src_dir, project_type
                 )
             )
-            results = scan(db, pkg_list)
+            results, sug_version_dict = scan(db, pkg_list, args.suggest)
         # Summarise and print results
-        summary = summarise(results, report_file)
+        summary = summarise(results, sug_version_dict, report_file, True)
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
             if summary.get("CRITICAL") > 0:
