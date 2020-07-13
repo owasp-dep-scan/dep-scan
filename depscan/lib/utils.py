@@ -5,6 +5,7 @@ from vdb.lib import db as dbLib
 from vdb.lib.utils import version_compare
 
 from depscan.lib import config as config
+from depscan.lib import normalize as normalize
 
 lic_symbol_regex = re.compile(r"[\(\)\,]")
 
@@ -101,7 +102,10 @@ def search_pkgs(db, pkg_list):
     :param db: DB instance
     :param pkg_list: List of packages to search
     """
-    quick_res = dbLib.bulk_index_search(pkg_list)
+    expanded_list = []
+    for pkg in pkg_list:
+        expanded_list += normalize.create_pkg_variations(pkg)
+    quick_res = dbLib.bulk_index_search(expanded_list)
     return dbLib.pkg_bulk_search(db, quick_res)
 
 

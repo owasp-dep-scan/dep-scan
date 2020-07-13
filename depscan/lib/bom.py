@@ -83,6 +83,8 @@ def parse_bom_ref(bomstr, licenses=None):
 
 
 def get_licenses(ele):
+    """
+    """
     license_list = []
     namespace = "{http://cyclonedx.org/schema/bom/1.1}"
     for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
@@ -105,6 +107,8 @@ def get_licenses(ele):
 
 
 def get_package(componentEle, licenses):
+    """
+    """
     bom_ref = componentEle.attrib.get("bom-ref")
     pkg = {"licenses": licenses, "vendor": "", "name": "", "version": ""}
     if bom_ref:
@@ -119,7 +123,7 @@ def get_package(componentEle, licenses):
             if version.startswith("v"):
                 version = version[1:]
             pkg["version"] = version
-    return normalize_pkg(pkg)
+    return pkg
 
 
 def get_pkg_list(xmlfile):

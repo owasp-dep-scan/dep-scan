@@ -81,9 +81,14 @@ def build_args():
         dest="bom",
         help="UNUSED: Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
     )
-    parser.add_argument("--src", dest="src_dir", help="Source directory", required=True)
     parser.add_argument(
-        "--report_file", dest="report_file", help="Report filename with directory",
+        "-i", "--src", dest="src_dir", help="Source directory", required=True
+    )
+    parser.add_argument(
+        "-o",
+        "--report_file",
+        dest="report_file",
+        help="Report filename with directory",
     )
     parser.add_argument(
         "--no-error",

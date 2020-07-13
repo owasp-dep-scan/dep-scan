@@ -1,4 +1,4 @@
-from depscan.lib.normalize import normalize_pkg
+from depscan.lib.normalize import create_pkg_variations, normalize_pkg
 
 
 def test_pkg_norm():
@@ -11,3 +11,18 @@ def test_pkg_norm():
         "vendor": "apache",
         "name": "struts",
     }
+
+
+def test_pkg_variations():
+    pkg_list = create_pkg_variations(
+        {"vendor": "fasterxml", "name": "jackson-databind", "version": "1.0.0"}
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "com.fasterxml.jackson.core",
+            "name": "jackson-databind",
+            "version": "1.0.0",
+        }
+    )
+    assert len(pkg_list) > 1

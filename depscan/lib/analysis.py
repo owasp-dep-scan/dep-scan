@@ -3,14 +3,14 @@
 import json
 import logging
 
-from depscan.lib.utils import max_version
-
 from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.markdown import Markdown
 from rich.table import Table
 from rich.theme import Theme
+
+from depscan.lib.utils import max_version
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
 console = Console(

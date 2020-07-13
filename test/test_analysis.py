@@ -1,5 +1,6 @@
 import json
 import os
+
 import pytest
 
 from depscan.lib import analysis as analysis
