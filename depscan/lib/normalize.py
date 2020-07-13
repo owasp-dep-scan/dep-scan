@@ -1,24 +1,6 @@
 from depscan.lib import config as config
 
 
-def normalize_pkg(pkg_dict):
-    """
-    Normalize the package vendor and name
-
-    :param pkg_dict: Dict containing package vendor, name and version
-    :return: Normalized version
-    """
-    vendor = pkg_dict.get("vendor")
-    name = pkg_dict.get("name")
-    for k, v in config.vendor_alias.items():
-        if vendor.lower().startswith(k):
-            pkg_dict["vendor"] = v
-    for k, v in config.package_alias.items():
-        if name.lower() == k:
-            pkg_dict["name"] = v
-    return pkg_dict
-
-
 def create_pkg_variations(pkg_dict):
     """
     Method to create variations of the given package by considering vendor and package aliases
@@ -33,6 +15,16 @@ def create_pkg_variations(pkg_dict):
     name = pkg_dict.get("name")
     if vendor:
         vendor_aliases.add(vendor)
+        if (
+            vendor.startswith("org.")
+            or vendor.startswith("io.")
+            or vendor.startswith("com.")
+            or vendor.startswith("net.")
+        ):
+            tmpA = vendor.split(".")
+            # Automatically add short vendor forms
+            if len(tmpA) > 2 and len(tmpA[1]) > 3:
+                vendor_aliases.add(tmpA[1])
         for k, v in config.vendor_alias.items():
             if vendor in k or k in vendor:
                 vendor_aliases.add(k)

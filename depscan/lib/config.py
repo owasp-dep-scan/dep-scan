@@ -13,24 +13,11 @@ license_data_dir = os.path.join(
 vendor_alias = {
     "org.apache.tomcat": "apache_tomcat",
     "org.apache.commons.io": "commons-io",
+    "org.apache.logging.log4j": "log4j",
     "org.apache.commons.beanutils": "commons-beanutils",
     "org.apache.commons.collections": "commons-collections",
-    "org.apache": "apache",
     "org.apache.solr": "apache_solr",
     "org.apache.solr": "apache_solr_real-time_project",
-    "com.fasterxml": "fasterxml",
-    "org.bouncycastle": "bouncycastle",
-    "org.codehaus.jackson": "codehaus",
-    "org.cryptacular": "cryptacular",
-    "org.dom4j": "dom4j",
-    "org.eclipse": "eclipse",
-    "org.hibernate": "hibernate",
-    "org.http4s": "http4s",
-    "org.infinispan": "infinispan",
-    "org.java-websocket": "java-websocket",
-    "org.jboss": "jboss",
-    "org.jooby": "jooby",
-    "org.keycloak": "keycloak",
 }
 
 # Package aliases

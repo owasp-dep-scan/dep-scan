@@ -7,7 +7,6 @@ from urllib.parse import unquote_plus
 
 from defusedxml.ElementTree import parse
 
-from depscan.lib.normalize import normalize_pkg
 from depscan.lib.utils import cleanup_license_string
 
 logging.basicConfig(
