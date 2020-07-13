@@ -42,11 +42,22 @@ def create_pkg_variations(pkg_dict):
         if name in k or k in name:
             name_aliases.add(k)
             name_aliases.add(v)
-    for vvar in list(vendor_aliases):
+    if len(vendor_aliases):
+        for vvar in list(vendor_aliases):
+            for nvar in list(name_aliases):
+                pkg_list.append(
+                    {
+                        "vendor": vvar,
+                        "name": nvar,
+                        "version": pkg_dict.get("version"),
+                        "licenses": pkg_dict.get("licenses"),
+                    }
+                )
+    else:
         for nvar in list(name_aliases):
             pkg_list.append(
                 {
-                    "vendor": vvar,
+                    "vendor": pkg_dict.get("vendor"),
                     "name": nvar,
                     "version": pkg_dict.get("version"),
                     "licenses": pkg_dict.get("licenses"),

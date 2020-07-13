@@ -26,3 +26,7 @@ def test_pkg_variations():
         }
     )
     assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {"vendor": "commons-io", "name": "commons-io", "version": "1.0.0",}
+    )
+    assert len(pkg_list) == 1

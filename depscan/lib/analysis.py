@@ -75,7 +75,10 @@ def print_results(results, sug_version_dict):
             full_pkg,
             package_issue.affected_location.version,
             fixed_location,
-            vuln_occ_dict.get("severity"),
+            "{}{}".format(
+                "[bright_red]" if vuln_occ_dict.get("severity") == "CRITICAL" else "",
+                vuln_occ_dict.get("severity"),
+            ),
             "{}{}".format(
                 "[bright_red]" if vuln_occ_dict.get("severity") == "CRITICAL" else "",
                 vuln_occ_dict.get("cvss_score"),

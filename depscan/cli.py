@@ -142,7 +142,7 @@ def scan(db, pkg_list, suggest_mode):
                     {"vendor": vendor, "name": name, "version": version}
                 )
             LOG.debug(
-                "Re-checking our suggestion to ensure there are no vulnerabilities"
+                "Re-checking our suggestion to ensure there are no further vulnerabilities"
             )
             override_results = utils.search_pkgs(db, sug_pkg_list)
             if override_results:

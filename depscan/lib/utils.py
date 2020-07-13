@@ -139,6 +139,8 @@ def max_version(version_list):
     min_ver = "0"
     max_ver = version_list[0]
     for i in range(len(version_list)):
+        if not version_list[i]:
+            continue
         if not version_compare(version_list[i], min_ver, max_ver):
             max_ver = version_list[i]
     return max_ver
