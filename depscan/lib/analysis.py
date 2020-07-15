@@ -72,7 +72,7 @@ def print_results(results, sug_version_dict):
                 "[bright_red]" if vuln_occ_dict.get("severity") == "CRITICAL" else "",
                 id,
             ),
-            full_pkg,
+            package_issue.affected_location.package,
             package_issue.affected_location.version,
             fixed_location,
             "{}{}".format(
