@@ -30,6 +30,9 @@ def create_pkg_variations(pkg_dict):
                 vendor_aliases.add(k)
                 vendor_aliases.add(v)
     name_aliases.add(name)
+    name_aliases.add(name.replace("-", "_"))
+    if "-core" in name:
+        name_aliases.add(name.replace("-core", ""))
     for k, v in config.package_alias.items():
         if name in k or k in name:
             name_aliases.add(k)
@@ -56,3 +59,29 @@ def create_pkg_variations(pkg_dict):
                 }
             )
     return pkg_list
+
+
+def dealias_packages(pkg_list, pkg_aliases):
+    """Method to dealias package names by looking up vendor and name information
+    in the aliases list
+
+    :param pkg_list: List of packages to dealias
+    :param pkg_aliases: Package aliases
+    """
+    if not pkg_aliases:
+        return {}
+    dealias_dict = {}
+    for res in pkg_list:
+        vuln_occ_dict = res.to_dict()
+        package_issue = res.package_issue
+        full_pkg = package_issue.affected_location.package
+        if package_issue.affected_location.vendor:
+            full_pkg = "{}:{}".format(
+                package_issue.affected_location.vendor,
+                package_issue.affected_location.package,
+            )
+        for k, v in pkg_aliases.items():
+            if full_pkg in v:
+                dealias_dict[full_pkg] = k
+                break
+    return dealias_dict

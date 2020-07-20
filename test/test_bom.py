@@ -133,7 +133,7 @@ def test_search(test_db):
         os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml"
     )
     pkg_list = get_pkg_list(test_bom)
-    search_res = search_pkgs(test_db, pkg_list)
+    search_res, pkg_aliases = search_pkgs(test_db, pkg_list)
     assert not len(search_res)
 
 
@@ -142,5 +142,14 @@ def test_go_search(test_db):
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-go.xml"
     )
     pkg_list = get_pkg_list(test_bom)
-    search_res = search_pkgs(test_db, pkg_list)
+    search_res, pkg_aliases = search_pkgs(test_db, pkg_list)
+    assert not len(search_res)
+
+
+def test_search_webgoat(test_db):
+    test_bom = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom-webgoat.xml"
+    )
+    pkg_list = get_pkg_list(test_bom)
+    search_res, pkg_aliases = search_pkgs(test_db, pkg_list)
     assert not len(search_res)

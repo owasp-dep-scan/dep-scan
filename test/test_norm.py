@@ -17,7 +17,7 @@ def test_pkg_variations():
     pkg_list = create_pkg_variations(
         {"vendor": "commons-io", "name": "commons-io", "version": "1.0.0",}
     )
-    assert len(pkg_list) == 1
+    assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
         {"vendor": "org.eclipse.foo", "name": "bar", "version": "1.0.0",}
     )
@@ -27,6 +27,22 @@ def test_pkg_variations():
             "vendor": "com.fasterxml.jackson.core",
             "name": "jackson-annotations",
             "version": "1.0.0",
+        }
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {"vendor": "io.undertow", "name": "undertow-core", "version": "2.0.27.Final",}
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {"vendor": "io.undertow", "name": "undertow-core", "version": "2.0.27.Final",}
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "org.springframework.batch",
+            "name": "spring-batch",
+            "version": "2.0.27.Final",
         }
     )
     assert len(pkg_list) > 1

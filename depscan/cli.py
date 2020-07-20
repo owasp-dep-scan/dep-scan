@@ -113,11 +113,14 @@ def scan(db, pkg_list, suggest_mode):
         )
     else:
         LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
-    results = utils.search_pkgs(db, pkg_list)
+    results, pkg_aliases = utils.search_pkgs(db, pkg_list)
+    # pkg_aliases is a dict that can be used to find the original vendor and package name
+    # This way we consistently use the same names used by the caller irrespective of how
+    # the result was obtained
     sug_version_dict = {}
     if suggest_mode:
         # From the results identify optimal max version
-        sug_version_dict = suggest_version(results)
+        sug_version_dict = suggest_version(results, pkg_aliases)
         if sug_version_dict:
             LOG.debug(
                 "Adjusting fix version based on the initial suggestion {}".format(
@@ -129,7 +132,7 @@ def scan(db, pkg_list, suggest_mode):
             for k, v in sug_version_dict.items():
                 if not v:
                     continue
-                vendor = None
+                vendor = ""
                 name = None
                 version = v
                 tmpA = k.split(":")
@@ -138,25 +141,32 @@ def scan(db, pkg_list, suggest_mode):
                     name = tmpA[1]
                 else:
                     name = tmpA[0]
+                # De-alias the vendor and package name
+                full_pkg = "{}:{}".format(vendor, name)
+                full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+                vendor, name = full_pkg.split(":")
                 sug_pkg_list.append(
                     {"vendor": vendor, "name": name, "version": version}
                 )
             LOG.debug(
                 "Re-checking our suggestion to ensure there are no further vulnerabilities"
             )
-            override_results = utils.search_pkgs(db, sug_pkg_list)
+            override_results, _ = utils.search_pkgs(db, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
                 LOG.debug("Received override results: {}".format(new_sug_dict))
                 for nk, nv in new_sug_dict.items():
                     sug_version_dict[nk] = nv
-    return results, sug_version_dict
+    return results, pkg_aliases, sug_version_dict
 
 
-def summarise(results, sug_version_dict, report_file=None, console_print=True):
+def summarise(
+    results, pkg_aliases, sug_version_dict, report_file=None, console_print=True
+):
     """
     Method to summarise the results
     :param results: Scan or audit results
+    :param pkg_aliases: Package aliases used
     :param sug_version_dict: Dictionary containing version suggestions
     :param report_file: Output report file
     :param print: Boolean to indicate if the results should get printed to the console
@@ -164,9 +174,9 @@ def summarise(results, sug_version_dict, report_file=None, console_print=True):
     """
 
     if report_file and len(results):
-        jsonl_report(results, sug_version_dict, report_file)
+        jsonl_report(results, pkg_aliases, sug_version_dict, report_file)
     if console_print:
-        print_results(results, sug_version_dict)
+        print_results(results, pkg_aliases, sug_version_dict)
     summary = analyse(results)
     return summary
 
@@ -256,9 +266,9 @@ def main():
                     src_dir, project_type
                 )
             )
-            results, sug_version_dict = scan(db, pkg_list, args.suggest)
+            results, pkg_aliases, sug_version_dict = scan(db, pkg_list, args.suggest)
         # Summarise and print results
-        summary = summarise(results, sug_version_dict, report_file, True)
+        summary = summarise(results, pkg_aliases, sug_version_dict, report_file, True)
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
             if summary.get("CRITICAL") > 0:

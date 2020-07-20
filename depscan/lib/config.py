@@ -18,6 +18,8 @@ vendor_alias = {
     "org.apache.commons.collections": "commons-collections",
     "org.apache.solr": "apache_solr",
     "org.apache.solr": "apache_solr_real-time_project",
+    "org.springframework": "pivotal_software",
+    "io.undertow": "redhat",
 }
 
 # Package aliases
@@ -30,6 +32,7 @@ package_alias = {
     "tomcat_native": "tomcat",
     "tomcat_connectors": "tomcat",
     "tomcat_jk_connector": "tomcat",
+    "spring-security-core": "spring_security",
 }
 
 # Default ignore list

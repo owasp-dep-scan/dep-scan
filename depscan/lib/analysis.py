@@ -31,7 +31,7 @@ logging.basicConfig(
 LOG = logging.getLogger(__name__)
 
 
-def print_results(results, sug_version_dict):
+def print_results(results, pkg_aliases, sug_version_dict):
     """Pretty print report summary
     """
     if not len(results):
@@ -71,6 +71,8 @@ def print_results(results, sug_version_dict):
                 package_issue.affected_location.vendor,
                 package_issue.affected_location.package,
             )
+        # De-alias package names
+        full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         table.add_row(
             "{}{}".format(
@@ -124,10 +126,11 @@ def analyse(results):
     return summary
 
 
-def jsonl_report(results, sug_version_dict, out_file_name):
+def jsonl_report(results, pkg_aliases, sug_version_dict, out_file_name):
     """Produce vulnerability occurrence report in jsonl format
 
     :param results: List of vulnerabilities found
+    :param pkg_aliases: Package alias
     :param out_file_name: Output filename
     """
     with open(out_file_name, "w") as outfile:
@@ -141,6 +144,8 @@ def jsonl_report(results, sug_version_dict, out_file_name):
                     package_issue.affected_location.vendor,
                     package_issue.affected_location.package,
                 )
+            # De-alias package names
+            full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             fixed_location = sug_version_dict.get(
                 full_pkg, package_issue.fixed_location
             )
@@ -198,11 +203,13 @@ def analyse_licenses(licenses_results, license_report_file=None):
         LOG.info("No license violation detected ✅")
 
 
-def suggest_version(results):
+def suggest_version(results, pkg_aliases={}):
     """Provide version suggestions
     """
     pkg_fix_map = {}
     sug_map = {}
+    if not pkg_aliases:
+        pkg_aliases = {}
     for res in results:
         if isinstance(res, dict):
             vuln_occ_dict = res
@@ -219,6 +226,8 @@ def suggest_version(results):
                     package_issue.affected_location.package,
                 )
         id = vuln_occ_dict.get("id")
+        # De-alias package names
+        full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
         version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades

@@ -103,10 +103,20 @@ def search_pkgs(db, pkg_list):
     :param pkg_list: List of packages to search
     """
     expanded_list = []
+    pkg_aliases = {}
     for pkg in pkg_list:
-        expanded_list += normalize.create_pkg_variations(pkg)
+        variations = normalize.create_pkg_variations(pkg)
+        expanded_list += variations
+        vendor = pkg.get("vendor", "")
+        name = pkg.get("name")
+        pkg_aliases[vendor + ":" + name] = [
+            "{}:{}".format(vari.get("vendor", ""), vari.get("name"))
+            for vari in variations
+        ]
     quick_res = dbLib.bulk_index_search(expanded_list)
-    return dbLib.pkg_bulk_search(db, quick_res)
+    raw_results = dbLib.pkg_bulk_search(db, quick_res)
+    pkg_aliases = normalize.dealias_packages(raw_results, pkg_aliases=pkg_aliases)
+    return raw_results, pkg_aliases
 
 
 def cleanup_license_string(license_str):
