@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.1" xmlns:dg="http://cyclonedx.org/schema/ext/dependency-graph/1.0" serialNumber="urn:uuid:0ebee2af-1285-403d-b16b-a9ad1e7e1685" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.2" xmlns:dg="http://cyclonedx.org/schema/ext/dependency-graph/1.0" serialNumber="urn:uuid:0ebee2af-1285-403d-b16b-a9ad1e7e1685" version="1">
     <components>
         <component bom-ref="pkg:maven/org.projectlombok/lombok@1.18.4?type=jar" type="library">
             <group>org.projectlombok</group>

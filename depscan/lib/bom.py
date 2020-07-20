@@ -85,7 +85,7 @@ def get_licenses(ele):
     """
     """
     license_list = []
-    namespace = "{http://cyclonedx.org/schema/bom/1.1}"
+    namespace = "{http://cyclonedx.org/schema/bom/1.2}"
     for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
         license_list.append(data.text)
     if not license_list:

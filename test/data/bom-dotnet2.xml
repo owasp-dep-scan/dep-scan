@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.1" serialNumber="urn:uuid:2b6b0ae2-84e6-4b69-a6bd-ac59d7834123" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.2" serialNumber="urn:uuid:2b6b0ae2-84e6-4b69-a6bd-ac59d7834123" version="1">
   <components>
     <component type="library" bom-ref="pkg:nuget/EntityFramework@6.2.0">
       <name>EntityFramework</name>
