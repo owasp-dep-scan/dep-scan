@@ -17,7 +17,6 @@ vendor_alias = {
     "org.apache.commons.beanutils": "commons-beanutils",
     "org.apache.commons.collections": "commons-collections",
     "org.apache.solr": "apache_solr",
-    "org.apache.solr": "apache_solr_real-time_project",
     "org.springframework": "pivotal_software",
     "io.undertow": "redhat",
 }

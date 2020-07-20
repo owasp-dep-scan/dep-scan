@@ -77,6 +77,12 @@ def build_args():
         help="Suggest appropriate fix version for each identified vulnerability.",
     )
     parser.add_argument(
+        "-t",
+        "--type",
+        dest="project_type",
+        help="Override project type if auto-detection is incorrect",
+    )
+    parser.add_argument(
         "--bom",
         dest="bom",
         help="UNUSED: Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
@@ -203,11 +209,15 @@ def main():
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
     # Detect the project types and perform the right type of scan
-    project_types_list = utils.detect_project_type(src_dir)
+    if args.project_type:
+        project_types_list = args.project_type.split(",")
+    else:
+        project_types_list = utils.detect_project_type(src_dir)
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: {}".format(project_types_list))
     for project_type in project_types_list:
         sug_version_dict = {}
+        pkg_aliases = {}
         report_file = areport_file.replace(".json", "-{}.json".format(project_type))
         LOG.info("=" * 80)
         bom_file = os.path.join(reports_dir, "bom-" + project_type + ".xml")

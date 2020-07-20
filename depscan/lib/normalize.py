@@ -72,7 +72,6 @@ def dealias_packages(pkg_list, pkg_aliases):
         return {}
     dealias_dict = {}
     for res in pkg_list:
-        vuln_occ_dict = res.to_dict()
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
         if package_issue.affected_location.vendor:

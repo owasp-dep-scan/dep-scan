@@ -73,13 +73,14 @@ def print_results(results, pkg_aliases, sug_version_dict):
             )
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+        package = full_pkg.split(":")[-1]
         fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         table.add_row(
             "{}{}".format(
                 "[bright_red]" if vuln_occ_dict.get("severity") == "CRITICAL" else "",
                 id,
             ),
-            package_issue.affected_location.package,
+            package,
             package_issue.affected_location.version,
             fixed_location,
             "{}{}".format(
@@ -212,11 +213,9 @@ def suggest_version(results, pkg_aliases={}):
         pkg_aliases = {}
     for res in results:
         if isinstance(res, dict):
-            vuln_occ_dict = res
             full_pkg = res.get("package")
             fixed_location = res.get("fix_version")
         else:
-            vuln_occ_dict = res.to_dict()
             package_issue = res.package_issue
             full_pkg = package_issue.affected_location.package
             fixed_location = package_issue.fixed_location
@@ -225,7 +224,6 @@ def suggest_version(results, pkg_aliases={}):
                     package_issue.affected_location.vendor,
                     package_issue.affected_location.package,
                 )
-        id = vuln_occ_dict.get("id")
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
