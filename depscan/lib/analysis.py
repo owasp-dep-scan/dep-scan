@@ -230,7 +230,8 @@ def suggest_version(results, pkg_aliases={}):
         version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades
     for k, v in pkg_fix_map.items():
-        sug_map[k] = None
         if v:
-            sug_map[k] = max_version(list(v))
+            mversion = max_version(list(v))
+            if mversion:
+                sug_map[k] = mversion
     return sug_map

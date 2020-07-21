@@ -107,11 +107,18 @@ def search_pkgs(db, pkg_list):
     for pkg in pkg_list:
         variations = normalize.create_pkg_variations(pkg)
         expanded_list += variations
-        vendor = pkg.get("vendor", "")
+        vendor = pkg.get("vendor")
+        if not vendor:
+            purl = pkg.get("purl")
+            if purl:
+                purl_parts = purl.split("/")
+                if purl_parts:
+                    vendor = purl_parts[0].replace("pkg:", "")
+            else:
+                vendor = ""
         name = pkg.get("name")
         pkg_aliases[vendor + ":" + name] = [
-            "{}:{}".format(vari.get("vendor", ""), vari.get("name"))
-            for vari in variations
+            "{}:{}".format(vari.get("vendor"), vari.get("name")) for vari in variations
         ]
     quick_res = dbLib.bulk_index_search(expanded_list)
     raw_results = dbLib.pkg_bulk_search(db, quick_res)

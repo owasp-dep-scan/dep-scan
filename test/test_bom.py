@@ -153,3 +153,13 @@ def test_search_webgoat(test_db):
     pkg_list = get_pkg_list(test_bom)
     search_res, pkg_aliases = search_pkgs(test_db, pkg_list)
     assert not len(search_res)
+
+
+def test_search_webgoat_json(test_db):
+    test_bom = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom.json"
+    )
+    pkg_list = get_pkg_list(test_bom)
+    assert len(pkg_list) == 157
+    search_res, pkg_aliases = search_pkgs(test_db, pkg_list)
+    assert not len(search_res)

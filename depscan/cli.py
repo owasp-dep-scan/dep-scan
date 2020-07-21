@@ -220,7 +220,7 @@ def main():
         pkg_aliases = {}
         report_file = areport_file.replace(".json", "-{}.json".format(project_type))
         LOG.info("=" * 80)
-        bom_file = os.path.join(reports_dir, "bom-" + project_type + ".xml")
+        bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
         creation_status = create_bom(project_type, bom_file, src_dir)
         if not creation_status:
             LOG.debug("Bom file {} was not created successfully".format(bom_file))

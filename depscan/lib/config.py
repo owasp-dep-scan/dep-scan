@@ -19,6 +19,15 @@ vendor_alias = {
     "org.apache.solr": "apache_solr",
     "org.springframework": "pivotal_software",
     "io.undertow": "redhat",
+    "ch.qos.logback": "logback",
+    "ch.qos.slf4j": "slf4j",
+    "org.yaml": "snakeyaml_project",
+    "org.hibernate.validator": "org.hibernate",
+    "org.hibernate": "redhat",
+    "org.dom4j": "dom4j_project",
+    "ant": "apache",
+    "commons-": "apache",
+    "golang": "golang",
 }
 
 # Package aliases
@@ -32,6 +41,11 @@ package_alias = {
     "tomcat_connectors": "tomcat",
     "tomcat_jk_connector": "tomcat",
     "spring-security-core": "spring_security",
+    "asciidoctorj": "asciidoctor",
+    "postgresql": "postgresql_jdbc_driver",
+    "itextpdf": "itext",
+    "httpclient": "commons-httpclient",
+    "priority": "python_priority_library",
 }
 
 # Default ignore list
