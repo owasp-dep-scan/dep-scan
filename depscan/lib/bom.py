@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import shutil
@@ -125,12 +126,43 @@ def get_package(componentEle, licenses):
     return pkg
 
 
+def get_pkg_list_json(jsonfile):
+    """Method to extract packages from a bom json file
+    """
+    pkgs = []
+    with open(jsonfile) as fp:
+        bom_data = json.load(fp)
+        if bom_data and bom_data.get("components"):
+            for comp in bom_data.get("components"):
+                licenses = []
+                vendor = comp.get("group")
+                if not vendor:
+                    vendor = ""
+                if comp.get("licenses"):
+                    for lic in comp.get("licenses"):
+                        license_obj = lic
+                        # licenses has list of dict with either license or expression as key
+                        # Only license is supported for now
+                        if lic.get("license"):
+                            license_obj = lic.get("license")
+                        if license_obj.get("id"):
+                            licenses.append(license_obj.get("id"))
+                        elif license_obj.get("name"):
+                            licenses.append(
+                                cleanup_license_string(license_obj.get("name"))
+                            )
+                pkgs.append({**comp, "vendor": vendor, "licenses": licenses})
+        return pkgs
+
+
 def get_pkg_list(xmlfile):
     """Method to parse the bom xml file and convert into packages list
 
     :param xmlfile: BOM xml file to parse
     :return list of package dict
     """
+    if xmlfile.endswith(".json"):
+        return get_pkg_list_json(xmlfile)
     pkgs = []
     try:
         et = parse(xmlfile)

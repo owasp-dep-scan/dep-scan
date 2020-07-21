@@ -39,10 +39,34 @@ def test_pkg_variations():
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
+        {"vendor": "org.apache.logging.log4j", "name": "log4j-api", "version": "2.12.1"}
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
         {
             "vendor": "org.springframework.batch",
             "name": "spring-batch",
             "version": "2.0.27.Final",
+        }
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "commons-fileupload",
+            "name": "commons-fileupload",
+            "version": "1.3.2",
+        }
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {"vendor": "github.com/go-sql-driver", "name": "mysql", "version": "v1.4.1"}
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "golang.org/x/crypto",
+            "name": "ssh",
+            "version": "0.0.0-20200220183623-bac4c82f6975",
         }
     )
     assert len(pkg_list) > 1
