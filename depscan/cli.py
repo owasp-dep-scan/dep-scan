@@ -113,10 +113,8 @@ def scan(db, pkg_list, suggest_mode):
     :param db: Reference to db
     :param pkg_list: List of packages
     """
-    if not pkg_list or len(pkg_list) < 10:
-        LOG.debug(
-            "Only a small number of packages were detected. Scan results therefore will be incomplete!"
-        )
+    if not pkg_list:
+        LOG.debug("Empty package search attempted!")
     else:
         LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
     results, pkg_aliases = utils.search_pkgs(db, pkg_list)

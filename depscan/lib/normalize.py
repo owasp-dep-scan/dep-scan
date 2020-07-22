@@ -44,12 +44,21 @@ def create_pkg_variations(pkg_dict):
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
     name_aliases.add("package_" + name)
-    if purl.startswith("pkg:pypi") and not name.startswith("python-"):
-        name_aliases.add("python-" + name)
+    # Pypi specific vendor aliases
+    if purl.startswith("pkg:pypi"):
+        if not name.startswith("python-"):
+            name_aliases.add("python-" + name)
+            name_aliases.add("python-" + name + "_project")
+        vendor_aliases.add("pip")
+        vendor_aliases.add("python")
+        vendor_aliases.add("python-" + name)
     elif purl.startswith("pkg:crates") and not name.startswith("rust-"):
         name_aliases.add("rust-" + name)
     elif purl.startswith("pkg:composer") and not name.startswith("php-"):
         name_aliases.add("php-" + name)
+    elif purl.startswith("pkg:rubygems"):
+        vendor_aliases.add("rubygems")
+        vendor_aliases.add("rubyonrails")
     for suffix in COMMON_SUFFIXES:
         if name.endswith(suffix):
             name_aliases.add(name.replace(suffix, ""))

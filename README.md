@@ -15,27 +15,29 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
+If you have just come across this repo, probably the best place to start is to checkout the parent project (scan)[https://slscan.io] which include depscan along with a number of other tools.
+
 ## Features
 
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Configurable `cache` and `sync` functionality to manage local cache data
-- Pre-installed and integrated with [sast-scan](https://github.com/AppThreat/sast-scan/)
+- Pre-installed and integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan)
 - Suggest optimal fix version by package group (See suggest mode)
 
 ## Usage
 
 dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
 
-### Use with sast-scan
+### Use with ShiftLeft Scan
 
-dep-scan is integrated with [sast-scan](https://github.com/AppThreat/sast-scan/), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [See here](https://github.com/AppThreat/sast-scan/blob/master/.github/workflows/pythonapp.yml#L38) for an example.
+dep-scan is integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [Refer](https://slscan.io) to the scan documentation for more information.
 
 ```yaml
 ---
 --type python,depscan,credscan
 ```
 
-This approach should work for all CI environments supported by sast-scan.
+This approach should work for all CI environments supported by scan.
 
 ### Scanning projects locally (Python version)
 
@@ -83,14 +85,16 @@ dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language  | Package format                              |
-| --------- | ------------------------------------------- |
-| node.js   | package-lock.json                           |
-| java (\*) | maven (pom.xml), gradle (build.gradle)      |
-| python    | requirements.txt, Pipfile.lock, poetry.lock |
-| go        | go.sum, Gopkg.lock                          |
-| rust      | Cargo.lock                                  |
-| .Net core | .csproj                                     |
+| Language  | Package format                                        |
+| --------- | ----------------------------------------------------- |
+| node.js   | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js |
+| java      | maven (pom.xml), gradle (build.gradle, .kts)          |
+| php       | composer.lock                                         |
+| python    | setup.py, requirements.txt, Pipfile.lock, poetry.lock |
+| go        | go.sum, Gopkg.lock                                    |
+| ruby      | Gemfile.lock                                          |
+| rust      | Cargo.lock                                            |
+| .Net core | .csproj                                               |
 
 **NOTE**
 

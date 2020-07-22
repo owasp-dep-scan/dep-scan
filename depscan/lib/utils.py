@@ -16,7 +16,11 @@ def filter_ignored_dirs(dirs):
     :param dirs: Directories to ignore
     :return: Filtered directory list
     """
-    [dirs.remove(d) for d in list(dirs) if d.lower() in config.ignore_directories]
+    [
+        dirs.remove(d)
+        for d in list(dirs)
+        if d.lower() in config.ignore_directories or d.startswith(".")
+    ]
     return dirs
 
 
@@ -92,6 +96,10 @@ def detect_project_type(src_dir):
         project_types.append("php")
     if find_files(src_dir, ".csproj", quick=True):
         project_types.append("dotnet")
+    if find_files(src_dir, "Gemfile", quick=True) or find_files(
+        src_dir, "Gemfile.lock", quick=True
+    ):
+        project_types.append("ruby")
     return project_types
 
 
