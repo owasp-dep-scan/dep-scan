@@ -176,7 +176,6 @@ def summarise(
     :param print: Boolean to indicate if the results should get printed to the console
     :return: Summary of the results
     """
-
     if report_file and len(results):
         jsonl_report(results, pkg_aliases, sug_version_dict, report_file)
     if console_print:
