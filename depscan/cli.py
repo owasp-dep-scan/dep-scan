@@ -240,6 +240,7 @@ def main():
                     src_dir, project_type
                 )
             )
+            LOG.debug(f"No of packages {len(pkg_list)}")
             results = audit(project_type, pkg_list, report_file)
         else:
             if not dbLib.index_count(db["index_file"]):
