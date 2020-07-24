@@ -165,10 +165,16 @@ def scan(db, pkg_list, suggest_mode):
 
 
 def summarise(
-    results, pkg_aliases, sug_version_dict, report_file=None, console_print=True
+    project_type,
+    results,
+    pkg_aliases,
+    sug_version_dict,
+    report_file=None,
+    console_print=True,
 ):
     """
     Method to summarise the results
+    :param project_type: Project type
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
     :param sug_version_dict: Dictionary containing version suggestions
@@ -177,10 +183,10 @@ def summarise(
     :return: Summary of the results
     """
     if report_file and len(results):
-        jsonl_report(results, pkg_aliases, sug_version_dict, report_file)
+        jsonl_report(project_type, results, pkg_aliases, sug_version_dict, report_file)
     if console_print:
-        print_results(results, pkg_aliases, sug_version_dict)
-    summary = analyse(results)
+        print_results(project_type, results, pkg_aliases, sug_version_dict)
+    summary = analyse(project_type, results)
     return summary
 
 
@@ -233,7 +239,7 @@ def main():
         license_report_file = os.path.join(
             reports_dir, "license-" + project_type + ".json"
         )
-        analyse_licenses(licenses_results, license_report_file)
+        analyse_licenses(project_type, licenses_results, license_report_file)
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(
@@ -276,7 +282,9 @@ def main():
             )
             results, pkg_aliases, sug_version_dict = scan(db, pkg_list, args.suggest)
         # Summarise and print results
-        summary = summarise(results, pkg_aliases, sug_version_dict, report_file, True)
+        summary = summarise(
+            project_type, results, pkg_aliases, sug_version_dict, report_file, True
+        )
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
             if summary.get("CRITICAL") > 0:

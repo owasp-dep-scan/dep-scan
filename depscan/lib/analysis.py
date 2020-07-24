@@ -31,13 +31,13 @@ logging.basicConfig(
 LOG = logging.getLogger(__name__)
 
 
-def print_results(results, pkg_aliases, sug_version_dict):
+def print_results(project_type, results, pkg_aliases, sug_version_dict):
     """Pretty print report summary
     """
     if not len(results):
         return
     table = Table(
-        title="Dependency Scan Results",
+        title=f"Dependency Scan Results ({project_type})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
     )
@@ -96,12 +96,12 @@ def print_results(results, pkg_aliases, sug_version_dict):
     console.print(table)
 
 
-def analyse(results):
+def analyse(project_type, results):
     summary = {"UNSPECIFIED": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
     for res in results:
         summary[res.severity] += 1
     table = Table(
-        title="Dependency Scan Summary",
+        title=f"Dependency Scan Summary ({project_type})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
     )
@@ -127,9 +127,10 @@ def analyse(results):
     return summary
 
 
-def jsonl_report(results, pkg_aliases, sug_version_dict, out_file_name):
+def jsonl_report(project_type, results, pkg_aliases, sug_version_dict, out_file_name):
     """Produce vulnerability occurrence report in jsonl format
 
+    :param project_type: Project type
     :param results: List of vulnerabilities found
     :param pkg_aliases: Package alias
     :param out_file_name: Output filename
@@ -164,11 +165,13 @@ def jsonl_report(results, pkg_aliases, sug_version_dict, out_file_name):
             outfile.write("\n")
 
 
-def analyse_licenses(licenses_results, license_report_file=None):
+def analyse_licenses(project_type, licenses_results, license_report_file=None):
     if not licenses_results:
         return
     table = Table(
-        title="License Scan Summary", box=box.DOUBLE_EDGE, header_style="bold magenta"
+        title=f"License Scan Summary ({project_type})",
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
     )
     headers = ["Package", "Version", "License Id", "License conditions"]
     for h in headers:

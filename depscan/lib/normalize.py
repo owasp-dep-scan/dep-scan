@@ -1,7 +1,28 @@
 from depscan.lib import config as config
 
 # Common package suffixes
-COMMON_SUFFIXES = ["-core", "-classic", "-api", "-complete", "-full", "-all", "-ex"]
+COMMON_SUFFIXES = [
+    "-core",
+    ".core",
+    "-client-core",
+    "-classic",
+    "-api",
+    "-complete",
+    "-full",
+    "-all",
+    "-ex",
+    "-server",
+    ".js",
+    "-handler",
+    "apache-",
+    "-web",
+    "-broker",
+    "-netty",
+    "-plugin",
+    "-web-console",
+    "-main",
+    "-war",
+]
 
 
 def create_pkg_variations(pkg_dict):
@@ -52,10 +73,14 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("pip")
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
+    elif purl.startswith("pkg:npm") and not name.startswith("node-"):
+        name_aliases.add("node-" + name)
     elif purl.startswith("pkg:crates") and not name.startswith("rust-"):
         name_aliases.add("rust-" + name)
     elif purl.startswith("pkg:composer") and not name.startswith("php-"):
         name_aliases.add("php-" + name)
+    elif purl.startswith("pkg:nuget"):
+        vendor_aliases.add("nuget")
     elif purl.startswith("pkg:rubygems"):
         vendor_aliases.add("rubygems")
         vendor_aliases.add("rubyonrails")
