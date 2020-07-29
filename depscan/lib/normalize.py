@@ -45,8 +45,9 @@ def create_pkg_variations(pkg_dict):
             vendor_aliases.add(name)
         if purl.startswith("pkg:golang") and name != "go":
             vendor_aliases.add("golang")
-        vendor_aliases.add("get" + name)
-        vendor_aliases.add(name + "_project")
+        if not purl.startswith("pkg:golang"):
+            vendor_aliases.add("get" + name)
+            vendor_aliases.add(name + "_project")
         if (
             vendor.startswith("org.")
             or vendor.startswith("io.")
@@ -58,7 +59,7 @@ def create_pkg_variations(pkg_dict):
             if len(tmpA) > 2 and len(tmpA[1]) > 3:
                 vendor_aliases.add(tmpA[1])
         for k, v in config.vendor_alias.items():
-            if vendor in k or k in vendor:
+            if vendor.startswith(k) or k.startswith(vendor):
                 vendor_aliases.add(k)
                 vendor_aliases.add(v)
     name_aliases.add(name)
@@ -88,7 +89,7 @@ def create_pkg_variations(pkg_dict):
         if name.endswith(suffix):
             name_aliases.add(name.replace(suffix, ""))
     for k, v in config.package_alias.items():
-        if name in k or k in name:
+        if name.startswith(k) or k.startswith(name):
             name_aliases.add(k)
             name_aliases.add(v)
     if len(vendor_aliases):
