@@ -27,7 +27,6 @@ vendor_alias = {
     "org.dom4j": "dom4j_project",
     "ant": "apache",
     "commons-": "apache",
-    "golang": "golang",
     "org.quartz-scheduler": "softwareag",
     "org.mitre": "mitreid",
     "io.micronaut": "objectcomputing",

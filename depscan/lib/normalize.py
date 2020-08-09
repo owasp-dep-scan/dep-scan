@@ -43,7 +43,7 @@ def create_pkg_variations(pkg_dict):
         # Add some common vendor aliases
         if purl.startswith("pkg:maven") or purl.startswith("pkg:composer"):
             vendor_aliases.add(name)
-        if purl.startswith("pkg:golang") and name != "go":
+        if purl.startswith("pkg:golang") and not name.startswith("go"):
             vendor_aliases.add("golang")
         if not purl.startswith("pkg:golang"):
             vendor_aliases.add("get" + name)
