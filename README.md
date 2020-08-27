@@ -89,6 +89,7 @@ The following projects and package-dependency format is supported by cdxgen.
 | --------- | ----------------------------------------------------- |
 | node.js   | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js |
 | java      | maven (pom.xml), gradle (build.gradle, .kts)          |
+| scala     | sbt                                                   |
 | php       | composer.lock                                         |
 | python    | setup.py, requirements.txt, Pipfile.lock, poetry.lock |
 | go        | go.sum, Gopkg.lock                                    |

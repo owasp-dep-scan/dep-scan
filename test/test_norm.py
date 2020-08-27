@@ -74,3 +74,7 @@ def test_pkg_variations():
         {"vendor": "github.com/mitchellh", "name": "cli", "version": "6.14.1",}
     )
     assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {"vendor": "github.com/jacobsa", "name": "crypto", "version": "6.14.1",}
+    )
+    assert len(pkg_list) > 1

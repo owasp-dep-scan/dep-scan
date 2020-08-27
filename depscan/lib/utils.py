@@ -80,6 +80,8 @@ def detect_project_type(src_dir):
         project_types.append("java")
     if find_files(src_dir, ".gradle.kts", quick=True):
         project_types.append("kotlin")
+    if find_files(src_dir, "build.sbt", quick=True):
+        project_types.append("scala")
     if (
         find_files(src_dir, "package.json", quick=True)
         or find_files(src_dir, "yarn.lock", quick=True)
