@@ -81,7 +81,7 @@ COPY --from=build-env /usr/local/bin/vdb /usr/local/bin/vdb
 COPY --from=build-env /usr/local/bin/node /usr/local/bin/node
 COPY --from=build-env /usr/local/bin/npm /usr/local/bin/npm
 
-ENV VULNDB_HOME=/appthreat \
+ENV VDB_HOME=/appthreat \
     PYTHONUNBUFFERED=1 \
     NVD_START_YEAR=2018 \
     GITHUB_PAGE_COUNT=2 \

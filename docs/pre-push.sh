@@ -21,4 +21,4 @@ docker pull quay.io/appthreat/dep-scan >/dev/null 2>&1
 
 # Perform automatic scan
 echo "Performing dep scan on the repo"
-docker run --rm -e VULNDB_HOME=/db -e NVD_START_YEAR=2016 -v /tmp:/db -v $PWD:/app quay.io/appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
+docker run --rm -e VDB_HOME=/db -e NVD_START_YEAR=2016 -v /tmp:/db -v $PWD:/app quay.io/appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json

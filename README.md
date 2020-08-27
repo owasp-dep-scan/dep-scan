@@ -69,7 +69,7 @@ To scan with custom environment variables based configuration
 
 ```bash
 docker run --rm \
-    -e VULNDB_HOME=/db \
+    -e VDB_HOME=/db \
     -e NVD_START_YEAR=2010 \
     -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
@@ -77,7 +77,7 @@ docker run --rm \
     -v $PWD:/app appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
 ```
 
-In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VULNDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
+In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
 
 ## Supported languages and package format
 
@@ -122,7 +122,7 @@ This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [
 - name: Self dep-scan
   uses: AppThreat/dep-scan-action@master
   env:
-    VULNDB_HOME: ${{ github.workspace }}/db
+    VDB_HOME: ${{ github.workspace }}/db
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -130,7 +130,7 @@ This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [
 
 The following environment variables can be used to customise the behaviour.
 
-- VULNDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
+- VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
 - NVD_START_YEAR - Default: 2018. Supports upto 2002
 - GITHUB_PAGE_COUNT - Default: 2. Supports upto 20
 
