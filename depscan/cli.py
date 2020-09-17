@@ -103,6 +103,13 @@ def build_args():
         dest="noerror",
         help="Continue on error to prevent build from breaking",
     )
+    parser.add_argument(
+        "--no-license-scan",
+        action="store_true",
+        default=False,
+        dest="no_license_scan",
+        help="Do not perform a scan for license limitations",
+    )
     return parser.parse_args()
 
 
@@ -233,13 +240,18 @@ def main():
         if not pkg_list:
             LOG.debug("No packages found in the project!")
             continue
-        licenses_results = bulk_lookup(
-            build_license_data(license_data_dir), pkg_list=pkg_list
-        )
-        license_report_file = os.path.join(
-            reports_dir, "license-" + project_type + ".json"
-        )
-        analyse_licenses(project_type, licenses_results, license_report_file)
+        if not args.no_license_scan:
+            licenses_results = bulk_lookup(
+                build_license_data(license_data_dir), pkg_list=pkg_list
+            )
+            license_report_file = os.path.join(
+                reports_dir, "license-" + project_type + ".json"
+            )
+            analyse_licenses(
+                project_type,
+                licenses_results,
+                license_report_file
+            )
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(
