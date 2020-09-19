@@ -247,11 +247,7 @@ def main():
             license_report_file = os.path.join(
                 reports_dir, "license-" + project_type + ".json"
             )
-            analyse_licenses(
-                project_type,
-                licenses_results,
-                license_report_file
-            )
+            analyse_licenses(project_type, licenses_results, license_report_file)
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(
