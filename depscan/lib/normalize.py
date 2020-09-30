@@ -79,6 +79,7 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("pip")
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
+        vendor_aliases.add(name + "project")
     elif purl.startswith("pkg:npm") and not name.startswith("node-"):
         name_aliases.add("node-" + name)
     elif purl.startswith("pkg:crates") and not name.startswith("rust-"):

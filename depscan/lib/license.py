@@ -32,6 +32,9 @@ def bulk_lookup(license_dict, pkg_list):
     """
     pkg_licenses = {}
     for pkg in pkg_list:
+        # Failsafe in case the bom file contains incorrect entries
+        if not pkg.get("name") or not pkg.get("version"):
+            continue
         pkg_key = pkg["name"] + "@" + pkg["version"]
         if pkg.get("vendor"):
             pkg_key = pkg.get("vendor") + ":" + pkg["name"] + "@" + pkg["version"]
