@@ -4,8 +4,7 @@ from depscan.lib.utils import find_files
 
 
 def build_license_data(license_dir):
-    """
-    """
+    """Build license data based on the txt files"""
     licenses_dict = {}
     license_files = find_files(license_dir, "txt")
     for lfile in license_files:
@@ -28,8 +27,7 @@ def build_license_data(license_dir):
 
 
 def bulk_lookup(license_dict, pkg_list):
-    """
-    """
+    """Lookup package licenses"""
     pkg_licenses = {}
     for pkg in pkg_list:
         # Failsafe in case the bom file contains incorrect entries

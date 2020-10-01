@@ -83,8 +83,7 @@ def parse_bom_ref(bomstr, licenses=None):
 
 
 def get_licenses(ele):
-    """
-    """
+    """"""
     license_list = []
     namespace = "{http://cyclonedx.org/schema/bom/1.2}"
     for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
@@ -107,8 +106,7 @@ def get_licenses(ele):
 
 
 def get_package(componentEle, licenses):
-    """
-    """
+    """"""
     bom_ref = componentEle.attrib.get("bom-ref")
     pkg = {"licenses": licenses, "vendor": "", "name": "", "version": ""}
     if bom_ref:
@@ -127,8 +125,7 @@ def get_package(componentEle, licenses):
 
 
 def get_pkg_list_json(jsonfile):
-    """Method to extract packages from a bom json file
-    """
+    """Method to extract packages from a bom json file"""
     pkgs = []
     with open(jsonfile) as fp:
         bom_data = json.load(fp)

@@ -76,6 +76,9 @@ def create_pkg_variations(pkg_dict):
         if not name.startswith("python-"):
             name_aliases.add("python-" + name)
             name_aliases.add("python-" + name + "_project")
+        # For python, package based search seems to be providing more results.
+        # As a downside, there might be more false positives which needs to be handled somehow
+        vendor_aliases.add("")
         vendor_aliases.add("pip")
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
@@ -133,3 +136,19 @@ def dealias_packages(pkg_list, pkg_aliases):
                 dealias_dict[full_pkg] = k
                 break
     return dealias_dict
+
+
+def dedup(pkg_list, pkg_aliases):
+    """Method to trim duplicates in the results based on the id. The logic should ideally be based on package alias but is kept simple for now.
+
+    :param pkg_list: List of packages to dedup
+    :param pkg_aliases: Package aliases
+    """
+    dedup_dict = {}
+    ret_list = []
+    for res in pkg_list:
+        vid = res.id
+        if vid not in dedup_dict:
+            ret_list.append(res)
+            dedup_dict[vid] = True
+    return ret_list

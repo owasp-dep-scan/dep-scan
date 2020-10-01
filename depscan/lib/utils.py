@@ -132,6 +132,7 @@ def search_pkgs(db, pkg_list):
         ]
     quick_res = dbLib.bulk_index_search(expanded_list)
     raw_results = dbLib.pkg_bulk_search(db, quick_res)
+    raw_results = normalize.dedup(raw_results, pkg_aliases=pkg_aliases)
     pkg_aliases = normalize.dealias_packages(raw_results, pkg_aliases=pkg_aliases)
     return raw_results, pkg_aliases
 
@@ -155,8 +156,7 @@ def cleanup_license_string(license_str):
 
 
 def max_version(version_list):
-    """Method to return the highest version from the list
-    """
+    """Method to return the highest version from the list"""
     if isinstance(version_list, str):
         return version_list
     if isinstance(version_list, set):

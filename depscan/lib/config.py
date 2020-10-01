@@ -38,6 +38,8 @@ vendor_alias = {
     "bagisto": "webkul",
     "ro.pippo": "pippo",
     "ca.uhn.hapi.fhir": "fhir",
+    "tensorflow": "google",
+    "ansible": "redhat",
 }
 
 # Package aliases

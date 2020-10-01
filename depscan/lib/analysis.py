@@ -32,8 +32,7 @@ LOG = logging.getLogger(__name__)
 
 
 def print_results(project_type, results, pkg_aliases, sug_version_dict):
-    """Pretty print report summary
-    """
+    """Pretty print report summary"""
     if not len(results):
         return
     table = Table(
@@ -208,8 +207,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
 
 
 def suggest_version(results, pkg_aliases={}):
-    """Provide version suggestions
-    """
+    """Provide version suggestions"""
     pkg_fix_map = {}
     sug_map = {}
     if not pkg_aliases:
