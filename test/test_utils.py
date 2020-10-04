@@ -31,3 +31,50 @@ def test_max_version():
     assert ret == "2.9.10.4"
     ret = utils.max_version(["2.9.10", "2.9.10.4"])
     assert ret == "2.9.10.4"
+
+
+def test_get_pkg_vendor_name():
+    vendor, name = utils.get_pkg_vendor_name({"vendor": "angular", "name": "cdk"})
+    assert vendor == "angular"
+    assert name == "cdk"
+
+    vendor, name = utils.get_pkg_vendor_name(
+        {"vendor": "", "purl": "pkg:npm/parse5@5.1.0", "name": "parse5"}
+    )
+    assert vendor == "npm"
+    assert name == "parse5"
+
+
+def test_get_pkgs_by_scope():
+    scoped_pkgs = utils.get_pkgs_by_scope([{"vendor": "angular", "name": "cdk"}])
+    assert not scoped_pkgs
+
+    scoped_pkgs = utils.get_pkgs_by_scope(
+        [
+            {"vendor": "angular", "name": "cdk"},
+            {
+                "vendor": "",
+                "purl": "pkg:npm/parse5@5.1.0",
+                "name": "parse5",
+                "scope": "required",
+            },
+        ]
+    )
+    assert scoped_pkgs == {"required": ["npm:parse5"]}
+
+    scoped_pkgs = utils.get_pkgs_by_scope(
+        [
+            {"vendor": "angular", "name": "cdk"},
+            {
+                "vendor": "",
+                "purl": "pkg:npm/parse5@5.1.0",
+                "name": "parse5",
+                "scope": "required",
+            },
+            {"vendor": "angular-devkit", "name": "build-webpack", "scope": "optional"},
+        ]
+    )
+    assert scoped_pkgs == {
+        "required": ["npm:parse5"],
+        "optional": ["angular-devkit:build-webpack"],
+    }

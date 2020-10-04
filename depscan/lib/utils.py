@@ -105,6 +105,24 @@ def detect_project_type(src_dir):
     return project_types
 
 
+def get_pkg_vendor_name(pkg):
+    """
+    Method to extract vendor and name information from package. If vendor information is not available
+    package url is used to extract the package registry provider such as pypi, maven
+    """
+    vendor = pkg.get("vendor")
+    if not vendor:
+        purl = pkg.get("purl")
+        if purl:
+            purl_parts = purl.split("/")
+            if purl_parts:
+                vendor = purl_parts[0].replace("pkg:", "")
+        else:
+            vendor = ""
+    name = pkg.get("name")
+    return vendor, name
+
+
 def search_pkgs(db, pkg_list):
     """
     Method to search packages in our vulnerability database
@@ -117,16 +135,8 @@ def search_pkgs(db, pkg_list):
     for pkg in pkg_list:
         variations = normalize.create_pkg_variations(pkg)
         expanded_list += variations
-        vendor = pkg.get("vendor")
-        if not vendor:
-            purl = pkg.get("purl")
-            if purl:
-                purl_parts = purl.split("/")
-                if purl_parts:
-                    vendor = purl_parts[0].replace("pkg:", "")
-            else:
-                vendor = ""
-        name = pkg.get("name")
+        vendor, name = get_pkg_vendor_name(pkg)
+        # TODO: Use purl here
         pkg_aliases[vendor + ":" + name] = [
             "{}:{}".format(vari.get("vendor"), vari.get("name")) for vari in variations
         ]
@@ -135,6 +145,23 @@ def search_pkgs(db, pkg_list):
     raw_results = normalize.dedup(raw_results, pkg_aliases=pkg_aliases)
     pkg_aliases = normalize.dealias_packages(raw_results, pkg_aliases=pkg_aliases)
     return raw_results, pkg_aliases
+
+
+def get_pkgs_by_scope(pkg_list):
+    """
+    Method to return the packages by scope as defined in CycloneDX spec - required, optional and excluded
+
+    :param pkg_list: List of packages
+    :return: Dictionary of packages categorized by scope if available. Empty if no scope information is available
+    """
+    scoped_pkgs = {}
+    for pkg in pkg_list:
+        if pkg.get("scope"):
+            vendor, name = get_pkg_vendor_name(pkg)
+            scope = pkg.get("scope").lower()
+            # TODO: Use purl here
+            scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+    return scoped_pkgs
 
 
 def cleanup_license_string(license_str):

@@ -108,7 +108,7 @@ def get_licenses(ele):
 def get_package(componentEle, licenses):
     """"""
     bom_ref = componentEle.attrib.get("bom-ref")
-    pkg = {"licenses": licenses, "vendor": "", "name": "", "version": ""}
+    pkg = {"licenses": licenses, "vendor": "", "name": "", "version": "", "scope": ""}
     if bom_ref:
         pkg = parse_bom_ref(bom_ref, licenses)
     for ele in componentEle.iter():

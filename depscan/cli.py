@@ -176,6 +176,7 @@ def summarise(
     results,
     pkg_aliases,
     sug_version_dict,
+    scoped_pkgs={},
     report_file=None,
     console_print=True,
 ):
@@ -185,14 +186,24 @@ def summarise(
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
     :param sug_version_dict: Dictionary containing version suggestions
+    :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
     :param print: Boolean to indicate if the results should get printed to the console
     :return: Summary of the results
     """
-    if report_file and len(results):
-        jsonl_report(project_type, results, pkg_aliases, sug_version_dict, report_file)
+    if not results:
+        return None
+    if report_file:
+        jsonl_report(
+            project_type,
+            results,
+            pkg_aliases,
+            sug_version_dict,
+            scoped_pkgs,
+            report_file,
+        )
     if console_print:
-        print_results(project_type, results, pkg_aliases, sug_version_dict)
+        print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_pkgs)
     summary = analyse(project_type, results)
     return summary
 
@@ -240,6 +251,7 @@ def main():
         if not pkg_list:
             LOG.debug("No packages found in the project!")
             continue
+        scoped_pkgs = utils.get_pkgs_by_scope(pkg_list)
         if not args.no_license_scan:
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir), pkg_list=pkg_list
@@ -255,7 +267,12 @@ def main():
                 )
             )
             LOG.debug(f"No of packages {len(pkg_list)}")
-            results = audit(project_type, pkg_list, report_file)
+            try:
+                results = audit(project_type, pkg_list, report_file)
+            except Exception as e:
+                LOG.error("Remote audit was not successful")
+                LOG.error(e)
+                results = None
         else:
             if not dbLib.index_count(db["index_file"]):
                 run_cacher = True
@@ -291,7 +308,13 @@ def main():
             results, pkg_aliases, sug_version_dict = scan(db, pkg_list, args.suggest)
         # Summarise and print results
         summary = summarise(
-            project_type, results, pkg_aliases, sug_version_dict, report_file, True
+            project_type,
+            results,
+            pkg_aliases,
+            sug_version_dict,
+            scoped_pkgs,
+            report_file,
+            True,
         )
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now

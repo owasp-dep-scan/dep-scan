@@ -1,7 +1,7 @@
 from vdb.lib.npm import NpmSource
 
 # Dict mapping project type to the audit source
-type_audit_map = {"nodejs": NpmSource()}
+type_audit_map = {"nodejs": NpmSource(), "js": NpmSource()}
 
 
 def audit(project_type, pkg_list, report_file):

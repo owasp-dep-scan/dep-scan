@@ -53,20 +53,22 @@ def create_pkg_variations(pkg_dict):
                 if tmpA[1] != name:
                     vendor_aliases.add(tmpA[1])
                 short_vendor = tmpA[1]
-        # Add some common vendor aliases
-        if purl.startswith("pkg:composer"):
-            vendor_aliases.add(name)
-        if purl.startswith("pkg:golang") and not name.startswith("go"):
-            # Ignore third party alternatives for builtins
-            if "golang" not in vendor and name not in ["net", "crypto", "http"]:
-                vendor_aliases.add("golang")
-        if not purl.startswith("pkg:golang"):
-            vendor_aliases.add("get" + name)
-            vendor_aliases.add(name + "_project")
-        for k, v in config.vendor_alias.items():
-            if vendor.startswith(k) or k.startswith(vendor):
-                vendor_aliases.add(k)
-                vendor_aliases.add(v)
+    # Add some common vendor aliases
+    if purl.startswith("pkg:composer") or purl.startswith("pkg:pypi"):
+        vendor_aliases.add(name)
+    if purl.startswith("pkg:golang") and not name.startswith("go"):
+        # Ignore third party alternatives for builtins
+        if "golang" not in vendor and name not in ["net", "crypto", "http"]:
+            vendor_aliases.add("golang")
+    if not purl.startswith("pkg:golang"):
+        vendor_aliases.add("get" + name)
+        vendor_aliases.add(name + "_project")
+    for k, v in config.vendor_alias.items():
+        if vendor.startswith(k) or k.startswith(vendor):
+            vendor_aliases.add(k)
+            vendor_aliases.add(v)
+        elif name == k:
+            vendor_aliases.add(v)
     name_aliases.add(name)
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
@@ -76,9 +78,6 @@ def create_pkg_variations(pkg_dict):
         if not name.startswith("python-"):
             name_aliases.add("python-" + name)
             name_aliases.add("python-" + name + "_project")
-        # For python, package based search seems to be providing more results.
-        # As a downside, there might be more false positives which needs to be handled somehow
-        vendor_aliases.add("")
         vendor_aliases.add("pip")
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
