@@ -47,7 +47,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
     for h in [
         "Id",
         "Package",
-        "Used in App?",
+        "Used?",
         "Version",
         "Fix Version",
         "Severity",
@@ -60,10 +60,10 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         width = None
         if h == "Id":
             width = 20
-        elif h == "Fix Version":
+        elif h == "Used?" or h == "Fix Version":
             width = 10
         elif h == "Description":
-            width = 60
+            width = 58
         table.add_column(header=h, justify=justify, width=width, no_wrap=False)
     for res in results:
         vuln_occ_dict = res.to_dict()
