@@ -44,6 +44,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
     required_pkgs = scoped_pkgs.get("required", [])
     optional_pkgs = scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
+    fix_version_count = 0
     for h in [
         "Id",
         "Package",
@@ -52,7 +53,6 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         "Fix Version",
         "Severity",
         "Score",
-        "Description",
     ]:
         justify = "left"
         if h == "Score":
@@ -77,6 +77,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             )
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+        fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         package_usage = "N/A"
         package_name_style = ""
         id_style = ""
@@ -84,6 +85,8 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         if full_pkg in required_pkgs and pkg_severity in ("CRITICAL", "HIGH"):
             id_style = ":point_right: "
             pkg_attention_count = pkg_attention_count + 1
+            if fixed_location:
+                fix_version_count = fix_version_count + 1
         if full_pkg in required_pkgs:
             package_usage = "[bright_green][bold]Yes"
             package_name_style = "[bold]"
@@ -91,7 +94,6 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             package_usage = "[magenta]No"
             package_name_style = "[italic]"
         package = full_pkg.split(":")[-1]
-        fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         table.add_row(
             "{}{}{}{}".format(
                 id_style,
@@ -111,22 +113,23 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
                 "[bright_red]" if pkg_severity == "CRITICAL" else "",
                 vuln_occ_dict.get("cvss_score"),
             ),
-            Markdown(vuln_occ_dict.get("short_description")),
         )
     console.print(table)
     if scoped_pkgs:
         if pkg_attention_count:
-            console.print(
-                Panel(
-                    f":warning: {pkg_attention_count} packages requires your attention.",
-                    title="Recommendation",
-                )
-            )
+            rmessage = f":heavy_exclamation_mark: [magenta]{pkg_attention_count}[/magenta] out of {len(results)} vulnerabilities requires your attention."
+            if fix_version_count:
+                if fix_version_count == pkg_attention_count:
+                    rmessage += "\n:white_heavy_check_mark: You can update [bright_green]all[/bright_green] the packages using the mentioned fix version to remediate."
+                else:
+                    rmessage += "\nYou can remediate [bright_green]{fix_version_count}[/bright_green] vulnerabilities by updating the packages using the fix version :thumbsup:."
+            console.print(Panel(rmessage, title="Recommendation", expand=False,))
         else:
             console.print(
                 Panel(
                     ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies.",
                     title="Recommendation",
+                    expand=False,
                 )
             )
 
