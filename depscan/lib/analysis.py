@@ -122,8 +122,14 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
                 if fix_version_count == pkg_attention_count:
                     rmessage += "\n:white_heavy_check_mark: You can update [bright_green]all[/bright_green] the packages using the mentioned fix version to remediate."
                 else:
-                    rmessage += "\nYou can remediate [bright_green]{fix_version_count}[/bright_green] vulnerabilities by updating the packages using the fix version :thumbsup:."
-            console.print(Panel(rmessage, title="Recommendation", expand=False,))
+                    rmessage += f"\nYou can remediate [bright_green]{fix_version_count}[/bright_green] {'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} by updating the packages using the fix version :thumbsup:."
+            console.print(
+                Panel(
+                    rmessage,
+                    title="Recommendation",
+                    expand=False,
+                )
+            )
         else:
             console.print(
                 Panel(
