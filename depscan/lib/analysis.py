@@ -141,33 +141,12 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
 
 
 def analyse(project_type, results):
+    if not results:
+        LOG.info("No oss vulnerabilities detected ✅")
+        return None
     summary = {"UNSPECIFIED": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
     for res in results:
         summary[res.severity] += 1
-    table = Table(
-        title=f"Dependency Scan Summary ({project_type})",
-        box=box.DOUBLE_EDGE,
-        header_style="bold magenta",
-    )
-    for h in ["Severity", "Count", "Status"]:
-        justify = "left"
-        if h == "Count":
-            justify = "right"
-        table.add_column(header=h, justify=justify)
-    hasValues = False
-    for k, v in summary.items():
-        status = "✅"
-        if k in ["MEDIUM"] and v > 10:
-            status = "❕"
-        elif k in ["HIGH", "CRITICAL"] and v > 0:
-            status = "❌"
-        if v:
-            hasValues = True
-        table.add_row(k, str(v), status)
-    if not hasValues:
-        LOG.info("No oss vulnerabilities detected ✅")
-        return None
-    console.print(table)
     return summary
 
 
