@@ -61,13 +61,11 @@ def test_dual_license(test_license_data):
                 "hidden": False,
                 "description": "A short and simple permissive license with conditions only requiring preservation of copyright and license notices. Licensed works, modifications, and larger works may be distributed under different terms and without source code.",
                 "how": "Create a text file (typically named LICENSE or LICENSE.txt) in the root of your source code and copy the text of the license into the file. Replace [year] with the current year and [fullname] with the name (or names) of the copyright holders.",
-                "using": [
-                    {"Babel": "https://github.com/babel/babel/blob/master/LICENSE"},
-                    {
-                        ".NET Core": "https://github.com/dotnet/runtime/blob/master/LICENSE.TXT"
-                    },
-                    {"Rails": "https://github.com/rails/rails/blob/master/MIT-LICENSE"},
-                ],
+                "using": {
+                    "Babel": "https://github.com/babel/babel/blob/master/LICENSE",
+                    ".NET Core": "https://github.com/dotnet/runtime/blob/master/LICENSE.TXT",
+                    "Rails": "https://github.com/rails/rails/blob/master/MIT-LICENSE",
+                },
                 "permissions": [
                     "commercial-use",
                     "modifications",
