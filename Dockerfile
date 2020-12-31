@@ -1,4 +1,4 @@
-FROM python:3-slim AS build-env
+FROM python:3.8-slim AS build-env
 
 ARG CLI_VERSION
 ARG BUILD_DATE
@@ -59,7 +59,7 @@ WORKDIR /appthreat
 RUN python3 setup.py install \
     && rm -rf /appthreat/*
 
-FROM python:3-slim
+FROM python:3.8-slim
 
 LABEL maintainer="AppThreat" \
       org.label-schema.schema-version="1.0" \
