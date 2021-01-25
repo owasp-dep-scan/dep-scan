@@ -113,18 +113,20 @@ def build_args():
     return parser.parse_args()
 
 
-def scan(db, pkg_list, suggest_mode):
+def scan(db, project_type, pkg_list, suggest_mode):
     """
     Method to search packages in our vulnerability database
 
     :param db: Reference to db
+    :param project_type: Project Type
     :param pkg_list: List of packages
+    :param suggest_mode: True if package fix version should be normalized across findings
     """
     if not pkg_list:
         LOG.debug("Empty package search attempted!")
     else:
         LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
-    results, pkg_aliases = utils.search_pkgs(db, pkg_list)
+    results, pkg_aliases = utils.search_pkgs(db, project_type, pkg_list)
     # pkg_aliases is a dict that can be used to find the original vendor and package name
     # This way we consistently use the same names used by the caller irrespective of how
     # the result was obtained
@@ -192,6 +194,7 @@ def summarise(
     :return: Summary of the results
     """
     if not results:
+        LOG.info(f"No oss vulnerabilities detected for type {project_type} ✅")
         return None
     if report_file:
         jsonl_report(
@@ -305,7 +308,9 @@ def main():
                     src_dir, project_type
                 )
             )
-            results, pkg_aliases, sug_version_dict = scan(db, pkg_list, args.suggest)
+            results, pkg_aliases, sug_version_dict = scan(
+                db, project_type, pkg_list, args.suggest
+            )
         # Summarise and print results
         summary = summarise(
             project_type,

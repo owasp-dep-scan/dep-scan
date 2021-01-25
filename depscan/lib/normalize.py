@@ -1,3 +1,5 @@
+from vdb.lib import KNOWN_PKG_TYPES
+
 from depscan.lib import config as config
 
 # Common package suffixes
@@ -110,10 +112,11 @@ def create_pkg_variations(pkg_dict):
     return pkg_list
 
 
-def dealias_packages(pkg_list, pkg_aliases):
+def dealias_packages(project_type, pkg_list, pkg_aliases):
     """Method to dealias package names by looking up vendor and name information
     in the aliases list
 
+    :param project_type: Project type
     :param pkg_list: List of packages to dealias
     :param pkg_aliases: Package aliases
     """
@@ -137,9 +140,10 @@ def dealias_packages(pkg_list, pkg_aliases):
     return dealias_dict
 
 
-def dedup(pkg_list, pkg_aliases):
+def dedup(project_type, pkg_list, pkg_aliases):
     """Method to trim duplicates in the results based on the id. The logic should ideally be based on package alias but is kept simple for now.
 
+    :param project_type: Project type
     :param pkg_list: List of packages to dedup
     :param pkg_aliases: Package aliases
     """
@@ -147,6 +151,12 @@ def dedup(pkg_list, pkg_aliases):
     ret_list = []
     for res in pkg_list:
         vid = res.id
+        vuln_occ_dict = res.to_dict()
+        package_type = vuln_occ_dict.get("type")
+        allowed_type = config.LANG_PKG_TYPES.get(project_type)
+        if package_type and package_type in KNOWN_PKG_TYPES and allowed_type:
+            if allowed_type != package_type:
+                dedup_dict[vid] = True
         if vid not in dedup_dict:
             ret_list.append(res)
             dedup_dict[vid] = True

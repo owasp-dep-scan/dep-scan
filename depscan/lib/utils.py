@@ -123,11 +123,12 @@ def get_pkg_vendor_name(pkg):
     return vendor, name
 
 
-def search_pkgs(db, pkg_list):
+def search_pkgs(db, project_type, pkg_list):
     """
     Method to search packages in our vulnerability database
 
     :param db: DB instance
+    :param project_type: Project type
     :param pkg_list: List of packages to search
     """
     expanded_list = []
@@ -142,8 +143,10 @@ def search_pkgs(db, pkg_list):
         ]
     quick_res = dbLib.bulk_index_search(expanded_list)
     raw_results = dbLib.pkg_bulk_search(db, quick_res)
-    raw_results = normalize.dedup(raw_results, pkg_aliases=pkg_aliases)
-    pkg_aliases = normalize.dealias_packages(raw_results, pkg_aliases=pkg_aliases)
+    raw_results = normalize.dedup(project_type, raw_results, pkg_aliases=pkg_aliases)
+    pkg_aliases = normalize.dealias_packages(
+        project_type, raw_results, pkg_aliases=pkg_aliases
+    )
     return raw_results, pkg_aliases
 
 

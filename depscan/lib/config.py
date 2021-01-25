@@ -119,3 +119,23 @@ ignore_directories = [
     ".terraform",
     ".serverless",
 ]
+
+# Package types allowed for each language
+LANG_PKG_TYPES = {
+    "python": "pypi",
+    "java": "maven",
+    "jvm": "maven",
+    "groovy": "maven",
+    "kotlin": "maven",
+    "scala": "maven",
+    "js": "npm",
+    "javascript": "npm",
+    "nodejs": "npm",
+    "go": "golang",
+    "golang": "golang",
+    "ruby": "rubygems",
+    "php": "composer",
+    "dotnet": "nuget",
+    "csharp": "nuget",
+    "rust": "crates",
+}

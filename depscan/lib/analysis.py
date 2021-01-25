@@ -189,6 +189,7 @@ def jsonl_report(
             data_obj = {
                 "id": id,
                 "package": full_pkg,
+                "package_type": vuln_occ_dict.get("type"),
                 "package_usage": package_usage,
                 "version": package_issue.affected_location.version,
                 "fix_version": fixed_location,
