@@ -164,7 +164,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
             LOG.debug(
                 "Re-checking our suggestion to ensure there are no further vulnerabilities"
             )
-            override_results, _ = utils.search_pkgs(db, sug_pkg_list)
+            override_results, _ = utils.search_pkgs(db, project_type, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
                 LOG.debug("Received override results: {}".format(new_sug_dict))
