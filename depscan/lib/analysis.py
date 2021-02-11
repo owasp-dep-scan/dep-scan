@@ -6,11 +6,11 @@ import logging
 from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 from rich.theme import Theme
 
+from depscan.lib import config as config
 from depscan.lib.utils import max_version
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
@@ -200,6 +200,77 @@ def jsonl_report(
             }
             json.dump(data_obj, outfile)
             outfile.write("\n")
+
+
+def analyse_pkg_risks(project_type, risk_results, risk_report_file=None):
+    if not risk_results:
+        return
+    table = Table(
+        title=f"Risk Audit Summary ({project_type})",
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+    )
+    report_data = []
+    headers = ["Package", "Used?", "Risk Score", "Identified Risks"]
+    for h in headers:
+        justify = "left"
+        if h == "Risk Score":
+            justify = "right"
+        table.add_column(header=h, justify=justify)
+    for pkg, risk_obj in risk_results.items():
+        if not risk_obj:
+            continue
+        risk_metrics = risk_obj.get("risk_metrics")
+        scope = risk_obj.get("scope")
+        package_usage = "N/A"
+        package_usage_simple = "N/A"
+        if scope == "required":
+            package_usage = "[bright_green][bold]Yes"
+            package_usage_simple = "Yes"
+        if scope == "optional":
+            package_usage = "[magenta]No"
+            package_usage_simple = "No"
+        if not risk_metrics:
+            continue
+        if (
+            risk_metrics.get("risk_score")
+            and risk_metrics.get("risk_score") > config.pkg_max_risk_score
+        ):
+            risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
+            data = [
+                pkg,
+                package_usage,
+                risk_score,
+            ]
+            edata = [
+                pkg,
+                package_usage_simple,
+                risk_score,
+            ]
+            risk_categories = []
+            risk_categories_simple = []
+            for rk, rv in risk_metrics.items():
+                if rk.endswith("_risk") and rv is True:
+                    rcat = rk.replace("_risk", "")
+                    help_text = config.risk_help_text.get(rcat)
+                    # Only add texts that are available.
+                    if help_text:
+                        risk_categories.append(f":warning: {help_text}")
+                        risk_categories_simple.append(help_text)
+            data.append("\n".join(risk_categories))
+            edata.append(", ".join(risk_categories_simple))
+            table.add_row(*data)
+            report_data.append(dict(zip(headers, edata)))
+    if report_data:
+        console.print(table)
+        # Store the risk audit findings in jsonl format
+        if risk_report_file:
+            with open(risk_report_file, "w") as outfile:
+                for row in report_data:
+                    json.dump(row, outfile)
+                    outfile.write("\n")
+    else:
+        LOG.info("No package risks detected ✅")
 
 
 def analyse_licenses(project_type, licenses_results, license_report_file=None):

@@ -1,7 +1,13 @@
 from vdb.lib.npm import NpmSource
 
+from depscan.lib import config as config
+from depscan.lib.pkg_query import npm_metadata
+
 # Dict mapping project type to the audit source
 type_audit_map = {"nodejs": NpmSource(), "js": NpmSource()}
+
+# Dict mapping project type to risk audit
+risk_audit_map = {"nodejs": npm_metadata, "js": npm_metadata}
 
 
 def audit(project_type, pkg_list, report_file):
@@ -12,8 +18,20 @@ def audit(project_type, pkg_list, report_file):
     :param pkg_list: List of packages
     :param report_file: Report file
     """
-    app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
     results = type_audit_map[project_type].bulk_search(
-        app_info=app_info, pkg_list=pkg_list
+        app_info=config.npm_app_info, pkg_list=pkg_list
     )
+    return results
+
+
+def risk_audit(project_type, pkg_list, report_file):
+    """
+    Method to perform risk audit for packages using package managers api
+
+    :param project_type: Project type
+    :param pkg_list: List of packages
+    :param report_file: Report file
+    """
+    audit_fn = risk_audit_map[project_type]
+    results = audit_fn(pkg_list)
     return results

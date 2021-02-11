@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-import logging
 import os
 import sys
 
@@ -15,19 +14,16 @@ from depscan.lib import utils as utils
 from depscan.lib.analysis import (
     analyse,
     analyse_licenses,
+    analyse_pkg_risks,
     jsonl_report,
     print_results,
     suggest_version,
 )
-from depscan.lib.audit import audit, type_audit_map
+from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_list
 from depscan.lib.config import license_data_dir
 from depscan.lib.license import build_license_data, bulk_lookup
-
-logging.basicConfig(
-    level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
-)
-LOG = logging.getLogger(__name__)
+from depscan.lib.logger import LOG
 
 at_logo = """
   ___            _____ _                    _
@@ -75,6 +71,13 @@ def build_args():
         default=False,
         dest="suggest",
         help="Suggest appropriate fix version for each identified vulnerability.",
+    )
+    parser.add_argument(
+        "--risk-audit",
+        action="store_true",
+        default=False,
+        dest="risk_audit",
+        help="Perform package risk audit (slow operation). Npm only.",
     )
     parser.add_argument(
         "-t",
@@ -214,10 +217,7 @@ def summarise(
 def main():
     args = build_args()
     if not args.no_banner:
-        print(at_logo, flush=True)
-    # Set logging level
-    if os.environ.get("SCAN_DEBUG_MODE") == "debug":
-        LOG.setLevel(logging.DEBUG)
+        print(at_logo)
     src_dir = args.src_dir
     if not args.src_dir:
         src_dir = os.getcwd()
@@ -243,6 +243,9 @@ def main():
         sug_version_dict = {}
         pkg_aliases = {}
         report_file = areport_file.replace(".json", "-{}.json".format(project_type))
+        risk_report_file = areport_file.replace(
+            ".json", "-risk.{}.json".format(project_type)
+        )
         LOG.info("=" * 80)
         bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
         creation_status = create_bom(project_type, bom_file, src_dir)
@@ -263,6 +266,18 @@ def main():
                 reports_dir, "license-" + project_type + ".json"
             )
             analyse_licenses(project_type, licenses_results, license_report_file)
+        if args.risk_audit and project_type in risk_audit_map.keys():
+            LOG.info(
+                f"Performing package risk audit for {src_dir} of type {project_type}"
+            )
+            LOG.debug(f"No of packages {len(pkg_list)}. This will take a while ...")
+            try:
+                risk_results = risk_audit(project_type, pkg_list, risk_report_file)
+                analyse_pkg_risks(project_type, risk_results, risk_report_file)
+            except Exception as e:
+                LOG.error("Risk audit was not successful")
+                LOG.error(e)
+                risk_results = None
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(
