@@ -264,4 +264,4 @@ risk_help_text = {
 }
 
 # Package max risk score. All packages above this level will be reported
-pkg_max_risk_score = get_float_from_env("pkg_max_risk_score", 0.42)
+pkg_max_risk_score = get_float_from_env("pkg_max_risk_score", 0.5)
