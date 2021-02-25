@@ -23,6 +23,7 @@ If you have just come across this repo, probably the best place to start is to c
 - Configurable `cache` and `sync` functionality to manage local cache data
 - Pre-installed and integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan)
 - Suggest optimal fix version by package group (See suggest mode)
+- Perform deep package risk audit (See risk audit)
 
 ## Usage
 
@@ -156,7 +157,36 @@ By passing an argument `--suggest` it is possible to force depscan to recheck th
 
 Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
 
-## License scan (alpha)
+## Package Risk audit
+
+`--risk-audit` argument enables package risk audit. Currently, only npm packages is supported in this mode. A number of risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
+
+| Risk category          | Default Weight | Reason                                                                                                                                                                                                     |
+| ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pkg_min_versions       | 2              | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages                            |
+| mod_create_min_seconds | 1              | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
+| latest_now_min_seconds | 0.5            | Less than 12 hours difference between the latest version and the current time. Depending on the package such a latest version may or may not be desirable                                                  |
+| latest_now_max_seconds | 0.5            | Package versions that are over 6 years old are in use                                                                                                                                                      |
+| pkg_min_maintainers    | 2              | Package has less than 2 maintainers                                                                                                                                                                        |
+| pkg_min_users          | 0.5            | Package has less than 2 npm users                                                                                                                                                                          |
+| pkg_install_scripts    | 2              | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm.                                                                                                     |
+| pkg_node_version       | 0.5            | Package supports outdated version of node such as 0.10, 4 or 6.x                                                                                                                                           |
+| pkg_scope              | 4              | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score of 0.5                                                                  |
+| deprecated             | 1              | Latest version is deprecated                                                                                                                                                                               |
+
+The formula used is a derivation of the [criticality algorithm](https://github.com/ossf/criticality_score/blob/main/Quantifying_criticality_algorithm.pdf). Refer to `pkg_query.py::get_category_score` method for implementation details.
+
+### Automatic adjustment
+
+A parameter called `created_now_quarantine_seconds` is used to identify packages that are safely past the quarantine period (1 year). Certain risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past the quarantine period. This adjustment helps reduce noise since it is unlikely that a malicious package can exist in a registry unnoticed for over a year.
+
+### Configuring weights
+
+All parameters can be customized by using environment variables. For eg:
+
+export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4.
+
+## License scan
 
 dep-scan can automatically scan the dependencies for any license limitations and report them directly on the console log. The licenses data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behaviour could change in the future once the detection logic gets improved.
 

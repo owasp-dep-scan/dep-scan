@@ -42,7 +42,6 @@ def create_pkg_variations(pkg_dict):
     purl = pkg_dict.get("purl", "")
     if vendor:
         vendor_aliases.add(vendor)
-        short_vendor = None
         if (
             vendor.startswith("org.")
             or vendor.startswith("io.")
@@ -54,7 +53,6 @@ def create_pkg_variations(pkg_dict):
             if len(tmpA) > 2 and len(tmpA[1]) > 3:
                 if tmpA[1] != name:
                     vendor_aliases.add(tmpA[1])
-                short_vendor = tmpA[1]
     # Add some common vendor aliases
     if purl.startswith("pkg:composer") or purl.startswith("pkg:pypi"):
         vendor_aliases.add(name)

@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import shutil
 import subprocess
@@ -8,12 +7,8 @@ from urllib.parse import unquote_plus
 
 from defusedxml.ElementTree import parse
 
+from depscan.lib.logger import LOG
 from depscan.lib.utils import cleanup_license_string
-
-logging.basicConfig(
-    level=logging.INFO, format="%(levelname)s [%(asctime)s] %(message)s"
-)
-LOG = logging.getLogger(__name__)
 
 
 def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
