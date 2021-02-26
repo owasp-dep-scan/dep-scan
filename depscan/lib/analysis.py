@@ -255,7 +255,10 @@ def analyse_pkg_risks(project_type, risk_results, risk_report_file=None):
                     help_text = config.risk_help_text.get(rcat)
                     # Only add texts that are available.
                     if help_text:
-                        risk_categories.append(f":warning: {help_text}")
+                        if rcat == "pkg_deprecated":
+                            risk_categories.append(f":cross_mark: {help_text}")
+                        else:
+                            risk_categories.append(f":warning: {help_text}")
                         risk_categories_simple.append(help_text)
             data.append("\n".join(risk_categories))
             edata.append(", ".join(risk_categories_simple))

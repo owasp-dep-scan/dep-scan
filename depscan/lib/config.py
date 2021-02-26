@@ -261,6 +261,7 @@ risk_help_text = {
     "pkg_min_maintainers": "Has fewer maintainers",
     "pkg_node_version": "Outdated Node version",
     "pkg_install_scripts": "Runs scripts on install",
+    "pkg_deprecated": "Deprecated",
 }
 
 # Package max risk score. All packages above this level will be reported

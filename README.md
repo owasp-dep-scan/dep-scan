@@ -174,7 +174,7 @@ Notice, how the new suggested version is `2.9.10.5` which is an optimal fix vers
 | pkg_scope              | 4              | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score of 0.5                                                                  |
 | deprecated             | 1              | Latest version is deprecated                                                                                                                                                                               |
 
-The formula used is a derivation of the [criticality algorithm](https://github.com/ossf/criticality_score/blob/main/Quantifying_criticality_algorithm.pdf). Refer to `pkg_query.py::get_category_score` method for implementation details.
+Refer to `pkg_query.py::get_category_score` method for the risk formula.
 
 ### Automatic adjustment
 
