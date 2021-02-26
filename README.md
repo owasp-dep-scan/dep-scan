@@ -161,18 +161,27 @@ Notice, how the new suggested version is `2.9.10.5` which is an optimal fix vers
 
 `--risk-audit` argument enables package risk audit. Currently, only npm packages is supported in this mode. A number of risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
 
-| Risk category          | Default Weight | Reason                                                                                                                                                                                                     |
-| ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pkg_min_versions       | 2              | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages                            |
-| mod_create_min_seconds | 1              | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
-| latest_now_min_seconds | 0.5            | Less than 12 hours difference between the latest version and the current time. Depending on the package such a latest version may or may not be desirable                                                  |
-| latest_now_max_seconds | 0.5            | Package versions that are over 6 years old are in use                                                                                                                                                      |
-| pkg_min_maintainers    | 2              | Package has less than 2 maintainers                                                                                                                                                                        |
-| pkg_min_users          | 0.5            | Package has less than 2 npm users                                                                                                                                                                          |
-| pkg_install_scripts    | 2              | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm.                                                                                                     |
-| pkg_node_version       | 0.5            | Package supports outdated version of node such as 0.10, 4 or 6.x                                                                                                                                           |
-| pkg_scope              | 4              | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score of 0.5                                                                  |
-| deprecated             | 1              | Latest version is deprecated                                                                                                                                                                               |
+Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on public npm registry.
+
+Example to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public use the below argument.
+
+```
+--private-ns appthreat,shiftleft
+```
+
+| Risk category                  | Default Weight | Reason                                                                                                                                                                                                     |
+| ------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pkg_private_on_public_registry | 4              | Private package is available on a public registry                                                                                                                                                          |
+| pkg_min_versions               | 2              | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages                            |
+| mod_create_min_seconds         | 1              | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
+| latest_now_min_seconds         | 0.5            | Less than 12 hours difference between the latest version and the current time. Depending on the package such a latest version may or may not be desirable                                                  |
+| latest_now_max_seconds         | 0.5            | Package versions that are over 6 years old are in use. Such packages might have vulnerable dependencies that are known or yet to be found                                                                  |
+| pkg_min_maintainers            | 2              | Package has less than 2 maintainers. Many opensource projects have only 1 or 2 maintainers so special heuristics are used to ignore older stable packages                                                  |
+| pkg_min_users                  | 0.25           | Package has less than 2 npm users                                                                                                                                                                          |
+| pkg_install_scripts            | 2              | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm.                                                                                                     |
+| pkg_node_version               | 0.5            | Package supports outdated version of node such as 0.8, 0.10, 4 or 6.x. Such projects might have prototype pollution or closure related vulnerabilities                                                     |
+| pkg_scope                      | 4 or 0.5       | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score of 0.25                                                                 |
+| deprecated                     | 1              | Latest version is deprecated                                                                                                                                                                               |
 
 Refer to `pkg_query.py::get_category_score` method for the risk formula.
 

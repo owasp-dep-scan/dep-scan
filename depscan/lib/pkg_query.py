@@ -8,11 +8,12 @@ from depscan.lib import config as config
 from depscan.lib.logger import LOG, console
 
 
-def npm_metadata(pkg_list):
+def npm_metadata(pkg_list, private_ns=None):
     """
     Method to query npm for the package metada
 
     :param pkg_list: List of packages
+    :param private_ns: Private namespace
     """
     metadata_dict = {}
     task = None
@@ -39,16 +40,35 @@ def npm_metadata(pkg_list):
                     vendor = tmpA[0]
             key = name
             if vendor and vendor != "npm":
+                # npm expects namespaces to start with an @
+                if not vendor.startswith("@"):
+                    vendor = "@" + vendor
                 key = f"{vendor}/{name}"
             progress.update(task, description=f"Checking {key}")
             try:
                 r = requests.get(url=f"{config.npm_server}/{key}")
                 json_data = r.json()
-                risk_metrics = npm_pkg_risk(json_data, scope)
+                # Npm returns this error if the package is not found
+                if (
+                    json_data.get("code") == "MethodNotAllowedError"
+                    or r.status_code > 400
+                ):
+                    continue
+                is_private_pkg = False
+                if private_ns:
+                    namespace_prefixes = private_ns.split(",")
+                    for ns in namespace_prefixes:
+                        if key.lower().startswith(ns.lower()) or key.lower().startswith(
+                            "@" + ns.lower()
+                        ):
+                            is_private_pkg = True
+                            break
+                risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
                 metadata_dict[key] = {
                     "scope": scope,
                     "pkg_metadata": json_data,
                     "risk_metrics": risk_metrics,
+                    "is_private_pkg": is_private_pkg,
                 }
             except Exception as e:
                 LOG.debug(e)
@@ -126,13 +146,15 @@ def calculate_risk_score(risk_metrics):
     return working_score
 
 
-def npm_pkg_risk(pkg_metadata, scope):
+def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     """
     Calculate various npm package risks based on the metadata from npm.
     The keys in the risk_metrics dict is based on the parameters specified in config.py and has a _risk suffix.
     Eg: config.pkg_min_versions would result in a boolean pkg_min_versions_risk and pkg_min_versions_value
 
     :param pkg_list: List of packages
+    :param is_private_pkg: Boolean to indicate if this package is private
+    :param scope: Package scope
     """
     # Some default values to ensure the structure is non-empty
     risk_metrics = {
@@ -143,7 +165,12 @@ def npm_pkg_risk(pkg_metadata, scope):
         "mod_create_min_seconds_risk": False,
         "pkg_min_maintainers_risk": False,
         "pkg_node_version_risk": False,
+        "pkg_private_on_public_registry_risk": False,
     }
+    # Is the private package available publicly? Dependency confusion.
+    if is_private_pkg and pkg_metadata:
+        risk_metrics["pkg_private_on_public_registry_risk"] = True
+        risk_metrics["pkg_private_on_public_registry_value"] = 1
     versions = pkg_metadata.get("versions", {})
     latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})

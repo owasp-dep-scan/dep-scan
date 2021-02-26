@@ -181,7 +181,7 @@ def jsonl_report(
             outfile.write("\n")
 
 
-def analyse_pkg_risks(project_type, risk_results, risk_report_file=None):
+def analyse_pkg_risks(project_type, private_ns, risk_results, risk_report_file=None):
     if not risk_results:
         return
     table = Table(
@@ -211,9 +211,9 @@ def analyse_pkg_risks(project_type, risk_results, risk_report_file=None):
             package_usage_simple = "No"
         if not risk_metrics:
             continue
-        if (
-            risk_metrics.get("risk_score")
-            and risk_metrics.get("risk_score") > config.pkg_max_risk_score
+        if risk_metrics.get("risk_score") and (
+            risk_metrics.get("risk_score") > config.pkg_max_risk_score
+            or risk_metrics.get("pkg_private_on_public_registry_risk")
         ):
             risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
@@ -234,7 +234,7 @@ def analyse_pkg_risks(project_type, risk_results, risk_report_file=None):
                     help_text = config.risk_help_text.get(rcat)
                     # Only add texts that are available.
                     if help_text:
-                        if rcat == "pkg_deprecated":
+                        if rcat in ("pkg_deprecated", "pkg_private_on_public_registry"):
                             risk_categories.append(f":cross_mark: {help_text}")
                         else:
                             risk_categories.append(f":warning: {help_text}")

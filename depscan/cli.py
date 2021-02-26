@@ -81,6 +81,12 @@ def build_args():
         help="Perform package risk audit (slow operation). Npm only.",
     )
     parser.add_argument(
+        "--private-ns",
+        dest="private_ns",
+        default=os.getenv("PKG_PRIVATE_NAMESPACE"),
+        help="Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.",
+    )
+    parser.add_argument(
         "-t",
         "--type",
         dest="project_type",
@@ -277,8 +283,12 @@ def main():
                     )
                 )
                 try:
-                    risk_results = risk_audit(project_type, pkg_list, risk_report_file)
-                    analyse_pkg_risks(project_type, risk_results, risk_report_file)
+                    risk_results = risk_audit(
+                        project_type, args.private_ns, pkg_list, risk_report_file
+                    )
+                    analyse_pkg_risks(
+                        project_type, args.private_ns, risk_results, risk_report_file
+                    )
                 except Exception as e:
                     LOG.error("Risk audit was not successful")
                     LOG.error(e)

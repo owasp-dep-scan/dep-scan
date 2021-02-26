@@ -215,7 +215,7 @@ pkg_min_maintainers_weight = get_float_from_env("pkg_min_maintainers_weight", 2)
 # Package should have at least 2 users
 pkg_min_users = get_float_from_env("pkg_min_users", 2)
 pkg_min_users_max = get_float_from_env("pkg_min_users_max", 20)
-pkg_min_users_weight = get_float_from_env("pkg_min_users_weight", 0.5)
+pkg_min_users_weight = get_float_from_env("pkg_min_users_weight", 0.25)
 
 # Package with install scripts (npm)
 pkg_install_scripts_max = get_float_from_env("pkg_install_scripts_max", 0)
@@ -229,6 +229,14 @@ pkg_node_version_weight = get_float_from_env("pkg_node_version_weight", 0.5)
 # Package deprecated
 pkg_deprecated_weight = get_float_from_env("pkg_deprecated_weight", 1)
 pkg_deprecated_max = get_float_from_env("pkg_deprecated_max", 1)
+
+# Package dependency confusion
+pkg_private_on_public_registry_weight = get_float_from_env(
+    "pkg_private_on_public_registry_weight", 4
+)
+pkg_private_on_public_registry_max = get_float_from_env(
+    "pkg_private_on_public_registry_max", 1
+)
 
 # Package scope related weight
 pkg_required_scope_weight = get_float_from_env("pkg_required_scope_weight", 4.0)
@@ -251,6 +259,7 @@ total_weight = (
     + pkg_required_scope_weight
     + pkg_optional_scope_weight
     + pkg_deprecated_weight
+    + pkg_private_on_public_registry_weight
 )
 
 # Help text for various risk
@@ -262,6 +271,7 @@ risk_help_text = {
     "pkg_node_version": "Outdated Node version",
     "pkg_install_scripts": "Runs scripts on install",
     "pkg_deprecated": "Deprecated",
+    "pkg_private_on_public_registry": "Private package is public",
 }
 
 # Package max risk score. All packages above this level will be reported

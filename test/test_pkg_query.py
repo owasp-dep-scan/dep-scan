@@ -76,7 +76,7 @@ def test_calculate_risk_score():
         }
     )
     assert l2_score > l1_score
-    assert l2_score > 0.6
+    assert l2_score > 0.5
     # Also has script section
     l3_score = calculate_risk_score(
         {
@@ -136,7 +136,7 @@ def test_query_metadata():
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-node.xml"
     )
     pkg_list = get_pkg_list(test_bom)
-    metadata_dict = npm_metadata(pkg_list)
+    metadata_dict = npm_metadata(pkg_list, None)
     assert metadata_dict
 
 
@@ -146,8 +146,19 @@ def test_query_metadata1():
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-goof.json"
     )
     pkg_list = get_pkg_list(test_bom)
-    metadata_dict = npm_metadata(pkg_list)
+    metadata_dict = npm_metadata(pkg_list, "snyk")
     assert metadata_dict
+
+
+def test_npm_confusion_risks():
+    test_deprecated_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "cdxgen-metadata.json"
+    )
+    with open(test_deprecated_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = npm_pkg_risk(pkg_metadata, True, None)
+        assert risk_metrics["pkg_private_on_public_registry_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
 
 
 def test_npm_risks():
@@ -156,7 +167,7 @@ def test_npm_risks():
     )
     with open(test_deprecated_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = npm_pkg_risk(pkg_metadata, None)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None)
         assert risk_metrics["pkg_deprecated_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
         assert risk_metrics["latest_now_max_seconds_risk"]
@@ -166,7 +177,7 @@ def test_npm_risks():
     )
     with open(ebp_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = npm_pkg_risk(pkg_metadata, None)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None)
         assert risk_metrics["pkg_node_version_risk"]
         assert not risk_metrics["pkg_deprecated_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]

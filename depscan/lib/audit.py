@@ -24,14 +24,15 @@ def audit(project_type, pkg_list, report_file):
     return results
 
 
-def risk_audit(project_type, pkg_list, report_file):
+def risk_audit(project_type, private_ns, pkg_list, report_file):
     """
     Method to perform risk audit for packages using package managers api
 
     :param project_type: Project type
+    :param private_ns: Private namespace
     :param pkg_list: List of packages
     :param report_file: Report file
     """
     audit_fn = risk_audit_map[project_type]
-    results = audit_fn(pkg_list)
+    results = audit_fn(pkg_list, private_ns)
     return results

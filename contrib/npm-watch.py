@@ -14,7 +14,7 @@ for line in r.iter_lines():
         try:
             json_obj = json.loads(line)
             npm_pkg = json_obj.get("id")
-            risk_metrics = npm_pkg_risk(json_obj.get("doc"), None)
+            risk_metrics = npm_pkg_risk(json_obj.get("doc"), False, None)
             if risk_metrics and risk_metrics["risk_score"] > 0.6:
                 print(npm_pkg, risk_metrics)
         except Exception as e:
