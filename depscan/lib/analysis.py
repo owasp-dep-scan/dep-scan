@@ -1,35 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import json
-import logging
 
 from rich import box
-from rich.console import Console
-from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.table import Table
-from rich.theme import Theme
 
 from depscan.lib import config as config
+from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
-
-custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
-console = Console(
-    log_time=False,
-    log_path=False,
-    theme=custom_theme,
-    width=200,
-    color_system="256",
-    force_terminal=True,
-)
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(console=console, show_path=False, enable_link_path=False)],
-)
-LOG = logging.getLogger(__name__)
 
 
 def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_pkgs):

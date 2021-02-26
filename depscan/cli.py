@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 
+from rich.panel import Panel
 from vdb.lib import config as config
 from vdb.lib import db as dbLib
 from vdb.lib.gha import GitHubSource
@@ -23,7 +24,7 @@ from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_list
 from depscan.lib.config import license_data_dir
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import LOG
+from depscan.lib.logger import LOG, console
 
 at_logo = """
   ___            _____ _                    _
@@ -266,18 +267,30 @@ def main():
                 reports_dir, "license-" + project_type + ".json"
             )
             analyse_licenses(project_type, licenses_results, license_report_file)
-        if args.risk_audit and project_type in risk_audit_map.keys():
-            LOG.info(
-                f"Performing package risk audit for {src_dir} of type {project_type}"
-            )
-            LOG.debug(f"No of packages {len(pkg_list)}. This will take a while ...")
-            try:
-                risk_results = risk_audit(project_type, pkg_list, risk_report_file)
-                analyse_pkg_risks(project_type, risk_results, risk_report_file)
-            except Exception as e:
-                LOG.error("Risk audit was not successful")
-                LOG.error(e)
-                risk_results = None
+        if project_type in risk_audit_map.keys():
+            if args.risk_audit:
+                console.print(
+                    Panel(
+                        f"Performing OSS Risk Audit for packages from {src_dir}\nNo of packages [bold]{len(pkg_list)}[/bold]. This will take a while ...",
+                        title="OSS Risk Audit",
+                        expand=False,
+                    )
+                )
+                try:
+                    risk_results = risk_audit(project_type, pkg_list, risk_report_file)
+                    analyse_pkg_risks(project_type, risk_results, risk_report_file)
+                except Exception as e:
+                    LOG.error("Risk audit was not successful")
+                    LOG.error(e)
+                    risk_results = None
+            else:
+                console.print(
+                    Panel(
+                        "Depscan supports OSS Risk audit for this project.\nTo enable set the environment variable [bold]ENABLE_OSS_RISK=true[/bold]",
+                        title="New Feature",
+                        expand=False,
+                    )
+                )
         if project_type in type_audit_map.keys():
             LOG.info(
                 "Performing remote audit for {} of type {}".format(

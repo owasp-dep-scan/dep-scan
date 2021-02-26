@@ -22,7 +22,12 @@ from rich.theme import Theme
 
 custom_theme = Theme({"info": "cyan", "warning": "purple4", "danger": "bold red"})
 console = Console(
-    log_time=False, log_path=False, theme=custom_theme, width=140, color_system="256"
+    log_time=False,
+    log_path=False,
+    theme=custom_theme,
+    width=200,
+    color_system="256",
+    force_terminal=True,
 )
 
 logging.basicConfig(
