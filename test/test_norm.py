@@ -86,3 +86,19 @@ def test_pkg_variations():
         }
     )
     assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "org.hibernate",
+            "name": "hibernate-core",
+            "version": "5.4.18.Final",
+        }
+    )
+    assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "org.springframework.security",
+            "name": "spring-security-crypto",
+            "version": "5.3.3.RELEASE",
+        }
+    )
+    assert len(pkg_list) > 1

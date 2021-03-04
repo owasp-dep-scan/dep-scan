@@ -50,7 +50,7 @@ def create_pkg_variations(pkg_dict):
         ):
             tmpA = vendor.split(".")
             # Automatically add short vendor forms
-            if len(tmpA) > 2 and len(tmpA[1]) > 3:
+            if len(tmpA) > 1 and len(tmpA[1]) > 3:
                 if tmpA[1] != name:
                     vendor_aliases.add(tmpA[1])
     # Add some common vendor aliases
@@ -97,7 +97,7 @@ def create_pkg_variations(pkg_dict):
         if name.endswith(suffix):
             name_aliases.add(name.replace(suffix, ""))
     for k, v in config.package_alias.items():
-        if name.startswith(k) or k.startswith(name):
+        if name.startswith(k) or k.startswith(name) or v.startswith(name):
             name_aliases.add(k)
             name_aliases.add(v)
     if len(vendor_aliases):

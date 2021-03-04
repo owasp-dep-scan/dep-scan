@@ -254,8 +254,13 @@ def main():
             ".json", "-risk.{}.json".format(project_type)
         )
         LOG.info("=" * 80)
-        bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
-        creation_status = create_bom(project_type, bom_file, src_dir)
+        creation_status = False
+        if args.bom and os.path.exists(args.bom):
+            bom_file = args.bom
+            creation_status = True
+        else:
+            bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
+            creation_status = create_bom(project_type, bom_file, src_dir)
         if not creation_status:
             LOG.debug("Bom file {} was not created successfully".format(bom_file))
             continue

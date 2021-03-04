@@ -12,6 +12,7 @@ license_data_dir = join(
 
 # CPE Vendor aliases
 vendor_alias = {
+    "org.apache.tomcat.embed": "apache",
     "org.apache.tomcat": "apache_tomcat",
     "org.apache.commons.io": "commons-io",
     "org.apache.logging.log4j": "log4j",
@@ -41,6 +42,7 @@ vendor_alias = {
     "ca.uhn.hapi.fhir": "fhir",
     "tensorflow": "google",
     "ansible": "redhat",
+    "io.springfox": "smartbear",
 }
 
 # Package aliases
@@ -53,7 +55,9 @@ package_alias = {
     "tomcat_native": "tomcat",
     "tomcat_connectors": "tomcat",
     "tomcat_jk_connector": "tomcat",
+    "tomcat-embed-core": "tomcat",
     "spring-security-core": "spring_security",
+    "spring-security-crypto": "spring_security",
     "asciidoctorj": "asciidoctor",
     "postgresql": "postgresql_jdbc_driver",
     "itextpdf": "itext",
@@ -98,6 +102,11 @@ package_alias = {
     "hawkbit-boot-starter": "hawkbit",
     "software_development_kit": "splunk-sdk",
     "jira_software_data_center": "jira",
+    "springfox-swagger2": "swagger_ui",
+    "spring-web": "spring_framework",
+    "springfox-swagger-ui": "swagger_ui",
+    "hibernate-core": "hibernate_orm",
+    "json-smart": "json-smart-v2"
 }
 
 # Default ignore list
