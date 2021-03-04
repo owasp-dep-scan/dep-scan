@@ -106,7 +106,8 @@ package_alias = {
     "spring-web": "spring_framework",
     "springfox-swagger-ui": "swagger_ui",
     "hibernate-core": "hibernate_orm",
-    "json-smart": "json-smart-v2"
+    "json-smart": "json-smart-v2",
+    "ojdbc7": "jdbc",
 }
 
 # Default ignore list
