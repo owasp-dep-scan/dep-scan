@@ -76,7 +76,7 @@ def build_args():
     parser.add_argument(
         "--risk-audit",
         action="store_true",
-        default=True if os.getenv("ENABLE_OSS_RISK") else False,
+        default=True if os.getenv("ENABLE_OSS_RISK", "") in ["true", "1"] else False,
         dest="risk_audit",
         help="Perform package risk audit (slow operation). Npm only.",
     )

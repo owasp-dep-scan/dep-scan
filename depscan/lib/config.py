@@ -161,6 +161,10 @@ def get_float_from_env(name, default):
     return value
 
 
+def get_int_from_env(name, default):
+    return int(get_float_from_env(name, default))
+
+
 npm_server = "https://registry.npmjs.org"
 npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
 
@@ -286,3 +290,9 @@ risk_help_text = {
 
 # Package max risk score. All packages above this level will be reported
 pkg_max_risk_score = get_float_from_env("pkg_max_risk_score", 0.5)
+
+# Default request timeout
+request_timeout_sec = get_int_from_env("request_timeout_sec", 20)
+
+# Number of api failures that would stop the risk audit completely
+max_request_failures = get_int_from_env("max_request_failures", 5)

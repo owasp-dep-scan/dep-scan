@@ -17,6 +17,8 @@ def npm_metadata(pkg_list, private_ns=None):
     """
     metadata_dict = {}
     task = None
+    kill_switch = False
+    failure_count = 0
     with Progress(
         console=console,
         transient=True,
@@ -28,6 +30,12 @@ def npm_metadata(pkg_list, private_ns=None):
             "[green] Auditing packages", total=len(pkg_list), start=True
         )
         for pkg in pkg_list:
+            if kill_switch:
+                LOG.info(
+                    "Risk audited has been interrupted due to frequent npm api errors. Please try again later."
+                )
+                progress.stop()
+                return {}
             vendor = None
             scope = pkg.get("scope", "").lower()
             if isinstance(pkg, dict):
@@ -46,7 +54,9 @@ def npm_metadata(pkg_list, private_ns=None):
                 key = f"{vendor}/{name}"
             progress.update(task, description=f"Checking {key}")
             try:
-                r = requests.get(url=f"{config.npm_server}/{key}")
+                r = requests.get(
+                    url=f"{config.npm_server}/{key}", timeout=config.request_timeout_sec
+                )
                 json_data = r.json()
                 # Npm returns this error if the package is not found
                 if (
@@ -72,7 +82,10 @@ def npm_metadata(pkg_list, private_ns=None):
                 }
             except Exception as e:
                 LOG.debug(e)
+                failure_count = failure_count + 1
             progress.advance(task)
+            if failure_count >= config.max_request_failures:
+                kill_switch = True
     return metadata_dict
 
 
