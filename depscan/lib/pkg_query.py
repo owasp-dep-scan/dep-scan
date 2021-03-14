@@ -20,11 +20,12 @@ def get_lookup_url(registry_type, pkg):
             vendor = tmpA[0]
     key = name
     # Prefix vendor for npm
-    if registry_type == "npm" and vendor and vendor != "npm":
-        # npm expects namespaces to start with an @
-        if not vendor.startswith("@"):
-            vendor = "@" + vendor
-        key = f"{vendor}/{name}"
+    if registry_type == "npm":
+        if vendor and vendor != "npm":
+            # npm expects namespaces to start with an @
+            if not vendor.startswith("@"):
+                vendor = "@" + vendor
+            key = f"{vendor}/{name}"
         return key, f"{config.npm_server}/{key}"
     elif registry_type == "pypi":
         return key, f"{config.pypi_server}/{key}/json"
