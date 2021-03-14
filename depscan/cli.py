@@ -294,9 +294,8 @@ def main():
                     analyse_pkg_risks(
                         project_type, args.private_ns, risk_results, risk_report_file
                     )
-                except Exception as e:
+                except Exception:
                     LOG.error("Risk audit was not successful")
-                    LOG.error(e)
                     risk_results = None
             else:
                 console.print(

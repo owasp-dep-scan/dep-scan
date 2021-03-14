@@ -1,0 +1,181 @@
+{
+  "info": {
+    "author": "Ismail Uddin",
+    "author_email": "",
+    "bugtrack_url": null,
+    "classifiers": [
+      "Development Status :: 2 - Pre-Alpha",
+      "Intended Audience :: Developers",
+      "License :: OSI Approved :: MIT License",
+      "Natural Language :: English",
+      "Programming Language :: Python :: 3",
+      "Programming Language :: Python :: 3.6"
+    ],
+    "description": "<p align=\"center\">\n  <img width=\"300\" src=\"https://raw.githubusercontent.com/ismailuddin/mongo-dash/main/artwork/mongo-dash-logo.png\">\n</p>\n\n# Mongo Dash\n> A dashboard solution for MongoDB databases.\n\n[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)\n\n![Screenshot](https://raw.githubusercontent.com/ismailuddin/mongo-dash/main/artwork/screenshot.png)\n\nVisit the [website](https://mongo-dash.vercel.app/) for more details.\n\n## Requirements\n- Python 3.6 or newer\n\n## \ud83d\udee0 Installation\nTo install the package, you can either clone the repository and run the following command:\n\n```shell\n$   pip install .\n```\n\nOr you can install the package from PyPI using the command:\n\n```shell\n$   pip install mongo_dash\n```\n\n\n## \ud83d\ude80 Usage\nFor a quick setup, visit the [Getting started](https://mongo-dash-docs.vercel.app/docs/getting-started/first-dashboard) page on the documentation.\n\n## \ud83d\udcda Documentation\nView the [documenation](https://mongo-dash-docs.vercel.app/docs).\n\n\n",
+    "description_content_type": "text/markdown",
+    "docs_url": null,
+    "download_url": "",
+    "downloads": {
+      "last_day": -1,
+      "last_month": -1,
+      "last_week": -1
+    },
+    "home_page": "https://www.github.com/ismailuddin/mongo-dash",
+    "keywords": "",
+    "license": "MIT license",
+    "maintainer": "",
+    "maintainer_email": "",
+    "name": "mongo-dash",
+    "package_url": "https://pypi.org/project/mongo-dash/",
+    "platform": "",
+    "project_url": "https://pypi.org/project/mongo-dash/",
+    "project_urls": {
+      "Homepage": "https://www.github.com/ismailuddin/mongo-dash"
+    },
+    "release_url": "https://pypi.org/project/mongo-dash/0.1.2/",
+    "requires_dist": [
+      "fastapi",
+      "aiofiles",
+      "jinja2",
+      "uvicorn",
+      "motor",
+      "typer",
+      "async-exit-stack",
+      "async-generator"
+    ],
+    "requires_python": "",
+    "summary": "Visualisation platform for MongoDB",
+    "version": "0.1.1",
+    "yanked": false,
+    "yanked_reason": null
+  },
+  "last_serial": 9766436,
+  "releases": {
+    "0.1.0": [
+      {
+        "comment_text": "",
+        "digests": {
+          "md5": "c2a18637ff784dab133a0da41902c8e1",
+          "sha256": "66d3cb11c0374ee82795924ee12da8420c2e1e23557c086809bebe5c25372d9a"
+        },
+        "downloads": -1,
+        "filename": "mongo_dash-0.1.0-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "c2a18637ff784dab133a0da41902c8e1",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 3414717,
+        "upload_time": "2021-03-14T08:17:11",
+        "upload_time_iso_8601": "2021-03-14T08:17:11.046999Z",
+        "url": "https://files.pythonhosted.org/packages/94/50/af38c10e4e91c795a475ca8f46910a6d21a2158b2aa4fa60260c98fa7c5d/mongo_dash-0.1.0-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "md5": "683d905a55c42d59719168edb6edc624",
+          "sha256": "b2dee0bbc4fed6fe85f387e2871da6c34665fcae184c1df26899eec879eff399"
+        },
+        "downloads": -1,
+        "filename": "mongo_dash-0.1.0.tar.gz",
+        "has_sig": false,
+        "md5_digest": "683d905a55c42d59719168edb6edc624",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3351707,
+        "upload_time": "2021-03-14T08:17:18",
+        "upload_time_iso_8601": "2021-03-14T08:17:18.531815Z",
+        "url": "https://files.pythonhosted.org/packages/5f/62/f5b83b173d84127ac2ee6d0d302772a8a1bba2b502391b9874254a02e2db/mongo_dash-0.1.0.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ],
+    "0.1.1": [
+      {
+        "comment_text": "",
+        "digests": {
+          "md5": "62a07aa6036096fa2eb37e6b707a7faf",
+          "sha256": "adcf58d3b13a3be485a60698e95eee2b6dcf154023ba9c7c0ac56e4b7e595523"
+        },
+        "downloads": -1,
+        "filename": "mongo_dash-0.1.1-py3-none-any.whl",
+        "has_sig": false,
+        "md5_digest": "62a07aa6036096fa2eb37e6b707a7faf",
+        "packagetype": "bdist_wheel",
+        "python_version": "py3",
+        "requires_python": null,
+        "size": 3414713,
+        "upload_time": "2021-03-14T08:28:25",
+        "upload_time_iso_8601": "2021-03-14T08:28:25.831288Z",
+        "url": "https://files.pythonhosted.org/packages/0b/cb/ce1d0c1a1c5f094ffd914c8a97683ba409bea91d3659cf6edf9cd9b18362/mongo_dash-0.1.1-py3-none-any.whl",
+        "yanked": false,
+        "yanked_reason": null
+      },
+      {
+        "comment_text": "",
+        "digests": {
+          "md5": "15f3bfdaaf9a93bdb770ef076beb2e86",
+          "sha256": "8c00313e8c14f2fd63c92dcc09a96bd2382cff9bb9c5304ef5d4eef1379c44cd"
+        },
+        "downloads": -1,
+        "filename": "mongo_dash-0.1.1.tar.gz",
+        "has_sig": false,
+        "md5_digest": "15f3bfdaaf9a93bdb770ef076beb2e86",
+        "packagetype": "sdist",
+        "python_version": "source",
+        "requires_python": null,
+        "size": 3351723,
+        "upload_time": "2021-03-14T08:28:38",
+        "upload_time_iso_8601": "2021-03-14T08:28:38.940236Z",
+        "url": "https://files.pythonhosted.org/packages/3e/2c/503b7c4a01e572c0ff184147d0930d105090adbaa1abf293a480db93ba43/mongo_dash-0.1.1.tar.gz",
+        "yanked": false,
+        "yanked_reason": null
+      }
+    ]
+  },
+  "urls": [
+    {
+      "comment_text": "",
+      "digests": {
+        "md5": "93e4fc7b120a1564029983685a31a9e8",
+        "sha256": "5f231de4f52595f451b8140e42fbda857f98f7026fd4dc07690046eb3dd9f0f3"
+      },
+      "downloads": -1,
+      "filename": "mongo_dash-0.1.2-py3-none-any.whl",
+      "has_sig": false,
+      "md5_digest": "93e4fc7b120a1564029983685a31a9e8",
+      "packagetype": "bdist_wheel",
+      "python_version": "py3",
+      "requires_python": null,
+      "size": 3414741,
+      "upload_time": "2021-03-14T14:48:01",
+      "upload_time_iso_8601": "2021-03-14T14:48:01.707196Z",
+      "url": "https://files.pythonhosted.org/packages/a3/ab/c628eede42e75b65b5c40895a237cef207d4442b357e329d2ddc3073a864/mongo_dash-0.1.2-py3-none-any.whl",
+      "yanked": false,
+      "yanked_reason": null
+    },
+    {
+      "comment_text": "",
+      "digests": {
+        "md5": "f6d58abae53a8fefa33cb8ad149e51b9",
+        "sha256": "1014653434da27ab209faf1862ee07e13716f8acad2ad2f4e250de2f1ec7d6e8"
+      },
+      "downloads": -1,
+      "filename": "mongo_dash-0.1.2.tar.gz",
+      "has_sig": false,
+      "md5_digest": "f6d58abae53a8fefa33cb8ad149e51b9",
+      "packagetype": "sdist",
+      "python_version": "source",
+      "requires_python": null,
+      "size": 3351713,
+      "upload_time": "2021-03-14T14:48:10",
+      "upload_time_iso_8601": "2021-03-14T14:48:10.476581Z",
+      "url": "https://files.pythonhosted.org/packages/69/57/0b736cdfc3c11cdc0c8f938953d065534f6d9f5066752bf013e896659905/mongo_dash-0.1.2.tar.gz",
+      "yanked": false,
+      "yanked_reason": null
+    }
+  ]
+}
