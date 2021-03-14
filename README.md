@@ -23,7 +23,7 @@ If you have just come across this repo, probably the best place to start is to c
 - Configurable `cache` and `sync` functionality to manage local cache data
 - Pre-installed and integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan)
 - Suggest optimal fix version by package group (See suggest mode)
-- Perform deep package risk audit (See risk audit)
+- Perform deep packages risk audit (See risk audit)
 
 ## Usage
 
@@ -159,9 +159,9 @@ Notice, how the new suggested version is `2.9.10.5` which is an optimal fix vers
 
 ## Package Risk audit
 
-`--risk-audit` argument enables package risk audit. Currently, only npm packages is supported in this mode. A number of risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
+`--risk-audit` argument enables package risk audit. Currently, only npm and pypi packages are supported in this mode. A number of risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
 
-Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on public npm registry.
+Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on public npm/pypi registry.
 
 Example to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public use the below argument.
 

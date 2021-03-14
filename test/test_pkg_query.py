@@ -7,9 +7,11 @@ from depscan.lib.bom import get_pkg_list
 from depscan.lib import config as config
 from depscan.lib.pkg_query import (
     npm_metadata,
+    pypi_metadata,
     get_category_score,
     calculate_risk_score,
     npm_pkg_risk,
+    pypi_pkg_risk,
 )
 
 
@@ -181,3 +183,55 @@ def test_npm_risks():
         assert risk_metrics["pkg_node_version_risk"]
         assert not risk_metrics["pkg_deprecated_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
+
+
+def test_pypi_confusion_risks():
+    test_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "django-metadata.json"
+    )
+    with open(test_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None)
+        assert risk_metrics == {
+            "pkg_deprecated_risk": False,
+            "pkg_min_versions_risk": False,
+            "created_now_quarantine_seconds_risk": False,
+            "latest_now_max_seconds_risk": False,
+            "mod_create_min_seconds_risk": False,
+            "pkg_min_maintainers_risk": False,
+            "pkg_private_on_public_registry_risk": False,
+            "risk_score": 0.0,
+        }
+    test_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "astroid-metadata.json"
+    )
+    with open(test_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None)
+        assert risk_metrics == {
+            "pkg_deprecated_risk": False,
+            "pkg_min_versions_risk": False,
+            "created_now_quarantine_seconds_risk": False,
+            "latest_now_max_seconds_risk": False,
+            "mod_create_min_seconds_risk": False,
+            "pkg_min_maintainers_risk": False,
+            "pkg_private_on_public_registry_risk": False,
+            "risk_score": 0.0,
+        }
+    test_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "mongo-dash-metadata.json"
+    )
+    with open(test_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None)
+        assert risk_metrics
+        assert risk_metrics["pkg_min_versions_risk"]
+
+
+def test_query_metadata2():
+    test_bom = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml"
+    )
+    pkg_list = get_pkg_list(test_bom)
+    metadata_dict = pypi_metadata(pkg_list, None)
+    assert metadata_dict

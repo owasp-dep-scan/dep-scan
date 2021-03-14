@@ -8,17 +8,43 @@ from depscan.lib import config as config
 from depscan.lib.logger import LOG, console
 
 
-def npm_metadata(pkg_list, private_ns=None):
+def get_lookup_url(registry_type, pkg):
+    vendor = None
+    if isinstance(pkg, dict):
+        vendor = pkg.get("vendor")
+        name = pkg.get("name")
+    else:
+        tmpA = pkg.split("|")
+        name = tmpA[len(tmpA) - 2]
+        if len(tmpA) == 3:
+            vendor = tmpA[0]
+    key = name
+    # Prefix vendor for npm
+    if registry_type == "npm" and vendor and vendor != "npm":
+        # npm expects namespaces to start with an @
+        if not vendor.startswith("@"):
+            vendor = "@" + vendor
+        key = f"{vendor}/{name}"
+        return key, f"{config.npm_server}/{key}"
+    elif registry_type == "pypi":
+        return key, f"{config.pypi_server}/{key}/json"
+    return None
+
+
+def metadata_from_registry(registry_type, pkg_list, private_ns=None):
     """
-    Method to query npm for the package metada
+    Method to query registry for the package metadata
 
     :param pkg_list: List of packages
     :param private_ns: Private namespace
     """
     metadata_dict = {}
     task = None
-    kill_switch = False
+    # Circuit breaker flag to break the risk audit in case of many api errors
+    circuit_breaker = False
+    # Track the api failures count
     failure_count = 0
+    done_count = 0
     with Progress(
         console=console,
         transient=True,
@@ -30,33 +56,20 @@ def npm_metadata(pkg_list, private_ns=None):
             "[green] Auditing packages", total=len(pkg_list), start=True
         )
         for pkg in pkg_list:
-            if kill_switch:
+            if circuit_breaker:
                 LOG.info(
-                    "Risk audited has been interrupted due to frequent npm api errors. Please try again later."
+                    "Risk audited has been interrupted due to frequent api errors. Please try again later."
                 )
                 progress.stop()
                 return {}
-            vendor = None
             scope = pkg.get("scope", "").lower()
-            if isinstance(pkg, dict):
-                vendor = pkg.get("vendor")
-                name = pkg.get("name")
-            else:
-                tmpA = pkg.split("|")
-                name = tmpA[len(tmpA) - 2]
-                if len(tmpA) == 3:
-                    vendor = tmpA[0]
-            key = name
-            if vendor and vendor != "npm":
-                # npm expects namespaces to start with an @
-                if not vendor.startswith("@"):
-                    vendor = "@" + vendor
-                key = f"{vendor}/{name}"
+            key, lookup_url = get_lookup_url(registry_type, pkg)
+            if not key or key.startswith("https://"):
+                progress.advance(task)
+                continue
             progress.update(task, description=f"Checking {key}")
             try:
-                r = requests.get(
-                    url=f"{config.npm_server}/{key}", timeout=config.request_timeout_sec
-                )
+                r = requests.get(url=lookup_url, timeout=config.request_timeout_sec)
                 json_data = r.json()
                 # Npm returns this error if the package is not found
                 if (
@@ -73,7 +86,11 @@ def npm_metadata(pkg_list, private_ns=None):
                         ):
                             is_private_pkg = True
                             break
-                risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
+                risk_metrics = {}
+                if registry_type == "npm":
+                    risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
+                elif registry_type == "pypi":
+                    risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
                 metadata_dict[key] = {
                     "scope": scope,
                     "pkg_metadata": json_data,
@@ -84,9 +101,33 @@ def npm_metadata(pkg_list, private_ns=None):
                 LOG.debug(e)
                 failure_count = failure_count + 1
             progress.advance(task)
+            done_count = done_count + 1
             if failure_count >= config.max_request_failures:
-                kill_switch = True
+                circuit_breaker = True
+    LOG.debug(
+        f"Retrieved package metadata for {done_count}/{len(pkg_list)} packages. Failures count {failure_count}"
+    )
     return metadata_dict
+
+
+def npm_metadata(pkg_list, private_ns=None):
+    """
+    Method to query npm for the package metadata
+
+    :param pkg_list: List of packages
+    :param private_ns: Private namespace
+    """
+    return metadata_from_registry("npm", pkg_list, private_ns)
+
+
+def pypi_metadata(pkg_list, private_ns=None):
+    """
+    Method to query pypi for the package metadata
+
+    :param pkg_list: List of packages
+    :param private_ns: Private namespace
+    """
+    return metadata_from_registry("pypi", pkg_list, private_ns)
 
 
 def get_category_score(
@@ -159,6 +200,107 @@ def calculate_risk_score(risk_metrics):
     return working_score
 
 
+def compute_time_risks(
+    risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
+):
+    """Compute risks based on creation, modified and time elapsed"""
+    # Check if the package is atleast 1 year old. Quarantine period.
+    if created_now_diff.total_seconds() < config.created_now_quarantine_seconds:
+        risk_metrics["created_now_quarantine_seconds_risk"] = True
+        risk_metrics[
+            "created_now_quarantine_seconds_value"
+        ] = latest_now_diff.total_seconds()
+
+    # Check for the maximum seconds difference between latest version and now
+    if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
+        risk_metrics["latest_now_max_seconds_risk"] = True
+        risk_metrics["latest_now_max_seconds_value"] = latest_now_diff.total_seconds()
+        # Since the package is quite old we can relax the min versions risk
+        risk_metrics["pkg_min_versions_risk"] = False
+    else:
+        # Check for the minimum seconds difference between creation and modified date
+        # This check catches several old npm packages that was created and immediately updated within a day
+        # To reduce noise we check for the age first and perform this check only for newish packages
+        if mod_create_diff.total_seconds() < config.mod_create_min_seconds:
+            risk_metrics["mod_create_min_seconds_risk"] = True
+            risk_metrics[
+                "mod_create_min_seconds_value"
+            ] = mod_create_diff.total_seconds()
+    # Check for the minimum seconds difference between latest version and now
+    if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
+        risk_metrics["latest_now_min_seconds_risk"] = True
+        risk_metrics["latest_now_min_seconds_value"] = latest_now_diff.total_seconds()
+    return risk_metrics
+
+
+def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
+    """
+    Calculate various package risks based on the metadata from pypi.
+
+    :param pkg_list: List of packages
+    :param is_private_pkg: Boolean to indicate if this package is private
+    :param scope: Package scope
+    """
+    risk_metrics = {
+        "pkg_deprecated_risk": False,
+        "pkg_min_versions_risk": False,
+        "created_now_quarantine_seconds_risk": False,
+        "latest_now_max_seconds_risk": False,
+        "mod_create_min_seconds_risk": False,
+        "pkg_min_maintainers_risk": False,
+        "pkg_private_on_public_registry_risk": False,
+    }
+    info = pkg_metadata.get("info", {})
+    versions_dict = pkg_metadata.get("releases", {})
+    versions = [ver[0] for k, ver in versions_dict.items() if ver]
+    is_deprecated = info.get("yanked") and info.get("yanked_reason")
+    latest_deprecated = False
+    first_version = None
+    latest_version = None
+
+    # Is the private package available publicly? Dependency confusion.
+    if is_private_pkg and pkg_metadata:
+        risk_metrics["pkg_private_on_public_registry_risk"] = True
+        risk_metrics["pkg_private_on_public_registry_value"] = 1
+
+    # If the package has few than minimum number of versions
+    if len(versions):
+        if len(versions) < config.pkg_min_versions:
+            risk_metrics["pkg_min_versions_risk"] = True
+            risk_metrics["pkg_min_versions_value"] = len(versions)
+        first_version = versions[0]
+        latest_version = versions[-1]
+        # Check if the latest version is deprecated
+        if latest_version and latest_version.get("yanked"):
+            latest_deprecated = True
+
+    # Created and modified time related checks
+    if first_version and latest_version:
+        created = first_version.get("upload_time")
+        modified = latest_version.get("upload_time")
+        if created and modified:
+            modified_dt = datetime.fromisoformat(modified)
+            created_dt = datetime.fromisoformat(created)
+            mod_create_diff = modified_dt - created_dt
+            latest_now_diff = datetime.now() - modified_dt
+            created_now_diff = datetime.now() - created_dt
+            risk_metrics = compute_time_risks(
+                risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
+            )
+
+    # Is the package deprecated
+    if is_deprecated or latest_deprecated:
+        risk_metrics["pkg_deprecated_risk"] = True
+        risk_metrics["pkg_deprecated_value"] = 1
+    # Add package scope related weight
+    if scope:
+        risk_metrics[f"pkg_{scope}_scope_risk"] = True
+        risk_metrics[f"pkg_{scope}_scope_value"] = 1
+
+    risk_metrics["risk_score"] = calculate_risk_score(risk_metrics)
+    return risk_metrics
+
+
 def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     """
     Calculate various npm package risks based on the metadata from npm.
@@ -224,37 +366,10 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
         mod_create_diff = modified_dt - created_dt
         latest_now_diff = datetime.now() - latest_version_time_dt
         created_now_diff = datetime.now() - created_dt
+        risk_metrics = compute_time_risks(
+            risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
+        )
 
-        # Check if the package is atleast 1 year old. Quarantine period.
-        if created_now_diff.total_seconds() < config.created_now_quarantine_seconds:
-            risk_metrics["created_now_quarantine_seconds_risk"] = True
-            risk_metrics[
-                "created_now_quarantine_seconds_value"
-            ] = latest_now_diff.total_seconds()
-
-        # Check for the maximum seconds difference between latest version and now
-        if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
-            risk_metrics["latest_now_max_seconds_risk"] = True
-            risk_metrics[
-                "latest_now_max_seconds_value"
-            ] = latest_now_diff.total_seconds()
-            # Since the package is quite old we can relax the min versions risk
-            risk_metrics["pkg_min_versions_risk"] = False
-        else:
-            # Check for the minimum seconds difference between creation and modified date
-            # TODO: This check catches several old packages that was created and immediately updated within a day
-            # To reduce noise we check for the age first and perform this check only for newish packages
-            if mod_create_diff.total_seconds() < config.mod_create_min_seconds:
-                risk_metrics["mod_create_min_seconds_risk"] = True
-                risk_metrics[
-                    "mod_create_min_seconds_value"
-                ] = mod_create_diff.total_seconds()
-        # Check for the minimum seconds difference between latest version and now
-        if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
-            risk_metrics["latest_now_min_seconds_risk"] = True
-            risk_metrics[
-                "latest_now_min_seconds_value"
-            ] = latest_now_diff.total_seconds()
     # Maintainers count related risk. Ignore packages that are past quarantine period
     maintainers = pkg_metadata.get("maintainers", [])
     if len(maintainers) < config.pkg_min_maintainers and risk_metrics.get(
