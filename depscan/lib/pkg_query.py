@@ -80,7 +80,7 @@ def metadata_from_registry(registry_type, pkg_list, private_ns=None):
                         continue
                     # If no error, or error is not due to timeout, do not retry.
                     # Non-timeout errors will get caught by the enclosing try-except
-                    # and will contribute to the failure count.
+                    # and will contribute towards the failure count.
                     break
 
                 json_data = r.json()
