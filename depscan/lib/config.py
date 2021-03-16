@@ -296,5 +296,9 @@ pkg_max_risk_score = get_float_from_env("pkg_max_risk_score", 0.5)
 # Default request timeout
 request_timeout_sec = get_int_from_env("request_timeout_sec", 20)
 
+# Will try to query for each package up to this many times, if the reason for failure is timeout.
+# Retries excepted due to this do not contribute to the max_request_failures limit below.
+max_timeout_attempts = get_int_from_env("max_timeout_attempts", 3)
+
 # Number of api failures that would stop the risk audit completely
 max_request_failures = get_int_from_env("max_request_failures", 5)
