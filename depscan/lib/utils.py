@@ -1,3 +1,4 @@
+import ast
 import os
 import re
 
@@ -150,10 +151,11 @@ def search_pkgs(db, project_type, pkg_list):
     return raw_results, pkg_aliases
 
 
-def get_pkgs_by_scope(pkg_list):
+def get_pkgs_by_scope(project_type, pkg_list):
     """
     Method to return the packages by scope as defined in CycloneDX spec - required, optional and excluded
 
+    :param project_type: Project type
     :param pkg_list: List of packages
     :return: Dictionary of packages categorized by scope if available. Empty if no scope information is available
     """
@@ -164,6 +166,29 @@ def get_pkgs_by_scope(pkg_list):
             scope = pkg.get("scope").lower()
             # TODO: Use purl here
             scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+    return scoped_pkgs
+
+
+def get_scope_from_imports(project_type, pkg_list, all_imports):
+    """
+    Method to compute the packages scope as defined in CycloneDX spec - required, optional and excluded
+
+    :param project_type: Project type
+    :param pkg_list: List of packages
+    :param all_imports: List of imports detected
+
+    :return: Dictionary of packages categorized by scope if available. Empty if no scope information is available
+    """
+    scoped_pkgs = {}
+    if not pkg_list or not all_imports:
+        return scoped_pkgs
+    for pkg in pkg_list:
+        scope = "optional"
+        vendor, name = get_pkg_vendor_name(pkg)
+        if name in all_imports or name.lower().replace("py", "") in all_imports:
+            scope = "required"
+        scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+        scoped_pkgs[scope].append(f"{project_type}:{name.lower()}")
     return scoped_pkgs
 
 
@@ -201,3 +226,29 @@ def max_version(version_list):
         if not version_compare(version_list[i], min_ver, max_ver):
             max_ver = version_list[i]
     return max_ver
+
+
+def get_all_imports(src_dir):
+    """Method to collect all package imports from a python file"""
+    import_list = set()
+    py_files = find_files(src_dir, ".py", quick=False)
+    if not py_files:
+        return import_list
+    for afile in py_files:
+        with open(os.path.join(afile), "rb") as f:
+            content = f.read()
+        parsed = ast.parse(content)
+        for node in ast.walk(parsed):
+            if isinstance(node, ast.Import):
+                for name in node.names:
+                    pkg = name.name.split(".")[0]
+                    import_list.add(pkg)
+                    import_list.add(pkg.lower().replace("py", ""))
+            elif isinstance(node, ast.ImportFrom):
+                if node.level > 0:
+                    continue
+                if getattr(node, "module"):
+                    pkg = node.module.split(".")[0]
+                    import_list.add(pkg)
+                    import_list.add(pkg.lower().replace("py", ""))
+    return import_list

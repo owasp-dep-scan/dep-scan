@@ -95,7 +95,7 @@ def build_args():
     parser.add_argument(
         "--bom",
         dest="bom",
-        help="UNUSED: Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
+        help="Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument(
         "-i", "--src", dest="src_dir", help="Source directory", required=True
@@ -269,7 +269,15 @@ def main():
         if not pkg_list:
             LOG.debug("No packages found in the project!")
             continue
-        scoped_pkgs = utils.get_pkgs_by_scope(pkg_list)
+        scoped_pkgs = {}
+        if project_type in ["python"]:
+            all_imports = utils.get_all_imports(src_dir)
+            LOG.debug(f"Identified {len(all_imports)} imports in your project")
+            scoped_pkgs = utils.get_scope_from_imports(
+                project_type, pkg_list, all_imports
+            )
+        else:
+            scoped_pkgs = utils.get_pkgs_by_scope(project_type, pkg_list)
         if not args.no_license_scan:
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir), pkg_list=pkg_list
@@ -292,7 +300,11 @@ def main():
                         project_type, args.private_ns, pkg_list, risk_report_file
                     )
                     analyse_pkg_risks(
-                        project_type, args.private_ns, risk_results, risk_report_file
+                        project_type,
+                        scoped_pkgs,
+                        args.private_ns,
+                        risk_results,
+                        risk_report_file,
                     )
                 except Exception as e:
                     LOG.error(e)

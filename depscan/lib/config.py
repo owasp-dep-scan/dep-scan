@@ -129,6 +129,17 @@ ignore_directories = [
     "node_modules",
     ".terraform",
     ".serverless",
+    "venv",
+    "examples",
+    "tutorials",
+    "samples",
+    "migrations",
+    "db_migrations",
+    "unittests",
+    "unittests_legacy",
+    "stubs",
+    "mock",
+    "mocks",
 ]
 
 # Package types allowed for each language

@@ -49,6 +49,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         id = vuln_occ_dict.get("id")
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
+        project_type_pkg = "{}:{}".format(
+            project_type, package_issue.affected_location.package
+        )
         if package_issue.affected_location.vendor:
             full_pkg = "{}:{}".format(
                 package_issue.affected_location.vendor,
@@ -61,15 +64,18 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         package_name_style = ""
         id_style = ""
         pkg_severity = vuln_occ_dict.get("severity")
-        if full_pkg in required_pkgs and pkg_severity in ("CRITICAL", "HIGH"):
+        is_required = False
+        if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
+            is_required = True
+        if is_required and pkg_severity in ("CRITICAL", "HIGH"):
             id_style = ":point_right: "
             pkg_attention_count = pkg_attention_count + 1
             if fixed_location:
                 fix_version_count = fix_version_count + 1
-        if full_pkg in required_pkgs:
+        if is_required:
             package_usage = "[bright_green][bold]Yes"
             package_name_style = "[bold]"
-        elif full_pkg in optional_pkgs:
+        elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
             package_usage = "[magenta]No"
             package_name_style = "[italic]"
         package = full_pkg.split(":")[-1]
@@ -155,15 +161,18 @@ def jsonl_report(
                 )
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+            project_type_pkg = "{}:{}".format(
+                project_type, package_issue.affected_location.package
+            )
             fixed_location = sug_version_dict.get(
                 full_pkg, package_issue.fixed_location
             )
             package_usage = "N/A"
-            if full_pkg in required_pkgs:
+            if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
                 package_usage = "required"
-            elif full_pkg in optional_pkgs:
+            elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
                 package_usage = "optional"
-            elif full_pkg in excluded_pkgs:
+            elif full_pkg in excluded_pkgs or project_type_pkg in excluded_pkgs:
                 package_usage = "excluded"
             data_obj = {
                 "id": id,
@@ -181,7 +190,9 @@ def jsonl_report(
             outfile.write("\n")
 
 
-def analyse_pkg_risks(project_type, private_ns, risk_results, risk_report_file=None):
+def analyse_pkg_risks(
+    project_type, scoped_pkgs, private_ns, risk_results, risk_report_file=None
+):
     if not risk_results:
         return
     table = Table(
@@ -190,6 +201,9 @@ def analyse_pkg_risks(project_type, private_ns, risk_results, risk_report_file=N
         header_style="bold magenta",
     )
     report_data = []
+    required_pkgs = scoped_pkgs.get("required", [])
+    optional_pkgs = scoped_pkgs.get("optional", [])
+    excluded_pkgs = scoped_pkgs.get("excluded", [])
     headers = ["Package", "Used?", "Risk Score", "Identified Risks"]
     for h in headers:
         justify = "left"
@@ -201,6 +215,13 @@ def analyse_pkg_risks(project_type, private_ns, risk_results, risk_report_file=N
             continue
         risk_metrics = risk_obj.get("risk_metrics")
         scope = risk_obj.get("scope")
+        project_type_pkg = "{}:{}".format(project_type, pkg).lower()
+        if project_type_pkg in required_pkgs:
+            scope = "required"
+        elif project_type_pkg in optional_pkgs:
+            scope = "optional"
+        elif project_type_pkg in excluded_pkgs:
+            scope = "excluded"
         package_usage = "N/A"
         package_usage_simple = "N/A"
         if scope == "required":
