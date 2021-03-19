@@ -297,7 +297,11 @@ def main():
                 )
                 try:
                     risk_results = risk_audit(
-                        project_type, args.private_ns, pkg_list, risk_report_file
+                        project_type,
+                        scoped_pkgs,
+                        args.private_ns,
+                        pkg_list,
+                        risk_report_file,
                     )
                     analyse_pkg_risks(
                         project_type,

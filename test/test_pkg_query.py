@@ -138,7 +138,7 @@ def test_query_metadata():
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-node.xml"
     )
     pkg_list = get_pkg_list(test_bom)
-    metadata_dict = npm_metadata(pkg_list, None)
+    metadata_dict = npm_metadata({}, pkg_list, None)
     assert metadata_dict
 
 
@@ -148,7 +148,7 @@ def test_query_metadata1():
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-goof.json"
     )
     pkg_list = get_pkg_list(test_bom)
-    metadata_dict = npm_metadata(pkg_list, "snyk")
+    metadata_dict = npm_metadata({}, pkg_list, "snyk")
     assert metadata_dict
 
 
@@ -233,5 +233,5 @@ def test_query_metadata2():
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml"
     )
     pkg_list = get_pkg_list(test_bom)
-    metadata_dict = pypi_metadata(pkg_list, None)
+    metadata_dict = pypi_metadata({}, pkg_list, None)
     assert metadata_dict

@@ -32,10 +32,11 @@ def get_lookup_url(registry_type, pkg):
     return None
 
 
-def metadata_from_registry(registry_type, pkg_list, private_ns=None):
+def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None):
     """
     Method to query registry for the package metadata
 
+    :param scoped_pkgs: Scoped packages
     :param pkg_list: List of packages
     :param private_ns: Private namespace
     """
@@ -91,6 +92,16 @@ def metadata_from_registry(registry_type, pkg_list, private_ns=None):
                 if registry_type == "npm":
                     risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
                 elif registry_type == "pypi":
+                    project_type_pkg = "{}:{}".format("python", key).lower()
+                    required_pkgs = scoped_pkgs.get("required", [])
+                    optional_pkgs = scoped_pkgs.get("optional", [])
+                    excluded_pkgs = scoped_pkgs.get("excluded", [])
+                    if project_type_pkg in required_pkgs:
+                        scope = "required"
+                    elif project_type_pkg in optional_pkgs:
+                        scope = "optional"
+                    elif project_type_pkg in excluded_pkgs:
+                        scope = "excluded"
                     risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
                 metadata_dict[key] = {
                     "scope": scope,
@@ -111,24 +122,24 @@ def metadata_from_registry(registry_type, pkg_list, private_ns=None):
     return metadata_dict
 
 
-def npm_metadata(pkg_list, private_ns=None):
+def npm_metadata(scoped_pkgs, pkg_list, private_ns=None):
     """
     Method to query npm for the package metadata
 
     :param pkg_list: List of packages
     :param private_ns: Private namespace
     """
-    return metadata_from_registry("npm", pkg_list, private_ns)
+    return metadata_from_registry("npm", scoped_pkgs, pkg_list, private_ns)
 
 
-def pypi_metadata(pkg_list, private_ns=None):
+def pypi_metadata(scoped_pkgs, pkg_list, private_ns=None):
     """
     Method to query pypi for the package metadata
 
     :param pkg_list: List of packages
     :param private_ns: Private namespace
     """
-    return metadata_from_registry("pypi", pkg_list, private_ns)
+    return metadata_from_registry("pypi", scoped_pkgs, pkg_list, private_ns)
 
 
 def get_category_score(
