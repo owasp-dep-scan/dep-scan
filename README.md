@@ -15,7 +15,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
-If you have just come across this repo, probably the best place to start is to checkout the parent project (scan)[https://slscan.io] which include depscan along with a number of other tools.
+If you have just come across this repo, probably the best place to start is to checkout the parent project [scan](https://slscan.io) which include depscan along with a number of other tools.
 
 ## Features
 
