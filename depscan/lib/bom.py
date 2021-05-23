@@ -25,7 +25,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
             stdout=stdout,
             stderr=subprocess.STDOUT,
             cwd=cwd,
-            env=os.environ,
+            env=os.environ.copy(),
             check=False,
             shell=False,
             encoding="utf-8",
@@ -78,7 +78,7 @@ def parse_bom_ref(bomstr, licenses=None):
 
 
 def get_licenses(ele):
-    """"""
+    """ """
     license_list = []
     namespace = "{http://cyclonedx.org/schema/bom/1.2}"
     for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
@@ -101,7 +101,7 @@ def get_licenses(ele):
 
 
 def get_package(componentEle, licenses):
-    """"""
+    """ """
     bom_ref = componentEle.attrib.get("bom-ref")
     pkg = {"licenses": licenses, "vendor": "", "name": "", "version": "", "scope": ""}
     if bom_ref:
@@ -173,6 +173,19 @@ def get_pkg_list(xmlfile):
     return pkgs
 
 
+def get_pkg_by_type(pkg_list, pkg_type):
+    """Method to filter packages based on package type
+
+    :param pkg_list list of packages
+    :param pkg_type Package type
+    """
+    if not pkg_list:
+        return []
+    return [
+        pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)
+    ]
+
+
 def create_bom(project_type, bom_file, src_dir="."):
     """Method to create BOM file by executing cdxgen command
 
@@ -190,6 +203,10 @@ def create_bom(project_type, bom_file, src_dir="."):
             )
         )
         return False
+    if project_type in ("docker"):
+        LOG.info(
+            f"Generating Software Bill-of-Materials for container image {src_dir}. This might take a few mins ..."
+        )
     args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file, src_dir]
     exec_tool(args)
     return os.path.exists(bom_file)

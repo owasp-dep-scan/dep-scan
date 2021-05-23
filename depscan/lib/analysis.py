@@ -299,10 +299,15 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 data = [
                     *pkg_ver,
                     "{}{}".format(
-                        "[cyan]" if lic["spdx-id"].startswith("GPL") else "",
+                        "[cyan]"
+                        if "GPL" in lic["spdx-id"] or "CC-BY-" in lic["spdx-id"]
+                        else "",
                         lic["spdx-id"],
                     ),
-                    ", ".join(lic["conditions"]),
+                    ", ".join(lic["conditions"])
+                    .replace("--", " for ")
+                    .replace("-", " ")
+                    .title(),
                 ]
                 table.add_row(*data)
                 report_data.append(dict(zip(headers, data)))

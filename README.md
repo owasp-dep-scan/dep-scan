@@ -11,19 +11,24 @@
       |_|   |_|
 ```
 
-dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. The output is compatible with [grafeas](https://github.com/grafeas/grafeas). The tool is ideal for CI environments with built-in build breaker logic.
+dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. Both local repositories and container images are supported as input. The tool is ideal for CI environments with built-in build breaker logic.
 
 [![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
 
-If you have just come across this repo, probably the best place to start is to checkout the parent project [scan](https://slscan.io) which include depscan along with a number of other tools.
+If you have just come across this repo, probably the best place to start is to checkout the parent project [slscan](https://slscan.io) which include depscan along with a number of other tools.
 
 ## Features
 
+- Local repos and container image based scanning [1]
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Configurable `cache` and `sync` functionality to manage local cache data
-- Pre-installed and integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan)
+- Pre-installed and integrated with [slscan](https://github.com/ShiftLeftSecurity/sast-scan)
 - Suggest optimal fix version by package group (See suggest mode)
 - Perform deep packages risk audit (See risk audit)
+
+NOTE:
+
+- [1] Only application related packages in container images are included in scanning. OS packages are not included yet.
 
 ## Usage
 
@@ -43,7 +48,7 @@ This approach should work for all CI environments supported by scan.
 ### Scanning projects locally (Python version)
 
 ```bash
-npm install -g @appthreat/cdxgen
+sudo npm install -g @appthreat/cdxgen
 pip install appthreat-depscan
 ```
 
@@ -55,6 +60,46 @@ You can invoke the scan command directly with the various options.
 cd <project to scan>
 scan --src $PWD --report_file $PWD/reports/depscan.json
 ```
+
+Full list of options are below:
+
+```bash
+usage: scan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
+              [--no-error]
+  -h, --help            show this help message and exit
+  --no-banner           Do not display banner
+  --cache               Cache vulnerability information in platform specific user_data_dir
+  --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
+  --suggest             Suggest appropriate fix version for each identified vulnerability.
+  --risk-audit          Perform package risk audit (slow operation). Npm only.
+  --private-ns PRIVATE_NS
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma
+                        separated values accepted.
+  -t PROJECT_TYPE, --type PROJECT_TYPE
+                        Override project type if auto-detection is incorrect
+  --bom BOM             Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.
+  -i SRC_DIR, --src SRC_DIR
+                        Source directory
+  -o REPORT_FILE, --report_file REPORT_FILE
+                        Report filename with directory
+  --no-error            Continue on error to prevent build from breaking
+```
+
+### Scanning containers locally (Python version)
+
+Scan `latest` tag of the container `shiftleft/scan-slim`
+
+```bash
+python depscan/cli.py --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
+```
+
+You can also specify the image using the sha256 digest
+
+```bash
+python depscan/cli.py --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+```
+
+Refer to the docker tests under GitHub action workflow for this repo for more examples.
 
 ### Scanning projects locally (Docker container)
 
@@ -86,17 +131,18 @@ dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language  | Package format                                        |
-| --------- | ----------------------------------------------------- |
-| node.js   | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js |
-| java      | maven (pom.xml), gradle (build.gradle, .kts)          |
-| scala     | sbt                                                   |
-| php       | composer.lock                                         |
-| python    | setup.py, requirements.txt, Pipfile.lock, poetry.lock |
-| go        | go.sum, Gopkg.lock                                    |
-| ruby      | Gemfile.lock                                          |
-| rust      | Cargo.lock                                            |
-| .Net core | .csproj                                               |
+| Language           | Package format                                                         |
+| ------------------ | ---------------------------------------------------------------------- |
+| node.js            | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js                  |
+| java               | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt)          |
+| php                | composer.lock                                                          |
+| python             | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel |
+| go                 | go.mod, go.sum, Gopkg.lock                                             |
+| ruby               | Gemfile.lock, gemspec                                                  |
+| rust               | Cargo.toml, Cargo.lock                                                 |
+| .Net Framework     | .csproj, packages.config                                               |
+| .Net core          | .csproj, packages.config                                               |
+| docker / oci image | All supported languages excluding OS packages                          |
 
 **NOTE**
 

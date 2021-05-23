@@ -72,6 +72,14 @@ def detect_project_type(src_dir):
 
     :return List of detected types
     """
+    # container image support
+    if (
+        "docker.io" in src_dir
+        or "quay.io" in src_dir
+        or ":latest" in src_dir
+        or "@sha256" in src_dir
+    ):
+        return ["docker"]
     project_types = []
     if find_python_reqfiles(src_dir):
         project_types.append("python")

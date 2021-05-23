@@ -1,0 +1,39 @@
+name: docker tests
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macos-latest, windows-latest]
+        python-version: [3.8, 3.9]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        sudo npm install -g @appthreat/cdxgen
+    - name: Test container images
+      run: |
+        mkdir -p containertests
+        python depscan/cli.py --no-error --cache --src quay.io/appthreat/dep-scan -o containertests/depscan-scan.json -t docker
+        python depscan/cli.py --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
+        python depscan/cli.py --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+        python depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json
+        ls -ltr containertests
+      env:
+        PYTHONPATH: "."
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/upload-artifact@v1
+      with:
+        name: containertests
+        path: containertests

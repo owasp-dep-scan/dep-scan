@@ -21,7 +21,7 @@ from depscan.lib.analysis import (
     suggest_version,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
-from depscan.lib.bom import create_bom, get_pkg_list
+from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list
 from depscan.lib.config import license_data_dir
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
@@ -98,7 +98,7 @@ def build_args():
         help="Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument(
-        "-i", "--src", dest="src_dir", help="Source directory", required=True
+        "-i", "--src", dest="src_dir_image", help="Source directory or container image"
     )
     parser.add_argument(
         "-o",
@@ -118,7 +118,7 @@ def build_args():
         action="store_true",
         default=False,
         dest="no_license_scan",
-        help="Do not perform a scan for license limitations",
+        help="DREPRECATED: dep-scan doesn't perform license scanning by default",
     )
     return parser.parse_args()
 
@@ -225,30 +225,45 @@ def main():
     args = build_args()
     if not args.no_banner:
         print(at_logo)
-    src_dir = args.src_dir
-    if not args.src_dir:
+    src_dir = args.src_dir_image
+    reports_base_dir = "."
+    if not src_dir:
         src_dir = os.getcwd()
-    db = dbLib.get()
-    run_cacher = args.cache
-    areport_file = (
-        args.report_file
-        if args.report_file
-        else os.path.join(src_dir, "reports", "depscan.json")
-    )
-    reports_dir = os.path.dirname(areport_file)
-    # Create reports directory
-    if not os.path.exists(reports_dir):
-        os.makedirs(reports_dir)
     # Detect the project types and perform the right type of scan
     if args.project_type:
         project_types_list = args.project_type.split(",")
     else:
         project_types_list = utils.detect_project_type(src_dir)
+    if "docker" in project_types_list:
+        reports_base_dir = os.getcwd()
+    db = dbLib.get()
+    run_cacher = args.cache
+    areport_file = (
+        args.report_file
+        if args.report_file
+        else os.path.join(reports_base_dir, "reports", "depscan.json")
+    )
+    reports_dir = os.path.dirname(areport_file)
+    # Create reports directory
+    if not os.path.exists(reports_dir):
+        os.makedirs(reports_dir)
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: {}".format(project_types_list))
+    # Enable license scanning
+    if "license" in project_types_list:
+        os.environ["FETCH_LICENSE"] = "true"
+        project_types_list.remove("license")
+        console.print(
+            Panel(
+                f"License audit is enabled for this scan. This would increase the time by up to 10 minutes.",
+                title="License Audit",
+                expand=False,
+            )
+        )
     for project_type in project_types_list:
         sug_version_dict = {}
         pkg_aliases = {}
+        results = []
         report_file = areport_file.replace(".json", "-{}.json".format(project_type))
         risk_report_file = areport_file.replace(
             ".json", "-risk.{}.json".format(project_type)
@@ -278,7 +293,7 @@ def main():
             )
         else:
             scoped_pkgs = utils.get_pkgs_by_scope(project_type, pkg_list)
-        if not args.no_license_scan:
+        if os.getenv("FETCH_LICENSE", "") in (True, "1", "true"):
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir), pkg_list=pkg_list
             )
@@ -330,46 +345,65 @@ def main():
             )
             LOG.debug(f"No of packages {len(pkg_list)}")
             try:
-                results = audit(project_type, pkg_list, report_file)
+                audit_results = audit(project_type, pkg_list, report_file)
+                if audit_results:
+                    LOG.debug(f"Remote audit yielded {len(audit_results)} results")
+                    results = results + audit_results
             except Exception as e:
                 LOG.error("Remote audit was not successful")
                 LOG.error(e)
                 results = None
+        # In case of docker, check if there are any npm packages that can be audited remotely
+        if project_type in ("docker"):
+            npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
+            if npm_pkg_list:
+                LOG.debug(f"No of packages {len(npm_pkg_list)}")
+                try:
+                    audit_results = audit("nodejs", npm_pkg_list, report_file)
+                    if audit_results:
+                        LOG.debug(f"Remote audit yielded {len(audit_results)} results")
+                        results = results + audit_results
+                except Exception as e:
+                    LOG.error("Remote audit was not successful")
+                    LOG.error(e)
+        if not dbLib.index_count(db["index_file"]):
+            run_cacher = True
         else:
-            if not dbLib.index_count(db["index_file"]):
-                run_cacher = True
-            else:
-                LOG.debug(
-                    "Vulnerability database loaded from {}".format(config.vdb_bin_file)
-                )
-            sources_list = [NvdSource()]
-            if os.environ.get("GITHUB_TOKEN"):
-                sources_list.insert(0, GitHubSource())
-            else:
-                LOG.info(
-                    "To use GitHub advisory source please set the environment variable GITHUB_TOKEN!"
-                )
-            if run_cacher:
-                for s in sources_list:
-                    LOG.debug("Refreshing {}".format(s.__class__.__name__))
-                    s.refresh()
-            elif args.sync:
-                for s in sources_list:
-                    LOG.debug("Syncing {}".format(s.__class__.__name__))
-                    s.download_recent()
             LOG.debug(
-                "Vulnerability database contains {} records".format(
-                    dbLib.index_count(db["index_file"])
-                )
+                "Vulnerability database loaded from {}".format(config.vdb_bin_file)
             )
+        sources_list = [NvdSource()]
+        if os.environ.get("GITHUB_TOKEN"):
+            sources_list.insert(0, GitHubSource())
+        else:
             LOG.info(
-                "Performing regular scan for {} using plugin {}".format(
-                    src_dir, project_type
-                )
+                "To use GitHub advisory source please set the environment variable GITHUB_TOKEN!"
             )
-            results, pkg_aliases, sug_version_dict = scan(
-                db, project_type, pkg_list, args.suggest
+        if run_cacher:
+            for s in sources_list:
+                LOG.debug("Refreshing {}".format(s.__class__.__name__))
+                s.refresh()
+                run_cacher = False
+        elif args.sync:
+            for s in sources_list:
+                LOG.debug("Syncing {}".format(s.__class__.__name__))
+                s.download_recent()
+                run_cacher = False
+        LOG.debug(
+            "Vulnerability database contains {} records".format(
+                dbLib.index_count(db["index_file"])
             )
+        )
+        LOG.info(
+            "Performing regular scan for {} using plugin {}".format(
+                src_dir, project_type
+            )
+        )
+        vdb_results, pkg_aliases, sug_version_dict = scan(
+            db, project_type, pkg_list, args.suggest
+        )
+        if vdb_results:
+            results = results + vdb_results
         # Summarise and print results
         summary = summarise(
             project_type,
