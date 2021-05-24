@@ -249,7 +249,13 @@ export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4
 
 ## License scan
 
-dep-scan can automatically scan the dependencies for any license limitations and report them directly on the console log. The licenses data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behaviour could change in the future once the detection logic gets improved.
+dep-scan can scan the dependencies for any license limitations and report them directly on the console log. To enable license scanning set the environment variable `FETCH_LICENSE` to `true`.
+
+```
+export FETCH_LICENSE=true
+```
+
+The licenses data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behaviour could change in the future once the detection logic gets improved.
 
 ![License scan](docs/license-scan.png)
 
