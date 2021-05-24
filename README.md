@@ -93,6 +93,12 @@ Scan `latest` tag of the container `shiftleft/scan-slim`
 python depscan/cli.py --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
 ```
 
+Include `license` to the type to perform license audit.
+
+```bash
+python depscan/cli.py --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
+```
+
 You can also specify the image using the sha256 digest
 
 ```bash
