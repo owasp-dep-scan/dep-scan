@@ -5,11 +5,13 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="appthreat-depscan",
-    version="2.0.0",
+    version="2.0.1",
     author="Team AppThreat",
     author_email="cloud@appthreat.com",
     description="Fully open-source security audit for project dependencies based on known vulnerabilities and advisories.",
-    entry_points={"console_scripts": ["scan=depscan.cli:main"]},
+    entry_points={
+        "console_scripts": ["scan=depscan.cli:main", "depscan=depscan.cli:main"]
+    },
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/appthreat/dep-scan",

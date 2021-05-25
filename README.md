@@ -58,13 +58,13 @@ You can invoke the scan command directly with the various options.
 
 ```bash
 cd <project to scan>
-scan --src $PWD --report_file $PWD/reports/depscan.json
+depscan --src $PWD --report_file $PWD/reports/depscan.json
 ```
 
 Full list of options are below:
 
 ```bash
-usage: scan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
+usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
               [--no-error]
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
@@ -90,19 +90,27 @@ usage: scan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--
 Scan `latest` tag of the container `shiftleft/scan-slim`
 
 ```bash
-python depscan/cli.py --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
+depscan --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
 ```
 
 Include `license` to the type to perform license audit.
 
 ```bash
-python depscan/cli.py --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
+depscan --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
 ```
 
 You can also specify the image using the sha256 digest
 
 ```bash
-python depscan/cli.py --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+depscan --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+```
+
+You can also save container images using docker or podman save command and pass the archive to depscan for scanning.
+
+```bash
+docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
+# podman save --format oci-archive -o /tmp/scanslim.tar shiftleft/scan-slim:latest
+depscan --no-error --src /tmp/scanslim.tar -o reports/depscan-scan.json -t docker
 ```
 
 Refer to the docker tests under GitHub action workflow for this repo for more examples.
