@@ -43,7 +43,7 @@ def build_args():
     Constructs command line arguments for the vulndb tool
     """
     parser = argparse.ArgumentParser(
-        description="Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
+        description="Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories."
     )
     parser.add_argument(
         "--no-banner",
@@ -226,15 +226,19 @@ def main():
     if not args.no_banner:
         print(at_logo)
     src_dir = args.src_dir_image
-    reports_base_dir = "."
     if not src_dir:
         src_dir = os.getcwd()
+    reports_base_dir = src_dir
     # Detect the project types and perform the right type of scan
     if args.project_type:
         project_types_list = args.project_type.split(",")
     else:
         project_types_list = utils.detect_project_type(src_dir)
-    if "docker" in project_types_list:
+    if (
+        "docker" in project_types_list
+        or "podman" in project_types_list
+        or "container" in project_types_list
+    ):
         reports_base_dir = os.getcwd()
     db = dbLib.get()
     run_cacher = args.cache

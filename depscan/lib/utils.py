@@ -78,6 +78,8 @@ def detect_project_type(src_dir):
         or "quay.io" in src_dir
         or ":latest" in src_dir
         or "@sha256" in src_dir
+        or src_dir.endswith(".tar")
+        or src_dir.endswith(".tar.gz")
     ):
         return ["docker"]
     project_types = []
