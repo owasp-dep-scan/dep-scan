@@ -16,7 +16,15 @@ def test_license_data():
         "choosealicense.com",
         "_licenses",
     )
-    return build_license_data(licenses_dir)
+    spdx_license_list = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "..",
+        "vendor",
+        "spdx",
+        "json",
+        "licenses.json",
+    )
+    return build_license_data(licenses_dir, spdx_license_list)
 
 
 def test_lookup(test_license_data):
@@ -95,3 +103,18 @@ def test_large_lookup(test_license_data):
     pkg_lic_dict = bulk_lookup(test_license_data, pkg_list)
     assert pkg_lic_dict
     analysis.analyse_licenses("nodejs", pkg_lic_dict)
+
+
+def test_unvendor_license(test_license_data):
+    pkg_lic_dict = bulk_lookup(
+        test_license_data,
+        [
+            {
+                "vendor": "npm",
+                "name": "jszip",
+                "version": "3.2.2",
+                "licenses": ["CC-BY-NC-1.0"],
+            }
+        ],
+    )
+    assert pkg_lic_dict == {'npm:jszip@3.2.2': [{'title': 'Creative Commons Attribution Non Commercial 1.0 Generic', 'spdx-id': 'CC-BY-NC-1.0', 'osi_approved': False, 'fsf_libre': None, 'conditions': ['See https://spdx.org/licenses/CC-BY-NC-1.0.json'], 'condition_flag': True}]}

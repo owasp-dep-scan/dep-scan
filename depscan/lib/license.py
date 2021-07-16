@@ -1,11 +1,23 @@
+import json
 import yaml
 
 from depscan.lib.utils import find_files
 
 
-def build_license_data(license_dir):
+def build_license_data(license_dir, spdx_license_list):
     """Build license data based on the txt files"""
     licenses_dict = {}
+    with open(spdx_license_list) as fp:
+        spdx_license_data = json.load(fp)
+        for slic in spdx_license_data.get("licenses"):
+            licenses_dict[slic["licenseId"]] = {
+                "title": slic["name"],
+                "spdx-id": slic["licenseId"],
+                "osi_approved": slic.get("isOsiApproved"),
+                "fsf_libre": slic.get("isFsfLibre"),
+                "conditions": [f"See {slic['detailsUrl']}"],
+                "condition_flag": not slic.get("isOsiApproved"),
+            }
     license_files = find_files(license_dir, "txt")
     for lfile in license_files:
         with open(lfile) as fp:

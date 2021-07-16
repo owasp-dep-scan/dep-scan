@@ -20,6 +20,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
     )
+    ids_seen = {}
     required_pkgs = scoped_pkgs.get("required", [])
     optional_pkgs = scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
@@ -59,6 +60,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             )
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+        if ids_seen.get(id + full_pkg):
+            continue
+        ids_seen[id + full_pkg] = True
         fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         package_usage = "N/A"
         package_name_style = ""
@@ -145,6 +149,7 @@ def jsonl_report(
     :param pkg_aliases: Package alias
     :param out_file_name: Output filename
     """
+    ids_seen = {}
     required_pkgs = scoped_pkgs.get("required", [])
     optional_pkgs = scoped_pkgs.get("optional", [])
     excluded_pkgs = scoped_pkgs.get("excluded", [])
@@ -161,6 +166,9 @@ def jsonl_report(
                 )
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+            if ids_seen.get(id + full_pkg):
+                continue
+            ids_seen[id + full_pkg] = True
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package
             )
@@ -296,18 +304,23 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 table.add_row(*data)
                 report_data.append(dict(zip(headers, data)))
             elif lic["condition_flag"]:
+                conditions_str = ", ".join(lic["conditions"])
+                if "http" not in conditions_str:
+                    conditions_str = (
+                        conditions_str.replace("--", " for ").replace("-", " ").title()
+                    )
                 data = [
                     *pkg_ver,
                     "{}{}".format(
                         "[cyan]"
-                        if "GPL" in lic["spdx-id"] or "CC-BY-" in lic["spdx-id"]
+                        if "GPL" in lic["spdx-id"]
+                        or "CC-BY-" in lic["spdx-id"]
+                        or "Facebook" in lic["spdx-id"]
+                        or "WTFPL" in lic["spdx-id"]
                         else "",
                         lic["spdx-id"],
                     ),
-                    ", ".join(lic["conditions"])
-                    .replace("--", " for ")
-                    .replace("-", " ")
-                    .title(),
+                    conditions_str,
                 ]
                 table.add_row(*data)
                 report_data.append(dict(zip(headers, data)))

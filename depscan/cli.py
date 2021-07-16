@@ -22,7 +22,7 @@ from depscan.lib.analysis import (
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list
-from depscan.lib.config import license_data_dir
+from depscan.lib.config import license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
 
@@ -299,7 +299,8 @@ def main():
             scoped_pkgs = utils.get_pkgs_by_scope(project_type, pkg_list)
         if os.getenv("FETCH_LICENSE", "") in (True, "1", "true"):
             licenses_results = bulk_lookup(
-                build_license_data(license_data_dir), pkg_list=pkg_list
+                build_license_data(license_data_dir, spdx_license_list),
+                pkg_list=pkg_list,
             )
             license_report_file = os.path.join(
                 reports_dir, "license-" + project_type + ".json"

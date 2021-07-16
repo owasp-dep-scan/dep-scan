@@ -10,6 +10,16 @@ license_data_dir = join(
     "_licenses",
 )
 
+spdx_license_list = join(
+    dirname(realpath(__file__)),
+    "..",
+    "..",
+    "vendor",
+    "spdx",
+    "json",
+    "licenses.json",
+)
+
 # CPE Vendor aliases
 vendor_alias = {
     "org.apache.tomcat.embed": "apache",
