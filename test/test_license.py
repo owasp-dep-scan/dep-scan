@@ -117,4 +117,15 @@ def test_unvendor_license(test_license_data):
             }
         ],
     )
-    assert pkg_lic_dict == {'npm:jszip@3.2.2': [{'title': 'Creative Commons Attribution Non Commercial 1.0 Generic', 'spdx-id': 'CC-BY-NC-1.0', 'osi_approved': False, 'fsf_libre': None, 'conditions': ['See https://spdx.org/licenses/CC-BY-NC-1.0.json'], 'condition_flag': True}]}
+    assert pkg_lic_dict == {
+        "npm:jszip@3.2.2": [
+            {
+                "title": "Creative Commons Attribution Non Commercial 1.0 Generic",
+                "spdx-id": "CC-BY-NC-1.0",
+                "osi_approved": False,
+                "fsf_libre": None,
+                "conditions": ["See https://spdx.org/licenses/CC-BY-NC-1.0.json"],
+                "condition_flag": True,
+            }
+        ]
+    }

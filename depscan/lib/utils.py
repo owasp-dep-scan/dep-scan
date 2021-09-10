@@ -65,6 +65,29 @@ def find_files(src, src_ext_name, quick=False):
     return result
 
 
+def is_binary_string(content):
+    """
+    Method to check if the given content is a binary string
+    """
+    textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+    return bool(content.translate(None, textchars))
+
+
+def is_exe(src):
+    """Detect if the source is a binary file
+
+    :param src: Source path
+
+    :return True if binary file. False otherwise.
+    """
+    if os.path.isfile(src):
+        try:
+            return is_binary_string(open(src, "rb").read(1024))
+        except Exception:
+            return False
+    return False
+
+
 def detect_project_type(src_dir):
     """Detect project type by looking for certain files
 
@@ -82,6 +105,9 @@ def detect_project_type(src_dir):
         or src_dir.endswith(".tar.gz")
     ):
         return ["docker"]
+    # Check if the source is an exe file. Assume go for all binaries for now
+    if is_exe(src_dir):
+        return ["go", "binary"]
     project_types = []
     if find_python_reqfiles(src_dir):
         project_types.append("python")

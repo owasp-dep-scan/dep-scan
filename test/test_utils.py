@@ -1,3 +1,5 @@
+import os
+
 from depscan.lib import utils as utils
 
 
@@ -80,3 +82,9 @@ def test_get_pkgs_by_scope():
         "required": ["npm:parse5"],
         "optional": ["angular-devkit:build-webpack"],
     }
+
+
+def test_is_exe():
+    assert not utils.is_exe(os.path.join(__file__))
+    if os.path.exists("/bin/ls"):
+        assert utils.is_exe("/bin/ls")
