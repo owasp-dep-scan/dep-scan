@@ -58,7 +58,7 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add(name)
     if purl.startswith("pkg:golang") and not name.startswith("go"):
         # Ignore third party alternatives for builtins
-        if "golang" not in vendor and name not in ["net", "crypto", "http"]:
+        if "golang" not in vendor and name not in ["net", "crypto", "http", "text"]:
             vendor_aliases.add("golang")
     if not purl.startswith("pkg:golang"):
         vendor_aliases.add("get" + name)

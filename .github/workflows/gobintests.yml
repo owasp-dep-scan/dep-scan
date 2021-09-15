@@ -25,11 +25,17 @@ jobs:
       run: |
         mkdir -p gobintests
         cd gobintests
-        wget https://releases.hashicorp.com/terraform/1.0.7/terraform_1.0.7_linux_amd64.zip
+        wget -q https://releases.hashicorp.com/terraform/1.0.7/terraform_1.0.7_linux_amd64.zip
         unzip terraform_1.0.7_linux_amd64.zip
+        wget -q https://releases.hashicorp.com/consul/1.10.2/consul_1.10.2_linux_amd64.zip
+        unzip consul_1.10.2_linux_amd64.zip
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        chmod +x minikube-linux-amd64
         rm *.zip
         cd ..
         python depscan/cli.py --no-error --cache --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
+        python depscan/cli.py --no-error --cache --src gobintests/consul -o gobintests/depscan-consul.json -t go
+        python depscan/cli.py --no-error --cache --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
         ls -ltr gobintests
       env:
         PYTHONPATH: "."
