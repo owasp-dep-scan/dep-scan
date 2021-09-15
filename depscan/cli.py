@@ -98,7 +98,10 @@ def build_args():
         help="Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument(
-        "-i", "--src", dest="src_dir_image", help="Source directory or container image"
+        "-i",
+        "--src",
+        dest="src_dir_image",
+        help="Source directory or container image or binary file",
     )
     parser.add_argument(
         "-o",
@@ -238,6 +241,7 @@ def main():
         "docker" in project_types_list
         or "podman" in project_types_list
         or "container" in project_types_list
+        or "binary" in project_types_list
     ):
         reports_base_dir = os.getcwd()
     db = dbLib.get()
@@ -259,7 +263,7 @@ def main():
         project_types_list.remove("license")
         console.print(
             Panel(
-                f"License audit is enabled for this scan. This would increase the time by up to 10 minutes.",
+                "License audit is enabled for this scan. This would increase the time by up to 10 minutes.",
                 title="License Audit",
                 expand=False,
             )
