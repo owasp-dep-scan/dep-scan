@@ -151,7 +151,7 @@ The following projects and package-dependency format is supported by cdxgen.
 | java               | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt)          |
 | php                | composer.lock                                                          |
 | python             | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel |
-| go                 | go.mod, go.sum, Gopkg.lock                                             |
+| go                 | go.mod, go.sum, Gopkg.lock, binary                                     |
 | ruby               | Gemfile.lock, gemspec                                                  |
 | rust               | Cargo.toml, Cargo.lock                                                 |
 | .Net Framework     | .csproj, packages.config                                               |
