@@ -1,0 +1,42 @@
+name: gobintests tests
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        sudo npm install -g @appthreat/cdxgen
+    - name: Test go binaries
+      run: |
+        mkdir -p gobintests
+        cd gobintests
+        wget -q https://releases.hashicorp.com/terraform/1.0.7/terraform_1.0.7_linux_amd64.zip
+        unzip terraform_1.0.7_linux_amd64.zip
+        wget -q https://releases.hashicorp.com/consul/1.10.2/consul_1.10.2_linux_amd64.zip
+        unzip consul_1.10.2_linux_amd64.zip
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        chmod +x minikube-linux-amd64
+        rm *.zip
+        cd ..
+        python depscan/cli.py --no-error --cache --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
+        python depscan/cli.py --no-error --cache --src gobintests/consul -o gobintests/depscan-consul.json -t go
+        python depscan/cli.py --no-error --cache --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
+        ls -ltr gobintests
+      env:
+        PYTHONPATH: "."
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
