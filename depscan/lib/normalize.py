@@ -82,8 +82,12 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
         vendor_aliases.add(name + "project")
-    elif purl.startswith("pkg:npm") and not name.startswith("node-"):
-        name_aliases.add("node-" + name)
+    elif purl.startswith("pkg:npm"):
+        if not name.startswith("node-"):
+            name_aliases.add("node-" + name)
+        # pg-promise CVE is filed as pg
+        if name.endswith("-promise"):
+            name_aliases.add(name.replace("-promise", ""))
     elif purl.startswith("pkg:crates") and not name.startswith("rust-"):
         name_aliases.add("rust-" + name)
     elif purl.startswith("pkg:composer") and not name.startswith("php-"):
