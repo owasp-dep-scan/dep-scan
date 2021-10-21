@@ -120,6 +120,7 @@ package_alias = {
     "json-smart": "json-smart-v2",
     "ojdbc7": "jdbc",
     "System.Text": ".net",
+    "Microsoft.IdentityModel.Clients.ActiveDirectory": "active_directory_authentication_library",
 }
 
 # Default ignore list
