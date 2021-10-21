@@ -1,4 +1,5 @@
 import json
+
 import yaml
 
 from depscan.lib.utils import find_files

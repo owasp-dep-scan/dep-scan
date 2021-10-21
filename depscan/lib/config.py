@@ -53,6 +53,7 @@ vendor_alias = {
     "tensorflow": "google",
     "ansible": "redhat",
     "io.springfox": "smartbear",
+    "log4net": "apache",
 }
 
 # Package aliases
@@ -118,6 +119,7 @@ package_alias = {
     "hibernate-core": "hibernate_orm",
     "json-smart": "json-smart-v2",
     "ojdbc7": "jdbc",
+    "System.Text": ".net",
 }
 
 # Default ignore list

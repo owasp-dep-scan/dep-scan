@@ -42,6 +42,7 @@ def create_pkg_variations(pkg_dict):
     purl = pkg_dict.get("purl", "")
     if vendor:
         vendor_aliases.add(vendor)
+        vendor_aliases.add(vendor.lower())
         if (
             vendor.startswith("org.")
             or vendor.startswith("io.")
@@ -64,7 +65,7 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("get" + name)
         vendor_aliases.add(name + "_project")
     for k, v in config.vendor_alias.items():
-        if vendor.startswith(k) or k.startswith(vendor):
+        if vendor and (vendor.startswith(k) or k.startswith(vendor)):
             vendor_aliases.add(k)
             vendor_aliases.add(v)
         elif name == k:
@@ -94,6 +95,15 @@ def create_pkg_variations(pkg_dict):
         name_aliases.add("php-" + name)
     elif purl.startswith("pkg:nuget"):
         vendor_aliases.add("nuget")
+        name_parts = name.split(".")
+        vendor_aliases.add(name_parts[0])
+        vendor_aliases.add(name_parts[0].lower())
+        # We dont want this to match microsoft windows
+        if "windows" not in name_parts[-1].lower():
+            name_aliases.add(name_parts[-1])
+            name_aliases.add(name_parts[-1].lower())
+        if name.lower().startswith("system"):
+            vendor_aliases.add("microsoft")
     elif purl.startswith("pkg:rubygems"):
         vendor_aliases.add("rubygems")
         vendor_aliases.add("rubyonrails")
