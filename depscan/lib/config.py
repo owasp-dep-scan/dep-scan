@@ -121,6 +121,7 @@ package_alias = {
     "ojdbc7": "jdbc",
     "System.Text": ".net",
     "Microsoft.IdentityModel.Clients.ActiveDirectory": "active_directory_authentication_library",
+    "log4j-core": "log4j",
 }
 
 # Default ignore list
