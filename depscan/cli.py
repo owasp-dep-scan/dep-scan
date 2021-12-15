@@ -10,6 +10,7 @@ from vdb.lib import config as config
 from vdb.lib import db as dbLib
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
+from vdb.lib.osv import OSVSource
 
 from depscan.lib import utils as utils
 from depscan.lib.analysis import (
@@ -337,7 +338,6 @@ def main():
                 except Exception as e:
                     LOG.error(e)
                     LOG.error("Risk audit was not successful")
-                    risk_results = None
             else:
                 console.print(
                     Panel(
@@ -363,7 +363,7 @@ def main():
                 LOG.error(e)
                 results = None
         # In case of docker, check if there are any npm packages that can be audited remotely
-        if project_type in ("docker"):
+        if project_type in ("podman", "docker"):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
             if npm_pkg_list:
                 LOG.debug(f"No of packages {len(npm_pkg_list)}")
@@ -381,13 +381,9 @@ def main():
             LOG.debug(
                 "Vulnerability database loaded from {}".format(config.vdb_bin_file)
             )
-        sources_list = [NvdSource()]
+        sources_list = [OSVSource(), NvdSource()]
         if os.environ.get("GITHUB_TOKEN"):
             sources_list.insert(0, GitHubSource())
-        else:
-            LOG.info(
-                "To use GitHub advisory source please set the environment variable GITHUB_TOKEN!"
-            )
         if run_cacher:
             for s in sources_list:
                 LOG.debug("Refreshing {}".format(s.__class__.__name__))

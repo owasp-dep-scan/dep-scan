@@ -25,7 +25,7 @@ console = Console(
     log_time=False,
     log_path=False,
     theme=custom_theme,
-    width=200,
+    width=280,
     color_system="256",
     force_terminal=True,
 )

@@ -28,7 +28,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
     for h in [
         "Id",
         "Package",
-        "Used?",
+        "Insights",
         "Version",
         "Fix Version",
         "Severity",
@@ -37,14 +37,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         justify = "left"
         if h == "Score":
             justify = "right"
-        width = None
-        if h == "Id":
-            width = 20
-        elif h == "Used?" or h == "Fix Version":
-            width = 10
-        elif h == "Description":
-            width = 58
-        table.add_column(header=h, justify=justify, width=width, no_wrap=False)
+        table.add_column(header=h, justify=justify, no_wrap=False)
     for res in results:
         vuln_occ_dict = res.to_dict()
         id = vuln_occ_dict.get("id")
@@ -65,6 +58,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         ids_seen[id + full_pkg] = True
         fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
         package_usage = "N/A"
+        insights = []
         package_name_style = ""
         id_style = ""
         pkg_severity = vuln_occ_dict.get("severity")
@@ -77,12 +71,25 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             if fixed_location:
                 fix_version_count = fix_version_count + 1
         if is_required:
-            package_usage = "[bright_green][bold]Yes"
+            package_usage = ":direct_hit: Direct usage"
             package_name_style = "[bold]"
         elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
-            package_usage = "[magenta]No"
+            package_usage = "[spring_green4]:information: Indirect dependency"
             package_name_style = "[italic]"
         package = full_pkg.split(":")[-1]
+        clinks = classify_links(
+            id,
+            full_pkg,
+            vuln_occ_dict.get("type"),
+            package_issue.affected_location.version,
+            vuln_occ_dict.get("related_urls"),
+        )
+        if package_usage != "N/A":
+            insights.append(package_usage)
+        if clinks.get("poc") or clinks.get("Bug Bounty"):
+            insights.append("[yellow]:notebook_with_decorative_cover: Has PoC")
+        if clinks.get("exploit") or clinks.get("Apache Security"):
+            insights.append("[bright_red]:exclamation_mark: Known exploits")
         table.add_row(
             "{}{}{}{}".format(
                 id_style,
@@ -91,7 +98,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
                 id,
             ),
             "{}{}".format(package_name_style, package),
-            package_usage,
+            "\n".join(insights),
             package_issue.affected_location.version,
             fixed_location,
             "{}{}".format(
@@ -106,12 +113,12 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
     console.print(table)
     if scoped_pkgs:
         if pkg_attention_count:
-            rmessage = f":heavy_exclamation_mark: [magenta]{pkg_attention_count}[/magenta] out of {len(results)} vulnerabilities requires your attention."
+            rmessage = f":point_right: [magenta]{pkg_attention_count}[/magenta] out of {len(results)} vulnerabilities requires your attention."
             if fix_version_count:
                 if fix_version_count == pkg_attention_count:
                     rmessage += "\n:white_heavy_check_mark: You can update [bright_green]all[/bright_green] the packages using the mentioned fix version to remediate."
                 else:
-                    rmessage += f"\nYou can remediate [bright_green]{fix_version_count}[/bright_green] {'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} by updating the packages using the fix version :thumbsup:."
+                    rmessage += f"\nYou can remediate [bright_green]{fix_version_count}[/bright_green] {'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} by updating the packages using the fix version :thumbsup:"
             console.print(
                 Panel(
                     rmessage,
@@ -366,3 +373,24 @@ def suggest_version(results, pkg_aliases={}):
             if mversion:
                 sug_map[k] = mversion
     return sug_map
+
+
+def classify_links(id, package, package_type, version, related_urls):
+    """Method to classify and identify well-known links"""
+    clinks = {}
+    for rurl in related_urls:
+        if "github.com" in rurl and "/pull" in rurl:
+            clinks["GitHub PR"] = rurl
+        elif "github.com" in rurl and "/issues" in rurl:
+            clinks["GitHub Issue"] = rurl
+        elif "poc" in rurl:
+            clinks["poc"] = rurl
+        elif "apache.org" in rurl and "security" in rurl:
+            clinks["Apache Security"] = rurl
+        elif "exploit-db" in rurl or "exploit-database" in rurl or "seebug.org" in rurl:
+            clinks["exploit"] = rurl
+        elif "github.com/advisories" in rurl:
+            clinks["GitHub Advisory"] = rurl
+        elif "hackerone" in rurl or "bugcrowd" in rurl or "bug-bounty" in rurl:
+            clinks["Bug Bounty"] = rurl
+    return clinks

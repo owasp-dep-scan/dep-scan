@@ -13,22 +13,27 @@
 
 dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. Both local repositories and container images are supported as input. The tool is ideal for CI environments with built-in build breaker logic.
 
-[![Docker Repository on Quay](https://quay.io/repository/appthreat/dep-scan/status "Docker Repository on Quay")](https://quay.io/repository/appthreat/dep-scan)
-
 If you have just come across this repo, probably the best place to start is to checkout the parent project [slscan](https://slscan.io) which include depscan along with a number of other tools.
 
 ## Features
 
-- Local repos and container image based scanning [1]
+- Local repos and container image based scanning with CVE insights [1]
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Configurable `cache` and `sync` functionality to manage local cache data
-- Pre-installed and integrated with [slscan](https://github.com/ShiftLeftSecurity/sast-scan)
 - Suggest optimal fix version by package group (See suggest mode)
-- Perform deep packages risk audit (See risk audit)
+- Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 NOTE:
 
 - [1] Only application related packages in container images are included in scanning. OS packages are not included yet.
+
+![Depscan insights](docs/depscan-latest.png)
+
+### Vulnerability Data sources
+
+- OSV
+- NVD
+- GitHub
+- NPM
 
 ## Usage
 
@@ -145,18 +150,17 @@ dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language           | Package format                                                         |
-| ------------------ | ---------------------------------------------------------------------- |
-| node.js            | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js                  |
-| java               | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt)          |
-| php                | composer.lock                                                          |
-| python             | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel |
-| go                 | go.mod, go.sum, Gopkg.lock, binary                                     |
-| ruby               | Gemfile.lock, gemspec                                                  |
-| rust               | Cargo.toml, Cargo.lock                                                 |
-| .Net Framework     | .csproj, packages.config                                               |
-| .Net core          | .csproj, packages.config                                               |
-| docker / oci image | All supported languages excluding OS packages                          |
+| Language           | Package format                                                               |
+| ------------------ | ---------------------------------------------------------------------------- |
+| node.js            | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js                        |
+| java               | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt)                |
+| php                | composer.lock                                                                |
+| python             | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl |
+| go                 | binary, go.mod, go.sum, Gopkg.lock                                           |
+| ruby               | Gemfile.lock, gemspec                                                        |
+| rust               | Cargo.toml, Cargo.lock                                                       |
+| .Net               | .csproj, packages.config, project.assets.json, packages.lock.json            |
+| docker / oci image | All supported languages excluding OS packages                                |
 
 **NOTE**
 
