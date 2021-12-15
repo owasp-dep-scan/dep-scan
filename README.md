@@ -17,16 +17,16 @@ If you have just come across this repo, probably the best place to start is to c
 
 ## Features
 
-- Local repos and container image based scanning [1]
+- Local repos and container image based scanning with CVE insights [1]
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Configurable `cache` and `sync` functionality to manage local cache data
-- Pre-installed and integrated with [slscan](https://github.com/ShiftLeftSecurity/sast-scan)
 - Suggest optimal fix version by package group (See suggest mode)
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 NOTE:
 
 - [1] Only application related packages in container images are included in scanning. OS packages are not included yet.
+
+![Depscan insights](docs/depscan-latest.png)
 
 ### Vulnerability Data sources
 
