@@ -74,7 +74,7 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             package_usage = ":direct_hit: Direct usage"
             package_name_style = "[bold]"
         elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
-            package_usage = "[spring_green4]:information: Indirect dependency"
+            package_usage = "[spring_green4]:information: Indirect dependency[/spring_green4]"
             package_name_style = "[italic]"
         package = full_pkg.split(":")[-1]
         clinks = classify_links(
@@ -87,9 +87,11 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         if package_usage != "N/A":
             insights.append(package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
-            insights.append("[yellow]:notebook_with_decorative_cover: Has PoC")
-        if clinks.get("exploit") or clinks.get("Apache Security"):
-            insights.append("[bright_red]:exclamation_mark: Known exploits")
+            insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
+        if clinks.get("vendor"):
+            insights.append(":receipt: Vendor Confirmed")
+        if clinks.get("exploit"):
+            insights.append("[bright_red]:exclamation_mark: Known exploits[/bright_red]")
         table.add_row(
             "{}{}{}{}".format(
                 id_style,
@@ -387,6 +389,12 @@ def classify_links(id, package, package_type, version, related_urls):
             clinks["poc"] = rurl
         elif "apache.org" in rurl and "security" in rurl:
             clinks["Apache Security"] = rurl
+            clinks["vendor"] = rurl
+        elif "rubyonrails-security" in rurl:
+            clinks["Ruby Security"] = rurl
+            clinks["vendor"] = rurl
+        elif "redhat.com" in rurl:
+            clinks["vendor"] = rurl
         elif "exploit-db" in rurl or "exploit-database" in rurl or "seebug.org" in rurl:
             clinks["exploit"] = rurl
         elif "github.com/advisories" in rurl:
