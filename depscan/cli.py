@@ -236,6 +236,8 @@ def main():
     # Detect the project types and perform the right type of scan
     if args.project_type:
         project_types_list = args.project_type.split(",")
+    elif args.bom:
+        project_types_list = ["bom"]
     else:
         project_types_list = utils.detect_project_type(src_dir)
     if (
