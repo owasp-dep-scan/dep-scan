@@ -12,6 +12,7 @@ setuptools.setup(
     entry_points={
         "console_scripts": ["scan=depscan.cli:main", "depscan=depscan.cli:main"]
     },
+    license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/appthreat/dep-scan",
