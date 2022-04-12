@@ -74,7 +74,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             package_usage = ":direct_hit: Direct usage"
             package_name_style = "[bold]"
         elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
-            package_usage = "[spring_green4]:information: Indirect dependency[/spring_green4]"
+            package_usage = (
+                "[spring_green4]:information: Indirect dependency[/spring_green4]"
+            )
             package_name_style = "[italic]"
         package = full_pkg.split(":")[-1]
         clinks = classify_links(
@@ -91,7 +93,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         if clinks.get("vendor"):
             insights.append(":receipt: Vendor Confirmed")
         if clinks.get("exploit"):
-            insights.append("[bright_red]:exclamation_mark: Known exploits[/bright_red]")
+            insights.append(
+                "[bright_red]:exclamation_mark: Known exploits[/bright_red]"
+            )
         table.add_row(
             "{}{}{}{}".format(
                 id_style,

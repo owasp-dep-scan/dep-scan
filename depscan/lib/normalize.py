@@ -104,7 +104,8 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add(name_parts[-1].lower())
         if name.lower().startswith("system"):
             vendor_aliases.add("microsoft")
-    elif purl.startswith("pkg:rubygems"):
+    elif purl.startswith("pkg:gem") or purl.startswith("pkg:rubygems"):
+        vendor_aliases.add("gem")
         vendor_aliases.add("rubygems")
         vendor_aliases.add("rubyonrails")
     for suffix in COMMON_SUFFIXES:

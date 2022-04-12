@@ -168,7 +168,7 @@ LANG_PKG_TYPES = {
     "nodejs": "npm",
     "go": "golang",
     "golang": "golang",
-    "ruby": "rubygems",
+    "ruby": "gem",
     "php": "composer",
     "dotnet": "nuget",
     "csharp": "nuget",
