@@ -150,17 +150,19 @@ dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language           | Package format                                                               |
-| ------------------ | ---------------------------------------------------------------------------- |
-| node.js            | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js                        |
-| java               | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt)                |
-| php                | composer.lock                                                                |
-| python             | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl |
-| go                 | binary, go.mod, go.sum, Gopkg.lock                                           |
-| ruby               | Gemfile.lock, gemspec                                                        |
-| rust               | Cargo.toml, Cargo.lock                                                       |
-| .Net               | .csproj, packages.config, project.assets.json, packages.lock.json            |
-| docker / oci image | All supported languages excluding OS packages                                |
+| Language           | Package format                                                                |
+| ------------------ | ----------------------------------------------------------------------------- |
+| node.js            | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js    |
+| java               | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel          |
+| php                | composer.lock                                                                 |
+| python             | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl  |
+| go                 | binary, go.mod, go.sum, Gopkg.lock                                            |
+| ruby               | Gemfile.lock, gemspec                                                         |
+| rust               | Cargo.toml, Cargo.lock                                                        |
+| .Net               | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg |
+| dart               | pubspec.lock, pubspec.yaml                                                    |
+| haskell            | cabal.project.freeze                                                          |
+| docker / oci image | All supported languages excluding OS packages                                 |
 
 **NOTE**
 

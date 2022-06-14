@@ -24,7 +24,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
             LOG.debug(
                 "License information would be fetched from the registry. This would take several minutes ..."
             )
-        subprocess.run(
+        cp = subprocess.run(
             args,
             stdout=stdout,
             stderr=subprocess.STDOUT,
@@ -34,6 +34,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
             shell=False,
             encoding="utf-8",
         )
+        LOG.debug(cp.stdout)
     except Exception as e:
         LOG.exception(e)
 
