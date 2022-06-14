@@ -19,11 +19,14 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         title=f"Dependency Scan Results ({project_type})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
+        show_lines=True,
     )
     ids_seen = {}
     required_pkgs = scoped_pkgs.get("required", [])
     optional_pkgs = scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
+    has_poc_count = 0
+    has_exploit_count = 0
     fix_version_count = 0
     for h in [
         "Id",
@@ -90,12 +93,14 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             insights.append(package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
+            has_poc_count = has_poc_count + 1
         if clinks.get("vendor"):
             insights.append(":receipt: Vendor Confirmed")
         if clinks.get("exploit"):
             insights.append(
-                "[bright_red]:exclamation_mark: Known exploits[/bright_red]"
+                "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
             )
+            has_exploit_count = has_exploit_count + 1
         table.add_row(
             "{}{}{}{}".format(
                 id_style,
@@ -117,9 +122,23 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             ),
         )
     console.print(table)
-    if scoped_pkgs:
-        if pkg_attention_count:
+    if scoped_pkgs or has_exploit_count:
+        if not pkg_attention_count and has_exploit_count:
+            rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
+            rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
+            if not scoped_pkgs:
+                rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
+            console.print(
+                Panel(
+                    rmessage,
+                    title="Recommendation",
+                    expand=False,
+                )
+            )
+        elif pkg_attention_count:
             rmessage = f":point_right: [magenta]{pkg_attention_count}[/magenta] out of {len(results)} vulnerabilities requires your attention."
+            if has_exploit_count:
+                rmessage += f"\nPrioritize the [magenta]{has_exploit_count}[/magenta] vulnerabilities with known exploits."
             if fix_version_count:
                 if fix_version_count == pkg_attention_count:
                     rmessage += "\n:white_heavy_check_mark: You can update [bright_green]all[/bright_green] the packages using the mentioned fix version to remediate."
@@ -394,12 +413,24 @@ def classify_links(id, package, package_type, version, related_urls):
         elif "apache.org" in rurl and "security" in rurl:
             clinks["Apache Security"] = rurl
             clinks["vendor"] = rurl
+        elif "debian.org" in rurl and "security" in rurl:
+            clinks["Debian Security"] = rurl
+            clinks["vendor"] = rurl
         elif "rubyonrails-security" in rurl:
             clinks["Ruby Security"] = rurl
             clinks["vendor"] = rurl
-        elif "redhat.com" in rurl:
+        elif "redhat.com" in rurl or "oracle.com" in rurl:
             clinks["vendor"] = rurl
-        elif "exploit-db" in rurl or "exploit-database" in rurl or "seebug.org" in rurl:
+        elif "openwall.com" in rurl or "oss-security" in rurl:
+            clinks["Mailing List"] = rurl
+            clinks["vendor"] = rurl
+        elif (
+            "exploit-db" in rurl
+            or "exploit-database" in rurl
+            or "seebug.org" in rurl
+            or "seclists.org" in rurl
+            or "nu11secur1ty" in rurl
+        ):
             clinks["exploit"] = rurl
         elif "github.com/advisories" in rurl:
             clinks["GitHub Advisory"] = rurl
