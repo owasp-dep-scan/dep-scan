@@ -162,6 +162,9 @@ The following projects and package-dependency format is supported by cdxgen.
 | .Net               | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg |
 | dart               | pubspec.lock, pubspec.yaml                                                    |
 | haskell            | cabal.project.freeze                                                          |
+| elixir             | mix.lock                                                                      |
+| c/c++              | conan.lock, conanfile.txt                                                     |
+| clojure            | Clojure CLI (deps.edn), Leiningen (project.clj)                               |
 | docker / oci image | All supported languages excluding OS packages                                 |
 
 **NOTE**

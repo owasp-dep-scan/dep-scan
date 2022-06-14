@@ -137,6 +137,22 @@ def detect_project_type(src_dir):
         src_dir, "Gemfile.lock", quick=True
     ):
         project_types.append("ruby")
+    if find_files(src_dir, "deps.edn", quick=True) or find_files(
+        src_dir, "project.clj", quick=True
+    ):
+        project_types.append("clojure")
+    if find_files(src_dir, "conan.lock", quick=True) or find_files(
+        src_dir, "conanfile.txt", quick=True
+    ):
+        project_types.append("cpp")
+    if find_files(src_dir, "pubspec.lock", quick=True) or find_files(
+        src_dir, "pubspec.yaml", quick=True
+    ):
+        project_types.append("dart")
+    if find_files(src_dir, "cabal.project.freeze", quick=True):
+        project_types.append("haskell")
+    if find_files(src_dir, "mix.lock", quick=True):
+        project_types.append("elixir")
     return project_types
 
 

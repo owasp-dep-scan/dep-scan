@@ -173,6 +173,11 @@ LANG_PKG_TYPES = {
     "dotnet": "nuget",
     "csharp": "nuget",
     "rust": "crates",
+    "dart": "pub",
+    "cpp": "conan",
+    "clojure": "clojars",
+    "haskell": "hackage",
+    "elixir": "hex",
 }
 
 
