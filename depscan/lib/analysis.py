@@ -159,6 +159,14 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
                     expand=False,
                 )
             )
+    else:
+        console.print(
+            Panel(
+                ":white_check_mark: No package requires immediate attention.",
+                title="Recommendation",
+                expand=False,
+            )
+        )
 
 
 def analyse(project_type, results):
