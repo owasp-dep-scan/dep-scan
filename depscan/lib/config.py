@@ -172,7 +172,7 @@ LANG_PKG_TYPES = {
     "php": "composer",
     "dotnet": "nuget",
     "csharp": "nuget",
-    "rust": "crates",
+    "rust": "cargo",
     "dart": "pub",
     "cpp": "conan",
     "clojure": "clojars",
