@@ -121,6 +121,7 @@ package_alias = {
     "ojdbc7": "jdbc",
     "System.Text": ".net",
     "Microsoft.IdentityModel.Clients.ActiveDirectory": "active_directory_authentication_library",
+    "starkbank_ecdsa": "ecdsa-elixir",
 }
 
 # Default ignore list

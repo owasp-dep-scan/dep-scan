@@ -40,6 +40,10 @@ def create_pkg_variations(pkg_dict):
     vendor = pkg_dict.get("vendor")
     name = pkg_dict.get("name")
     purl = pkg_dict.get("purl", "")
+    if purl:
+        tmpParts = purl.split(":")
+        if tmpParts and len(tmpParts) > 1:
+            vendor_aliases.add(tmpParts[1])
     if vendor:
         vendor_aliases.add(vendor)
         vendor_aliases.add(vendor.lower())
@@ -108,6 +112,12 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("gem")
         vendor_aliases.add("rubygems")
         vendor_aliases.add("rubyonrails")
+    elif purl.startswith("pkg:hex") or purl.startswith("pkg:elixir"):
+        vendor_aliases.add("hex")
+        vendor_aliases.add("elixir")
+    elif purl.startswith("pkg:pub") or purl.startswith("pkg:dart"):
+        vendor_aliases.add("pub")
+        vendor_aliases.add("dart")
     for suffix in COMMON_SUFFIXES:
         if name.endswith(suffix):
             name_aliases.add(name.replace(suffix, ""))
