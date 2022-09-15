@@ -72,7 +72,7 @@ def test_dual_license(test_license_data):
                 "how": "Create a text file (typically named LICENSE or LICENSE.txt) in the root of your source code and copy the text of the license into the file. Replace [year] with the current year and [fullname] with the name (or names) of the copyright holders.",
                 "using": {
                     "Babel": "https://github.com/babel/babel/blob/master/LICENSE",
-                    ".NET Core": "https://github.com/dotnet/runtime/blob/master/LICENSE.TXT",
+                    ".NET": "https://github.com/dotnet/runtime/blob/main/LICENSE.TXT",
                     "Rails": "https://github.com/rails/rails/blob/master/MIT-LICENSE",
                 },
                 "permissions": [
