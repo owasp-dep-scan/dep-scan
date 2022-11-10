@@ -54,6 +54,7 @@ vendor_alias = {
     "ansible": "redhat",
     "io.springfox": "smartbear",
     "log4net": "apache",
+    "github": "github actions",
 }
 
 # Package aliases
@@ -179,6 +180,8 @@ LANG_PKG_TYPES = {
     "clojure": "clojars",
     "haskell": "hackage",
     "elixir": "hex",
+    "github actions": "github",
+    "github": "github",
 }
 
 

@@ -153,6 +153,8 @@ def detect_project_type(src_dir):
         project_types.append("haskell")
     if find_files(src_dir, "mix.lock", quick=True):
         project_types.append("elixir")
+    if find_files(src_dir, ".github", "workflows", "*.yml", quick=True):
+        project_types.append("elixir")
     return project_types
 
 

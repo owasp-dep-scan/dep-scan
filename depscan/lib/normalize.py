@@ -118,6 +118,9 @@ def create_pkg_variations(pkg_dict):
     elif purl.startswith("pkg:pub") or purl.startswith("pkg:dart"):
         vendor_aliases.add("pub")
         vendor_aliases.add("dart")
+    elif purl.startswith("pkg:github"):
+        vendor_aliases.add("github actions")
+        name_aliases.add(f"{vendor}/{name}")
     for suffix in COMMON_SUFFIXES:
         if name.endswith(suffix):
             name_aliases.add(name.replace(suffix, ""))

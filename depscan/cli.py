@@ -256,8 +256,8 @@ def main():
     )
     reports_dir = os.path.dirname(areport_file)
     # Create reports directory
-    if not os.path.exists(reports_dir):
-        os.makedirs(reports_dir)
+    if reports_dir and not os.path.exists(reports_dir):
+        os.makedirs(reports_dir, exist_ok=True)
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: {}".format(project_types_list))
     # Enable license scanning
