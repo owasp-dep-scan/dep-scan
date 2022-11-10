@@ -50,13 +50,14 @@ def find_python_reqfiles(path):
     return result
 
 
-def find_files(src, src_ext_name, quick=False):
+def find_files(src, src_ext_name, quick=False, filter=True):
     """
     Method to find files with given extenstion
     """
     result = []
     for root, dirs, files in os.walk(src):
-        filter_ignored_dirs(dirs)
+        if filter:
+            filter_ignored_dirs(dirs)
         for file in files:
             if file == src_ext_name or file.endswith(src_ext_name):
                 result.append(os.path.join(root, file))
@@ -153,8 +154,10 @@ def detect_project_type(src_dir):
         project_types.append("haskell")
     if find_files(src_dir, "mix.lock", quick=True):
         project_types.append("elixir")
-    if find_files(src_dir, ".github", "workflows", "*.yml", quick=True):
-        project_types.append("elixir")
+    if find_files(
+        os.path.join(src_dir, ".github", "workflows"), ".yml", quick=True, filter=False
+    ):
+        project_types.append("github")
     return project_types
 
 
