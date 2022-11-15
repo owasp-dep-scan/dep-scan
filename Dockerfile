@@ -1,4 +1,4 @@
-FROM python:3.9 AS build-env
+FROM python:3.10 AS build-env
 
 ARG CLI_VERSION
 ARG BUILD_DATE
@@ -6,7 +6,7 @@ ARG BUILD_DATE
 RUN groupadd --gid 1000 node \
   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
-ENV NODE_VERSION 16.13.1
+ENV NODE_VERSION 18.12.1
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && case "${dpkgArch##*-}" in \
@@ -22,16 +22,14 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && set -ex \
   && for key in \
     4ED778F539E3634C779C87C6D7062848A1AB005C \
-    94AE36675C464D64BAFA68DD7434390BDBE9B9C5 \
+    141F07595B7B3FFE74309A937405533BE57C7D57 \
     74F12602B6F1C4E913FAA37AD3A89613643B6201 \
-    71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
+    61FC681DFB92A079F1685E77973F295594EC4689 \
     8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
+    890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4 \
     C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
     C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C \
-    DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
-    A48C2BEE680E841632CD4E44F07496B3EB3C1762 \
     108F52B48DB57BB0CC439B2997B01419BD92F80A \
-    B9E2F5981AA6E0CD28160D9FF13993A75599653C \
   ; do \
       gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" || \
       gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" ; \
@@ -57,7 +55,7 @@ WORKDIR /appthreat
 RUN python3 setup.py install \
     && rm -rf /appthreat/*
 
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 LABEL maintainer="AppThreat" \
       org.label-schema.schema-version="1.0" \
@@ -73,7 +71,7 @@ LABEL maintainer="AppThreat" \
       org.label-schema.docker.cmd="docker run --rm -it --name dep-scan appthreat/dep-scan"
 
 COPY --from=build-env /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=build-env /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=build-env /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY --from=build-env /usr/local/bin/scan /usr/local/bin/scan
 COPY --from=build-env /usr/local/bin/depscan /usr/local/bin/depscan
 COPY --from=build-env /usr/local/bin/vdb /usr/local/bin/vdb
