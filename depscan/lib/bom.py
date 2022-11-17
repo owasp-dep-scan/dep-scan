@@ -1,7 +1,9 @@
 import json
 import os
 import shutil
+import stat
 import subprocess
+import sys
 import xml
 from urllib.parse import unquote_plus
 
@@ -191,6 +193,14 @@ def get_pkg_by_type(pkg_list, pkg_type):
     ]
 
 
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.dirname(__file__)
+    return os.path.join(base_path, relative_path)
+
+
 def create_bom(project_type, bom_file, src_dir="."):
     """Method to create BOM file by executing cdxgen command
 
@@ -202,12 +212,19 @@ def create_bom(project_type, bom_file, src_dir="."):
     """
     cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
     if not shutil.which(cdxgen_cmd):
-        LOG.warning(
-            "{} command not found. Please install using npm install @appthreat/cdxgen or set PATH variable".format(
-                cdxgen_cmd
+        local_bin = resource_path(os.path.join("local_bin", "cdxgen"))
+        if not os.path.exists(local_bin):
+            LOG.warning(
+                "{} command not found. Please install using npm install @appthreat/cdxgen or set PATH variable".format(
+                    cdxgen_cmd
+                )
             )
-        )
-        return False
+            return False
+        try:
+            os.chmod(local_bin, stat.S_IXUSR)
+            cdxgen_cmd = local_bin
+        except Exception as e:
+            pass
     if project_type in ("docker"):
         LOG.info(
             f"Generating Software Bill-of-Materials for container image {src_dir}. This might take a few mins ..."

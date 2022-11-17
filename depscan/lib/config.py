@@ -1,24 +1,51 @@
 import os
-from os.path import dirname, join, realpath
+import sys
+from os.path import dirname, exists, join
 
-license_data_dir = join(
-    dirname(realpath(__file__)),
-    "..",
-    "..",
-    "vendor",
-    "choosealicense.com",
-    "_licenses",
-)
 
-spdx_license_list = join(
-    dirname(realpath(__file__)),
-    "..",
-    "..",
-    "vendor",
-    "spdx",
-    "json",
-    "licenses.json",
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = dirname(__file__)
+    return join(base_path, relative_path)
+
+
+license_data_dir = resource_path(
+    join(
+        "..",
+        "..",
+        "vendor",
+        "choosealicense.com",
+        "_licenses",
+    )
 )
+spdx_license_list = resource_path(
+    join(
+        "..",
+        "..",
+        "vendor",
+        "spdx",
+        "json",
+        "licenses.json",
+    )
+)
+if not exists(license_data_dir):
+    license_data_dir = resource_path(
+        join(
+            "vendor",
+            "choosealicense.com",
+            "_licenses",
+        )
+    )
+    spdx_license_list = resource_path(
+        join(
+            "vendor",
+            "spdx",
+            "json",
+            "licenses.json",
+        )
+    )
 
 # CPE Vendor aliases
 vendor_alias = {
