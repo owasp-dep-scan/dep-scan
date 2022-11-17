@@ -31,14 +31,14 @@ If you have just come across this repo, probably the best place to start is to c
 - GitHub
 - NPM
 
-### Linux OS flavours
+### Linux distros
 
-OSV is currently the only data source for OS vulnerabilities. Below are the flavours of Linux that can work with dep-scan.
+OSV is currently the only data source for OS vulnerabilities. Below are the distros with OS vulnerability reporting.
 
 - Debian
 - Alpine
 
-Application vulnerabilities would be reported for all versions of Linux.
+Application vulnerabilities would be reported for all distros.
 
 ## Usage
 
