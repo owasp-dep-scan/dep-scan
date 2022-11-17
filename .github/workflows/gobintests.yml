@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10']
@@ -21,6 +21,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
         sudo npm install -g @appthreat/cdxgen
+        sudo npm install -g @ngcloudsec/cdxgen-plugins-bin
     - name: Test go binaries
       run: |
         mkdir -p gobintests

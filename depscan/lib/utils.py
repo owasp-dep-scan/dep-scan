@@ -158,6 +158,13 @@ def detect_project_type(src_dir):
         os.path.join(src_dir, ".github", "workflows"), ".yml", quick=True, filter=False
     ):
         project_types.append("github")
+    # Jenkins plugins or plain old jars
+    if (
+        "java" not in project_types
+        and find_files(src_dir, ".jar", quick=True)
+        or find_files(src_dir, ".hpi", quick=True)
+    ):
+        project_types.append("jar")
     return project_types
 
 

@@ -17,14 +17,10 @@ If you have just come across this repo, probably the best place to start is to c
 
 ## Features
 
-- Local repos and container image based scanning with CVE insights [1]
+- Local repos and container image based scanning with CVE insights
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Suggest optimal fix version by package group (See suggest mode)
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
-
-NOTE:
-
-- [1] Only application related packages in container images are included in scanning. OS packages are not included yet.
 
 ![Depscan insights](docs/depscan-latest.png)
 
@@ -34,6 +30,15 @@ NOTE:
 - NVD
 - GitHub
 - NPM
+
+### Linux OS flavours
+
+OSV is currently the only data source for OS vulnerabilities. Below are the flavours of Linux that can work with dep-scan.
+
+- Debian
+- Alpine
+
+Application vulnerabilities would be reported for all versions of Linux.
 
 ## Usage
 
@@ -54,6 +59,8 @@ This approach should work for all CI environments supported by scan.
 
 ```bash
 sudo npm install -g @appthreat/cdxgen
+# To require support for scanning containers, binary files and live OS install plugins
+sudo npm install -g @ngcloudsec/cdxgen-plugins-bin
 pip install appthreat-depscan
 ```
 
@@ -158,15 +165,16 @@ The following projects and package-dependency format is supported by cdxgen.
 | python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl  |
 | go                       | binary, go.mod, go.sum, Gopkg.lock                                            |
 | ruby                     | Gemfile.lock, gemspec                                                         |
-| rust                     | Cargo.toml, Cargo.lock                                                        |
+| rust                     | binary, Cargo.toml, Cargo.lock                                                |
 | .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg |
 | dart                     | pubspec.lock, pubspec.yaml                                                    |
 | haskell                  | cabal.project.freeze                                                          |
 | elixir                   | mix.lock                                                                      |
 | c/c++                    | conan.lock, conanfile.txt                                                     |
 | clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                               |
-| docker / oci image       | All supported languages excluding OS packages                                 |
+| docker / oci image       | All supported languages and Linux OS packages                                 |
 | GitHub Actions Workflows | .github/workflows/\*.yml                                                      |
+| Jenkins Plugins          | .hpi files                                                                    |
 
 **NOTE**
 
@@ -282,4 +290,3 @@ The licenses data is sourced from choosealicense.com and is quite limited. If th
 [Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than dependency check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool
 
 There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/) API server. For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!
-

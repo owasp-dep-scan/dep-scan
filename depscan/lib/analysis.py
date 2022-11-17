@@ -424,12 +424,31 @@ def classify_links(id, package, package_type, version, related_urls):
         elif "debian.org" in rurl and "security" in rurl:
             clinks["Debian Security"] = rurl
             clinks["vendor"] = rurl
+        elif "security.gentoo.org" in rurl:
+            clinks["Gentoo Security"] = rurl
+            clinks["vendor"] = rurl
+        elif "usn.ubuntu.com" in rurl:
+            clinks["Ubuntu Security"] = rurl
+            clinks["vendor"] = rurl
         elif "rubyonrails-security" in rurl:
             clinks["Ruby Security"] = rurl
             clinks["vendor"] = rurl
+        elif "support.apple.com" in rurl:
+            clinks["Apple Security"] = rurl
+            clinks["vendor"] = rurl
+        elif "gitlab.alpinelinux.org" in rurl or "bugs.busybox.net" in rurl:
+            clinks["vendor"] = rurl
         elif "redhat.com" in rurl or "oracle.com" in rurl:
             clinks["vendor"] = rurl
-        elif "openwall.com" in rurl or "oss-security" in rurl:
+        elif (
+            "openwall.com" in rurl
+            or "oss-security" in rurl
+            or "www.mail-archive.com" in rurl
+            or "lists.debian.org" in rurl
+            or "lists.fedoraproject.org" in rurl
+            or "portal.msrc.microsoft.com" in rurl
+            or "lists.opensuse.org" in rurl
+        ):
             clinks["Mailing List"] = rurl
             clinks["vendor"] = rurl
         elif (
@@ -444,4 +463,6 @@ def classify_links(id, package, package_type, version, related_urls):
             clinks["GitHub Advisory"] = rurl
         elif "hackerone" in rurl or "bugcrowd" in rurl or "bug-bounty" in rurl:
             clinks["Bug Bounty"] = rurl
+        elif "cwe.mitre.org" in rurl:
+            clinks["cwe"] = rurl
     return clinks
