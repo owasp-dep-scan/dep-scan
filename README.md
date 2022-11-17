@@ -157,24 +157,24 @@ dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language                 | Package format                                                                |
-| ------------------------ | ----------------------------------------------------------------------------- |
-| node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js    |
-| java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel          |
-| php                      | composer.lock                                                                 |
-| python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl  |
-| go                       | binary, go.mod, go.sum, Gopkg.lock                                            |
-| ruby                     | Gemfile.lock, gemspec                                                         |
-| rust                     | binary, Cargo.toml, Cargo.lock                                                |
-| .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg |
-| dart                     | pubspec.lock, pubspec.yaml                                                    |
-| haskell                  | cabal.project.freeze                                                          |
-| elixir                   | mix.lock                                                                      |
-| c/c++                    | conan.lock, conanfile.txt                                                     |
-| clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                               |
-| docker / oci image       | All supported languages and Linux OS packages                                 |
-| GitHub Actions Workflows | .github/workflows/\*.yml                                                      |
-| Jenkins Plugins          | .hpi files                                                                    |
+| Language                 | Package format                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js              |
+| java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel                    |
+| php                      | composer.lock                                                                           |
+| python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl, .egg-info |
+| go                       | binary, go.mod, go.sum, Gopkg.lock                                                      |
+| ruby                     | Gemfile.lock, gemspec                                                                   |
+| rust                     | binary, Cargo.toml, Cargo.lock                                                          |
+| .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg           |
+| dart                     | pubspec.lock, pubspec.yaml                                                              |
+| haskell                  | cabal.project.freeze                                                                    |
+| elixir                   | mix.lock                                                                                |
+| c/c++                    | conan.lock, conanfile.txt                                                               |
+| clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                                         |
+| docker / oci image       | All supported languages and Linux OS packages                                           |
+| GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
+| Jenkins Plugins          | .hpi files                                                                              |
 
 **NOTE**
 

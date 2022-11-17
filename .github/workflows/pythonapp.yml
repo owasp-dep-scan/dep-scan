@@ -1,6 +1,9 @@
 name: Python matrix CI
 
-on: [push]
+on:
+  push:
+    paths-ignore:
+      - '**/README.md'
 
 jobs:
   build:
