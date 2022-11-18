@@ -212,7 +212,11 @@ def create_bom(project_type, bom_file, src_dir="."):
     """
     cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
     if not shutil.which(cdxgen_cmd):
-        local_bin = resource_path(os.path.join("local_bin", "cdxgen"))
+        local_bin = resource_path(
+            os.path.join(
+                "local_bin", "cdxgen.exe" if sys.platform == "win32" else "cdxgen"
+            )
+        )
         if not os.path.exists(local_bin):
             LOG.warning(
                 "{} command not found. Please install using npm install @appthreat/cdxgen or set PATH variable".format(
