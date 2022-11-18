@@ -5,11 +5,6 @@ import argparse
 import os
 import sys
 
-try:
-    os.chdir(getattr(sys, "_MEIPASS", os.getcwd()))
-except Exception:
-    pass
-
 from rich.panel import Panel
 from vdb.lib import config as config
 from vdb.lib import db as dbLib

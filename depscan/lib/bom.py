@@ -221,8 +221,9 @@ def create_bom(project_type, bom_file, src_dir="."):
             )
             return False
         try:
-            os.chmod(local_bin, stat.S_IXUSR)
             cdxgen_cmd = local_bin
+            # Set the plugins directory as an environment variable
+            os.environ["CDXGEN_PLUGINS_DIR"] = resource_path("local_bin")
         except Exception as e:
             pass
     if project_type in ("docker"):
