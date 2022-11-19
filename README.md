@@ -44,6 +44,27 @@ Application vulnerabilities would be reported for all distros.
 
 dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
 
+### Singe binary executables
+
+Download the executable binary for your operating system from the [releases page](https://github.com/ngcloudsec/depscan-bin/releases). These binary bundle the following:
+
+- dep-scan with Python 10
+- cdxgen with Node.js 18
+- cdxgen binary plugins
+
+```bash
+curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.0.1/depscan-linux-amd64
+chmod +x depscan-linux-amd64
+./depscan-linux-amd64 --help
+```
+
+On Windows,
+
+```powershell
+curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.0.1/depscan.exe
+.\depscan.exe --help
+```
+
 ### Use with ShiftLeft Scan
 
 dep-scan is integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [Refer](https://slscan.io) to the scan documentation for more information.
