@@ -35,7 +35,7 @@ If you have just come across this repo, probably the best place to start is to c
 
 OSV is currently the only data source for OS vulnerabilities. Below are the distros with OS vulnerability reporting.
 
-- Debian
+- Debian and derivatives such as Ubuntu
 - Alpine
 
 Application vulnerabilities would be reported for all distros.
@@ -293,6 +293,22 @@ A parameter called `created_now_quarantine_seconds` is used to identify packages
 All parameters can be customized by using environment variables. For eg:
 
 export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4.
+
+## Live OS scan
+
+By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. For Debian and its derivatives such as Ubuntu, depscan could even report OS vulnerabilities. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
+
+All OS packages.
+
+```bash
+depscan -t os -i . -o reports/depscan.json
+```
+
+All OS and application packages.
+
+```bash
+depscan -t os --deep -i . -o reports/depscan.json
+```
 
 ## License scan
 

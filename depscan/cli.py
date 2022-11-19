@@ -122,7 +122,14 @@ def build_args():
         action="store_true",
         default=False,
         dest="no_license_scan",
-        help="DREPRECATED: dep-scan doesn't perform license scanning by default",
+        help="DEPRECATED: dep-scan doesn't perform license scanning by default",
+    )
+    parser.add_argument(
+        "--deep",
+        action="store_true",
+        default=False,
+        dest="deep_scan",
+        help="Perform deep scan by passing this --deep argument to cdxgen",
     )
     return parser.parse_args()
 
@@ -286,7 +293,9 @@ def main():
             creation_status = True
         else:
             bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
-            creation_status = create_bom(project_type, bom_file, src_dir)
+            creation_status = create_bom(
+                project_type, bom_file, src_dir, args.deep_scan
+            )
         if not creation_status:
             LOG.debug("Bom file {} was not created successfully".format(bom_file))
             continue

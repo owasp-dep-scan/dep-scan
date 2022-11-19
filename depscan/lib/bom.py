@@ -200,7 +200,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def create_bom(project_type, bom_file, src_dir="."):
+def create_bom(project_type, bom_file, src_dir=".", deep=False):
     """Method to create BOM file by executing cdxgen command
 
     :param project_type: Project type
@@ -233,6 +233,10 @@ def create_bom(project_type, bom_file, src_dir="."):
         LOG.info(
             f"Generating Software Bill-of-Materials for container image {src_dir}. This might take a few mins ..."
         )
-    args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file, src_dir]
+    args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file]
+    if deep:
+        args.append("--deep")
+        LOG.info("About to perform deep scan. This would take a while ...")
+    args.append(src_dir)
     exec_tool(args)
     return os.path.exists(bom_file)
