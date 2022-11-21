@@ -114,13 +114,17 @@ def get_package(componentEle, licenses):
     for ele in componentEle.iter():
         if ele.tag.endswith("group") and ele.text:
             pkg["vendor"] = ele.text
-        elif ele.tag.endswith("name") and ele.text and not pkg["name"]:
+        if ele.tag.endswith("name") and ele.text and not pkg["name"]:
             pkg["name"] = ele.text
         if ele.tag.endswith("version") and ele.text:
             version = ele.text
             if version.startswith("v"):
                 version = version[1:]
             pkg["version"] = version
+        if ele.tag.endswith("purl") and ele.text and not pkg.get("vendor"):
+            purl = ele.text
+            namespace = purl.split("/")[0].replace("pkg:", "")
+            pkg["vendor"] = namespace
     return pkg
 
 
