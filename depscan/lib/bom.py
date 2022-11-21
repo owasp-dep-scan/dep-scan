@@ -52,7 +52,6 @@ def parse_bom_ref(bomstr, licenses=None):
     tmpl = bomstr.split("/")
     vendor = ""
     name_ver = []
-
     if len(tmpl) == 2:
         # Just name and version
         vendor = tmpl[0]
@@ -110,7 +109,7 @@ def get_package(componentEle, licenses):
     """ """
     bom_ref = componentEle.attrib.get("bom-ref")
     pkg = {"licenses": licenses, "vendor": "", "name": "", "version": "", "scope": ""}
-    if bom_ref:
+    if bom_ref and "/" in bom_ref:
         pkg = parse_bom_ref(bom_ref, licenses)
     for ele in componentEle.iter():
         if ele.tag.endswith("group") and ele.text:
