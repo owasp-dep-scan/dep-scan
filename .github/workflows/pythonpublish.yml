@@ -60,7 +60,6 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository }}
-            ghcr.io/${{ github.repository }}:latest
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v3
@@ -83,7 +82,6 @@ jobs:
         with:
           images: |
             ${{ github.repository }}
-            ${{ github.repository }}:latest
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v3
