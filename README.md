@@ -150,12 +150,12 @@ Refer to the docker tests under GitHub action workflow for this repo for more ex
 
 ### Scanning projects locally (Docker container)
 
-`appthreat/dep-scan` or `quay.io/appthreat/dep-scan` container image can be used to perform the scan.
+`ghcr.io/appthreat/dep-scan` or `quay.io/appthreat/dep-scan` container image can be used to perform the scan.
 
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
+docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
 ```
 
 To scan with custom environment variables based configuration
@@ -167,7 +167,7 @@ docker run --rm \
     -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
-    -v $PWD:/app appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
+    -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
