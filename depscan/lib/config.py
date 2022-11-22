@@ -49,8 +49,6 @@ if not exists(license_data_dir):
 
 # CPE Vendor aliases
 vendor_alias = {
-    "org.apache.tomcat.embed": "apache",
-    "org.apache.tomcat": "apache_tomcat",
     "org.apache.commons.io": "commons-io",
     "org.apache.logging.log4j": "log4j",
     "org.apache.commons.beanutils": "commons-beanutils",
@@ -210,6 +208,22 @@ LANG_PKG_TYPES = {
     "github actions": "github",
     "github": "github",
 }
+
+# OS Package types
+OS_PKG_TYPES = (
+    "deb",
+    "apk",
+    "rpm",
+    "swid",
+    "alpm",
+    "docker",
+    "oci",
+    "generic",
+    "qpkg",
+    "buildroot",
+    "coreos",
+    "ebuild",
+)
 
 
 def get_float_from_env(name, default):

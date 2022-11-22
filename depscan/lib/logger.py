@@ -25,9 +25,10 @@ console = Console(
     log_time=False,
     log_path=False,
     theme=custom_theme,
-    width=280,
+    width=int(os.getenv("COLUMNS", 270)),
     color_system="256",
     force_terminal=True,
+    record=True,
 )
 
 logging.basicConfig(

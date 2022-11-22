@@ -174,7 +174,7 @@ def get_pkg_list(xmlfile):
                     if ele.tag.endswith("component"):
                         licenses = get_licenses(ele)
                         pkgs.append(get_package(ele, licenses))
-    except xml.etree.ElementTree.ParseError as pe:
+    except Exception as pe:
         LOG.debug("Unable to parse {} {}".format(xmlfile, pe))
         LOG.warning(
             "Unable to produce Software Bill-of-Materials for this project. Execute the scan after installing the dependencies!"

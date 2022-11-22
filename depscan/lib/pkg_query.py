@@ -29,7 +29,7 @@ def get_lookup_url(registry_type, pkg):
         return key, f"{config.npm_server}/{key}"
     elif registry_type == "pypi":
         return key, f"{config.pypi_server}/{key}/json"
-    return None
+    return None, None
 
 
 def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None):
@@ -66,7 +66,7 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 return {}
             scope = pkg.get("scope", "").lower()
             key, lookup_url = get_lookup_url(registry_type, pkg)
-            if not key or key.startswith("https://"):
+            if not key or not lookup_url or key.startswith("https://"):
                 progress.advance(task)
                 continue
             progress.update(task, description=f"Checking {key}")
