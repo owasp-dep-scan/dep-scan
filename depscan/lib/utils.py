@@ -201,9 +201,9 @@ def search_pkgs(db, project_type, pkg_list):
         variations = normalize.create_pkg_variations(pkg)
         expanded_list += variations
         vendor, name = get_pkg_vendor_name(pkg)
-        purl_aliases[f"{vendor}:{name}"] = pkg.get("purl")
+        purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
         # TODO: Use purl here
-        pkg_aliases[vendor + ":" + name] = [
+        pkg_aliases[vendor.lower() + ":" + name.lower()] = [
             "{}:{}".format(vari.get("vendor"), vari.get("name")) for vari in variations
         ]
     quick_res = dbLib.bulk_index_search(expanded_list)
