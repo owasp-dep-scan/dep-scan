@@ -133,7 +133,7 @@ def print_results(
             )
             has_exploit_count = has_exploit_count + 1
             pkg_requires_attn = True
-        if pkg_requires_attn and fixed_location:
+        if pkg_requires_attn and fixed_location and purl:
             pkg_group_rows[purl].append({"id": id, "fixed_location": fixed_location})
         table.add_row(
             "{}{}{}{}".format(
