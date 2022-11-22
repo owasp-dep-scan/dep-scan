@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import json
+from collections import defaultdict
 
+from packageurl import PackageURL
 from rich import box
 from rich.panel import Panel
 from rich.table import Table
@@ -11,7 +13,9 @@ from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
 
 
-def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_pkgs):
+def print_results(
+    project_type, results, pkg_aliases, purl_aliases, sug_version_dict, scoped_pkgs
+):
     """Pretty print report summary"""
     if not results:
         return
@@ -28,8 +32,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
     has_poc_count = 0
     has_exploit_count = 0
     fix_version_count = 0
+    pkg_group_rows = defaultdict(list)
     for h in [
-        "Id",
+        "CVE",
         "Package",
         "Insights",
         "Version",
@@ -56,6 +61,25 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             )
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+        full_pkg_display = full_pkg
+        version_used = package_issue.affected_location.version
+        purl = purl_aliases.get(full_pkg)
+        package_type = None
+        if purl:
+            try:
+                purl_obj = PackageURL.from_string(purl)
+                if purl_obj:
+                    purl_obj = purl_obj.to_dict()
+                    version_used = purl_obj.get("version")
+                    package_type = purl_obj.get("type")
+                    if purl_obj.get("namespace"):
+                        full_pkg_display = (
+                            f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}"""
+                        )
+                    else:
+                        full_pkg_display = f"""{purl_obj.get("name")}"""
+            except Exception:
+                pass
         if ids_seen.get(id + full_pkg):
             continue
         ids_seen[id + full_pkg] = True
@@ -66,28 +90,35 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
         id_style = ""
         pkg_severity = vuln_occ_dict.get("severity")
         is_required = False
+        pkg_requires_attn = False
         if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
             is_required = True
         if is_required and pkg_severity in ("CRITICAL", "HIGH"):
             id_style = ":point_right: "
+            pkg_requires_attn = True
             pkg_attention_count = pkg_attention_count + 1
             if fixed_location:
                 fix_version_count = fix_version_count + 1
-        if is_required:
+        if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
             package_name_style = "[bold]"
         elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
-            package_usage = (
-                "[spring_green4]:information: Indirect dependency[/spring_green4]"
-            )
+            if package_type in config.OS_PKG_TYPES:
+                package_usage = (
+                    "[spring_green4]:notebook: Local install[/spring_green4]"
+                )
+            else:
+                package_usage = (
+                    "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
+                )
             package_name_style = "[italic]"
-        package = full_pkg.split(":")[-1]
+        related_urls = vuln_occ_dict.get("related_urls")
         clinks = classify_links(
             id,
-            full_pkg,
+            full_pkg_display,
             vuln_occ_dict.get("type"),
             package_issue.affected_location.version,
-            vuln_occ_dict.get("related_urls"),
+            related_urls,
         )
         if package_usage != "N/A":
             insights.append(package_usage)
@@ -101,6 +132,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
                 "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
             )
             has_exploit_count = has_exploit_count + 1
+            pkg_requires_attn = True
+        if pkg_requires_attn and fixed_location and purl:
+            pkg_group_rows[purl].append({"id": id, "fixed_location": fixed_location})
         table.add_row(
             "{}{}{}{}".format(
                 id_style,
@@ -108,9 +142,9 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
                 "[bright_red]" if pkg_severity == "CRITICAL" else "",
                 id,
             ),
-            "{}{}".format(package_name_style, package),
+            "{}{}".format(package_name_style, full_pkg_display),
             "\n".join(insights),
-            package_issue.affected_location.version,
+            version_used,
             fixed_location,
             "{}{}".format(
                 "[bright_red]" if pkg_severity == "CRITICAL" else "",
@@ -122,6 +156,29 @@ def print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_p
             ),
         )
     console.print(table)
+    if pkg_group_rows:
+        console.print("")
+        utable = Table(
+            title=f"Top Priority ({project_type})",
+            box=box.DOUBLE_EDGE,
+            header_style="bold magenta",
+            show_lines=True,
+        )
+        for h in ("Package", "CVEs", "Fix Version"):
+            utable.add_column(header=h, justify="left", no_wrap=False)
+        for k, v in pkg_group_rows.items():
+            cve_list = []
+            fv = None
+            for c in v:
+                cve_list.append(c.get("id"))
+                if not fv:
+                    fv = c.get("fixed_location")
+            utable.add_row(
+                k.split("#")[0].split("?")[0],
+                "\n".join(sorted(cve_list, reverse=True)),
+                f"[bright_green]{fv}[/bright_green]",
+            )
+        console.print(utable)
     if scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
             rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
@@ -180,7 +237,13 @@ def analyse(project_type, results):
 
 
 def jsonl_report(
-    project_type, results, pkg_aliases, sug_version_dict, scoped_pkgs, out_file_name
+    project_type,
+    results,
+    pkg_aliases,
+    purl_aliases,
+    sug_version_dict,
+    scoped_pkgs,
+    out_file_name,
 ):
     """Produce vulnerability occurrence report in jsonl format
 
@@ -206,6 +269,23 @@ def jsonl_report(
                 )
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+            full_pkg_display = full_pkg
+            version_used = package_issue.affected_location.version
+            purl = purl_aliases.get(full_pkg)
+            if purl:
+                try:
+                    purl_obj = PackageURL.from_string(purl)
+                    if purl_obj:
+                        purl_obj = purl_obj.to_dict()
+                        version_used = purl_obj.get("version")
+                        if purl_obj.get("namespace"):
+                            full_pkg = f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}@{purl_obj.get("version")}"""
+                        else:
+                            full_pkg = (
+                                f"""{purl_obj.get("name")}@{purl_obj.get("version")}"""
+                            )
+                except Exception:
+                    pass
             if ids_seen.get(id + full_pkg):
                 continue
             ids_seen[id + full_pkg] = True
@@ -224,10 +304,11 @@ def jsonl_report(
                 package_usage = "excluded"
             data_obj = {
                 "id": id,
-                "package": full_pkg,
+                "package": full_pkg_display,
+                "purl": purl,
                 "package_type": vuln_occ_dict.get("type"),
                 "package_usage": package_usage,
-                "version": package_issue.affected_location.version,
+                "version": version_used,
                 "fix_version": fixed_location,
                 "severity": vuln_occ_dict.get("severity"),
                 "cvss_score": vuln_occ_dict.get("cvss_score"),

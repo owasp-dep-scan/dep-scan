@@ -196,12 +196,14 @@ def search_pkgs(db, project_type, pkg_list):
     """
     expanded_list = []
     pkg_aliases = {}
+    purl_aliases = {}
     for pkg in pkg_list:
         variations = normalize.create_pkg_variations(pkg)
         expanded_list += variations
         vendor, name = get_pkg_vendor_name(pkg)
+        purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
         # TODO: Use purl here
-        pkg_aliases[vendor + ":" + name] = [
+        pkg_aliases[vendor.lower() + ":" + name.lower()] = [
             "{}:{}".format(vari.get("vendor"), vari.get("name")) for vari in variations
         ]
     quick_res = dbLib.bulk_index_search(expanded_list)
@@ -210,7 +212,7 @@ def search_pkgs(db, project_type, pkg_list):
     pkg_aliases = normalize.dealias_packages(
         project_type, raw_results, pkg_aliases=pkg_aliases
     )
-    return raw_results, pkg_aliases
+    return raw_results, pkg_aliases, purl_aliases
 
 
 def get_pkgs_by_scope(project_type, pkg_list):
@@ -310,7 +312,8 @@ def get_all_imports(src_dir):
                 if node.level > 0:
                     continue
                 if getattr(node, "module"):
-                    pkg = node.module.split(".")[0]
-                    import_list.add(pkg)
-                    import_list.add(pkg.lower().replace("py", ""))
+                    if node.module:
+                        pkg = node.module.split(".")[0]
+                        import_list.add(pkg)
+                        import_list.add(pkg.lower().replace("py", ""))
     return import_list

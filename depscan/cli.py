@@ -6,6 +6,7 @@ import os
 import sys
 
 from rich.panel import Panel
+from rich.terminal_theme import MONOKAI
 from vdb.lib import config as config
 from vdb.lib import db as dbLib
 from vdb.lib.gha import GitHubSource
@@ -70,9 +71,9 @@ def build_args():
     parser.add_argument(
         "--suggest",
         action="store_true",
-        default=False,
+        default=True,
         dest="suggest",
-        help="Suggest appropriate fix version for each identified vulnerability.",
+        help="DEPRECATED: Suggest is the default mode for determining fix version.",
     )
     parser.add_argument(
         "--risk-audit",
@@ -129,7 +130,7 @@ def build_args():
         action="store_true",
         default=False,
         dest="deep_scan",
-        help="Perform deep scan by passing this --deep argument to cdxgen",
+        help="Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.",
     )
     return parser.parse_args()
 
@@ -147,7 +148,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
         LOG.debug("Empty package search attempted!")
     else:
         LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
-    results, pkg_aliases = utils.search_pkgs(db, project_type, pkg_list)
+    results, pkg_aliases, purl_aliases = utils.search_pkgs(db, project_type, pkg_list)
     # pkg_aliases is a dict that can be used to find the original vendor and package name
     # This way we consistently use the same names used by the caller irrespective of how
     # the result was obtained
@@ -185,19 +186,20 @@ def scan(db, project_type, pkg_list, suggest_mode):
             LOG.debug(
                 "Re-checking our suggestion to ensure there are no further vulnerabilities"
             )
-            override_results, _ = utils.search_pkgs(db, project_type, sug_pkg_list)
+            override_results, _, _ = utils.search_pkgs(db, project_type, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
                 LOG.debug("Received override results: {}".format(new_sug_dict))
                 for nk, nv in new_sug_dict.items():
                     sug_version_dict[nk] = nv
-    return results, pkg_aliases, sug_version_dict
+    return results, pkg_aliases, sug_version_dict, purl_aliases
 
 
 def summarise(
     project_type,
     results,
     pkg_aliases,
+    purl_aliases,
     sug_version_dict,
     scoped_pkgs={},
     report_file=None,
@@ -208,6 +210,7 @@ def summarise(
     :param project_type: Project type
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
+    :param purl_aliases: Package URL to package name aliase
     :param sug_version_dict: Dictionary containing version suggestions
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
@@ -222,12 +225,20 @@ def summarise(
             project_type,
             results,
             pkg_aliases,
+            purl_aliases,
             sug_version_dict,
             scoped_pkgs,
             report_file,
         )
     if console_print:
-        print_results(project_type, results, pkg_aliases, sug_version_dict, scoped_pkgs)
+        print_results(
+            project_type,
+            results,
+            pkg_aliases,
+            purl_aliases,
+            sug_version_dict,
+            scoped_pkgs,
+        )
     summary = analyse(project_type, results)
     return summary
 
@@ -261,6 +272,7 @@ def main():
         if args.report_file
         else os.path.join(reports_base_dir, "reports", "depscan.json")
     )
+    html_file = areport_file.replace(".json", ".html")
     reports_dir = os.path.dirname(areport_file)
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
@@ -372,7 +384,7 @@ def main():
             except Exception as e:
                 LOG.error("Remote audit was not successful")
                 LOG.error(e)
-                results = None
+                results = []
         # In case of docker, check if there are any npm packages that can be audited remotely
         if project_type in ("podman", "docker"):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
@@ -415,7 +427,7 @@ def main():
                 src_dir, project_type
             )
         )
-        vdb_results, pkg_aliases, sug_version_dict = scan(
+        vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
             db, project_type, pkg_list, args.suggest
         )
         if vdb_results:
@@ -425,6 +437,7 @@ def main():
             project_type,
             results,
             pkg_aliases,
+            purl_aliases,
             sug_version_dict,
             scoped_pkgs,
             report_file,
@@ -432,8 +445,10 @@ def main():
         )
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
-            if summary.get("CRITICAL") > 0:
+            if summary.get("CRITICAL", 0) > 0:
                 sys.exit(1)
+    console.save_html(html_file, theme=MONOKAI)
+    console.print(f"HTML report saved to {html_file}")
 
 
 if __name__ == "__main__":

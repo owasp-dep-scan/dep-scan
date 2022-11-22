@@ -13,13 +13,11 @@
 
 dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. Both local repositories and container images are supported as input. The tool is ideal for CI environments with built-in build breaker logic.
 
-If you have just come across this repo, probably the best place to start is to checkout the parent project [slscan](https://slscan.io) which include depscan along with a number of other tools.
-
 ## Features
 
-- Local repos and container image based scanning with CVE insights
+- Scan local repos, Linux container images, and OS to identify known CVEs and quick insights
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Suggest optimal fix version by package group (See suggest mode)
+- Suggest optimal fix version for vulnerable packages (See suggest mode)
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 ![Depscan insights](docs/depscan-latest.png)
@@ -35,7 +33,7 @@ If you have just come across this repo, probably the best place to start is to c
 
 OSV is currently the only data source for OS vulnerabilities. Below are the distros with OS vulnerability reporting.
 
-- Debian and derivatives such as Ubuntu
+- Debian
 - Alpine
 
 Application vulnerabilities would be reported for all distros.
@@ -48,7 +46,7 @@ dep-scan is ideal for use during continuous integration (CI) and also as a tool 
 
 Download the executable binary for your operating system from the [releases page](https://github.com/ngcloudsec/depscan-bin/releases). These binary bundle the following:
 
-- dep-scan with Python 10
+- dep-scan with Python 3.10
 - cdxgen with Node.js 18
 - cdxgen binary plugins
 
@@ -103,7 +101,6 @@ usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] 
   --no-banner           Do not display banner
   --cache               Cache vulnerability information in platform specific user_data_dir
   --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
-  --suggest             Suggest appropriate fix version for each identified vulnerability.
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS
                         Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma
@@ -116,6 +113,7 @@ usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] 
   -o REPORT_FILE, --report_file REPORT_FILE
                         Report filename with directory
   --no-error            Continue on error to prevent build from breaking
+  --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
 ```
 
 ### Scanning containers locally (Python version)
@@ -296,7 +294,7 @@ export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4
 
 ## Live OS scan
 
-By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. For Debian and its derivatives such as Ubuntu, depscan could even report OS vulnerabilities. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
+By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. For Debian and Alpine OS, depscan could even report OS vulnerabilities. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
 
 All OS packages.
 

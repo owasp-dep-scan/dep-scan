@@ -1,3 +1,4 @@
+from packageurl import PackageURL
 from vdb.lib import KNOWN_PKG_TYPES
 
 from depscan.lib import config as config
@@ -40,7 +41,15 @@ def create_pkg_variations(pkg_dict):
     vendor = pkg_dict.get("vendor")
     name = pkg_dict.get("name")
     purl = pkg_dict.get("purl", "")
+    pkg_type = ""
     if purl:
+        try:
+            purl_obj = PackageURL.from_string(purl)
+            if purl_obj:
+                purl_obj = purl_obj.to_dict()
+                pkg_type = purl_obj.get("type")
+        except Exception:
+            pass
         tmpParts = purl.split(":")
         if tmpParts and len(tmpParts) > 1:
             vendor_aliases.add(tmpParts[1])
@@ -65,7 +74,7 @@ def create_pkg_variations(pkg_dict):
         # Ignore third party alternatives for builtins
         if "golang" not in vendor and name not in ["net", "crypto", "http", "text"]:
             vendor_aliases.add("golang")
-    if not purl.startswith("pkg:golang"):
+    if not purl.startswith("pkg:golang") and pkg_type not in config.OS_PKG_TYPES:
         vendor_aliases.add("get" + name)
         vendor_aliases.add(name + "_project")
     for k, v in config.vendor_alias.items():
@@ -77,7 +86,8 @@ def create_pkg_variations(pkg_dict):
     name_aliases.add(name)
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
-    name_aliases.add("package_" + name)
+    if pkg_type not in config.OS_PKG_TYPES:
+        name_aliases.add("package_" + name)
     # Pypi specific vendor aliases
     if purl.startswith("pkg:pypi"):
         if not name.startswith("python-"):
@@ -121,13 +131,14 @@ def create_pkg_variations(pkg_dict):
     elif purl.startswith("pkg:github"):
         vendor_aliases.add("github actions")
         name_aliases.add(f"{vendor}/{name}")
-    for suffix in COMMON_SUFFIXES:
-        if name.endswith(suffix):
-            name_aliases.add(name.replace(suffix, ""))
-    for k, v in config.package_alias.items():
-        if name.startswith(k) or k.startswith(name) or v.startswith(name):
-            name_aliases.add(k)
-            name_aliases.add(v)
+    if pkg_type not in config.OS_PKG_TYPES:
+        for suffix in COMMON_SUFFIXES:
+            if name.endswith(suffix):
+                name_aliases.add(name.replace(suffix, ""))
+        for k, v in config.package_alias.items():
+            if name.startswith(k) or k.startswith(name) or v.startswith(name):
+                name_aliases.add(k)
+                name_aliases.add(v)
     if len(vendor_aliases):
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
