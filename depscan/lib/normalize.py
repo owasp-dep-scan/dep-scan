@@ -1,5 +1,5 @@
-from packageurl import PackageURL
 from vdb.lib import KNOWN_PKG_TYPES
+from vdb.lib.utils import parse_purl
 
 from depscan.lib import config as config
 
@@ -44,9 +44,8 @@ def create_pkg_variations(pkg_dict):
     pkg_type = ""
     if purl:
         try:
-            purl_obj = PackageURL.from_string(purl)
+            purl_obj = parse_purl(purl)
             if purl_obj:
-                purl_obj = purl_obj.to_dict()
                 pkg_type = purl_obj.get("type")
         except Exception:
             pass

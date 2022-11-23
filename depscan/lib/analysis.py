@@ -3,10 +3,10 @@
 import json
 from collections import defaultdict
 
-from packageurl import PackageURL
 from rich import box
 from rich.panel import Panel
 from rich.table import Table
+from vdb.lib.utils import parse_purl
 
 from depscan.lib import config as config
 from depscan.lib.logger import LOG, console
@@ -29,6 +29,7 @@ def print_results(
     required_pkgs = scoped_pkgs.get("required", [])
     optional_pkgs = scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
+    critical_count = 0
     has_poc_count = 0
     has_exploit_count = 0
     fix_version_count = 0
@@ -67,9 +68,8 @@ def print_results(
         package_type = None
         if purl:
             try:
-                purl_obj = PackageURL.from_string(purl)
+                purl_obj = parse_purl(purl)
                 if purl_obj:
-                    purl_obj = purl_obj.to_dict()
                     version_used = purl_obj.get("version")
                     package_type = purl_obj.get("type")
                     if purl_obj.get("namespace"):
@@ -91,14 +91,25 @@ def print_results(
         pkg_severity = vuln_occ_dict.get("severity")
         is_required = False
         pkg_requires_attn = False
+        related_urls = vuln_occ_dict.get("related_urls")
+        clinks = classify_links(
+            id,
+            full_pkg_display,
+            vuln_occ_dict.get("type"),
+            package_issue.affected_location.version,
+            related_urls,
+        )
         if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
             is_required = True
-        if is_required and pkg_severity in ("CRITICAL", "HIGH"):
-            id_style = ":point_right: "
-            pkg_requires_attn = True
-            pkg_attention_count = pkg_attention_count + 1
+        if pkg_severity in ("CRITICAL", "HIGH"):
+            if is_required:
+                id_style = ":point_right: "
+                pkg_requires_attn = True
+                pkg_attention_count = pkg_attention_count + 1
             if fixed_location:
                 fix_version_count = fix_version_count + 1
+            if clinks.get("vendor") and pkg_severity == "CRITICAL":
+                critical_count += 1
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
             package_name_style = "[bold]"
@@ -112,14 +123,6 @@ def print_results(
                     "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
                 )
             package_name_style = "[italic]"
-        related_urls = vuln_occ_dict.get("related_urls")
-        clinks = classify_links(
-            id,
-            full_pkg_display,
-            vuln_occ_dict.get("type"),
-            package_issue.affected_location.version,
-            related_urls,
-        )
         if package_usage != "N/A":
             insights.append(package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
@@ -216,6 +219,14 @@ def print_results(
                     expand=False,
                 )
             )
+    elif critical_count:
+        console.print(
+            Panel(
+                f"Prioritize the [magenta]{critical_count}[/magenta] critical vulnerabilities confirmed by the vendor.",
+                title="Recommendation",
+                expand=False,
+            )
+        )
     else:
         console.print(
             Panel(
@@ -274,9 +285,8 @@ def jsonl_report(
             purl = purl_aliases.get(full_pkg, full_pkg)
             if purl:
                 try:
-                    purl_obj = PackageURL.from_string(purl)
+                    purl_obj = parse_purl(purl)
                     if purl_obj:
-                        purl_obj = purl_obj.to_dict()
                         version_used = purl_obj.get("version")
                         if purl_obj.get("namespace"):
                             full_pkg = f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}@{purl_obj.get("version")}"""

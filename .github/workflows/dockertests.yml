@@ -41,6 +41,7 @@ jobs:
         docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
         python depscan/cli.py --no-error --src /tmp/scanslim.tar -o containertests/depscan-scanar.json --risk-audit
         python depscan/cli.py --no-error --src repotests/microservices-demo -o containertests/depscan-msd.json
+        python depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json
         ls -ltr containertests
       env:
         PYTHONPATH: "."

@@ -1,7 +1,6 @@
 import ast
 import os
 import re
-
 from collections import defaultdict
 
 from vdb.lib import db as dbLib
@@ -206,13 +205,18 @@ def search_pkgs(db, project_type, pkg_list):
     purl_aliases = {}
     for pkg in pkg_list:
         variations = normalize.create_pkg_variations(pkg)
-        expanded_list += variations
+        if variations:
+            expanded_list += variations
         vendor, name = get_pkg_vendor_name(pkg)
+        version = pkg.get("version")
         purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
-        for vari in variations:
-            vari_full_pkg = "{}:{}".format(vari.get("vendor"), vari.get("name"))
-            pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
-            purl_aliases[vari_full_pkg.lower()] = pkg.get("purl")
+        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
+        if variations:
+            for vari in variations:
+                vari_full_pkg = "{}:{}".format(vari.get("vendor"), vari.get("name"))
+                pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
+                purl_aliases[f"{vari_full_pkg.lower()}"] = pkg.get("purl")
+                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
     quick_res = dbLib.bulk_index_search(expanded_list)
     raw_results = dbLib.pkg_bulk_search(db, quick_res)
     raw_results = normalize.dedup(project_type, raw_results, pkg_aliases=pkg_aliases)
