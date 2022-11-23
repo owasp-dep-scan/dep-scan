@@ -15,7 +15,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 ## Features
 
-- Scan local repos, Linux container images, and OS to identify known CVEs and quick insights
+- Scan most application code. Local repos, Linux container images, Kubernetes manifests, and OS to identify known CVEs and quick insights
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Suggest optimal fix version for vulnerable packages (See suggest mode)
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
@@ -320,6 +320,10 @@ export FETCH_LICENSE=true
 The licenses data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behaviour could change in the future once the detection logic gets improved.
 
 ![License scan](docs/license-scan.png)
+
+## Kubernetes and Cloud apps
+
+dep-scan could auto detect most cloud applications and kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
 
 ## Alternatives
 
