@@ -26,6 +26,11 @@ jobs:
         pip install -r requirements-dev.txt
         sudo npm install -g @appthreat/cdxgen
         sudo npm install -g @ngcloudsec/cdxgen-plugins-bin
+        mkdir -p repotests
+    - uses: actions/checkout@v3
+      with:
+        repository: 'GoogleCloudPlatform/microservices-demo'
+        path: 'repotests/microservices-demo'
     - name: Test container images
       run: |
         mkdir -p containertests
@@ -35,6 +40,7 @@ jobs:
         python depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json
         docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
         python depscan/cli.py --no-error --src /tmp/scanslim.tar -o containertests/depscan-scanar.json --risk-audit
+        python depscan/cli.py --no-error --src repotests/microservices-demo -o containertests/depscan-msd.json
         ls -ltr containertests
       env:
         PYTHONPATH: "."

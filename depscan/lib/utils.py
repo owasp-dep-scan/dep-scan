@@ -2,6 +2,8 @@ import ast
 import os
 import re
 
+from collections import defaultdict
+
 from vdb.lib import db as dbLib
 from vdb.lib.utils import version_compare
 
@@ -158,13 +160,16 @@ def detect_project_type(src_dir):
         os.path.join(src_dir, ".github", "workflows"), ".yml", quick=True, filter=False
     ):
         project_types.append("github")
-    # Jenkins plugins or plain old jars
-    if (
-        "java" not in project_types
-        and find_files(src_dir, ".jar", quick=True)
-        or find_files(src_dir, ".hpi", quick=True)
-    ):
+    # jars
+    if "java" not in project_types and find_files(src_dir, ".jar", quick=True):
         project_types.append("jar")
+    # Jenkins plugins or plain old jars
+    if "java" not in project_types and find_files(src_dir, ".hpi", quick=True):
+        project_types.append("jenkins")
+    if find_files(src_dir, ".yml", quick=True) or find_files(
+        src_dir, ".yaml", quick=True
+    ):
+        project_types.append("yaml-manifest")
     return project_types
 
 
@@ -195,22 +200,24 @@ def search_pkgs(db, project_type, pkg_list):
     :param pkg_list: List of packages to search
     """
     expanded_list = []
-    pkg_aliases = {}
+    # The challenge we have is to broaden our search and create several variations of the package and vendor names to perform a broad search.
+    # We then have to map the results back to the original package names and package urls.
+    pkg_aliases = defaultdict(list)
     purl_aliases = {}
     for pkg in pkg_list:
         variations = normalize.create_pkg_variations(pkg)
         expanded_list += variations
         vendor, name = get_pkg_vendor_name(pkg)
         purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
-        # TODO: Use purl here
-        pkg_aliases[vendor.lower() + ":" + name.lower()] = [
-            "{}:{}".format(vari.get("vendor"), vari.get("name")) for vari in variations
-        ]
+        for vari in variations:
+            vari_full_pkg = "{}:{}".format(vari.get("vendor"), vari.get("name"))
+            pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
+            purl_aliases[vari_full_pkg.lower()] = pkg.get("purl")
     quick_res = dbLib.bulk_index_search(expanded_list)
     raw_results = dbLib.pkg_bulk_search(db, quick_res)
     raw_results = normalize.dedup(project_type, raw_results, pkg_aliases=pkg_aliases)
     pkg_aliases = normalize.dealias_packages(
-        project_type, raw_results, pkg_aliases=pkg_aliases
+        project_type, raw_results, pkg_aliases=pkg_aliases, purl_aliases=purl_aliases
     )
     return raw_results, pkg_aliases, purl_aliases
 

@@ -237,7 +237,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False):
             f"Generating Software Bill-of-Materials for container image {src_dir}. This might take a few mins ..."
         )
     args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file]
-    if deep:
+    if deep or project_type in ("jar", "jenkins"):
         args.append("--deep")
         LOG.info("About to perform deep scan. This would take a while ...")
     args.append(src_dir)

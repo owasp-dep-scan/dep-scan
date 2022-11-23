@@ -149,13 +149,14 @@ def create_pkg_variations(pkg_dict):
     return pkg_list
 
 
-def dealias_packages(project_type, pkg_list, pkg_aliases):
+def dealias_packages(project_type, pkg_list, pkg_aliases, purl_aliases):
     """Method to dealias package names by looking up vendor and name information
     in the aliases list
 
     :param project_type: Project type
     :param pkg_list: List of packages to dealias
     :param pkg_aliases: Package aliases
+    :param purl_aliases: Package URL aliases
     """
     if not pkg_aliases:
         return {}
@@ -168,12 +169,16 @@ def dealias_packages(project_type, pkg_list, pkg_aliases):
                 package_issue.affected_location.vendor,
                 package_issue.affected_location.package,
             )
-        for k, v in pkg_aliases.items():
-            if (
-                full_pkg in v or (":" + package_issue.affected_location.package) in v
-            ) and full_pkg != k:
-                dealias_dict[full_pkg] = k
-                break
+        if purl_aliases.get(full_pkg.lower()):
+            dealias_dict[full_pkg] = purl_aliases.get(full_pkg.lower())
+        else:
+            for k, v in pkg_aliases.items():
+                if (
+                    full_pkg in v
+                    or (":" + package_issue.affected_location.package) in v
+                ) and full_pkg != k:
+                    dealias_dict[full_pkg] = k
+                    break
     return dealias_dict
 
 
