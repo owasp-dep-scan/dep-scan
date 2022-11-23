@@ -194,6 +194,7 @@ The following projects and package-dependency format is supported by cdxgen.
 | docker / oci image       | All supported languages and Linux OS packages                                           |
 | GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
 | Jenkins Plugins          | .hpi files                                                                              |
+| YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
 
 **NOTE**
 

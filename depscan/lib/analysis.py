@@ -63,7 +63,7 @@ def print_results(
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         full_pkg_display = full_pkg
         version_used = package_issue.affected_location.version
-        purl = purl_aliases.get(full_pkg)
+        purl = purl_aliases.get(full_pkg, full_pkg)
         package_type = None
         if purl:
             try:
@@ -271,7 +271,7 @@ def jsonl_report(
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             full_pkg_display = full_pkg
             version_used = package_issue.affected_location.version
-            purl = purl_aliases.get(full_pkg)
+            purl = purl_aliases.get(full_pkg, full_pkg)
             if purl:
                 try:
                     purl_obj = PackageURL.from_string(purl)
