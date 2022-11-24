@@ -28,13 +28,20 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - NVD
 - GitHub
 - NPM
+- AquaSecurity vuln-list
 
 ### Linux distros
 
-OSV is currently the only data source for OS vulnerabilities. Below are the distros with OS vulnerability reporting.
-
+- AlmaLinux
 - Debian
 - Alpine
+- Amazon Linux
+- Arch Linux
+- RHEL/CentOS
+- Rocky Linux
+- Ubuntu
+- OpenSUSE/SLES
+- Photon
 
 Application vulnerabilities would be reported for all distros.
 
@@ -295,7 +302,7 @@ export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4
 
 ## Live OS scan
 
-By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. For Debian and Alpine OS, depscan could even report OS vulnerabilities. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
+By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
 
 All OS packages.
 

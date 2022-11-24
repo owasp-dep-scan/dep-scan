@@ -9,6 +9,7 @@ from rich.panel import Panel
 from rich.terminal_theme import MONOKAI
 from vdb.lib import config as config
 from vdb.lib import db as dbLib
+from vdb.lib.aqua import AquaSource
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
@@ -60,6 +61,13 @@ def build_args():
         default=False,
         dest="cache",
         help="Cache vulnerability information in platform specific user_data_dir",
+    )
+    parser.add_argument(
+        "--cache-os",
+        action="store_true",
+        default=False,
+        dest="cache_os",
+        help="Cache OS vulnerability information in platform specific user_data_dir",
     )
     parser.add_argument(
         "--sync",
@@ -266,7 +274,7 @@ def main():
     ):
         reports_base_dir = os.getcwd()
     db = dbLib.get()
-    run_cacher = args.cache
+    run_cacher = args.cache or args.cache_os
     areport_file = (
         args.report_file
         if args.report_file
@@ -408,6 +416,15 @@ def main():
         if os.environ.get("GITHUB_TOKEN"):
             sources_list.insert(0, GitHubSource())
         if run_cacher:
+            if (
+                args.cache_os
+                or args.deep_scan
+                or project_type in ("docker", "podman", "yaml-manifest", "os")
+            ):
+                sources_list.insert(0, AquaSource())
+                LOG.info(
+                    "OS Vulnerability database would be downloaded for the first time. This would take a few minutes ..."
+                )
             for s in sources_list:
                 LOG.debug("Refreshing {}".format(s.__class__.__name__))
                 s.refresh()

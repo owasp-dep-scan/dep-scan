@@ -102,3 +102,11 @@ def test_pkg_variations():
         }
     )
     assert len(pkg_list) > 1
+    pkg_list = create_pkg_variations(
+        {
+            "vendor": "deb",
+            "name": "gnome-accessibility-themes",
+            "version": "3.28-1ubuntu3",
+        }
+    )
+    assert len(pkg_list) > 1
