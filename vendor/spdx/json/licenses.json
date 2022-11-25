@@ -1,11 +1,11 @@
 {
-  "licenseListVersion": "61894c2",
+  "licenseListVersion": "ce34329",
   "licenses": [
     {
       "reference": "https://spdx.org/licenses/0BSD.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/0BSD.json",
-      "referenceNumber": 431,
+      "referenceNumber": 432,
       "name": "BSD Zero Clause License",
       "licenseId": "0BSD",
       "seeAlso": [
@@ -18,7 +18,7 @@
       "reference": "https://spdx.org/licenses/AAL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AAL.json",
-      "referenceNumber": 241,
+      "referenceNumber": 246,
       "name": "Attribution Assurance License",
       "licenseId": "AAL",
       "seeAlso": [
@@ -30,7 +30,7 @@
       "reference": "https://spdx.org/licenses/Abstyles.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Abstyles.json",
-      "referenceNumber": 342,
+      "referenceNumber": 341,
       "name": "Abstyles License",
       "licenseId": "Abstyles",
       "seeAlso": [
@@ -42,7 +42,7 @@
       "reference": "https://spdx.org/licenses/Adobe-2006.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Adobe-2006.json",
-      "referenceNumber": 50,
+      "referenceNumber": 48,
       "name": "Adobe Systems Incorporated Source Code License Agreement",
       "licenseId": "Adobe-2006",
       "seeAlso": [
@@ -78,7 +78,7 @@
       "reference": "https://spdx.org/licenses/AFL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AFL-1.1.json",
-      "referenceNumber": 389,
+      "referenceNumber": 390,
       "name": "Academic Free License v1.1",
       "licenseId": "AFL-1.1",
       "seeAlso": [
@@ -92,7 +92,7 @@
       "reference": "https://spdx.org/licenses/AFL-1.2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AFL-1.2.json",
-      "referenceNumber": 466,
+      "referenceNumber": 471,
       "name": "Academic Free License v1.2",
       "licenseId": "AFL-1.2",
       "seeAlso": [
@@ -119,7 +119,7 @@
       "reference": "https://spdx.org/licenses/AFL-2.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AFL-2.1.json",
-      "referenceNumber": 54,
+      "referenceNumber": 46,
       "name": "Academic Free License v2.1",
       "licenseId": "AFL-2.1",
       "seeAlso": [
@@ -132,7 +132,7 @@
       "reference": "https://spdx.org/licenses/AFL-3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AFL-3.0.json",
-      "referenceNumber": 182,
+      "referenceNumber": 181,
       "name": "Academic Free License v3.0",
       "licenseId": "AFL-3.0",
       "seeAlso": [
@@ -146,7 +146,7 @@
       "reference": "https://spdx.org/licenses/Afmparse.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Afmparse.json",
-      "referenceNumber": 153,
+      "referenceNumber": 155,
       "name": "Afmparse License",
       "licenseId": "Afmparse",
       "seeAlso": [
@@ -158,7 +158,7 @@
       "reference": "https://spdx.org/licenses/AGPL-1.0.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/AGPL-1.0.json",
-      "referenceNumber": 304,
+      "referenceNumber": 299,
       "name": "Affero General Public License v1.0",
       "licenseId": "AGPL-1.0",
       "seeAlso": [
@@ -171,7 +171,7 @@
       "reference": "https://spdx.org/licenses/AGPL-1.0-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AGPL-1.0-only.json",
-      "referenceNumber": 412,
+      "referenceNumber": 411,
       "name": "Affero General Public License v1.0 only",
       "licenseId": "AGPL-1.0-only",
       "seeAlso": [
@@ -209,7 +209,7 @@
       "reference": "https://spdx.org/licenses/AGPL-3.0-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AGPL-3.0-only.json",
-      "referenceNumber": 110,
+      "referenceNumber": 113,
       "name": "GNU Affero General Public License v3.0 only",
       "licenseId": "AGPL-3.0-only",
       "seeAlso": [
@@ -223,7 +223,7 @@
       "reference": "https://spdx.org/licenses/AGPL-3.0-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AGPL-3.0-or-later.json",
-      "referenceNumber": 387,
+      "referenceNumber": 383,
       "name": "GNU Affero General Public License v3.0 or later",
       "licenseId": "AGPL-3.0-or-later",
       "seeAlso": [
@@ -250,7 +250,7 @@
       "reference": "https://spdx.org/licenses/AMDPLPA.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AMDPLPA.json",
-      "referenceNumber": 52,
+      "referenceNumber": 51,
       "name": "AMD\u0027s plpa_map.c License",
       "licenseId": "AMDPLPA",
       "seeAlso": [
@@ -262,7 +262,7 @@
       "reference": "https://spdx.org/licenses/AML.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AML.json",
-      "referenceNumber": 478,
+      "referenceNumber": 489,
       "name": "Apple MIT License",
       "licenseId": "AML",
       "seeAlso": [
@@ -274,7 +274,7 @@
       "reference": "https://spdx.org/licenses/AMPAS.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/AMPAS.json",
-      "referenceNumber": 113,
+      "referenceNumber": 114,
       "name": "Academy of Motion Picture Arts and Sciences BSD",
       "licenseId": "AMPAS",
       "seeAlso": [
@@ -298,7 +298,7 @@
       "reference": "https://spdx.org/licenses/ANTLR-PD-fallback.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ANTLR-PD-fallback.json",
-      "referenceNumber": 335,
+      "referenceNumber": 329,
       "name": "ANTLR Software Rights Notice with license fallback",
       "licenseId": "ANTLR-PD-fallback",
       "seeAlso": [
@@ -363,7 +363,7 @@
       "reference": "https://spdx.org/licenses/APL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/APL-1.0.json",
-      "referenceNumber": 364,
+      "referenceNumber": 365,
       "name": "Adaptive Public License 1.0",
       "licenseId": "APL-1.0",
       "seeAlso": [
@@ -375,7 +375,7 @@
       "reference": "https://spdx.org/licenses/App-s2p.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/App-s2p.json",
-      "referenceNumber": 246,
+      "referenceNumber": 245,
       "name": "App::s2p License",
       "licenseId": "App-s2p",
       "seeAlso": [
@@ -387,7 +387,7 @@
       "reference": "https://spdx.org/licenses/APSL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/APSL-1.0.json",
-      "referenceNumber": 125,
+      "referenceNumber": 124,
       "name": "Apple Public Source License 1.0",
       "licenseId": "APSL-1.0",
       "seeAlso": [
@@ -424,7 +424,7 @@
       "reference": "https://spdx.org/licenses/APSL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/APSL-2.0.json",
-      "referenceNumber": 390,
+      "referenceNumber": 391,
       "name": "Apple Public Source License 2.0",
       "licenseId": "APSL-2.0",
       "seeAlso": [
@@ -437,7 +437,7 @@
       "reference": "https://spdx.org/licenses/Arphic-1999.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Arphic-1999.json",
-      "referenceNumber": 444,
+      "referenceNumber": 445,
       "name": "Arphic Public License",
       "licenseId": "Arphic-1999",
       "seeAlso": [
@@ -462,7 +462,7 @@
       "reference": "https://spdx.org/licenses/Artistic-1.0-cl8.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Artistic-1.0-cl8.json",
-      "referenceNumber": 93,
+      "referenceNumber": 89,
       "name": "Artistic License 1.0 w/clause 8",
       "licenseId": "Artistic-1.0-cl8",
       "seeAlso": [
@@ -474,7 +474,7 @@
       "reference": "https://spdx.org/licenses/Artistic-1.0-Perl.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Artistic-1.0-Perl.json",
-      "referenceNumber": 305,
+      "referenceNumber": 301,
       "name": "Artistic License 1.0 (Perl)",
       "licenseId": "Artistic-1.0-Perl",
       "seeAlso": [
@@ -486,7 +486,7 @@
       "reference": "https://spdx.org/licenses/Artistic-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Artistic-2.0.json",
-      "referenceNumber": 349,
+      "referenceNumber": 350,
       "name": "Artistic License 2.0",
       "licenseId": "Artistic-2.0",
       "seeAlso": [
@@ -501,7 +501,7 @@
       "reference": "https://spdx.org/licenses/Baekmuk.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Baekmuk.json",
-      "referenceNumber": 470,
+      "referenceNumber": 472,
       "name": "Baekmuk License",
       "licenseId": "Baekmuk",
       "seeAlso": [
@@ -537,7 +537,7 @@
       "reference": "https://spdx.org/licenses/Beerware.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Beerware.json",
-      "referenceNumber": 422,
+      "referenceNumber": 423,
       "name": "Beerware License",
       "licenseId": "Beerware",
       "seeAlso": [
@@ -575,7 +575,7 @@
       "reference": "https://spdx.org/licenses/BitTorrent-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BitTorrent-1.1.json",
-      "referenceNumber": 440,
+      "referenceNumber": 441,
       "name": "BitTorrent Open Source License v1.1",
       "licenseId": "BitTorrent-1.1",
       "seeAlso": [
@@ -588,7 +588,7 @@
       "reference": "https://spdx.org/licenses/blessing.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/blessing.json",
-      "referenceNumber": 75,
+      "referenceNumber": 77,
       "name": "SQLite Blessing",
       "licenseId": "blessing",
       "seeAlso": [
@@ -613,7 +613,7 @@
       "reference": "https://spdx.org/licenses/Borceux.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Borceux.json",
-      "referenceNumber": 211,
+      "referenceNumber": 212,
       "name": "Borceux license",
       "licenseId": "Borceux",
       "seeAlso": [
@@ -625,7 +625,7 @@
       "reference": "https://spdx.org/licenses/BSD-1-Clause.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-1-Clause.json",
-      "referenceNumber": 439,
+      "referenceNumber": 440,
       "name": "BSD 1-Clause License",
       "licenseId": "BSD-1-Clause",
       "seeAlso": [
@@ -637,7 +637,7 @@
       "reference": "https://spdx.org/licenses/BSD-2-Clause.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-2-Clause.json",
-      "referenceNumber": 92,
+      "referenceNumber": 93,
       "name": "BSD 2-Clause \"Simplified\" License",
       "licenseId": "BSD-2-Clause",
       "seeAlso": [
@@ -663,7 +663,7 @@
       "reference": "https://spdx.org/licenses/BSD-2-Clause-NetBSD.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/BSD-2-Clause-NetBSD.json",
-      "referenceNumber": 381,
+      "referenceNumber": 382,
       "name": "BSD 2-Clause NetBSD License",
       "licenseId": "BSD-2-Clause-NetBSD",
       "seeAlso": [
@@ -688,7 +688,7 @@
       "reference": "https://spdx.org/licenses/BSD-2-Clause-Views.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-2-Clause-Views.json",
-      "referenceNumber": 496,
+      "referenceNumber": 498,
       "name": "BSD 2-Clause with views sentence",
       "licenseId": "BSD-2-Clause-Views",
       "seeAlso": [
@@ -702,11 +702,12 @@
       "reference": "https://spdx.org/licenses/BSD-3-Clause.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-3-Clause.json",
-      "referenceNumber": 413,
+      "referenceNumber": 416,
       "name": "BSD 3-Clause \"New\" or \"Revised\" License",
       "licenseId": "BSD-3-Clause",
       "seeAlso": [
-        "https://opensource.org/licenses/BSD-3-Clause"
+        "https://opensource.org/licenses/BSD-3-Clause",
+        "https://www.eclipse.org/org/documents/edl-v10.php"
       ],
       "isOsiApproved": true,
       "isFsfLibre": true
@@ -740,7 +741,7 @@
       "reference": "https://spdx.org/licenses/BSD-3-Clause-LBNL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-3-Clause-LBNL.json",
-      "referenceNumber": 423,
+      "referenceNumber": 424,
       "name": "Lawrence Berkeley National Labs BSD variant license",
       "licenseId": "BSD-3-Clause-LBNL",
       "seeAlso": [
@@ -752,7 +753,7 @@
       "reference": "https://spdx.org/licenses/BSD-3-Clause-Modification.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-3-Clause-Modification.json",
-      "referenceNumber": 97,
+      "referenceNumber": 96,
       "name": "BSD 3-Clause Modification",
       "licenseId": "BSD-3-Clause-Modification",
       "seeAlso": [
@@ -789,7 +790,7 @@
       "reference": "https://spdx.org/licenses/BSD-3-Clause-No-Nuclear-License-2014.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-3-Clause-No-Nuclear-License-2014.json",
-      "referenceNumber": 419,
+      "referenceNumber": 420,
       "name": "BSD 3-Clause No Nuclear License 2014",
       "licenseId": "BSD-3-Clause-No-Nuclear-License-2014",
       "seeAlso": [
@@ -801,7 +802,7 @@
       "reference": "https://spdx.org/licenses/BSD-3-Clause-No-Nuclear-Warranty.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-3-Clause-No-Nuclear-Warranty.json",
-      "referenceNumber": 388,
+      "referenceNumber": 389,
       "name": "BSD 3-Clause No Nuclear Warranty",
       "licenseId": "BSD-3-Clause-No-Nuclear-Warranty",
       "seeAlso": [
@@ -826,7 +827,7 @@
       "reference": "https://spdx.org/licenses/BSD-4-Clause.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-4-Clause.json",
-      "referenceNumber": 495,
+      "referenceNumber": 497,
       "name": "BSD 4-Clause \"Original\" or \"Old\" License",
       "licenseId": "BSD-4-Clause",
       "seeAlso": [
@@ -875,7 +876,7 @@
       "reference": "https://spdx.org/licenses/BSD-Source-Code.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSD-Source-Code.json",
-      "referenceNumber": 14,
+      "referenceNumber": 10,
       "name": "BSD Source Code Attribution",
       "licenseId": "BSD-Source-Code",
       "seeAlso": [
@@ -887,7 +888,7 @@
       "reference": "https://spdx.org/licenses/BSL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BSL-1.0.json",
-      "referenceNumber": 385,
+      "referenceNumber": 386,
       "name": "Boost Software License 1.0",
       "licenseId": "BSL-1.0",
       "seeAlso": [
@@ -901,7 +902,7 @@
       "reference": "https://spdx.org/licenses/BUSL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/BUSL-1.1.json",
-      "referenceNumber": 294,
+      "referenceNumber": 292,
       "name": "Business Source License 1.1",
       "licenseId": "BUSL-1.1",
       "seeAlso": [
@@ -913,7 +914,7 @@
       "reference": "https://spdx.org/licenses/bzip2-1.0.5.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/bzip2-1.0.5.json",
-      "referenceNumber": 123,
+      "referenceNumber": 122,
       "name": "bzip2 and libbzip2 License v1.0.5",
       "licenseId": "bzip2-1.0.5",
       "seeAlso": [
@@ -926,7 +927,7 @@
       "reference": "https://spdx.org/licenses/bzip2-1.0.6.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/bzip2-1.0.6.json",
-      "referenceNumber": 386,
+      "referenceNumber": 387,
       "name": "bzip2 and libbzip2 License v1.0.6",
       "licenseId": "bzip2-1.0.6",
       "seeAlso": [
@@ -978,7 +979,7 @@
       "reference": "https://spdx.org/licenses/Caldera.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Caldera.json",
-      "referenceNumber": 263,
+      "referenceNumber": 264,
       "name": "Caldera License",
       "licenseId": "Caldera",
       "seeAlso": [
@@ -1002,7 +1003,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-1.0.json",
-      "referenceNumber": 67,
+      "referenceNumber": 65,
       "name": "Creative Commons Attribution 1.0 Generic",
       "licenseId": "CC-BY-1.0",
       "seeAlso": [
@@ -1026,7 +1027,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-2.5.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-2.5.json",
-      "referenceNumber": 376,
+      "referenceNumber": 377,
       "name": "Creative Commons Attribution 2.5 Generic",
       "licenseId": "CC-BY-2.5",
       "seeAlso": [
@@ -1062,7 +1063,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-3.0-AT.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-3.0-AT.json",
-      "referenceNumber": 355,
+      "referenceNumber": 356,
       "name": "Creative Commons Attribution 3.0 Austria",
       "licenseId": "CC-BY-3.0-AT",
       "seeAlso": [
@@ -1074,7 +1075,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-3.0-DE.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-3.0-DE.json",
-      "referenceNumber": 453,
+      "referenceNumber": 454,
       "name": "Creative Commons Attribution 3.0 Germany",
       "licenseId": "CC-BY-3.0-DE",
       "seeAlso": [
@@ -1086,7 +1087,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-3.0-IGO.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-3.0-IGO.json",
-      "referenceNumber": 128,
+      "referenceNumber": 126,
       "name": "Creative Commons Attribution 3.0 IGO",
       "licenseId": "CC-BY-3.0-IGO",
       "seeAlso": [
@@ -1098,7 +1099,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-3.0-NL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-3.0-NL.json",
-      "referenceNumber": 292,
+      "referenceNumber": 291,
       "name": "Creative Commons Attribution 3.0 Netherlands",
       "licenseId": "CC-BY-3.0-NL",
       "seeAlso": [
@@ -1110,7 +1111,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-3.0-US.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-3.0-US.json",
-      "referenceNumber": 406,
+      "referenceNumber": 407,
       "name": "Creative Commons Attribution 3.0 United States",
       "licenseId": "CC-BY-3.0-US",
       "seeAlso": [
@@ -1135,7 +1136,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-1.0.json",
-      "referenceNumber": 53,
+      "referenceNumber": 52,
       "name": "Creative Commons Attribution Non Commercial 1.0 Generic",
       "licenseId": "CC-BY-NC-1.0",
       "seeAlso": [
@@ -1161,7 +1162,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-2.5.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-2.5.json",
-      "referenceNumber": 432,
+      "referenceNumber": 433,
       "name": "Creative Commons Attribution Non Commercial 2.5 Generic",
       "licenseId": "CC-BY-NC-2.5",
       "seeAlso": [
@@ -1174,7 +1175,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-3.0.json",
-      "referenceNumber": 115,
+      "referenceNumber": 108,
       "name": "Creative Commons Attribution Non Commercial 3.0 Unported",
       "licenseId": "CC-BY-NC-3.0",
       "seeAlso": [
@@ -1187,7 +1188,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-3.0-DE.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-3.0-DE.json",
-      "referenceNumber": 391,
+      "referenceNumber": 392,
       "name": "Creative Commons Attribution Non Commercial 3.0 Germany",
       "licenseId": "CC-BY-NC-3.0-DE",
       "seeAlso": [
@@ -1212,7 +1213,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-ND-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-ND-1.0.json",
-      "referenceNumber": 418,
+      "referenceNumber": 419,
       "name": "Creative Commons Attribution Non Commercial No Derivatives 1.0 Generic",
       "licenseId": "CC-BY-NC-ND-1.0",
       "seeAlso": [
@@ -1236,7 +1237,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-ND-2.5.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-ND-2.5.json",
-      "referenceNumber": 351,
+      "referenceNumber": 352,
       "name": "Creative Commons Attribution Non Commercial No Derivatives 2.5 Generic",
       "licenseId": "CC-BY-NC-ND-2.5",
       "seeAlso": [
@@ -1308,7 +1309,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-SA-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-SA-2.0.json",
-      "referenceNumber": 465,
+      "referenceNumber": 466,
       "name": "Creative Commons Attribution Non Commercial Share Alike 2.0 Generic",
       "licenseId": "CC-BY-NC-SA-2.0",
       "seeAlso": [
@@ -1344,7 +1345,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-NC-SA-2.5.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-NC-SA-2.5.json",
-      "referenceNumber": 265,
+      "referenceNumber": 262,
       "name": "Creative Commons Attribution Non Commercial Share Alike 2.5 Generic",
       "licenseId": "CC-BY-NC-SA-2.5",
       "seeAlso": [
@@ -1404,7 +1405,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-ND-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-ND-1.0.json",
-      "referenceNumber": 45,
+      "referenceNumber": 53,
       "name": "Creative Commons Attribution No Derivatives 1.0 Generic",
       "licenseId": "CC-BY-ND-1.0",
       "seeAlso": [
@@ -1417,7 +1418,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-ND-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-ND-2.0.json",
-      "referenceNumber": 421,
+      "referenceNumber": 422,
       "name": "Creative Commons Attribution No Derivatives 2.0 Generic",
       "licenseId": "CC-BY-ND-2.0",
       "seeAlso": [
@@ -1443,7 +1444,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-ND-3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-ND-3.0.json",
-      "referenceNumber": 324,
+      "referenceNumber": 323,
       "name": "Creative Commons Attribution No Derivatives 3.0 Unported",
       "licenseId": "CC-BY-ND-3.0",
       "seeAlso": [
@@ -1468,7 +1469,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-ND-4.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-ND-4.0.json",
-      "referenceNumber": 78,
+      "referenceNumber": 74,
       "name": "Creative Commons Attribution No Derivatives 4.0 International",
       "licenseId": "CC-BY-ND-4.0",
       "seeAlso": [
@@ -1481,7 +1482,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-SA-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-SA-1.0.json",
-      "referenceNumber": 445,
+      "referenceNumber": 446,
       "name": "Creative Commons Attribution Share Alike 1.0 Generic",
       "licenseId": "CC-BY-SA-1.0",
       "seeAlso": [
@@ -1493,7 +1494,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-SA-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-SA-2.0.json",
-      "referenceNumber": 255,
+      "referenceNumber": 267,
       "name": "Creative Commons Attribution Share Alike 2.0 Generic",
       "licenseId": "CC-BY-SA-2.0",
       "seeAlso": [
@@ -1541,7 +1542,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-SA-3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-SA-3.0.json",
-      "referenceNumber": 76,
+      "referenceNumber": 75,
       "name": "Creative Commons Attribution Share Alike 3.0 Unported",
       "licenseId": "CC-BY-SA-3.0",
       "seeAlso": [
@@ -1553,7 +1554,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-SA-3.0-AT.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-SA-3.0-AT.json",
-      "referenceNumber": 82,
+      "referenceNumber": 70,
       "name": "Creative Commons Attribution Share Alike 3.0 Austria",
       "licenseId": "CC-BY-SA-3.0-AT",
       "seeAlso": [
@@ -1577,7 +1578,7 @@
       "reference": "https://spdx.org/licenses/CC-BY-SA-4.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CC-BY-SA-4.0.json",
-      "referenceNumber": 47,
+      "referenceNumber": 44,
       "name": "Creative Commons Attribution Share Alike 4.0 International",
       "licenseId": "CC-BY-SA-4.0",
       "seeAlso": [
@@ -1615,7 +1616,7 @@
       "reference": "https://spdx.org/licenses/CDDL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CDDL-1.0.json",
-      "referenceNumber": 371,
+      "referenceNumber": 369,
       "name": "Common Development and Distribution License 1.0",
       "licenseId": "CDDL-1.0",
       "seeAlso": [
@@ -1628,7 +1629,7 @@
       "reference": "https://spdx.org/licenses/CDDL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CDDL-1.1.json",
-      "referenceNumber": 489,
+      "referenceNumber": 491,
       "name": "Common Development and Distribution License 1.1",
       "licenseId": "CDDL-1.1",
       "seeAlso": [
@@ -1641,7 +1642,7 @@
       "reference": "https://spdx.org/licenses/CDL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CDL-1.0.json",
-      "referenceNumber": 408,
+      "referenceNumber": 409,
       "name": "Common Documentation License 1.0",
       "licenseId": "CDL-1.0",
       "seeAlso": [
@@ -1667,7 +1668,7 @@
       "reference": "https://spdx.org/licenses/CDLA-Permissive-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CDLA-Permissive-2.0.json",
-      "referenceNumber": 356,
+      "referenceNumber": 357,
       "name": "Community Data License Agreement Permissive 2.0",
       "licenseId": "CDLA-Permissive-2.0",
       "seeAlso": [
@@ -1679,7 +1680,7 @@
       "reference": "https://spdx.org/licenses/CDLA-Sharing-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CDLA-Sharing-1.0.json",
-      "referenceNumber": 106,
+      "referenceNumber": 102,
       "name": "Community Data License Agreement Sharing 1.0",
       "licenseId": "CDLA-Sharing-1.0",
       "seeAlso": [
@@ -1691,7 +1692,7 @@
       "reference": "https://spdx.org/licenses/CECILL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CECILL-1.0.json",
-      "referenceNumber": 10,
+      "referenceNumber": 7,
       "name": "CeCILL Free Software License Agreement v1.0",
       "licenseId": "CECILL-1.0",
       "seeAlso": [
@@ -1703,7 +1704,7 @@
       "reference": "https://spdx.org/licenses/CECILL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CECILL-1.1.json",
-      "referenceNumber": 46,
+      "referenceNumber": 43,
       "name": "CeCILL Free Software License Agreement v1.1",
       "licenseId": "CECILL-1.1",
       "seeAlso": [
@@ -1715,7 +1716,7 @@
       "reference": "https://spdx.org/licenses/CECILL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CECILL-2.0.json",
-      "referenceNumber": 155,
+      "referenceNumber": 153,
       "name": "CeCILL Free Software License Agreement v2.0",
       "licenseId": "CECILL-2.0",
       "seeAlso": [
@@ -1740,7 +1741,7 @@
       "reference": "https://spdx.org/licenses/CECILL-B.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CECILL-B.json",
-      "referenceNumber": 402,
+      "referenceNumber": 403,
       "name": "CeCILL-B Free Software License Agreement",
       "licenseId": "CECILL-B",
       "seeAlso": [
@@ -1802,7 +1803,7 @@
       "reference": "https://spdx.org/licenses/CERN-OHL-S-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CERN-OHL-S-2.0.json",
-      "referenceNumber": 154,
+      "referenceNumber": 159,
       "name": "CERN Open Hardware Licence Version 2 - Strongly Reciprocal",
       "licenseId": "CERN-OHL-S-2.0",
       "seeAlso": [
@@ -1814,7 +1815,7 @@
       "reference": "https://spdx.org/licenses/CERN-OHL-W-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CERN-OHL-W-2.0.json",
-      "referenceNumber": 21,
+      "referenceNumber": 22,
       "name": "CERN Open Hardware Licence Version 2 - Weakly Reciprocal",
       "licenseId": "CERN-OHL-W-2.0",
       "seeAlso": [
@@ -1826,7 +1827,7 @@
       "reference": "https://spdx.org/licenses/checkmk.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/checkmk.json",
-      "referenceNumber": 426,
+      "referenceNumber": 427,
       "name": "Checkmk License",
       "licenseId": "checkmk",
       "seeAlso": [
@@ -1838,7 +1839,7 @@
       "reference": "https://spdx.org/licenses/ClArtistic.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ClArtistic.json",
-      "referenceNumber": 56,
+      "referenceNumber": 54,
       "name": "Clarified Artistic License",
       "licenseId": "ClArtistic",
       "seeAlso": [
@@ -1864,7 +1865,7 @@
       "reference": "https://spdx.org/licenses/CNRI-Python.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CNRI-Python.json",
-      "referenceNumber": 345,
+      "referenceNumber": 346,
       "name": "CNRI Python License",
       "licenseId": "CNRI-Python",
       "seeAlso": [
@@ -1888,7 +1889,7 @@
       "reference": "https://spdx.org/licenses/COIL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/COIL-1.0.json",
-      "referenceNumber": 8,
+      "referenceNumber": 17,
       "name": "Copyfree Open Innovation License",
       "licenseId": "COIL-1.0",
       "seeAlso": [
@@ -1912,7 +1913,7 @@
       "reference": "https://spdx.org/licenses/Condor-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Condor-1.1.json",
-      "referenceNumber": 409,
+      "referenceNumber": 410,
       "name": "Condor Public License v1.1",
       "licenseId": "Condor-1.1",
       "seeAlso": [
@@ -1926,7 +1927,7 @@
       "reference": "https://spdx.org/licenses/copyleft-next-0.3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/copyleft-next-0.3.0.json",
-      "referenceNumber": 369,
+      "referenceNumber": 370,
       "name": "copyleft-next 0.3.0",
       "licenseId": "copyleft-next-0.3.0",
       "seeAlso": [
@@ -1963,7 +1964,7 @@
       "reference": "https://spdx.org/licenses/CPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CPL-1.0.json",
-      "referenceNumber": 396,
+      "referenceNumber": 397,
       "name": "Common Public License 1.0",
       "licenseId": "CPL-1.0",
       "seeAlso": [
@@ -2001,7 +2002,7 @@
       "reference": "https://spdx.org/licenses/CrystalStacker.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/CrystalStacker.json",
-      "referenceNumber": 103,
+      "referenceNumber": 109,
       "name": "CrystalStacker License",
       "licenseId": "CrystalStacker",
       "seeAlso": [
@@ -2037,7 +2038,7 @@
       "reference": "https://spdx.org/licenses/curl.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/curl.json",
-      "referenceNumber": 361,
+      "referenceNumber": 362,
       "name": "curl License",
       "licenseId": "curl",
       "seeAlso": [
@@ -2049,7 +2050,7 @@
       "reference": "https://spdx.org/licenses/D-FSL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/D-FSL-1.0.json",
-      "referenceNumber": 469,
+      "referenceNumber": 468,
       "name": "Deutsche Freie Software Lizenz",
       "licenseId": "D-FSL-1.0",
       "seeAlso": [
@@ -2080,7 +2081,7 @@
       "reference": "https://spdx.org/licenses/DL-DE-BY-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/DL-DE-BY-2.0.json",
-      "referenceNumber": 487,
+      "referenceNumber": 483,
       "name": "Data licence Germany – attribution – version 2.0",
       "licenseId": "DL-DE-BY-2.0",
       "seeAlso": [
@@ -2092,7 +2093,7 @@
       "reference": "https://spdx.org/licenses/DOC.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/DOC.json",
-      "referenceNumber": 411,
+      "referenceNumber": 412,
       "name": "DOC License",
       "licenseId": "DOC",
       "seeAlso": [
@@ -2105,7 +2106,7 @@
       "reference": "https://spdx.org/licenses/Dotseqn.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Dotseqn.json",
-      "referenceNumber": 323,
+      "referenceNumber": 322,
       "name": "Dotseqn License",
       "licenseId": "Dotseqn",
       "seeAlso": [
@@ -2141,7 +2142,7 @@
       "reference": "https://spdx.org/licenses/dvipdfm.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/dvipdfm.json",
-      "referenceNumber": 394,
+      "referenceNumber": 395,
       "name": "dvipdfm License",
       "licenseId": "dvipdfm",
       "seeAlso": [
@@ -2153,7 +2154,7 @@
       "reference": "https://spdx.org/licenses/ECL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ECL-1.0.json",
-      "referenceNumber": 403,
+      "referenceNumber": 404,
       "name": "Educational Community License v1.0",
       "licenseId": "ECL-1.0",
       "seeAlso": [
@@ -2165,7 +2166,7 @@
       "reference": "https://spdx.org/licenses/ECL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ECL-2.0.json",
-      "referenceNumber": 474,
+      "referenceNumber": 476,
       "name": "Educational Community License v2.0",
       "licenseId": "ECL-2.0",
       "seeAlso": [
@@ -2204,7 +2205,7 @@
       "reference": "https://spdx.org/licenses/EFL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/EFL-2.0.json",
-      "referenceNumber": 57,
+      "referenceNumber": 56,
       "name": "Eiffel Forum License v2.0",
       "licenseId": "EFL-2.0",
       "seeAlso": [
@@ -2231,7 +2232,7 @@
       "reference": "https://spdx.org/licenses/Elastic-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Elastic-2.0.json",
-      "referenceNumber": 35,
+      "referenceNumber": 32,
       "name": "Elastic License 2.0",
       "licenseId": "Elastic-2.0",
       "seeAlso": [
@@ -2256,7 +2257,7 @@
       "reference": "https://spdx.org/licenses/EPICS.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/EPICS.json",
-      "referenceNumber": 397,
+      "referenceNumber": 398,
       "name": "EPICS Open License",
       "licenseId": "EPICS",
       "seeAlso": [
@@ -2282,7 +2283,7 @@
       "reference": "https://spdx.org/licenses/EPL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/EPL-2.0.json",
-      "referenceNumber": 424,
+      "referenceNumber": 425,
       "name": "Eclipse Public License 2.0",
       "licenseId": "EPL-2.0",
       "seeAlso": [
@@ -2308,7 +2309,7 @@
       "reference": "https://spdx.org/licenses/etalab-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/etalab-2.0.json",
-      "referenceNumber": 393,
+      "referenceNumber": 394,
       "name": "Etalab Open License 2.0",
       "licenseId": "etalab-2.0",
       "seeAlso": [
@@ -2335,7 +2336,7 @@
       "reference": "https://spdx.org/licenses/EUPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/EUPL-1.0.json",
-      "referenceNumber": 108,
+      "referenceNumber": 110,
       "name": "European Union Public License 1.0",
       "licenseId": "EUPL-1.0",
       "seeAlso": [
@@ -2363,7 +2364,7 @@
       "reference": "https://spdx.org/licenses/EUPL-1.2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/EUPL-1.2.json",
-      "referenceNumber": 215,
+      "referenceNumber": 211,
       "name": "European Union Public License 1.2",
       "licenseId": "EUPL-1.2",
       "seeAlso": [
@@ -2406,7 +2407,7 @@
       "reference": "https://spdx.org/licenses/FDK-AAC.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/FDK-AAC.json",
-      "referenceNumber": 374,
+      "referenceNumber": 375,
       "name": "Fraunhofer FDK AAC Codec Library",
       "licenseId": "FDK-AAC",
       "seeAlso": [
@@ -2431,7 +2432,7 @@
       "reference": "https://spdx.org/licenses/FreeBSD-DOC.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/FreeBSD-DOC.json",
-      "referenceNumber": 400,
+      "referenceNumber": 401,
       "name": "FreeBSD Documentation License",
       "licenseId": "FreeBSD-DOC",
       "seeAlso": [
@@ -2443,7 +2444,7 @@
       "reference": "https://spdx.org/licenses/FreeImage.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/FreeImage.json",
-      "referenceNumber": 66,
+      "referenceNumber": 67,
       "name": "FreeImage Public License v1.0",
       "licenseId": "FreeImage",
       "seeAlso": [
@@ -2519,7 +2520,7 @@
       "reference": "https://spdx.org/licenses/GD.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GD.json",
-      "referenceNumber": 370,
+      "referenceNumber": 371,
       "name": "GD License",
       "licenseId": "GD",
       "seeAlso": [
@@ -2544,7 +2545,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.1-invariants-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.1-invariants-only.json",
-      "referenceNumber": 74,
+      "referenceNumber": 72,
       "name": "GNU Free Documentation License v1.1 only - invariants",
       "licenseId": "GFDL-1.1-invariants-only",
       "seeAlso": [
@@ -2556,7 +2557,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.1-invariants-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.1-invariants-or-later.json",
-      "referenceNumber": 463,
+      "referenceNumber": 465,
       "name": "GNU Free Documentation License v1.1 or later - invariants",
       "licenseId": "GFDL-1.1-invariants-or-later",
       "seeAlso": [
@@ -2568,7 +2569,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.1-no-invariants-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.1-no-invariants-only.json",
-      "referenceNumber": 442,
+      "referenceNumber": 443,
       "name": "GNU Free Documentation License v1.1 only - no invariants",
       "licenseId": "GFDL-1.1-no-invariants-only",
       "seeAlso": [
@@ -2618,7 +2619,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.2.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.2.json",
-      "referenceNumber": 452,
+      "referenceNumber": 453,
       "name": "GNU Free Documentation License v1.2",
       "licenseId": "GFDL-1.2",
       "seeAlso": [
@@ -2631,7 +2632,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.2-invariants-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.2-invariants-only.json",
-      "referenceNumber": 5,
+      "referenceNumber": 8,
       "name": "GNU Free Documentation License v1.2 only - invariants",
       "licenseId": "GFDL-1.2-invariants-only",
       "seeAlso": [
@@ -2667,7 +2668,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.2-no-invariants-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.2-no-invariants-or-later.json",
-      "referenceNumber": 460,
+      "referenceNumber": 459,
       "name": "GNU Free Documentation License v1.2 or later - no invariants",
       "licenseId": "GFDL-1.2-no-invariants-or-later",
       "seeAlso": [
@@ -2679,7 +2680,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.2-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.2-only.json",
-      "referenceNumber": 291,
+      "referenceNumber": 290,
       "name": "GNU Free Documentation License v1.2 only",
       "licenseId": "GFDL-1.2-only",
       "seeAlso": [
@@ -2705,7 +2706,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.3.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.3.json",
-      "referenceNumber": 284,
+      "referenceNumber": 300,
       "name": "GNU Free Documentation License v1.3",
       "licenseId": "GFDL-1.3",
       "seeAlso": [
@@ -2742,7 +2743,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.3-no-invariants-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.3-no-invariants-only.json",
-      "referenceNumber": 287,
+      "referenceNumber": 289,
       "name": "GNU Free Documentation License v1.3 only - no invariants",
       "licenseId": "GFDL-1.3-no-invariants-only",
       "seeAlso": [
@@ -2766,7 +2767,7 @@
       "reference": "https://spdx.org/licenses/GFDL-1.3-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GFDL-1.3-only.json",
-      "referenceNumber": 447,
+      "referenceNumber": 450,
       "name": "GNU Free Documentation License v1.3 only",
       "licenseId": "GFDL-1.3-only",
       "seeAlso": [
@@ -2792,7 +2793,7 @@
       "reference": "https://spdx.org/licenses/Giftware.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Giftware.json",
-      "referenceNumber": 84,
+      "referenceNumber": 85,
       "name": "Giftware License",
       "licenseId": "Giftware",
       "seeAlso": [
@@ -2804,7 +2805,7 @@
       "reference": "https://spdx.org/licenses/GL2PS.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GL2PS.json",
-      "referenceNumber": 107,
+      "referenceNumber": 106,
       "name": "GL2PS License",
       "licenseId": "GL2PS",
       "seeAlso": [
@@ -2840,7 +2841,7 @@
       "reference": "https://spdx.org/licenses/GLWTPL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GLWTPL.json",
-      "referenceNumber": 17,
+      "referenceNumber": 15,
       "name": "Good Luck With That Public License",
       "licenseId": "GLWTPL",
       "seeAlso": [
@@ -2852,7 +2853,7 @@
       "reference": "https://spdx.org/licenses/gnuplot.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/gnuplot.json",
-      "referenceNumber": 85,
+      "referenceNumber": 84,
       "name": "gnuplot License",
       "licenseId": "gnuplot",
       "seeAlso": [
@@ -2865,7 +2866,7 @@
       "reference": "https://spdx.org/licenses/GPL-1.0.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-1.0.json",
-      "referenceNumber": 438,
+      "referenceNumber": 439,
       "name": "GNU General Public License v1.0 only",
       "licenseId": "GPL-1.0",
       "seeAlso": [
@@ -2901,7 +2902,7 @@
       "reference": "https://spdx.org/licenses/GPL-1.0-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GPL-1.0-or-later.json",
-      "referenceNumber": 40,
+      "referenceNumber": 39,
       "name": "GNU General Public License v1.0 or later",
       "licenseId": "GPL-1.0-or-later",
       "seeAlso": [
@@ -2913,7 +2914,7 @@
       "reference": "https://spdx.org/licenses/GPL-2.0.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-2.0.json",
-      "referenceNumber": 476,
+      "referenceNumber": 478,
       "name": "GNU General Public License v2.0 only",
       "licenseId": "GPL-2.0",
       "seeAlso": [
@@ -2941,7 +2942,7 @@
       "reference": "https://spdx.org/licenses/GPL-2.0-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GPL-2.0-only.json",
-      "referenceNumber": 267,
+      "referenceNumber": 265,
       "name": "GNU General Public License v2.0 only",
       "licenseId": "GPL-2.0-only",
       "seeAlso": [
@@ -2955,7 +2956,7 @@
       "reference": "https://spdx.org/licenses/GPL-2.0-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GPL-2.0-or-later.json",
-      "referenceNumber": 63,
+      "referenceNumber": 62,
       "name": "GNU General Public License v2.0 or later",
       "licenseId": "GPL-2.0-or-later",
       "seeAlso": [
@@ -2969,7 +2970,7 @@
       "reference": "https://spdx.org/licenses/GPL-2.0-with-autoconf-exception.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-2.0-with-autoconf-exception.json",
-      "referenceNumber": 383,
+      "referenceNumber": 384,
       "name": "GNU General Public License v2.0 w/Autoconf exception",
       "licenseId": "GPL-2.0-with-autoconf-exception",
       "seeAlso": [
@@ -3017,7 +3018,7 @@
       "reference": "https://spdx.org/licenses/GPL-2.0-with-GCC-exception.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-2.0-with-GCC-exception.json",
-      "referenceNumber": 353,
+      "referenceNumber": 354,
       "name": "GNU General Public License v2.0 w/GCC Runtime Library exception",
       "licenseId": "GPL-2.0-with-GCC-exception",
       "seeAlso": [
@@ -3029,7 +3030,7 @@
       "reference": "https://spdx.org/licenses/GPL-3.0.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-3.0.json",
-      "referenceNumber": 80,
+      "referenceNumber": 78,
       "name": "GNU General Public License v3.0 only",
       "licenseId": "GPL-3.0",
       "seeAlso": [
@@ -3043,7 +3044,7 @@
       "reference": "https://spdx.org/licenses/GPL-3.0+.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-3.0+.json",
-      "referenceNumber": 289,
+      "referenceNumber": 286,
       "name": "GNU General Public License v3.0 or later",
       "licenseId": "GPL-3.0+",
       "seeAlso": [
@@ -3071,7 +3072,7 @@
       "reference": "https://spdx.org/licenses/GPL-3.0-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/GPL-3.0-or-later.json",
-      "referenceNumber": 484,
+      "referenceNumber": 486,
       "name": "GNU General Public License v3.0 or later",
       "licenseId": "GPL-3.0-or-later",
       "seeAlso": [
@@ -3097,7 +3098,7 @@
       "reference": "https://spdx.org/licenses/GPL-3.0-with-GCC-exception.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/GPL-3.0-with-GCC-exception.json",
-      "referenceNumber": 69,
+      "referenceNumber": 80,
       "name": "GNU General Public License v3.0 w/GCC Runtime Library exception",
       "licenseId": "GPL-3.0-with-GCC-exception",
       "seeAlso": [
@@ -3109,7 +3110,7 @@
       "reference": "https://spdx.org/licenses/gSOAP-1.3b.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/gSOAP-1.3b.json",
-      "referenceNumber": 494,
+      "referenceNumber": 496,
       "name": "gSOAP Public License v1.3b",
       "licenseId": "gSOAP-1.3b",
       "seeAlso": [
@@ -3121,7 +3122,7 @@
       "reference": "https://spdx.org/licenses/HaskellReport.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/HaskellReport.json",
-      "referenceNumber": 61,
+      "referenceNumber": 5,
       "name": "Haskell Language Report License",
       "licenseId": "HaskellReport",
       "seeAlso": [
@@ -3133,7 +3134,7 @@
       "reference": "https://spdx.org/licenses/Hippocratic-2.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Hippocratic-2.1.json",
-      "referenceNumber": 22,
+      "referenceNumber": 19,
       "name": "Hippocratic License 2.1",
       "licenseId": "Hippocratic-2.1",
       "seeAlso": [
@@ -3159,7 +3160,7 @@
       "reference": "https://spdx.org/licenses/HPND-sell-variant.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/HPND-sell-variant.json",
-      "referenceNumber": 328,
+      "referenceNumber": 335,
       "name": "Historical Permission Notice and Disclaimer - sell variant",
       "licenseId": "HPND-sell-variant",
       "seeAlso": [
@@ -3171,7 +3172,7 @@
       "reference": "https://spdx.org/licenses/HTMLTIDY.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/HTMLTIDY.json",
-      "referenceNumber": 360,
+      "referenceNumber": 361,
       "name": "HTML Tidy License",
       "licenseId": "HTMLTIDY",
       "seeAlso": [
@@ -3183,7 +3184,7 @@
       "reference": "https://spdx.org/licenses/IBM-pibs.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/IBM-pibs.json",
-      "referenceNumber": 18,
+      "referenceNumber": 16,
       "name": "IBM PowerPC Initialization and Boot Software",
       "licenseId": "IBM-pibs",
       "seeAlso": [
@@ -3195,7 +3196,7 @@
       "reference": "https://spdx.org/licenses/ICU.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ICU.json",
-      "referenceNumber": 365,
+      "referenceNumber": 366,
       "name": "ICU License",
       "licenseId": "ICU",
       "seeAlso": [
@@ -3207,7 +3208,7 @@
       "reference": "https://spdx.org/licenses/IJG.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/IJG.json",
-      "referenceNumber": 88,
+      "referenceNumber": 87,
       "name": "Independent JPEG Group License",
       "licenseId": "IJG",
       "seeAlso": [
@@ -3220,7 +3221,7 @@
       "reference": "https://spdx.org/licenses/ImageMagick.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ImageMagick.json",
-      "referenceNumber": 434,
+      "referenceNumber": 435,
       "name": "ImageMagick License",
       "licenseId": "ImageMagick",
       "seeAlso": [
@@ -3245,7 +3246,7 @@
       "reference": "https://spdx.org/licenses/Imlib2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Imlib2.json",
-      "referenceNumber": 472,
+      "referenceNumber": 474,
       "name": "Imlib2 License",
       "licenseId": "Imlib2",
       "seeAlso": [
@@ -3259,7 +3260,7 @@
       "reference": "https://spdx.org/licenses/Info-ZIP.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Info-ZIP.json",
-      "referenceNumber": 446,
+      "referenceNumber": 447,
       "name": "Info-ZIP License",
       "licenseId": "Info-ZIP",
       "seeAlso": [
@@ -3284,7 +3285,7 @@
       "reference": "https://spdx.org/licenses/Intel-ACPI.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Intel-ACPI.json",
-      "referenceNumber": 127,
+      "referenceNumber": 128,
       "name": "Intel ACPI Software License Agreement",
       "licenseId": "Intel-ACPI",
       "seeAlso": [
@@ -3296,7 +3297,7 @@
       "reference": "https://spdx.org/licenses/Interbase-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Interbase-1.0.json",
-      "referenceNumber": 492,
+      "referenceNumber": 494,
       "name": "Interbase Public License v1.0",
       "licenseId": "Interbase-1.0",
       "seeAlso": [
@@ -3321,7 +3322,7 @@
       "reference": "https://spdx.org/licenses/IPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/IPL-1.0.json",
-      "referenceNumber": 320,
+      "referenceNumber": 324,
       "name": "IBM Public License v1.0",
       "licenseId": "IPL-1.0",
       "seeAlso": [
@@ -3334,7 +3335,7 @@
       "reference": "https://spdx.org/licenses/ISC.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ISC.json",
-      "referenceNumber": 362,
+      "referenceNumber": 363,
       "name": "ISC License",
       "licenseId": "ISC",
       "seeAlso": [
@@ -3349,7 +3350,7 @@
       "reference": "https://spdx.org/licenses/Jam.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Jam.json",
-      "referenceNumber": 20,
+      "referenceNumber": 18,
       "name": "Jam License",
       "licenseId": "Jam",
       "seeAlso": [
@@ -3362,7 +3363,7 @@
       "reference": "https://spdx.org/licenses/JasPer-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/JasPer-2.0.json",
-      "referenceNumber": 96,
+      "referenceNumber": 105,
       "name": "JasPer License",
       "licenseId": "JasPer-2.0",
       "seeAlso": [
@@ -3386,7 +3387,7 @@
       "reference": "https://spdx.org/licenses/JSON.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/JSON.json",
-      "referenceNumber": 352,
+      "referenceNumber": 353,
       "name": "JSON License",
       "licenseId": "JSON",
       "seeAlso": [
@@ -3396,10 +3397,22 @@
       "isFsfLibre": false
     },
     {
+      "reference": "https://spdx.org/licenses/Knuth-CTAN.html",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "https://spdx.org/licenses/Knuth-CTAN.json",
+      "referenceNumber": 345,
+      "name": "Knuth CTAN License",
+      "licenseId": "Knuth-CTAN",
+      "seeAlso": [
+        "https://ctan.org/license/knuth"
+      ],
+      "isOsiApproved": false
+    },
+    {
       "reference": "https://spdx.org/licenses/LAL-1.2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LAL-1.2.json",
-      "referenceNumber": 286,
+      "referenceNumber": 284,
       "name": "Licence Art Libre 1.2",
       "licenseId": "LAL-1.2",
       "seeAlso": [
@@ -3435,7 +3448,7 @@
       "reference": "https://spdx.org/licenses/Leptonica.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Leptonica.json",
-      "referenceNumber": 471,
+      "referenceNumber": 473,
       "name": "Leptonica License",
       "licenseId": "Leptonica",
       "seeAlso": [
@@ -3447,7 +3460,7 @@
       "reference": "https://spdx.org/licenses/LGPL-2.0.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/LGPL-2.0.json",
-      "referenceNumber": 449,
+      "referenceNumber": 492,
       "name": "GNU Library General Public License v2 only",
       "licenseId": "LGPL-2.0",
       "seeAlso": [
@@ -3471,7 +3484,7 @@
       "reference": "https://spdx.org/licenses/LGPL-2.0-only.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LGPL-2.0-only.json",
-      "referenceNumber": 65,
+      "referenceNumber": 61,
       "name": "GNU Library General Public License v2 only",
       "licenseId": "LGPL-2.0-only",
       "seeAlso": [
@@ -3483,7 +3496,7 @@
       "reference": "https://spdx.org/licenses/LGPL-2.0-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LGPL-2.0-or-later.json",
-      "referenceNumber": 430,
+      "referenceNumber": 431,
       "name": "GNU Library General Public License v2 or later",
       "licenseId": "LGPL-2.0-or-later",
       "seeAlso": [
@@ -3495,7 +3508,7 @@
       "reference": "https://spdx.org/licenses/LGPL-2.1.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/LGPL-2.1.json",
-      "referenceNumber": 450,
+      "referenceNumber": 388,
       "name": "GNU Lesser General Public License v2.1 only",
       "licenseId": "LGPL-2.1",
       "seeAlso": [
@@ -3537,7 +3550,7 @@
       "reference": "https://spdx.org/licenses/LGPL-2.1-or-later.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LGPL-2.1-or-later.json",
-      "referenceNumber": 359,
+      "referenceNumber": 360,
       "name": "GNU Lesser General Public License v2.1 or later",
       "licenseId": "LGPL-2.1-or-later",
       "seeAlso": [
@@ -3551,7 +3564,7 @@
       "reference": "https://spdx.org/licenses/LGPL-3.0.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/LGPL-3.0.json",
-      "referenceNumber": 11,
+      "referenceNumber": 101,
       "name": "GNU Lesser General Public License v3.0 only",
       "licenseId": "LGPL-3.0",
       "seeAlso": [
@@ -3566,7 +3579,7 @@
       "reference": "https://spdx.org/licenses/LGPL-3.0+.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/LGPL-3.0+.json",
-      "referenceNumber": 105,
+      "referenceNumber": 100,
       "name": "GNU Lesser General Public License v3.0 or later",
       "licenseId": "LGPL-3.0+",
       "seeAlso": [
@@ -3611,7 +3624,7 @@
       "reference": "https://spdx.org/licenses/LGPLLR.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LGPLLR.json",
-      "referenceNumber": 329,
+      "referenceNumber": 328,
       "name": "Lesser General Public License For Linguistic Resources",
       "licenseId": "LGPLLR",
       "seeAlso": [
@@ -3623,7 +3636,7 @@
       "reference": "https://spdx.org/licenses/Libpng.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Libpng.json",
-      "referenceNumber": 459,
+      "referenceNumber": 452,
       "name": "libpng License",
       "licenseId": "Libpng",
       "seeAlso": [
@@ -3664,6 +3677,19 @@
       "licenseId": "libtiff",
       "seeAlso": [
         "https://fedoraproject.org/wiki/Licensing/libtiff"
+      ],
+      "isOsiApproved": false
+    },
+    {
+      "reference": "https://spdx.org/licenses/libutil-David-Nugent.html",
+      "isDeprecatedLicenseId": false,
+      "detailsUrl": "https://spdx.org/licenses/libutil-David-Nugent.json",
+      "referenceNumber": 464,
+      "name": "libutil David Nugent License",
+      "licenseId": "libutil-David-Nugent",
+      "seeAlso": [
+        "http://web.mit.edu/freebsd/head/lib/libutil/login_ok.3",
+        "https://cgit.freedesktop.org/libbsd/tree/man/setproctitle.3bsd"
       ],
       "isOsiApproved": false
     },
@@ -3710,7 +3736,7 @@
       "reference": "https://spdx.org/licenses/Linux-man-pages-copyleft.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Linux-man-pages-copyleft.json",
-      "referenceNumber": 38,
+      "referenceNumber": 40,
       "name": "Linux man-pages Copyleft",
       "licenseId": "Linux-man-pages-copyleft",
       "seeAlso": [
@@ -3734,7 +3760,7 @@
       "reference": "https://spdx.org/licenses/LPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LPL-1.0.json",
-      "referenceNumber": 309,
+      "referenceNumber": 308,
       "name": "Lucent Public License Version 1.0",
       "licenseId": "LPL-1.0",
       "seeAlso": [
@@ -3746,7 +3772,7 @@
       "reference": "https://spdx.org/licenses/LPL-1.02.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LPL-1.02.json",
-      "referenceNumber": 72,
+      "referenceNumber": 71,
       "name": "Lucent Public License v1.02",
       "licenseId": "LPL-1.02",
       "seeAlso": [
@@ -3772,7 +3798,7 @@
       "reference": "https://spdx.org/licenses/LPPL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LPPL-1.1.json",
-      "referenceNumber": 462,
+      "referenceNumber": 460,
       "name": "LaTeX Project Public License v1.1",
       "licenseId": "LPPL-1.1",
       "seeAlso": [
@@ -3810,7 +3836,7 @@
       "reference": "https://spdx.org/licenses/LPPL-1.3c.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LPPL-1.3c.json",
-      "referenceNumber": 13,
+      "referenceNumber": 11,
       "name": "LaTeX Project Public License v1.3c",
       "licenseId": "LPPL-1.3c",
       "seeAlso": [
@@ -3823,7 +3849,7 @@
       "reference": "https://spdx.org/licenses/LZMA-SDK-9.11-to-9.20.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/LZMA-SDK-9.11-to-9.20.json",
-      "referenceNumber": 44,
+      "referenceNumber": 57,
       "name": "LZMA SDK License (versions 9.11 to 9.20)",
       "licenseId": "LZMA-SDK-9.11-to-9.20",
       "seeAlso": [
@@ -3861,7 +3887,7 @@
       "reference": "https://spdx.org/licenses/Minpack.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Minpack.json",
-      "referenceNumber": 451,
+      "referenceNumber": 493,
       "name": "Minpack License",
       "licenseId": "Minpack",
       "seeAlso": [
@@ -3886,7 +3912,7 @@
       "reference": "https://spdx.org/licenses/MIT.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MIT.json",
-      "referenceNumber": 477,
+      "referenceNumber": 479,
       "name": "MIT License",
       "licenseId": "MIT",
       "seeAlso": [
@@ -3899,7 +3925,7 @@
       "reference": "https://spdx.org/licenses/MIT-0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MIT-0.json",
-      "referenceNumber": 479,
+      "referenceNumber": 480,
       "name": "MIT No Attribution",
       "licenseId": "MIT-0",
       "seeAlso": [
@@ -3938,7 +3964,7 @@
       "reference": "https://spdx.org/licenses/MIT-enna.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MIT-enna.json",
-      "referenceNumber": 322,
+      "referenceNumber": 320,
       "name": "enna License",
       "licenseId": "MIT-enna",
       "seeAlso": [
@@ -3950,7 +3976,7 @@
       "reference": "https://spdx.org/licenses/MIT-feh.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MIT-feh.json",
-      "referenceNumber": 308,
+      "referenceNumber": 307,
       "name": "feh License",
       "licenseId": "MIT-feh",
       "seeAlso": [
@@ -3962,7 +3988,7 @@
       "reference": "https://spdx.org/licenses/MIT-Modern-Variant.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MIT-Modern-Variant.json",
-      "referenceNumber": 490,
+      "referenceNumber": 463,
       "name": "MIT License Modern Variant",
       "licenseId": "MIT-Modern-Variant",
       "seeAlso": [
@@ -3976,7 +4002,7 @@
       "reference": "https://spdx.org/licenses/MIT-open-group.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MIT-open-group.json",
-      "referenceNumber": 416,
+      "referenceNumber": 418,
       "name": "MIT Open Group variant",
       "licenseId": "MIT-open-group",
       "seeAlso": [
@@ -3991,7 +4017,7 @@
       "reference": "https://spdx.org/licenses/MITNFA.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MITNFA.json",
-      "referenceNumber": 83,
+      "referenceNumber": 82,
       "name": "MIT +no-false-attribs license",
       "licenseId": "MITNFA",
       "seeAlso": [
@@ -4003,7 +4029,7 @@
       "reference": "https://spdx.org/licenses/Motosoto.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Motosoto.json",
-      "referenceNumber": 468,
+      "referenceNumber": 470,
       "name": "Motosoto License",
       "licenseId": "Motosoto",
       "seeAlso": [
@@ -4015,7 +4041,7 @@
       "reference": "https://spdx.org/licenses/mpi-permissive.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/mpi-permissive.json",
-      "referenceNumber": 245,
+      "referenceNumber": 244,
       "name": "mpi Permissive License",
       "licenseId": "mpi-permissive",
       "seeAlso": [
@@ -4027,7 +4053,7 @@
       "reference": "https://spdx.org/licenses/mpich2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/mpich2.json",
-      "referenceNumber": 15,
+      "referenceNumber": 13,
       "name": "mpich2 License",
       "licenseId": "mpich2",
       "seeAlso": [
@@ -4039,7 +4065,7 @@
       "reference": "https://spdx.org/licenses/MPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MPL-1.0.json",
-      "referenceNumber": 410,
+      "referenceNumber": 413,
       "name": "Mozilla Public License 1.0",
       "licenseId": "MPL-1.0",
       "seeAlso": [
@@ -4052,7 +4078,7 @@
       "reference": "https://spdx.org/licenses/MPL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MPL-1.1.json",
-      "referenceNumber": 301,
+      "referenceNumber": 304,
       "name": "Mozilla Public License 1.1",
       "licenseId": "MPL-1.1",
       "seeAlso": [
@@ -4080,7 +4106,7 @@
       "reference": "https://spdx.org/licenses/MPL-2.0-no-copyleft-exception.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MPL-2.0-no-copyleft-exception.json",
-      "referenceNumber": 341,
+      "referenceNumber": 342,
       "name": "Mozilla Public License 2.0 (no copyleft exception)",
       "licenseId": "MPL-2.0-no-copyleft-exception",
       "seeAlso": [
@@ -4093,7 +4119,7 @@
       "reference": "https://spdx.org/licenses/mplus.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/mplus.json",
-      "referenceNumber": 101,
+      "referenceNumber": 103,
       "name": "mplus Font License",
       "licenseId": "mplus",
       "seeAlso": [
@@ -4105,7 +4131,7 @@
       "reference": "https://spdx.org/licenses/MS-LPL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MS-LPL.json",
-      "referenceNumber": 181,
+      "referenceNumber": 179,
       "name": "Microsoft Limited Public License",
       "licenseId": "MS-LPL",
       "seeAlso": [
@@ -4133,7 +4159,7 @@
       "reference": "https://spdx.org/licenses/MS-RL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MS-RL.json",
-      "referenceNumber": 363,
+      "referenceNumber": 414,
       "name": "Microsoft Reciprocal License",
       "licenseId": "MS-RL",
       "seeAlso": [
@@ -4159,7 +4185,7 @@
       "reference": "https://spdx.org/licenses/MulanPSL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MulanPSL-1.0.json",
-      "referenceNumber": 87,
+      "referenceNumber": 81,
       "name": "Mulan Permissive Software License, Version 1",
       "licenseId": "MulanPSL-1.0",
       "seeAlso": [
@@ -4172,7 +4198,7 @@
       "reference": "https://spdx.org/licenses/MulanPSL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/MulanPSL-2.0.json",
-      "referenceNumber": 491,
+      "referenceNumber": 467,
       "name": "Mulan Permissive Software License, Version 2",
       "licenseId": "MulanPSL-2.0",
       "seeAlso": [
@@ -4184,7 +4210,7 @@
       "reference": "https://spdx.org/licenses/Multics.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Multics.json",
-      "referenceNumber": 486,
+      "referenceNumber": 488,
       "name": "Multics License",
       "licenseId": "Multics",
       "seeAlso": [
@@ -4208,7 +4234,7 @@
       "reference": "https://spdx.org/licenses/NAIST-2003.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NAIST-2003.json",
-      "referenceNumber": 475,
+      "referenceNumber": 477,
       "name": "Nara Institute of Science and Technology License (2003)",
       "licenseId": "NAIST-2003",
       "seeAlso": [
@@ -4221,7 +4247,7 @@
       "reference": "https://spdx.org/licenses/NASA-1.3.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NASA-1.3.json",
-      "referenceNumber": 32,
+      "referenceNumber": 35,
       "name": "NASA Open Source Agreement 1.3",
       "licenseId": "NASA-1.3",
       "seeAlso": [
@@ -4235,7 +4261,7 @@
       "reference": "https://spdx.org/licenses/Naumen.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Naumen.json",
-      "referenceNumber": 448,
+      "referenceNumber": 449,
       "name": "Naumen Public License",
       "licenseId": "Naumen",
       "seeAlso": [
@@ -4247,7 +4273,7 @@
       "reference": "https://spdx.org/licenses/NBPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NBPL-1.0.json",
-      "referenceNumber": 295,
+      "referenceNumber": 294,
       "name": "Net Boolean Public License v1",
       "licenseId": "NBPL-1.0",
       "seeAlso": [
@@ -4259,7 +4285,7 @@
       "reference": "https://spdx.org/licenses/NCGL-UK-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NCGL-UK-2.0.json",
-      "referenceNumber": 102,
+      "referenceNumber": 99,
       "name": "Non-Commercial Government Licence",
       "licenseId": "NCGL-UK-2.0",
       "seeAlso": [
@@ -4285,7 +4311,7 @@
       "reference": "https://spdx.org/licenses/Net-SNMP.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Net-SNMP.json",
-      "referenceNumber": 358,
+      "referenceNumber": 359,
       "name": "Net-SNMP License",
       "licenseId": "Net-SNMP",
       "seeAlso": [
@@ -4309,7 +4335,7 @@
       "reference": "https://spdx.org/licenses/Newsletr.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Newsletr.json",
-      "referenceNumber": 382,
+      "referenceNumber": 364,
       "name": "Newsletr License",
       "licenseId": "Newsletr",
       "seeAlso": [
@@ -4333,7 +4359,7 @@
       "reference": "https://spdx.org/licenses/NICTA-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NICTA-1.0.json",
-      "referenceNumber": 437,
+      "referenceNumber": 438,
       "name": "NICTA Public Software License, Version 1.0",
       "licenseId": "NICTA-1.0",
       "seeAlso": [
@@ -4345,7 +4371,7 @@
       "reference": "https://spdx.org/licenses/NIST-PD.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NIST-PD.json",
-      "referenceNumber": 9,
+      "referenceNumber": 21,
       "name": "NIST Public Domain Notice",
       "licenseId": "NIST-PD",
       "seeAlso": [
@@ -4358,7 +4384,7 @@
       "reference": "https://spdx.org/licenses/NIST-PD-fallback.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NIST-PD-fallback.json",
-      "referenceNumber": 354,
+      "referenceNumber": 355,
       "name": "NIST Public Domain Notice with license fallback",
       "licenseId": "NIST-PD-fallback",
       "seeAlso": [
@@ -4371,7 +4397,7 @@
       "reference": "https://spdx.org/licenses/NLOD-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NLOD-1.0.json",
-      "referenceNumber": 264,
+      "referenceNumber": 255,
       "name": "Norwegian Licence for Open Government Data (NLOD) 1.0",
       "licenseId": "NLOD-1.0",
       "seeAlso": [
@@ -4383,7 +4409,7 @@
       "reference": "https://spdx.org/licenses/NLOD-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NLOD-2.0.json",
-      "referenceNumber": 378,
+      "referenceNumber": 379,
       "name": "Norwegian Licence for Open Government Data (NLOD) 2.0",
       "licenseId": "NLOD-2.0",
       "seeAlso": [
@@ -4420,7 +4446,7 @@
       "reference": "https://spdx.org/licenses/NOSL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NOSL.json",
-      "referenceNumber": 122,
+      "referenceNumber": 123,
       "name": "Netizen Open Source License",
       "licenseId": "NOSL",
       "seeAlso": [
@@ -4433,7 +4459,7 @@
       "reference": "https://spdx.org/licenses/Noweb.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Noweb.json",
-      "referenceNumber": 433,
+      "referenceNumber": 434,
       "name": "Noweb License",
       "licenseId": "Noweb",
       "seeAlso": [
@@ -4445,7 +4471,7 @@
       "reference": "https://spdx.org/licenses/NPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NPL-1.0.json",
-      "referenceNumber": 27,
+      "referenceNumber": 24,
       "name": "Netscape Public License v1.0",
       "licenseId": "NPL-1.0",
       "seeAlso": [
@@ -4458,7 +4484,7 @@
       "reference": "https://spdx.org/licenses/NPL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NPL-1.1.json",
-      "referenceNumber": 454,
+      "referenceNumber": 451,
       "name": "Netscape Public License v1.1",
       "licenseId": "NPL-1.1",
       "seeAlso": [
@@ -4471,7 +4497,7 @@
       "reference": "https://spdx.org/licenses/NPOSL-3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NPOSL-3.0.json",
-      "referenceNumber": 218,
+      "referenceNumber": 217,
       "name": "Non-Profit Open Software License 3.0",
       "licenseId": "NPOSL-3.0",
       "seeAlso": [
@@ -4483,7 +4509,7 @@
       "reference": "https://spdx.org/licenses/NRL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NRL.json",
-      "referenceNumber": 441,
+      "referenceNumber": 442,
       "name": "NRL License",
       "licenseId": "NRL",
       "seeAlso": [
@@ -4495,7 +4521,7 @@
       "reference": "https://spdx.org/licenses/NTP.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NTP.json",
-      "referenceNumber": 443,
+      "referenceNumber": 444,
       "name": "NTP License",
       "licenseId": "NTP",
       "seeAlso": [
@@ -4507,7 +4533,7 @@
       "reference": "https://spdx.org/licenses/NTP-0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/NTP-0.json",
-      "referenceNumber": 401,
+      "referenceNumber": 402,
       "name": "NTP No Attribution",
       "licenseId": "NTP-0",
       "seeAlso": [
@@ -4532,7 +4558,7 @@
       "reference": "https://spdx.org/licenses/O-UDA-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/O-UDA-1.0.json",
-      "referenceNumber": 366,
+      "referenceNumber": 372,
       "name": "Open Use of Data Agreement v1.0",
       "licenseId": "O-UDA-1.0",
       "seeAlso": [
@@ -4545,7 +4571,7 @@
       "reference": "https://spdx.org/licenses/OCCT-PL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OCCT-PL.json",
-      "referenceNumber": 348,
+      "referenceNumber": 349,
       "name": "Open CASCADE Technology Public License",
       "licenseId": "OCCT-PL",
       "seeAlso": [
@@ -4584,7 +4610,7 @@
       "reference": "https://spdx.org/licenses/ODC-By-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ODC-By-1.0.json",
-      "referenceNumber": 399,
+      "referenceNumber": 400,
       "name": "Open Data Commons Attribution License v1.0",
       "licenseId": "ODC-By-1.0",
       "seeAlso": [
@@ -4596,7 +4622,7 @@
       "reference": "https://spdx.org/licenses/OFL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OFL-1.0.json",
-      "referenceNumber": 109,
+      "referenceNumber": 104,
       "name": "SIL Open Font License 1.0",
       "licenseId": "OFL-1.0",
       "seeAlso": [
@@ -4633,7 +4659,7 @@
       "reference": "https://spdx.org/licenses/OFL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OFL-1.1.json",
-      "referenceNumber": 407,
+      "referenceNumber": 408,
       "name": "SIL Open Font License 1.1",
       "licenseId": "OFL-1.1",
       "seeAlso": [
@@ -4647,7 +4673,7 @@
       "reference": "https://spdx.org/licenses/OFL-1.1-no-RFN.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OFL-1.1-no-RFN.json",
-      "referenceNumber": 158,
+      "referenceNumber": 154,
       "name": "SIL Open Font License 1.1 with no Reserved Font Name",
       "licenseId": "OFL-1.1-no-RFN",
       "seeAlso": [
@@ -4660,7 +4686,7 @@
       "reference": "https://spdx.org/licenses/OFL-1.1-RFN.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OFL-1.1-RFN.json",
-      "referenceNumber": 104,
+      "referenceNumber": 107,
       "name": "SIL Open Font License 1.1 with Reserved Font Name",
       "licenseId": "OFL-1.1-RFN",
       "seeAlso": [
@@ -4685,7 +4711,7 @@
       "reference": "https://spdx.org/licenses/OGDL-Taiwan-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OGDL-Taiwan-1.0.json",
-      "referenceNumber": 392,
+      "referenceNumber": 393,
       "name": "Taiwan Open Government Data License, version 1.0",
       "licenseId": "OGDL-Taiwan-1.0",
       "seeAlso": [
@@ -4697,7 +4723,7 @@
       "reference": "https://spdx.org/licenses/OGL-Canada-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OGL-Canada-2.0.json",
-      "referenceNumber": 302,
+      "referenceNumber": 309,
       "name": "Open Government Licence - Canada",
       "licenseId": "OGL-Canada-2.0",
       "seeAlso": [
@@ -4709,7 +4735,7 @@
       "reference": "https://spdx.org/licenses/OGL-UK-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OGL-UK-1.0.json",
-      "referenceNumber": 244,
+      "referenceNumber": 241,
       "name": "Open Government Licence v1.0",
       "licenseId": "OGL-UK-1.0",
       "seeAlso": [
@@ -4733,7 +4759,7 @@
       "reference": "https://spdx.org/licenses/OGL-UK-3.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OGL-UK-3.0.json",
-      "referenceNumber": 379,
+      "referenceNumber": 380,
       "name": "Open Government Licence v3.0",
       "licenseId": "OGL-UK-3.0",
       "seeAlso": [
@@ -4745,7 +4771,7 @@
       "reference": "https://spdx.org/licenses/OGTSL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OGTSL.json",
-      "referenceNumber": 51,
+      "referenceNumber": 50,
       "name": "Open Group Test Suite License",
       "licenseId": "OGTSL",
       "seeAlso": [
@@ -4758,7 +4784,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-1.1.json",
-      "referenceNumber": 217,
+      "referenceNumber": 218,
       "name": "Open LDAP Public License v1.1",
       "licenseId": "OLDAP-1.1",
       "seeAlso": [
@@ -4782,7 +4808,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-1.3.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-1.3.json",
-      "referenceNumber": 126,
+      "referenceNumber": 127,
       "name": "Open LDAP Public License v1.3",
       "licenseId": "OLDAP-1.3",
       "seeAlso": [
@@ -4794,7 +4820,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-1.4.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-1.4.json",
-      "referenceNumber": 213,
+      "referenceNumber": 215,
       "name": "Open LDAP Public License v1.4",
       "licenseId": "OLDAP-1.4",
       "seeAlso": [
@@ -4806,7 +4832,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.0.json",
-      "referenceNumber": 79,
+      "referenceNumber": 83,
       "name": "Open LDAP Public License v2.0 (or possibly 2.0A and 2.0B)",
       "licenseId": "OLDAP-2.0",
       "seeAlso": [
@@ -4818,7 +4844,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.0.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.0.1.json",
-      "referenceNumber": 114,
+      "referenceNumber": 115,
       "name": "Open LDAP Public License v2.0.1",
       "licenseId": "OLDAP-2.0.1",
       "seeAlso": [
@@ -4830,7 +4856,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.1.json",
-      "referenceNumber": 262,
+      "referenceNumber": 263,
       "name": "Open LDAP Public License v2.1",
       "licenseId": "OLDAP-2.1",
       "seeAlso": [
@@ -4842,7 +4868,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.2.json",
-      "referenceNumber": 166,
+      "referenceNumber": 167,
       "name": "Open LDAP Public License v2.2",
       "licenseId": "OLDAP-2.2",
       "seeAlso": [
@@ -4854,7 +4880,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.2.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.2.1.json",
-      "referenceNumber": 62,
+      "referenceNumber": 63,
       "name": "Open LDAP Public License v2.2.1",
       "licenseId": "OLDAP-2.2.1",
       "seeAlso": [
@@ -4878,7 +4904,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.3.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.3.json",
-      "referenceNumber": 414,
+      "referenceNumber": 448,
       "name": "Open LDAP Public License v2.3",
       "licenseId": "OLDAP-2.3",
       "seeAlso": [
@@ -4891,7 +4917,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.4.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.4.json",
-      "referenceNumber": 420,
+      "referenceNumber": 421,
       "name": "Open LDAP Public License v2.4",
       "licenseId": "OLDAP-2.4",
       "seeAlso": [
@@ -4903,7 +4929,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.5.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.5.json",
-      "referenceNumber": 493,
+      "referenceNumber": 495,
       "name": "Open LDAP Public License v2.5",
       "licenseId": "OLDAP-2.5",
       "seeAlso": [
@@ -4915,7 +4941,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.6.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.6.json",
-      "referenceNumber": 179,
+      "referenceNumber": 182,
       "name": "Open LDAP Public License v2.6",
       "licenseId": "OLDAP-2.6",
       "seeAlso": [
@@ -4940,7 +4966,7 @@
       "reference": "https://spdx.org/licenses/OLDAP-2.8.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OLDAP-2.8.json",
-      "referenceNumber": 404,
+      "referenceNumber": 405,
       "name": "Open LDAP Public License v2.8",
       "licenseId": "OLDAP-2.8",
       "seeAlso": [
@@ -4964,7 +4990,7 @@
       "reference": "https://spdx.org/licenses/OpenSSL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OpenSSL.json",
-      "referenceNumber": 384,
+      "referenceNumber": 385,
       "name": "OpenSSL License",
       "licenseId": "OpenSSL",
       "seeAlso": [
@@ -4991,7 +5017,7 @@
       "reference": "https://spdx.org/licenses/OPUBL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OPUBL-1.0.json",
-      "referenceNumber": 100,
+      "referenceNumber": 94,
       "name": "Open Publication License v1.0",
       "licenseId": "OPUBL-1.0",
       "seeAlso": [
@@ -5044,7 +5070,7 @@
       "reference": "https://spdx.org/licenses/OSL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/OSL-2.0.json",
-      "referenceNumber": 398,
+      "referenceNumber": 399,
       "name": "Open Software License 2.0",
       "licenseId": "OSL-2.0",
       "seeAlso": [
@@ -5097,7 +5123,7 @@
       "reference": "https://spdx.org/licenses/Parity-7.0.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Parity-7.0.0.json",
-      "referenceNumber": 436,
+      "referenceNumber": 437,
       "name": "The Parity Public License 7.0.0",
       "licenseId": "Parity-7.0.0",
       "seeAlso": [
@@ -5135,7 +5161,7 @@
       "reference": "https://spdx.org/licenses/PHP-3.01.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/PHP-3.01.json",
-      "referenceNumber": 347,
+      "referenceNumber": 348,
       "name": "PHP License v3.01",
       "licenseId": "PHP-3.01",
       "seeAlso": [
@@ -5160,7 +5186,7 @@
       "reference": "https://spdx.org/licenses/PolyForm-Noncommercial-1.0.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/PolyForm-Noncommercial-1.0.0.json",
-      "referenceNumber": 428,
+      "referenceNumber": 429,
       "name": "PolyForm Noncommercial License 1.0.0",
       "licenseId": "PolyForm-Noncommercial-1.0.0",
       "seeAlso": [
@@ -5172,7 +5198,7 @@
       "reference": "https://spdx.org/licenses/PolyForm-Small-Business-1.0.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/PolyForm-Small-Business-1.0.0.json",
-      "referenceNumber": 464,
+      "referenceNumber": 461,
       "name": "PolyForm Small Business License 1.0.0",
       "licenseId": "PolyForm-Small-Business-1.0.0",
       "seeAlso": [
@@ -5197,7 +5223,7 @@
       "reference": "https://spdx.org/licenses/PSF-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/PSF-2.0.json",
-      "referenceNumber": 427,
+      "referenceNumber": 428,
       "name": "Python Software Foundation License 2.0",
       "licenseId": "PSF-2.0",
       "seeAlso": [
@@ -5209,7 +5235,7 @@
       "reference": "https://spdx.org/licenses/psfrag.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/psfrag.json",
-      "referenceNumber": 89,
+      "referenceNumber": 88,
       "name": "psfrag License",
       "licenseId": "psfrag",
       "seeAlso": [
@@ -5233,7 +5259,7 @@
       "reference": "https://spdx.org/licenses/Python-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Python-2.0.json",
-      "referenceNumber": 350,
+      "referenceNumber": 351,
       "name": "Python License 2.0",
       "licenseId": "Python-2.0",
       "seeAlso": [
@@ -5260,7 +5286,7 @@
       "reference": "https://spdx.org/licenses/Qhull.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Qhull.json",
-      "referenceNumber": 377,
+      "referenceNumber": 378,
       "name": "Qhull License",
       "licenseId": "Qhull",
       "seeAlso": [
@@ -5272,7 +5298,7 @@
       "reference": "https://spdx.org/licenses/QPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/QPL-1.0.json",
-      "referenceNumber": 16,
+      "referenceNumber": 14,
       "name": "Q Public License 1.0",
       "licenseId": "QPL-1.0",
       "seeAlso": [
@@ -5299,7 +5325,7 @@
       "reference": "https://spdx.org/licenses/RHeCos-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/RHeCos-1.1.json",
-      "referenceNumber": 467,
+      "referenceNumber": 469,
       "name": "Red Hat eCos Public License v1.1",
       "licenseId": "RHeCos-1.1",
       "seeAlso": [
@@ -5312,7 +5338,7 @@
       "reference": "https://spdx.org/licenses/RPL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/RPL-1.1.json",
-      "referenceNumber": 346,
+      "referenceNumber": 347,
       "name": "Reciprocal Public License 1.1",
       "licenseId": "RPL-1.1",
       "seeAlso": [
@@ -5350,7 +5376,7 @@
       "reference": "https://spdx.org/licenses/RSA-MD.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/RSA-MD.json",
-      "referenceNumber": 48,
+      "referenceNumber": 45,
       "name": "RSA Message-Digest License",
       "licenseId": "RSA-MD",
       "seeAlso": [
@@ -5388,7 +5414,7 @@
       "reference": "https://spdx.org/licenses/SAX-PD.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SAX-PD.json",
-      "referenceNumber": 373,
+      "referenceNumber": 374,
       "name": "Sax Public Domain Notice",
       "licenseId": "SAX-PD",
       "seeAlso": [
@@ -5424,7 +5450,7 @@
       "reference": "https://spdx.org/licenses/SchemeReport.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SchemeReport.json",
-      "referenceNumber": 483,
+      "referenceNumber": 485,
       "name": "Scheme Language Report License",
       "licenseId": "SchemeReport",
       "seeAlso": [],
@@ -5447,7 +5473,7 @@
       "reference": "https://spdx.org/licenses/Sendmail-8.23.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Sendmail-8.23.json",
-      "referenceNumber": 81,
+      "referenceNumber": 79,
       "name": "Sendmail License 8.23",
       "licenseId": "Sendmail-8.23",
       "seeAlso": [
@@ -5472,7 +5498,7 @@
       "reference": "https://spdx.org/licenses/SGI-B-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SGI-B-1.1.json",
-      "referenceNumber": 485,
+      "referenceNumber": 487,
       "name": "SGI Free Software License B v1.1",
       "licenseId": "SGI-B-1.1",
       "seeAlso": [
@@ -5484,7 +5510,7 @@
       "reference": "https://spdx.org/licenses/SGI-B-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SGI-B-2.0.json",
-      "referenceNumber": 480,
+      "referenceNumber": 482,
       "name": "SGI Free Software License B v2.0",
       "licenseId": "SGI-B-2.0",
       "seeAlso": [
@@ -5497,7 +5523,7 @@
       "reference": "https://spdx.org/licenses/SHL-0.5.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SHL-0.5.json",
-      "referenceNumber": 482,
+      "referenceNumber": 484,
       "name": "Solderpad Hardware License v0.5",
       "licenseId": "SHL-0.5",
       "seeAlso": [
@@ -5509,7 +5535,7 @@
       "reference": "https://spdx.org/licenses/SHL-0.51.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SHL-0.51.json",
-      "referenceNumber": 49,
+      "referenceNumber": 47,
       "name": "Solderpad Hardware License, Version 0.51",
       "licenseId": "SHL-0.51",
       "seeAlso": [
@@ -5521,7 +5547,7 @@
       "reference": "https://spdx.org/licenses/SimPL-2.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SimPL-2.0.json",
-      "referenceNumber": 43,
+      "referenceNumber": 49,
       "name": "Simple Public License 2.0",
       "licenseId": "SimPL-2.0",
       "seeAlso": [
@@ -5533,7 +5559,7 @@
       "reference": "https://spdx.org/licenses/SISSL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SISSL.json",
-      "referenceNumber": 94,
+      "referenceNumber": 92,
       "name": "Sun Industry Standards Source License v1.1",
       "licenseId": "SISSL",
       "seeAlso": [
@@ -5547,7 +5573,7 @@
       "reference": "https://spdx.org/licenses/SISSL-1.2.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SISSL-1.2.json",
-      "referenceNumber": 429,
+      "referenceNumber": 430,
       "name": "Sun Industry Standards Source License v1.2",
       "licenseId": "SISSL-1.2",
       "seeAlso": [
@@ -5572,7 +5598,7 @@
       "reference": "https://spdx.org/licenses/SMLNJ.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SMLNJ.json",
-      "referenceNumber": 71,
+      "referenceNumber": 69,
       "name": "Standard ML of New Jersey License",
       "licenseId": "SMLNJ",
       "seeAlso": [
@@ -5597,7 +5623,7 @@
       "reference": "https://spdx.org/licenses/SNIA.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SNIA.json",
-      "referenceNumber": 39,
+      "referenceNumber": 38,
       "name": "SNIA Public License 1.1",
       "licenseId": "SNIA",
       "seeAlso": [
@@ -5609,7 +5635,7 @@
       "reference": "https://spdx.org/licenses/Spencer-86.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Spencer-86.json",
-      "referenceNumber": 99,
+      "referenceNumber": 97,
       "name": "Spencer License 86",
       "licenseId": "Spencer-86",
       "seeAlso": [
@@ -5621,7 +5647,7 @@
       "reference": "https://spdx.org/licenses/Spencer-94.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Spencer-94.json",
-      "referenceNumber": 488,
+      "referenceNumber": 490,
       "name": "Spencer License 94",
       "licenseId": "Spencer-94",
       "seeAlso": [
@@ -5633,7 +5659,7 @@
       "reference": "https://spdx.org/licenses/Spencer-99.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Spencer-99.json",
-      "referenceNumber": 461,
+      "referenceNumber": 462,
       "name": "Spencer License 99",
       "licenseId": "Spencer-99",
       "seeAlso": [
@@ -5645,7 +5671,7 @@
       "reference": "https://spdx.org/licenses/SPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SPL-1.0.json",
-      "referenceNumber": 473,
+      "referenceNumber": 475,
       "name": "Sun Public License v1.0",
       "licenseId": "SPL-1.0",
       "seeAlso": [
@@ -5696,7 +5722,7 @@
       "reference": "https://spdx.org/licenses/StandardML-NJ.html",
       "isDeprecatedLicenseId": true,
       "detailsUrl": "https://spdx.org/licenses/StandardML-NJ.json",
-      "referenceNumber": 497,
+      "referenceNumber": 499,
       "name": "Standard ML of New Jersey License",
       "licenseId": "StandardML-NJ",
       "seeAlso": [
@@ -5709,7 +5735,7 @@
       "reference": "https://spdx.org/licenses/SugarCRM-1.1.3.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SugarCRM-1.1.3.json",
-      "referenceNumber": 435,
+      "referenceNumber": 436,
       "name": "SugarCRM Public License v1.1.3",
       "licenseId": "SugarCRM-1.1.3",
       "seeAlso": [
@@ -5721,7 +5747,7 @@
       "reference": "https://spdx.org/licenses/SWL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/SWL.json",
-      "referenceNumber": 77,
+      "referenceNumber": 76,
       "name": "Scheme Widget Library (SWL) Software License Agreement",
       "licenseId": "SWL",
       "seeAlso": [
@@ -5733,7 +5759,7 @@
       "reference": "https://spdx.org/licenses/TAPR-OHL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/TAPR-OHL-1.0.json",
-      "referenceNumber": 290,
+      "referenceNumber": 287,
       "name": "TAPR Open Hardware License v1.0",
       "licenseId": "TAPR-OHL-1.0",
       "seeAlso": [
@@ -5745,7 +5771,7 @@
       "reference": "https://spdx.org/licenses/TCL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/TCL.json",
-      "referenceNumber": 307,
+      "referenceNumber": 305,
       "name": "TCL/TK License",
       "licenseId": "TCL",
       "seeAlso": [
@@ -5794,7 +5820,7 @@
       "reference": "https://spdx.org/licenses/TOSL.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/TOSL.json",
-      "referenceNumber": 124,
+      "referenceNumber": 125,
       "name": "Trusster Open Source License",
       "licenseId": "TOSL",
       "seeAlso": [
@@ -5830,7 +5856,7 @@
       "reference": "https://spdx.org/licenses/UCL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/UCL-1.0.json",
-      "referenceNumber": 212,
+      "referenceNumber": 213,
       "name": "Upstream Compatibility License v1.0",
       "licenseId": "UCL-1.0",
       "seeAlso": [
@@ -5842,7 +5868,7 @@
       "reference": "https://spdx.org/licenses/Unicode-DFS-2015.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Unicode-DFS-2015.json",
-      "referenceNumber": 299,
+      "referenceNumber": 295,
       "name": "Unicode License Agreement - Data Files and Software (2015)",
       "licenseId": "Unicode-DFS-2015",
       "seeAlso": [
@@ -5878,7 +5904,7 @@
       "reference": "https://spdx.org/licenses/Unlicense.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Unlicense.json",
-      "referenceNumber": 405,
+      "referenceNumber": 406,
       "name": "The Unlicense",
       "licenseId": "Unlicense",
       "seeAlso": [
@@ -5891,7 +5917,7 @@
       "reference": "https://spdx.org/licenses/UPL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/UPL-1.0.json",
-      "referenceNumber": 425,
+      "referenceNumber": 426,
       "name": "Universal Permissive License v1.0",
       "licenseId": "UPL-1.0",
       "seeAlso": [
@@ -5904,7 +5930,7 @@
       "reference": "https://spdx.org/licenses/Vim.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Vim.json",
-      "referenceNumber": 375,
+      "referenceNumber": 376,
       "name": "Vim License",
       "licenseId": "Vim",
       "seeAlso": [
@@ -5929,7 +5955,7 @@
       "reference": "https://spdx.org/licenses/VSL-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/VSL-1.0.json",
-      "referenceNumber": 159,
+      "referenceNumber": 158,
       "name": "Vovida Software License v1.0",
       "licenseId": "VSL-1.0",
       "seeAlso": [
@@ -5941,7 +5967,7 @@
       "reference": "https://spdx.org/licenses/W3C.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/W3C.json",
-      "referenceNumber": 23,
+      "referenceNumber": 27,
       "name": "W3C Software Notice and License (2002-12-31)",
       "licenseId": "W3C",
       "seeAlso": [
@@ -5979,7 +6005,7 @@
       "reference": "https://spdx.org/licenses/Watcom-1.0.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Watcom-1.0.json",
-      "referenceNumber": 380,
+      "referenceNumber": 381,
       "name": "Sybase Open Watcom Public License 1.0",
       "licenseId": "Watcom-1.0",
       "seeAlso": [
@@ -5992,7 +6018,7 @@
       "reference": "https://spdx.org/licenses/Wsuipa.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Wsuipa.json",
-      "referenceNumber": 19,
+      "referenceNumber": 20,
       "name": "Wsuipa License",
       "licenseId": "Wsuipa",
       "seeAlso": [
@@ -6030,7 +6056,7 @@
       "reference": "https://spdx.org/licenses/X11.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/X11.json",
-      "referenceNumber": 24,
+      "referenceNumber": 23,
       "name": "X11 License",
       "licenseId": "X11",
       "seeAlso": [
@@ -6105,7 +6131,7 @@
       "reference": "https://spdx.org/licenses/xpp.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/xpp.json",
-      "referenceNumber": 395,
+      "referenceNumber": 396,
       "name": "XPP License",
       "licenseId": "xpp",
       "seeAlso": [
@@ -6117,7 +6143,7 @@
       "reference": "https://spdx.org/licenses/XSkat.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/XSkat.json",
-      "referenceNumber": 372,
+      "referenceNumber": 373,
       "name": "XSkat License",
       "licenseId": "XSkat",
       "seeAlso": [
@@ -6141,7 +6167,7 @@
       "reference": "https://spdx.org/licenses/YPL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/YPL-1.1.json",
-      "referenceNumber": 357,
+      "referenceNumber": 358,
       "name": "Yahoo! Public License v1.1",
       "licenseId": "YPL-1.1",
       "seeAlso": [
@@ -6154,7 +6180,7 @@
       "reference": "https://spdx.org/licenses/Zed.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Zed.json",
-      "referenceNumber": 300,
+      "referenceNumber": 302,
       "name": "Zed License",
       "licenseId": "Zed",
       "seeAlso": [
@@ -6179,7 +6205,7 @@
       "reference": "https://spdx.org/licenses/Zimbra-1.3.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/Zimbra-1.3.json",
-      "referenceNumber": 167,
+      "referenceNumber": 166,
       "name": "Zimbra Public License v1.3",
       "licenseId": "Zimbra-1.3",
       "seeAlso": [
@@ -6230,7 +6256,7 @@
       "reference": "https://spdx.org/licenses/ZPL-1.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ZPL-1.1.json",
-      "referenceNumber": 7,
+      "referenceNumber": 9,
       "name": "Zope Public License 1.1",
       "licenseId": "ZPL-1.1",
       "seeAlso": [
@@ -6256,7 +6282,7 @@
       "reference": "https://spdx.org/licenses/ZPL-2.1.html",
       "isDeprecatedLicenseId": false,
       "detailsUrl": "https://spdx.org/licenses/ZPL-2.1.json",
-      "referenceNumber": 70,
+      "referenceNumber": 66,
       "name": "Zope Public License 2.1",
       "licenseId": "ZPL-2.1",
       "seeAlso": [
@@ -6266,5 +6292,5 @@
       "isFsfLibre": true
     }
   ],
-  "releaseDate": "2022-11-16"
+  "releaseDate": "2022-11-23"
 }
