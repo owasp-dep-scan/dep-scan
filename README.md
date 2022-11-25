@@ -43,7 +43,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - OpenSUSE/SLES
 - Photon
 
-Application vulnerabilities would be reported for all distros.
+Application vulnerabilities would be reported for all distros and Windows.
 
 ## Usage
 
