@@ -28,7 +28,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - NVD
 - GitHub
 - NPM
-- AquaSecurity vuln-list
+- AquaSecurity vuln-list (Use `--cache-os`)
 
 ### Linux distros
 
@@ -43,7 +43,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - OpenSUSE/SLES
 - Photon
 
-Application vulnerabilities would be reported for all distros and Windows.
+Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache-os` for the first time. dep-scan would also try to automatically download the appropriate database based on project type.
 
 ## Usage
 
@@ -102,11 +102,12 @@ depscan --src $PWD --report_file $PWD/reports/depscan.json
 Full list of options are below:
 
 ```bash
-usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
+usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
               [--no-error]
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
   --cache               Cache vulnerability information in platform specific user_data_dir
+  --cache-os            Cache OS vulnerability information in platform specific user_data_dir
   --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS
