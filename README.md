@@ -28,15 +28,22 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - NVD
 - GitHub
 - NPM
+- AquaSecurity vuln-list (Use `--cache-os`)
 
 ### Linux distros
 
-OSV is currently the only data source for OS vulnerabilities. Below are the distros with OS vulnerability reporting.
-
+- AlmaLinux
 - Debian
 - Alpine
+- Amazon Linux
+- Arch Linux
+- RHEL/CentOS
+- Rocky Linux
+- Ubuntu
+- OpenSUSE/SLES
+- Photon
 
-Application vulnerabilities would be reported for all distros.
+Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache-os` for the first time. dep-scan would also try to automatically download the appropriate database based on project type.
 
 ## Usage
 
@@ -95,11 +102,12 @@ depscan --src $PWD --report_file $PWD/reports/depscan.json
 Full list of options are below:
 
 ```bash
-usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
+usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
               [--no-error]
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
   --cache               Cache vulnerability information in platform specific user_data_dir
+  --cache-os            Cache OS vulnerability information in platform specific user_data_dir
   --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS
@@ -295,7 +303,7 @@ export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4
 
 ## Live OS scan
 
-By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. For Debian and Alpine OS, depscan could even report OS vulnerabilities. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
+By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
 
 All OS packages.
 

@@ -33,6 +33,7 @@ def print_results(
     has_poc_count = 0
     has_exploit_count = 0
     fix_version_count = 0
+    has_os_packages = False
     pkg_group_rows = defaultdict(list)
     for h in [
         "CVE",
@@ -118,6 +119,7 @@ def print_results(
                 package_usage = (
                     "[spring_green4]:notebook: Local install[/spring_green4]"
                 )
+                has_os_packages = True
             else:
                 package_usage = (
                     "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
@@ -211,14 +213,31 @@ def print_results(
                     expand=False,
                 )
             )
-        else:
+        elif critical_count:
             console.print(
                 Panel(
-                    ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies.",
+                    f"Prioritize the [magenta]{critical_count}[/magenta] critical vulnerabilities confirmed by the vendor.",
                     title="Recommendation",
                     expand=False,
                 )
             )
+        else:
+            if has_os_packages:
+                console.print(
+                    Panel(
+                        ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in non-system packages.",
+                        title="Recommendation",
+                        expand=False,
+                    )
+                )
+            else:
+                console.print(
+                    Panel(
+                        ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies.",
+                        title="Recommendation",
+                        expand=False,
+                    )
+                )
     elif critical_count:
         console.print(
             Panel(
