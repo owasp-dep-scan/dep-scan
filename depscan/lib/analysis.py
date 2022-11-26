@@ -188,7 +188,7 @@ def print_results(
         if not pkg_attention_count and has_exploit_count:
             rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
             rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
-            if not scoped_pkgs:
+            if not scoped_pkgs and not has_os_packages:
                 rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
             console.print(
                 Panel(
