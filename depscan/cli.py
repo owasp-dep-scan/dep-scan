@@ -312,7 +312,7 @@ def main():
             bom_file = args.bom
             creation_status = True
         else:
-            bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
+            bom_file = report_file.replace("depscan-", "depscan-bom-")
             creation_status = create_bom(
                 project_type, bom_file, src_dir, args.deep_scan
             )
