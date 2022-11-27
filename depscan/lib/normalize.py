@@ -52,9 +52,6 @@ def create_pkg_variations(pkg_dict):
         tmpParts = purl.split(":")
         if tmpParts and len(tmpParts) > 1:
             vendor_aliases.add(tmpParts[1])
-    if pkg_type in config.OS_PKG_TYPES and PKG_TYPES_MAP.get(pkg_type):
-        for distro_type in PKG_TYPES_MAP.get(pkg_type):
-            vendor_aliases.add(distro_type)
     if vendor:
         vendor_aliases.add(vendor)
         vendor_aliases.add(vendor.lower())

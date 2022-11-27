@@ -319,7 +319,7 @@ def main():
         if not creation_status:
             LOG.debug("Bom file {} was not created successfully".format(bom_file))
             continue
-        LOG.debug("Scanning using the bom file {}".format(bom_file))
+        LOG.info("Scanning using the bom file {}".format(bom_file))
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.debug("No packages found in the project!")
