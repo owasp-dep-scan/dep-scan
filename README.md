@@ -15,7 +15,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 ## Features
 
-- Scan most application code. Local repos, Linux container images, Kubernetes manifests, and OS to identify known CVEs and quick insights
+- Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Suggest optimal fix version for vulnerable packages (See suggest mode)
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
@@ -28,7 +28,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - NVD
 - GitHub
 - NPM
-- AquaSecurity vuln-list (Use `--cache-os`)
+- Linux [vuln-list](https://github.com/ngcloudsec/vuln-list) (Use `--cache-os`)
 
 ### Linux distros
 
@@ -49,7 +49,18 @@ Application vulnerabilities would be reported for all Linux distros and Windows.
 
 dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
 
-### Singe binary executables
+### OCI Artifacts via ORAS cli
+
+Use [ORAS cli](https://oras.land/cli/) to download the dep-scan binary and the vulnerability database for effortless integration.
+
+```bash
+export VDB_HOME=depscan
+mkdir -p $VDB_HOME
+oras pull ghcr.io/ngcloudsec/vdb:v1 -o $VDB_HOME
+oras pull ghcr.io/ngcloudsec/depscan:v3 -o $VDB_HOME
+```
+
+### Single binary executables
 
 Download the executable binary for your operating system from the [releases page](https://github.com/ngcloudsec/depscan-bin/releases). These binary bundle the following:
 
