@@ -51,7 +51,7 @@ dep-scan is ideal for use during continuous integration (CI) and also as a tool 
 
 ### OCI Artifacts via ORAS cli
 
-Use [ORAS cli](https://oras.land/cli/) to download the dep-scan binary and the vulnerability database for effortless integration.
+Use [ORAS cli](https://oras.land/cli/) to download the dep-scan binary and the vulnerability database for effortless integration. Example workflow is [here](https://github.com/ngcloudsec/images-info/blob/main/.github/workflows/build.yml#L13).
 
 ```bash
 export VDB_HOME=depscan
