@@ -223,6 +223,17 @@ OS_PKG_TYPES = (
     "buildroot",
     "coreos",
     "ebuild",
+    "alpine",
+    "alma",
+    "debian",
+    "ubuntu",
+    "amazon",
+    "redhat",
+    "rocky",
+    "archlinux",
+    "suse",
+    "photon",
+    "microsoft",
 )
 
 

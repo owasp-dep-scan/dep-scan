@@ -13,6 +13,17 @@ from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
 
 
+def best_fixed_location(sug_version, orig_fixed_location):
+    # Compare the major versions before suggesting an override
+    # See: https://github.com/AppThreat/dep-scan/issues/72
+    if sug_version and orig_fixed_location:
+        tmpA = sug_version.split(".")[0]
+        tmpB = orig_fixed_location.split(".")[0]
+        if tmpA == tmpB:
+            return sug_version
+    return orig_fixed_location
+
+
 def print_results(
     project_type, results, pkg_aliases, purl_aliases, sug_version_dict, scoped_pkgs
 ):
@@ -84,7 +95,9 @@ def print_results(
         if ids_seen.get(id + full_pkg):
             continue
         ids_seen[id + full_pkg] = True
-        fixed_location = sug_version_dict.get(full_pkg, package_issue.fixed_location)
+        fixed_location = best_fixed_location(
+            sug_version_dict.get(full_pkg), package_issue.fixed_location
+        )
         package_usage = "N/A"
         insights = []
         package_name_style = ""
@@ -188,7 +201,7 @@ def print_results(
         if not pkg_attention_count and has_exploit_count:
             rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
             rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
-            if not scoped_pkgs:
+            if not scoped_pkgs and not has_os_packages:
                 rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
             console.print(
                 Panel(
@@ -321,8 +334,8 @@ def jsonl_report(
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package
             )
-            fixed_location = sug_version_dict.get(
-                full_pkg, package_issue.fixed_location
+            fixed_location = best_fixed_location(
+                sug_version_dict.get(full_pkg), package_issue.fixed_location
             )
             package_usage = "N/A"
             if full_pkg in required_pkgs or project_type_pkg in required_pkgs:

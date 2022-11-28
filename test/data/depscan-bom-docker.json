@@ -1,0 +1,1618 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "serialNumber": "urn:uuid:fc17b967-afa6-4b20-a21b-ab50af39140f",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2022-11-27T19:39:47.034Z",
+    "tools": [
+      {
+        "vendor": "AppThreat",
+        "name": "cdxgen",
+        "version": "5.3.1"
+      }
+    ],
+    "authors": [
+      {
+        "name": "Team AppThreat",
+        "email": "cloud@appthreat.com"
+      }
+    ]
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:deb/ubuntu/adduser@3.118ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "adduser",
+      "version": "3.118ubuntu2",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/adduser@3.118ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/apt@2.0.6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "apt",
+      "version": "2.0.6",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/apt@2.0.6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/base-files@11ubuntu5.4?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "base-files",
+      "version": "11ubuntu5.4",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/base-files@11ubuntu5.4?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/base-passwd@3.5.47?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "base-passwd",
+      "version": "3.5.47",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/base-passwd@3.5.47?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/bash@5.0-6ubuntu1.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "bash",
+      "version": "5.0-6ubuntu1.1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/bash@5.0-6ubuntu1.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/bsdutils@1:2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "bsdutils",
+      "version": "1:2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/bsdutils@1:2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/bzip2@1.0.8-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "bzip2",
+      "version": "1.0.8-2",
+      "licenses": [
+        {
+          "expression": "BSD-variant"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/bzip2@1.0.8-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/ca-certificates@20210119~20.04.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "ca-certificates",
+      "version": "20210119~20.04.2",
+      "licenses": [
+        {
+          "expression": "..."
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/ca-certificates@20210119~20.04.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/coreutils@8.30-3ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "coreutils",
+      "version": "8.30-3ubuntu2",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/coreutils@8.30-3ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/curl@7.68.0-1ubuntu2.7?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "curl",
+      "version": "7.68.0-1ubuntu2.7",
+      "licenses": [
+        {
+          "expression": "curl"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/curl@7.68.0-1ubuntu2.7?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/dash@0.5.10.2-6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "dash",
+      "version": "0.5.10.2-6",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/dash@0.5.10.2-6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/debconf@1.5.73?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "debconf",
+      "version": "1.5.73",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/debconf@1.5.73?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/debianutils@4.9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "debianutils",
+      "version": "4.9.1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/debianutils@4.9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/diffutils@1:3.7-3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "diffutils",
+      "version": "1:3.7-3",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/diffutils@1:3.7-3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/dpkg@1.19.7ubuntu3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "dpkg",
+      "version": "1.19.7ubuntu3",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/dpkg@1.19.7ubuntu3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/e2fsprogs@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "e2fsprogs",
+      "version": "1.45.5-2ubuntu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/e2fsprogs@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/fdisk@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "fdisk",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/fdisk@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/findutils@4.7.0-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "findutils",
+      "version": "4.7.0-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/findutils@4.7.0-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/fontconfig@2.13.1-2ubuntu3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "fontconfig",
+      "version": "2.13.1-2ubuntu3",
+      "purl": "pkg:deb/ubuntu/fontconfig@2.13.1-2ubuntu3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/fontconfig-config@2.13.1-2ubuntu3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "fontconfig-config",
+      "version": "2.13.1-2ubuntu3",
+      "purl": "pkg:deb/ubuntu/fontconfig-config@2.13.1-2ubuntu3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/fonts-dejavu-core@2.37-1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "fonts-dejavu-core",
+      "version": "2.37-1",
+      "licenses": [
+        {
+          "expression": "bitstream-vera"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/fonts-dejavu-core@2.37-1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/gcc-10-base@10.3.0-1ubuntu1~20.04?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "gcc-10-base",
+      "version": "10.3.0-1ubuntu1~20.04",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/gcc-10-base@10.3.0-1ubuntu1~20.04?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/gpgv@2.2.19-3ubuntu2.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "gpgv",
+      "version": "2.2.19-3ubuntu2.1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/gpgv@2.2.19-3ubuntu2.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/grep@3.4-1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "grep",
+      "version": "3.4-1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/grep@3.4-1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/gzip@1.10-0ubuntu4?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "gzip",
+      "version": "1.10-0ubuntu4",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/gzip@1.10-0ubuntu4?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/hostname@3.23?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "hostname",
+      "version": "3.23",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/hostname@3.23?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/init-system-helpers@1.57?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "init-system-helpers",
+      "version": "1.57",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/init-system-helpers@1.57?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libacl1@2.2.53-6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libacl1",
+      "version": "2.2.53-6",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libacl1@2.2.53-6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libapt-pkg6.0@2.0.6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libapt-pkg6.0",
+      "version": "2.0.6",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libapt-pkg6.0@2.0.6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libasn1-8-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libasn1-8-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libasn1-8-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libattr1@1:2.4.48-5?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libattr1",
+      "version": "1:2.4.48-5",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libattr1@1:2.4.48-5?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libaudit-common@1:2.8.5-2ubuntu6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libaudit-common",
+      "version": "1:2.8.5-2ubuntu6",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libaudit-common@1:2.8.5-2ubuntu6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libaudit1@1:2.8.5-2ubuntu6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libaudit1",
+      "version": "1:2.8.5-2ubuntu6",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libaudit1@1:2.8.5-2ubuntu6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libblkid1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libblkid1",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libblkid1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libbrotli1@1.0.7-6ubuntu0.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libbrotli1",
+      "version": "1.0.7-6ubuntu0.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libbrotli1@1.0.7-6ubuntu0.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libbz2-1.0@1.0.8-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libbz2-1.0",
+      "version": "1.0.8-2",
+      "licenses": [
+        {
+          "expression": "BSD-variant"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libbz2-1.0@1.0.8-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libc-bin@2.31-0ubuntu9.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libc-bin",
+      "version": "2.31-0ubuntu9.2",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libc-bin@2.31-0ubuntu9.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libc6@2.31-0ubuntu9.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libc6",
+      "version": "2.31-0ubuntu9.2",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libc6@2.31-0ubuntu9.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libcap-ng0@0.7.9-2.1build1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libcap-ng0",
+      "version": "0.7.9-2.1build1",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libcap-ng0@0.7.9-2.1build1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libcom-err2@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libcom-err2",
+      "version": "1.45.5-2ubuntu1",
+      "purl": "pkg:deb/ubuntu/libcom-err2@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libcrypt1@1:4.4.10-10ubuntu4?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libcrypt1",
+      "version": "1:4.4.10-10ubuntu4",
+      "purl": "pkg:deb/ubuntu/libcrypt1@1:4.4.10-10ubuntu4?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libcurl4@7.68.0-1ubuntu2.7?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libcurl4",
+      "version": "7.68.0-1ubuntu2.7",
+      "licenses": [
+        {
+          "expression": "curl"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libcurl4@7.68.0-1ubuntu2.7?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libdb5.3@5.3.28+dfsg1-0.6ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libdb5.3",
+      "version": "5.3.28+dfsg1-0.6ubuntu2",
+      "purl": "pkg:deb/ubuntu/libdb5.3@5.3.28+dfsg1-0.6ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libdebconfclient0@0.251ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libdebconfclient0",
+      "version": "0.251ubuntu1",
+      "purl": "pkg:deb/ubuntu/libdebconfclient0@0.251ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libexpat1@2.2.9-1build1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libexpat1",
+      "version": "2.2.9-1build1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libexpat1@2.2.9-1build1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libext2fs2@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libext2fs2",
+      "version": "1.45.5-2ubuntu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libext2fs2@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libfdisk1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libfdisk1",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libfdisk1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libffi7@3.3-4?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libffi7",
+      "version": "3.3-4",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libffi7@3.3-4?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libfontconfig1@2.13.1-2ubuntu3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libfontconfig1",
+      "version": "2.13.1-2ubuntu3",
+      "purl": "pkg:deb/ubuntu/libfontconfig1@2.13.1-2ubuntu3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libfreetype6@2.10.1-2ubuntu0.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libfreetype6",
+      "version": "2.10.1-2ubuntu0.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libfreetype6@2.10.1-2ubuntu0.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgcc-s1@10.3.0-1ubuntu1~20.04?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgcc-s1",
+      "version": "10.3.0-1ubuntu1~20.04",
+      "purl": "pkg:deb/ubuntu/libgcc-s1@10.3.0-1ubuntu1~20.04?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgcrypt20@1.8.5-5ubuntu1.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgcrypt20",
+      "version": "1.8.5-5ubuntu1.1",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libgcrypt20@1.8.5-5ubuntu1.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgmp10@2:6.2.0+dfsg-4?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgmp10",
+      "version": "2:6.2.0+dfsg-4",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libgmp10@2:6.2.0+dfsg-4?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgnutls30@3.6.13-2ubuntu1.6?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgnutls30",
+      "version": "3.6.13-2ubuntu1.6",
+      "licenses": [
+        {
+          "expression": "The main library is licensed under GNU Lesser"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libgnutls30@3.6.13-2ubuntu1.6?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgpg-error0@1.37-1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgpg-error0",
+      "version": "1.37-1",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libgpg-error0@1.37-1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgssapi-krb5-2@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgssapi-krb5-2",
+      "version": "1.17-6ubuntu4.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libgssapi-krb5-2@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libgssapi3-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libgssapi3-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libgssapi3-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libhcrypto4-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libhcrypto4-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libhcrypto4-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libheimbase1-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libheimbase1-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libheimbase1-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libheimntlm0-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libheimntlm0-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libheimntlm0-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libhogweed5@3.5.1+really3.5.1-2ubuntu0.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libhogweed5",
+      "version": "3.5.1+really3.5.1-2ubuntu0.2",
+      "purl": "pkg:deb/ubuntu/libhogweed5@3.5.1+really3.5.1-2ubuntu0.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libhx509-5-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libhx509-5-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libhx509-5-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libidn2-0@2.2.0-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libidn2-0",
+      "version": "2.2.0-2",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libidn2-0@2.2.0-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libk5crypto3@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libk5crypto3",
+      "version": "1.17-6ubuntu4.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libk5crypto3@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libkeyutils1@1.6-6ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libkeyutils1",
+      "version": "1.6-6ubuntu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libkeyutils1@1.6-6ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libkrb5-26-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libkrb5-26-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libkrb5-26-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libkrb5-3@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libkrb5-3",
+      "version": "1.17-6ubuntu4.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libkrb5-3@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libkrb5support0@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libkrb5support0",
+      "version": "1.17-6ubuntu4.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libkrb5support0@1.17-6ubuntu4.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libldap-2.4-2@2.4.49+dfsg-2ubuntu1.8?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libldap-2.4-2",
+      "version": "2.4.49+dfsg-2ubuntu1.8",
+      "purl": "pkg:deb/ubuntu/libldap-2.4-2@2.4.49+dfsg-2ubuntu1.8?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libldap-common@2.4.49+dfsg-2ubuntu1.8?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libldap-common",
+      "version": "2.4.49+dfsg-2ubuntu1.8",
+      "purl": "pkg:deb/ubuntu/libldap-common@2.4.49+dfsg-2ubuntu1.8?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/liblz4-1@1.9.2-2ubuntu0.20.04.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "liblz4-1",
+      "version": "1.9.2-2ubuntu0.20.04.1",
+      "licenses": [
+        {
+          "expression": "BSD-2-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/liblz4-1@1.9.2-2ubuntu0.20.04.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/liblzma5@5.2.4-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "liblzma5",
+      "version": "5.2.4-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "PD"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/liblzma5@5.2.4-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libmount1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libmount1",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libmount1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libncurses6@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libncurses6",
+      "version": "6.2-0ubuntu2",
+      "purl": "pkg:deb/ubuntu/libncurses6@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libncursesw6@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libncursesw6",
+      "version": "6.2-0ubuntu2",
+      "purl": "pkg:deb/ubuntu/libncursesw6@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libnettle7@3.5.1+really3.5.1-2ubuntu0.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libnettle7",
+      "version": "3.5.1+really3.5.1-2ubuntu0.2",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libnettle7@3.5.1+really3.5.1-2ubuntu0.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libnghttp2-14@1.40.0-1build1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libnghttp2-14",
+      "version": "1.40.0-1build1",
+      "licenses": [
+        {
+          "expression": "Expat"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libnghttp2-14@1.40.0-1build1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libp11-kit0@0.23.20-1ubuntu0.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libp11-kit0",
+      "version": "0.23.20-1ubuntu0.1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libp11-kit0@0.23.20-1ubuntu0.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpam-modules@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpam-modules",
+      "version": "1.3.1-5ubuntu4.2",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libpam-modules@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpam-modules-bin@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpam-modules-bin",
+      "version": "1.3.1-5ubuntu4.2",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libpam-modules-bin@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpam-runtime@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpam-runtime",
+      "version": "1.3.1-5ubuntu4.2",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libpam-runtime@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpam0g@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpam0g",
+      "version": "1.3.1-5ubuntu4.2",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libpam0g@1.3.1-5ubuntu4.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpcre2-8-0@10.34-7?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpcre2-8-0",
+      "version": "10.34-7",
+      "purl": "pkg:deb/ubuntu/libpcre2-8-0@10.34-7?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpcre3@2:8.39-12build1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpcre3",
+      "version": "2:8.39-12build1",
+      "purl": "pkg:deb/ubuntu/libpcre3@2:8.39-12build1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpng16-16@1.6.37-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpng16-16",
+      "version": "1.6.37-2",
+      "licenses": [
+        {
+          "expression": "libpng"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libpng16-16@1.6.37-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libprocps8@2:3.3.16-1ubuntu2.3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libprocps8",
+      "version": "2:3.3.16-1ubuntu2.3",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libprocps8@2:3.3.16-1ubuntu2.3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libpsl5@0.21.0-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libpsl5",
+      "version": "0.21.0-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libpsl5@0.21.0-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libroken18-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libroken18-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libroken18-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/librtmp1@2.4+20151223.gitfa8646d.1-2build1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "librtmp1",
+      "version": "2.4+20151223.gitfa8646d.1-2build1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/librtmp1@2.4+20151223.gitfa8646d.1-2build1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsasl2-2@2.1.27+dfsg-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsasl2-2",
+      "version": "2.1.27+dfsg-2",
+      "licenses": [
+        {
+          "expression": "BSD-4-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsasl2-2@2.1.27+dfsg-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsasl2-modules-db@2.1.27+dfsg-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsasl2-modules-db",
+      "version": "2.1.27+dfsg-2",
+      "licenses": [
+        {
+          "expression": "BSD-4-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsasl2-modules-db@2.1.27+dfsg-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libseccomp2@2.5.1-1ubuntu1~20.04.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libseccomp2",
+      "version": "2.5.1-1ubuntu1~20.04.1",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libseccomp2@2.5.1-1ubuntu1~20.04.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libselinux1@3.0-1build2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libselinux1",
+      "version": "3.0-1build2",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libselinux1@3.0-1build2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsemanage-common@3.0-1build2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsemanage-common",
+      "version": "3.0-1build2",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsemanage-common@3.0-1build2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsemanage1@3.0-1build2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsemanage1",
+      "version": "3.0-1build2",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsemanage1@3.0-1build2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsepol1@3.0-1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsepol1",
+      "version": "3.0-1",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsepol1@3.0-1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsmartcols1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsmartcols1",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsmartcols1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsqlite3-0@3.31.1-4ubuntu0.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsqlite3-0",
+      "version": "3.31.1-4ubuntu0.2",
+      "licenses": [
+        {
+          "expression": "public-domain"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsqlite3-0@3.31.1-4ubuntu0.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libss2@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libss2",
+      "version": "1.45.5-2ubuntu1",
+      "purl": "pkg:deb/ubuntu/libss2@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libssh-4@0.9.3-2ubuntu2.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libssh-4",
+      "version": "0.9.3-2ubuntu2.2",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1+~OpenSSL"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libssh-4@0.9.3-2ubuntu2.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libssl1.1@1.1.1f-1ubuntu2.8?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libssl1.1",
+      "version": "1.1.1f-1ubuntu2.8",
+      "purl": "pkg:deb/ubuntu/libssl1.1@1.1.1f-1ubuntu2.8?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libstdc++6@10.3.0-1ubuntu1~20.04?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libstdc++6",
+      "version": "10.3.0-1ubuntu1~20.04",
+      "purl": "pkg:deb/ubuntu/libstdc++6@10.3.0-1ubuntu1~20.04?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libsystemd0@245.4-4ubuntu3.13?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libsystemd0",
+      "version": "245.4-4ubuntu3.13",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libsystemd0@245.4-4ubuntu3.13?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libtasn1-6@4.16.0-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libtasn1-6",
+      "version": "4.16.0-2",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libtasn1-6@4.16.0-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libtinfo6@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libtinfo6",
+      "version": "6.2-0ubuntu2",
+      "purl": "pkg:deb/ubuntu/libtinfo6@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libudev1@245.4-4ubuntu3.13?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libudev1",
+      "version": "245.4-4ubuntu3.13",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libudev1@245.4-4ubuntu3.13?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libunistring2@0.9.10-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libunistring2",
+      "version": "0.9.10-2",
+      "licenses": [
+        {
+          "expression": "LGPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libunistring2@0.9.10-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libuuid1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libuuid1",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libuuid1@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libwind0-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libwind0-heimdal",
+      "version": "7.7.0+dfsg-1ubuntu1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libwind0-heimdal@7.7.0+dfsg-1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/libzstd1@1.4.4+dfsg-3ubuntu0.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "libzstd1",
+      "version": "1.4.4+dfsg-3ubuntu0.1",
+      "licenses": [
+        {
+          "expression": "BSD-3-Clause"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/libzstd1@1.4.4+dfsg-3ubuntu0.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/locales@2.31-0ubuntu9.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "locales",
+      "version": "2.31-0ubuntu9.2",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/locales@2.31-0ubuntu9.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/login@1:4.8.1-1ubuntu5.20.04.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "login",
+      "version": "1:4.8.1-1ubuntu5.20.04.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/login@1:4.8.1-1ubuntu5.20.04.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/logsave@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "logsave",
+      "version": "1.45.5-2ubuntu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/logsave@1.45.5-2ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/lsb-base@11.1.0ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "lsb-base",
+      "version": "11.1.0ubuntu2",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/lsb-base@11.1.0ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/mawk@1.3.4.20200120-2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "mawk",
+      "version": "1.3.4.20200120-2",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/mawk@1.3.4.20200120-2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/mount@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "mount",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/mount@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/ncurses-base@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "ncurses-base",
+      "version": "6.2-0ubuntu2",
+      "purl": "pkg:deb/ubuntu/ncurses-base@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/ncurses-bin@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "ncurses-bin",
+      "version": "6.2-0ubuntu2",
+      "purl": "pkg:deb/ubuntu/ncurses-bin@6.2-0ubuntu2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/openssl@1.1.1f-1ubuntu2.8?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "openssl",
+      "version": "1.1.1f-1ubuntu2.8",
+      "purl": "pkg:deb/ubuntu/openssl@1.1.1f-1ubuntu2.8?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/passwd@1:4.8.1-1ubuntu5.20.04.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "passwd",
+      "version": "1:4.8.1-1ubuntu5.20.04.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/passwd@1:4.8.1-1ubuntu5.20.04.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/perl-base@5.30.0-9ubuntu0.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "perl-base",
+      "version": "5.30.0-9ubuntu0.2",
+      "licenses": [
+        {
+          "expression": "GPL-1.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/perl-base@5.30.0-9ubuntu0.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/procps@2:3.3.16-1ubuntu2.3?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "procps",
+      "version": "2:3.3.16-1ubuntu2.3",
+      "licenses": [
+        {
+          "expression": "LGPL-2.1"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/procps@2:3.3.16-1ubuntu2.3?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/sed@4.7-1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "sed",
+      "version": "4.7-1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/sed@4.7-1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/sensible-utils@0.0.12+nmu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "sensible-utils",
+      "version": "0.0.12+nmu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/sensible-utils@0.0.12+nmu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/sysvinit-utils@2.96-2.1ubuntu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "sysvinit-utils",
+      "version": "2.96-2.1ubuntu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/sysvinit-utils@2.96-2.1ubuntu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/tar@1.30+dfsg-7ubuntu0.20.04.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "tar",
+      "version": "1.30+dfsg-7ubuntu0.20.04.1",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/tar@1.30+dfsg-7ubuntu0.20.04.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/tzdata@2021a-0ubuntu0.20.04?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "tzdata",
+      "version": "2021a-0ubuntu0.20.04",
+      "licenses": [
+        {
+          "expression": "ICU"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/tzdata@2021a-0ubuntu0.20.04?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/ubuntu-keyring@2020.02.11.4?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "ubuntu-keyring",
+      "version": "2020.02.11.4",
+      "licenses": [
+        {
+          "expression": "GPL-3.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/ubuntu-keyring@2020.02.11.4?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/ucf@3.0038+nmu1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "ucf",
+      "version": "3.0038+nmu1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/ucf@3.0038+nmu1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/util-linux@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "util-linux",
+      "version": "2.34-0.1ubuntu9.1",
+      "licenses": [
+        {
+          "expression": "GPL-2.0"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/util-linux@2.34-0.1ubuntu9.1?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    },
+    {
+      "bom-ref": "pkg:deb/ubuntu/zlib1g@1:1.2.11.dfsg-2ubuntu1.2?distro=ubuntu-20.04",
+      "type": "library",
+      "name": "zlib1g",
+      "version": "1:1.2.11.dfsg-2ubuntu1.2",
+      "licenses": [
+        {
+          "expression": "Zlib"
+        }
+      ],
+      "purl": "pkg:deb/ubuntu/zlib1g@1:1.2.11.dfsg-2ubuntu1.2?distro=ubuntu-20.04",
+      "group": "ubuntu"
+    }
+  ],
+  "dependencies": []
+}

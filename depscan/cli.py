@@ -312,14 +312,14 @@ def main():
             bom_file = args.bom
             creation_status = True
         else:
-            bom_file = os.path.join(reports_dir, "bom-" + project_type + ".json")
+            bom_file = report_file.replace("depscan-", "depscan-bom-")
             creation_status = create_bom(
                 project_type, bom_file, src_dir, args.deep_scan
             )
         if not creation_status:
             LOG.debug("Bom file {} was not created successfully".format(bom_file))
             continue
-        LOG.debug("Scanning using the bom file {}".format(bom_file))
+        LOG.info("Scanning using the bom file {}".format(bom_file))
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.debug("No packages found in the project!")
