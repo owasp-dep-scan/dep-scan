@@ -18,7 +18,7 @@ def best_fixed_location(sug_version, orig_fixed_location):
     # See: https://github.com/AppThreat/dep-scan/issues/72
     if sug_version and orig_fixed_location:
         tmpA = sug_version.split(".")[0]
-        tmpB = sug_version.split(".")[0]
+        tmpB = orig_fixed_location.split(".")[0]
         if tmpA == tmpB:
             return sug_version
     return orig_fixed_location
