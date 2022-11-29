@@ -143,7 +143,7 @@ def print_results(
         if clinks.get("poc") or clinks.get("Bug Bounty"):
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             has_poc_count = has_poc_count + 1
-        if clinks.get("vendor"):
+        if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
             insights.append(":receipt: Vendor Confirmed")
         if clinks.get("exploit"):
             insights.append(
