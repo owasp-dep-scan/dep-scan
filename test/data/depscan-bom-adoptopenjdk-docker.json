@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.4",
-  "serialNumber": "urn:uuid:94bc2939-59ff-4b5b-9edd-ce8f3da710e8",
+  "serialNumber": "urn:uuid:7ef8a831-280b-4942-9bcd-827699ce0def",
   "version": 1,
   "metadata": {
-    "timestamp": "2022-11-29T22:44:39.785Z",
+    "timestamp": "2022-11-29T23:46:49.733Z",
     "tools": [
       {
         "vendor": "AppThreat",

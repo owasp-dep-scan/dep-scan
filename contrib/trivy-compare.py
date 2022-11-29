@@ -35,14 +35,21 @@ def compare(trivy_json, depscan_json):
             for tvuln in res.get("Vulnerabilities", []):
                 trivy_cves.add(tvuln.get("VulnerabilityID"))
                 trivy_pkgs.add(
-                    f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}"""
+                    f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}:{tvuln.get("FixedVersion", "")}"""
                 )
     for line in open(depscan_json, "r"):
         line_obj = json.loads(line)
         depscan_cves.add(line_obj.get("id"))
         purl = line_obj.get("purl")
         purl_obj = PackageURL.from_string(purl).to_dict()
-        depscan_pkgs.add(f"""{purl_obj.get("name")}:{purl_obj.get("version")}""")
+        name = purl_obj.get("name").split("%2F")[-1]
+        depscan_pkgs.add(f"""{name}:{purl_obj.get("version")}:{line_obj.get("fix_version", "")}""")
+
+    print("Packages in Trivy but not in depscan")
+    print(trivy_pkgs.difference(depscan_pkgs))
+
+    print("Packages in depscan but not in Trivy")
+    print(depscan_pkgs.difference(trivy_pkgs))
 
     print("CVEs in Trivy but not in depscan. Ignore any CVE which is older than 2018.")
     print(trivy_cves.difference(depscan_cves))
