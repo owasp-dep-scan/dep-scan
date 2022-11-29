@@ -84,6 +84,7 @@ def create_pkg_variations(pkg_dict):
     name_aliases.add(name)
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
+    # This will add false positives to ubuntu
     name_aliases.add(name.split("/")[-1])
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
