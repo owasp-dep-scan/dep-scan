@@ -186,7 +186,7 @@ def get_pkg_vendor_name(pkg):
                 vendor = purl_parts[0].replace("pkg:", "")
         else:
             vendor = ""
-    name = pkg.get("name")
+    name = pkg.get("name").replace("%2F", "/")
     return vendor, name
 
 

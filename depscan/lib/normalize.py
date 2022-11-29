@@ -39,7 +39,7 @@ def create_pkg_variations(pkg_dict):
     vendor_aliases = set()
     name_aliases = set()
     vendor = pkg_dict.get("vendor")
-    name = pkg_dict.get("name")
+    name = pkg_dict.get("name").replace("%2F", "/")
     purl = pkg_dict.get("purl", "")
     pkg_type = ""
     if purl:
@@ -48,10 +48,9 @@ def create_pkg_variations(pkg_dict):
             if purl_obj:
                 pkg_type = purl_obj.get("type")
         except Exception:
-            pass
-        tmpParts = purl.split(":")
-        if tmpParts and len(tmpParts) > 1:
-            vendor_aliases.add(tmpParts[1])
+            tmpParts = purl.split(":")
+            if tmpParts and len(tmpParts) > 1:
+                vendor_aliases.add(tmpParts[1])
     if vendor:
         vendor_aliases.add(vendor)
         vendor_aliases.add(vendor.lower())
@@ -85,6 +84,7 @@ def create_pkg_variations(pkg_dict):
     name_aliases.add(name)
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
+    name_aliases.add(name.split("/")[-1])
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
     # Pypi specific vendor aliases
