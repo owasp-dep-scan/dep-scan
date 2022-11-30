@@ -192,7 +192,7 @@ def print_results(
                 if not fv:
                     fv = c.get("fixed_location")
             utable.add_row(
-                k.split("#")[0].split("?")[0],
+                k.split("#")[0].split("?")[0].replace("%2F", "/"),
                 "\n".join(sorted(cve_list, reverse=True)),
                 f"[bright_green]{fv}[/bright_green]",
             )

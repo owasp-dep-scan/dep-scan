@@ -29,6 +29,11 @@ from depscan.lib.config import license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
 
+try:
+    os.environ["PYTHONIOENCODING"] = "utf-8"
+except Exception:
+    pass
+
 at_logo = """
   ___            _____ _                    _
  / _ \          |_   _| |                  | |
@@ -312,7 +317,7 @@ def main():
             bom_file = args.bom
             creation_status = True
         else:
-            bom_file = report_file.replace("depscan-", "depscan-bom-")
+            bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(
                 project_type, bom_file, src_dir, args.deep_scan
             )
