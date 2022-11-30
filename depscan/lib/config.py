@@ -148,6 +148,7 @@ package_alias = {
     "System.Text": ".net",
     "Microsoft.IdentityModel.Clients.ActiveDirectory": "active_directory_authentication_library",
     "starkbank_ecdsa": "ecdsa-elixir",
+    "php-pear": "pear-core-minimal",
 }
 
 # Default ignore list

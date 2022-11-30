@@ -20,7 +20,12 @@ def best_fixed_location(sug_version, orig_fixed_location):
         tmpA = sug_version.split(".")[0]
         tmpB = orig_fixed_location.split(".")[0]
         if tmpA == tmpB:
+            if sug_version == "99.99.9":
+                return ""
             return sug_version
+    # Handle the placeholder version used by OS distros
+    if orig_fixed_location == "99.99.9":
+        return ""
     return orig_fixed_location
 
 
@@ -192,7 +197,7 @@ def print_results(
                 if not fv:
                     fv = c.get("fixed_location")
             utable.add_row(
-                k.split("#")[0].split("?")[0].replace("%2F", "/"),
+                k.split("#")[0].split("?")[0],
                 "\n".join(sorted(cve_list, reverse=True)),
                 f"[bright_green]{fv}[/bright_green]",
             )

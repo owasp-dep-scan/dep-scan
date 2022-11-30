@@ -33,16 +33,31 @@ def compare(trivy_json, depscan_json):
         trivy_json_obj = json.load(tj)
         for res in trivy_json_obj.get("Results", []):
             for tvuln in res.get("Vulnerabilities", []):
-                trivy_cves.add(tvuln.get("VulnerabilityID"))
-                trivy_pkgs.add(
-                    f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}:{tvuln.get("FixedVersion", "")}"""
-                )
+                cveid = tvuln.get("VulnerabilityID", "")
+                if cveid.startswith("CVE"):
+                    if (
+                        cveid.startswith("CVE-2018-")
+                        or cveid.startswith("CVE-2019-")
+                        or cveid.startswith("CVE-2020-")
+                        or cveid.startswith("CVE-2021-")
+                        or cveid.startswith("CVE-2022-")
+                        or cveid.startswith("CVE-2023-")
+                    ):
+                        trivy_cves.add(cveid)
+                        trivy_pkgs.add(
+                            f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}:{tvuln.get("FixedVersion", "")}"""
+                        )
+                else:
+                    trivy_cves.add(cveid)
+                    trivy_pkgs.add(
+                        f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}:{tvuln.get("FixedVersion", "")}"""
+                    )
     for line in open(depscan_json, "r"):
         line_obj = json.loads(line)
         depscan_cves.add(line_obj.get("id"))
         purl = line_obj.get("purl")
         purl_obj = PackageURL.from_string(purl).to_dict()
-        name = purl_obj.get("name").split("%2F")[-1]
+        name = purl_obj.get("name")
         depscan_pkgs.add(
             f"""{name}:{purl_obj.get("version")}:{line_obj.get("fix_version", "")}"""
         )
