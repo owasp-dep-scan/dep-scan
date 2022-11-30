@@ -43,7 +43,7 @@ at_logo = """
 
 def build_args():
     """
-    Constructs command line arguments for the vulndb tool
+    Constructs command line arguments for the depscan tool
     """
     parser = argparse.ArgumentParser(
         description="Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories."
