@@ -145,6 +145,13 @@ def create_pkg_variations(pkg_dict):
             if name.startswith(k) or k.startswith(name) or v.startswith(name):
                 name_aliases.add(k)
                 name_aliases.add(v)
+    if pkg_type in config.OS_PKG_TYPES:
+        if "lib" in name:
+            name_aliases.add(name.replace("lib", ""))
+        elif "lib" not in name:
+            name_aliases.add("lib" + name)
+        if "-bin" not in name:
+            name_aliases.add(name + "-bin")
     if len(vendor_aliases):
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
