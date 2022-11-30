@@ -42,7 +42,7 @@ def compare(trivy_json, depscan_json):
         depscan_cves.add(line_obj.get("id"))
         purl = line_obj.get("purl")
         purl_obj = PackageURL.from_string(purl).to_dict()
-        name = purl_obj.get("name").split("%2F")[-1]
+        name = purl_obj.get("name")
         depscan_pkgs.add(
             f"""{name}:{purl_obj.get("version")}:{line_obj.get("fix_version", "")}"""
         )

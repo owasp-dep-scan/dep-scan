@@ -122,7 +122,7 @@ def build_args():
         "-o",
         "--report_file",
         dest="report_file",
-        help="Report filename with directory",
+        help="Report filename with directory. For legacy reasons, this file name would be used as a template with the final filename suffixed with project type.",
     )
     parser.add_argument(
         "--no-error",
@@ -402,7 +402,7 @@ def main():
         if project_type in ("podman", "docker"):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
             if npm_pkg_list:
-                LOG.debug(f"No of packages {len(npm_pkg_list)}")
+                LOG.debug(f"No of npm packages {len(npm_pkg_list)}")
                 try:
                     audit_results = audit("nodejs", npm_pkg_list, report_file)
                     if audit_results:

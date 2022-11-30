@@ -39,14 +39,22 @@ def create_pkg_variations(pkg_dict):
     vendor_aliases = set()
     name_aliases = set()
     vendor = pkg_dict.get("vendor")
-    name = pkg_dict.get("name").replace("%2F", "/")
+    name = pkg_dict.get("name")
     purl = pkg_dict.get("purl", "")
     pkg_type = ""
+    name_aliases.add(name)
+    name_aliases.add(name.lower())
+    name_aliases.add(name.replace("-", "_"))
     if purl:
         try:
             purl_obj = parse_purl(purl)
             if purl_obj:
                 pkg_type = purl_obj.get("type")
+                qualifiers = purl_obj.get("qualifiers", {})
+                if qualifiers.get("distro_name"):
+                    name_aliases.add(f"""{qualifiers.get("distro_name")}/{name}""")
+                if qualifiers.get("distro"):
+                    name_aliases.add(f"""{qualifiers.get("distro")}/{name}""")
         except Exception:
             tmpParts = purl.split(":")
             if tmpParts and len(tmpParts) > 1:
@@ -81,11 +89,9 @@ def create_pkg_variations(pkg_dict):
             vendor_aliases.add(v)
         elif name == k:
             vendor_aliases.add(v)
-    name_aliases.add(name)
-    name_aliases.add(name.lower())
-    name_aliases.add(name.replace("-", "_"))
     # This will add false positives to ubuntu
-    name_aliases.add(name.split("/")[-1])
+    if "/" in name:
+        name_aliases.add(name.split("/")[-1])
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
     # Pypi specific vendor aliases
