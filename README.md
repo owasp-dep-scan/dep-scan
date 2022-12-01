@@ -1,17 +1,8 @@
 # Introduction
 
-```bash
-  ___            _____ _                    _
- / _ \          |_   _| |                  | |
-/ /_\ \_ __  _ __ | | | |__  _ __ ___  __ _| |_
-|  _  | '_ \| '_ \| | | '_ \| '__/ _ \/ _` | __|
-| | | | |_) | |_) | | | | | | | |  __/ (_| | |_
-\_| |_/ .__/| .__/\_/ |_| |_|_|  \___|\__,_|\__|
-      | |   | |
-      |_|   |_|
-```
-
 dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. Both local repositories and container images are supported as input. The tool is ideal for CI environments with built-in build breaker logic.
+
+![Depscan logo](dep-scan.png)
 
 ## Features
 
@@ -69,7 +60,7 @@ Download the executable binary for your operating system from the [releases page
 - cdxgen binary plugins
 
 ```bash
-curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.2.5/depscan-linux-amd64
+curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.2.6/depscan-linux-amd64
 chmod +x depscan-linux-amd64
 ./depscan-linux-amd64 --help
 ```
@@ -77,7 +68,7 @@ chmod +x depscan-linux-amd64
 On Windows,
 
 ```powershell
-curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.2.5/depscan.exe
+curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.2.6/depscan.exe
 .\depscan.exe --help
 ```
 
