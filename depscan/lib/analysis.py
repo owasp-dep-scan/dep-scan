@@ -6,6 +6,7 @@ from collections import defaultdict
 from rich import box
 from rich.panel import Panel
 from rich.table import Table
+from vdb.lib import CPE_FULL_REGEX
 from vdb.lib.config import placeholder_fix_version
 from vdb.lib.utils import parse_purl
 
@@ -30,6 +31,20 @@ def best_fixed_location(sug_version, orig_fixed_location):
     return orig_fixed_location
 
 
+def distro_package(package_issue):
+    if package_issue:
+        all_parts = CPE_FULL_REGEX.match(package_issue.affected_location.cpe_uri)
+        if (
+            all_parts
+            and all_parts.group("vendor")
+            and all_parts.group("vendor") in ("debian", "ubuntu", "alpine")
+            and all_parts.group("edition")
+            and all_parts.group("edition") != "*"
+        ):
+            return True
+    return False
+
+
 def print_results(
     project_type, results, pkg_aliases, purl_aliases, sug_version_dict, scoped_pkgs
 ):
@@ -51,6 +66,7 @@ def print_results(
     has_exploit_count = 0
     fix_version_count = 0
     has_os_packages = False
+    distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
     for h in [
         "CVE",
@@ -157,6 +173,12 @@ def print_results(
             )
             has_exploit_count = has_exploit_count + 1
             pkg_requires_attn = True
+        if distro_package(package_issue):
+            insights.append(
+                "[spring_green4]:direct_hit: Distro specific[/spring_green4]"
+            )
+            distro_packages_count = distro_packages_count + 1
+            has_os_packages = True
         if pkg_requires_attn and fixed_location and purl:
             pkg_group_rows[purl].append({"id": id, "fixed_location": fixed_location})
         table.add_row(
@@ -209,6 +231,12 @@ def print_results(
             rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
             if not scoped_pkgs and not has_os_packages:
                 rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
+            if (
+                has_os_packages
+                and distro_packages_count
+                and distro_packages_count < len(results)
+            ):
+                rmessage += f"\nNOTE: [magenta]{distro_packages_count}[/magenta] distro-specific vulnerabilities out of {len(results)} could be prioritized for updates."
             console.print(
                 Panel(
                     rmessage,
@@ -242,9 +270,10 @@ def print_results(
             )
         else:
             if has_os_packages:
+                rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in non-system packages."
                 console.print(
                     Panel(
-                        ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in non-system packages.",
+                        rmessage,
                         title="Recommendation",
                         expand=False,
                     )

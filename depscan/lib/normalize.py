@@ -1,4 +1,5 @@
-from vdb.lib import KNOWN_PKG_TYPES, PKG_TYPES_MAP
+from vdb.lib import KNOWN_PKG_TYPES
+from vdb.lib.config import placeholder_exclude_version
 from vdb.lib.utils import parse_purl
 
 from depscan.lib import config as config
@@ -208,6 +209,13 @@ def dedup(project_type, pkg_list, pkg_aliases):
         vid = res.id
         vuln_occ_dict = res.to_dict()
         package_type = vuln_occ_dict.get("type")
+        package_issue = res.package_issue
+        fixed_location = package_issue.fixed_location
+        # Ignore any result with the exclude fix location
+        # Required for debian
+        if fixed_location == placeholder_exclude_version:
+            dedup_dict[vid] = True
+            continue
         allowed_type = config.LANG_PKG_TYPES.get(project_type)
         if package_type and package_type in KNOWN_PKG_TYPES and allowed_type:
             if allowed_type != package_type:

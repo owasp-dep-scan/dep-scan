@@ -325,6 +325,12 @@ def main():
             LOG.debug("Bom file {} was not created successfully".format(bom_file))
             continue
         LOG.info("Scanning using the bom file {}".format(bom_file))
+        if not args.bom:
+            LOG.info(
+                "To improve performance, cache this bom file and invoke depscan with --bom {} instead of -i".format(
+                    bom_file
+                )
+            )
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.debug("No packages found in the project!")
