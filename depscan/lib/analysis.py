@@ -6,6 +6,7 @@ from collections import defaultdict
 from rich import box
 from rich.panel import Panel
 from rich.table import Table
+from vdb.lib.config import placeholder_fix_version
 from vdb.lib.utils import parse_purl
 
 from depscan.lib import config as config
@@ -17,14 +18,14 @@ def best_fixed_location(sug_version, orig_fixed_location):
     # Compare the major versions before suggesting an override
     # See: https://github.com/AppThreat/dep-scan/issues/72
     if sug_version and orig_fixed_location:
+        if sug_version == placeholder_fix_version:
+            return ""
         tmpA = sug_version.split(".")[0]
         tmpB = orig_fixed_location.split(".")[0]
         if tmpA == tmpB:
-            if sug_version == "99.99.9":
-                return ""
             return sug_version
     # Handle the placeholder version used by OS distros
-    if orig_fixed_location == "99.99.9":
+    if orig_fixed_location == placeholder_fix_version:
         return ""
     return orig_fixed_location
 
