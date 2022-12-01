@@ -80,20 +80,20 @@ def create_pkg_variations(pkg_dict):
         # Ignore third party alternatives for builtins
         if "golang" not in vendor and name not in ["net", "crypto", "http", "text"]:
             vendor_aliases.add("golang")
-    if not purl.startswith("pkg:golang") and pkg_type not in config.OS_PKG_TYPES:
-        vendor_aliases.add("get" + name)
-        vendor_aliases.add(name + "_project")
-    for k, v in config.vendor_alias.items():
-        if vendor and (vendor.startswith(k) or k.startswith(vendor)):
-            vendor_aliases.add(k)
-            vendor_aliases.add(v)
-        elif name == k:
-            vendor_aliases.add(v)
+    if pkg_type not in config.OS_PKG_TYPES:
+        name_aliases.add("package_" + name)
+        if not purl.startswith("pkg:golang"):
+            vendor_aliases.add("get" + name)
+            vendor_aliases.add(name + "_project")
+        for k, v in config.vendor_alias.items():
+            if vendor and (vendor.startswith(k) or k.startswith(vendor)):
+                vendor_aliases.add(k)
+                vendor_aliases.add(v)
+            elif name == k:
+                vendor_aliases.add(v)
     # This will add false positives to ubuntu
     if "/" in name:
         name_aliases.add(name.split("/")[-1])
-    if pkg_type not in config.OS_PKG_TYPES:
-        name_aliases.add("package_" + name)
     # Pypi specific vendor aliases
     if purl.startswith("pkg:pypi"):
         if not name.startswith("python-"):
