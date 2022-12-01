@@ -15,7 +15,7 @@ from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
 
 
-def best_fixed_location(sug_version, orig_fixed_location):
+def best_fixed_location(version_used, sug_version, orig_fixed_location):
     # Compare the major versions before suggesting an override
     # See: https://github.com/AppThreat/dep-scan/issues/72
     if sug_version and orig_fixed_location:
@@ -37,7 +37,7 @@ def distro_package(package_issue):
         if (
             all_parts
             and all_parts.group("vendor")
-            and all_parts.group("vendor") in ("debian", "ubuntu", "alpine")
+            and all_parts.group("vendor") in ("debian", "ubuntu", "alpine", "redhat")
             and all_parts.group("edition")
             and all_parts.group("edition") != "*"
         ):
@@ -66,6 +66,7 @@ def print_results(
     has_exploit_count = 0
     fix_version_count = 0
     has_os_packages = False
+    has_redhat_packages = False
     distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
     for h in [
@@ -106,6 +107,8 @@ def print_results(
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     package_type = purl_obj.get("type")
+                    if package_type == "redhat":
+                        has_redhat_packages = True
                     if purl_obj.get("namespace"):
                         full_pkg_display = (
                             f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}"""
@@ -118,7 +121,7 @@ def print_results(
             continue
         ids_seen[id + full_pkg] = True
         fixed_location = best_fixed_location(
-            sug_version_dict.get(full_pkg), package_issue.fixed_location
+            version_used, sug_version_dict.get(full_pkg), package_issue.fixed_location
         )
         package_usage = "N/A"
         insights = []
@@ -271,6 +274,8 @@ def print_results(
         else:
             if has_os_packages:
                 rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in non-system packages."
+                if has_redhat_packages:
+                    rmessage += """NOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
                 console.print(
                     Panel(
                         rmessage,
@@ -370,7 +375,9 @@ def jsonl_report(
                 project_type, package_issue.affected_location.package
             )
             fixed_location = best_fixed_location(
-                sug_version_dict.get(full_pkg), package_issue.fixed_location
+                version_used,
+                sug_version_dict.get(full_pkg),
+                package_issue.fixed_location,
             )
             package_usage = "N/A"
             if full_pkg in required_pkgs or project_type_pkg in required_pkgs:

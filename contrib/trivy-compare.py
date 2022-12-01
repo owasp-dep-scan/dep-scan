@@ -47,11 +47,17 @@ def compare(trivy_json, depscan_json):
                         trivy_pkgs.add(
                             f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}:{tvuln.get("FixedVersion", "")}"""
                         )
+                        if tvuln.get("FixedVersion"):
+                            print(
+                                tvuln.get("InstalledVersion"),
+                                tvuln.get("FixedVersion", ""),
+                            )
                 else:
                     trivy_cves.add(cveid)
                     trivy_pkgs.add(
                         f"""{tvuln.get("PkgName")}:{tvuln.get("InstalledVersion")}:{tvuln.get("FixedVersion", "")}"""
                     )
+    print("\n------------- depscan ------------")
     for line in open(depscan_json, "r"):
         line_obj = json.loads(line)
         depscan_cves.add(line_obj.get("id"))
@@ -61,6 +67,10 @@ def compare(trivy_json, depscan_json):
         depscan_pkgs.add(
             f"""{name}:{purl_obj.get("version")}:{line_obj.get("fix_version", "")}"""
         )
+        print(
+            line_obj.get("id"), purl_obj.get("version"), line_obj.get("fix_version", "")
+        )
+    print("-----------------------------------\n")
 
     print("Packages in Trivy but not in depscan")
     print(trivy_pkgs.difference(depscan_pkgs))
