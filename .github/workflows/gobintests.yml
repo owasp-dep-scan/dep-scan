@@ -2,6 +2,8 @@ name: gobintests tests
 
 on:
   push:
+    branches:
+      - master
     paths-ignore:
       - '**/README.md'
 
