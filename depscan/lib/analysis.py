@@ -159,7 +159,9 @@ def print_results(
                 pkg_attention_count = pkg_attention_count + 1
             if fixed_location:
                 fix_version_count = fix_version_count + 1
-            if clinks.get("vendor") and pkg_severity == "CRITICAL":
+            if (
+                clinks.get("vendor") or package_type in config.OS_PKG_TYPES
+            ) and pkg_severity == "CRITICAL":
                 critical_count += 1
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
@@ -386,6 +388,7 @@ def jsonl_report(
                     pass
             if ids_seen.get(id + full_pkg):
                 continue
+            # On occasions, this could still result in duplicates if the package exists with and without a purl
             ids_seen[id + full_pkg] = True
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package
