@@ -245,10 +245,12 @@ def print_results(
     if scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
             rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
-            rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
-            if not scoped_pkgs and not has_os_packages:
-                rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
-            if has_os_packages:
+            if not has_os_packages:
+                rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
+                if not scoped_pkgs:
+                    rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
+            else:
+                rmessage += f"\nConsider trimming this image by removing any unwanted packages. Alternatively, use a slim base image."
                 if distro_packages_count and distro_packages_count < len(results):
                     rmessage += f"\nNOTE: [magenta]{distro_packages_count}[/magenta] distro-specific vulnerabilities out of {len(results)} could be prioritized for updates."
                 if has_redhat_packages:
