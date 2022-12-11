@@ -65,8 +65,10 @@ def print_results(
     has_poc_count = 0
     has_exploit_count = 0
     fix_version_count = 0
+    wont_fix_version_count = 0
     has_os_packages = False
     has_redhat_packages = False
+    has_ubuntu_packages = False
     distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
     for h in [
@@ -107,8 +109,13 @@ def print_results(
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     package_type = purl_obj.get("type")
+                    qualifiers = purl_obj.get("qualifiers", {})
                     if package_type == "redhat":
                         has_redhat_packages = True
+                    if package_type in config.OS_PKG_TYPES:
+                        has_os_packages = True
+                    if "ubuntu" in qualifiers.get("distro", ""):
+                        has_ubuntu_packages = True
                     if purl_obj.get("namespace"):
                         full_pkg_display = (
                             f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}"""
@@ -123,6 +130,11 @@ def print_results(
         fixed_location = best_fixed_location(
             version_used, sug_version_dict.get(full_pkg), package_issue.fixed_location
         )
+        if (
+            sug_version_dict.get(full_pkg) == placeholder_fix_version
+            or package_issue.fixed_location == placeholder_fix_version
+        ):
+            wont_fix_version_count = wont_fix_version_count + 1
         package_usage = "N/A"
         insights = []
         package_name_style = ""
@@ -147,7 +159,9 @@ def print_results(
                 pkg_attention_count = pkg_attention_count + 1
             if fixed_location:
                 fix_version_count = fix_version_count + 1
-            if clinks.get("vendor") and pkg_severity == "CRITICAL":
+            if (
+                clinks.get("vendor") or package_type in config.OS_PKG_TYPES
+            ) and pkg_severity == "CRITICAL":
                 critical_count += 1
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
@@ -231,15 +245,18 @@ def print_results(
     if scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
             rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
-            rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
-            if not scoped_pkgs and not has_os_packages:
-                rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
-            if (
-                has_os_packages
-                and distro_packages_count
-                and distro_packages_count < len(results)
-            ):
-                rmessage += f"\nNOTE: [magenta]{distro_packages_count}[/magenta] distro-specific vulnerabilities out of {len(results)} could be prioritized for updates."
+            if not has_os_packages:
+                rmessage += f"\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
+                if not scoped_pkgs:
+                    rmessage += f"\nNOTE: Package usage analysis was not performed for this project."
+            else:
+                rmessage += f"\nConsider trimming this image by removing any unwanted packages. Alternatively, use a slim base image."
+                if distro_packages_count and distro_packages_count < len(results):
+                    rmessage += f"\nNOTE: [magenta]{distro_packages_count}[/magenta] distro-specific vulnerabilities out of {len(results)} could be prioritized for updates."
+                if has_redhat_packages:
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
+                if has_ubuntu_packages:
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
             console.print(
                 Panel(
                     rmessage,
@@ -273,14 +290,17 @@ def print_results(
             )
         else:
             if has_os_packages:
-                rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in non-system packages."
+                rmessage = "Prioritize any vulnerabilities in libraries such as glibc, openssl, or libcurl.\nAdditionally, prioritize the vulnerabilities in packages that provide executable binaries when there is a Remote Code Execution or File Write vulnerability in the containerized application or service."
+                rmessage += "\nVulnerabilities in Linux Kernel packages can be usually ignored in containerized environments as long as the vulnerability doesn't lead to any 'container-escape' type vulnerabilities."
                 if has_redhat_packages:
-                    rmessage += """NOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
+                if has_ubuntu_packages:
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
                 console.print(
                     Panel(
                         rmessage,
                         title="Recommendation",
-                        expand=False,
+                        expand=True,
                     )
                 )
             else:
@@ -370,6 +390,7 @@ def jsonl_report(
                     pass
             if ids_seen.get(id + full_pkg):
                 continue
+            # On occasions, this could still result in duplicates if the package exists with and without a purl
             ids_seen[id + full_pkg] = True
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package

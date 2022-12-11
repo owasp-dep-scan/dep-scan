@@ -46,6 +46,8 @@ def create_pkg_variations(pkg_dict):
     name_aliases.add(name)
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
+    os_distro = None
+    os_distro_name = None
     if purl:
         try:
             purl_obj = parse_purl(purl)
@@ -53,9 +55,11 @@ def create_pkg_variations(pkg_dict):
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
                 if qualifiers.get("distro_name"):
-                    name_aliases.add(f"""{qualifiers.get("distro_name")}/{name}""")
+                    os_distro_name = qualifiers.get("distro_name")
+                    name_aliases.add(f"""{os_distro_name}/{name}""")
                 if qualifiers.get("distro"):
-                    name_aliases.add(f"""{qualifiers.get("distro")}/{name}""")
+                    os_distro = qualifiers.get("distro")
+                    name_aliases.add(f"""{os_distro}/{name}""")
         except Exception:
             tmpParts = purl.split(":")
             if tmpParts and len(tmpParts) > 1:
@@ -93,7 +97,7 @@ def create_pkg_variations(pkg_dict):
             elif name == k:
                 vendor_aliases.add(v)
     # This will add false positives to ubuntu
-    if "/" in name:
+    if "/" in name and os_distro and "ubuntu" not in os_distro:
         name_aliases.add(name.split("/")[-1])
     # Pypi specific vendor aliases
     if purl.startswith("pkg:pypi"):
