@@ -275,7 +275,11 @@ def print_results(
                 advisories.append({"title": k, "url": v})
             cwes = []
             if problem_type:
-                cwes = [problem_type]
+                try:
+                    acwe = int(problem_type.lower().replace("cwe-", ""))
+                    cwes = [acwe]
+                except Exception:
+                    pass
             pkg_vulnerabilities.append(
                 {
                     "bom-ref": f"{id}/{purl}",
