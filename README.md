@@ -8,7 +8,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 
 - Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Suggest optimal fix version for vulnerable packages (See suggest mode)
+- Generate Software Bill-of-Materials (SBoM) with Vulnerability Exploitability Exchange (VEX) information
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 ![Depscan insights](docs/depscan-latest.png)
