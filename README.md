@@ -104,8 +104,8 @@ depscan --src $PWD --report_file $PWD/reports/depscan.json
 Full list of options are below:
 
 ```bash
-usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR [-o REPORT_FILE]
-              [--no-error]
+usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR
+              [--reports-dir REPORTS_DIR] [--no-error] [--deep]
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
   --cache               Cache vulnerability information in platform specific user_data_dir
@@ -120,8 +120,8 @@ usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [-
   --bom BOM             Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.
   -i SRC_DIR, --src SRC_DIR
                         Source directory
-  -o REPORT_FILE, --report_file REPORT_FILE
-                        Report filename with directory
+  --reports-dir REPORTS_DIR
+                        Reports directory
   --no-error            Continue on error to prevent build from breaking
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
 ```
