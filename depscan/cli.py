@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import json
 import os
 import sys
 
@@ -105,6 +106,7 @@ def build_args():
         "-t",
         "--type",
         dest="project_type",
+        default=os.getenv("DEPSCAN_PROJECT_TYPE"),
         help="Override project type if auto-detection is incorrect",
     )
     parser.add_argument(
@@ -122,7 +124,13 @@ def build_args():
         "-o",
         "--report_file",
         dest="report_file",
-        help="Report filename with directory. For legacy reasons, this file name would be used as a template with the final filename suffixed with project type.",
+        help="DEPRECATED. Use reports directory since multiple files are created. Report filename with directory",
+    )
+    parser.add_argument(
+        "--reports-dir",
+        default=os.getenv("DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")),
+        dest="reports_dir",
+        help="Reports directory",
     )
     parser.add_argument(
         "--no-error",
@@ -216,6 +224,7 @@ def summarise(
     sug_version_dict,
     scoped_pkgs={},
     report_file=None,
+    bom_file=None,
     console_print=True,
 ):
     """
@@ -244,7 +253,7 @@ def summarise(
             report_file,
         )
     if console_print:
-        print_results(
+        pkg_vulnerabilities = print_results(
             project_type,
             results,
             pkg_aliases,
@@ -252,6 +261,18 @@ def summarise(
             sug_version_dict,
             scoped_pkgs,
         )
+        if pkg_vulnerabilities and bom_file:
+            vex_file = bom_file.replace(".json", ".vex.json")
+            try:
+                with open(bom_file) as fp:
+                    bom_data = json.load(fp)
+                    if bom_data:
+                        bom_data["vulnerabilities"] = pkg_vulnerabilities
+                        with open(vex_file, mode="w") as vexfp:
+                            json.dump(bom_data, vexfp)
+                            LOG.info(f"VEX file {vex_file} generated successfully")
+            except Exception:
+                LOG.warn("Unable to generate VEX file for this scan")
     summary = analyse(project_type, results)
     return summary
 
@@ -263,7 +284,7 @@ def main():
     src_dir = args.src_dir_image
     if not src_dir:
         src_dir = os.getcwd()
-    reports_base_dir = src_dir
+    reports_dir = args.reports_dir
     # Detect the project types and perform the right type of scan
     if args.project_type:
         project_types_list = args.project_type.split(",")
@@ -271,22 +292,14 @@ def main():
         project_types_list = ["bom"]
     else:
         project_types_list = utils.detect_project_type(src_dir)
-    if (
-        "docker" in project_types_list
-        or "podman" in project_types_list
-        or "container" in project_types_list
-        or "binary" in project_types_list
-    ):
-        reports_base_dir = os.getcwd()
     db = dbLib.get()
     run_cacher = args.cache or args.cache_os
     areport_file = (
         args.report_file
         if args.report_file
-        else os.path.join(reports_base_dir, "reports", "depscan.json")
+        else os.path.join(reports_dir, "depscan.json")
     )
     html_file = areport_file.replace(".json", ".html")
-    reports_dir = os.path.dirname(areport_file)
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
@@ -469,6 +482,7 @@ def main():
             sug_version_dict,
             scoped_pkgs,
             report_file,
+            bom_file,
             True,
         )
         if summary and not args.noerror and len(project_types_list) == 1:
@@ -476,7 +490,6 @@ def main():
             if summary.get("CRITICAL", 0) > 0:
                 sys.exit(1)
     console.save_html(html_file, theme=MONOKAI)
-    console.print(f"HTML report saved to {html_file}")
 
 
 if __name__ == "__main__":

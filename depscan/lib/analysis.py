@@ -18,6 +18,12 @@ from depscan.lib.utils import max_version
 def best_fixed_location(version_used, sug_version, orig_fixed_location):
     # Compare the major versions before suggesting an override
     # See: https://github.com/AppThreat/dep-scan/issues/72
+    if (
+        not orig_fixed_location
+        and sug_version
+        and sug_version != placeholder_fix_version
+    ):
+        return sug_version
     if sug_version and orig_fixed_location:
         if sug_version == placeholder_fix_version:
             return ""
@@ -71,6 +77,7 @@ def print_results(
     has_ubuntu_packages = False
     distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
+    pkg_vulnerabilities = []
     for h in [
         "CVE",
         "Package",
@@ -87,6 +94,7 @@ def print_results(
     for res in results:
         vuln_occ_dict = res.to_dict()
         id = vuln_occ_dict.get("id")
+        problem_type = vuln_occ_dict.get("problem_type")
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
         project_type_pkg = "{}:{}".format(
@@ -137,6 +145,7 @@ def print_results(
             wont_fix_version_count = wont_fix_version_count + 1
         package_usage = "N/A"
         insights = []
+        plain_insights = []
         package_name_style = ""
         id_style = ""
         pkg_severity = vuln_occ_dict.get("severity")
@@ -179,21 +188,26 @@ def print_results(
             package_name_style = "[italic]"
         if package_usage != "N/A":
             insights.append(package_usage)
+            plain_insights.append(package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
+            plain_insights.append("Has PoC")
             has_poc_count = has_poc_count + 1
         if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
             insights.append(":receipt: Vendor Confirmed")
+            plain_insights.append("Vendor Confirmed")
         if clinks.get("exploit"):
             insights.append(
                 "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
             )
+            plain_insights.append("Known Exploits")
             has_exploit_count = has_exploit_count + 1
             pkg_requires_attn = True
         if distro_package(package_issue):
             insights.append(
                 "[spring_green4]:direct_hit: Distro specific[/spring_green4]"
             )
+            plain_insights.append("Distro specific")
             distro_packages_count = distro_packages_count + 1
             has_os_packages = True
         if pkg_requires_attn and fixed_location and purl:
@@ -218,6 +232,74 @@ def print_results(
                 vuln_occ_dict.get("cvss_score"),
             ),
         )
+        if purl:
+            source = {}
+            if id.startswith("CVE"):
+                source = {
+                    "name": "NVD",
+                    "url": f"https://nvd.nist.gov/vuln/detail/{id}",
+                }
+            elif id.startswith("GHSA") or id.startswith("npm"):
+                source = {
+                    "name": "GitHub",
+                    "url": f"https://github.com/advisories/{id}",
+                }
+            versions = [{"version": version_used, "status": "affected"}]
+            recommendation = ""
+            if fixed_location:
+                versions.append({"version": fixed_location, "status": "unaffected"})
+                recommendation = f"Update to {fixed_location} or later"
+            affects = [{"ref": purl, "versions": versions}]
+            analysis = {}
+            if clinks.get("exploit"):
+                analysis = {
+                    "state": "exploitable",
+                    "detail": f'See {clinks.get("exploit")}',
+                }
+            elif clinks.get("poc"):
+                analysis = {"state": "in_triage", "detail": f'See {clinks.get("poc")}'}
+            score = 2.0
+            try:
+                score = float(vuln_occ_dict.get("cvss_score"))
+            except Exception:
+                pass
+            ratings = [
+                {
+                    "score": score,
+                    "severity": pkg_severity.lower(),
+                    "method": "CVSSv31",
+                }
+            ]
+            advisories = []
+            for k, v in clinks.items():
+                advisories.append({"title": k, "url": v})
+            cwes = []
+            if problem_type:
+                cwes = [problem_type]
+            pkg_vulnerabilities.append(
+                {
+                    "bom-ref": f"{id}/{purl}",
+                    "id": id,
+                    "source": source,
+                    "ratings": ratings,
+                    "cwes": cwes,
+                    "description": vuln_occ_dict.get("short_description"),
+                    "recommendation": recommendation,
+                    "advisories": advisories,
+                    "analysis": analysis,
+                    "affects": affects,
+                    "properties": [
+                        {
+                            "name": "depscan:insights",
+                            "value": "\\n".join(plain_insights),
+                        },
+                        {
+                            "name": "depscan:prioritized",
+                            "value": "true" if pkg_group_rows.get(purl) else "false",
+                        },
+                    ],
+                }
+            )
     console.print(table)
     if pkg_group_rows:
         console.print("")
@@ -327,6 +409,7 @@ def print_results(
                 expand=False,
             )
         )
+    return pkg_vulnerabilities
 
 
 def analyse(project_type, results):
