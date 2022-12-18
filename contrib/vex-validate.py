@@ -29,7 +29,7 @@ def vvex(vex_json):
             vex_obj = json.load(vp)
             try:
                 validate(instance=vex_obj, schema=json.load(sp))
-                print ("VEX file is valid")
+                print("VEX file is valid")
             except ValidationError as ve:
                 print(ve)
                 sys.exit(1)

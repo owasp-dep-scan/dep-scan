@@ -259,7 +259,7 @@ def submit_bom(reports_dir, threatdb_params):
         if not threatdb_server.endswith("/import"):
             threatdb_server = f"{threatdb_server}/import"
         login_url = threatdb_server.replace("/import", "/login")
-        with httpx.Client(base_url=threatdb_server) as client:
+        with httpx.Client(base_url=threatdb_server, timeout=180) as client:
             token = threatdb_params.get("threatdb_token")
             if not token:
                 LOG.debug(f"Attempting to retrieve access token from {login_url}")
