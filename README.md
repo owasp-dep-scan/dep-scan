@@ -60,7 +60,7 @@ Download the executable binary for your operating system from the [releases page
 - cdxgen binary plugins
 
 ```bash
-curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.4.0/depscan-linux-amd64
+curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.5.1/depscan-linux-amd64
 chmod +x depscan-linux-amd64
 ./depscan-linux-amd64 --help
 ```
@@ -68,7 +68,7 @@ chmod +x depscan-linux-amd64
 On Windows,
 
 ```powershell
-curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.4.0/depscan.exe
+curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.5.1/depscan.exe
 .\depscan.exe --help
 ```
 
@@ -333,14 +333,14 @@ The licenses data is sourced from choosealicense.com and is quite limited. If th
 
 ## Kubernetes and Cloud apps
 
-dep-scan could auto detect most cloud applications and kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
+dep-scan could auto-detect most cloud applications and Kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
 
 ## Alternatives
 
-[Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered to be the industry standard for open-source dependency scanning. After personally using this great product for a number of years I decided to write my own from scratch partly as a dedication to this project. By using a streaming database based on msgpack and using json schema, dep-scan is more performant than dependency check in CI environments. Plus with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool
+[Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered the industry standard for open-source dependency scanning. After personally using this great product for many years, I decided to write my own from scratch, partly as a dedication to this project. By using a streaming database based on msgpack and using JSON schema, dep-scan is more performant than dependency check in CI environments. Plus, with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool.
 
-There are a number of other tools that piggy back on Sonatype [ossindex](https://ossindex.sonatype.org/) API server. For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects across the world. dep-scan is therefore 100% private and guarantees never to perform any tracking!
+Several other tools piggyback on Sonatype [ossindex](https://ossindex.sonatype.org/) API server. For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects worldwide. dep-scan is, therefore, 100% private and guarantees never to perform any tracking!
 
 ### Trivy, grype etc
 
-These mature projects are considered the benchmark for container, filesystem and registry scanning. dep-scan is yet to be benchmarked against these projects for quality of results and performance. dep-scan even uses Trivy for container SBoM generation via cdxgen-binary-plugins, although this would change in the future. I aspire to make dep-scan outperform these projects with simplicity and **actionable results**. The CVE insights offered by dep-scan could be used for prioritization to reduce the number of package updates and container rebuilds already.
+These mature projects are considered the benchmark for container, filesystem and registry scanning. dep-scan is yet to be benchmarked against these projects for results and performance. dep-scan even uses Trivy for container SBoM generation via cdxgen-binary-plugins, although this would change in the future. I aspire to make dep-scan outperform these projects with simplicity and **actionable results**. The CVE insights offered by dep-scan could be used for prioritization to reduce the number of package updates and container rebuilds.
