@@ -3,13 +3,20 @@ import os
 import shutil
 import subprocess
 import sys
-import xml
+
+import httpx
+
 from urllib.parse import unquote_plus
 
 from defusedxml.ElementTree import parse
 
 from depscan.lib.logger import LOG
-from depscan.lib.utils import cleanup_license_string
+from depscan.lib.utils import cleanup_license_string, find_files
+
+headers = {
+    "Content-Type": "application/json",
+    "Accept-Encoding": "gzip",
+}
 
 
 def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
@@ -243,3 +250,54 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False):
     args.append(src_dir)
     exec_tool(args)
     return os.path.exists(bom_file)
+
+
+def submit_bom(reports_dir, threatdb_params):
+    vex_files = find_files(reports_dir, ".vex.json", quick=False, filter=True)
+    if vex_files:
+        threatdb_server = threatdb_params["threatdb_server"]
+        if not threatdb_server.endswith("/import"):
+            threatdb_server = f"{threatdb_server}/import"
+        login_url = threatdb_server.replace("/import", "/login")
+        with httpx.Client(base_url=threatdb_server) as client:
+            token = threatdb_params.get("threatdb_token")
+            if not token:
+                LOG.debug(f"Attempting to retrieve access token from {login_url}")
+                r = client.post(
+                    login_url,
+                    json={
+                        "username": threatdb_params["threatdb_username"],
+                        "password": threatdb_params["threatdb_password"],
+                    },
+                    headers=headers,
+                )
+                if r.status_code == httpx.codes.OK:
+                    json_response = r.json()
+                    if json_response and json_response.get("access_token"):
+                        token = json_response.get("access_token")
+                else:
+                    LOG.warn(
+                        f"Unable to retrieve access token from {login_url} due to {r.status_code}"
+                    )
+            if token:
+                for vf in vex_files:
+                    files = {"file": open(vf, "rb")}
+                    r = client.post(
+                        threatdb_server,
+                        files=files,
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    if r.status_code == httpx.codes.OK:
+                        json_response = r.json()
+                        if not json_response.get("success"):
+                            LOG.debug(
+                                f"Uploaded file {vf} was not processed successfully"
+                            )
+                        else:
+                            LOG.debug(
+                                f"Vex file {vf} was submitted successfully to the threatdb server"
+                            )
+                    else:
+                        LOG.warn(
+                            f"Unable to submit vex file to {threatdb_server} due to {r.status_code}"
+                        )

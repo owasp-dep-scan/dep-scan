@@ -1,7 +1,7 @@
 import math
 from datetime import datetime
 
-import requests
+import httpx
 from rich.progress import Progress
 
 from depscan.lib import config as config
@@ -71,7 +71,11 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 continue
             progress.update(task, description=f"Checking {key}")
             try:
-                r = requests.get(url=lookup_url, timeout=config.request_timeout_sec)
+                r = httpx.get(
+                    url=lookup_url,
+                    follow_redirects=True,
+                    timeout=config.request_timeout_sec,
+                )
                 json_data = r.json()
                 # Npm returns this error if the package is not found
                 if (
