@@ -263,10 +263,13 @@ def print_results(
                 score = float(vuln_occ_dict.get("cvss_score"))
             except Exception:
                 pass
+            sev_to_use = pkg_severity.lower()
+            if sev_to_use not in ("critical", "high", "medium", "low", "info", "none"):
+                sev_to_use = "unknown"
             ratings = [
                 {
                     "score": score,
-                    "severity": pkg_severity.lower(),
+                    "severity": sev_to_use,
                     "method": "CVSSv31",
                 }
             ]
