@@ -25,7 +25,7 @@ from depscan.lib.analysis import (
     suggest_version,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
-from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list
+from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
 from depscan.lib.config import license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
@@ -152,6 +152,30 @@ def build_args():
         default=False,
         dest="deep_scan",
         help="Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.",
+    )
+    parser.add_argument(
+        "--threatdb-server",
+        default=os.getenv("THREATDB_SERVER_URL"),
+        dest="threatdb_server",
+        help="ThreatDB server url. Eg: https://api.sbom.cx",
+    )
+    parser.add_argument(
+        "--threatdb-username",
+        default=os.getenv("THREATDB_USERNAME"),
+        dest="threatdb_username",
+        help="ThreatDB username",
+    )
+    parser.add_argument(
+        "--threatdb-password",
+        default=os.getenv("THREATDB_PASSWORD"),
+        dest="threatdb_password",
+        help="ThreatDB password",
+    )
+    parser.add_argument(
+        "--threatdb-token",
+        default=os.getenv("THREATDB_ACCESS_TOKEN"),
+        dest="threatdb_token",
+        help="ThreatDB token for token based submission",
     )
     return parser.parse_args()
 
@@ -490,6 +514,17 @@ def main():
             if summary.get("CRITICAL", 0) > 0:
                 sys.exit(1)
     console.save_html(html_file, theme=MONOKAI)
+    # Submit vex files to threatdb server
+    if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
+        submit_bom(
+            reports_dir,
+            {
+                "threatdb_server": args.threatdb_server,
+                "threatdb_username": args.threatdb_username,
+                "threatdb_password": args.threatdb_password,
+                "threatdb_token": args.threatdb_token,
+            },
+        )
 
 
 if __name__ == "__main__":
