@@ -1,6 +1,6 @@
 # Introduction
 
-dep-scan is a fully open-source security audit tool for project dependencies based on known vulnerabilities, advisories and license limitations. Both local repositories and container images are supported as input. The tool is ideal for CI environments with built-in build breaker logic.
+dep-scan is a fully open-source security audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
 
 ![Depscan logo](dep-scan.png)
 
@@ -34,7 +34,7 @@ dep-scan is a fully open-source security audit tool for project dependencies bas
 - OpenSUSE/SLES
 - Photon
 
-Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache-os` for the first time. dep-scan would also try to automatically download the appropriate database based on project type.
+Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache-os` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 
 ## Usage
 
@@ -86,9 +86,7 @@ This approach should work for all CI environments supported by scan.
 ### Scanning projects locally (Python version)
 
 ```bash
-sudo npm install -g @appthreat/cdxgen
-# To require support for scanning containers, binary files and live OS install plugins
-sudo npm install -g @ngcloudsec/cdxgen-plugins-bin
+sudo npm install -g @cyclonedx/cdxgen
 pip install appthreat-depscan
 ```
 
@@ -124,6 +122,18 @@ usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [-
                         Reports directory
   --no-error            Continue on error to prevent build from breaking
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
+  --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
+  --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
+  --threatdb-server THREATDB_SERVER
+                        ThreatDB server url. Eg: https://api.sbom.cx
+  --threatdb-username THREATDB_USERNAME
+                        ThreatDB username
+  --threatdb-password THREATDB_PASSWORD
+                        ThreatDB password
+  --threatdb-token THREATDB_TOKEN
+                        ThreatDB token for token based submission
+  --privado-json PRIVADO_JSON
+                        Enrich the VEX report with information from privado.ai json report.
 ```
 
 ### Scanning containers locally (Python version)
@@ -182,7 +192,7 @@ In the above example, `/tmp` is mounted as `/db` into the container. This direct
 
 ## Supported languages and package format
 
-dep-scan uses [cdxgen](https://github.com/AppThreat/cdxgen) command internally to create Software Bill-of-Materials (SBoM) file for the project. This is then used for performing the scans.
+dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create Software Bill-of-Materials (SBoM) file for the project. This is then used for performing the scans.
 
 The following projects and package-dependency format is supported by cdxgen.
 
@@ -235,7 +245,7 @@ This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-## Customisation through environment variables
+## Customization through environment variables
 
 The following environment variables can be used to customise the behaviour.
 
@@ -327,7 +337,7 @@ dep-scan can scan the dependencies for any license limitations and report them d
 export FETCH_LICENSE=true
 ```
 
-The licenses data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behaviour could change in the future once the detection logic gets improved.
+The license data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behavior could change in the future once the detection logic gets improved.
 
 ![License scan](docs/license-scan.png)
 

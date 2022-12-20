@@ -21,14 +21,15 @@ from depscan.lib.analysis import (
     analyse_licenses,
     analyse_pkg_risks,
     jsonl_report,
-    print_results,
+    prepare_vex,
     suggest_version,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
-from depscan.lib.config import license_data_dir, spdx_license_list
+from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
+from depscan.lib import privado
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -154,6 +155,20 @@ def build_args():
         help="Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.",
     )
     parser.add_argument(
+        "--no-universal",
+        action="store_true",
+        default=False,
+        dest="non_universal_scan",
+        help="Depscan would attempt to perform a single universal scan instead of individual scans per language type.",
+    )
+    parser.add_argument(
+        "--no-vuln-table",
+        action="store_true",
+        default=False,
+        dest="no_vuln_table",
+        help="Do not print the table with the full list of vulnerabilities. This can help reduce console output.",
+    )
+    parser.add_argument(
         "--threatdb-server",
         default=os.getenv("THREATDB_SERVER_URL"),
         dest="threatdb_server",
@@ -176,6 +191,12 @@ def build_args():
         default=os.getenv("THREATDB_ACCESS_TOKEN"),
         dest="threatdb_token",
         help="ThreatDB token for token based submission",
+    )
+    parser.add_argument(
+        "--privado-json",
+        dest="privado_json",
+        default=os.path.join(os.getcwd(), ".privado", "privado.json"),
+        help="Optional: Enrich the VEX report with information from privado.ai json report. cdxgen can process and include privado info automatically so this argument is usually not required.",
     )
     return parser.parse_args()
 
@@ -249,7 +270,8 @@ def summarise(
     scoped_pkgs={},
     report_file=None,
     bom_file=None,
-    console_print=True,
+    privado_json_file=None,
+    no_vuln_table=False,
 ):
     """
     Method to summarise the results
@@ -260,7 +282,9 @@ def summarise(
     :param sug_version_dict: Dictionary containing version suggestions
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
-    :param print: Boolean to indicate if the results should get printed to the console
+    :param bom_file: SBoM file
+    :param privado_json_file Privado json file
+    :param no_vuln_table: Boolean to indicate if the results should get printed to the console
     :return: Summary of the results
     """
     if not results:
@@ -276,27 +300,38 @@ def summarise(
             scoped_pkgs,
             report_file,
         )
-    if console_print:
-        pkg_vulnerabilities = print_results(
-            project_type,
-            results,
-            pkg_aliases,
-            purl_aliases,
-            sug_version_dict,
-            scoped_pkgs,
-        )
-        if pkg_vulnerabilities and bom_file:
-            vex_file = bom_file.replace(".json", ".vex.json")
-            try:
-                with open(bom_file) as fp:
-                    bom_data = json.load(fp)
-                    if bom_data:
-                        bom_data["vulnerabilities"] = pkg_vulnerabilities
-                        with open(vex_file, mode="w") as vexfp:
-                            json.dump(bom_data, vexfp)
-                            LOG.info(f"VEX file {vex_file} generated successfully")
-            except Exception:
-                LOG.warn("Unable to generate VEX file for this scan")
+    pkg_vulnerabilities = prepare_vex(
+        project_type,
+        results,
+        pkg_aliases,
+        purl_aliases,
+        sug_version_dict,
+        scoped_pkgs,
+        no_vuln_table,
+    )
+
+    if pkg_vulnerabilities and bom_file:
+        vex_file = bom_file.replace(".json", ".vex.json")
+        try:
+            with open(bom_file) as fp:
+                bom_data = json.load(fp)
+                if bom_data:
+                    bom_data["vulnerabilities"] = pkg_vulnerabilities
+                    # Look for any privado json file
+                    if os.path.exists(privado_json_file):
+                        pservice = privado.process_report(privado_json_file)
+                        if pservice:
+                            LOG.info(
+                                f"Including the service identified by privado from {privado_json_file}"
+                            )
+                            if not bom_data.get("services"):
+                                bom_data["services"] = []
+                            bom_data["services"].insert(0, pservice)
+                    with open(vex_file, mode="w") as vexfp:
+                        json.dump(bom_data, vexfp)
+                        LOG.info(f"VEX file {vex_file} generated successfully")
+        except Exception:
+            LOG.warning("Unable to generate VEX file for this scan")
     summary = analyse(project_type, results)
     return summary
 
@@ -314,6 +349,8 @@ def main():
         project_types_list = args.project_type.split(",")
     elif args.bom:
         project_types_list = ["bom"]
+    elif not args.non_universal_scan:
+        project_types_list = [UNIVERSAL_SCAN_TYPE]
     else:
         project_types_list = utils.detect_project_type(src_dir)
     db = dbLib.get()
@@ -504,11 +541,13 @@ def main():
             pkg_aliases,
             purl_aliases,
             sug_version_dict,
-            scoped_pkgs,
-            report_file,
-            bom_file,
-            True,
+            scoped_pkgs=scoped_pkgs,
+            report_file=report_file,
+            bom_file=bom_file,
+            privado_json_file=args.privado_json,
+            no_vuln_table=args.no_vuln_table,
         )
+        # FIXME: This logic needs to be reworked since it is preventing threatdb submission
         if summary and not args.noerror and len(project_types_list) == 1:
             # Hard coded build break logic for now
             if summary.get("CRITICAL", 0) > 0:

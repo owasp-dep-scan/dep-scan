@@ -3,13 +3,12 @@ import os
 import shutil
 import subprocess
 import sys
-
-import httpx
-
 from urllib.parse import unquote_plus
 
+import httpx
 from defusedxml.ElementTree import parse
 
+from depscan.lib.config import UNIVERSAL_SCAN_TYPE
 from depscan.lib.logger import LOG
 from depscan.lib.utils import cleanup_license_string, find_files
 
@@ -228,7 +227,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False):
         )
         if not os.path.exists(local_bin):
             LOG.warning(
-                "{} command not found. Please install using npm install @appthreat/cdxgen or set PATH variable".format(
+                "{} command not found. Please install using npm install @cyclonedx/cdxgen or set PATH variable".format(
                     cdxgen_cmd
                 )
             )

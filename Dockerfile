@@ -41,8 +41,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && tar -xJf "node-v$NODE_VERSION-linux-$ARCH.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
   && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
   && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
-  && npm install -g @ngcloudsec/cdxgen-plugins-bin \
-  && npm install -g @appthreat/cdxgen
+  && npm install -g @cyclonedx/cdxgen
 
 COPY setup.py /appthreat/
 COPY MANIFEST.in /appthreat/
@@ -82,7 +81,7 @@ ENV VDB_HOME=/appthreat \
     PYTHONUNBUFFERED=1 \
     NVD_START_YEAR=2018 \
     GITHUB_PAGE_COUNT=2 \
-    CDXGEN_CMD=/usr/local/lib/node_modules/@appthreat/cdxgen/bin/cdxgen
+    CDXGEN_CMD=/usr/local/lib/node_modules/@cyclonedx/cdxgen/bin/cdxgen
 
 WORKDIR /appthreat
 
