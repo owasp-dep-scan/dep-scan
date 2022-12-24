@@ -344,3 +344,7 @@ Several other tools piggyback on Sonatype [ossindex](https://ossindex.sonatype.o
 ### Trivy, grype etc
 
 These mature projects are considered the benchmark for container, filesystem and registry scanning. dep-scan is yet to be benchmarked against these projects for results and performance. dep-scan even uses Trivy for container SBoM generation via cdxgen-binary-plugins, although this would change in the future. I aspire to make dep-scan outperform these projects with simplicity and **actionable results**. The CVE insights offered by dep-scan could be used for prioritization to reduce the number of package updates and container rebuilds.
+
+## Discord support
+
+The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel.
