@@ -43,7 +43,7 @@ def distro_package(package_issue):
         if (
             all_parts
             and all_parts.group("vendor")
-            and all_parts.group("vendor") in ("debian", "ubuntu", "alpine", "redhat")
+            and all_parts.group("vendor") in config.LINUX_DISTRO_WITH_EDITIONS
             and all_parts.group("edition")
             and all_parts.group("edition") != "*"
         ):
@@ -51,12 +51,18 @@ def distro_package(package_issue):
     return False
 
 
-def print_results(
-    project_type, results, pkg_aliases, purl_aliases, sug_version_dict, scoped_pkgs
+def prepare_vex(
+    project_type,
+    results,
+    pkg_aliases,
+    purl_aliases,
+    sug_version_dict,
+    scoped_pkgs,
+    no_vuln_table,
 ):
     """Pretty print report summary"""
     if not results:
-        return
+        return []
     table = Table(
         title=f"Dependency Scan Results ({project_type})",
         box=box.DOUBLE_EDGE,
@@ -212,26 +218,27 @@ def print_results(
             has_os_packages = True
         if pkg_requires_attn and fixed_location and purl:
             pkg_group_rows[purl].append({"id": id, "fixed_location": fixed_location})
-        table.add_row(
-            "{}{}{}{}".format(
-                id_style,
-                package_name_style,
-                "[bright_red]" if pkg_severity == "CRITICAL" else "",
-                id,
-            ),
-            "{}{}".format(package_name_style, full_pkg_display),
-            "\n".join(insights),
-            version_used,
-            fixed_location,
-            "{}{}".format(
-                "[bright_red]" if pkg_severity == "CRITICAL" else "",
-                vuln_occ_dict.get("severity"),
-            ),
-            "{}{}".format(
-                "[bright_red]" if pkg_severity == "CRITICAL" else "",
-                vuln_occ_dict.get("cvss_score"),
-            ),
-        )
+        if not no_vuln_table:
+            table.add_row(
+                "{}{}{}{}".format(
+                    id_style,
+                    package_name_style,
+                    "[bright_red]" if pkg_severity == "CRITICAL" else "",
+                    id,
+                ),
+                "{}{}".format(package_name_style, full_pkg_display),
+                "\n".join(insights),
+                version_used,
+                fixed_location,
+                "{}{}".format(
+                    "[bright_red]" if pkg_severity == "CRITICAL" else "",
+                    vuln_occ_dict.get("severity"),
+                ),
+                "{}{}".format(
+                    "[bright_red]" if pkg_severity == "CRITICAL" else "",
+                    vuln_occ_dict.get("cvss_score"),
+                ),
+            )
         if purl:
             source = {}
             if id.startswith("CVE"):
@@ -307,7 +314,8 @@ def print_results(
                     ],
                 }
             )
-    console.print(table)
+    if not no_vuln_table:
+        console.print(table)
     if pkg_group_rows:
         console.print("")
         utable = Table(

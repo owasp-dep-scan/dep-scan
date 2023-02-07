@@ -27,8 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-        sudo npm install -g @appthreat/cdxgen
-        sudo npm install -g @ngcloudsec/cdxgen-plugins-bin
+        sudo npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
     - name: Test container images
       run: |
@@ -38,16 +37,10 @@ jobs:
         mkdir -p containertests
         python depscan/cli.py --no-error --cache --src quay.io/appthreat/dep-scan -o containertests/depscan-scan.json -t docker
         ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-scan-docker.vex.json --input-format json --input-version v1_4
-        python depscan/cli.py --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license
+        python depscan/cli.py --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
         ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-slim-docker.vex.json --input-format json --input-version v1_4
-        python depscan/cli.py --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+        python depscan/cli.py --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker --no-vuln-table
         ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-redmine-docker.vex.json --input-format json --input-version v1_4
-        python depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-rocket-docker.vex.json --input-format json --input-version v1_4
-        docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
-        python depscan/cli.py --no-error --src /tmp/scanslim.tar -o containertests/depscan-scanar.json --risk-audit
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-scanar-docker.vex.json --input-format json --input-version v1_4
-        python depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json
         ls -ltr containertests
       env:
         PYTHONPATH: "."
@@ -56,7 +49,43 @@ jobs:
       with:
         name: containertests
         path: containertests
-
+  version_tests2:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ['3.10']
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-dev.txt
+        sudo npm install -g @cyclonedx/cdxgen
+        mkdir -p repotests
+    - name: Test container images
+      run: |
+        wget https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.24.2/cyclonedx-linux-x64
+        mv cyclonedx-linux-x64 cyclonedx
+        chmod +x cyclonedx
+        mkdir -p containertests
+        python depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json --no-vuln-table
+        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-rocket-universal.vex.json --input-format json --input-version v1_4
+        python depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json --no-vuln-table
+        ls -ltr containertests
+      env:
+        PYTHONPATH: "."
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/upload-artifact@v1
+      with:
+        name: containertests2
+        path: containertests
   ms_tests:
     runs-on: ubuntu-latest
     strategy:
@@ -74,13 +103,16 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements-dev.txt
-        sudo npm install -g @appthreat/cdxgen
-        sudo npm install -g @ngcloudsec/cdxgen-plugins-bin
+        sudo npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
     - uses: actions/checkout@v3
       with:
         repository: 'GoogleCloudPlatform/microservices-demo'
         path: 'repotests/microservices-demo'
+    - uses: actions/checkout@v3
+      with:
+        repository: 'OWASP/NodeGoat'
+        path: 'repotests/NodeGoat'
     - name: Test container images
       run: |
         wget https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.24.2/cyclonedx-linux-x64
@@ -88,7 +120,9 @@ jobs:
         chmod +x cyclonedx
         mkdir -p containertests
         python depscan/cli.py --no-error --src repotests/microservices-demo -o containertests/depscan-msd.json
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-msd-yaml-manifest.vex.json --input-format json --input-version v1_4
+        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-msd-universal.vex.json --input-format json --input-version v1_4
+        python depscan/cli.py --no-error --src repotests/NodeGoat --reports-dir containertests/ng-reports
+        ./cyclonedx validate --fail-on-errors --input-file containertests/ng-reports/sbom-universal.vex.json --input-format json --input-version v1_4
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

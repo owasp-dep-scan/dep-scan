@@ -231,10 +231,24 @@ OS_PKG_TYPES = (
     "amazon",
     "redhat",
     "rocky",
-    "archlinux",
+    "arch",
     "suse",
     "photon",
     "microsoft",
+)
+
+# List of Linux distros with support for editions
+LINUX_DISTRO_WITH_EDITIONS = (
+    "debian",
+    "ubuntu",
+    "alpine",
+    "redhat",
+    "arch",
+    "suse",
+    "photon",
+    "alma",
+    "amazon",
+    "rocky",
 )
 
 
@@ -384,3 +398,6 @@ request_timeout_sec = get_int_from_env("request_timeout_sec", 20)
 
 # Number of api failures that would stop the risk audit completely
 max_request_failures = get_int_from_env("max_request_failures", 5)
+
+# Universal scan
+UNIVERSAL_SCAN_TYPE = "universal"

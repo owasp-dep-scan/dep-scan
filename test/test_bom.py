@@ -84,8 +84,8 @@ def test_parse():
         "licenses": None,
     }
 
-    assert parse_bom_ref("pkg:npm/@appthreat/cdxgen@1.10.0") == {
-        "vendor": "@appthreat",
+    assert parse_bom_ref("pkg:npm/@cyclonedx/cdxgen@1.10.0") == {
+        "vendor": "@cyclonedx",
         "name": "cdxgen",
         "version": "1.10.0",
         "licenses": None,
