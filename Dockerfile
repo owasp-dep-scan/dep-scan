@@ -71,11 +71,7 @@ LABEL maintainer="AppThreat" \
 
 COPY --from=build-env /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=build-env /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=build-env /usr/local/bin/scan /usr/local/bin/scan
-COPY --from=build-env /usr/local/bin/depscan /usr/local/bin/depscan
-COPY --from=build-env /usr/local/bin/vdb /usr/local/bin/vdb
-COPY --from=build-env /usr/local/bin/node /usr/local/bin/node
-COPY --from=build-env /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=build-env /usr/local/bin /usr/local/bin
 
 ENV VDB_HOME=/appthreat \
     PYTHONUNBUFFERED=1 \
