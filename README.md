@@ -19,7 +19,7 @@ dep-scan is a fully open-source security audit tool based on known vulnerabiliti
 - NVD
 - GitHub
 - NPM
-- Linux [vuln-list](https://github.com/ngcloudsec/vuln-list) (Use `--cache-os`)
+- Linux [vuln-list](https://github.com/appthreat/vuln-list) (Use `--cache-os`)
 
 ### Linux distros
 
@@ -38,29 +38,29 @@ Application vulnerabilities would be reported for all Linux distros and Windows.
 
 ## Usage
 
-dep-scan is ideal for use during continuous integration (CI) and also as a tool for local development.
+dep-scan is ideal for use during continuous integration (CI) and as a local development tool.
 
 ### OCI Artifacts via ORAS cli
 
-Use [ORAS cli](https://oras.land/cli/) to download the dep-scan binary and the vulnerability database for effortless integration. Example workflow is [here](https://github.com/ngcloudsec/images-info/blob/main/.github/workflows/build.yml#L13).
+Use [ORAS cli](https://oras.land/cli/) to download the dep-scan binary and the vulnerability database for effortless integration. Example workflow is [here](https://github.com/appthreat/images-info/blob/main/.github/workflows/build.yml#L13).
 
 ```bash
 export VDB_HOME=depscan
 mkdir -p $VDB_HOME
-oras pull ghcr.io/ngcloudsec/vdb:v1 -o $VDB_HOME
-oras pull ghcr.io/ngcloudsec/depscan:v3 -o $VDB_HOME
+oras pull ghcr.io/appthreat/vdb:v1 -o $VDB_HOME
+oras pull ghcr.io/appthreat/depscan:v3 -o $VDB_HOME
 ```
 
 ### Single binary executables
 
-Download the executable binary for your operating system from the [releases page](https://github.com/ngcloudsec/depscan-bin/releases). These binary bundle the following:
+Download the executable binary for your operating system from the [releases page](https://github.com/appthreat/depscan-bin/releases). These binary bundle the following:
 
 - dep-scan with Python 3.10
 - cdxgen with Node.js 18
 - cdxgen binary plugins
 
 ```bash
-curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.5.1/depscan-linux-amd64
+curl -LO https://github.com/appthreat/depscan-bin/releases/download/v3.5.1/depscan-linux-amd64
 chmod +x depscan-linux-amd64
 ./depscan-linux-amd64 --help
 ```
@@ -68,7 +68,7 @@ chmod +x depscan-linux-amd64
 On Windows,
 
 ```powershell
-curl -LO https://github.com/ngcloudsec/depscan-bin/releases/download/v3.5.1/depscan.exe
+curl -LO https://github.com/appthreat/depscan-bin/releases/download/v3.5.1/depscan.exe
 .\depscan.exe --help
 ```
 
@@ -287,7 +287,7 @@ Notice, how the new suggested version is `2.9.10.5` which is an optimal fix vers
 
 Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on public npm/pypi registry.
 
-Example to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public use the below argument.
+For example, to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public, use the below argument.
 
 ```
 --private-ns appthreat,shiftleft
