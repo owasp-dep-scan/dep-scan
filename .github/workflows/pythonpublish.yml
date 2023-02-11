@@ -94,10 +94,10 @@ jobs:
 
       - name: Release public ecr
         run: |
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/a2o9d4d9
+          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/appthreat
           docker build -t dep-scan .
-          docker tag dep-scan:latest public.ecr.aws/a2o9d4d9/dep-scan:latest
-          docker push public.ecr.aws/a2o9d4d9/dep-scan:latest
+          docker tag dep-scan:latest public.ecr.aws/appthreat/dep-scan:latest
+          docker push public.ecr.aws/appthreat/dep-scan:latest
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

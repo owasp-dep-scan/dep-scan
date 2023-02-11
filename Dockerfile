@@ -67,7 +67,7 @@ LABEL maintainer="AppThreat" \
       org.label-schema.usage="https://github.com/appthreat/dep-scan" \
       org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.vcs-url="https://github.com/appthreat/dep-scan.git" \
-      org.label-schema.docker.cmd="docker run --rm -it --name dep-scan appthreat/dep-scan"
+      org.label-schema.docker.cmd="docker run --rm -it --name dep-scan ghcr.io/appthreat/dep-scan"
 
 COPY --from=build-env /usr/local/lib/node_modules /usr/local/lib/node_modules
 COPY --from=build-env /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages

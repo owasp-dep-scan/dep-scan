@@ -96,7 +96,7 @@ You can invoke the scan command directly with the various options.
 
 ```bash
 cd <project to scan>
-depscan --src $PWD --report_file $PWD/reports/depscan.json
+depscan --src $PWD --reports-dir $PWD/reports
 ```
 
 Full list of options are below:
@@ -168,12 +168,18 @@ Refer to the docker tests under GitHub action workflow for this repo for more ex
 
 ### Scanning projects locally (Docker container)
 
-`ghcr.io/appthreat/dep-scan` or `quay.io/appthreat/dep-scan` container image can be used to perform the scan.
+`ghcr.io/appthreat/dep-scan` or `public.ecr.aws/appthreat/dep-scan:latest` container image can be used to perform the scan.
 
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
+docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --reports-dir /app/reports
+```
+
+Using AWS public ECR image
+
+```bash
+docker run --rm -v $PWD:/app public.ecr.aws/appthreat/dep-scan scan --src /app --reports-dir /app/reports
 ```
 
 To scan with custom environment variables based configuration
@@ -185,7 +191,7 @@ docker run --rm \
     -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
-    -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --report_file /app/reports/depscan.json
+    -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --reports-dir /app/reports
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
