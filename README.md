@@ -72,6 +72,43 @@ curl -LO https://github.com/appthreat/depscan-bin/releases/download/v3.5.1/depsc
 .\depscan.exe --help
 ```
 
+### Server mode
+
+dep-scan and cdxgen could be run in server mode. Use the included docker compose file to get started.
+
+```bash
+git clone https://github.com/AppThreat/dep-scan
+docker compose up
+```
+
+```bash
+depscan --server --server-host 0.0.0.0 --server-port 7070
+```
+
+In server mode, use `/cache` endpoint to cache the vulnerability database.
+
+```bash
+# This would take over 5 minutes
+curl http://0.0.0.0:7070/cache
+```
+
+Cache all vulnerabilities including os.
+
+```bash
+# This would take over 5 minutes
+curl http://0.0.0.0:7070/cache?os=true
+```
+
+Use the `/scan` endpoint to perform scans.
+
+```bash
+curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan
+```
+
+```bash
+curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vex.json
+```
+
 ### Use with ShiftLeft Scan
 
 dep-scan is integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [Refer](https://slscan.io) to the scan documentation for more information.

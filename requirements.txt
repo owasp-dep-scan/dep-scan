@@ -2,3 +2,4 @@ appthreat-vulnerability-db
 defusedxml
 PyYAML
 rich
+quart

@@ -4,8 +4,9 @@
 import argparse
 import json
 import os
-import sys
+import tempfile
 
+from quart import Quart, jsonify, request
 from rich.panel import Panel
 from rich.terminal_theme import MONOKAI
 from vdb.lib import config as config
@@ -15,6 +16,7 @@ from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 
+from depscan.lib import privado
 from depscan.lib import utils as utils
 from depscan.lib.analysis import (
     analyse,
@@ -29,7 +31,6 @@ from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bo
 from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
-from depscan.lib import privado
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -46,6 +47,10 @@ at_logo = """
       | |   | |
       |_|   |_|
 """
+
+
+app = Quart(__name__)
+app.config.from_prefixed_env()
 
 
 def build_args():
@@ -198,6 +203,31 @@ def build_args():
         default=os.path.join(os.getcwd(), ".privado", "privado.json"),
         help="Optional: Enrich the VEX report with information from privado.ai json report. cdxgen can process and include privado info automatically so this argument is usually not required.",
     )
+    parser.add_argument(
+        "--server",
+        action="store_true",
+        default=False,
+        dest="server_mode",
+        help="Run depscan as a server",
+    )
+    parser.add_argument(
+        "--server-host",
+        default=os.getenv("DEPSCAN_HOST", "127.0.0.1"),
+        dest="server_host",
+        help="depscan server host",
+    )
+    parser.add_argument(
+        "--server-port",
+        default=os.getenv("DEPSCAN_PORT", "7070"),
+        dest="server_port",
+        help="depscan server port",
+    )
+    parser.add_argument(
+        "--cdxgen-server",
+        default=os.getenv("CDXGEN_SERVER_URL"),
+        dest="cdxgen_server",
+        help="cdxgen server url. Eg: http://cdxgen:9090",
+    )
     return parser.parse_args()
 
 
@@ -336,8 +366,131 @@ def summarise(
     return summary
 
 
+@app.get("/")
+async def index():
+    return {}
+
+
+@app.get("/cache")
+async def cache():
+    db = dbLib.get()
+    q = request.args
+    if not dbLib.index_count(db["index_file"]):
+        sources_list = [OSVSource(), NvdSource()]
+        if os.environ.get("GITHUB_TOKEN"):
+            sources_list.insert(0, GitHubSource())
+        # Include aqua source when ?os=true query string is passed
+        if q.get("os", "").lower() in ("true", "1"):
+            sources_list.insert(0, AquaSource())
+        for s in sources_list:
+            LOG.debug("Refreshing {}".format(s.__class__.__name__))
+            s.refresh()
+        return {
+            "error": "false",
+            "message": "vulnerability database cached successfully",
+        }
+    return {"error": "false", "message": "vulnerability database already exists"}
+
+
+@app.route("/scan", methods=["GET", "POST"])
+async def run_scan():
+    q = request.args
+    params = await request.get_json()
+    url = None
+    path = None
+    multiProject = None
+    project_type = None
+    results = []
+    db = dbLib.get()
+    if q.get("url"):
+        url = q.get("url")
+    if q.get("path"):
+        path = q.get("path")
+    if q.get("multiProject"):
+        multiProject = q.get("multiProject", "").lower() in ("true", "1")
+    if q.get("type"):
+        project_type = q.get("type")
+    if not url and params.get("url"):
+        url = params.get("url")
+    if not path and params.get("path"):
+        path = params.get("path")
+    if not multiProject and params.get("multiProject"):
+        multiProject = params.get("multiProject", "").lower() in ("true", "1")
+    if not project_type and params.get("type"):
+        project_type = params.get("type")
+    if not path and not url:
+        return {"error": "true", "message": "path or url is required"}, 500
+    if not dbLib.index_count(db["index_file"]):
+        return {
+            "error": "true",
+            "message": "Vulnerability database is empty. Prepare the vulnerability database by invoking /cache endpoint before running scans.",
+        }, 500
+    cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
+        bom_status = create_bom(
+            project_type,
+            bfp.name,
+            path,
+            True,
+            {
+                "url": url,
+                "path": path,
+                "type": project_type,
+                "multiProject": multiProject,
+                "cdxgen_server": cdxgen_server,
+            },
+        )
+        if bom_status:
+            LOG.debug(f"BOM file was generated successfully at {bfp.name}")
+            pkg_list = get_pkg_list(bfp.name)
+            if not pkg_list:
+                return {}
+            if project_type in type_audit_map.keys():
+                audit_results = audit(project_type, pkg_list, None)
+                if audit_results:
+                    results = results + audit_results
+            vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
+                db, project_type, pkg_list, True
+            )
+            if vdb_results:
+                results = results + vdb_results
+            bom_data = json.load(bfp)
+            pkg_vulnerabilities = prepare_vex(
+                project_type,
+                results,
+                pkg_aliases,
+                purl_aliases,
+                sug_version_dict,
+                {},
+                True,
+            )
+            if pkg_vulnerabilities:
+                bom_data["vulnerabilities"] = pkg_vulnerabilities
+            return json.dumps(bom_data)
+        else:
+            return {
+                "error": "true",
+                "message": "Unable to generate SBoM. Check your input path or url.",
+            }, 500
+    return {}
+
+
+def run_server(args):
+    print(at_logo)
+    console.print(f"Depscan server running on {args.server_host}:{args.server_port}")
+    app.config["CDXGEN_SERVER_URL"] = args.cdxgen_server
+    app.run(
+        host=args.server_host,
+        port=args.server_port,
+        debug=True if os.getenv("SCAN_DEBUG_MODE") == "debug" else False,
+        use_reloader=False,
+    )
+
+
 def main():
     args = build_args()
+    if args.server_mode:
+        return run_server(args)
     if not args.no_banner:
         print(at_logo)
     src_dir = args.src_dir_image
@@ -393,7 +546,11 @@ def main():
         else:
             bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(
-                project_type, bom_file, src_dir, args.deep_scan
+                project_type,
+                bom_file,
+                src_dir,
+                args.deep_scan,
+                {"cdxgen_server": args.cdxgen_server},
             )
         if not creation_status:
             LOG.debug("Bom file {} was not created successfully".format(bom_file))
@@ -479,7 +636,7 @@ def main():
                 LOG.error(e)
                 results = []
         # In case of docker, check if there are any npm packages that can be audited remotely
-        if project_type in ("podman", "docker"):
+        if project_type in ("podman", "docker", "oci"):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
             if npm_pkg_list:
                 LOG.debug(f"No of npm packages {len(npm_pkg_list)}")
@@ -535,7 +692,7 @@ def main():
         if vdb_results:
             results = results + vdb_results
         # Summarise and print results
-        summary = summarise(
+        summarise(
             project_type,
             results,
             pkg_aliases,
@@ -547,11 +704,6 @@ def main():
             privado_json_file=args.privado_json,
             no_vuln_table=args.no_vuln_table,
         )
-        # FIXME: This logic needs to be reworked since it is preventing threatdb submission
-        if summary and not args.noerror and len(project_types_list) == 1:
-            # Hard coded build break logic for now
-            if summary.get("CRITICAL", 0) > 0:
-                sys.exit(1)
     console.save_html(html_file, theme=MONOKAI)
     # Submit vex files to threatdb server
     if args.threatdb_server and (args.threatdb_username or args.threatdb_token):

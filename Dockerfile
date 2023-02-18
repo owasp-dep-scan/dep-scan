@@ -1,84 +1,57 @@
-FROM python:3.10 AS build-env
-
-ARG CLI_VERSION
-ARG BUILD_DATE
-
-RUN groupadd --gid 1000 node \
-  && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
-
-ENV NODE_VERSION 18.12.1
-
-RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
-  && case "${dpkgArch##*-}" in \
-    amd64) ARCH='x64';; \
-    ppc64el) ARCH='ppc64le';; \
-    s390x) ARCH='s390x';; \
-    arm64) ARCH='arm64';; \
-    armhf) ARCH='armv7l';; \
-    i386) ARCH='x86';; \
-    *) echo "unsupported architecture"; exit 1 ;; \
-  esac \
-  # gpg keys listed at https://github.com/nodejs/node#release-keys
-  && set -ex \
-  && for key in \
-    4ED778F539E3634C779C87C6D7062848A1AB005C \
-    141F07595B7B3FFE74309A937405533BE57C7D57 \
-    74F12602B6F1C4E913FAA37AD3A89613643B6201 \
-    61FC681DFB92A079F1685E77973F295594EC4689 \
-    8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
-    890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4 \
-    C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
-    C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C \
-    108F52B48DB57BB0CC439B2997B01419BD92F80A \
-  ; do \
-      gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" || \
-      gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" ; \
-  done \
-  && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz" \
-  && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
-  && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-  && grep " node-v$NODE_VERSION-linux-$ARCH.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-  && tar -xJf "node-v$NODE_VERSION-linux-$ARCH.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
-  && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
-  && ln -s /usr/local/bin/node /usr/local/bin/nodejs \
-  && npm install -g @cyclonedx/cdxgen
-
-COPY setup.py /appthreat/
-COPY MANIFEST.in /appthreat/
-COPY README.md /appthreat/
-COPY depscan /appthreat/depscan
-COPY vendor /appthreat/vendor
-USER root
-
-WORKDIR /appthreat
-RUN python3 setup.py install \
-    && rm -rf /appthreat/*
-
-FROM python:3.10-slim
+FROM almalinux/9-minimal:latest
 
 LABEL maintainer="AppThreat" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.vendor="AppThreat" \
-      org.label-schema.name="dep-scan" \
-      org.label-schema.version=$CLI_VERSION \
-      org.label-schema.license="MIT" \
-      org.label-schema.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
-      org.label-schema.url="https://appthreat.io" \
-      org.label-schema.usage="https://github.com/appthreat/dep-scan" \
-      org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.vcs-url="https://github.com/appthreat/dep-scan.git" \
-      org.label-schema.docker.cmd="docker run --rm -it --name dep-scan ghcr.io/appthreat/dep-scan"
+      org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
+      org.opencontainers.image.source="https://github.com/appthreat/dep-scan" \
+      org.opencontainers.image.url="https://appthreat.io" \
+      org.opencontainers.image.version="4.0.0" \
+      org.opencontainers.image.vendor="appthreat" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.title="dep-scan" \
+      org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
+      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/appthreat/dep-scan --server"
 
-COPY --from=build-env /usr/local/lib/node_modules /usr/local/lib/node_modules
-COPY --from=build-env /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
-COPY --from=build-env /usr/local/bin /usr/local/bin
-
-ENV VDB_HOME=/appthreat \
+ENV GOPATH=/opt/app-root/go \
+    GO_VERSION=1.19.5 \
+    SBT_VERSION=1.8.2 \
+    GRADLE_VERSION=7.2 \
+    GRADLE_HOME=/opt/gradle-${GRADLE_VERSION} \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    PATH=${PATH}:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin: \
     PYTHONUNBUFFERED=1 \
     NVD_START_YEAR=2018 \
     GITHUB_PAGE_COUNT=2 \
-    CDXGEN_CMD=/usr/local/lib/node_modules/@cyclonedx/cdxgen/bin/cdxgen
+    CDXGEN_CMD=cdxgen
 
-WORKDIR /appthreat
+RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3 python3-pip ruby ruby-devel \
+        pcre2 which tar zip unzip maven sudo java-11-openjdk-headless nodejs ncurses \
+    && npm install -g @cyclonedx/cdxgen \
+    && curl -LO "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+    && unzip -q gradle-${GRADLE_VERSION}-bin.zip -d /opt/ \
+    && chmod +x /opt/gradle-${GRADLE_VERSION}/bin/gradle \
+    && rm gradle-${GRADLE_VERSION}-bin.zip \
+    && curl -LO "https://github.com/sbt/sbt/releases/download/v${SBT_VERSION}/sbt-${SBT_VERSION}.zip" \
+    && unzip -q sbt-${SBT_VERSION}.zip -d /opt/ \
+    && chmod +x /opt/sbt/bin/sbt \
+    && rm sbt-${SBT_VERSION}.zip \
+    && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-amd64.tar.gz" \
+    && tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz \
+    && rm go${GO_VERSION}.linux-amd64.tar.gz \
+    && useradd -ms /bin/bash appthreat \
+    && pecl channel-update pecl.php.net \
+    && pecl install timezonedb \
+    && echo 'extension=timezonedb.so' >> /etc/php.ini \
+    && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php \
+    && mv composer.phar /usr/local/bin/composer \
+    && pip3 install --user pipenv
 
-CMD [ "depscan" ]
+COPY . /opt/dep-scan
+
+RUN cd /opt/dep-scan \
+    && pip3 install -r requirements.txt --user \
+    && python3 setup.py install \
+    && rm -rf /var/cache/yum \
+    && microdnf clean all
+
+ENTRYPOINT [ "depscan" ]

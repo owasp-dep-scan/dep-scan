@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="appthreat-depscan",
-    version="3.6.0",
+    version="4.0.0",
     author="Team AppThreat",
     author_email="cloud@appthreat.com",
     description="Fully open-source security audit for project dependencies based on known vulnerabilities and advisories.",
@@ -23,6 +23,7 @@ setuptools.setup(
         "defusedxml",
         "PyYAML",
         "rich",
+        "quart",
     ],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
