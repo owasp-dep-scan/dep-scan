@@ -8,7 +8,6 @@ from urllib.parse import unquote_plus
 import httpx
 from defusedxml.ElementTree import parse
 
-from depscan.lib.config import UNIVERSAL_SCAN_TYPE
 from depscan.lib.logger import LOG
 from depscan.lib.utils import cleanup_license_string, find_files
 
@@ -209,7 +208,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def create_bom(project_type, bom_file, src_dir=".", deep=False):
+def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     """Method to create BOM file by executing cdxgen command
 
     :param project_type: Project type
@@ -218,6 +217,49 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False):
 
     :returns True if the command was executed. False if the executable was not found.
     """
+    cdxgen_server = options.get("cdxgen_server")
+    # Generate SBoM by calling cdxgen server
+    if cdxgen_server:
+        # Fallback to universal if no project type was provided
+        if not project_type:
+            project_type = "universal"
+        if not src_dir and options.get("path"):
+            src_dir = options.get("path")
+        with httpx.Client(http2=True, base_url=cdxgen_server, timeout=180) as client:
+            sbom_url = f"{cdxgen_server}/sbom"
+            LOG.debug(f"Invoking cdxgen server at {sbom_url}")
+            try:
+                r = client.post(
+                    sbom_url,
+                    json={
+                        "url": options.get("url", ""),
+                        "path": options.get("path", src_dir),
+                        "type": options.get("type", project_type),
+                        "multiProject": options.get("multiProject", ""),
+                    },
+                    headers=headers,
+                )
+                if r.status_code == httpx.codes.OK:
+                    try:
+                        json_response = r.json()
+                        if json_response:
+                            with open(bom_file, mode="w") as fp:
+                                json.dump(json_response, fp)
+                            return os.path.exists(bom_file)
+                    except Exception as je:
+                        LOG.error(je)
+                        LOG.info(
+                            "Unable to generate SBoM with cdxgen server. Trying to generate one locally."
+                        )
+                else:
+                    LOG.warn(
+                        f"Unable to generate SBoM via cdxgen server due to {r.status_code}"
+                    )
+            except Exception as e:
+                LOG.error(e)
+                LOG.info(
+                    "Unable to generate SBoM with cdxgen server. Trying to generate one locally."
+                )
     cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
     if not shutil.which(cdxgen_cmd):
         local_bin = resource_path(
@@ -236,7 +278,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False):
             cdxgen_cmd = local_bin
             # Set the plugins directory as an environment variable
             os.environ["CDXGEN_PLUGINS_DIR"] = resource_path("local_bin")
-        except Exception as e:
+        except Exception:
             pass
     if project_type in ("docker"):
         LOG.info(
