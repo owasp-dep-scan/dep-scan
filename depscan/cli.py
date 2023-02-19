@@ -6,7 +6,7 @@ import json
 import os
 import tempfile
 
-from quart import Quart, jsonify, request
+from quart import Quart, request
 from rich.panel import Panel
 from rich.terminal_theme import MONOKAI
 from vdb.lib import config as config

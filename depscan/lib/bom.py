@@ -278,7 +278,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             cdxgen_cmd = local_bin
             # Set the plugins directory as an environment variable
             os.environ["CDXGEN_PLUGINS_DIR"] = resource_path("local_bin")
-        except Exception as e:
+        except Exception:
             pass
     if project_type in ("docker"):
         LOG.info(
