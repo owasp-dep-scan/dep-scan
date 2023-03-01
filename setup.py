@@ -19,7 +19,7 @@ setuptools.setup(
     packages=["depscan", "depscan.lib", "vendor"],
     include_package_data=True,
     install_requires=[
-        "appthreat-vulnerability-db",
+        "appthreat-vulnerability-db>=5.0.0",
         "defusedxml",
         "PyYAML",
         "rich",
@@ -34,6 +34,7 @@ setuptools.setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
