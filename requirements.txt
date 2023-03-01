@@ -1,4 +1,4 @@
-appthreat-vulnerability-db>=5.0.0
+appthreat-vulnerability-db>=5.0.1
 defusedxml
 PyYAML
 rich

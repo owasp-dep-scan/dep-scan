@@ -19,7 +19,7 @@ setuptools.setup(
     packages=["depscan", "depscan.lib", "vendor"],
     include_package_data=True,
     install_requires=[
-        "appthreat-vulnerability-db>=5.0.0",
+        "appthreat-vulnerability-db>=5.0.1",
         "defusedxml",
         "PyYAML",
         "rich",
