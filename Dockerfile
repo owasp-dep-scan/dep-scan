@@ -49,8 +49,7 @@ RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /et
 COPY . /opt/dep-scan
 
 RUN cd /opt/dep-scan \
-    && pip3 install -r requirements.txt --user \
-    && python3 setup.py install \
+    && pip3 install -e . \
     && rm -rf /var/cache/yum \
     && microdnf clean all
 
