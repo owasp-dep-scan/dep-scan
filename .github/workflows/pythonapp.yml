@@ -33,3 +33,7 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=depscan test
+    - uses: AppThreat/dep-scan-action@master
+      env:
+        VDB_HOME: ${{ github.workspace }}/db
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
