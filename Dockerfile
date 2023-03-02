@@ -27,6 +27,7 @@ RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /et
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3 python3-pip ruby ruby-devel \
         pcre2 which tar zip unzip maven sudo java-11-openjdk-headless nodejs ncurses \
     && npm install -g @cyclonedx/cdxgen \
+    && python3 -m pip install --upgrade pip \
     && curl -LO "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
     && unzip -q gradle-${GRADLE_VERSION}-bin.zip -d /opt/ \
     && chmod +x /opt/gradle-${GRADLE_VERSION}/bin/gradle \
@@ -44,12 +45,12 @@ RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /et
     && echo 'extension=timezonedb.so' >> /etc/php.ini \
     && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php \
     && mv composer.phar /usr/local/bin/composer \
-    && pip3 install --user pipenv certifi
+    && python3 -m pip install pipenv certifi
 
 COPY . /opt/dep-scan
 
 RUN cd /opt/dep-scan \
-    && pip3 install -e . \
+    && python3 -m pip install -e . \
     && rm -rf /var/cache/yum \
     && microdnf clean all
 
