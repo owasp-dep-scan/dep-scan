@@ -5,7 +5,7 @@ volumes:
 
 services:
   cdxgen:
-    image: ghcr.io/appthreat/cdxgen
+    image: ghcr.io/cyclonedx/cdxgen
     ports:
       - "9090:9090"
     volumes:
