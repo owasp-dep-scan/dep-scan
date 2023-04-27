@@ -137,27 +137,31 @@ def get_pkg_list_json(jsonfile):
     """Method to extract packages from a bom json file"""
     pkgs = []
     with open(jsonfile) as fp:
-        bom_data = json.load(fp)
-        if bom_data and bom_data.get("components"):
-            for comp in bom_data.get("components"):
-                licenses = []
-                vendor = comp.get("group")
-                if not vendor:
-                    vendor = ""
-                if comp.get("licenses"):
-                    for lic in comp.get("licenses"):
-                        license_obj = lic
-                        # licenses has list of dict with either license or expression as key
-                        # Only license is supported for now
-                        if lic.get("license"):
-                            license_obj = lic.get("license")
-                        if license_obj.get("id"):
-                            licenses.append(license_obj.get("id"))
-                        elif license_obj.get("name"):
-                            licenses.append(
-                                cleanup_license_string(license_obj.get("name"))
-                            )
-                pkgs.append({**comp, "vendor": vendor, "licenses": licenses})
+        try:
+            bom_data = json.load(fp)
+            if bom_data and bom_data.get("components"):
+                for comp in bom_data.get("components"):
+                    licenses = []
+                    vendor = comp.get("group")
+                    if not vendor:
+                        vendor = ""
+                    if comp.get("licenses"):
+                        for lic in comp.get("licenses"):
+                            license_obj = lic
+                            # licenses has list of dict with either license or expression as key
+                            # Only license is supported for now
+                            if lic.get("license"):
+                                license_obj = lic.get("license")
+                            if license_obj.get("id"):
+                                licenses.append(license_obj.get("id"))
+                            elif license_obj.get("name"):
+                                licenses.append(
+                                    cleanup_license_string(license_obj.get("name"))
+                                )
+                    pkgs.append({**comp, "vendor": vendor, "licenses": licenses})
+        except Exception:
+            # Ignore json errors
+            pass
         return pkgs
 
 

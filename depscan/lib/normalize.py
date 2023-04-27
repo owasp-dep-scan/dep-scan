@@ -82,6 +82,7 @@ def create_pkg_variations(pkg_dict):
     if purl.startswith("pkg:composer") or purl.startswith("pkg:pypi"):
         vendor_aliases.add(name)
     if purl.startswith("pkg:golang") and not name.startswith("go"):
+        vendor_aliases.add("go")
         # Ignore third party alternatives for builtins
         if "golang" not in vendor and name not in ["net", "crypto", "http", "text"]:
             vendor_aliases.add("golang")
