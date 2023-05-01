@@ -11,6 +11,8 @@ LABEL maintainer="AppThreat" \
       org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/appthreat/dep-scan --server"
 
+ARG TARGETPLATFORM
+
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=1.19.5 \
     SBT_VERSION=1.8.2 \
