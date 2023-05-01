@@ -35,7 +35,7 @@ jobs:
         mv cyclonedx-linux-x64 cyclonedx
         chmod +x cyclonedx
         mkdir -p containertests
-        python depscan/cli.py --no-error --cache --src quay.io/appthreat/dep-scan -o containertests/depscan-scan.json -t docker
+        python depscan/cli.py --no-error --src quay.io/appthreat/dep-scan -o containertests/depscan-scan.json -t docker
         ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-scan-docker.vex.json --input-format json --input-version v1_4
         python depscan/cli.py --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
         ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-slim-docker.vex.json --input-format json --input-version v1_4
