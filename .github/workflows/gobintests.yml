@@ -39,9 +39,9 @@ jobs:
         rm *.zip
         cd ..
         oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-        python depscan/cli.py --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
-        python depscan/cli.py --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
-        python depscan/cli.py --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
+        python3 depscan/cli.py --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
+        python3 depscan/cli.py --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
+        python3 depscan/cli.py --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
         ls -ltr gobintests
       env:
         PYTHONPATH: "."
