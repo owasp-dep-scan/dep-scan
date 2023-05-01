@@ -27,7 +27,7 @@ RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /et
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3 python3-pip ruby ruby-devel \
         pcre2 which tar zip unzip maven sudo java-11-openjdk-headless nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi \
     && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
-    && rpm -ivh wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
+    && if [ "$TARGETPLATFORM" = "linux/amd64" ]; then rpm -ivh wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm; fi \
     && rm wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
     && npm install -g @cyclonedx/cdxgen \
     && python3 -m pip install --upgrade pip \
