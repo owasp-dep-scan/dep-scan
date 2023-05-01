@@ -4,7 +4,7 @@ LABEL maintainer="AppThreat" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
       org.opencontainers.image.source="https://github.com/appthreat/dep-scan" \
       org.opencontainers.image.url="https://appthreat.io" \
-      org.opencontainers.image.version="4.0.0" \
+      org.opencontainers.image.version="4.1.1" \
       org.opencontainers.image.vendor="appthreat" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
@@ -25,7 +25,10 @@ ENV GOPATH=/opt/app-root/go \
 
 RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3 python3-pip ruby ruby-devel \
-        pcre2 which tar zip unzip maven sudo java-11-openjdk-headless nodejs ncurses \
+        pcre2 which tar zip unzip maven sudo java-11-openjdk-headless nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi \
+    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
+    && rpm -ivh wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
+    && rm wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
     && npm install -g @cyclonedx/cdxgen \
     && python3 -m pip install --upgrade pip \
     && curl -LO "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \

@@ -60,7 +60,7 @@ Download the executable binary for your operating system from the [releases page
 - cdxgen binary plugins
 
 ```bash
-curl -LO https://github.com/appthreat/depscan-bin/releases/download/v3.5.1/depscan-linux-amd64
+curl -LO https://github.com/appthreat/depscan-bin/releases/download/v4.1.1/depscan-linux-amd64
 chmod +x depscan-linux-amd64
 ./depscan-linux-amd64 --help
 ```
@@ -68,7 +68,7 @@ chmod +x depscan-linux-amd64
 On Windows,
 
 ```powershell
-curl -LO https://github.com/appthreat/depscan-bin/releases/download/v3.5.1/depscan.exe
+curl -LO https://github.com/appthreat/depscan-bin/releases/download/v4.1.1/depscan.exe
 .\depscan.exe --help
 ```
 
