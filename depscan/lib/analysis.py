@@ -745,7 +745,13 @@ def classify_links(id, package, package_type, version, related_urls):
             clinks["exploit"] = rurl
         elif "github.com/advisories" in rurl:
             clinks["GitHub Advisory"] = rurl
-        elif "hackerone" in rurl or "bugcrowd" in rurl or "bug-bounty" in rurl:
+        elif (
+            "hackerone" in rurl
+            or "bugcrowd" in rurl
+            or "bug-bounty" in rurl
+            or "huntr.dev" in rurl
+            or "bounties" in rurl
+        ):
             clinks["Bug Bounty"] = rurl
         elif "cwe.mitre.org" in rurl:
             clinks["cwe"] = rurl

@@ -9,7 +9,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - /Volumes/Work:/app # Set this to your directory containing sources
+      - $HOME:/app # Set this to your directory containing sources
       - /tmp:/tmp
     command: cdxgen --server --server-host 0.0.0.0 --server-port 9090 --server-url http://dtrack-apiserver:8081
 
