@@ -37,6 +37,8 @@ dep-scan is a fully open-source security audit tool based on known vulnerabiliti
 - Ubuntu
 - OpenSUSE/SLES
 - Photon
+- Chainguard
+- Wolfi OS
 
 Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache-os` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 

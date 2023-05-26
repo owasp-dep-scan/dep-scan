@@ -2,6 +2,8 @@ name: Upload depscan Package and Container image
 
 on:
   push:
+    paths-ignore:
+      - '**/README.md'
     branches:
       - master
     tags:
