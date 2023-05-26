@@ -4,6 +4,10 @@ dep-scan is a fully open-source security audit tool based on known vulnerabiliti
 
 ![Depscan logo](dep-scan.png)
 
+[![release](https://github.com/appthreat/dep-scan/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/appthreat/dep-scan/actions/workflows/pythonpublish.yml)
+[![Downloads](https://static.pepy.tech/badge/appthreat-depscan)](https://pepy.tech/project/appthreat-depscan)
+[![Discord](https://img.shields.io/badge/-Discord-lime?style=for-the-badge&logo=discord&logoColor=white&color=black)](https://discord.gg/pF4BYWEJcS)
+
 ## Features
 
 - Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
