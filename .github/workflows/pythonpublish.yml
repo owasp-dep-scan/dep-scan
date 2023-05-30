@@ -1,6 +1,8 @@
 name: Upload depscan Package and Container image
 
 on:
+  schedule:
+  - cron: "0 4 * * *"
   push:
     paths-ignore:
       - '**/README.md'
@@ -107,6 +109,7 @@ jobs:
           sbom: true
 
       - name: Release public ecr
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/appthreat
           docker build -t dep-scan .

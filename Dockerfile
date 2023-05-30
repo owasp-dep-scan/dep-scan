@@ -1,4 +1,4 @@
-FROM almalinux/9-minimal:latest
+FROM almalinux:9.2-minimal
 
 LABEL maintainer="AppThreat" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
@@ -14,9 +14,9 @@ LABEL maintainer="AppThreat" \
 ARG TARGETPLATFORM
 
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.19.5 \
-    SBT_VERSION=1.8.2 \
-    GRADLE_VERSION=7.2 \
+    GO_VERSION=1.20.4 \
+    SBT_VERSION=1.8.3 \
+    GRADLE_VERSION=8.1.1 \
     GRADLE_HOME=/opt/gradle-${GRADLE_VERSION} \
     COMPOSER_ALLOW_SUPERUSER=1 \
     PATH=${PATH}:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin: \
@@ -25,14 +25,18 @@ ENV GOPATH=/opt/app-root/go \
     GITHUB_PAGE_COUNT=2 \
     CDXGEN_CMD=cdxgen
 
-RUN echo -e "[nodejs]\nname=nodejs\nstream=18\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
-    && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3 python3-pip ruby ruby-devel \
-        pcre2 which tar zip unzip maven sudo java-11-openjdk-headless nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi \
-    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
-    && if [ "$TARGETPLATFORM" = "linux/amd64" ]; then rpm -ivh wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm; fi \
-    && rm wkhtmltox-0.12.6.1-2.almalinux9.x86_64.rpm \
-    && npm install -g @cyclonedx/cdxgen \
+RUN set -e; \
+    ARCH_NAME="$(rpm --eval '%{_arch}')"; \
+    echo -e "[nodejs]\nname=nodejs\nstream=20\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    && microdnf module enable maven php ruby -y \
+    && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3.11 python3.11-devel python3.11-pip ruby ruby-devel \
+        pcre2 which tar zip unzip maven sudo java-17-openjdk-headless nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi \
+    && alternatives --install /usr/bin/python3 python /usr/bin/python3.11 1 \
     && python3 -m pip install --upgrade pip \
+    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && rpm -ivh wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && rm wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && npm install -g @cyclonedx/cdxgen \
     && curl -LO "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
     && unzip -q gradle-${GRADLE_VERSION}-bin.zip -d /opt/ \
     && chmod +x /opt/gradle-${GRADLE_VERSION}/bin/gradle \
