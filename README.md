@@ -216,7 +216,7 @@ Refer to the docker tests under GitHub action workflow for this repo for more ex
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --reports-dir /app/reports
+docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan --src /app --reports-dir /app/reports
 ```
 
 Using AWS public ECR image
