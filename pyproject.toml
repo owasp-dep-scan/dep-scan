@@ -1,0 +1,47 @@
+[project]
+name = "appthreat-depscan"
+version = "4.1.2"
+description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
+authors = [
+    {name = "Team AppThreat", email = "cloud@appthreat.com"},
+]
+dependencies = [
+    "appthreat-vulnerability-db>=5.1.3",
+    "defusedxml",
+    "PyYAML",
+    "rich",
+    "quart",
+]
+requires-python = ">=3.8"
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Security",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/appthreat/dep-scan"
+
+[project.scripts]
+depscan = "depscan.cli:main"
+scan = "depscan.cli:main"
+
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["depscan","vendor"]
+include = ["depscan", "depscan.lib", "vendor"]
+exclude = []
+namespaces = false
