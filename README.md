@@ -222,7 +222,7 @@ docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan --src /app --reports-dir
 Using AWS public ECR image
 
 ```bash
-docker run --rm -v $PWD:/app public.ecr.aws/appthreat/dep-scan scan --src /app --reports-dir /app/reports
+docker run --rm -v $PWD:/app public.ecr.aws/appthreat/dep-scan --src /app --reports-dir /app/reports
 ```
 
 To scan with custom environment variables based configuration
@@ -234,7 +234,7 @@ docker run --rm \
     -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
-    -v $PWD:/app ghcr.io/appthreat/dep-scan scan --src /app --reports-dir /app/reports
+    -v $PWD:/app ghcr.io/appthreat/dep-scan --src /app --reports-dir /app/reports
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
