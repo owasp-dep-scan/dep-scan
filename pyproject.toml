@@ -40,8 +40,6 @@ scan = "depscan.cli:main"
 requires = ["setuptools>=61", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["depscan","vendor"]
-include = ["depscan", "depscan.lib", "vendor"]
-exclude = []
-namespaces = false
+[tool.setuptools]
+include-package-data = true
+packages = ["depscan", "depscan.lib", "vendor"]
