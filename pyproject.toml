@@ -13,13 +13,6 @@ dependencies = [
     "quart",
 ]
 
-[project.optional-dependencies]
-dev = ["black",
-"flake8",
-"pytest",
-"pytest-cov"
-]
-
 requires-python = ">=3.8"
 readme = "README.md"
 license = {text = "MIT"}
@@ -43,6 +36,13 @@ Homepage = "https://github.com/appthreat/dep-scan"
 [project.scripts]
 depscan = "depscan.cli:main"
 scan = "depscan.cli:main"
+
+[project.optional-dependencies]
+dev = ["black",
+"flake8",
+"pytest",
+"pytest-cov"
+]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
