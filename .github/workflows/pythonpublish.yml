@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          python3 -m pip install setuptools wheel twine
+          python3 -m pip install setuptools wheel twine build
       - name: Create Release
         id: create_release
         if: startsWith(github.ref, 'refs/tags/')
@@ -47,7 +47,7 @@ jobs:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          python3 setup.py sdist bdist_wheel
+          python3 -m build
           twine upload dist/*
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
