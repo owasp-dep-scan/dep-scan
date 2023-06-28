@@ -6,8 +6,8 @@ from collections import defaultdict
 from vdb.lib import db as dbLib
 from vdb.lib.utils import version_compare
 
-from depscan.lib import config as config
-from depscan.lib import normalize as normalize
+from depscan.lib import config
+from depscan.lib import normalize
 
 lic_symbol_regex = re.compile(r"[\(\)\,]")
 
@@ -42,6 +42,7 @@ def find_python_reqfiles(path):
         "poetry.lock",
         "Pipfile.lock",
         "conda.yml",
+        "pyproject.toml",
     ]
     for root, dirs, files in os.walk(path):
         filter_ignored_dirs(dirs)
@@ -109,7 +110,7 @@ def detect_project_type(src_dir):
     if is_exe(src_dir):
         return ["go", "binary"]
     project_types = []
-    if find_python_reqfiles(src_dir):
+    if find_python_reqfiles(src_dir) or find_files(src_dir, ".py", quick=True):
         project_types.append("python")
     if find_files(src_dir, "pom.xml", quick=True) or find_files(
         src_dir, ".gradle", quick=True
@@ -213,7 +214,7 @@ def search_pkgs(db, project_type, pkg_list):
         purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
         if variations:
             for vari in variations:
-                vari_full_pkg = "{}:{}".format(vari.get("vendor"), vari.get("name"))
+                vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
                 pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
                 purl_aliases[f"{vari_full_pkg.lower()}"] = pkg.get("purl")
                 purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
@@ -295,22 +296,24 @@ def max_version(version_list):
         return version_list[0]
     min_ver = "0"
     max_ver = version_list[0]
-    for i in range(len(version_list)):
-        if not version_list[i]:
+    for i, vl in enumerate(version_list):
+        if not vl:
             continue
-        if not version_compare(version_list[i], min_ver, max_ver):
-            max_ver = version_list[i]
+        if not version_compare(vl, min_ver, max_ver):
+            max_ver = vl
     return max_ver
 
 
 def get_all_imports(src_dir):
-    """Method to collect all package imports from a python file"""
+    """Method to collect all package imports from a python file
+    No longer required since cdxgen does python analysis already
+    """
     import_list = set()
     py_files = find_files(src_dir, ".py", quick=False)
     if not py_files:
         return import_list
     for afile in py_files:
-        with open(os.path.join(afile), "rb") as f:
+        with open(os.path.join(afile), "rb", encoding="utf-8") as f:
             content = f.read()
         parsed = ast.parse(content)
         for node in ast.walk(parsed):

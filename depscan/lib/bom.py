@@ -25,7 +25,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
       args cli command and args
     """
     try:
-        LOG.debug('⚡︎ Executing "{}"'.format(" ".join(args)))
+        LOG.debug('⚡︎ Executing "%s"', " ".join(args))
         if os.environ.get("FETCH_LICENSE"):
             LOG.debug(
                 "License information would be fetched from the registry. This would take several minutes ..."
@@ -88,9 +88,9 @@ def parse_bom_ref(bomstr, licenses=None):
 
 
 def get_licenses(ele):
-    """ """
+    """Retrieve licenses from xml"""
     license_list = []
-    namespace = "{http://cyclonedx.org/schema/bom/1.2}"
+    namespace = "{http://cyclonedx.org/schema/bom/1.5}"
     for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
         license_list.append(data.text)
     if not license_list:
@@ -111,7 +111,7 @@ def get_licenses(ele):
 
 
 def get_package(componentEle, licenses):
-    """ """
+    """Retrieve package from xml"""
     bom_ref = componentEle.attrib.get("bom-ref")
     pkg = {"licenses": licenses, "vendor": "", "name": "", "version": "", "scope": ""}
     if bom_ref and "/" in bom_ref:
@@ -136,7 +136,7 @@ def get_package(componentEle, licenses):
 def get_pkg_list_json(jsonfile):
     """Method to extract packages from a bom json file"""
     pkgs = []
-    with open(jsonfile) as fp:
+    with open(jsonfile, encoding="utf-8") as fp:
         try:
             bom_data = json.load(fp)
             if bom_data and bom_data.get("components"):
@@ -184,7 +184,7 @@ def get_pkg_list(xmlfile):
                         licenses = get_licenses(ele)
                         pkgs.append(get_package(ele, licenses))
     except Exception as pe:
-        LOG.debug("Unable to parse {} {}".format(xmlfile, pe))
+        LOG.debug("Unable to parse %s %s", xmlfile, pe)
         LOG.warning(
             "Unable to produce Software Bill-of-Materials for this project. Execute the scan after installing the dependencies!"
         )
@@ -231,7 +231,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             src_dir = options.get("path")
         with httpx.Client(http2=True, base_url=cdxgen_server, timeout=180) as client:
             sbom_url = f"{cdxgen_server}/sbom"
-            LOG.debug(f"Invoking cdxgen server at {sbom_url}")
+            LOG.debug("Invoking cdxgen server at %s", sbom_url)
             try:
                 r = client.post(
                     sbom_url,
@@ -247,7 +247,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
                     try:
                         json_response = r.json()
                         if json_response:
-                            with open(bom_file, mode="w") as fp:
+                            with open(bom_file, mode="w", encoding="utf-8") as fp:
                                 json.dump(json_response, fp)
                             return os.path.exists(bom_file)
                     except Exception as je:
@@ -256,8 +256,9 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
                             "Unable to generate SBoM with cdxgen server. Trying to generate one locally."
                         )
                 else:
-                    LOG.warn(
-                        f"Unable to generate SBoM via cdxgen server due to {r.status_code}"
+                    LOG.warning(
+                        "Unable to generate SBoM via cdxgen server due to %s",
+                        r.status_code,
                     )
             except Exception as e:
                 LOG.error(e)
@@ -273,9 +274,8 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
         )
         if not os.path.exists(local_bin):
             LOG.warning(
-                "{} command not found. Please install using npm install @cyclonedx/cdxgen or set PATH variable".format(
-                    cdxgen_cmd
-                )
+                "%s command not found. Please install using npm install @cyclonedx/cdxgen or set PATH variable",
+                cdxgen_cmd,
             )
             return False
         try:
@@ -284,9 +284,10 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             os.environ["CDXGEN_PLUGINS_DIR"] = resource_path("local_bin")
         except Exception:
             pass
-    if project_type in ("docker"):
+    if project_type in ("docker",):
         LOG.info(
-            f"Generating Software Bill-of-Materials for container image {src_dir}. This might take a few mins ..."
+            "Generating Software Bill-of-Materials for container image %s. This might take a few mins ...",
+            src_dir,
         )
     args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file]
     if deep or project_type in ("jar", "jenkins"):
@@ -298,6 +299,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
 
 
 def submit_bom(reports_dir, threatdb_params):
+    """Method to submit the SBoM to threatdb for analysis"""
     vex_files = find_files(reports_dir, ".vex.json", quick=False, filter=True)
     if vex_files:
         threatdb_server = threatdb_params["threatdb_server"]
@@ -307,7 +309,7 @@ def submit_bom(reports_dir, threatdb_params):
         with httpx.Client(http2=True, base_url=threatdb_server, timeout=180) as client:
             token = threatdb_params.get("threatdb_token")
             if not token:
-                LOG.debug(f"Attempting to retrieve access token from {login_url}")
+                LOG.debug("Attempting to retrieve access token from %s", login_url)
                 r = client.post(
                     login_url,
                     json={
@@ -321,8 +323,10 @@ def submit_bom(reports_dir, threatdb_params):
                     if json_response and json_response.get("access_token"):
                         token = json_response.get("access_token")
                 else:
-                    LOG.warn(
-                        f"Unable to retrieve access token from {login_url} due to {r.status_code}"
+                    LOG.warning(
+                        "Unable to retrieve access token from %s due to %s",
+                        login_url,
+                        r.status_code,
                     )
             if token:
                 for vf in vex_files:
@@ -336,13 +340,16 @@ def submit_bom(reports_dir, threatdb_params):
                         json_response = r.json()
                         if not json_response.get("success"):
                             LOG.debug(
-                                f"Uploaded file {vf} was not processed successfully"
+                                "Uploaded file %s was not processed successfully", vf
                             )
                         else:
                             LOG.debug(
-                                f"Vex file {vf} was submitted successfully to the threatdb server"
+                                "Vex file %s was submitted successfully to the threatdb server",
+                                vf,
                             )
                     else:
-                        LOG.warn(
-                            f"Unable to submit vex file to {threatdb_server} due to {r.status_code}"
+                        LOG.warning(
+                            "Unable to submit vex file to %s due to %s",
+                            threatdb_server,
+                            r.status_code,
                         )

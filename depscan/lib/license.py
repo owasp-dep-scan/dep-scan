@@ -8,7 +8,7 @@ from depscan.lib.utils import find_files
 def build_license_data(license_dir, spdx_license_list):
     """Build license data based on the txt files"""
     licenses_dict = {}
-    with open(spdx_license_list) as fp:
+    with open(spdx_license_list, encoding="utf-8") as fp:
         spdx_license_data = json.load(fp)
         for slic in spdx_license_data.get("licenses"):
             licenses_dict[slic["licenseId"]] = {
@@ -21,7 +21,7 @@ def build_license_data(license_dir, spdx_license_list):
             }
     license_files = find_files(license_dir, "txt")
     for lfile in license_files:
-        with open(lfile) as fp:
+        with open(lfile, encoding="utf-8") as fp:
             raw_data = fp.read().split("---")[1]
             ldata = yaml.safe_load(raw_data)
             ldata["condition_flag"] = False

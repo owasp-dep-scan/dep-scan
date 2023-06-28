@@ -2,7 +2,7 @@ from vdb.lib import KNOWN_PKG_TYPES
 from vdb.lib.config import placeholder_exclude_version
 from vdb.lib.utils import parse_purl
 
-from depscan.lib import config as config
+from depscan.lib import config
 
 # Common package suffixes
 COMMON_SUFFIXES = [
@@ -158,7 +158,7 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add("lib" + name)
         if "-bin" not in name:
             name_aliases.add(name + "-bin")
-    if len(vendor_aliases):
+    if len(vendor_aliases) > 0:
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
                 pkg_list.append({**pkg_dict, "vendor": vvar, "name": nvar})
@@ -184,10 +184,7 @@ def dealias_packages(project_type, pkg_list, pkg_aliases, purl_aliases):
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
         if package_issue.affected_location.vendor:
-            full_pkg = "{}:{}".format(
-                package_issue.affected_location.vendor,
-                package_issue.affected_location.package,
-            )
+            full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
         if purl_aliases.get(full_pkg.lower()):
             dealias_dict[full_pkg] = purl_aliases.get(full_pkg.lower())
         else:

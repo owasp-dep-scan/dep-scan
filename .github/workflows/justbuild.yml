@@ -5,7 +5,7 @@ on:
 
 jobs:
   deploy:
-  
+
     runs-on: ubuntu-latest
 
     steps:
@@ -13,7 +13,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
@@ -22,7 +22,7 @@ jobs:
       - name: Build
         run: |
           python3 -m build
-      
+
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.2
         with:
