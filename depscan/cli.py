@@ -243,7 +243,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
     if not pkg_list:
         LOG.debug("Empty package search attempted!")
     else:
-        LOG.info("Scanning %d oss dependencies for issues", len(pkg_list))
+        LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
     results, pkg_aliases, purl_aliases = utils.search_pkgs(db, project_type, pkg_list)
     # pkg_aliases is a dict that can be used to find the original vendor and package name
     # This way we consistently use the same names used by the caller irrespective of how
@@ -557,7 +557,7 @@ def main():
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
             continue
-        LOG.info("Scanning using the bom file %s", bom_file)
+        LOG.debug("Scanning using the bom file %s", bom_file)
         if not args.bom:
             LOG.info(
                 "To improve performance, cache this bom file and invoke depscan with --bom %s instead of -i",
