@@ -14,11 +14,25 @@ def test_data():
             os.path.dirname(os.path.realpath(__file__)), "data", "depscan-java.json"
         ),
         mode="r",
+        encoding="utf-8",
     ) as fp:
         for line in fp:
             row = json.loads(line)
             results.append(row)
     return results
+
+
+@pytest.fixture
+def test_js_deps_data():
+    with open(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "data", "bom-js.json"
+        ),
+        mode="r",
+        encoding="utf-8",
+    ) as fp:
+        bom_data = json.load(fp)
+        return bom_data.get("dependencies")
 
 
 @pytest.fixture
@@ -556,7 +570,7 @@ def test_best_fixed_location():
     assert analysis.best_fixed_location("1.0.0", "4.0.0", None) == "4.0.0"
 
 
-def test_locate_pkg_in_tree(test_bom_dependency_tree):
+def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
     assert analysis.pkg_sub_tree(
         "pkg:maven/org.yaml/snakeyaml@1.25?type=jar",
         "",
@@ -615,3 +629,10 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree):
         "pkg:maven/com.jayway.jsonpath/json-path@2.4.0?type=jar",
         "pkg:maven/net.minidev/json-smart@2.3?type=jar",
     ]
+    assert analysis.pkg_sub_tree(
+        "pkg:npm/engine.io@6.2.1",
+        "",
+        test_js_deps_data,
+    )[
+        0
+    ] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]

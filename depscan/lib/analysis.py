@@ -120,16 +120,16 @@ def pkg_sub_tree(
             if purl in ref:
                 if not pkg_tree or (pkg_tree and ref != pkg_tree[-1]):
                     pkg_tree.append(ref)
-            elif purl in depends_on:
+            elif purl in depends_on and purl not in pkg_tree:
                 pkg_tree.append(ref)
-                if purl != pkg_tree[-1]:
-                    pkg_tree.append(purl)
-                    break
+                pkg_tree.append(purl)
+                break
     # We need to iterate again to identify any parent for the parent
     if pkg_tree and len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
             if pkg_tree[0] in dep.get("dependsOn", []):
-                pkg_tree.insert(0, dep.get("ref"))
+                if dep.get("ref") not in pkg_tree:
+                    pkg_tree.insert(0, dep.get("ref"))
                 break
         if as_tree and pkg_tree:
             tree = Tree(
@@ -147,7 +147,10 @@ def pkg_sub_tree(
                         style=get_tree_style(purl, p),
                     )
             return pkg_tree, tree
-    return pkg_tree, None
+    return pkg_tree, Tree(
+        get_pkg_display(purl, purl, pkg_severity=pkg_severity, extra_text=extra_text),
+        style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
+    )
 
 
 def prepare_vex(
