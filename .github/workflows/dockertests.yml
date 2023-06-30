@@ -37,13 +37,13 @@ jobs:
         mkdir -p containertests
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         python3 depscan/cli.py --cache-os --no-error --src quay.io/appthreat/dep-scan -o containertests/depscan-scan.json -t docker
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-scan-docker.vex.json --input-format json --input-version v1_4
+        python contrib/vex-validate.py --json containertests/depscan-scan.json
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         python3 depscan/cli.py --cache-os --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-slim-docker.vex.json --input-format json --input-version v1_4
+        python contrib/vex-validate.py --json containertests/depscan-slim.json
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         python3 depscan/cli.py --cache-os --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker --no-vuln-table
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-redmine-docker.vex.json --input-format json --input-version v1_4
+        python contrib/vex-validate.py --json containertests/depscan-redmine.json
         ls -ltr containertests
       env:
         PYTHONPATH: "."
@@ -80,7 +80,7 @@ jobs:
         chmod +x cyclonedx
         mkdir -p containertests
         python3 depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json --no-vuln-table
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-rocket-universal.vex.json --input-format json --input-version v1_4
+        python contrib/vex-validate.py --json containertests/depscan-rocket.json
         python3 depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json --no-vuln-table
         ls -ltr containertests
       env:
@@ -124,9 +124,9 @@ jobs:
         chmod +x cyclonedx
         mkdir -p containertests
         python3 depscan/cli.py --no-error --src repotests/microservices-demo -o containertests/depscan-msd.json
-        ./cyclonedx validate --fail-on-errors --input-file containertests/sbom-msd-universal.vex.json --input-format json --input-version v1_4
+        python contrib/vex-validate.py --json containertests/depscan-msd.json
         python3 depscan/cli.py --no-error --src repotests/NodeGoat --reports-dir containertests/ng-reports
-        ./cyclonedx validate --fail-on-errors --input-file containertests/ng-reports/sbom-universal.vex.json --input-format json --input-version v1_4
+        python contrib/vex-validate.py --json containertests/ng-reports/sbom-universal.vex.json
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
