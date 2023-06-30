@@ -175,8 +175,6 @@ usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [-
                         ThreatDB password
   --threatdb-token THREATDB_TOKEN
                         ThreatDB token for token based submission
-  --privado-json PRIVADO_JSON
-                        Enrich the VEX report with information from privado.ai json report.
 ```
 
 ### Scanning containers locally (Python version)

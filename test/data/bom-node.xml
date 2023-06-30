@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.2" serialNumber="urn:uuid:501a7d9d-4a18-4f76-ac09-b20c132149e6" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.5" serialNumber="urn:uuid:501a7d9d-4a18-4f76-ac09-b20c132149e6" version="1">
   <components>
     <component type="library" bom-ref="pkg:npm/bcrypt-nodejs@0.0.3">
       <name>bcrypt-nodejs</name>

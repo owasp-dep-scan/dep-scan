@@ -4,7 +4,7 @@ from datetime import datetime
 import httpx
 from rich.progress import Progress
 
-from depscan.lib import config as config
+from depscan.lib import config
 from depscan.lib.logger import LOG, console
 
 
@@ -96,7 +96,7 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 if registry_type == "npm":
                     risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
                 elif registry_type == "pypi":
-                    project_type_pkg = "{}:{}".format("python", key).lower()
+                    project_type_pkg = f"python:{key}".lower()
                     required_pkgs = scoped_pkgs.get("required", [])
                     optional_pkgs = scoped_pkgs.get("optional", [])
                     excluded_pkgs = scoped_pkgs.get("excluded", [])
@@ -121,7 +121,10 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
             if failure_count >= config.max_request_failures:
                 circuit_breaker = True
     LOG.debug(
-        f"Retrieved package metadata for {done_count}/{len(pkg_list)} packages. Failures count {failure_count}"
+        "Retrieved package metadata for %d/%d packages. Failures count %d",
+        done_count,
+        len(pkg_list),
+        failure_count,
     )
     return metadata_dict
 

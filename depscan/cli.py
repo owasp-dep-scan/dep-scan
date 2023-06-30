@@ -9,7 +9,7 @@ import tempfile
 from quart import Quart, request
 from rich.panel import Panel
 from rich.terminal_theme import MONOKAI
-from vdb.lib import config as config
+from vdb.lib import config
 from vdb.lib import db as dbLib
 from vdb.lib.aqua import AquaSource
 from vdb.lib.gha import GitHubSource
@@ -17,9 +17,9 @@ from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 
 from depscan.lib import privado
-from depscan.lib import utils as utils
+from depscan.lib import utils
 from depscan.lib.analysis import (
-    analyse,
+    summary_stats,
     analyse_licenses,
     analyse_pkg_risks,
     jsonl_report,
@@ -243,7 +243,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
     if not pkg_list:
         LOG.debug("Empty package search attempted!")
     else:
-        LOG.info("Scanning {} oss dependencies for issues".format(len(pkg_list)))
+        LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
     results, pkg_aliases, purl_aliases = utils.search_pkgs(db, project_type, pkg_list)
     # pkg_aliases is a dict that can be used to find the original vendor and package name
     # This way we consistently use the same names used by the caller irrespective of how
@@ -254,9 +254,8 @@ def scan(db, project_type, pkg_list, suggest_mode):
         sug_version_dict = suggest_version(results, pkg_aliases)
         if sug_version_dict:
             LOG.debug(
-                "Adjusting fix version based on the initial suggestion {}".format(
-                    sug_version_dict
-                )
+                "Adjusting fix version based on the initial suggestion %s",
+                sug_version_dict,
             )
             # Recheck packages
             sug_pkg_list = []
@@ -273,7 +272,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
                 else:
                     name = tmpA[0]
                 # De-alias the vendor and package name
-                full_pkg = "{}:{}".format(vendor, name)
+                full_pkg = f"{vendor}:{name}"
                 full_pkg = pkg_aliases.get(full_pkg, full_pkg)
                 vendor, name = full_pkg.split(":")
                 sug_pkg_list.append(
@@ -285,7 +284,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
             override_results, _, _ = utils.search_pkgs(db, project_type, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
-                LOG.debug("Received override results: {}".format(new_sug_dict))
+                LOG.debug("Received override results: %s", new_sug_dict)
                 for nk, nv in new_sug_dict.items():
                     sug_version_dict[nk] = nv
     return results, pkg_aliases, sug_version_dict, purl_aliases
@@ -318,7 +317,7 @@ def summarise(
     :return: Summary of the results
     """
     if not results:
-        LOG.info(f"No oss vulnerabilities detected for type {project_type} ✅")
+        LOG.info("No oss vulnerabilities detected for type %s ✅", project_type)
         return None
     if report_file:
         jsonl_report(
@@ -336,14 +335,15 @@ def summarise(
         pkg_aliases,
         purl_aliases,
         sug_version_dict,
-        scoped_pkgs,
-        no_vuln_table,
+        scoped_pkgs=scoped_pkgs,
+        no_vuln_table=no_vuln_table,
+        bom_file=bom_file,
     )
 
     if pkg_vulnerabilities and bom_file:
         vex_file = bom_file.replace(".json", ".vex.json")
         try:
-            with open(bom_file) as fp:
+            with open(bom_file, encoding="utf-8") as fp:
                 bom_data = json.load(fp)
                 if bom_data:
                     bom_data["vulnerabilities"] = pkg_vulnerabilities
@@ -352,17 +352,18 @@ def summarise(
                         pservice = privado.process_report(privado_json_file)
                         if pservice:
                             LOG.info(
-                                f"Including the service identified by privado from {privado_json_file}"
+                                "Including the service identified by privado from %s",
+                                privado_json_file,
                             )
                             if not bom_data.get("services"):
                                 bom_data["services"] = []
                             bom_data["services"].insert(0, pservice)
-                    with open(vex_file, mode="w") as vexfp:
+                    with open(vex_file, mode="w", encoding="utf-8") as vexfp:
                         json.dump(bom_data, vexfp)
-                        LOG.info(f"VEX file {vex_file} generated successfully")
+                        LOG.info("VEX file %s generated successfully", vex_file)
         except Exception:
             LOG.warning("Unable to generate VEX file for this scan")
-    summary = analyse(project_type, results)
+    summary = summary_stats(project_type, results)
     return summary
 
 
@@ -383,7 +384,7 @@ async def cache():
         if q.get("os", "").lower() in ("true", "1"):
             sources_list.insert(0, AquaSource())
         for s in sources_list:
-            LOG.debug("Refreshing {}".format(s.__class__.__name__))
+            LOG.debug("Refreshing %s", s.__class__.__name__)
             s.refresh()
         return {
             "error": "false",
@@ -441,11 +442,11 @@ async def run_scan():
             },
         )
         if bom_status:
-            LOG.debug(f"BOM file was generated successfully at {bfp.name}")
+            LOG.debug("BOM file was generated successfully at %s", bfp.name)
             pkg_list = get_pkg_list(bfp.name)
             if not pkg_list:
                 return {}
-            if project_type in type_audit_map.keys():
+            if project_type in type_audit_map:
                 audit_results = audit(project_type, pkg_list, None)
                 if audit_results:
                     results = results + audit_results
@@ -461,8 +462,9 @@ async def run_scan():
                 pkg_aliases,
                 purl_aliases,
                 sug_version_dict,
-                {},
-                True,
+                scoped_pkgs={},
+                no_vuln_table=True,
+                bom_file=bfp.name,
             )
             if pkg_vulnerabilities:
                 bom_data["vulnerabilities"] = pkg_vulnerabilities
@@ -476,6 +478,7 @@ async def run_scan():
 
 
 def run_server(args):
+    """Run depscan as server"""
     print(at_logo)
     console.print(f"Depscan server running on {args.server_host}:{args.server_port}")
     app.config["CDXGEN_SERVER_URL"] = args.cdxgen_server
@@ -488,6 +491,7 @@ def run_server(args):
 
 
 def main():
+    """Main function"""
     args = build_args()
     if args.server_mode:
         return run_server(args)
@@ -518,7 +522,7 @@ def main():
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
     if len(project_types_list) > 1:
-        LOG.debug("Multiple project types found: {}".format(project_types_list))
+        LOG.debug("Multiple project types found: %s", project_types_list)
     # Enable license scanning
     if "license" in project_types_list:
         os.environ["FETCH_LICENSE"] = "true"
@@ -534,10 +538,8 @@ def main():
         sug_version_dict = {}
         pkg_aliases = {}
         results = []
-        report_file = areport_file.replace(".json", "-{}.json".format(project_type))
-        risk_report_file = areport_file.replace(
-            ".json", "-risk.{}.json".format(project_type)
-        )
+        report_file = areport_file.replace(".json", f"-{project_type}.json")
+        risk_report_file = areport_file.replace(".json", f"-risk.{project_type}.json")
         LOG.info("=" * 80)
         creation_status = False
         if args.bom and os.path.exists(args.bom):
@@ -553,28 +555,19 @@ def main():
                 {"cdxgen_server": args.cdxgen_server},
             )
         if not creation_status:
-            LOG.debug("Bom file {} was not created successfully".format(bom_file))
+            LOG.debug("Bom file %s was not created successfully", bom_file)
             continue
-        LOG.info("Scanning using the bom file {}".format(bom_file))
+        LOG.debug("Scanning using the bom file %s", bom_file)
         if not args.bom:
             LOG.info(
-                "To improve performance, cache this bom file and invoke depscan with --bom {} instead of -i".format(
-                    bom_file
-                )
+                "To improve performance, cache this bom file and invoke depscan with --bom %s instead of -i",
+                bom_file,
             )
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.debug("No packages found in the project!")
             continue
-        scoped_pkgs = {}
-        if project_type in ["python"]:
-            all_imports = utils.get_all_imports(src_dir)
-            LOG.debug(f"Identified {len(all_imports)} imports in your project")
-            scoped_pkgs = utils.get_scope_from_imports(
-                project_type, pkg_list, all_imports
-            )
-        else:
-            scoped_pkgs = utils.get_pkgs_by_scope(project_type, pkg_list)
+        scoped_pkgs = utils.get_pkgs_by_scope(project_type, pkg_list)
         if os.getenv("FETCH_LICENSE", "") in (True, "1", "true"):
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir, spdx_license_list),
@@ -584,7 +577,7 @@ def main():
                 reports_dir, "license-" + project_type + ".json"
             )
             analyse_licenses(project_type, licenses_results, license_report_file)
-        if project_type in risk_audit_map.keys():
+        if project_type in risk_audit_map:
             if args.risk_audit:
                 console.print(
                     Panel(
@@ -619,17 +612,13 @@ def main():
                         expand=False,
                     )
                 )
-        if project_type in type_audit_map.keys():
-            LOG.info(
-                "Performing remote audit for {} of type {}".format(
-                    src_dir, project_type
-                )
-            )
-            LOG.debug(f"No of packages {len(pkg_list)}")
+        if project_type in type_audit_map:
+            LOG.info("Performing remote audit for %s of type %s", src_dir, project_type)
+            LOG.debug("No of packages %d", len(pkg_list))
             try:
                 audit_results = audit(project_type, pkg_list, report_file)
                 if audit_results:
-                    LOG.debug(f"Remote audit yielded {len(audit_results)} results")
+                    LOG.debug("Remote audit yielded %d results", len(audit_results))
                     results = results + audit_results
             except Exception as e:
                 LOG.error("Remote audit was not successful")
@@ -639,11 +628,11 @@ def main():
         if project_type in ("podman", "docker", "oci"):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
             if npm_pkg_list:
-                LOG.debug(f"No of npm packages {len(npm_pkg_list)}")
+                LOG.debug("No of npm packages %d", len(npm_pkg_list))
                 try:
                     audit_results = audit("nodejs", npm_pkg_list, report_file)
                     if audit_results:
-                        LOG.debug(f"Remote audit yielded {len(audit_results)} results")
+                        LOG.debug("Remote audit yielded %d results", len(audit_results))
                         results = results + audit_results
                 except Exception as e:
                     LOG.error("Remote audit was not successful")
@@ -651,9 +640,7 @@ def main():
         if not dbLib.index_count(db["index_file"]):
             run_cacher = True
         else:
-            LOG.debug(
-                "Vulnerability database loaded from {}".format(config.vdb_bin_file)
-            )
+            LOG.debug("Vulnerability database loaded from %s", config.vdb_bin_file)
         sources_list = [OSVSource(), NvdSource()]
         if os.environ.get("GITHUB_TOKEN"):
             sources_list.insert(0, GitHubSource())
@@ -665,26 +652,19 @@ def main():
             ):
                 sources_list.insert(0, AquaSource())
                 LOG.info(
-                    "OS Vulnerability database would be downloaded for the first time. This would take a few minutes ..."
+                    "OS Vulnerability database would be downloaded for the first time. To avoid this step, manually download the vulnerability database using the ORAS cli and set the environment variable VDB_HOME."
                 )
             for s in sources_list:
-                LOG.debug("Refreshing {}".format(s.__class__.__name__))
+                LOG.debug("Refreshing %s", s.__class__.__name__)
                 s.refresh()
                 run_cacher = False
         elif args.sync:
             for s in sources_list:
-                LOG.debug("Syncing {}".format(s.__class__.__name__))
+                LOG.debug("Syncing %s", s.__class__.__name__)
                 s.download_recent()
                 run_cacher = False
-        LOG.debug(
-            "Vulnerability database contains {} records".format(
-                dbLib.index_count(db["index_file"])
-            )
-        )
         LOG.info(
-            "Performing regular scan for {} using plugin {}".format(
-                src_dir, project_type
-            )
+            "Performing regular scan for %s using plugin %s", src_dir, project_type
         )
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
             db, project_type, pkg_list, args.suggest

@@ -6,17 +6,21 @@ from collections import defaultdict
 from rich import box
 from rich.panel import Panel
 from rich.table import Table
+from rich.tree import Tree
+from rich.style import Style
 from vdb.lib import CPE_FULL_REGEX
 from vdb.lib.config import placeholder_fix_version
 from vdb.lib.utils import parse_purl
 
-from depscan.lib import config as config
+from depscan.lib import config
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
 
+NEWLINE = "\\n"
+
 
 def best_fixed_location(version_used, sug_version, orig_fixed_location):
-    # Compare the major versions before suggesting an override
+    """Compare the major versions before suggesting an override"""
     # See: https://github.com/AppThreat/dep-scan/issues/72
     if (
         not orig_fixed_location
@@ -38,6 +42,7 @@ def best_fixed_location(version_used, sug_version, orig_fixed_location):
 
 
 def distro_package(package_issue):
+    """Method to determine if the given CPE belongs to a OS distro"""
     if package_issue:
         all_parts = CPE_FULL_REGEX.match(package_issue.affected_location.cpe_uri)
         if (
@@ -51,6 +56,103 @@ def distro_package(package_issue):
     return False
 
 
+def retrieve_bom_dependency_tree(bom_file):
+    """Method to retrieve the dependency tree from a CycloneDX SBoM"""
+    if not bom_file:
+        return []
+    try:
+        with open(bom_file, encoding="utf-8") as bfp:
+            bom_data = json.load(bfp)
+            if bom_data:
+                return bom_data.get("dependencies", [])
+    except Exception:
+        pass
+    return []
+
+
+def get_pkg_display(tree_pkg, current_pkg, pkg_severity=None, extra_text=None):
+    """Construct a string that could be used for display"""
+    full_pkg_display = current_pkg
+    highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
+    if tree_pkg:
+        try:
+            purl_obj = parse_purl(current_pkg)
+            if purl_obj:
+                version_used = purl_obj.get("version")
+                full_pkg_display = f"""{purl_obj.get("name")}@{version_used}"""
+        except Exception:
+            pass
+    if extra_text and highlightable:
+        full_pkg_display = f"{full_pkg_display} {extra_text}"
+    return full_pkg_display
+
+
+def get_tree_style(purl, p):
+    """Return a rich style to be used in a tree"""
+    if purl and (purl == p or purl in p):
+        return Style(color="#FF753D", bold=True, italic=False)
+    return Style(color="#7C8082", bold=False, italic=True)
+
+
+def pkg_sub_tree(
+    purl,
+    full_pkg,
+    bom_dependency_tree,
+    pkg_severity=None,
+    as_tree=False,
+    extra_text=None,
+):
+    """Method to locate and return a package tree from a dependency tree"""
+    pkg_tree = []
+    if full_pkg and not purl:
+        purl = full_pkg
+    if not bom_dependency_tree:
+        return [purl], Tree(
+            get_pkg_display(
+                purl, purl, pkg_severity=pkg_severity, extra_text=extra_text
+            ),
+            style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
+        )
+    if len(bom_dependency_tree) > 1:
+        for dep in bom_dependency_tree[1:]:
+            ref = dep.get("ref")
+            depends_on = dep.get("dependsOn", [])
+            if purl in ref:
+                if not pkg_tree or (pkg_tree and ref != pkg_tree[-1]):
+                    pkg_tree.append(ref)
+            elif purl in depends_on and purl not in pkg_tree:
+                pkg_tree.append(ref)
+                pkg_tree.append(purl)
+                break
+    # We need to iterate again to identify any parent for the parent
+    if pkg_tree and len(bom_dependency_tree) > 1:
+        for dep in bom_dependency_tree[1:]:
+            if pkg_tree[0] in dep.get("dependsOn", []):
+                if dep.get("ref") not in pkg_tree:
+                    pkg_tree.insert(0, dep.get("ref"))
+                break
+        if as_tree and pkg_tree:
+            tree = Tree(
+                get_pkg_display(
+                    purl, pkg_tree[0], pkg_severity=pkg_severity, extra_text=extra_text
+                ),
+                style=get_tree_style(purl, pkg_tree[0]),
+            )
+            if len(pkg_tree) > 1:
+                for p in pkg_tree[1:]:
+                    tree.add(
+                        get_pkg_display(
+                            purl, p, pkg_severity=pkg_severity, extra_text=extra_text
+                        ),
+                        style=get_tree_style(purl, p),
+                    )
+            return pkg_tree, tree
+    return pkg_tree, Tree(
+        get_pkg_display(purl, purl, pkg_severity=pkg_severity, extra_text=extra_text),
+        style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
+    )
+
+
 def prepare_vex(
     project_type,
     results,
@@ -58,7 +160,8 @@ def prepare_vex(
     purl_aliases,
     sug_version_dict,
     scoped_pkgs,
-    no_vuln_table,
+    no_vuln_table=False,
+    bom_file=None,
 ):
     """Pretty print report summary"""
     if not results:
@@ -84,11 +187,11 @@ def prepare_vex(
     distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
+    # Retrieve any dependency tree from the SBoM
+    bom_dependency_tree = retrieve_bom_dependency_tree(bom_file)
     for h in [
-        "CVE",
-        "Package",
+        "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
         "Insights",
-        "Version",
         "Fix Version",
         "Severity",
         "Score",
@@ -99,18 +202,13 @@ def prepare_vex(
         table.add_column(header=h, justify=justify, no_wrap=False)
     for res in results:
         vuln_occ_dict = res.to_dict()
-        id = vuln_occ_dict.get("id")
+        vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
-        project_type_pkg = "{}:{}".format(
-            project_type, package_issue.affected_location.package
-        )
+        project_type_pkg = f"{project_type}:{package_issue.affected_location.package}"
         if package_issue.affected_location.vendor:
-            full_pkg = "{}:{}".format(
-                package_issue.affected_location.vendor,
-                package_issue.affected_location.package,
-            )
+            full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         full_pkg_display = full_pkg
@@ -138,9 +236,11 @@ def prepare_vex(
                         full_pkg_display = f"""{purl_obj.get("name")}"""
             except Exception:
                 pass
-        if ids_seen.get(id + full_pkg):
+        if ids_seen.get(vid + full_pkg):
             continue
-        ids_seen[id + full_pkg] = True
+        # Mark this CVE + pkg as seen to avoid duplicates
+        ids_seen[vid + full_pkg] = True
+        # Find the best fix version
         fixed_location = best_fixed_location(
             version_used, sug_version_dict.get(full_pkg), package_issue.fixed_location
         )
@@ -152,14 +252,12 @@ def prepare_vex(
         package_usage = "N/A"
         insights = []
         plain_insights = []
-        package_name_style = ""
-        id_style = ""
         pkg_severity = vuln_occ_dict.get("severity")
         is_required = False
         pkg_requires_attn = False
         related_urls = vuln_occ_dict.get("related_urls")
         clinks = classify_links(
-            id,
+            vid,
             full_pkg_display,
             vuln_occ_dict.get("type"),
             package_issue.affected_location.version,
@@ -169,7 +267,6 @@ def prepare_vex(
             is_required = True
         if pkg_severity in ("CRITICAL", "HIGH"):
             if is_required:
-                id_style = ":point_right: "
                 pkg_requires_attn = True
                 pkg_attention_count = pkg_attention_count + 1
             if fixed_location:
@@ -178,10 +275,20 @@ def prepare_vex(
                 clinks.get("vendor") or package_type in config.OS_PKG_TYPES
             ) and pkg_severity == "CRITICAL":
                 critical_count += 1
+        # Locate this package in the tree
+        pkg_tree_list, p_rich_tree = pkg_sub_tree(
+            purl,
+            full_pkg.replace(":", "/"),
+            bom_dependency_tree,
+            pkg_severity=pkg_severity,
+            as_tree=True,
+            extra_text=f":left_arrow: {vid}",
+        )
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
-            package_name_style = "[bold]"
-        elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
+        elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
+            full_pkg in optional_pkgs or project_type_pkg in optional_pkgs
+        ):
             if package_type in config.OS_PKG_TYPES:
                 package_usage = (
                     "[spring_green4]:notebook: Local install[/spring_green4]"
@@ -191,7 +298,6 @@ def prepare_vex(
                 package_usage = (
                     "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
                 )
-            package_name_style = "[italic]"
         if package_usage != "N/A":
             insights.append(package_usage)
             plain_insights.append(package_usage)
@@ -217,39 +323,32 @@ def prepare_vex(
             distro_packages_count = distro_packages_count + 1
             has_os_packages = True
         if pkg_requires_attn and fixed_location and purl:
-            pkg_group_rows[purl].append({"id": id, "fixed_location": fixed_location})
+            pkg_group_rows[purl].append(
+                {
+                    "id": vid,
+                    "fixed_location": fixed_location,
+                    "p_rich_tree": p_rich_tree,
+                }
+            )
         if not no_vuln_table:
             table.add_row(
-                "{}{}{}{}".format(
-                    id_style,
-                    package_name_style,
-                    "[bright_red]" if pkg_severity == "CRITICAL" else "",
-                    id,
-                ),
-                "{}{}".format(package_name_style, full_pkg_display),
+                p_rich_tree,
                 "\n".join(insights),
-                version_used,
                 fixed_location,
-                "{}{}".format(
-                    "[bright_red]" if pkg_severity == "CRITICAL" else "",
-                    vuln_occ_dict.get("severity"),
-                ),
-                "{}{}".format(
-                    "[bright_red]" if pkg_severity == "CRITICAL" else "",
-                    vuln_occ_dict.get("cvss_score"),
-                ),
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
             )
         if purl:
             source = {}
-            if id.startswith("CVE"):
+            if vid.startswith("CVE"):
                 source = {
                     "name": "NVD",
-                    "url": f"https://nvd.nist.gov/vuln/detail/{id}",
+                    "url": f"https://nvd.nist.gov/vuln/detail/{vid}",
                 }
-            elif id.startswith("GHSA") or id.startswith("npm"):
+            elif vid.startswith("GHSA") or vid.startswith("npm"):
                 source = {
                     "name": "GitHub",
-                    "url": f"https://github.com/advisories/{id}",
+                    "url": f"https://github.com/advisories/{vid}",
                 }
             versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
@@ -265,6 +364,11 @@ def prepare_vex(
                 }
             elif clinks.get("poc"):
                 analysis = {"state": "in_triage", "detail": f'See {clinks.get("poc")}'}
+            elif pkg_tree_list and len(pkg_tree_list) > 1:
+                analysis = {
+                    "state": "in_triage",
+                    "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
+                }
             score = 2.0
             try:
                 score = float(vuln_occ_dict.get("cvss_score"))
@@ -292,8 +396,8 @@ def prepare_vex(
                     pass
             pkg_vulnerabilities.append(
                 {
-                    "bom-ref": f"{id}/{purl}",
-                    "id": id,
+                    "bom-ref": f"{vid}/{purl}",
+                    "id": vid,
                     "source": source,
                     "ratings": ratings,
                     "cwes": cwes,
@@ -334,7 +438,7 @@ def prepare_vex(
                 if not fv:
                     fv = c.get("fixed_location")
             utable.add_row(
-                k.split("#")[0].split("?")[0],
+                v[0].get("p_rich_tree"),
                 "\n".join(sorted(cve_list, reverse=True)),
                 f"[bright_green]{fv}[/bright_green]",
             )
@@ -427,7 +531,8 @@ def prepare_vex(
     return pkg_vulnerabilities
 
 
-def analyse(project_type, results):
+def summary_stats(project_type, results):
+    """Generate summary stats"""
     if not results:
         LOG.info("No oss vulnerabilities detected ✅")
         return None
@@ -457,17 +562,14 @@ def jsonl_report(
     required_pkgs = scoped_pkgs.get("required", [])
     optional_pkgs = scoped_pkgs.get("optional", [])
     excluded_pkgs = scoped_pkgs.get("excluded", [])
-    with open(out_file_name, "w") as outfile:
+    with open(out_file_name, "w", encoding="utf-8") as outfile:
         for data in results:
             vuln_occ_dict = data.to_dict()
-            id = vuln_occ_dict.get("id")
+            vid = vuln_occ_dict.get("id")
             package_issue = data.package_issue
             full_pkg = package_issue.affected_location.package
             if package_issue.affected_location.vendor:
-                full_pkg = "{}:{}".format(
-                    package_issue.affected_location.vendor,
-                    package_issue.affected_location.package,
-                )
+                full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             full_pkg_display = full_pkg
@@ -486,10 +588,10 @@ def jsonl_report(
                             )
                 except Exception:
                     pass
-            if ids_seen.get(id + full_pkg):
+            if ids_seen.get(vid + full_pkg):
                 continue
             # On occasions, this could still result in duplicates if the package exists with and without a purl
-            ids_seen[id + full_pkg] = True
+            ids_seen[vid + full_pkg] = True
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package
             )
@@ -506,7 +608,7 @@ def jsonl_report(
             elif full_pkg in excluded_pkgs or project_type_pkg in excluded_pkgs:
                 package_usage = "excluded"
             data_obj = {
-                "id": id,
+                "id": vid,
                 "package": full_pkg_display,
                 "purl": purl,
                 "package_type": vuln_occ_dict.get("type"),
@@ -525,6 +627,7 @@ def jsonl_report(
 def analyse_pkg_risks(
     project_type, scoped_pkgs, private_ns, risk_results, risk_report_file=None
 ):
+    """Identify package risk and write to a json file"""
     if not risk_results:
         return
     table = Table(
@@ -547,7 +650,7 @@ def analyse_pkg_risks(
             continue
         risk_metrics = risk_obj.get("risk_metrics")
         scope = risk_obj.get("scope")
-        project_type_pkg = "{}:{}".format(project_type, pkg).lower()
+        project_type_pkg = f"{project_type}:{pkg}".lower()
         if project_type_pkg in required_pkgs:
             scope = "required"
         elif project_type_pkg in optional_pkgs:
@@ -600,7 +703,7 @@ def analyse_pkg_risks(
         console.print(table)
         # Store the risk audit findings in jsonl format
         if risk_report_file:
-            with open(risk_report_file, "w") as outfile:
+            with open(risk_report_file, "w", encoding="utf-8") as outfile:
                 for row in report_data:
                     json.dump(row, outfile)
                     outfile.write("\n")
@@ -609,6 +712,7 @@ def analyse_pkg_risks(
 
 
 def analyse_licenses(project_type, licenses_results, license_report_file=None):
+    """Analyze package licenses"""
     if not licenses_results:
         return
     table = Table(
@@ -652,7 +756,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         console.print(table)
         # Store the license scan findings in jsonl format
         if license_report_file:
-            with open(license_report_file, "w") as outfile:
+            with open(license_report_file, "w", encoding="utf-8") as outfile:
                 for row in report_data:
                     json.dump(row, outfile)
                     outfile.write("\n")
@@ -675,10 +779,7 @@ def suggest_version(results, pkg_aliases={}):
             full_pkg = package_issue.affected_location.package
             fixed_location = package_issue.fixed_location
             if package_issue.affected_location.vendor:
-                full_pkg = "{}:{}".format(
-                    package_issue.affected_location.vendor,
-                    package_issue.affected_location.package,
-                )
+                full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())

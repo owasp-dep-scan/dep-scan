@@ -1,12 +1,12 @@
 [project]
 name = "appthreat-depscan"
-version = "4.1.2"
+version = "4.2.0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db>=5.1.3",
+    "appthreat-vulnerability-db>=5.2.0",
     "defusedxml",
     "PyYAML",
     "rich",
@@ -22,10 +22,10 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Topic :: Security",
     "Topic :: Utilities",
 ]
@@ -54,4 +54,3 @@ packages = ["depscan", "depscan.lib", "vendor"]
 
 [tool.pytest.ini_options]
 addopts = "--verbose --cov-append --cov-report term --cov depscan"
-

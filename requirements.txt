@@ -1,5 +1,0 @@
-appthreat-vulnerability-db>=5.1.3
-defusedxml
-PyYAML
-rich
-quart

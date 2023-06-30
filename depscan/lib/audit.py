@@ -1,6 +1,6 @@
 from vdb.lib.npm import NpmSource
 
-from depscan.lib import config as config
+from depscan.lib import config
 from depscan.lib.pkg_query import npm_metadata, pypi_metadata
 
 # Dict mapping project type to the audit source

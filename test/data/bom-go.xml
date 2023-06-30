@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<bom xmlns="http://cyclonedx.org/schema/bom/1.2" serialNumber="urn:uuid:a6f57558-f0fd-45d2-9d46-30665f19334f" version="1">
+<bom xmlns="http://cyclonedx.org/schema/bom/1.5" serialNumber="urn:uuid:a6f57558-f0fd-45d2-9d46-30665f19334f" version="1">
   <components>
     <component type="library" bom-ref="pkg:golang/cloud.google.com/go@v0.26.0">
       <group>cloud.google.com</group>
