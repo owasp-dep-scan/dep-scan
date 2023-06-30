@@ -36,6 +36,7 @@ jobs:
         chmod +x cyclonedx
         mkdir -p containertests
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
+        pip install -r contrib/requirements.txt
         python3 depscan/cli.py --cache-os --no-error --src quay.io/appthreat/dep-scan -o containertests/depscan-scan.json -t docker
         python contrib/vex-validate.py --json containertests/depscan-scan.json
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
@@ -79,6 +80,7 @@ jobs:
         mv cyclonedx-linux-x64 cyclonedx
         chmod +x cyclonedx
         mkdir -p containertests
+        pip install -r contrib/requirements.txt
         python3 depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json --no-vuln-table
         python contrib/vex-validate.py --json containertests/depscan-rocket.json
         python3 depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json --no-vuln-table
@@ -123,6 +125,7 @@ jobs:
         mv cyclonedx-linux-x64 cyclonedx
         chmod +x cyclonedx
         mkdir -p containertests
+        pip install -r contrib/requirements.txt
         python3 depscan/cli.py --no-error --src repotests/microservices-demo -o containertests/depscan-msd.json
         python contrib/vex-validate.py --json containertests/depscan-msd.json
         python3 depscan/cli.py --no-error --src repotests/NodeGoat --reports-dir containertests/ng-reports
