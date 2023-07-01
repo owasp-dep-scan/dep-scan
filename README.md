@@ -15,7 +15,8 @@ dep-scan is a fully open-source security audit tool based on known vulnerabiliti
 - Generate Software Bill-of-Materials (SBoM) with Vulnerability Exploitability Exchange (VEX) information
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
-![Depscan insights](docs/depscan-latest.png)
+![Dependency Tree with Insights](docs/tree1.jpg)
+![Dependency Tree with Insights](docs/prioritization.jpg)
 
 ### Vulnerability Data sources
 
