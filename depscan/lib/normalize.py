@@ -214,11 +214,9 @@ def dedup(project_type, pkg_list, pkg_aliases):
         vuln_occ_dict = res.to_dict()
         tmp_project_type = project_type
         if tmp_project_type == "universal":
-            reg = re.findall(r"(?<=pkg:)[^/]+(?=/.+)",vuln_occ_dict.get("originating_package"))
-            if len(reg)==1:
-                if PKG_TYPES_MAP[reg[0]]:
-                    tmp_project_type = PKG_TYPES_MAP.get(reg[0])
-                    tmp_project_type = tmp_project_type[0]
+            package_type = vuln_occ_dict.get("originating_pkg").split('/')[1]
+            if package_type in PKG_TYPES_MAP:
+                tmp_project_type = PKG_TYPES_MAP[package_type][0]
         package_type = vuln_occ_dict.get("type")
         package_issue = res.package_issue
         fixed_location = package_issue.fixed_location
