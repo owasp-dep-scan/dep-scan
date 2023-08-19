@@ -234,7 +234,4 @@ def dedup(project_type, pkg_list, pkg_aliases):
         if vid not in dedup_dict:
             ret_list.append(res)
             dedup_dict[vid] = True
-        else:
-            continue
-
     return ret_list
