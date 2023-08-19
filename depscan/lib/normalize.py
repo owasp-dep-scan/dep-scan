@@ -1,4 +1,6 @@
-from vdb.lib import KNOWN_PKG_TYPES
+import re
+
+from vdb.lib import KNOWN_PKG_TYPES, PKG_TYPES_MAP
 from vdb.lib.config import placeholder_exclude_version
 from vdb.lib.utils import parse_purl
 
@@ -210,6 +212,13 @@ def dedup(project_type, pkg_list, pkg_aliases):
     for res in pkg_list:
         vid = res.id
         vuln_occ_dict = res.to_dict()
+        tmp_project_type = project_type
+        if tmp_project_type == "universal":
+            reg = re.findall(r"(?<=pkg:)[^/]+(?=/.+)",vuln_occ_dict.get("originating_package"))
+            if len(reg)==1:
+                if PKG_TYPES_MAP[reg[0]]:
+                    tmp_project_type = PKG_TYPES_MAP.get(reg[0])
+                    tmp_project_type = tmp_project_type[0]
         package_type = vuln_occ_dict.get("type")
         package_issue = res.package_issue
         fixed_location = package_issue.fixed_location
@@ -218,11 +227,14 @@ def dedup(project_type, pkg_list, pkg_aliases):
         if fixed_location == placeholder_exclude_version:
             dedup_dict[vid] = True
             continue
-        allowed_type = config.LANG_PKG_TYPES.get(project_type)
+        allowed_type = config.LANG_PKG_TYPES.get(tmp_project_type)
         if package_type and package_type in KNOWN_PKG_TYPES and allowed_type:
             if allowed_type != package_type:
                 dedup_dict[vid] = True
         if vid not in dedup_dict:
             ret_list.append(res)
             dedup_dict[vid] = True
+        else:
+            continue
+
     return ret_list
