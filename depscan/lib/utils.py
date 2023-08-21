@@ -55,14 +55,10 @@ def find_files(src, src_ext_name, quick=False, filter=True):
     """
     Method to find files with given extension
 
-    :param src: Source directory to search
-    :param src_ext_name: Type of source file
-    :param quick: Only return first match found
-    :param filter: Filter out ignored directories
-
-    :return: A list containing the path of the first file that matches the
-    given extension if quick is True else a list containing the paths of all
-    files that match the given extension.
+    :param src: source directory to search
+    :param src_ext_name: type of source file
+    :param quick: only return first match found
+    :param filter: filter out ignored directories
     """
     result = []
     for root, dirs, files in os.walk(src):
@@ -102,8 +98,7 @@ def is_exe(src):
 
 
 def detect_project_type(src_dir):
-    """
-    Detect project type by looking for certain files
+    """Detect project type by looking for certain files
 
     :param src_dir: Source directory
     :return List of detected types
@@ -194,8 +189,8 @@ def get_pkg_vendor_name(pkg):
     information is not available package url is used to extract the package
     registry provider such as pypi, maven
 
-    :param pkg: A dictionary representing a package
-    :return: Vendor and name as a tuple
+    :param pkg: a dictionary representing a package
+    :return: vendor and name as a tuple
     """
     vendor = pkg.get("vendor")
     if not vendor:
@@ -262,7 +257,6 @@ def get_pkgs_by_scope(project_type, pkg_list):
     Method to return the packages by scope as defined in CycloneDX spec -
     required, optional and excluded
 
-    :param project_type: Project type
     :param pkg_list: List of packages
     :return: Dictionary of packages categorized by scope if available. Empty if
                 no scope information is available

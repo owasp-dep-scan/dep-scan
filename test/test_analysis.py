@@ -11,7 +11,9 @@ def test_data():
     results = []
     with open(
         os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data", "depscan-java.json"
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "depscan-java.json",
         ),
         mode="r",
         encoding="utf-8",
@@ -143,7 +145,10 @@ def test_bom_dependency_tree():
             "ref": "pkg:maven/ch.qos.logback/logback-core@1.2.3?type=jar",
             "dependsOn": [],
         },
-        {"ref": "pkg:maven/org.slf4j/slf4j-api@1.7.30?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/org.slf4j/slf4j-api@1.7.30?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/org.apache.logging.log4j/log4j-to-slf4j@2.12.1?type=jar",
             "dependsOn": [
@@ -337,7 +342,10 @@ def test_bom_dependency_tree():
             "ref": "pkg:maven/org.jboss.logging/jboss-logging@3.4.1.Final?type=jar",
             "dependsOn": [],
         },
-        {"ref": "pkg:maven/com.fasterxml/classmate@1.5.1?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/com.fasterxml/classmate@1.5.1?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/org.springframework/spring-webmvc@5.2.5.RELEASE?type=jar",
             "dependsOn": [
@@ -356,7 +364,10 @@ def test_bom_dependency_tree():
                 "pkg:maven/commons-codec/commons-codec@1.13?type=jar",
             ],
         },
-        {"ref": "pkg:maven/commons-codec/commons-codec@1.13?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/commons-codec/commons-codec@1.13?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/com.cronutils/cron-utils@9.1.5?type=jar",
             "dependsOn": [
@@ -364,7 +375,10 @@ def test_bom_dependency_tree():
                 "pkg:maven/org.glassfish/javax.el@3.0.0?type=jar",
             ],
         },
-        {"ref": "pkg:maven/org.glassfish/javax.el@3.0.0?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/org.glassfish/javax.el@3.0.0?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/org.keycloak/keycloak-core@11.0.3?type=jar",
             "dependsOn": [
@@ -389,7 +403,9 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.bouncycastle/bcpkix-jdk15on@1.65?type=jar",
-            "dependsOn": ["pkg:maven/org.bouncycastle/bcprov-jdk15on@1.65?type=jar"],
+            "dependsOn": [
+                "pkg:maven/org.bouncycastle/bcprov-jdk15on@1.65?type=jar"
+            ],
         },
         {
             "ref": "pkg:maven/com.sun.activation/jakarta.activation@1.2.2?type=jar",
@@ -406,7 +422,10 @@ def test_bom_dependency_tree():
             "ref": "pkg:maven/commons-collections/commons-collections@3.2.2?type=jar",
             "dependsOn": [],
         },
-        {"ref": "pkg:maven/commons-io/commons-io@2.11.0?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/commons-io/commons-io@2.11.0?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/org.springframework.boot/spring-boot-starter-test@2.2.6.RELEASE?type=jar",
             "dependsOn": [
@@ -485,10 +504,15 @@ def test_bom_dependency_tree():
             "ref": "pkg:maven/org.apiguardian/apiguardian-api@1.1.0?type=jar",
             "dependsOn": [],
         },
-        {"ref": "pkg:maven/org.opentest4j/opentest4j@1.2.0?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/org.opentest4j/opentest4j@1.2.0?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/org.junit.platform/junit-platform-commons@1.5.2?type=jar",
-            "dependsOn": ["pkg:maven/org.apiguardian/apiguardian-api@1.1.0?type=jar"],
+            "dependsOn": [
+                "pkg:maven/org.apiguardian/apiguardian-api@1.1.0?type=jar"
+            ],
         },
         {
             "ref": "pkg:maven/org.junit.jupiter/junit-jupiter-params@5.5.2?type=jar",
@@ -528,14 +552,26 @@ def test_bom_dependency_tree():
                 "pkg:maven/org.objenesis/objenesis@2.6?type=jar",
             ],
         },
-        {"ref": "pkg:maven/net.bytebuddy/byte-buddy@1.10.8?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/net.bytebuddy/byte-buddy@1.10.8?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/net.bytebuddy/byte-buddy-agent@1.10.8?type=jar",
             "dependsOn": [],
         },
-        {"ref": "pkg:maven/org.objenesis/objenesis@2.6?type=jar", "dependsOn": []},
-        {"ref": "pkg:maven/org.assertj/assertj-core@3.13.2?type=jar", "dependsOn": []},
-        {"ref": "pkg:maven/org.hamcrest/hamcrest@2.1?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/org.objenesis/objenesis@2.6?type=jar",
+            "dependsOn": [],
+        },
+        {
+            "ref": "pkg:maven/org.assertj/assertj-core@3.13.2?type=jar",
+            "dependsOn": [],
+        },
+        {
+            "ref": "pkg:maven/org.hamcrest/hamcrest@2.1?type=jar",
+            "dependsOn": [],
+        },
         {
             "ref": "pkg:maven/org.skyscreamer/jsonassert@1.5.0?type=jar",
             "dependsOn": [
@@ -552,7 +588,10 @@ def test_bom_dependency_tree():
                 "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"
             ],
         },
-        {"ref": "pkg:maven/org.xmlunit/xmlunit-core@2.6.4?type=jar", "dependsOn": []},
+        {
+            "ref": "pkg:maven/org.xmlunit/xmlunit-core@2.6.4?type=jar",
+            "dependsOn": [],
+        },
     ]
 
 
@@ -564,10 +603,10 @@ def test_suggestion(test_data):
 
 
 def test_best_fixed_location():
-    assert analysis.best_fixed_location("1.0.0", "1.0.3", "1.0.2") == "1.0.3"
-    assert analysis.best_fixed_location("1.0.0", "3.0.3", "1.0.2") == "1.0.2"
-    assert analysis.best_fixed_location("1.0.0", None, "1.0.2") == "1.0.2"
-    assert analysis.best_fixed_location("1.0.0", "4.0.0", None) == "4.0.0"
+    assert analysis.best_fixed_location("1.0.3", "1.0.2") == "1.0.3"
+    assert analysis.best_fixed_location("3.0.3", "1.0.2") == "1.0.2"
+    assert analysis.best_fixed_location(None, "1.0.2") == "1.0.2"
+    assert analysis.best_fixed_location("4.0.0", None) == "4.0.0"
 
 
 def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
@@ -633,6 +672,4 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:npm/engine.io@6.2.1",
         "",
         test_js_deps_data,
-    )[
-        0
-    ] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]
+    )[0] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]

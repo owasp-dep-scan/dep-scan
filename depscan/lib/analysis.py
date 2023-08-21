@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 # -*- coding: utf-8 -*-
 
 import json
@@ -193,43 +195,39 @@ def pkg_sub_tree(
     )
 
 
-def prepare_vex(
-    project_type,
-    results,
-    pkg_aliases,
-    purl_aliases,
-    sug_version_dict,
-    scoped_pkgs,
-    no_vuln_table=False,
-    bom_file=None,
-):
+@dataclass
+class PrepareVexOptions:
+    project_type: str
+    results: List
+    pkg_aliases: Dict
+    purl_aliases: Dict
+    sug_version_dict: Dict
+    scoped_pkgs: Dict
+    no_vuln_table: bool = False
+    bom_file: Optional[str] = None
+
+
+def prepare_vex(options: PrepareVexOptions):
     """
     Generates a report summary of the dependency scan results, creates a
     vulnerability table and a top priority table for packages that require
     attention, prints the recommendations, and returns a list of
     vulnerability details.
 
-    :param project_type: The type of the project being scanned (e.g., "Python").
-    :param results: A list of vulnerability scan results.
-    :param pkg_aliases: A dict mapping package aliases to original names.
-    :param purl_aliases: A dict mapping package aliases to purl
-    :param sug_version_dict: A dict mapping package names to suggested versions.
-    :param scoped_pkgs: A dict of lists of required and optional packages.
-    :param no_vuln_table: A flag to exclude the vulnerability table from report.
-    :param bom_file: The path to the CycloneDX Software Bill of Materials file.
+    :param options: An instance of PrepareVexOptions containing the function parameters.
     :return: A list of vulnerability details.
     """
-    if not results:
+    if not options.results:
         return []
     table = Table(
-        title=f"Dependency Scan Results ({project_type})",
+        title=f"Dependency Scan Results ({options.project_type})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
         show_lines=True,
     )
     ids_seen = {}
-    required_pkgs = scoped_pkgs.get("required", [])
-    optional_pkgs = scoped_pkgs.get("optional", [])
+    required_pkgs = options.scoped_pkgs.get("required", [])
+    optional_pkgs = options.scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
     critical_count = 0
     has_poc_count = 0
@@ -243,7 +241,7 @@ def prepare_vex(
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
     # Retrieve any dependency tree from the SBoM
-    bom_dependency_tree = retrieve_bom_dependency_tree(bom_file)
+    bom_dependency_tree = retrieve_bom_dependency_tree(options.bom_file)
     for h in [
         "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
         "Insights",
@@ -255,14 +253,14 @@ def prepare_vex(
         if h == "Score":
             justify = "right"
         table.add_column(header=h, justify=justify)
-    for res in results:
+    for res in options.results:
         vuln_occ_dict = res.to_dict()
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
         project_type_pkg = (
-            f"{project_type}:" f"{package_issue.affected_location.package}"
+            f"{options.project_type}:" f"{package_issue.affected_location.package}"
         )
         if package_issue.affected_location.vendor:
             full_pkg = (
@@ -270,9 +268,9 @@ def prepare_vex(
                 f"{package_issue.affected_location.package}"
             )
         # De-alias package names
-        full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+        full_pkg = options.pkg_aliases.get(full_pkg, full_pkg)
         version_used = package_issue.affected_location.version
-        purl = purl_aliases.get(full_pkg, full_pkg)
+        purl = options.purl_aliases.get(full_pkg, full_pkg)
         package_type = None
         if purl:
             try:
@@ -295,10 +293,10 @@ def prepare_vex(
         ids_seen[vid + full_pkg] = True
         # Find the best fix version
         fixed_location = best_fixed_location(
-            sug_version_dict.get(full_pkg), package_issue.fixed_location
+            options.sug_version_dict.get(full_pkg), package_issue.fixed_location
         )
         if (
-            sug_version_dict.get(full_pkg) == placeholder_fix_version
+            options.sug_version_dict.get(full_pkg) == placeholder_fix_version
             or package_issue.fixed_location == placeholder_fix_version
         ):
             wont_fix_version_count += 1
@@ -382,7 +380,7 @@ def prepare_vex(
                     "p_rich_tree": p_rich_tree,
                 }
             )
-        if not no_vuln_table:
+        if not options.no_vuln_table:
             table.add_row(
                 p_rich_tree,
                 "\n".join(insights),
@@ -486,12 +484,12 @@ def prepare_vex(
                     ],
                 }
             )
-    if not no_vuln_table:
+    if not options.no_vuln_table:
         console.print(table)
     if pkg_group_rows:
         console.print("")
         utable = Table(
-            title=f"Top Priority ({project_type})",
+            title=f"Top Priority ({options.project_type})",
             box=box.DOUBLE_EDGE,
             header_style="bold magenta",
             show_lines=True,
@@ -511,11 +509,11 @@ def prepare_vex(
                 f"[bright_green]{fv}[/bright_green]",
             )
         console.print(utable)
-    if scoped_pkgs or has_exploit_count:
+    if options.scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
             rmessage = (
                 f":point_right: [magenta]{has_exploit_count}"
-                f"[/magenta] out of {len(results)} vulnerabilities "
+                f"[/magenta] out of {len(options.results)} vulnerabilities "
                 f"have known exploits and requires your ["
                 f"magenta]immediate[/magenta] attention."
             )
@@ -525,7 +523,7 @@ def prepare_vex(
                     "changes might be required to remediate these "
                     "vulnerabilities."
                 )
-                if not scoped_pkgs:
+                if not options.scoped_pkgs:
                     rmessage += (
                         "\nNOTE: Package usage analysis was not "
                         "performed for this project."
@@ -537,12 +535,12 @@ def prepare_vex(
                     "base image."
                 )
                 if distro_packages_count and distro_packages_count < len(
-                    results
+                    options.results
                 ):
                     rmessage += (
                         f"\nNOTE: [magenta]{distro_packages_count}"
                         f"[/magenta] distro-specific vulnerabilities "
-                        f"out of {len(results)} could be prioritized "
+                        f"out of {len(options.results)} could be prioritized "
                         f"for updates."
                     )
                 if has_redhat_packages:
@@ -563,7 +561,7 @@ def prepare_vex(
         elif pkg_attention_count:
             rmessage = (
                 f":point_right: [magenta]{pkg_attention_count}"
-                f"[/magenta] out of {len(results)} vulnerabilities "
+                f"[/magenta] out of {len(options.results)} vulnerabilities "
                 f"requires your attention."
             )
             if has_exploit_count:
