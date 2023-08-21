@@ -19,9 +19,16 @@ from depscan.lib.utils import max_version
 NEWLINE = "\\n"
 
 
-def best_fixed_location(version_used, sug_version, orig_fixed_location):
-    """Compare the major versions before suggesting an override"""
-    # See: https://github.com/AppThreat/dep-scan/issues/72
+def best_fixed_location(sug_version, orig_fixed_location):
+    """
+    Compares the suggested version with the version from the original fixed
+    location and returns the best version based on the major versions.
+    See: https://github.com/AppThreat/dep-scan/issues/72
+
+    :param sug_version: Suggested version
+    :param orig_fixed_location: Version from original fixed location
+    :return: Version
+    """
     if (
         not orig_fixed_location
         and sug_version
@@ -42,9 +49,17 @@ def best_fixed_location(version_used, sug_version, orig_fixed_location):
 
 
 def distro_package(package_issue):
-    """Method to determine if the given CPE belongs to a OS distro"""
+    """
+    Determines if a given Common Platform Enumeration (CPE) belongs to an
+    operating system (OS) distribution.
+    TODO: Clarify parameter
+    :param package_issue: An object
+    :return: bool
+    """
     if package_issue:
-        all_parts = CPE_FULL_REGEX.match(package_issue.affected_location.cpe_uri)
+        all_parts = CPE_FULL_REGEX.match(
+            package_issue.affected_location.cpe_uri
+        )
         if (
             all_parts
             and all_parts.group("vendor")
@@ -57,7 +72,12 @@ def distro_package(package_issue):
 
 
 def retrieve_bom_dependency_tree(bom_file):
-    """Method to retrieve the dependency tree from a CycloneDX SBoM"""
+    """
+    Method to retrieve the dependency tree from a CycloneDX SBoM
+
+    :param bom_file: Sbom to be loaded
+    :return: Dependency tree as a list
+    """
     if not bom_file:
         return []
     try:
@@ -70,10 +90,19 @@ def retrieve_bom_dependency_tree(bom_file):
     return []
 
 
-def get_pkg_display(tree_pkg, current_pkg, pkg_severity=None, extra_text=None):
-    """Construct a string that could be used for display"""
+def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
+    """
+    Construct a string that can be used for display
+
+    :param tree_pkg: Package to display
+    :param current_pkg: The package currently being processed
+    :param extra_text: Additional text to append to the display string
+    :return: Constructed display string
+    """
     full_pkg_display = current_pkg
-    highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
+    highlightable = tree_pkg and (
+        tree_pkg == current_pkg or tree_pkg in current_pkg
+    )
     if tree_pkg:
         try:
             purl_obj = parse_purl(current_pkg)
@@ -88,7 +117,13 @@ def get_pkg_display(tree_pkg, current_pkg, pkg_severity=None, extra_text=None):
 
 
 def get_tree_style(purl, p):
-    """Return a rich style to be used in a tree"""
+    """
+    Return a rich style to be used in a tree
+
+    :param purl: Package purl to compare
+    :param p: Package reference to check against purl
+    :return: The rich style to be used in a tree visualization.
+    """
     if purl and (purl == p or purl in p):
         return Style(color="#FF753D", bold=True, italic=False)
     return Style(color="#7C8082", bold=False, italic=True)
@@ -102,16 +137,25 @@ def pkg_sub_tree(
     as_tree=False,
     extra_text=None,
 ):
-    """Method to locate and return a package tree from a dependency tree"""
+    """
+    Method to locate and return a package tree from a dependency tree
+
+    :param purl: The package purl to compare.
+    :param full_pkg: The package reference to check against purl.
+    :param bom_dependency_tree: The dependency tree.
+    :param pkg_severity: The severity of the package vulnerability.
+    :param as_tree: Flag indicating whether to return as a rich tree object.
+    :param extra_text: Additional text to append to the display string.
+    """
     pkg_tree = []
     if full_pkg and not purl:
         purl = full_pkg
     if not bom_dependency_tree:
         return [purl], Tree(
-            get_pkg_display(
-                purl, purl, pkg_severity=pkg_severity, extra_text=extra_text
+            get_pkg_display(purl, purl, extra_text=extra_text),
+            style=Style(
+                color="bright_red" if pkg_severity == "CRITICAL" else None
             ),
-            style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
         )
     if len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
@@ -133,22 +177,18 @@ def pkg_sub_tree(
                 break
         if as_tree and pkg_tree:
             tree = Tree(
-                get_pkg_display(
-                    purl, pkg_tree[0], pkg_severity=pkg_severity, extra_text=extra_text
-                ),
+                get_pkg_display(purl, pkg_tree[0], extra_text=extra_text),
                 style=get_tree_style(purl, pkg_tree[0]),
             )
             if len(pkg_tree) > 1:
                 for p in pkg_tree[1:]:
                     tree.add(
-                        get_pkg_display(
-                            purl, p, pkg_severity=pkg_severity, extra_text=extra_text
-                        ),
+                        get_pkg_display(purl, p, extra_text=extra_text),
                         style=get_tree_style(purl, p),
                     )
             return pkg_tree, tree
     return pkg_tree, Tree(
-        get_pkg_display(purl, purl, pkg_severity=pkg_severity, extra_text=extra_text),
+        get_pkg_display(purl, purl, extra_text=extra_text),
         style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
     )
 
@@ -163,7 +203,22 @@ def prepare_vex(
     no_vuln_table=False,
     bom_file=None,
 ):
-    """Pretty print report summary"""
+    """
+    Generates a report summary of the dependency scan results, creates a
+    vulnerability table and a top priority table for packages that require
+    attention, prints the recommendations, and returns a list of
+    vulnerability details.
+
+    :param project_type: The type of the project being scanned (e.g., "Python").
+    :param results: A list of vulnerability scan results.
+    :param pkg_aliases: A dict mapping package aliases to original names.
+    :param purl_aliases: A dict mapping package aliases to purl
+    :param sug_version_dict: A dict mapping package names to suggested versions.
+    :param scoped_pkgs: A dict of lists of required and optional packages.
+    :param no_vuln_table: A flag to exclude the vulnerability table from report.
+    :param bom_file: The path to the CycloneDX Software Bill of Materials file.
+    :return: A list of vulnerability details.
+    """
     if not results:
         return []
     table = Table(
@@ -199,19 +254,23 @@ def prepare_vex(
         justify = "left"
         if h == "Score":
             justify = "right"
-        table.add_column(header=h, justify=justify, no_wrap=False)
+        table.add_column(header=h, justify=justify)
     for res in results:
         vuln_occ_dict = res.to_dict()
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
-        project_type_pkg = f"{project_type}:{package_issue.affected_location.package}"
+        project_type_pkg = (
+            f"{project_type}:" f"{package_issue.affected_location.package}"
+        )
         if package_issue.affected_location.vendor:
-            full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
+            full_pkg = (
+                f"{package_issue.affected_location.vendor}:"
+                f"{package_issue.affected_location.package}"
+            )
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
-        full_pkg_display = full_pkg
         version_used = package_issue.affected_location.version
         purl = purl_aliases.get(full_pkg, full_pkg)
         package_type = None
@@ -228,12 +287,6 @@ def prepare_vex(
                         has_os_packages = True
                     if "ubuntu" in qualifiers.get("distro", ""):
                         has_ubuntu_packages = True
-                    if purl_obj.get("namespace"):
-                        full_pkg_display = (
-                            f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}"""
-                        )
-                    else:
-                        full_pkg_display = f"""{purl_obj.get("name")}"""
             except Exception:
                 pass
         if ids_seen.get(vid + full_pkg):
@@ -242,13 +295,13 @@ def prepare_vex(
         ids_seen[vid + full_pkg] = True
         # Find the best fix version
         fixed_location = best_fixed_location(
-            version_used, sug_version_dict.get(full_pkg), package_issue.fixed_location
+            sug_version_dict.get(full_pkg), package_issue.fixed_location
         )
         if (
             sug_version_dict.get(full_pkg) == placeholder_fix_version
             or package_issue.fixed_location == placeholder_fix_version
         ):
-            wont_fix_version_count = wont_fix_version_count + 1
+            wont_fix_version_count += 1
         package_usage = "N/A"
         insights = []
         plain_insights = []
@@ -257,10 +310,6 @@ def prepare_vex(
         pkg_requires_attn = False
         related_urls = vuln_occ_dict.get("related_urls")
         clinks = classify_links(
-            vid,
-            full_pkg_display,
-            vuln_occ_dict.get("type"),
-            package_issue.affected_location.version,
             related_urls,
         )
         if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
@@ -268,9 +317,9 @@ def prepare_vex(
         if pkg_severity in ("CRITICAL", "HIGH"):
             if is_required:
                 pkg_requires_attn = True
-                pkg_attention_count = pkg_attention_count + 1
+                pkg_attention_count += 1
             if fixed_location:
-                fix_version_count = fix_version_count + 1
+                fix_version_count += 1
             if (
                 clinks.get("vendor") or package_type in config.OS_PKG_TYPES
             ) and pkg_severity == "CRITICAL":
@@ -286,9 +335,9 @@ def prepare_vex(
         )
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
-        elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
-            full_pkg in optional_pkgs or project_type_pkg in optional_pkgs
-        ):
+        elif (
+            not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
+        ) or (full_pkg in optional_pkgs or project_type_pkg in optional_pkgs):
             if package_type in config.OS_PKG_TYPES:
                 package_usage = (
                     "[spring_green4]:notebook: Local install[/spring_green4]"
@@ -296,15 +345,18 @@ def prepare_vex(
                 has_os_packages = True
             else:
                 package_usage = (
-                    "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
+                    "[spring_green4]:notebook: Indirect dependency["
+                    "/spring_green4]"
                 )
         if package_usage != "N/A":
             insights.append(package_usage)
             plain_insights.append(package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
-            insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Has " "PoC[/yellow]"
+            )
             plain_insights.append("Has PoC")
-            has_poc_count = has_poc_count + 1
+            has_poc_count += 1
         if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
             insights.append(":receipt: Vendor Confirmed")
             plain_insights.append("Vendor Confirmed")
@@ -313,14 +365,14 @@ def prepare_vex(
                 "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
             )
             plain_insights.append("Known Exploits")
-            has_exploit_count = has_exploit_count + 1
+            has_exploit_count += 1
             pkg_requires_attn = True
         if distro_package(package_issue):
             insights.append(
                 "[spring_green4]:direct_hit: Distro specific[/spring_green4]"
             )
             plain_insights.append("Distro specific")
-            distro_packages_count = distro_packages_count + 1
+            distro_packages_count += 1
             has_os_packages = True
         if pkg_requires_attn and fixed_location and purl:
             pkg_group_rows[purl].append(
@@ -335,8 +387,10 @@ def prepare_vex(
                 p_rich_tree,
                 "\n".join(insights),
                 fixed_location,
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}
+                {vuln_occ_dict.get("severity")}""",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}
+                {vuln_occ_dict.get("cvss_score")}""",
             )
         if purl:
             source = {}
@@ -353,7 +407,9 @@ def prepare_vex(
             versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
             if fixed_location:
-                versions.append({"version": fixed_location, "status": "unaffected"})
+                versions.append(
+                    {"version": fixed_location, "status": "unaffected"}
+                )
                 recommendation = f"Update to {fixed_location} or later"
             affects = [{"ref": purl, "versions": versions}]
             analysis = {}
@@ -363,7 +419,10 @@ def prepare_vex(
                     "detail": f'See {clinks.get("exploit")}',
                 }
             elif clinks.get("poc"):
-                analysis = {"state": "in_triage", "detail": f'See {clinks.get("poc")}'}
+                analysis = {
+                    "state": "in_triage",
+                    "detail": f'See {clinks.get("poc")}',
+                }
             elif pkg_tree_list and len(pkg_tree_list) > 1:
                 analysis = {
                     "state": "in_triage",
@@ -375,7 +434,14 @@ def prepare_vex(
             except Exception:
                 pass
             sev_to_use = pkg_severity.lower()
-            if sev_to_use not in ("critical", "high", "medium", "low", "info", "none"):
+            if sev_to_use not in (
+                "critical",
+                "high",
+                "medium",
+                "low",
+                "info",
+                "none",
+            ):
                 sev_to_use = "unknown"
             ratings = [
                 {
@@ -413,7 +479,9 @@ def prepare_vex(
                         },
                         {
                             "name": "depscan:prioritized",
-                            "value": "true" if pkg_group_rows.get(purl) else "false",
+                            "value": "true"
+                            if pkg_group_rows.get(purl)
+                            else "false",
                         },
                     ],
                 }
@@ -429,7 +497,7 @@ def prepare_vex(
             show_lines=True,
         )
         for h in ("Package", "CVEs", "Fix Version"):
-            utable.add_column(header=h, justify="left", no_wrap=False)
+            utable.add_column(header=h)
         for k, v in pkg_group_rows.items():
             cve_list = []
             fv = None
@@ -445,19 +513,46 @@ def prepare_vex(
         console.print(utable)
     if scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
-            rmessage = f":point_right: [magenta]{has_exploit_count}[/magenta] out of {len(results)} vulnerabilities have known exploits and requires your [magenta]immediate[/magenta] attention."
+            rmessage = (
+                f":point_right: [magenta]{has_exploit_count}"
+                f"[/magenta] out of {len(results)} vulnerabilities "
+                f"have known exploits and requires your ["
+                f"magenta]immediate[/magenta] attention."
+            )
             if not has_os_packages:
-                rmessage += "\nAdditional workarounds and configuration changes might be required to remediate these vulnerabilities."
+                rmessage += (
+                    "\nAdditional workarounds and configuration "
+                    "changes might be required to remediate these "
+                    "vulnerabilities."
+                )
                 if not scoped_pkgs:
-                    rmessage += "\nNOTE: Package usage analysis was not performed for this project."
+                    rmessage += (
+                        "\nNOTE: Package usage analysis was not "
+                        "performed for this project."
+                    )
             else:
-                rmessage += "\nConsider trimming this image by removing any unwanted packages. Alternatively, use a slim base image."
-                if distro_packages_count and distro_packages_count < len(results):
-                    rmessage += f"\nNOTE: [magenta]{distro_packages_count}[/magenta] distro-specific vulnerabilities out of {len(results)} could be prioritized for updates."
+                rmessage += (
+                    "\nConsider trimming this image by removing any "
+                    "unwanted packages. Alternatively, use a slim "
+                    "base image."
+                )
+                if distro_packages_count and distro_packages_count < len(
+                    results
+                ):
+                    rmessage += (
+                        f"\nNOTE: [magenta]{distro_packages_count}"
+                        f"[/magenta] distro-specific vulnerabilities "
+                        f"out of {len(results)} could be prioritized "
+                        f"for updates."
+                    )
                 if has_redhat_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages
+                    with status "out of support" or "won't fix" are excluded
+                    from this result."""
                 if has_ubuntu_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages
+                    with status "DNE" or "needs-triaging" are excluded from
+                    this result."""
             console.print(
                 Panel(
                     rmessage,
@@ -466,14 +561,32 @@ def prepare_vex(
                 )
             )
         elif pkg_attention_count:
-            rmessage = f":point_right: [magenta]{pkg_attention_count}[/magenta] out of {len(results)} vulnerabilities requires your attention."
+            rmessage = (
+                f":point_right: [magenta]{pkg_attention_count}"
+                f"[/magenta] out of {len(results)} vulnerabilities "
+                f"requires your attention."
+            )
             if has_exploit_count:
-                rmessage += f"\nPrioritize the [magenta]{has_exploit_count}[/magenta] vulnerabilities with known exploits."
+                rmessage += (
+                    f"\nPrioritize the [magenta]{has_exploit_count}"
+                    f"[/magenta] vulnerabilities with known exploits."
+                )
             if fix_version_count:
                 if fix_version_count == pkg_attention_count:
-                    rmessage += "\n:white_heavy_check_mark: You can update [bright_green]all[/bright_green] the packages using the mentioned fix version to remediate."
+                    rmessage += (
+                        "\n:white_heavy_check_mark: You can update ["
+                        "bright_green]all[/bright_green] the "
+                        "packages using the mentioned fix version to "
+                        "remediate."
+                    )
                 else:
-                    rmessage += f"\nYou can remediate [bright_green]{fix_version_count}[/bright_green] {'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} by updating the packages using the fix version :thumbsup:"
+                    rmessage += (
+                        f"\nYou can remediate [bright_green]"
+                        f"{fix_version_count}[/bright_green]"
+                        f"{'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} "
+                        f"by updating the packages using the fix "
+                        f"version :thumbsup:"
+                    )
             console.print(
                 Panel(
                     rmessage,
@@ -484,30 +597,46 @@ def prepare_vex(
         elif critical_count:
             console.print(
                 Panel(
-                    f"Prioritize the [magenta]{critical_count}[/magenta] critical vulnerabilities confirmed by the vendor.",
+                    f"Prioritize the [magenta]{critical_count}"
+                    f"[/magenta] critical vulnerabilities confirmed by the "
+                    f"vendor.",
                     title="Recommendation",
                     expand=False,
                 )
             )
         else:
             if has_os_packages:
-                rmessage = "Prioritize any vulnerabilities in libraries such as glibc, openssl, or libcurl.\nAdditionally, prioritize the vulnerabilities in packages that provide executable binaries when there is a Remote Code Execution or File Write vulnerability in the containerized application or service."
-                rmessage += "\nVulnerabilities in Linux Kernel packages can be usually ignored in containerized environments as long as the vulnerability doesn't lead to any 'container-escape' type vulnerabilities."
-                if has_redhat_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
-                if has_ubuntu_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
-                console.print(
-                    Panel(
-                        rmessage,
-                        title="Recommendation",
-                        expand=True,
-                    )
+                rmessage = (
+                    "Prioritize any vulnerabilities in libraries such "
+                    "as glibc, openssl, or libcurl.\nAdditionally, "
+                    "prioritize the vulnerabilities in packages that "
+                    "provide executable binaries when there is a "
+                    "Remote Code Execution or File Write "
+                    "vulnerability in the containerized application "
+                    "or service."
                 )
+                rmessage += (
+                    "\nVulnerabilities in Linux Kernel packages can "
+                    "be usually ignored in containerized "
+                    "environments as long as the vulnerability "
+                    "doesn't lead to any 'container-escape' type "
+                    "vulnerabilities."
+                )
+                if has_redhat_packages:
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages
+                    with status "out of support" or "won't fix" are excluded
+                    from this result."""
+                if has_ubuntu_packages:
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages
+                    with status "DNE" or "needs-triaging" are excluded from
+                    this result."""
+                console.print(Panel(rmessage, title="Recommendation"))
             else:
                 console.print(
                     Panel(
-                        ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies.",
+                        ":white_check_mark: No package requires immediate "
+                        "attention since the major vulnerabilities are found "
+                        "only in dev packages and indirect dependencies.",
                         title="Recommendation",
                         expand=False,
                     )
@@ -515,7 +644,8 @@ def prepare_vex(
     elif critical_count:
         console.print(
             Panel(
-                f"Prioritize the [magenta]{critical_count}[/magenta] critical vulnerabilities confirmed by the vendor.",
+                f"Prioritize the [magenta]{critical_count}"
+                f"[/magenta] critical vulnerabilities confirmed by the vendor.",
                 title="Recommendation",
                 expand=False,
             )
@@ -531,12 +661,24 @@ def prepare_vex(
     return pkg_vulnerabilities
 
 
-def summary_stats(project_type, results):
-    """Generate summary stats"""
+def summary_stats(results):
+    """
+    Generate summary stats
+
+    :param results: List of scan results objects wuth severity attribute.
+    :return: A dictionary containing the summary statistics for the severity
+    levels of the vulnerabilities in the results list.
+    """
     if not results:
         LOG.info("No oss vulnerabilities detected ✅")
         return None
-    summary = {"UNSPECIFIED": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+    summary = {
+        "UNSPECIFIED": 0,
+        "LOW": 0,
+        "MEDIUM": 0,
+        "HIGH": 0,
+        "CRITICAL": 0,
+    }
     for res in results:
         summary[res.severity] += 1
     return summary
@@ -551,8 +693,12 @@ def jsonl_report(
     scoped_pkgs,
     out_file_name,
 ):
-    """Produce vulnerability occurrence report in jsonl format
+    """
+    Produce vulnerability occurrence report in json format
 
+    :param scoped_pkgs: A dict of lists of required/optional/excluded packages.
+    :param sug_version_dict: A dict mapping package names to suggested versions.
+    :param purl_aliases: A dict mapping package names to their purl aliases.
     :param project_type: Project type
     :param results: List of vulnerabilities found
     :param pkg_aliases: Package alias
@@ -569,7 +715,10 @@ def jsonl_report(
             package_issue = data.package_issue
             full_pkg = package_issue.affected_location.package
             if package_issue.affected_location.vendor:
-                full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
+                full_pkg = (
+                    f"{package_issue.affected_location.vendor}:"
+                    f"{package_issue.affected_location.package}"
+                )
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             full_pkg_display = full_pkg
@@ -581,22 +730,22 @@ def jsonl_report(
                     if purl_obj:
                         version_used = purl_obj.get("version")
                         if purl_obj.get("namespace"):
-                            full_pkg = f"""{purl_obj.get("namespace")}/{purl_obj.get("name")}@{purl_obj.get("version")}"""
+                            full_pkg = f"""{purl_obj.get("namespace")}/
+                            {purl_obj.get("name")}@{purl_obj.get("version")}"""
                         else:
-                            full_pkg = (
-                                f"""{purl_obj.get("name")}@{purl_obj.get("version")}"""
-                            )
+                            full_pkg = f"""{purl_obj.get("name")}@{purl_obj
+                                .get("version")}"""
                 except Exception:
                     pass
             if ids_seen.get(vid + full_pkg):
                 continue
-            # On occasions, this could still result in duplicates if the package exists with and without a purl
+            # On occasions, this could still result in duplicates if the
+            # package exists with and without a purl
             ids_seen[vid + full_pkg] = True
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package
             )
             fixed_location = best_fixed_location(
-                version_used,
                 sug_version_dict.get(full_pkg),
                 package_issue.fixed_location,
             )
@@ -625,9 +774,16 @@ def jsonl_report(
 
 
 def analyse_pkg_risks(
-    project_type, scoped_pkgs, private_ns, risk_results, risk_report_file=None
+    project_type, scoped_pkgs, risk_results, risk_report_file=None
 ):
-    """Identify package risk and write to a json file"""
+    """
+    Identify package risk and write to a json file
+
+    :param project_type: Project type
+    :param scoped_pkgs: A dict of lists of required/optional/excluded packages.
+    :param risk_results: A dict of the risk metrics and scope for each package.
+    :param risk_report_file: Path to the JSON file for the risk audit findings.
+    """
     if not risk_results:
         return
     table = Table(
@@ -690,7 +846,10 @@ def analyse_pkg_risks(
                     help_text = config.risk_help_text.get(rcat)
                     # Only add texts that are available.
                     if help_text:
-                        if rcat in ("pkg_deprecated", "pkg_private_on_public_registry"):
+                        if rcat in (
+                            "pkg_deprecated",
+                            "pkg_private_on_public_registry",
+                        ):
                             risk_categories.append(f":cross_mark: {help_text}")
                         else:
                             risk_categories.append(f":warning: {help_text}")
@@ -712,7 +871,13 @@ def analyse_pkg_risks(
 
 
 def analyse_licenses(project_type, licenses_results, license_report_file=None):
-    """Analyze package licenses"""
+    """
+    Analyze package licenses
+
+    :param project_type: Project type
+    :param licenses_results: A dict with the license results for each package.
+    :param license_report_file: Output filename for the license report.
+    """
     if not licenses_results:
         return
     table = Table(
@@ -735,7 +900,9 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 conditions_str = ", ".join(lic["conditions"])
                 if "http" not in conditions_str:
                     conditions_str = (
-                        conditions_str.replace("--", " for ").replace("-", " ").title()
+                        conditions_str.replace("--", " for ")
+                        .replace("-", " ")
+                        .title()
                     )
                 data = [
                     *pkg_ver,
@@ -765,7 +932,13 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
 
 
 def suggest_version(results, pkg_aliases={}):
-    """Provide version suggestions"""
+    """
+    Provide version suggestions
+
+    :param results: List of package issue objects or dicts
+    :param pkg_aliases: Dict of package names and aliases
+    :return: Dict mapping each package to its suggested version
+    """
     pkg_fix_map = {}
     sug_map = {}
     if not pkg_aliases:
@@ -779,7 +952,10 @@ def suggest_version(results, pkg_aliases={}):
             full_pkg = package_issue.affected_location.package
             fixed_location = package_issue.fixed_location
             if package_issue.affected_location.vendor:
-                full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
+                full_pkg = (
+                    f"{package_issue.affected_location.vendor}:"
+                    f"{package_issue.affected_location.package}"
+                )
         # De-alias package names
         full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
@@ -793,8 +969,13 @@ def suggest_version(results, pkg_aliases={}):
     return sug_map
 
 
-def classify_links(id, package, package_type, version, related_urls):
-    """Method to classify and identify well-known links"""
+def classify_links(related_urls):
+    """
+    Method to classify and identify well-known links
+
+    :param related_urls: List of URLs
+    :return: Dictionary of classified links and URLs
+    """
     clinks = {}
     for rurl in related_urls:
         if "github.com" in rurl and "/pull" in rurl:

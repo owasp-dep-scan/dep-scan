@@ -2,7 +2,7 @@ import os
 import tempfile
 
 import pytest
-from vdb.lib import db as dbLib
+from vdb.lib import db as db_lib
 
 from depscan.lib.bom import get_pkg_list, parse_bom_ref, get_pkg_by_type
 from depscan.lib.utils import search_pkgs
@@ -12,7 +12,7 @@ from depscan.lib.utils import search_pkgs
 def test_db():
     with tempfile.NamedTemporaryFile(delete=False) as fp:
         with tempfile.NamedTemporaryFile(delete=False) as indexfp:
-            return dbLib.get(db_file=fp.name, index_file=indexfp.name)
+            return db_lib.get(db_file=fp.name, index_file=indexfp.name)
 
 
 def test_get_pkg():

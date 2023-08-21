@@ -31,7 +31,8 @@ COMMON_SUFFIXES = [
 
 def create_pkg_variations(pkg_dict):
     """
-    Method to create variations of the given package by considering vendor and package aliases
+    Method to create variations of the given package by considering vendor
+    and package aliases
 
     :param pkg_dict: Dict containing package vendor, name and version
     :return: List of possible variations to the package
@@ -47,7 +48,6 @@ def create_pkg_variations(pkg_dict):
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
     os_distro = None
-    os_distro_name = None
     if purl:
         try:
             purl_obj = parse_purl(purl)
@@ -61,9 +61,9 @@ def create_pkg_variations(pkg_dict):
                     os_distro = qualifiers.get("distro")
                     name_aliases.add(f"""{os_distro}/{name}""")
         except Exception:
-            tmpParts = purl.split(":")
-            if tmpParts and len(tmpParts) > 1:
-                vendor_aliases.add(tmpParts[1])
+            tmp_parts = purl.split(":")
+            if tmp_parts and len(tmp_parts) > 1:
+                vendor_aliases.add(tmp_parts[1])
     if vendor:
         vendor_aliases.add(vendor)
         vendor_aliases.add(vendor.lower())
@@ -84,7 +84,12 @@ def create_pkg_variations(pkg_dict):
     if purl.startswith("pkg:golang") and not name.startswith("go"):
         vendor_aliases.add("go")
         # Ignore third party alternatives for builtins
-        if "golang" not in vendor and name not in ["net", "crypto", "http", "text"]:
+        if "golang" not in vendor and name not in [
+            "net",
+            "crypto",
+            "http",
+            "text",
+        ]:
             vendor_aliases.add("golang")
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
@@ -124,7 +129,7 @@ def create_pkg_variations(pkg_dict):
         name_parts = name.split(".")
         vendor_aliases.add(name_parts[0])
         vendor_aliases.add(name_parts[0].lower())
-        # We dont want this to match microsoft windows
+        # We don't want this to match Microsoft Windows
         if "windows" not in name_parts[-1].lower():
             name_aliases.add(name_parts[-1])
             name_aliases.add(name_parts[-1].lower())
@@ -168,14 +173,15 @@ def create_pkg_variations(pkg_dict):
     return pkg_list
 
 
-def dealias_packages(project_type, pkg_list, pkg_aliases, purl_aliases):
-    """Method to dealias package names by looking up vendor and name information
+def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
+    """
+    Method to dealias package names by looking up vendor and name information
     in the aliases list
 
-    :param project_type: Project type
     :param pkg_list: List of packages to dealias
-    :param pkg_aliases: Package aliases
-    :param purl_aliases: Package URL aliases
+    :param pkg_aliases: A dictionary of package aliases
+    :param purl_aliases: A dictionary of package URL aliases
+    :return: Dictionary of dealiased package names and their aliases
     """
     if not pkg_aliases:
         return {}
@@ -184,7 +190,10 @@ def dealias_packages(project_type, pkg_list, pkg_aliases, purl_aliases):
         package_issue = res.package_issue
         full_pkg = package_issue.affected_location.package
         if package_issue.affected_location.vendor:
-            full_pkg = f"{package_issue.affected_location.vendor}:{package_issue.affected_location.package}"
+            full_pkg = (
+                f"{package_issue.affected_location.vendor}:"
+                f"{package_issue.affected_location.package}"
+            )
         if purl_aliases.get(full_pkg.lower()):
             dealias_dict[full_pkg] = purl_aliases.get(full_pkg.lower())
         else:
@@ -198,12 +207,13 @@ def dealias_packages(project_type, pkg_list, pkg_aliases, purl_aliases):
     return dealias_dict
 
 
-def dedup(project_type, pkg_list, pkg_aliases):
-    """Method to trim duplicates in the results based on the id. The logic should ideally be based on package alias but is kept simple for now.
+def dedup(project_type, pkg_list):
+    """Method to trim duplicates in the results based on the id. The logic
+    should ideally be based on package alias but is kept simple for now.
 
     :param project_type: Project type
     :param pkg_list: List of packages to dedup
-    :param pkg_aliases: Package aliases
+    :return: List of packages with duplicates removed
     """
     dedup_dict = {}
     ret_list = []
