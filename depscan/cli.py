@@ -18,12 +18,14 @@ from vdb.lib.osv import OSVSource
 
 from depscan.lib import privado
 from depscan.lib import utils
-from depscan.lib.analysis import (PrepareVexOptions, summary_stats,
-                                  analyse_licenses,
-                                  analyse_pkg_risks,
-                                  jsonl_report,
-                                  prepare_vex,
-                                  suggest_version,
+from depscan.lib.analysis import (
+    PrepareVexOptions,
+    summary_stats,
+    analyse_licenses,
+    analyse_pkg_risks,
+    jsonl_report,
+    prepare_vex,
+    suggest_version,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
@@ -67,8 +69,8 @@ def build_args():
     """
     parser = argparse.ArgumentParser(
         description="Fully open-source security and license audit for "
-                    "application dependencies and container images based on "
-                    "known vulnerabilities and advisories."
+        "application dependencies and container images based on "
+        "known vulnerabilities and advisories."
     )
     parser.add_argument(
         "--no-banner",
@@ -83,7 +85,7 @@ def build_args():
         default=False,
         dest="cache",
         help="Cache vulnerability information in platform specific "
-             "user_data_dir",
+        "user_data_dir",
     )
     parser.add_argument(
         "--cache-os",
@@ -91,7 +93,7 @@ def build_args():
         default=False,
         dest="cache_os",
         help="Cache OS vulnerability information in platform specific "
-             "user_data_dir",
+        "user_data_dir",
     )
     parser.add_argument(
         "--sync",
@@ -99,7 +101,7 @@ def build_args():
         default=False,
         dest="sync",
         help="Sync to receive the latest vulnerability data. Should have "
-             "invoked cache first.",
+        "invoked cache first.",
     )
     parser.add_argument(
         "--suggest",
@@ -107,7 +109,7 @@ def build_args():
         default=True,
         dest="suggest",
         help="DEPRECATED: Suggest is the default mode for determining fix "
-             "version.",
+        "version.",
     )
     parser.add_argument(
         "--risk-audit",
@@ -123,8 +125,8 @@ def build_args():
         dest="private_ns",
         default=os.getenv("PKG_PRIVATE_NAMESPACE"),
         help="Private namespace to use while performing oss risk audit. "
-             "Private packages should not be available in public registries "
-             "by default. Comma separated values accepted.",
+        "Private packages should not be available in public registries "
+        "by default. Comma separated values accepted.",
     )
     parser.add_argument(
         "-t",
@@ -137,7 +139,7 @@ def build_args():
         "--bom",
         dest="bom",
         help="Examine using the given Software Bill-of-Materials (SBoM) file "
-             "in CycloneDX format. Use cdxgen command to produce one.",
+        "in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument(
         "-i",
@@ -150,7 +152,7 @@ def build_args():
         "--report_file",
         dest="report_file",
         help="DEPRECATED. Use reports directory since multiple files are "
-             "created. Report filename with directory",
+        "created. Report filename with directory",
     )
     parser.add_argument(
         "--reports-dir",
@@ -180,7 +182,7 @@ def build_args():
         default=False,
         dest="deep_scan",
         help="Perform deep scan by passing this --deep argument to cdxgen. "
-             "Useful while scanning docker images and OS packages.",
+        "Useful while scanning docker images and OS packages.",
     )
     parser.add_argument(
         "--no-universal",
@@ -188,7 +190,7 @@ def build_args():
         default=False,
         dest="non_universal_scan",
         help="Depscan would attempt to perform a single universal scan "
-             "instead of individual scans per language type.",
+        "instead of individual scans per language type.",
     )
     parser.add_argument(
         "--no-vuln-table",
@@ -196,7 +198,7 @@ def build_args():
         default=False,
         dest="no_vuln_table",
         help="Do not print the table with the full list of vulnerabilities. "
-             "This can help reduce console output.",
+        "This can help reduce console output.",
     )
     parser.add_argument(
         "--threatdb-server",
@@ -227,8 +229,8 @@ def build_args():
         dest="privado_json",
         default=os.path.join(os.getcwd(), ".privado", "privado.json"),
         help="Optional: Enrich the VEX report with information from "
-             "privado.ai json report. cdxgen can process and include privado "
-             "info automatically so this argument is usually not required.",
+        "privado.ai json report. cdxgen can process and include privado "
+        "info automatically so this argument is usually not required.",
     )
     parser.add_argument(
         "--server",
@@ -478,8 +480,8 @@ async def run_scan():
         return {
             "error": "true",
             "message": "Vulnerability database is empty. Prepare the "
-                       "vulnerability database by invoking /cache endpoint "
-                       "before running scans.",
+            "vulnerability database by invoking /cache endpoint "
+            "before running scans.",
         }, 500
     cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
     with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
@@ -529,7 +531,7 @@ async def run_scan():
             return {
                 "error": "true",
                 "message": "Unable to generate SBoM. Check your input path or "
-                           "url.",
+                "url.",
             }, 500
 
 
@@ -661,10 +663,12 @@ def main():
                         project_type,
                         scoped_pkgs,
                         args.private_ns,
-                        pkg_list, )
+                        pkg_list,
+                    )
                     analyse_pkg_risks(
                         project_type,
-                        scoped_pkgs, risk_results,
+                        scoped_pkgs,
+                        risk_results,
                         risk_report_file,
                     )
                 except Exception as e:
