@@ -79,8 +79,6 @@ def create_pkg_variations(pkg_dict):
                 if tmpA[1] != name:
                     vendor_aliases.add(tmpA[1])
     # Add some common vendor aliases
-    if purl.startswith("pkg:composer") or purl.startswith("pkg:pypi"):
-        vendor_aliases.add(name)
     if purl.startswith("pkg:golang") and not name.startswith("go"):
         vendor_aliases.add("go")
         # Ignore third party alternatives for builtins
@@ -163,6 +161,9 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add("lib" + name)
         if "-bin" not in name:
             name_aliases.add(name + "-bin")
+    else:
+        # Filter vendor aliases that are also name aliases
+        vendor_aliases = [x for x in vendor_aliases if x not in name_aliases]
     if len(vendor_aliases) > 0:
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
