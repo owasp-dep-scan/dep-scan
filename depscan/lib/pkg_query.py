@@ -9,6 +9,14 @@ from depscan.lib.logger import LOG, console
 
 
 def get_lookup_url(registry_type, pkg):
+    """
+    Generating the lookup URL based on the registry type and package
+    information.
+
+    :param registry_type: The type of registry ("npm" or "pypi")
+    :param pkg: Dict or string of package information
+    :returns: Package name, lookup URL
+    """
     vendor = None
     if isinstance(pkg, dict):
         vendor = pkg.get("vendor")
@@ -32,16 +40,20 @@ def get_lookup_url(registry_type, pkg):
     return None, None
 
 
-def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None):
+def metadata_from_registry(
+    registry_type, scoped_pkgs, pkg_list, private_ns=None
+):
     """
     Method to query registry for the package metadata
 
-    :param scoped_pkgs: Scoped packages
-    :param pkg_list: List of packages
+    :param registry_type: The type of registry to query
+    :param scoped_pkgs: Dictionary of lists of packages per scope
+    :param pkg_list: List of package dictionaries
     :param private_ns: Private namespace
+    :return:  A dict of package metadata, risk metrics, and private package
+    flag for each package
     """
     metadata_dict = {}
-    task = None
     # Circuit breaker flag to break the risk audit in case of many api errors
     circuit_breaker = False
     # Track the api failures count
@@ -54,13 +66,13 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
         redirect_stdout=False,
         refresh_per_second=1,
     ) as progress:
-        task = progress.add_task(
-            "[green] Auditing packages", total=len(pkg_list), start=True
-        )
+        task = progress.add_task("[green] Auditing packages",
+                                 total=len(pkg_list))
         for pkg in pkg_list:
             if circuit_breaker:
                 LOG.info(
-                    "Risk audited has been interrupted due to frequent api errors. Please try again later."
+                    "Risk audited has been interrupted due to frequent api "
+                    "errors. Please try again later."
                 )
                 progress.stop()
                 return {}
@@ -87,14 +99,16 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 if private_ns:
                     namespace_prefixes = private_ns.split(",")
                     for ns in namespace_prefixes:
-                        if key.lower().startswith(ns.lower()) or key.lower().startswith(
-                            "@" + ns.lower()
-                        ):
+                        if key.lower().startswith(
+                            ns.lower()
+                        ) or key.lower().startswith("@" + ns.lower()):
                             is_private_pkg = True
                             break
                 risk_metrics = {}
                 if registry_type == "npm":
-                    risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = npm_pkg_risk(
+                        json_data, is_private_pkg, scope
+                    )
                 elif registry_type == "pypi":
                     project_type_pkg = f"python:{key}".lower()
                     required_pkgs = scoped_pkgs.get("required", [])
@@ -106,7 +120,9 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                         scope = "optional"
                     elif project_type_pkg in excluded_pkgs:
                         scope = "excluded"
-                    risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = pypi_pkg_risk(
+                        json_data, is_private_pkg, scope
+                    )
                 metadata_dict[key] = {
                     "scope": scope,
                     "pkg_metadata": json_data,
@@ -115,9 +131,9 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 }
             except Exception as e:
                 LOG.debug(e)
-                failure_count = failure_count + 1
+                failure_count += 1
             progress.advance(task)
-            done_count = done_count + 1
+            done_count += 1
             if failure_count >= config.max_request_failures:
                 circuit_breaker = True
     LOG.debug(
@@ -133,8 +149,11 @@ def npm_metadata(scoped_pkgs, pkg_list, private_ns=None):
     """
     Method to query npm for the package metadata
 
-    :param pkg_list: List of packages
+    :param scoped_pkgs: Dictionary of lists of packages per scope
+    :param pkg_list: List of package dictionaries
     :param private_ns: Private namespace
+    :return: A dict of package metadata, risk metrics, and private package
+    flag for each package
     """
     return metadata_from_registry("npm", scoped_pkgs, pkg_list, private_ns)
 
@@ -143,8 +162,11 @@ def pypi_metadata(scoped_pkgs, pkg_list, private_ns=None):
     """
     Method to query pypi for the package metadata
 
-    :param pkg_list: List of packages
+    :param scoped_pkgs: Dictionary of lists of packages per scope
+    :param pkg_list: List of package dictionaries
     :param private_ns: Private namespace
+    :return: A dict of package metadata, risk metrics, and private package
+    flag for each package
     """
     return metadata_from_registry("pypi", scoped_pkgs, pkg_list, private_ns)
 
@@ -153,10 +175,14 @@ def get_category_score(
     param, max_value=config.default_max_value, weight=config.default_weight
 ):
     """
-    Return paramater score given its current value, max value and
+    Return parameter score given its current value, max value and
     parameter weight.
+
+    :param param: The current value of the parameter
+    :param max_value: The maximum value of the parameter
+    :param weight: The weight of the parameter
+    :return: The calculated score as a float value
     """
-    # Convert all parameters to float.
     try:
         param = float(param)
     except ValueError:
@@ -174,10 +200,12 @@ def get_category_score(
 
 def calculate_risk_score(risk_metrics):
     """
-    Method to calculate a total risk score based on risk metrics.
-    This is based on a weighted formula and might require customization based on use cases
+    Method to calculate a total risk score based on risk metrics. This is
+    based on a weighted formula and might require customization based on use
+    cases
 
     :param risk_metrics: Dict containing many risk metrics
+    :return: The calculated total risk score
     """
     if not risk_metrics:
         return 0
@@ -222,8 +250,21 @@ def calculate_risk_score(risk_metrics):
 def compute_time_risks(
     risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
 ):
-    """Compute risks based on creation, modified and time elapsed"""
-    # Check if the package is atleast 1 year old. Quarantine period.
+    """
+    Compute risks based on creation, modified and time elapsed
+
+    :param risk_metrics: A dict containing the risk metrics for the package.
+    :param created_now_diff: Time difference from creation of the package and
+    the current time.
+    :param mod_create_diff: Time difference from
+    modification and creation of the package.
+    :param latest_now_diff: Time difference between the latest version of the
+    package and the current
+    time.
+    :return: The updated risk metrics dictionary with the calculated
+    risks and values.
+    """
+    # Check if the package is at least 1 year old. Quarantine period.
     if created_now_diff.total_seconds() < config.created_now_quarantine_seconds:
         risk_metrics["created_now_quarantine_seconds_risk"] = True
         risk_metrics[
@@ -233,13 +274,17 @@ def compute_time_risks(
     # Check for the maximum seconds difference between latest version and now
     if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
         risk_metrics["latest_now_max_seconds_risk"] = True
-        risk_metrics["latest_now_max_seconds_value"] = latest_now_diff.total_seconds()
+        risk_metrics[
+            "latest_now_max_seconds_value"
+        ] = latest_now_diff.total_seconds()
         # Since the package is quite old we can relax the min versions risk
         risk_metrics["pkg_min_versions_risk"] = False
     else:
-        # Check for the minimum seconds difference between creation and modified date
-        # This check catches several old npm packages that was created and immediately updated within a day
-        # To reduce noise we check for the age first and perform this check only for newish packages
+        # Check for the minimum seconds difference between creation and
+        # modified date This check catches several old npm packages that was
+        # created and immediately updated within a day To reduce noise we
+        # check for the age first and perform this check only for newish
+        # packages
         if mod_create_diff.total_seconds() < config.mod_create_min_seconds:
             risk_metrics["mod_create_min_seconds_risk"] = True
             risk_metrics[
@@ -248,7 +293,9 @@ def compute_time_risks(
     # Check for the minimum seconds difference between latest version and now
     if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
         risk_metrics["latest_now_min_seconds_risk"] = True
-        risk_metrics["latest_now_min_seconds_value"] = latest_now_diff.total_seconds()
+        risk_metrics[
+            "latest_now_min_seconds_value"
+        ] = latest_now_diff.total_seconds()
     return risk_metrics
 
 
@@ -256,9 +303,10 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     """
     Calculate various package risks based on the metadata from pypi.
 
-    :param pkg_list: List of packages
+    :param pkg_metadata: A dict containing the metadata of the package from PyPI
     :param is_private_pkg: Boolean to indicate if this package is private
     :param scope: Package scope
+    :return: Dict of risk metrics and corresponding PyPI values.
     """
     risk_metrics = {
         "pkg_deprecated_risk": False,
@@ -282,7 +330,7 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
         risk_metrics["pkg_private_on_public_registry_risk"] = True
         risk_metrics["pkg_private_on_public_registry_value"] = 1
 
-    # If the package has few than minimum number of versions
+    # If the package has fewer than minimum number of versions
     if len(versions):
         if len(versions) < config.pkg_min_versions:
             risk_metrics["pkg_min_versions_risk"] = True
@@ -322,13 +370,15 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
 
 def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     """
-    Calculate various npm package risks based on the metadata from npm.
-    The keys in the risk_metrics dict is based on the parameters specified in config.py and has a _risk suffix.
-    Eg: config.pkg_min_versions would result in a boolean pkg_min_versions_risk and pkg_min_versions_value
+    Calculate various npm package risks based on the metadata from npm. The
+    keys in the risk_metrics dict is based on the parameters specified in
+    config.py and has a _risk suffix. Eg: config.pkg_min_versions would
+    result in a boolean pkg_min_versions_risk and pkg_min_versions_value
 
-    :param pkg_list: List of packages
+    :param pkg_metadata: A dict containing the metadata of the npm package.
     :param is_private_pkg: Boolean to indicate if this package is private
     :param scope: Package scope
+    :return: A dict containing the calculated risks and score.
     """
     # Some default values to ensure the structure is non-empty
     risk_metrics = {
@@ -356,8 +406,9 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
         risk_metrics["pkg_deprecated_risk"] = True
         risk_metrics["pkg_deprecated_value"] = 1
     scripts_block_list = []
-    # There are some packages on npm with incorrectly configured scripts block
-    # Good news is that the install portion would only for if the scripts block is an object/dict
+    # There are some packages on npm with incorrectly configured scripts
+    # block Good news is that the install portion would only for if the
+    # scripts block is an object/dict
     if isinstance(scripts_block_dict, dict):
         scripts_block_list = [
             block
@@ -365,7 +416,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
             if "preinstall" in block or "postinstall" in block
         ]
 
-    # If the package has few than minimum number of versions
+    # If the package has fewer than minimum number of versions
     if len(versions) < config.pkg_min_versions:
         risk_metrics["pkg_min_versions_risk"] = True
         risk_metrics["pkg_min_versions_value"] = len(versions)
@@ -389,14 +440,16 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
             risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
         )
 
-    # Maintainers count related risk. Ignore packages that are past quarantine period
+    # Maintainers count related risk. Ignore packages that are past
+    # quarantine period
     maintainers = pkg_metadata.get("maintainers", [])
     if len(maintainers) < config.pkg_min_maintainers and risk_metrics.get(
         "created_now_quarantine_seconds_risk"
     ):
         risk_metrics["pkg_min_maintainers_risk"] = True
         risk_metrics["pkg_min_maintainers_value"] = len(maintainers)
-        # Check for install scripts risk only for those packages with maintainers risk
+        # Check for install scripts risk only for those packages with
+        # maintainers risk
         if scripts_block_list:
             risk_metrics["pkg_install_scripts_risk"] = True
             risk_metrics["pkg_install_scripts_value"] = len(scripts_block_list)
@@ -410,8 +463,8 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     ):
         risk_metrics["pkg_min_users_risk"] = True
         risk_metrics["pkg_min_users_value"] = len(users)
-    # Node engine version
-    # There are packages with incorrect node engine specification which we can ignore for now
+    # Node engine version There are packages with incorrect node engine
+    # specification which we can ignore for now
     if (
         engines_block_dict
         and isinstance(engines_block_dict, dict)

@@ -3,18 +3,19 @@ import os
 import re
 from collections import defaultdict
 
-from vdb.lib import db as dbLib
+from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 
 from depscan.lib import config
 from depscan.lib import normalize
 
-lic_symbol_regex = re.compile(r"[\(\)\,]")
+lic_symbol_regex = re.compile(r"[(),]")
 
 
 def filter_ignored_dirs(dirs):
     """
     Method to filter directory list to remove ignored directories
+
     :param dirs: Directories to ignore
     :return: Filtered directory list
     """
@@ -30,10 +31,8 @@ def find_python_reqfiles(path):
     """
     Method to find python requirements files
 
-    Args:
-      path Project dir
-    Returns:
-      List of python requirement files
+    :param path: Project directory
+    :return: List of python requirement files
     """
     result = []
     req_files = [
@@ -54,7 +53,12 @@ def find_python_reqfiles(path):
 
 def find_files(src, src_ext_name, quick=False, filter=True):
     """
-    Method to find files with given extenstion
+    Method to find files with given extension
+
+    :param src: source directory to search
+    :param src_ext_name: type of source file
+    :param quick: only return first match found
+    :param filter: filter out ignored directories
     """
     result = []
     for root, dirs, files in os.walk(src):
@@ -72,12 +76,16 @@ def is_binary_string(content):
     """
     Method to check if the given content is a binary string
     """
-    textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+    textchars = bytearray(
+        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F}
+    )
     return bool(content.translate(None, textchars))
 
 
 def is_exe(src):
-    """Detect if the source is a binary file
+    """
+    Detect if the source is a binary file
+
     :param src: Source path
     :return True if binary file. False otherwise.
     """
@@ -93,7 +101,6 @@ def detect_project_type(src_dir):
     """Detect project type by looking for certain files
 
     :param src_dir: Source directory
-
     :return List of detected types
     """
     # container image support
@@ -157,7 +164,10 @@ def detect_project_type(src_dir):
     if find_files(src_dir, "mix.lock", quick=True):
         project_types.append("elixir")
     if find_files(
-        os.path.join(src_dir, ".github", "workflows"), ".yml", quick=True, filter=False
+        os.path.join(src_dir, ".github", "workflows"),
+        ".yml",
+        quick=True,
+        filter=False,
     ):
         project_types.append("github")
     # jars
@@ -175,8 +185,12 @@ def detect_project_type(src_dir):
 
 def get_pkg_vendor_name(pkg):
     """
-    Method to extract vendor and name information from package. If vendor information is not available
-    package url is used to extract the package registry provider such as pypi, maven
+    Method to extract vendor and name information from package. If vendor
+    information is not available package url is used to extract the package
+    registry provider such as pypi, maven
+
+    :param pkg: a dictionary representing a package
+    :return: vendor and name as a tuple
     """
     vendor = pkg.get("vendor")
     if not vendor:
@@ -198,10 +212,13 @@ def search_pkgs(db, project_type, pkg_list):
     :param db: DB instance
     :param project_type: Project type
     :param pkg_list: List of packages to search
+    :returns: raw_results, pkg_aliases, purl_aliases
     """
     expanded_list = []
-    # The challenge we have is to broaden our search and create several variations of the package and vendor names to perform a broad search.
-    # We then have to map the results back to the original package names and package urls.
+    # The challenge we have is to broaden our search and create several
+    # variations of the package and vendor names to perform a broad search.
+    # We then have to map the results back to the original package names and
+    # package urls.
     pkg_aliases = defaultdict(list)
     purl_aliases = {}
     for pkg in pkg_list:
@@ -211,29 +228,38 @@ def search_pkgs(db, project_type, pkg_list):
         vendor, name = get_pkg_vendor_name(pkg)
         version = pkg.get("version")
         purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
-        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
+        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get(
+            "purl"
+        )
         if variations:
             for vari in variations:
                 vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
-                pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
+                pkg_aliases[vendor.lower() + ":" + name.lower()].append(
+                    vari_full_pkg
+                )
                 purl_aliases[f"{vari_full_pkg.lower()}"] = pkg.get("purl")
-                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
-    quick_res = dbLib.bulk_index_search(expanded_list)
-    raw_results = dbLib.pkg_bulk_search(db, quick_res)
-    raw_results = normalize.dedup(project_type, raw_results, pkg_aliases=pkg_aliases)
+                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get(
+                    "purl"
+                )
+    quick_res = db_lib.bulk_index_search(expanded_list)
+    raw_results = db_lib.pkg_bulk_search(db, quick_res)
+    raw_results = normalize.dedup(project_type, raw_results)
     pkg_aliases = normalize.dealias_packages(
-        project_type, raw_results, pkg_aliases=pkg_aliases, purl_aliases=purl_aliases
+        raw_results,
+        pkg_aliases=pkg_aliases,
+        purl_aliases=purl_aliases,
     )
     return raw_results, pkg_aliases, purl_aliases
 
 
 def get_pkgs_by_scope(project_type, pkg_list):
     """
-    Method to return the packages by scope as defined in CycloneDX spec - required, optional and excluded
+    Method to return the packages by scope as defined in CycloneDX spec -
+    required, optional and excluded
 
-    :param project_type: Project type
     :param pkg_list: List of packages
-    :return: Dictionary of packages categorized by scope if available. Empty if no scope information is available
+    :return: Dictionary of packages categorized by scope if available. Empty if
+                no scope information is available
     """
     scoped_pkgs = {}
     for pkg in pkg_list:
@@ -247,13 +273,14 @@ def get_pkgs_by_scope(project_type, pkg_list):
 
 def get_scope_from_imports(project_type, pkg_list, all_imports):
     """
-    Method to compute the packages scope as defined in CycloneDX spec - required, optional and excluded
+    Method to compute the packages scope defined in CycloneDX spec - required,
+    optional and excluded
 
     :param project_type: Project type
     :param pkg_list: List of packages
     :param all_imports: List of imports detected
-
-    :return: Dictionary of packages categorized by scope if available. Empty if no scope information is available
+    :return: Dictionary of packages categorized by scope if available. Empty if
+                no scope information is available
     """
     scoped_pkgs = {}
     if not pkg_list or not all_imports:
@@ -270,7 +297,9 @@ def get_scope_from_imports(project_type, pkg_list, all_imports):
 
 def cleanup_license_string(license_str):
     """
-    Method to cleanup license string by removing problematic symbols and making certain keywords consistent
+    Method to clean up license string by removing problematic symbols and
+    making certain keywords consistent
+
     :param license_str: String to clean up
     :return: Cleaned up version
     """
@@ -287,7 +316,12 @@ def cleanup_license_string(license_str):
 
 
 def max_version(version_list):
-    """Method to return the highest version from the list"""
+    """
+    Method to return the highest version from the list
+
+    :param version_list: single version string or set of versions
+    :return: max version
+    """
     if isinstance(version_list, str):
         return version_list
     if isinstance(version_list, set):
@@ -305,11 +339,12 @@ def max_version(version_list):
 
 
 def get_all_imports(src_dir):
-    """Method to collect all package imports from a python file
+    """
+    Method to collect all package imports from a python file
     No longer required since cdxgen does python analysis already
     """
     import_list = set()
-    py_files = find_files(src_dir, ".py", quick=False)
+    py_files = find_files(src_dir, ".py")
     if not py_files:
         return import_list
     for afile in py_files:

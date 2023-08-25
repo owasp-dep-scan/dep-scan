@@ -4,6 +4,11 @@ from os.path import dirname, exists, join
 
 
 def resource_path(relative_path):
+    """
+
+    :param relative_path:
+    :return:
+    """
     try:
         base_path = sys._MEIPASS
     except Exception:
@@ -253,6 +258,15 @@ LINUX_DISTRO_WITH_EDITIONS = (
 
 
 def get_float_from_env(name, default):
+    """
+    Retrieves a value from an environment variable and converts it to a
+    float. If the value cannot be converted to a float, it returns the
+    default value provided.
+
+    :param name:
+    :param default:
+    :return:
+    """
     value = os.getenv(name.upper(), default)
     try:
         value = float(value)
@@ -262,6 +276,14 @@ def get_float_from_env(name, default):
 
 
 def get_int_from_env(name, default):
+    """
+    Retrieves a value from an environment variable and converts it to an
+    integer. If the value cannot be converted to an integer, it returns the
+    default value provided.
+
+    :param name:
+    :param default:
+    """
     return int(get_float_from_env(name, default))
 
 
@@ -270,8 +292,9 @@ npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
 
 pypi_server = "https://pypi.org/pypi"
 
-# Package risk scoring using a simple weighted formula with no backing research
-# All parameters and their max value and weight can be overridden using environment variables
+# Package risk scoring using a simple weighted formula with no backing
+# research All parameters and their max value and weight can be overridden
+# using environment variables
 
 # Some constants and defaults
 seconds_in_day = 24 * 60 * 60
@@ -291,7 +314,9 @@ mod_create_min_seconds = get_float_from_env(
 mod_create_min_seconds_max = get_float_from_env(
     "mod_create_min_seconds_max", 1000 * seconds_in_day
 )
-mod_create_min_seconds_weight = get_float_from_env("mod_create_min_seconds_weight", 1)
+mod_create_min_seconds_weight = get_float_from_env(
+    "mod_create_min_seconds_weight", 1
+)
 
 # At least 12 hours difference between the latest version and the current time
 latest_now_min_seconds = get_float_from_env(
@@ -300,10 +325,12 @@ latest_now_min_seconds = get_float_from_env(
 latest_now_min_seconds_max = get_float_from_env(
     "latest_now_min_seconds_max", 1000 * seconds_in_day
 )
-latest_now_min_seconds_weight = get_float_from_env("latest_now_min_seconds_weight", 0.5)
+latest_now_min_seconds_weight = get_float_from_env(
+    "latest_now_min_seconds_weight", 0.5
+)
 
-# Time period after which certain risks can be considered safe. Quarantine period
-# For eg: Packages that are over 1 year old
+# Time period after which certain risks can be considered safe. Quarantine
+# period For eg: Packages that are over 1 year old
 created_now_quarantine_seconds = get_float_from_env(
     "created_now_quarantine_seconds", 365 * seconds_in_day
 )
@@ -321,7 +348,9 @@ latest_now_max_seconds = get_float_from_env(
 latest_now_max_seconds_max = get_float_from_env(
     "latest_now_max_seconds_max", 6 * 365 * seconds_in_day
 )
-latest_now_max_seconds_weight = get_float_from_env("latest_now_max_seconds_weight", 0.5)
+latest_now_max_seconds_weight = get_float_from_env(
+    "latest_now_max_seconds_weight", 0.5
+)
 
 # Package should have at least 2 maintainers
 pkg_min_maintainers = get_float_from_env("pkg_min_maintainers", 2)
