@@ -243,7 +243,7 @@ def search_pkgs(db, project_type, pkg_list):
     return raw_results, pkg_aliases, purl_aliases
 
 
-def get_pkgs_by_scope(project_type, pkg_list):
+def get_pkgs_by_scope(pkg_list):
     """
     Method to return the packages by scope as defined in CycloneDX spec -
     required, optional and excluded

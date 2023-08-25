@@ -48,11 +48,10 @@ def test_get_pkg_vendor_name():
 
 
 def test_get_pkgs_by_scope():
-    scoped_pkgs = utils.get_pkgs_by_scope("js", [{"vendor": "angular", "name": "cdk"}])
+    scoped_pkgs = utils.get_pkgs_by_scope([{"vendor": "angular", "name": "cdk"}])
     assert not scoped_pkgs
 
     scoped_pkgs = utils.get_pkgs_by_scope(
-        "js",
         [
             {"vendor": "angular", "name": "cdk"},
             {
@@ -66,7 +65,6 @@ def test_get_pkgs_by_scope():
     assert scoped_pkgs == {"required": ["npm:parse5"]}
 
     scoped_pkgs = utils.get_pkgs_by_scope(
-        "js",
         [
             {"vendor": "angular", "name": "cdk"},
             {
