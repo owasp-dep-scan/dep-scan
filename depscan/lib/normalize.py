@@ -91,7 +91,7 @@ def create_pkg_variations(pkg_dict):
             vendor_aliases.add("golang")
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
-        if not purl.startswith("pkg:golang"):
+        if purl.startswith("pkg:composer"):
             vendor_aliases.add("get" + name)
             vendor_aliases.add(name + "_project")
         for k, v in config.vendor_alias.items():
