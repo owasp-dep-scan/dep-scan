@@ -3,14 +3,14 @@ import os
 
 import pytest
 
-from depscan.lib.bom import get_pkg_list
 from depscan.lib import config as config
+from depscan.lib.bom import get_pkg_list
 from depscan.lib.pkg_query import (
-    npm_metadata,
-    pypi_metadata,
-    get_category_score,
     calculate_risk_score,
+    get_category_score,
+    npm_metadata,
     npm_pkg_risk,
+    pypi_metadata,
     pypi_pkg_risk,
 )
 

@@ -4,7 +4,7 @@ import tempfile
 import pytest
 from vdb.lib import db as db_lib
 
-from depscan.lib.bom import get_pkg_list, parse_bom_ref, get_pkg_by_type
+from depscan.lib.bom import get_pkg_by_type, get_pkg_list, parse_bom_ref
 from depscan.lib.utils import search_pkgs
 
 

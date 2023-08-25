@@ -2,9 +2,9 @@ import os
 
 import pytest
 
+from depscan.lib import analysis
 from depscan.lib.bom import get_pkg_list
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib import analysis
 
 
 @pytest.fixture

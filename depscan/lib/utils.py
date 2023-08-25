@@ -6,8 +6,7 @@ from collections import defaultdict
 from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 
-from depscan.lib import config
-from depscan.lib import normalize
+from depscan.lib import config, normalize
 
 lic_symbol_regex = re.compile(r"[(),]")
 
@@ -76,9 +75,7 @@ def is_binary_string(content):
     """
     Method to check if the given content is a binary string
     """
-    textchars = bytearray(
-        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F}
-    )
+    textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
     return bool(content.translate(None, textchars))
 
 
@@ -228,19 +225,13 @@ def search_pkgs(db, project_type, pkg_list):
         vendor, name = get_pkg_vendor_name(pkg)
         version = pkg.get("version")
         purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
-        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get(
-            "purl"
-        )
+        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
         if variations:
             for vari in variations:
                 vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
-                pkg_aliases[vendor.lower() + ":" + name.lower()].append(
-                    vari_full_pkg
-                )
+                pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
                 purl_aliases[f"{vari_full_pkg.lower()}"] = pkg.get("purl")
-                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get(
-                    "purl"
-                )
+                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
     quick_res = db_lib.bulk_index_search(expanded_list)
     raw_results = db_lib.pkg_bulk_search(db, quick_res)
     raw_results = normalize.dedup(project_type, raw_results)

@@ -16,29 +16,19 @@ from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 
-from depscan.lib import privado
-from depscan.lib import utils
+from depscan.lib import privado, utils
 from depscan.lib.analysis import (
     PrepareVexOptions,
-    summary_stats,
     analyse_licenses,
     analyse_pkg_risks,
     jsonl_report,
     prepare_vex,
     suggest_version,
+    summary_stats,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
-from depscan.lib.bom import (
-    create_bom,
-    get_pkg_by_type,
-    get_pkg_list,
-    submit_bom,
-)
-from depscan.lib.config import (
-    UNIVERSAL_SCAN_TYPE,
-    license_data_dir,
-    spdx_license_list,
-)
+from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
+from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
 
@@ -84,16 +74,14 @@ def build_args():
         action="store_true",
         default=False,
         dest="cache",
-        help="Cache vulnerability information in platform specific "
-        "user_data_dir",
+        help="Cache vulnerability information in platform specific " "user_data_dir",
     )
     parser.add_argument(
         "--cache-os",
         action="store_true",
         default=False,
         dest="cache_os",
-        help="Cache OS vulnerability information in platform specific "
-        "user_data_dir",
+        help="Cache OS vulnerability information in platform specific " "user_data_dir",
     )
     parser.add_argument(
         "--sync",
@@ -108,15 +96,12 @@ def build_args():
         action="store_true",
         default=True,
         dest="suggest",
-        help="DEPRECATED: Suggest is the default mode for determining fix "
-        "version.",
+        help="DEPRECATED: Suggest is the default mode for determining fix " "version.",
     )
     parser.add_argument(
         "--risk-audit",
         action="store_true",
-        default=True
-        if os.getenv("ENABLE_OSS_RISK", "") in ["true", "1"]
-        else False,
+        default=True if os.getenv("ENABLE_OSS_RISK", "") in ["true", "1"] else False,
         dest="risk_audit",
         help="Perform package risk audit (slow operation). Npm only.",
     )
@@ -156,9 +141,7 @@ def build_args():
     )
     parser.add_argument(
         "--reports-dir",
-        default=os.getenv(
-            "DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")
-        ),
+        default=os.getenv("DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")),
         dest="reports_dir",
         help="Reports directory",
     )
@@ -278,9 +261,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
         LOG.debug("Empty package search attempted!")
     else:
         LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-    results, pkg_aliases, purl_aliases = utils.search_pkgs(
-        db, project_type, pkg_list
-    )
+    results, pkg_aliases, purl_aliases = utils.search_pkgs(db, project_type, pkg_list)
     # pkg_aliases is a dict that can be used to find the original vendor and
     # package name This way we consistently use the same names used by the
     # caller irrespective of how the result was obtained
@@ -317,9 +298,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
                 "Re-checking our suggestion to ensure there are no further "
                 "vulnerabilities"
             )
-            override_results, _, _ = utils.search_pkgs(
-                db, project_type, sug_pkg_list
-            )
+            override_results, _, _ = utils.search_pkgs(db, project_type, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
                 LOG.debug("Received override results: %s", new_sug_dict)
@@ -530,8 +509,7 @@ async def run_scan():
         else:
             return {
                 "error": "true",
-                "message": "Unable to generate SBoM. Check your input path or "
-                "url.",
+                "message": "Unable to generate SBoM. Check your input path or " "url.",
             }, 500
 
 
@@ -542,9 +520,7 @@ def run_server(args):
     :param args: Command line arguments passed to the function.
     """
     print(at_logo)
-    console.print(
-        f"Depscan server running on {args.server_host}:{args.server_port}"
-    )
+    console.print(f"Depscan server running on {args.server_host}:{args.server_port}")
     app.config["CDXGEN_SERVER_URL"] = args.cdxgen_server
     app.run(
         host=args.server_host,
@@ -605,9 +581,7 @@ def main():
     for project_type in project_types_list:
         results = []
         report_file = areport_file.replace(".json", f"-{project_type}.json")
-        risk_report_file = areport_file.replace(
-            ".json", f"-risk.{project_type}.json"
-        )
+        risk_report_file = areport_file.replace(".json", f"-risk.{project_type}.json")
         LOG.info("=" * 80)
         if args.bom and os.path.exists(args.bom):
             bom_file = args.bom
@@ -644,9 +618,7 @@ def main():
             license_report_file = os.path.join(
                 reports_dir, "license-" + project_type + ".json"
             )
-            analyse_licenses(
-                project_type, licenses_results, license_report_file
-            )
+            analyse_licenses(project_type, licenses_results, license_report_file)
         if project_type in risk_audit_map:
             if args.risk_audit:
                 console.print(
@@ -694,9 +666,7 @@ def main():
             try:
                 audit_results = audit(project_type, pkg_list)
                 if audit_results:
-                    LOG.debug(
-                        "Remote audit yielded %d results", len(audit_results)
-                    )
+                    LOG.debug("Remote audit yielded %d results", len(audit_results))
                     results = results + audit_results
             except Exception as e:
                 LOG.error("Remote audit was not successful")
@@ -722,9 +692,7 @@ def main():
         if not db_lib.index_count(db["index_file"]):
             run_cacher = True
         else:
-            LOG.debug(
-                "Vulnerability database loaded from %s", config.vdb_bin_file
-            )
+            LOG.debug("Vulnerability database loaded from %s", config.vdb_bin_file)
         sources_list = [OSVSource(), NvdSource()]
         if os.environ.get("GITHUB_TOKEN"):
             sources_list.insert(0, GitHubSource())

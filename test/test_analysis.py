@@ -403,9 +403,7 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.bouncycastle/bcpkix-jdk15on@1.65?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.bouncycastle/bcprov-jdk15on@1.65?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.bouncycastle/bcprov-jdk15on@1.65?type=jar"],
         },
         {
             "ref": "pkg:maven/com.sun.activation/jakarta.activation@1.2.2?type=jar",
@@ -510,9 +508,7 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.junit.platform/junit-platform-commons@1.5.2?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.apiguardian/apiguardian-api@1.1.0?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.apiguardian/apiguardian-api@1.1.0?type=jar"],
         },
         {
             "ref": "pkg:maven/org.junit.jupiter/junit-jupiter-params@5.5.2?type=jar",
@@ -642,11 +638,9 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/org.springframework.boot/spring-boot-starter@2.2.6.RELEASE?type=jar",
         "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
-        "",
-        "org.yaml/snakeyaml",
-        test_bom_dependency_tree,
-    )[0] == [
+    assert analysis.pkg_sub_tree("", "org.yaml/snakeyaml", test_bom_dependency_tree,)[
+        0
+    ] == [
         "pkg:maven/org.springframework.boot/spring-boot-starter@2.2.6.RELEASE?type=jar",
         "pkg:maven/org.yaml/snakeyaml@1.25?type=jar",
     ]
@@ -668,8 +662,6 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/com.jayway.jsonpath/json-path@2.4.0?type=jar",
         "pkg:maven/net.minidev/json-smart@2.3?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
-        "pkg:npm/engine.io@6.2.1",
-        "",
-        test_js_deps_data,
-    )[0] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]
+    assert analysis.pkg_sub_tree("pkg:npm/engine.io@6.2.1", "", test_js_deps_data,)[
+        0
+    ] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]

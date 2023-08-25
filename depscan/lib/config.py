@@ -314,9 +314,7 @@ mod_create_min_seconds = get_float_from_env(
 mod_create_min_seconds_max = get_float_from_env(
     "mod_create_min_seconds_max", 1000 * seconds_in_day
 )
-mod_create_min_seconds_weight = get_float_from_env(
-    "mod_create_min_seconds_weight", 1
-)
+mod_create_min_seconds_weight = get_float_from_env("mod_create_min_seconds_weight", 1)
 
 # At least 12 hours difference between the latest version and the current time
 latest_now_min_seconds = get_float_from_env(
@@ -325,9 +323,7 @@ latest_now_min_seconds = get_float_from_env(
 latest_now_min_seconds_max = get_float_from_env(
     "latest_now_min_seconds_max", 1000 * seconds_in_day
 )
-latest_now_min_seconds_weight = get_float_from_env(
-    "latest_now_min_seconds_weight", 0.5
-)
+latest_now_min_seconds_weight = get_float_from_env("latest_now_min_seconds_weight", 0.5)
 
 # Time period after which certain risks can be considered safe. Quarantine
 # period For eg: Packages that are over 1 year old
@@ -348,9 +344,7 @@ latest_now_max_seconds = get_float_from_env(
 latest_now_max_seconds_max = get_float_from_env(
     "latest_now_max_seconds_max", 6 * 365 * seconds_in_day
 )
-latest_now_max_seconds_weight = get_float_from_env(
-    "latest_now_max_seconds_weight", 0.5
-)
+latest_now_max_seconds_weight = get_float_from_env("latest_now_max_seconds_weight", 0.5)
 
 # Package should have at least 2 maintainers
 pkg_min_maintainers = get_float_from_env("pkg_min_maintainers", 2)

@@ -1,15 +1,13 @@
-from dataclasses import dataclass
-from typing import Dict, List, Optional
-# -*- coding: utf-8 -*-
-
 import json
 from collections import defaultdict
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 from rich import box
 from rich.panel import Panel
+from rich.style import Style
 from rich.table import Table
 from rich.tree import Tree
-from rich.style import Style
 from vdb.lib import CPE_FULL_REGEX
 from vdb.lib.config import placeholder_fix_version
 from vdb.lib.utils import parse_purl
@@ -17,6 +15,9 @@ from vdb.lib.utils import parse_purl
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
+
+# -*- coding: utf-8 -*-
+
 
 NEWLINE = "\\n"
 
@@ -59,9 +60,7 @@ def distro_package(package_issue):
     :return: bool
     """
     if package_issue:
-        all_parts = CPE_FULL_REGEX.match(
-            package_issue.affected_location.cpe_uri
-        )
+        all_parts = CPE_FULL_REGEX.match(package_issue.affected_location.cpe_uri)
         if (
             all_parts
             and all_parts.group("vendor")
@@ -102,9 +101,7 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
     :return: Constructed display string
     """
     full_pkg_display = current_pkg
-    highlightable = tree_pkg and (
-        tree_pkg == current_pkg or tree_pkg in current_pkg
-    )
+    highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
     if tree_pkg:
         try:
             purl_obj = parse_purl(current_pkg)
@@ -155,9 +152,7 @@ def pkg_sub_tree(
     if not bom_dependency_tree:
         return [purl], Tree(
             get_pkg_display(purl, purl, extra_text=extra_text),
-            style=Style(
-                color="bright_red" if pkg_severity == "CRITICAL" else None
-            ),
+            style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
         )
     if len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
@@ -333,9 +328,9 @@ def prepare_vex(options: PrepareVexOptions):
         )
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
-        elif (
-            not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
-        ) or (full_pkg in optional_pkgs or project_type_pkg in optional_pkgs):
+        elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
+            full_pkg in optional_pkgs or project_type_pkg in optional_pkgs
+        ):
             if package_type in config.OS_PKG_TYPES:
                 package_usage = (
                     "[spring_green4]:notebook: Local install[/spring_green4]"
@@ -343,8 +338,7 @@ def prepare_vex(options: PrepareVexOptions):
                 has_os_packages = True
             else:
                 package_usage = (
-                    "[spring_green4]:notebook: Indirect dependency["
-                    "/spring_green4]"
+                    "[spring_green4]:notebook: Indirect dependency[" "/spring_green4]"
                 )
         if package_usage != "N/A":
             insights.append(package_usage)
@@ -405,9 +399,7 @@ def prepare_vex(options: PrepareVexOptions):
             versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
             if fixed_location:
-                versions.append(
-                    {"version": fixed_location, "status": "unaffected"}
-                )
+                versions.append({"version": fixed_location, "status": "unaffected"})
                 recommendation = f"Update to {fixed_location} or later"
             affects = [{"ref": purl, "versions": versions}]
             analysis = {}
@@ -477,9 +469,7 @@ def prepare_vex(options: PrepareVexOptions):
                         },
                         {
                             "name": "depscan:prioritized",
-                            "value": "true"
-                            if pkg_group_rows.get(purl)
-                            else "false",
+                            "value": "true" if pkg_group_rows.get(purl) else "false",
                         },
                     ],
                 }
@@ -771,9 +761,7 @@ def jsonl_report(
             outfile.write("\n")
 
 
-def analyse_pkg_risks(
-    project_type, scoped_pkgs, risk_results, risk_report_file=None
-):
+def analyse_pkg_risks(project_type, scoped_pkgs, risk_results, risk_report_file=None):
     """
     Identify package risk and write to a json file
 
@@ -898,9 +886,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 conditions_str = ", ".join(lic["conditions"])
                 if "http" not in conditions_str:
                     conditions_str = (
-                        conditions_str.replace("--", " for ")
-                        .replace("-", " ")
-                        .title()
+                        conditions_str.replace("--", " for ").replace("-", " ").title()
                     )
                 data = [
                     *pkg_ver,

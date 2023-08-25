@@ -49,9 +49,7 @@ def bulk_lookup(license_dict, pkg_list):
             continue
         pkg_key = pkg["name"] + "@" + pkg["version"]
         if pkg.get("vendor"):
-            pkg_key = (
-                pkg.get("vendor") + ":" + pkg["name"] + "@" + pkg["version"]
-            )
+            pkg_key = pkg.get("vendor") + ":" + pkg["name"] + "@" + pkg["version"]
         for lic in pkg.get("licenses"):
             if lic == "X11":
                 lic = "MIT"

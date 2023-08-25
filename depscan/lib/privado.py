@@ -99,9 +99,7 @@ def convert_violations(violations):
     """
     prop_list = []
     for v in violations:
-        prop_list.append(
-            {"name": "privado_violations", "value": v.get("policyId")}
-        )
+        prop_list.append({"name": "privado_violations", "value": v.get("policyId")})
     return prop_list
 
 
@@ -130,9 +128,7 @@ def process_report(report_file):
             service["name"] = json_obj.get("repoName")
             service["properties"] = []
             if json_obj.get("gitMetadata"):
-                service["version"] = json_obj.get("gitMetadata").get(
-                    "commitId", ""
-                )
+                service["version"] = json_obj.get("gitMetadata").get("commitId", "")
                 service["properties"].append(
                     {
                         "name": "privadoCoreVersion",
@@ -157,13 +153,9 @@ def process_report(report_file):
             service["data"] += convert_processing(json_obj.get("processing"))
         # Convert sink processing block
         if json_obj.get("sinkProcessing"):
-            service["data"] += convert_sink_processing(
-                json_obj.get("sinkProcessing")
-            )
+            service["data"] += convert_sink_processing(json_obj.get("sinkProcessing"))
         if json_obj.get("collections"):
             service["endpoints"] = find_endpoints(json_obj.get("collections"))
         if json_obj.get("violations"):
-            service["properties"] += convert_violations(
-                json_obj.get("violations")
-            )
+            service["properties"] += convert_violations(json_obj.get("violations"))
         return service
