@@ -1,6 +1,6 @@
 [project]
 name = "appthreat-depscan"
-version = "4.2.0"
+version = "4.2.1"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
