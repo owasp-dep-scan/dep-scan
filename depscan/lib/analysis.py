@@ -85,10 +85,18 @@ def retrieve_bom_dependency_tree(bom_file):
         with open(bom_file, encoding="utf-8") as bfp:
             bom_data = json.load(bfp)
             if bom_data:
-                return bom_data.get("dependencies", [])
+                return bom_data.get("dependencies", []), bom_data
     except Exception:
         pass
-    return []
+    return [], None
+
+
+def retrieve_oci_properties(bom_data):
+    props = {}
+    for p in bom_data.get("metadata", {}).get("properties", []):
+        if p.get("name", "").startswith("oci:image:"):
+            props[p.get("name")] = p.get("value")
+    return props
 
 
 def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
@@ -236,7 +244,9 @@ def prepare_vex(options: PrepareVexOptions):
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
     # Retrieve any dependency tree from the SBoM
-    bom_dependency_tree = retrieve_bom_dependency_tree(options.bom_file)
+    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(options.bom_file)
+    oci_props = retrieve_oci_properties(bom_data)
+    oci_product_types = oci_props.get("oci:image:componentTypes", "")
     for h in [
         "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
         "Insights",
@@ -267,6 +277,8 @@ def prepare_vex(options: PrepareVexOptions):
         version_used = package_issue.affected_location.version
         purl = options.purl_aliases.get(full_pkg, full_pkg)
         package_type = None
+        insights = []
+        plain_insights = []
         if purl:
             try:
                 purl_obj = parse_purl(purl)
@@ -274,12 +286,28 @@ def prepare_vex(options: PrepareVexOptions):
                     version_used = purl_obj.get("version")
                     package_type = purl_obj.get("type")
                     qualifiers = purl_obj.get("qualifiers", {})
-                    if package_type == "redhat":
-                        has_redhat_packages = True
                     if package_type in config.OS_PKG_TYPES:
+                        if (
+                            package_issue.affected_location.vendor
+                            and oci_product_types
+                            and package_issue.affected_location.vendor
+                            not in oci_product_types
+                        ):
+                            # Some vendors like suse leads to FP and can be turned off if our image do not have those types
+                            if package_issue.affected_location.vendor in ("suse",):
+                                continue
+                            else:
+                                insights.append(
+                                    f"[#7C8082]:thinking_face: Vendor {package_issue.affected_location.vendor}"
+                                )
+                                plain_insights.append(
+                                    f"Vendor {package_issue.affected_location.vendor}"
+                                )
                         has_os_packages = True
                     if "ubuntu" in qualifiers.get("distro", ""):
                         has_ubuntu_packages = True
+                    if "rhel" in qualifiers.get("distro", ""):
+                        has_redhat_packages = True
             except Exception:
                 pass
         if ids_seen.get(vid + full_pkg):
@@ -296,8 +324,6 @@ def prepare_vex(options: PrepareVexOptions):
         ):
             wont_fix_version_count += 1
         package_usage = "N/A"
-        insights = []
-        plain_insights = []
         pkg_severity = vuln_occ_dict.get("severity")
         is_required = False
         pkg_requires_attn = False

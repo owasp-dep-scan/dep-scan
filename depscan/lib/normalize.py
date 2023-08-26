@@ -60,6 +60,9 @@ def create_pkg_variations(pkg_dict):
                 if qualifiers.get("distro"):
                     os_distro = qualifiers.get("distro")
                     name_aliases.add(f"""{os_distro}/{name}""")
+                    # almalinux-9.2 becomes almalinux-9
+                    if "-" in os_distro and "." in os_distro:
+                        name_aliases.add(f"""{os_distro.rsplit(".", 1)[0]}/{name}""")
         except Exception:
             tmp_parts = purl.split(":")
             if tmp_parts and len(tmp_parts) > 1:
