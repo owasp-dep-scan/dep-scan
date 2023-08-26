@@ -298,7 +298,7 @@ def prepare_vex(options: PrepareVexOptions):
                                 continue
                             else:
                                 insights.append(
-                                    f"[#7C8082]:thinking_face: Vendor {package_issue.affected_location.vendor}"
+                                    f"[#7C8082]:telescope: Vendor {package_issue.affected_location.vendor}"
                                 )
                                 plain_insights.append(
                                     f"Vendor {package_issue.affected_location.vendor}"
