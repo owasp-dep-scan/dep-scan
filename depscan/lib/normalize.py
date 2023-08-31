@@ -94,6 +94,7 @@ def create_pkg_variations(pkg_dict):
             vendor_aliases.add("golang")
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
+        vendor_aliases.add(pkg_type)
         if purl.startswith("pkg:composer"):
             vendor_aliases.add("get" + name)
             vendor_aliases.add(name + "_project")
@@ -112,6 +113,7 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add("python-" + name)
             name_aliases.add("python-" + name + "_project")
         vendor_aliases.add("pip")
+        vendor_aliases.add("pypi")
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
         vendor_aliases.add(name + "project")

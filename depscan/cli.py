@@ -672,9 +672,9 @@ def main():
                 LOG.error("Remote audit was not successful")
                 LOG.error(e)
                 results = []
-        # In case of docker, check if there are any npm packages that can be
+        # In case of docker, bom, or universal type, check if there are any npm packages that can be
         # audited remotely
-        if project_type in ("podman", "docker", "oci"):
+        if project_type in ("podman", "docker", "oci", "bom", "universal"):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
             if npm_pkg_list:
                 LOG.debug("No of npm packages %d", len(npm_pkg_list))
