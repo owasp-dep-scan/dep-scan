@@ -1,6 +1,6 @@
 # Introduction
 
-dep-scan is a fully open-source security audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
+OWASP dep-scan is a fully open-source security audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
 
 ![Depscan logo](dep-scan.png)
 
@@ -386,16 +386,12 @@ The license data is sourced from choosealicense.com and is quite limited. If the
 
 dep-scan could auto-detect most cloud applications and Kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
 
-## Alternatives
-
-[Dependency Check](https://github.com/jeremylong/DependencyCheck) is considered the industry standard for open-source dependency scanning. After personally using this great product for many years, I decided to write my own from scratch, partly as a dedication to this project. By using a streaming database based on msgpack and using JSON schema, dep-scan is more performant than dependency check in CI environments. Plus, with support for GitHub advisory source and grafeas report export and submission, dep-scan is on track to become a next-generation dependency audit tool.
-
-Several other tools piggyback on Sonatype [ossindex](https://ossindex.sonatype.org/) API server. For some reason, I always felt uncomfortable letting a commercial company track the usage of various projects worldwide. dep-scan is, therefore, 100% private and guarantees never to perform any tracking!
-
-### Trivy, grype etc
-
-These mature projects are considered the benchmark for container, filesystem and registry scanning. dep-scan is yet to be benchmarked against these projects for results and performance. dep-scan even uses Trivy for container SBoM generation via cdxgen-binary-plugins, although this would change in the future. I aspire to make dep-scan outperform these projects with simplicity and **actionable results**. The CVE insights offered by dep-scan could be used for prioritization to reduce the number of package updates and container rebuilds.
-
 ## Discord support
 
 The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel.
+
+## License
+
+MIT License
+
+This project was donated to the OWASP Foundation in August 2023 by AppThreat Ltd.
