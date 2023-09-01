@@ -103,15 +103,3 @@ jobs:
           cache-to: type=gha,mode=max,scope=depscan-docker
           provenance: true
           sbom: true
-
-      - name: Release public ecr
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws/appthreat
-          docker build -t dep-scan .
-          docker tag dep-scan:latest public.ecr.aws/appthreat/dep-scan:latest
-          docker push public.ecr.aws/appthreat/dep-scan:latest
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}

@@ -1,5 +1,5 @@
 [project]
-name = "appthreat-depscan"
+name = "owasp-depscan"
 version = "4.2.3"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/appthreat/dep-scan"
+Homepage = "https://github.com/owasp-dep-scan/dep-scan"
 
 [project.scripts]
 depscan = "depscan.cli:main"
