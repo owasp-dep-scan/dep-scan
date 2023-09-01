@@ -4,8 +4,7 @@ dep-scan is a fully open-source security audit tool based on known vulnerabiliti
 
 ![Depscan logo](dep-scan.png)
 
-[![release](https://github.com/appthreat/dep-scan/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/appthreat/dep-scan/actions/workflows/pythonpublish.yml)
-[![Downloads](https://static.pepy.tech/badge/appthreat-depscan)](https://pepy.tech/project/appthreat-depscan)
+[![release](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml)
 [![Discord](https://img.shields.io/badge/-Discord-lime?style=for-the-badge&logo=discord&logoColor=white&color=black)](https://discord.gg/pF4BYWEJcS)
 
 ## Features
@@ -60,14 +59,14 @@ oras pull ghcr.io/appthreat/depscan:v4 -o $VDB_HOME
 
 ### Single binary executables
 
-Download the executable binary for your operating system from the [releases page](https://github.com/appthreat/depscan-bin/releases). These binary bundle the following:
+Download the executable binary for your operating system from the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases). These binary bundle the following:
 
 - dep-scan with Python 3.10
 - cdxgen with Node.js 18
 - cdxgen binary plugins
 
 ```bash
-curl -LO https://github.com/appthreat/depscan-bin/releases/latest/download/depscan-linux-amd64
+curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan-linux-amd64
 chmod +x depscan-linux-amd64
 ./depscan-linux-amd64 --help
 ```
@@ -75,7 +74,7 @@ chmod +x depscan-linux-amd64
 On Windows,
 
 ```powershell
-curl -LO https://github.com/appthreat/depscan-bin/releases/latest/download/depscan.exe
+curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan.exe
 .\depscan.exe --help
 ```
 
@@ -84,7 +83,7 @@ curl -LO https://github.com/appthreat/depscan-bin/releases/latest/download/depsc
 dep-scan and cdxgen could be run in server mode. Use the included docker compose file to get started.
 
 ```bash
-git clone https://github.com/AppThreat/dep-scan
+git clone https://github.com/owasp-dep-scan/dep-scan
 docker compose up
 ```
 
@@ -131,7 +130,7 @@ This approach should work for all CI environments supported by scan.
 
 ```bash
 sudo npm install -g @cyclonedx/cdxgen
-pip install appthreat-depscan
+pip install owasp-depscan
 ```
 
 This would install two commands called `cdxgen` and `scan`.
@@ -210,18 +209,12 @@ Refer to the docker tests under GitHub action workflow for this repo for more ex
 
 ### Scanning projects locally (Docker container)
 
-`ghcr.io/appthreat/dep-scan` or `public.ecr.aws/appthreat/dep-scan:latest` container image can be used to perform the scan.
+`ghcr.io/owasp-dep-scan/dep-scan` container image can be used to perform the scan.
 
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app ghcr.io/appthreat/dep-scan --src /app --reports-dir /app/reports
-```
-
-Using AWS public ECR image
-
-```bash
-docker run --rm -v $PWD:/app public.ecr.aws/appthreat/dep-scan --src /app --reports-dir /app/reports
+docker run --rm -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
 ```
 
 To scan with custom environment variables based configuration
@@ -233,7 +226,7 @@ docker run --rm \
     -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
-    -v $PWD:/app ghcr.io/appthreat/dep-scan --src /app --reports-dir /app/reports
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
@@ -283,7 +276,7 @@ Refer to [this example yaml](https://github.com/AppThreat/WebGoat/blob/develop/a
 
 This tool can be used with GitHub Actions using this [action](https://github.com/marketplace/actions/dep-scan).
 
-This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [workflow file](https://github.com/AppThreat/dep-scan/blob/master/.github/workflows/pythonapp.yml) of this repo.
+This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [workflow file](https://github.com/owasp-dep-scan/dep-scan/blob/master/.github/workflows/pythonapp.yml) of this repo.
 
 ```yaml
 - name: Self dep-scan
