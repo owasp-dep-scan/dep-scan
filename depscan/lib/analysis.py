@@ -112,10 +112,12 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
     highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
     if tree_pkg:
         try:
-            purl_obj = parse_purl(current_pkg)
-            if purl_obj:
-                version_used = purl_obj.get("version")
-                full_pkg_display = f"""{purl_obj.get("name")}@{version_used}"""
+            if current_pkg.startswith("pkg:"):
+                purl_obj = parse_purl(current_pkg)
+                if purl_obj:
+                    version_used = purl_obj.get("version")
+                    if version_used:
+                        full_pkg_display = f"""{purl_obj.get("name")}@{version_used}"""
         except Exception:
             pass
     if extra_text and highlightable:
@@ -263,6 +265,7 @@ def prepare_vex(options: PrepareVexOptions):
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
         package_issue = res.package_issue
+        matched_by = res.matched_by
         full_pkg = package_issue.affected_location.package
         project_type_pkg = (
             f"{options.project_type}:" f"{package_issue.affected_location.package}"
@@ -272,6 +275,10 @@ def prepare_vex(options: PrepareVexOptions):
                 f"{package_issue.affected_location.vendor}:"
                 f"{package_issue.affected_location.package}"
             )
+        version = None
+        if matched_by:
+            version = matched_by.split("|")[-1]
+            full_pkg = full_pkg + ":" + version
         # De-alias package names
         full_pkg = options.pkg_aliases.get(full_pkg, full_pkg)
         version_used = package_issue.affected_location.version
@@ -279,7 +286,7 @@ def prepare_vex(options: PrepareVexOptions):
         package_type = None
         insights = []
         plain_insights = []
-        if purl:
+        if purl and purl.startswith("pkg:"):
             try:
                 purl_obj = parse_purl(purl)
                 if purl_obj:
@@ -293,7 +300,20 @@ def prepare_vex(options: PrepareVexOptions):
                             and package_issue.affected_location.vendor
                             not in oci_product_types
                         ):
+                            # Some nvd data might match application CVEs for OS vendors which can be filtered
+                            if package_issue.affected_location.cpe_uri:
+                                all_parts = CPE_FULL_REGEX.match(
+                                    package_issue.affected_location.cpe_uri
+                                )
+                                if (
+                                    all_parts
+                                    and all_parts.group("target_sw") != "*"
+                                    and all_parts.group("target_sw")
+                                    not in config.OS_PKG_TYPES
+                                ):
+                                    continue
                             # Some vendors like suse leads to FP and can be turned off if our image do not have those types
+                            # Some os packages might match application packages in NVD
                             if package_issue.affected_location.vendor in ("suse",):
                                 continue
                             else:
@@ -560,13 +580,9 @@ def prepare_vex(options: PrepareVexOptions):
                         f"for updates."
                     )
                 if has_redhat_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages
-                    with status "out of support" or "won't fix" are excluded
-                    from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
                 if has_ubuntu_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages
-                    with status "DNE" or "needs-triaging" are excluded from
-                    this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
             console.print(
                 Panel(
                     rmessage,
@@ -941,7 +957,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         LOG.info("No license violation detected ✅")
 
 
-def suggest_version(results, pkg_aliases={}):
+def suggest_version(results, pkg_aliases={}, purl_aliases={}):
     """
     Provide version suggestions
 
@@ -957,21 +973,33 @@ def suggest_version(results, pkg_aliases={}):
         if isinstance(res, dict):
             full_pkg = res.get("package")
             fixed_location = res.get("fix_version")
+            matched_by = res.get("matched_by")
         else:
             package_issue = res.package_issue
             full_pkg = package_issue.affected_location.package
             fixed_location = package_issue.fixed_location
+            matched_by = res.matched_by
             if package_issue.affected_location.vendor:
                 full_pkg = (
                     f"{package_issue.affected_location.vendor}:"
                     f"{package_issue.affected_location.package}"
                 )
+        version = None
+        if matched_by:
+            version = matched_by.split("|")[-1]
+            full_pkg = full_pkg + ":" + version
         # De-alias package names
-        full_pkg = pkg_aliases.get(full_pkg, full_pkg)
+        if purl_aliases.get(full_pkg):
+            full_pkg = purl_aliases.get(full_pkg)
+        else:
+            full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
         version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades
     for k, v in pkg_fix_map.items():
+        # Don't go near certain packages
+        if "kernel" in k or "openssl" in k or "openssh" in k:
+            continue
         if v:
             mversion = max_version(list(v))
             if mversion:
