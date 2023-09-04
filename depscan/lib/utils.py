@@ -227,6 +227,8 @@ def search_pkgs(db, project_type, pkg_list):
         if pkg.get("purl"):
             purl_aliases[pkg.get("purl")] = pkg.get("purl")
             purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
+            if not purl_aliases.get(f"{vendor.lower()}:{name.lower()}"):
+                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
         if variations:
             for vari in variations:
                 vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
