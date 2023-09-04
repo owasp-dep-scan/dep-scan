@@ -642,9 +642,9 @@ def main():
             if args.risk_audit:
                 console.print(
                     Panel(
-                        f"Performing OSS Risk Audit for packages from"
-                        f"{src_dir}nNo of packages [bold]{len(pkg_list)}"
-                        f"[/bold].This will take a while ...",
+                        f"Performing OSS Risk Audit for packages from "
+                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                        f"[/bold]. This will take a while ...",
                         title="OSS Risk Audit",
                         expand=False,
                     )
