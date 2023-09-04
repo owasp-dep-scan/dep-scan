@@ -612,7 +612,7 @@ def prepare_vex(options: PrepareVexOptions):
                 else:
                     rmessage += (
                         f"\nYou can remediate [bright_green]"
-                        f"{fix_version_count}[/bright_green]"
+                        f"{fix_version_count}[/bright_green] "
                         f"{'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} "
                         f"by updating the packages using the fix "
                         f"version :thumbsup:"
