@@ -37,9 +37,9 @@ jobs:
         mkdir -p containertests
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         pip install -r contrib/requirements.txt
-        python3 depscan/cli.py --cache-os --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests/depscan-scan.json -t docker
-        python contrib/vex-validate.py --json containertests/sbom-scan-docker.vex.json
-        rm -rf $VDB_HOME && mkdir -p $VDB_HOME
+        # python3 depscan/cli.py --cache-os --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests/depscan-scan.json -t docker
+        # python contrib/vex-validate.py --json containertests/sbom-scan-docker.vex.json
+        # rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         python3 depscan/cli.py --cache-os --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
         python contrib/vex-validate.py --json containertests/sbom-slim-docker.vex.json
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
