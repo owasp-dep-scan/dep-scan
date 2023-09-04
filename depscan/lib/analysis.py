@@ -330,16 +330,16 @@ def prepare_vex(options: PrepareVexOptions):
                         has_redhat_packages = True
             except Exception:
                 pass
-        if ids_seen.get(vid + full_pkg):
+        if ids_seen.get(vid + purl):
             continue
         # Mark this CVE + pkg as seen to avoid duplicates
-        ids_seen[vid + full_pkg] = True
+        ids_seen[vid + purl] = True
         # Find the best fix version
         fixed_location = best_fixed_location(
-            options.sug_version_dict.get(full_pkg), package_issue.fixed_location
+            options.sug_version_dict.get(purl), package_issue.fixed_location
         )
         if (
-            options.sug_version_dict.get(full_pkg) == placeholder_fix_version
+            options.sug_version_dict.get(purl) == placeholder_fix_version
             or package_issue.fixed_location == placeholder_fix_version
         ):
             wont_fix_version_count += 1
@@ -351,7 +351,11 @@ def prepare_vex(options: PrepareVexOptions):
         clinks = classify_links(
             related_urls,
         )
-        if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
+        if (
+            purl in required_pkgs
+            or full_pkg in required_pkgs
+            or project_type_pkg in required_pkgs
+        ):
             is_required = True
         if pkg_severity in ("CRITICAL", "HIGH"):
             if is_required:
@@ -375,7 +379,9 @@ def prepare_vex(options: PrepareVexOptions):
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
         elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
-            full_pkg in optional_pkgs or project_type_pkg in optional_pkgs
+            purl in optional_pkgs
+            or full_pkg in optional_pkgs
+            or project_type_pkg in optional_pkgs
         ):
             if package_type in config.OS_PKG_TYPES:
                 package_usage = (
@@ -767,24 +773,36 @@ def jsonl_report(
                                 .get("version")}"""
                 except Exception:
                     pass
-            if ids_seen.get(vid + full_pkg):
+            if ids_seen.get(vid + purl):
                 continue
             # On occasions, this could still result in duplicates if the
             # package exists with and without a purl
-            ids_seen[vid + full_pkg] = True
+            ids_seen[vid + purl] = True
             project_type_pkg = "{}:{}".format(
                 project_type, package_issue.affected_location.package
             )
             fixed_location = best_fixed_location(
-                sug_version_dict.get(full_pkg),
+                sug_version_dict.get(purl),
                 package_issue.fixed_location,
             )
             package_usage = "N/A"
-            if full_pkg in required_pkgs or project_type_pkg in required_pkgs:
+            if (
+                purl in required_pkgs
+                or full_pkg in required_pkgs
+                or project_type_pkg in required_pkgs
+            ):
                 package_usage = "required"
-            elif full_pkg in optional_pkgs or project_type_pkg in optional_pkgs:
+            elif (
+                purl in optional_pkgs
+                or full_pkg in optional_pkgs
+                or project_type_pkg in optional_pkgs
+            ):
                 package_usage = "optional"
-            elif full_pkg in excluded_pkgs or project_type_pkg in excluded_pkgs:
+            elif (
+                purl in excluded_pkgs
+                or full_pkg in excluded_pkgs
+                or project_type_pkg in excluded_pkgs
+            ):
                 package_usage = "excluded"
             data_obj = {
                 "id": vid,

@@ -109,11 +109,20 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                     required_pkgs = scoped_pkgs.get("required", [])
                     optional_pkgs = scoped_pkgs.get("optional", [])
                     excluded_pkgs = scoped_pkgs.get("excluded", [])
-                    if project_type_pkg in required_pkgs:
+                    if (
+                        pkg.get("purl") in required_pkgs
+                        or project_type_pkg in required_pkgs
+                    ):
                         scope = "required"
-                    elif project_type_pkg in optional_pkgs:
+                    elif (
+                        pkg.get("purl") in optional_pkgs
+                        or project_type_pkg in optional_pkgs
+                    ):
                         scope = "optional"
-                    elif project_type_pkg in excluded_pkgs:
+                    elif (
+                        pkg.get("purl") in excluded_pkgs
+                        or project_type_pkg in excluded_pkgs
+                    ):
                         scope = "excluded"
                     risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
                 metadata_dict[key] = {

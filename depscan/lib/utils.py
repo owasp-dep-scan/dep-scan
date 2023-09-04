@@ -261,8 +261,10 @@ def get_pkgs_by_scope(pkg_list):
         if pkg.get("scope"):
             vendor, name = get_pkg_vendor_name(pkg)
             scope = pkg.get("scope").lower()
-            # TODO: Use purl here
-            scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+            if pkg.get("purl"):
+                scoped_pkgs.setdefault(scope, []).append(pkg.get("purl"))
+            else:
+                scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
     return scoped_pkgs
 
 
@@ -285,7 +287,10 @@ def get_scope_from_imports(project_type, pkg_list, all_imports):
         vendor, name = get_pkg_vendor_name(pkg)
         if name in all_imports or name.lower().replace("py", "") in all_imports:
             scope = "required"
-        scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+        if pkg.get("purl"):
+            scoped_pkgs.setdefault(scope, []).append(pkg.get("purl"))
+        else:
+            scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
         scoped_pkgs[scope].append(f"{project_type}:{name.lower()}")
     return scoped_pkgs
 
