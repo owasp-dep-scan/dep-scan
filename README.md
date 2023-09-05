@@ -54,7 +54,7 @@ Use [ORAS cli](https://oras.land/cli/) to download the dep-scan binary and the v
 export VDB_HOME=depscan
 mkdir -p $VDB_HOME
 oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-oras pull ghcr.io/appthreat/depscan:v4 -o $VDB_HOME
+oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
 ```
 
 ### Single binary executables
