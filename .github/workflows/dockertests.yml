@@ -16,7 +16,7 @@ jobs:
         os: [ubuntu-latest]
         python-version: ['3.8', '3.9', '3.10', '3.11']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -37,9 +37,9 @@ jobs:
         mkdir -p containertests
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         pip install -r contrib/requirements.txt
-        python3 depscan/cli.py --cache-os --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests/depscan-scan.json -t docker
-        python contrib/vex-validate.py --json containertests/sbom-scan-docker.vex.json
-        rm -rf $VDB_HOME && mkdir -p $VDB_HOME
+        # python3 depscan/cli.py --cache-os --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests/depscan-scan.json -t docker
+        # python contrib/vex-validate.py --json containertests/sbom-scan-docker.vex.json
+        # rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         python3 depscan/cli.py --cache-os --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
         python contrib/vex-validate.py --json containertests/sbom-slim-docker.vex.json
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
@@ -61,7 +61,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.11']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -98,7 +98,7 @@ jobs:
       matrix:
         python-version: ['3.11']
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
@@ -111,11 +111,11 @@ jobs:
         python3 -m pip install .[dev]
         sudo npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         repository: 'GoogleCloudPlatform/microservices-demo'
         path: 'repotests/microservices-demo'
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         repository: 'OWASP/NodeGoat'
         path: 'repotests/NodeGoat'

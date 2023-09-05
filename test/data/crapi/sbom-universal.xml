@@ -21488,14 +21488,14 @@
       <licenses/>
       <purl>pkg:golang/github.com/joho/godotenv@v1.3.0</purl>
     </component>
-    <component type="application" bom-ref="pkg:github/actions/checkout@v3">
+    <component type="application" bom-ref="pkg:github/actions/checkout@v4">
       <publisher/>
       <group>actions</group>
       <name>checkout</name>
       <version>v3</version>
       <description/>
       <licenses/>
-      <purl>pkg:github/actions/checkout@v3</purl>
+      <purl>pkg:github/actions/checkout@v4</purl>
     </component>
     <component type="application" bom-ref="pkg:github/tj-actions/branch-names@v5.2">
       <publisher/>

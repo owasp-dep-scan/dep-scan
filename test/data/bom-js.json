@@ -37957,9 +37957,9 @@
       "version": "v3",
       "description": "",
       "licenses": [],
-      "purl": "pkg:github/actions/checkout@v3",
+      "purl": "pkg:github/actions/checkout@v4",
       "type": "application",
-      "bom-ref": "pkg:github/actions/checkout@v3"
+      "bom-ref": "pkg:github/actions/checkout@v4"
     },
     {
       "publisher": "",

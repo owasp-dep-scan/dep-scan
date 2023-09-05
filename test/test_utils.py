@@ -62,7 +62,7 @@ def test_get_pkgs_by_scope():
             },
         ],
     )
-    assert scoped_pkgs == {"required": ["npm:parse5"]}
+    assert scoped_pkgs == {"required": ["pkg:npm/parse5@5.1.0"]}
 
     scoped_pkgs = utils.get_pkgs_by_scope(
         [
@@ -77,7 +77,7 @@ def test_get_pkgs_by_scope():
         ],
     )
     assert scoped_pkgs == {
-        "required": ["npm:parse5"],
+        "required": ["pkg:npm/parse5@5.1.0"],
         "optional": ["angular-devkit:build-webpack"],
     }
 

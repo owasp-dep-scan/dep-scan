@@ -15,6 +15,7 @@ from vdb.lib.aqua import AquaSource
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
+from vdb.lib.utils import parse_purl
 
 from depscan.lib import privado, utils
 from depscan.lib.analysis import (
@@ -266,7 +267,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
     sug_version_dict = {}
     if suggest_mode:
         # From the results identify optimal max version
-        sug_version_dict = suggest_version(results, pkg_aliases)
+        sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
         if sug_version_dict:
             LOG.debug(
                 "Adjusting fix version based on the initial suggestion %s",
@@ -279,16 +280,36 @@ def scan(db, project_type, pkg_list, suggest_mode):
                     continue
                 vendor = ""
                 version = v
+                # Key is already a purl
+                if k.startswith("pkg:"):
+                    try:
+                        purl_obj = parse_purl(k)
+                        vendor = purl_obj.get("namespace")
+                        if not vendor:
+                            vendor = purl_obj.get("type")
+                        name = purl_obj.get("name")
+                        version = purl_obj.get("version")
+                        sug_pkg_list.append(
+                            {
+                                "vendor": vendor,
+                                "name": name,
+                                "version": version,
+                                "purl": k,
+                            }
+                        )
+                        continue
+                    except Exception as e:
+                        pass
                 tmp_a = k.split(":")
-                if len(tmp_a) == 2:
+                if len(tmp_a) == 3:
                     vendor = tmp_a[0]
                     name = tmp_a[1]
                 else:
                     name = tmp_a[0]
                 # De-alias the vendor and package name
-                full_pkg = f"{vendor}:{name}"
+                full_pkg = f"{vendor}:{name}:{version}"
                 full_pkg = pkg_aliases.get(full_pkg, full_pkg)
-                vendor, name = full_pkg.split(":")
+                vendor, name, version = full_pkg.split(":")
                 sug_pkg_list.append(
                     {"vendor": vendor, "name": name, "version": version}
                 )
@@ -621,9 +642,9 @@ def main():
             if args.risk_audit:
                 console.print(
                     Panel(
-                        f"Performing OSS Risk Audit for packages from"
-                        f"{src_dir}nNo of packages [bold]{len(pkg_list)}"
-                        f"[/bold].This will take a while ...",
+                        f"Performing OSS Risk Audit for packages from "
+                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                        f"[/bold]. This will take a while ...",
                         title="OSS Risk Audit",
                         expand=False,
                     )

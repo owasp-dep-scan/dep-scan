@@ -224,13 +224,17 @@ def search_pkgs(db, project_type, pkg_list):
             expanded_list += variations
         vendor, name = get_pkg_vendor_name(pkg)
         version = pkg.get("version")
-        purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
-        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
+        if pkg.get("purl"):
+            purl_aliases[pkg.get("purl")] = pkg.get("purl")
+            purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
+            if not purl_aliases.get(f"{vendor.lower()}:{name.lower()}"):
+                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
         if variations:
             for vari in variations:
                 vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
-                pkg_aliases[vendor.lower() + ":" + name.lower()].append(vari_full_pkg)
-                purl_aliases[f"{vari_full_pkg.lower()}"] = pkg.get("purl")
+                pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"].append(
+                    vari_full_pkg
+                )
                 purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
     quick_res = db_lib.bulk_index_search(expanded_list)
     raw_results = db_lib.pkg_bulk_search(db, quick_res)
@@ -257,8 +261,10 @@ def get_pkgs_by_scope(pkg_list):
         if pkg.get("scope"):
             vendor, name = get_pkg_vendor_name(pkg)
             scope = pkg.get("scope").lower()
-            # TODO: Use purl here
-            scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+            if pkg.get("purl"):
+                scoped_pkgs.setdefault(scope, []).append(pkg.get("purl"))
+            else:
+                scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
     return scoped_pkgs
 
 
@@ -281,7 +287,10 @@ def get_scope_from_imports(project_type, pkg_list, all_imports):
         vendor, name = get_pkg_vendor_name(pkg)
         if name in all_imports or name.lower().replace("py", "") in all_imports:
             scope = "required"
-        scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
+        if pkg.get("purl"):
+            scoped_pkgs.setdefault(scope, []).append(pkg.get("purl"))
+        else:
+            scoped_pkgs.setdefault(scope, []).append(f"{vendor}:{name}")
         scoped_pkgs[scope].append(f"{project_type}:{name.lower()}")
     return scoped_pkgs
 
