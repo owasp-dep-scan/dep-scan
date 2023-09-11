@@ -32,6 +32,7 @@ from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bo
 from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
+from depscan.lib.utils import get_version
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -238,6 +239,13 @@ def build_args():
         default=os.getenv("CDXGEN_SERVER_URL"),
         dest="cdxgen_server",
         help="cdxgen server url. Eg: http://cdxgen:9090",
+    )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="Display the version",
+        action="version",
+        version="%(prog)s " + get_version(),
     )
     return parser.parse_args()
 

@@ -1,5 +1,6 @@
 import ast
 import os
+import pkg_resources
 import re
 from collections import defaultdict
 
@@ -366,3 +367,10 @@ def get_all_imports(src_dir):
                         import_list.add(pkg)
                         import_list.add(pkg.lower().replace("py", ""))
     return import_list
+
+
+def get_version():
+    """
+    Returns the version of depscan
+    """
+    return pkg_resources.get_distribution('owasp-depscan').version
