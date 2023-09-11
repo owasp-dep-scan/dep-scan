@@ -391,6 +391,15 @@ def summarise(
             with open(bom_file, encoding="utf-8") as fp:
                 bom_data = json.load(fp)
                 if bom_data:
+                    # Add depscan information as metadata
+                    metadata = bom_data.get("metadata", {})
+                    tools = metadata.get("tools", {})
+                    components = tools.get("components", [])
+                    components.append({"type": "application", "name": "depscan", "version": get_version()})
+                    tools["components"] = components
+                    metadata["tools"] = tools
+                    bom_data["metadata"] = metadata
+
                     bom_data["vulnerabilities"] = pkg_vulnerabilities
                     # Look for any privado json file
                     if os.path.exists(privado_json_file):
