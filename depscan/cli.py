@@ -32,6 +32,7 @@ from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bo
 from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
+from depscan.lib.utils import get_version
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -239,6 +240,13 @@ def build_args():
         dest="cdxgen_server",
         help="cdxgen server url. Eg: http://cdxgen:9090",
     )
+    parser.add_argument(
+        "-v",
+        "--version",
+        help="Display the version",
+        action="version",
+        version="%(prog)s " + get_version(),
+    )
     return parser.parse_args()
 
 
@@ -383,6 +391,15 @@ def summarise(
             with open(bom_file, encoding="utf-8") as fp:
                 bom_data = json.load(fp)
                 if bom_data:
+                    # Add depscan information as metadata
+                    metadata = bom_data.get("metadata", {})
+                    tools = metadata.get("tools", {})
+                    components = tools.get("components", [])
+                    components.append({"type": "application", "name": "depscan", "version": get_version()})
+                    tools["components"] = components
+                    metadata["tools"] = tools
+                    bom_data["metadata"] = metadata
+
                     bom_data["vulnerabilities"] = pkg_vulnerabilities
                     # Look for any privado json file
                     if os.path.exists(privado_json_file):
