@@ -394,11 +394,28 @@ def summarise(
                     # Add depscan information as metadata
                     metadata = bom_data.get("metadata", {})
                     tools = metadata.get("tools", {})
-                    components = tools.get("components", [])
-                    components.append({"type": "application", "name": "depscan", "version": get_version()})
-                    tools["components"] = components
-                    metadata["tools"] = tools
-                    bom_data["metadata"] = metadata
+                    bom_version = str(bom_data.get("version", 1))
+                    # Update the version
+                    if bom_version.isdigit():
+                        bom_version = int(bom_version) + 1
+                        bom_data["version"] = bom_version
+                    # Update the tools section
+                    if isinstance(tools, dict):
+                        components = tools.get("components", [])
+                        ds_version = get_version()
+                        ds_purl = f"pkg:pypi/owasp-depscan@${ds_version}"
+                        components.append(
+                            {
+                                "type": "application",
+                                "name": "owasp-depscan",
+                                "version": ds_version,
+                                "purl": ds_purl,
+                                "bom-ref": ds_purl,
+                            }
+                        )
+                        tools["components"] = components
+                        metadata["tools"] = tools
+                        bom_data["metadata"] = metadata
 
                     bom_data["vulnerabilities"] = pkg_vulnerabilities
                     # Look for any privado json file

@@ -245,7 +245,7 @@ def dedup(project_type, pkg_list):
         version = None
         if res.matched_by:
             version = res.matched_by.split("|")[-1]
-        full_pkg = vid + ":" + package_issue.affected_location.package
+        full_pkg = package_issue.affected_location.package
         if package_issue.affected_location.vendor:
             full_pkg = (
                 f"{package_issue.affected_location.vendor}:"
@@ -253,6 +253,7 @@ def dedup(project_type, pkg_list):
             )
         if version:
             full_pkg = full_pkg + ":" + version
+        full_pkg = vid + ":" + full_pkg
         # Ignore any result with the exclude fix location
         # Required for debian
         if fixed_location == placeholder_exclude_version:

@@ -373,4 +373,4 @@ def get_version():
     """
     Returns the version of depscan
     """
-    return pkg_resources.get_distribution('owasp-depscan').version
+    return pkg_resources.get_distribution("owasp-depscan").version
