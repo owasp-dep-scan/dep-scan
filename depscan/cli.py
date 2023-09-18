@@ -403,7 +403,7 @@ def summarise(
                     if isinstance(tools, dict):
                         components = tools.get("components", [])
                         ds_version = get_version()
-                        ds_purl = f"pkg:pypi/owasp-depscan@${ds_version}"
+                        ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
                         components.append(
                             {
                                 "type": "application",
