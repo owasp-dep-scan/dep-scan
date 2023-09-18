@@ -17,6 +17,7 @@ from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
 
+from depscan import __VERSION__
 from depscan.lib import privado, utils
 from depscan.lib.analysis import (
     PrepareVexOptions,
@@ -32,7 +33,6 @@ from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bo
 from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
-from depscan.lib.utils import get_version
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -245,7 +245,7 @@ def build_args():
         "--version",
         help="Display the version",
         action="version",
-        version="%(prog)s " + get_version(),
+        version=f"%(prog)s {__VERSION__}",
     )
     return parser.parse_args()
 
@@ -402,7 +402,7 @@ def summarise(
                     # Update the tools section
                     if isinstance(tools, dict):
                         components = tools.get("components", [])
-                        ds_version = get_version()
+                        ds_version = __VERSION__
                         ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
                         components.append(
                             {
