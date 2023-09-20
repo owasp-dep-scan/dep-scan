@@ -1,17 +1,20 @@
 [project]
 name = "owasp-depscan"
-version = "4.2.9"
+version = "5.0.0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db>=5.4.2",
+    "appthreat-vulnerability-db>=5.5.0",
     "defusedxml",
     "oras",
     "PyYAML",
     "rich",
     "quart",
+    "requests",
+    "tomli",
+    "tomli-w",
 ]
 
 requires-python = ">=3.8"
