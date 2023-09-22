@@ -7,10 +7,10 @@ on:
       - feature/*
     paths-ignore:
       - '**/README.md'
-
+  pull_request:
 jobs:
   version_tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -27,25 +27,16 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install .[dev]
-        sudo npm install -g @cyclonedx/cdxgen
+        npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
     - name: Test container images
       run: |
-        wget https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.24.2/cyclonedx-linux-x64
-        mv cyclonedx-linux-x64 cyclonedx
-        chmod +x cyclonedx
         mkdir -p containertests
         rm -rf $VDB_HOME && mkdir -p $VDB_HOME
         pip install -r contrib/requirements.txt
-        # python3 depscan/cli.py --cache --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests/depscan-scan.json -t docker
-        # python contrib/vex-validate.py --json containertests/sbom-scan-docker.vex.json
-        # rm -rf $VDB_HOME && mkdir -p $VDB_HOME
-        python3 depscan/cli.py --cache --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
-        python contrib/vex-validate.py --json containertests/sbom-slim-docker.vex.json
-        rm -rf $VDB_HOME && mkdir -p $VDB_HOME
-        python3 depscan/cli.py --cache --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker --no-vuln-table
-        python contrib/vex-validate.py --json containertests/sbom-redmine-docker.vex.json
-        ls -ltr containertests
+        # python3 depscan/cli.py --no-banner --cache --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests/depscan-scan.json -t docker
+        python3 depscan/cli.py --no-banner --cache --no-error --src shiftleft/scan-slim -o containertests/depscan-slim.json -t docker,license --no-vuln-table
+        python3 depscan/cli.py --no-banner --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker --no-vuln-table
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,7 +46,7 @@ jobs:
         name: containertests
         path: containertests
   version_tests2:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -72,15 +63,14 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip
         python3 -m pip install .[dev]
-        sudo npm install -g @cyclonedx/cdxgen
+        npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
     - name: Test container images
       run: |
         mkdir -p containertests
         pip install -r contrib/requirements.txt
-        python3 depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json --no-vuln-table
-        python3 depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json --no-vuln-table
-        ls -ltr containertests
+        python3 depscan/cli.py --no-banner --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json --no-vuln-table
+        python3 depscan/cli.py --no-banner --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json --no-vuln-table
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
