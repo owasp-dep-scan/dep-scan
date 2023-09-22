@@ -245,6 +245,69 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+def exec_cdxgen(bin=True):
+    if bin:
+        cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
+        if not shutil.which(cdxgen_cmd):
+            local_bin = resource_path(
+                os.path.join(
+                    "local_bin",
+                    "cdxgen.exe" if sys.platform == "win32" else "cdxgen",
+                )
+            )
+            if not os.path.exists(local_bin):
+                LOG.warning(
+                    "%s command not found. Please install using npm install "
+                    "@cyclonedx/cdxgen or set PATH variable",
+                    cdxgen_cmd,
+                )
+                return False
+            try:
+                cdxgen_cmd = local_bin
+                # Set the plugins directory as an environment variable
+                os.environ["CDXGEN_PLUGINS_DIR"] = resource_path("local_bin")
+                return cdxgen_cmd
+            except Exception:
+                return None
+
+    else:
+        # cdxgen_cmd = (
+        #     os.environ.get("CDXGEN_CMD", "cdxgen")
+        #     if sys.platform != "win32"
+        #     else os.environ.get("CDXGEN_CMD", "cdxgen.CMD")
+        # )
+        lbin = os.getenv("APPDATA") if sys.platform == "win32" else "local_bin"
+        local_bin = resource_path(
+            os.path.join(
+                f"{lbin}\\npm\\" if sys.platform == "win32" else "local_bin",
+                "cdxgen" if sys.platform != "win32" else "cdxgen.cmd",
+            )
+        )
+        if not os.path.exists(local_bin):
+            LOG.warning(
+                "%s command not found. Please install using npm install "
+                "@cyclonedx/cdxgen or set PATH variable",
+                local_bin,
+            )
+            return None
+        try:
+            cdxgen_cmd = local_bin
+            # Set the plugins directory as an environment variable
+            os.environ["CDXGEN_PLUGINS_DIR"] = (
+                resource_path("local_bin")
+                if sys.platform != "win32"
+                else resource_path(
+                    os.path.join(
+                        lbin,
+                        "\\npm\\node_modules\\@cyclonedx\\cdxgen\\node_modules\\@cyclonedx\\cdxgen-plugins-bin\\plugins",
+                    )
+                )
+            )
+            return cdxgen_cmd
+        except Exception:
+            return None
+
+
 def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     """
     Method to create BOM file by executing cdxgen command
@@ -303,41 +366,9 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
                     "Unable to generate SBoM with cdxgen server. Trying to "
                     "generate one locally."
                 )
-    cdxgen_cmd = (
-        os.environ.get("CDXGEN_CMD", "cdxgen")
-        if sys.platform != "win32"
-        else os.environ.get("CDXGEN_CMD", "cdxgen.cmd")
-    )
-    lbin = os.getenv("APPDATA") if sys.platform == "win32" else "local_bin"
-    if not shutil.which(cdxgen_cmd):
-        local_bin = resource_path(
-            os.path.join(
-                f"{lbin}\\npm\\" if sys.platform == "win32" else "local_bin",
-                "cdxgen" if sys.platform != "win32" else "cdxgen.cmd",
-            )
-        )
-        if not os.path.exists(local_bin):
-            LOG.warning(
-                "%s command not found. Please install using npm install "
-                "@cyclonedx/cdxgen or set PATH variable",
-                cdxgen_cmd,
-            )
-            return False
-        try:
-            cdxgen_cmd = local_bin
-            # Set the plugins directory as an environment variable
-            os.environ["CDXGEN_PLUGINS_DIR"] = (
-                resource_path("local_bin")
-                if sys.platform != "win32"
-                else resource_path(
-                    os.path.join(
-                        lbin,
-                        "\\npm\\node_modules\\@cyclonedx\\cdxgen\\node_modules\\@cyclonedx\\cdxgen-plugins-bin\\plugins",
-                    )
-                )
-            )
-        except Exception:
-            pass
+    cdxgen_cmd = exec_cdxgen()
+    if not cdxgen_cmd:
+        cdxgen_cmd = exec_cdxgen(False)
     if project_type in ("docker",):
         LOG.info(
             "Generating Software Bill-of-Materials for container image %s. "
@@ -347,9 +378,12 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file]
     if deep or project_type in ("jar", "jenkins"):
         args.append("--deep")
-        LOG.info("About to perform deep scan. This could take a while ...")
+        LOG.info("About to perform deep scan. This would take a while ...")
     args.append(src_dir)
-    exec_tool(args)
+    if cdxgen_cmd:
+        exec_tool(args)
+    else:
+        LOG.warning("Unable to locate cdxgen command. ")
     return os.path.exists(bom_file)
 
 
