@@ -245,8 +245,8 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def exec_cdxgen(bin=True):
-    if bin:
+def exec_cdxgen(use_bin=True):
+    if use_bin:
         cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
         if not shutil.which(cdxgen_cmd):
             local_bin = resource_path(
@@ -269,7 +269,8 @@ def exec_cdxgen(bin=True):
                 return cdxgen_cmd
             except Exception:
                 return None
-
+        else:
+            return cdxgen_cmd
     else:
         # cdxgen_cmd = (
         #     os.environ.get("CDXGEN_CMD", "cdxgen")

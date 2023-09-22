@@ -32,7 +32,12 @@ from depscan.lib.analysis import (
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
-from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list, vdb_database_url
+from depscan.lib.config import (
+    UNIVERSAL_SCAN_TYPE,
+    license_data_dir,
+    spdx_license_list,
+    vdb_database_url,
+)
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import get_version
@@ -453,8 +458,8 @@ async def cache():
     db = db_lib.get()
     if not db_lib.index_count(db["index_file"]):
         oras_client = oras.client.OrasClient()
-        paths_list = oras_client.pull(target = vdb_database_url, outdir = data_dir)
-        LOG.debug(f'VDB data is stored at: {paths_list}')
+        paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
+        LOG.debug(f"VDB data is stored at: {paths_list}")
         return {
             "error": "false",
             "message": "vulnerability database cached successfully",
@@ -741,8 +746,8 @@ def main():
             sources_list.insert(0, GitHubSource())
         if run_cacher:
             oras_client = oras.client.OrasClient()
-            paths_list = oras_client.pull(target = vdb_database_url, outdir = data_dir)
-            LOG.debug(f'VDB data is stored at: {paths_list}')
+            paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
+            LOG.debug(f"VDB data is stored at: {paths_list}")
             run_cacher = False
         elif args.sync:
             for s in sources_list:
