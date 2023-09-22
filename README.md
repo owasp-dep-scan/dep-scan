@@ -23,7 +23,7 @@ OWASP dep-scan is a fully open-source security audit tool based on known vulnera
 - NVD
 - GitHub
 - NPM
-- Linux [vuln-list](https://github.com/appthreat/vuln-list) (Use `--cache-os`)
+- Linux [vuln-list](https://github.com/appthreat/vuln-list)
 
 ### Linux distros
 
@@ -40,7 +40,7 @@ OWASP dep-scan is a fully open-source security audit tool based on known vulnera
 - Chainguard
 - Wolfi OS
 
-Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache-os` for the first time. dep-scan would also download the appropriate database based on project type automatically.
+Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 
 ## Usage
 
@@ -98,13 +98,6 @@ In server mode, use `/cache` endpoint to cache the vulnerability database.
 curl http://0.0.0.0:7070/cache
 ```
 
-Cache all vulnerabilities including os.
-
-```bash
-# This would take over 5 minutes
-curl http://0.0.0.0:7070/cache?os=true
-```
-
 Use the `/scan` endpoint to perform scans.
 
 ```bash
@@ -145,12 +138,11 @@ depscan --src $PWD --reports-dir $PWD/reports
 Full list of options are below:
 
 ```bash
-usage: depscan [-h] [--no-banner] [--cache] [--cache-os] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR
+usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR
               [--reports-dir REPORTS_DIR] [--no-error] [--deep]
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
   --cache               Cache vulnerability information in platform specific user_data_dir
-  --cache-os            Cache OS vulnerability information in platform specific user_data_dir
   --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS

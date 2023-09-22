@@ -12,10 +12,13 @@ from rich.terminal_theme import MONOKAI
 from vdb.lib import config
 from vdb.lib import db as db_lib
 from vdb.lib.aqua import AquaSource
+from vdb.lib.config import data_dir
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
+
+import oras.client
 
 from depscan.lib import privado, utils
 from depscan.lib.analysis import (
@@ -29,7 +32,7 @@ from depscan.lib.analysis import (
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
-from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list
+from depscan.lib.config import UNIVERSAL_SCAN_TYPE, license_data_dir, spdx_license_list, vdb_database_url
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import get_version
@@ -75,13 +78,6 @@ def build_args():
         default=False,
         dest="cache",
         help="Cache vulnerability information in platform specific " "user_data_dir",
-    )
-    parser.add_argument(
-        "--cache-os",
-        action="store_true",
-        default=False,
-        dest="cache_os",
-        help="Cache OS vulnerability information in platform specific " "user_data_dir",
     )
     parser.add_argument(
         "--sync",
@@ -455,17 +451,10 @@ async def cache():
     :return: a JSON response indicating the status of the caching operation.
     """
     db = db_lib.get()
-    q = request.args
     if not db_lib.index_count(db["index_file"]):
-        sources_list = [OSVSource(), NvdSource()]
-        if os.environ.get("GITHUB_TOKEN"):
-            sources_list.insert(0, GitHubSource())
-        # Include aqua source when ?os=true query string is passed
-        if q.get("os", "").lower() in ("true", "1"):
-            sources_list.insert(0, AquaSource())
-        for s in sources_list:
-            LOG.debug("Refreshing %s", s.__class__.__name__)
-            s.refresh()
+        oras_client = oras.client.OrasClient()
+        paths_list = oras_client.pull(target = vdb_database_url, outdir = data_dir)
+        LOG.debug(f'VDB data is stored at: {paths_list}')
         return {
             "error": "false",
             "message": "vulnerability database cached successfully",
@@ -607,7 +596,7 @@ def main():
     else:
         project_types_list = utils.detect_project_type(src_dir)
     db = db_lib.get()
-    run_cacher = args.cache or args.cache_os
+    run_cacher = args.cache
     areport_file = (
         args.report_file
         if args.report_file
@@ -746,26 +735,15 @@ def main():
             run_cacher = True
         else:
             LOG.debug("Vulnerability database loaded from %s", config.vdb_bin_file)
+
         sources_list = [OSVSource(), NvdSource()]
         if os.environ.get("GITHUB_TOKEN"):
             sources_list.insert(0, GitHubSource())
         if run_cacher:
-            if (
-                args.cache_os
-                or args.deep_scan
-                or project_type in ("docker", "podman", "yaml-manifest", "os")
-            ):
-                sources_list.insert(0, AquaSource())
-                LOG.info(
-                    "OS Vulnerability database would be downloaded for the "
-                    "first time. To avoid this step, manually download the "
-                    "vulnerability database using the ORAS cli and set the "
-                    "environment variable VDB_HOME."
-                )
-            for s in sources_list:
-                LOG.debug("Refreshing %s", s.__class__.__name__)
-                s.refresh()
-                run_cacher = False
+            oras_client = oras.client.OrasClient()
+            paths_list = oras_client.pull(target = vdb_database_url, outdir = data_dir)
+            LOG.debug(f'VDB data is stored at: {paths_list}')
+            run_cacher = False
         elif args.sync:
             for s in sources_list:
                 LOG.debug("Syncing %s", s.__class__.__name__)
