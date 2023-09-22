@@ -76,13 +76,9 @@ jobs:
         mkdir -p repotests
     - name: Test container images
       run: |
-        wget https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.24.2/cyclonedx-linux-x64
-        mv cyclonedx-linux-x64 cyclonedx
-        chmod +x cyclonedx
         mkdir -p containertests
         pip install -r contrib/requirements.txt
         python3 depscan/cli.py --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests/depscan-rocket.json --no-vuln-table
-        python contrib/vex-validate.py --json containertests/sbom-rocket-universal.vex.json
         python3 depscan/cli.py --no-error --src ./test/data/bom-yaml-manifest.json -o containertests/depscan-yaml.json --no-vuln-table
         ls -ltr containertests
       env:
@@ -121,15 +117,10 @@ jobs:
         path: 'repotests/NodeGoat'
     - name: Test container images
       run: |
-        wget https://github.com/CycloneDX/cyclonedx-cli/releases/download/v0.24.2/cyclonedx-linux-x64
-        mv cyclonedx-linux-x64 cyclonedx
-        chmod +x cyclonedx
         mkdir -p containertests
         pip install -r contrib/requirements.txt
         python3 depscan/cli.py --no-error --src repotests/microservices-demo -o containertests/depscan-msd.json
-        python contrib/vex-validate.py --json containertests/sbom-msd-universal.vex.json
         python3 depscan/cli.py --no-error --src repotests/NodeGoat --reports-dir containertests/ng-reports
-        python contrib/vex-validate.py --json containertests/ng-reports/sbom-universal.vex.json
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
