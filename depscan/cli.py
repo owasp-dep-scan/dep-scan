@@ -745,9 +745,13 @@ def main():
         if os.environ.get("GITHUB_TOKEN"):
             sources_list.insert(0, GitHubSource())
         if run_cacher:
+            LOG.debug(
+                "About to download vdb from %s. This might take a while ...",
+                vdb_database_url,
+            )
             oras_client = oras.client.OrasClient()
             paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
-            LOG.debug(f"VDB data is stored at: {paths_list}")
+            LOG.debug("VDB data is stored at: %s", paths_list)
             run_cacher = False
         elif args.sync:
             for s in sources_list:

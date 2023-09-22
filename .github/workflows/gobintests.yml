@@ -6,7 +6,7 @@ on:
       - master
     paths-ignore:
       - '**/README.md'
-
+  pull_request:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,7 +42,6 @@ jobs:
         python3 depscan/cli.py --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
         python3 depscan/cli.py --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
         python3 depscan/cli.py --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
-        ls -ltr gobintests
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
