@@ -270,7 +270,7 @@ def exec_cdxgen(use_bin=True):
             except Exception:
                 return None
         else:
-            return cdxgen_cmd
+            return None
     else:
         # cdxgen_cmd = (
         #     os.environ.get("CDXGEN_CMD", "cdxgen")
