@@ -26,31 +26,6 @@ def filter_ignored_dirs(dirs):
     ]
     return dirs
 
-
-def find_python_reqfiles(path):
-    """
-    Method to find python requirements files
-
-    :param path: Project directory
-    :return: List of python requirement files
-    """
-    result = []
-    req_files = [
-        "requirements.txt",
-        "Pipfile",
-        "poetry.lock",
-        "Pipfile.lock",
-        "conda.yml",
-        "pyproject.toml",
-    ]
-    for root, dirs, files in os.walk(path):
-        filter_ignored_dirs(dirs)
-        for name in req_files:
-            if name in files:
-                result.append(os.path.join(root, name))
-    return result
-
-
 def find_files(src, src_ext_name, quick=False, filter=True):
     """
     Method to find files with given extension
@@ -95,90 +70,42 @@ def is_exe(src):
     return False
 
 
+def detect_project_type_from_file(file_name):
+    """
+    Detect project type from file name
+    
+    :param file_name: File name
+    :return: Project type(s)
+    """
+    project_types = []
+
+    for project_type in config.PROJECT_TYPES:
+        file_extensions = config.PROJECT_TYPES[project_type]
+        for file_extension in file_extensions:
+            if file_extension in file_name:
+                project_types.append(project_type)
+                break
+    if is_exe(file_name):
+        project_types.extend(['binary', 'go'])
+    if os.path.join(".github", "workflows") in file_name:
+        project_types.append('github')
+    return project_types
+
 def detect_project_type(src_dir):
     """Detect project type by looking for certain files
 
     :param src_dir: Source directory
-    :return List of detected types
+    :return List of detected project types
     """
-    # container image support
-    if (
-        "docker.io" in src_dir
-        or "quay.io" in src_dir
-        or ":latest" in src_dir
-        or "@sha256" in src_dir
-        or src_dir.endswith(".tar")
-        or src_dir.endswith(".tar.gz")
-    ):
-        return ["docker"]
-    # Check if the source is an exe file. Assume go for all binaries for now
-    if is_exe(src_dir):
-        return ["go", "binary"]
+    if os.path.isfile(src_dir):
+        return detect_project_type_from_file(src_dir)
+    
     project_types = []
-    if find_python_reqfiles(src_dir) or find_files(src_dir, ".py", quick=True):
-        project_types.append("python")
-    if find_files(src_dir, "pom.xml", quick=True) or find_files(
-        src_dir, ".gradle", quick=True
-    ):
-        project_types.append("java")
-    if find_files(src_dir, ".gradle.kts", quick=True):
-        project_types.append("kotlin")
-    if find_files(src_dir, "build.sbt", quick=True):
-        project_types.append("scala")
-    if (
-        find_files(src_dir, "package.json", quick=True)
-        or find_files(src_dir, "yarn.lock", quick=True)
-        or find_files(src_dir, "rush.json", quick=True)
-    ):
-        project_types.append("nodejs")
-    if find_files(src_dir, "go.sum", quick=True) or find_files(
-        src_dir, "Gopkg.lock", quick=True
-    ):
-        project_types.append("go")
-    if find_files(src_dir, "Cargo.lock", quick=True):
-        project_types.append("rust")
-    if find_files(src_dir, "composer.json", quick=True):
-        project_types.append("php")
-    if find_files(src_dir, ".csproj", quick=True):
-        project_types.append("dotnet")
-    if find_files(src_dir, "Gemfile", quick=True) or find_files(
-        src_dir, "Gemfile.lock", quick=True
-    ):
-        project_types.append("ruby")
-    if find_files(src_dir, "deps.edn", quick=True) or find_files(
-        src_dir, "project.clj", quick=True
-    ):
-        project_types.append("clojure")
-    if find_files(src_dir, "conan.lock", quick=True) or find_files(
-        src_dir, "conanfile.txt", quick=True
-    ):
-        project_types.append("cpp")
-    if find_files(src_dir, "pubspec.lock", quick=True) or find_files(
-        src_dir, "pubspec.yaml", quick=True
-    ):
-        project_types.append("dart")
-    if find_files(src_dir, "cabal.project.freeze", quick=True):
-        project_types.append("haskell")
-    if find_files(src_dir, "mix.lock", quick=True):
-        project_types.append("elixir")
-    if find_files(
-        os.path.join(src_dir, ".github", "workflows"),
-        ".yml",
-        quick=True,
-        filter=False,
-    ):
-        project_types.append("github")
-    # jars
-    if "java" not in project_types and find_files(src_dir, ".jar", quick=True):
-        project_types.append("jar")
-    # Jenkins plugins or plain old jars
-    if "java" not in project_types and find_files(src_dir, ".hpi", quick=True):
-        project_types.append("jenkins")
-    if find_files(src_dir, ".yml", quick=True) or find_files(
-        src_dir, ".yaml", quick=True
-    ):
-        project_types.append("yaml-manifest")
-    return project_types
+    for root, dirs, files in os.walk(src_dir):
+        filter_ignored_dirs(dirs)
+        for file in files:
+            project_types.extend(detect_project_type_from_file(os.path.abspath(os.path.join(root, file))))
+    return list(set(project_types))
 
 
 def get_pkg_vendor_name(pkg):

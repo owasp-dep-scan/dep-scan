@@ -430,3 +430,25 @@ max_request_failures = get_int_from_env("max_request_failures", 5)
 
 # Universal scan
 UNIVERSAL_SCAN_TYPE = "universal"
+
+PROJECT_TYPES = {
+    "docker": ["Dockerfile", "docker-compose.yml", "docker-compose.yaml", ".tar", ".tar.gz", ".tgz", "docker.io", "quay.io", ":latest", "@sha256"],
+    "python": [".py", "requirements.txt", "Pipfile", "poetry.lock", "Pipfile.lock", "conda.yml", "pyproject.toml"],
+    "java": ["pom.xml", ".gradle", ".gradle.kts"],
+    "kotlin": ["build.gradle.kts", "build.kts"],
+    "scala": ["build.sbt"],
+    "nodejs": ["package.json", "yarn.lock", "rush.json"],
+    "go": ["go.sum", "Gopkg.lock"],
+    "rust": ["Cargo.lock"],
+    "php": ["composer.json"],
+    "dotnet": [".csproj"],
+    "ruby": ["Gemfile", "Gemfile.lock"],
+    "clojure": ["deps.edn", "project.clj"],
+    "cpp": ["conan.lock", "conanfile.txt"],
+    "dart": ["pubspec.lock", "pubspec.yaml"],
+    "haskell": ["cabal.project.freeze"],
+    "elixir": ["mix.lock"],
+    "jar": [".jar"],
+    "jenkins": [".hpi"],
+    "yaml-manifest": [".yml", ".yaml"],
+}
