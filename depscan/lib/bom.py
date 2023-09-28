@@ -38,7 +38,7 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
             stderr=subprocess.STDOUT,
             cwd=cwd,
             env=os.environ.copy(),
-            shell=False,
+            shell=True if sys.platform == "win32" else False,
             encoding="utf-8",
         )
         LOG.debug(cp.stdout)
@@ -270,7 +270,7 @@ def exec_cdxgen(use_bin=True):
             except Exception:
                 return None
         else:
-            return None
+            return cdxgen_cmd
     else:
         # cdxgen_cmd = (
         #     os.environ.get("CDXGEN_CMD", "cdxgen")
