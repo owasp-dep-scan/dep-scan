@@ -432,7 +432,7 @@ def summarise(
                                 bom_data["services"] = []
                             bom_data["services"].insert(0, pservice)
                     with open(vex_file, mode="w", encoding="utf-8") as vexfp:
-                        json.dump(bom_data, vexfp)
+                        json.dump(bom_data, vexfp, indent=4)
                         LOG.info("VEX file %s generated successfully", vex_file)
         except Exception:
             LOG.warning("Unable to generate VEX file for this scan")
