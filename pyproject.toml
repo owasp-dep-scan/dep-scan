@@ -13,8 +13,8 @@ dependencies = [
     "rich",
     "quart",
     "requests",
+    "toml",
     "tomli",
-    "tomli-w",
 ]
 
 requires-python = ">=3.8"

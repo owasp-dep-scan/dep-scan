@@ -1,15 +1,16 @@
+import logging
 import json
 import os
 import re
 from copy import deepcopy
 from datetime import datetime
-from urllib.error import HTTPError
+from requests import HTTPError
 
 import requests
+import toml
 import tomli
 
 from depscan.lib.logger import LOG
-from depscan.lib.utils import get_version
 
 
 CWE_MAP = {
@@ -1079,8 +1080,14 @@ CWE_MAP = {
     "CWE-1395": "Dependency on Vulnerable Third-Party Component",
 }
 
-REF_MAP = {
-    r"https://nvd.nist.gov/vuln/detail/cve-[0-9]{4}-[0-9]{4,}": "CVE Record",
+TOML_TEMPLATE = (
+    "https://raw.githubusercontent.com/owasp-dep-scan/dep-scan/feature"
+    "/csaf/contrib/csaf.toml"
+)
+
+ref_map = {
+    r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
+    r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)": "Bugzilla",
     "https://github.com/advisories": "GitHub Advisory",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/security/advisories": "GitHub "
     "Advisory",
@@ -1088,10 +1095,15 @@ REF_MAP = {
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/commit": "GitHub Commit",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/release": "GitHub Repository "
     "Release",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/?$": "GitHub Repository",
+    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/issues/?": "GitHub Issue",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/blob": "GitHub Blob Reference",
+    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/?$": "GitHub Repository",
     "https://gist.github.com": "GitHub Gist",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/": "GitHub Other",
+    r"https://access.redhat.com/errata/rhba-\d{4}:\d{4}": "Red Hat Bug Fix "
+    "Advisory",
+    r"https://access.redhat.com/errata/rhsa-\d{4}:\d{4}": "Red Hat Security "
+    "Advisory",
     "https://www.npmjs.com/advisories/": "NPM Advisory",
     r"https://www.npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
     "https://www.oracle.com/security-alerts": "Oracle Security Alert",
@@ -1103,53 +1115,65 @@ REF_MAP = {
     ".+advisory.?+": "Advisory",
 }
 
-TOML_TEMPLATE = (
-    "https://raw.githubusercontent.com/owasp-dep-scan/dep-scan/feature"
-    "/csaf/contrib/csaf.toml"
-)
+sorted_ref_map = sorted(ref_map.items(), key=lambda x: len(x[0]), reverse=True)
+sorted_ref_map = dict(sorted_ref_map)
+
+compiled_patterns = {
+    re.compile(pattern): value for pattern, value in ref_map.items()
+}
 
 
 class CsafOccurence:
     def __init__(self, res):
         self.cve = res["id"]
-        self.cwe = res["cwe"]
+        [self.cwe, self.notes] = parse_cwe(res["problem_type"])
         self.score = res["cvss_score"]
         self.cvss_v3 = parse_cvss(res)
         self.package_issue = res["package_issue"]
-        self.product_status = get_product_status(
-            res["package_issue"], res["vdetails"]["package"]
+        [self.pkg, self.product_status] = get_product_status(
+            res["package_issue"], res["matched_by"]
         )
         self.description = (
-            res["short_description"].replace("\\n", " ").replace("\\t", " ")
+            res["short_description"]
+            .replace("\\n", " ")
+            .replace("\\t", " ")
+            .replace("\n", " ")
+            .replace("\t", " ")
         )
         self.references = res["related_urls"]
         self.type = (res["type"],)
-        self.pkg = (
-            res["matched_by"].split("|")[1]
-            + ":"
-            + res["matched_by"].split("|")[2]
-        )
         self.severity = res["severity"]
-        self.orig_date = (
-            res["vdetails"]["source_orig_time"]
-            if res["vdetails"]["source_orig_time"]
-            else None
+        self.orig_date = res["source_orig_time"] or None
+        self.update_date = res["source_update_time"] or None
+
+    def to_dict(self):
+        vuln = {}
+        if self.cve.startswith("CVE"):
+            vuln["cve"] = self.cve
+        vuln["cwe"] = self.cwe
+        vuln["discovery_date"] = str(self.orig_date) or str(self.update_date)
+        vuln["product_status"] = self.product_status
+        [ids, vuln["references"]] = format_references(self.references)
+        vuln["ids"] = ids
+        vuln["scores"] = [{"cvss_v3": self.cvss_v3, "products": [self.pkg]}]
+        self.notes.append(
+            {
+                "category": "general",
+                "text": self.description,
+                "details": "Vulnerability Description",
+            }
         )
-        self.update_date = (
-            res["vdetails"]["source_update_time"]
-            if res["vdetails"]["source_update_time"]
-            else None
-        )
-        self.notes = res["notes"]
+        vuln["notes"] = self.notes
+        return vuln
 
 
-def get_product_status(res, pkg):
+def get_product_status(issue, matched_by):
     """
     Generates the product status based on the given response and package.
 
     Args:
-        res (dict): The response dictionary of information about the product.
-        pkg (str): The package name.
+        issue (dict): The response dictionary of information about the product.
+        matched_by (str): The location data
 
     Returns: dict: A dictionary containing the product status. The keys
     represent different statuses, while the values represent the corresponding
@@ -1160,81 +1184,58 @@ def get_product_status(res, pkg):
 
     """
     product_status = {}
-    if res["fixed_location"]:
-        product_status["fixed"] = [pkg + ":" + res["fixed_location"]]
-    if res["affected_location"]:
-        loc_dict = json.loads(res["affected_location"])
-        product_status["known_affected"] = [
-            loc_dict["package"] + ":" + loc_dict["version"]
-        ]
-    return product_status
+    pkg = matched_by.split("|")
+    if len(pkg) == 3:
+        pkg = matched_by.split("|")[1]
+    elif len(pkg) == 4:
+        pkg = matched_by.split("|")[2]
+    if issue.get("fixed_location"):
+        product_status["fixed"] = [f"{pkg}:{issue.get('fixed_location')}"]
+    if issue.get("affected_location"):
+        try:
+            loc_dict = issue.get("affected_location")
+            product_status["known_affected"] = [
+                f'{loc_dict.get("package")}:{loc_dict.get("version")}'
+            ]
+        except json.JSONDecodeError:
+            logging.warning("Invalid JSON string for affected_location")
+    return pkg, product_status
 
 
-def format_cwe(vdata):
-    """
-    Format the CWE (Common Weakness Enumeration) information in the given
-    vulnerability data.
+def parse_cwe(cwe):
+    fmt_cwe = None
+    new_notes = []
 
-    Args:
-        vdata (dict): The vulnerability data dictionary.
+    if not cwe or cwe in ["UNKNOWN", [], "[]"]:
+        return fmt_cwe, new_notes
 
-    Returns:
-        dict: The formatted vulnerability data dictionary.
-
-    Raises:
-        None
-    """
-    r = deepcopy(vdata)
-    if len(r["problem_type"]) == 0 or r.get("problem_type") in [
-        "UNKNOWN",
-        [],
-        "[]",
-    ]:
-        r["cwe"] = None
-        r["notes"] = []
-        return r
-    fmt_cwe = re.findall(r"CWE-[1-9]\d{0,5}", r.get("problem_type"))
-    r["notes"] = []
-    try:
-        if CWE_MAP.get(fmt_cwe[0]):
-            r["cwe"] = {
-                "id": fmt_cwe[0],
-                "name": CWE_MAP.get(fmt_cwe[0]),
-            }
-        else:
-            print(
-                f"We couldn't locate the name of the CWE with the following id:"
-                f" {fmt_cwe[0]}. Help us out by reporting the id at "
+    cwe_ids = re.findall(r"CWE-[1-9]\d{0,5}", cwe)
+    for i in range(0, len(cwe_ids)):
+        cwe_name = CWE_MAP.get(cwe_ids[i], "UNABLE TO LOCATE CWE NAME")
+        if not cwe_name:
+            LOG.warning(
+                f"We couldn't locate the name of the CWE with the following "
+                f"id: {cwe_ids[i]}. Help us out by reporting the id at "
                 f"https://github.com/owasp-dep-scan/dep-scan/issues."
             )
-        if len(fmt_cwe) > 1:
-            for i in range(1, len(fmt_cwe)):
-                if CWE_MAP.get(fmt_cwe[i]):
-                    if r.get("cwe"):
-                        r["notes"].append(
-                            {
-                                "title": f"Additional CWE: {fmt_cwe[i]}",
-                                "audience": "developers",
-                                "category": "other",
-                                "text": CWE_MAP.get(fmt_cwe[i]),
-                            }
-                        )
-                    else:
-                        r["cwe"] = {
-                            "id": fmt_cwe[i],
-                            "name": CWE_MAP.get(fmt_cwe[i]),
-                        }
-                else:
-                    print(
-                        f"We couldn't locate the name of the CWE with the "
-                        f"following id: {fmt_cwe[0]}. Help us out by "
-                        f"reporting the contents of this message at "
-                        f"https://github.com/owasp-dep-scan/dep-scan/issues."
-                    )
-    except Exception as e:
-        print(e)
-    finally:
-        return r
+        if i == 0:
+            fmt_cwe = {
+                "id": cwe_ids[i],
+                "name": cwe_name,
+            }
+        # CSAF 2.0 only allows a single CWE per vulnerability, so we add
+        # any additional CWEs to a note entry.
+        else:
+            new_notes.append(
+                {
+                    "title": f"Additional CWE: {cwe_ids[i]}",
+                    "audience": "developers",
+                    "category": "other",
+                    "text": cwe_name,
+                }
+            )
+
+    return fmt_cwe, new_notes
 
 
 def parse_cvss(res):
@@ -1246,7 +1247,7 @@ def parse_cvss(res):
 
     Returns:
         dict or None: The parsed CVSS information as a dictionary, or None if
-        the CVSS vector string is empty.
+        the CVSS vector string is empty as it is required for cvss v3.
             The dictionary contains the following keys:
                 - baseScore (float): The base score of the CVSS.
                 - attackVector (str): The attack vector of the CVSS.
@@ -1260,25 +1261,26 @@ def parse_cvss(res):
             If the CVSS vector string is empty, None is returned.
     """
     cvss_v3 = res["cvss_v3"]
+    if not cvss_v3.get("vector_string"):
+        LOG.warning(f"Could not find vector string for {res['id']}")
+        return None
+    version = re.findall(r"3.0|3.1", cvss_v3["vector_string"])
+    if not version:
+        LOG.warning(f"No version found for {res['id']}")
+    else:
+        version = version[0]
     if not cvss_v3:
         LOG.warning(f"No cvss_v3 data found for {res['id']}")
         return None
-    elif not cvss_v3.get("vector_string"):
-        LOG.warning(f"Could not find vector string for {res['id']}")
     return {
         "baseScore": cvss_v3["base_score"],
-        # "confidentialityImpact": cvss_v3["confidentiality_impact"],
-        # "integrityImpact": cvss_v3["integrity_impact"],
-        # "availabilityImpact": cvss_v3["availability_impact"],
         "attackVector": cvss_v3["attack_vector"],
-        # "attackComplexity": cvss_v3["attack_complexity"],
         "privilegesRequired": cvss_v3["privileges_required"],
         "userInteraction": cvss_v3["user_interaction"],
         "scope": cvss_v3["scope"],
-        "impactScore": str(cvss_v3["impact_score"]),
         "baseSeverity": res["severity"],
-        "version": "3.1",
-        "vectorString": cvss_v3["vector_string"] or None,
+        "version": version,
+        "vectorString": cvss_v3["vector_string"],
     }
 
 
@@ -1292,10 +1294,52 @@ def format_references(ref):
     Returns:
         list: A list of dictionaries with the formatted references.
     """
-    new_ref = []
-    for r in ref:
-        new_ref.append({"summary": get_ref_summary(r), "url": r})
-    return new_ref
+    fmt_refs = [{"summary": get_ref_summary(r), "url": r} for r in ref]
+    refs = []
+    ids = []
+    github_advisory_regex = re.compile(r"GHSA-\w{4}-\w{4}-\w{4}$")
+    github_issue_regex = re.compile(r"(?<=issues/)\d+")
+    bugzilla_regex = re.compile(
+        r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)"
+    )
+    bugzilla_id_regex = re.compile(r"(?<=show_bug.cgi\?id=)\d+")
+    redhat_advisory_regex = re.compile(r"RH[BS]A-\d{4}:\d+")
+    for reference in fmt_refs:
+        r = reference["url"]
+        summary = reference["summary"]
+        if summary == "GitHub Advisory":
+            ids.append(
+                {
+                    "system_name": summary,
+                    "text": github_advisory_regex.findall(r)[0],
+                }
+            )
+        elif summary == "GitHub Issue":
+            ids.append(
+                {
+                    "system_name": summary,
+                    "text": github_issue_regex.findall(r)[0],
+                }
+            )
+        elif summary == "Bugzilla":
+            new_id = {
+                "system_name": bugzilla_regex.findall(r)[0].capitalize()
+                + " Bugzilla ID",
+                "text": bugzilla_id_regex.findall(r)[0],
+            }
+            if new_id["system_name"] == "Redhat Bugzilla ID":
+                new_id["system_name"] = "Red Hat Bugzilla ID"
+            ids.append(new_id)
+        elif summary == "Red Hat Security Advisory" | ("Red Hat Bug Fix "
+                                                       "Advisory"):
+            ids.append(
+                {
+                    "system_name": summary,
+                    "text": redhat_advisory_regex.findall(r)[0],
+                }
+            )
+        refs.append(reference)
+    return ids, refs
 
 
 def get_ref_summary(url):
@@ -1307,78 +1351,42 @@ def get_ref_summary(url):
 
     Returns:
         str: The summary string corresponding to the matched pattern in REF_MAP.
-             If no match is found, "Other" is returned.
+             If no match is found, an exception is raised.
     """
-    for pattern, value in REF_MAP.items():
-        if re.match(pattern, url.lower()):
-            return value
-    return "Other"
+    if type(url) is not str:
+        raise TypeError("url must be a string")
 
-
-def export_csaf_vuln(c):
-    """
-    Export the Common Security Advisory Framework (CSAF) vulnerability for a
-    given component.
-
-    Args:
-        c (Component): The component for which to export the CSAF vulnerability.
-
-    Returns:
-        dict: A dictionary representing the exported CSAF vulnerability.
-
-    Raises:
-        None
-    """
-    vuln = {}
-    if getattr(c, "cve") and c.cve.startswith("CVE"):
-        vuln["cve"] = getattr(c, "cve")
-    if getattr(c, "cwe"):
-        vuln["cwe"] = c.cwe
-        vuln["cwe"] = getattr(c, "cwe")
-    if getattr(c, "orig_date"):
-        vuln["discovery_date"] = getattr(c, "orig_date")
-    elif getattr(c, "update_date") and type(c.update_date) == str:
-        vuln["discovery_date"] = c.update_date
-    vuln["product_status"] = getattr(c, "product_status", None)
-    if c.cvss_v3:
-        vuln["scores"] = [{"cvss_v3": c.cvss_v3, "products": [c.pkg]}]
-    c.notes.append(
-        {
-            "category": "general",
-            "text": c.description,
-            "details": "Vulnerability Description",
-        }
+    return next(
+        (
+            value
+            for pattern, value in compiled_patterns.items()
+            if pattern.search(url.lower())
+        ),
+        "Other",
     )
-    vuln["notes"] = c.notes
-    if not getattr(c, "references"):
-        print(f"Warning, could not find references for {c.cve}")
-    else:
-        vuln["references"] = format_references(c.references)
-    return vuln
 
 
 def parse_revision_history(tracking):
     """
-    Generates the revision history for a given tracking status.
+    Parses the revision history of a tracking object.
 
-    Parameters:
-        rev_hx (dict): Contains list of revision history objects.
-        tracking (dict): Tracking object containing status and release dates.
+    Args:
+        tracking (dict): The tracking object containing the revision history.
 
     Returns:
-        list: The sorted and reversed revision history list.
+        dict: The updated tracking object with the parsed revision history.
     """
     hx = deepcopy(tracking["revision_history"])
     status = tracking["status"]
-    rev = True if tracking["revision_history"].get("revision", None) else False
+    rev = bool(tracking["revision_history"].get("revision", None))
     comb = "-".join([status, str(rev)])
     dt = get_date()
-    if not tracking["current_release_date"]:
-        tracking["current_release_date"] = dt
-    if not tracking["initial_release_date"]:
-        tracking["initial_release_date"] = dt
-    match comb:
-        case "draft-False":
+    tracking["current_release_date"] = tracking.get("current_release_date", dt)
+    tracking["initial_release_date"] = tracking.get("initial_release_date", dt)
+    if not tracking.get("id"):
+        LOG.warning("No tracking id, generating one.")
+        tracking["id"] = f"{dt}_v{tracking['version']}"
+        if comb in ["draft-False","final-False","interim-False"]:
             hx["revision"] = [
                 {
                     "date": tracking["initial_release_date"],
@@ -1388,12 +1396,17 @@ def parse_revision_history(tracking):
                     else "Initial [draft]",
                 }
             ]
-        case "final-True":
+        elif comb == "final-True":
             hx["revision"] = sorted(hx["revision"], key=lambda x: x["number"])
             tracking["initial_release_date"] = hx["revision"][0]["date"]
             if hx["revision"][0]["summary"] == "Initial [draft]":
                 hx["revision"][0]["summary"] = "Initial"
             else:
+                if (
+                    tracking["current_release_date"]
+                    == hx["revision"][-1]["date"]
+                ):
+                    tracking["current_release_date"] = dt
                 hx["revision"].append(
                     {
                         "date": tracking["current_release_date"],
@@ -1401,12 +1414,9 @@ def parse_revision_history(tracking):
                         "summary": "Update",
                     }
                 )
-            hx["revision"].reverse()
-    # if not tracking["initial_release_date"]:
-    #     tracking["initial_release_date"] = hx["revision"][-1]["date"]
-    tracking["revision_history"] = hx["revision"]
-    if not tracking["version"]:
-        tracking["version"] = hx["revision"][0]["number"]
+    hx["revision"].reverse()
+    tracking["version"] = max(tracking["version"], hx["revision"][0]["number"])
+    tracking["revision_history"] = hx
     return tracking
 
 
@@ -1501,7 +1511,7 @@ def get_date():
     Returns:
         str: The current date and time in ISO 8601 format.
     """
-    return str(datetime.now().isoformat())
+    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def export_csaf(results, src_dir, reports_dir):
@@ -1527,13 +1537,11 @@ def export_csaf(results, src_dir, reports_dir):
         "LOW": 4,
     }
     for r in results:
-        r2 = format_cwe(r)
-        c = CsafOccurence(r2)
-        new_vuln = export_csaf_vuln(c)
+        c = CsafOccurence(r)
+        new_vuln = c.to_dict()
         template["vulnerabilities"].append(new_vuln)
         agg_score.add(severity_ref.get(c.severity))
-    agg_score = [x for x in agg_score]
-    if len(agg_score) > 0:
+    if agg_score := list(agg_score):
         agg_score.sort()
         severity_ref = {v: k for k, v in severity_ref.items()}
         agg_severity = (
@@ -1541,25 +1549,22 @@ def export_csaf(results, src_dir, reports_dir):
             + severity_ref[agg_score[0]][1:].lower()
         )
         template["document"]["aggregate_severity"]["text"] = agg_severity
-    # template_cleaned = cleanup_results(template)
-    new_results = {}
-    for key, value in template.items():
-        entry = None
-        if isinstance(value, dict):
-            entry = cleanup_dict(value)
-            # if x:
-            #     new_results[key] = x
-        elif isinstance(value, list):
-            entry = cleanup_list(value)
-            # if x and len(x) > 0:
-            #     new_results[key] = x
-        if entry:
-            new_results[key] = entry
+    new_results = cleanup_dict(template)
+    # We want to preserve revision_history.revision for the TOML
+    metadata["tracking"] = deepcopy(new_results["document"]["tracking"])
+    metadata["tracking"]["id"] = ""
+    new_results["document"]["tracking"]["revision_history"] = new_results[
+        "document"
+    ]["tracking"]["revision_history"]["revision"]
     outfile = os.path.join(
         reports_dir,
         f"csaf_v{new_results['document']['tracking']['version']}.json",
     )
     json.dump(new_results, open(outfile, "w"), indent=4)
+    LOG.info("CSAF report written to %s", outfile)
+    with open(toml_file_path, "w") as f:
+        toml.dump(metadata, f)
+    LOG.info("CSAF template updated")
 
 
 def import_csaf_toml(toml_file_path):
@@ -1586,7 +1591,7 @@ def import_csaf_toml(toml_file_path):
     return data
 
 
-def get_toml_template(fn):
+def download_toml_template(fn):
     """
     Retrieves the TOML template file from the given URL and saves it to the
     specified file name.
@@ -1607,17 +1612,26 @@ def get_toml_template(fn):
         LOG.error(
             "Could not retrieve the CSAF toml template. Please visit "
             "our repo at https://github.com/owasp-dep-scan/dep-scan and "
-            "manually download the csaf.toml file located in the "
-            f"contrib directory to {fn}."
+            "manually download the csaf.toml file located in the contrib "
+            f"directory to {fn}."
         )
 
 
 def cleanup_list(d):
+    """
+    Removes empty entries from the input list
+
+    Parameters:
+    - d (list): The input list to be cleaned up.
+
+    Returns:
+    - new_lst (list): The cleaned up list, containing only valid entries from
+    the input list.
+    """
     new_lst = []
-    for i in range(0, len(d)):
+    for i in range(len(d)):
         if isinstance(d[i], dict):
-            entry = cleanup_dict(d[i])
-            if entry:
+            if entry := cleanup_dict(d[i]):
                 new_lst.append(entry)
         elif isinstance(d[i], str):
             new_lst.append(d[i])
@@ -1625,19 +1639,26 @@ def cleanup_list(d):
 
 
 def cleanup_dict(d):
+    """
+    Cleans up a dictionary by removing empty or None values recursively.
+
+    Parameters:
+    - d (dict): The dictionary to be cleaned up.
+
+    Returns:
+    - dict or None: The cleaned up dictionary. If the resulting dictionary is
+    empty, returns None.
+    """
     new_dict = {}
-    entry = None
     for key, value in d.items():
-        if len(value) > 0:
+        entry = None
+        if value and str(value) != "":
             if isinstance(value, list):
                 entry = cleanup_list(value)
-            elif isinstance(value, str):
-                entry = value
             elif isinstance(value, dict):
                 entry = cleanup_dict(value)
+            else:
+                entry = value
         if entry:
             new_dict[key] = entry
-    if len(new_dict) > 0:
-        return new_dict
-    else:
-        return None
+    return new_dict

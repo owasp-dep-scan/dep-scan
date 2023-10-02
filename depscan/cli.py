@@ -20,7 +20,7 @@ from vdb.lib.utils import parse_purl
 
 import oras.client
 
-from depscan.lib.csaf import export_csaf, get_toml_template
+from depscan.lib.csaf import export_csaf, download_toml_template
 from depscan.lib import privado, utils
 from depscan.lib.analysis import (
     PrepareVexOptions,
@@ -620,7 +620,7 @@ def main():
     if args.csaf:
         os.environ["CSAF_MODE"] = "True"
         if not os.path.exists((os.path.join(src_dir, "csaf.toml"))):
-            get_toml_template(os.path.join(src_dir, "csaf.toml"))
+            download_toml_template(os.path.join(src_dir, "csaf.toml"))
             LOG.info("CSAF toml not found, creating template in %s", src_dir)
             LOG.info(
                 "Please fill out the toml with your project details and "

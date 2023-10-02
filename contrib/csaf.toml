@@ -11,6 +11,37 @@ namespace = "https://appthreat.com"
 contact_details = "vendor@mcvendorson.com"
 issuing_authority = ""
 
+[notes]
+# Category and text are required to add a note, add as many notes.note as you need
+# Valid categories are: description, details, faq, general, legal_disclaimer, other, summary
+[[notes.note]]
+audience = ""
+category = ""
+text = ""
+title = ""
+
+[product_tree]
+easy_import = ""
+
+[distribution]
+text = ""
+# Label is required if tlp included
+label = ""
+url = ""
+
+[references]
+# Summary and url are required, include as many references.ref as you like
+# Category can be either "external" or "self"
+[[references.ref]]
+category = "self"
+summary = "summary1"
+url = "https://url.com"
+
+[[references.ref]]
+category = ""
+summary = ""
+url = ""
+
 # An entry for the data in this section will be added to the revision_history if the status is final
 # The current date/time is default if not provided
 # id is required and best set by the document issuing authority
@@ -33,39 +64,6 @@ summary = "Update"
 date = "2022-09-22T20:54:06.186927"
 number = "1"
 summary = "Initial"
-
-[notes]
-# Category and text are required to add a note, add as many notes.note as you need
-# Valid categories are: description, details, faq, general, legal_disclaimer, other, summary
-[[notes.note]]
-audience = ""
-category = ""
-text = ""
-title = ""
-
-[product_tree]
-easy_import = "C:/Users/user/PycharmProjects/owasp-dep-scan/contrib/product_tree.json"
-
-[distribution]
-text = ""
-# Label is required if tlp included
-label = ""
-url = ""
-
-[references]
-# Summary and url are required, include as many references.ref as you like
-# Category can be either "external" or "self"
-[[references.ref]]
-category = "self"
-summary = "summary1"
-url = "https://url.com"
-
-[[references.ref]]
-category = ""
-summary = ""
-url = ""
-
-
 
 
 
