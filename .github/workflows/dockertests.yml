@@ -7,6 +7,9 @@ on:
       - feature/*
     paths-ignore:
       - '**/README.md'
+      - 'gobintests.yml'
+      - 'pythonapp.yml'
+      - 'python-publish.yml'
   pull_request:
 jobs:
   version_tests:
@@ -30,12 +33,6 @@ jobs:
         python3 -m pip install .[dev]
         npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
-#    - name: VDB
-#      if: matrix.os != 'windows-latest'
-#      run: |
-#        rm -rf $VDB_HOME && mkdir -p $VDB_HOME
-#      env:
-#        VDB_HOME: "vdb_data"
     - name: Run pytest tests
       run: |
         python3 -m pip install -r contrib/requirements.txt
@@ -64,6 +61,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.11']
+      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python

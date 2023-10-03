@@ -6,6 +6,9 @@ on:
   push:
     paths-ignore:
       - '**/README.md'
+      - 'dockertests.yml'
+      - 'pythonapp.yml'
+      - 'gobintests.yml'
     branches:
       - master
     tags:

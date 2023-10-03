@@ -4,6 +4,9 @@ on:
   push:
     paths-ignore:
       - '**/README.md'
+      - 'dockertests.yml'
+      - 'dockertests.yml'
+      - 'python-publish.yml'
   pull_request:
 jobs:
   build:
@@ -12,6 +15,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python

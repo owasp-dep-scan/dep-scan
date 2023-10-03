@@ -1,6 +1,7 @@
-from github import BadCredentialsException, Github, Auth
+from github import BadCredentialsException, Github, Auth, GithubException
 from dataclasses import dataclass
 
+from depscan.lib.logger import LOG
 
 
 # Data class to represent a required GitHub personal access token scope for depscan
@@ -40,13 +41,12 @@ class GitHub:
         try:
             # Call the GitHub API to authenticate
             self.github.get_user().name
-        except(BadCredentialsException):
+        except (BadCredentialsException, GithubException):
             return False
-        
         return True
 
 
-    def get_token_scopes(self) -> list[str]:
+    def get_token_scopes(self) -> list:
         """
         Provides the scopes associated to the access token provided in the environment variable
 
@@ -85,7 +85,7 @@ class GitHub:
         return True
     
 
-    def get_token_extra_scopes(self) -> list[str]:
+    def get_token_extra_scopes(self) -> list:
         """
         Lists the token scopes greater than what is required for depscan to operate
 

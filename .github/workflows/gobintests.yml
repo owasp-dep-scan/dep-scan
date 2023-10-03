@@ -6,6 +6,9 @@ on:
       - master
     paths-ignore:
       - '**/README.md'
+      - 'dockertests.yml'
+      - 'pythonapp.yml'
+      - 'python-publish.yml'
   pull_request:
 jobs:
   build:
