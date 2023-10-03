@@ -23,7 +23,7 @@ jobs:
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
       run: |
-        python3 -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip setuptools
         python3 -m pip install .[dev]
         sudo npm install -g @cyclonedx/cdxgen
     - name: Test go binaries
