@@ -20,6 +20,7 @@ from vdb.lib.utils import parse_purl
 
 import oras.client
 
+from depscan.lib import privado, utils, github
 from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib import privado, utils
 from depscan.lib.analysis import (
@@ -791,8 +792,24 @@ def main():
             )
 
         sources_list = [OSVSource(), NvdSource()]
-        if os.environ.get("GITHUB_TOKEN"):
-            sources_list.insert(0, GitHubSource())
+        github_token = os.environ.get("GITHUB_TOKEN")
+        if github_token:
+            github_client = github.GitHub(github_token)
+
+            if not github_client.authenticate():
+                LOG.error("The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
+            elif github_client.get_token_scopes() is None:
+                LOG.error("The GitHub personal access token supplied appears to be a newer fine-grained access token. The token required by depscan should be a classic token with the necessary permission scopes. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
+            elif not github_client.token_has_required_scopes():
+                LOG.error("The GitHub personal access token supplied does not have the required scopes that depscan needs to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
+            else:
+                sources_list.insert(0, GitHubSource())
+                extra_scopes = github_client.get_token_extra_scopes()
+                if len(extra_scopes) > 0:
+                    LOG.warning(
+                        "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
+                        ', '.join([scope for scope in extra_scopes])
+                    )
         if run_cacher:
             LOG.debug(
                 "About to download vdb from %s. This might take a while ...",

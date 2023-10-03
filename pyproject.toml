@@ -12,6 +12,7 @@ dependencies = [
     "PyYAML",
     "rich",
     "quart",
+    "PyGithub",
     "toml",
 ]
 
@@ -44,7 +45,8 @@ scan = "depscan.cli:main"
 dev = ["black",
 "flake8",
 "pytest",
-"pytest-cov"
+"pytest-cov",
+"httpretty"
 ]
 
 [build-system]
