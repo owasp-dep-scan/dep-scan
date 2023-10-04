@@ -798,17 +798,13 @@ def main():
 
             if not github_client.authenticate():
                 LOG.error("The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
-            elif github_client.get_token_scopes() is None:
-                LOG.error("The GitHub personal access token supplied appears to be a newer fine-grained access token. The token required by depscan should be a classic token with the necessary permission scopes. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
-            elif not github_client.token_has_required_scopes():
-                LOG.error("The GitHub personal access token supplied does not have the required scopes that depscan needs to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
             else:
                 sources_list.insert(0, GitHubSource())
-                extra_scopes = github_client.get_token_extra_scopes()
-                if len(extra_scopes) > 0:
+                scopes = github_client.get_token_scopes()
+                if not scopes is None and len(scopes) > 0:
                     LOG.warning(
                         "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
-                        ', '.join([scope for scope in extra_scopes])
+                        ', '.join([scope for scope in scopes])
                     )
         if run_cacher:
             LOG.debug(

@@ -106,14 +106,13 @@ def test_get_token_scopes_none():
     assert result is None
 
 
-def test_token_has_required_scopes_true_1():
+def test_get_token_scopes_empty():
     httpretty.enable()
     httpretty.reset()
 
     headers = {
         'content-type': 'application/json',
-        'X-OAuth-Scopes': 'admin:org, admin:repo_hook, repo, read:packages',
-        'X-Accepted-OAuth-Scopes': 'repo'
+        'x-oauth-scopes': ''
     }
 
     httpretty.register_uri(
@@ -124,133 +123,8 @@ def test_token_has_required_scopes_true_1():
     )
     
     github_client = github.GitHub('test-token')
-    result = github_client.token_has_required_scopes()
+    result = github_client.get_token_scopes()
 
     httpretty.disable()
 
-    assert result == True
-
-
-def test_token_has_required_scopes_true_2():
-    httpretty.enable()
-    httpretty.reset()
-
-    headers = {
-        'content-type': 'application/json',
-        'X-OAuth-Scopes': 'admin:org, admin:repo_hook, repo, write:packages',
-        'X-Accepted-OAuth-Scopes': 'repo'
-    }
-
-    httpretty.register_uri(
-        method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
-        adding_headers=headers
-    )
-    
-    github_client = github.GitHub('test-token')
-    result = github_client.token_has_required_scopes()
-
-    httpretty.disable()
-
-    assert result == True
-
-
-def test_token_has_required_scopes_false():
-    httpretty.enable()
-    httpretty.reset()
-
-    headers = {
-        'content-type': 'application/json',
-        'X-OAuth-Scopes': 'admin:org, admin:repo_hook, repo',
-        'X-Accepted-OAuth-Scopes': 'repo'
-    }
-
-    httpretty.register_uri(
-        method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
-        adding_headers=headers
-    )
-    
-    github_client = github.GitHub('test-token')
-    result = github_client.token_has_required_scopes()
-
-    httpretty.disable()
-
-    assert result == False
-
-
-def test_get_token_extra_scopes_1():
-    httpretty.enable()
-    httpretty.reset()
-
-    headers = {
-        'content-type': 'application/json',
-        'X-OAuth-Scopes': 'admin:org, admin:repo_hook, read:packages',
-        'X-Accepted-OAuth-Scopes': 'repo'
-    }
-
-    httpretty.register_uri(
-        method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
-        adding_headers=headers
-    )
-    
-    github_client = github.GitHub('test-token')
-    result = github_client.get_token_extra_scopes()
-
-    httpretty.disable()
-
-    assert len(result) == 2 and result.index('admin:org') >= 0 and result.index('admin:repo_hook') >= 0
-
-
-def test_get_token_extra_scopes_2():
-    httpretty.enable()
-    httpretty.reset()
-
-    headers = {
-        'content-type': 'application/json',
-        'X-OAuth-Scopes': 'admin:org, admin:repo_hook, write:packages',
-        'X-Accepted-OAuth-Scopes': 'repo'
-    }
-
-    httpretty.register_uri(
-        method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
-        adding_headers=headers
-    )
-    
-    github_client = github.GitHub('test-token')
-    result = github_client.get_token_extra_scopes()
-
-    httpretty.disable()
-
-    assert len(result) == 3 and result.index('admin:org') >= 0 and result.index('admin:repo_hook') >= 0 and result.index('write:packages') >= 0
-
-
-def test_get_token_extra_scopes_3():
-    httpretty.enable()
-    httpretty.reset()
-
-    headers = {
-        'content-type': 'application/json',
-        'X-OAuth-Scopes': 'read:packages',
-        'X-Accepted-OAuth-Scopes': 'repo'
-    }
-
-    httpretty.register_uri(
-        method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
-        adding_headers=headers
-    )
-    
-    github_client = github.GitHub('test-token')
-    result = github_client.get_token_extra_scopes()
-
-    httpretty.disable()
-
-    assert len(result) == 0
+    assert result is None
