@@ -4,6 +4,8 @@ import os
 import re
 from copy import deepcopy
 from datetime import datetime
+from json import JSONDecodeError
+
 from requests import HTTPError
 
 import requests
@@ -1081,16 +1083,15 @@ CWE_MAP = {
 }
 
 TOML_TEMPLATE = (
-    "https://raw.githubusercontent.com/owasp-dep-scan/dep-scan/feature"
-    "/csaf/contrib/csaf.toml"
+    "https://raw.githubusercontent.com/owasp-dep-scan/dep-scan/master/contrib"
+    "/csaf.toml"
 )
 
 ref_map = {
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
     r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)": "Bugzilla",
-    "https://github.com/advisories": "GitHub Advisory",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/security/advisories": "GitHub "
-    "Advisory",
+    r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories":
+        "GitHub Advisory",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/pull/\d+": "GitHub Pull Request",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/commit": "GitHub Commit",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/release": "GitHub Repository "
@@ -1099,7 +1100,7 @@ ref_map = {
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/blob": "GitHub Blob Reference",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/?$": "GitHub Repository",
     "https://gist.github.com": "GitHub Gist",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/": "GitHub Other",
+    r"https://github.com/": "GitHub Other",
     r"https://access.redhat.com/errata/rhba-\d{4}:\d{4}": "Red Hat Bug Fix "
     "Advisory",
     r"https://access.redhat.com/errata/rhsa-\d{4}:\d{4}": "Red Hat Security "
@@ -1112,14 +1113,14 @@ ref_map = {
     "https://snyk.io/vuln/": "Snyk Vulnerability Database Entry",
     "https://www.debian.org/security": "Debian Security Advisory",
     "https://security.gentoo.org/glsa": "Gentoo Security Advisory",
-    ".+advisory.?+": "Advisory",
+    ".+advisory.?": "Advisory",
 }
 
 sorted_ref_map = sorted(ref_map.items(), key=lambda x: len(x[0]), reverse=True)
 sorted_ref_map = dict(sorted_ref_map)
 
 compiled_patterns = {
-    re.compile(pattern): value for pattern, value in ref_map.items()
+    re.compile(pattern): value for pattern, value in sorted_ref_map.items()
 }
 
 
@@ -1210,7 +1211,7 @@ def parse_cwe(cwe):
         return fmt_cwe, new_notes
 
     cwe_ids = re.findall(r"CWE-[1-9]\d{0,5}", cwe)
-    for i in range(0, len(cwe_ids)):
+    for i in range(len(cwe_ids)):
         cwe_name = CWE_MAP.get(cwe_ids[i], "UNABLE TO LOCATE CWE NAME")
         if not cwe_name:
             LOG.warning(
@@ -1330,8 +1331,9 @@ def format_references(ref):
             if new_id["system_name"] == "Redhat Bugzilla ID":
                 new_id["system_name"] = "Red Hat Bugzilla ID"
             ids.append(new_id)
-        elif summary == "Red Hat Security Advisory" | ("Red Hat Bug Fix "
-                                                       "Advisory"):
+        elif summary == "Red Hat Security Advisory" or summary == (
+            "Red Hat Bug Fix Advisory"
+        ):
             ids.append(
                 {
                     "system_name": summary,
@@ -1386,34 +1388,34 @@ def parse_revision_history(tracking):
     if not tracking.get("id"):
         LOG.warning("No tracking id, generating one.")
         tracking["id"] = f"{dt}_v{tracking['version']}"
-        if comb in ["draft-False","final-False","interim-False"]:
-            hx["revision"] = [
+    if comb in {"draft-False", "final-False", "interim-False"}:
+        hx["revision"] = [
+            {
+                "date": tracking["initial_release_date"],
+                "number": "1",
+                "summary": "Initial"
+                if comb == "final-False"
+                else "Initial [draft]",
+            }
+        ]
+    elif comb == "final-True":
+        hx["revision"] = sorted(hx["revision"], key=lambda x: x["number"])
+        tracking["initial_release_date"] = hx["revision"][0]["date"]
+        if hx["revision"][0]["summary"] == "Initial [draft]":
+            hx["revision"][0]["summary"] = "Initial"
+        else:
+            if (
+                tracking["current_release_date"]
+                == hx["revision"][-1]["date"]
+            ):
+                tracking["current_release_date"] = dt
+            hx["revision"].append(
                 {
-                    "date": tracking["initial_release_date"],
-                    "number": "1",
-                    "summary": "Initial"
-                    if comb == "final-False"
-                    else "Initial [draft]",
+                    "date": tracking["current_release_date"],
+                    "number": str(len(hx["revision"]) + 1),
+                    "summary": "Update",
                 }
-            ]
-        elif comb == "final-True":
-            hx["revision"] = sorted(hx["revision"], key=lambda x: x["number"])
-            tracking["initial_release_date"] = hx["revision"][0]["date"]
-            if hx["revision"][0]["summary"] == "Initial [draft]":
-                hx["revision"][0]["summary"] = "Initial"
-            else:
-                if (
-                    tracking["current_release_date"]
-                    == hx["revision"][-1]["date"]
-                ):
-                    tracking["current_release_date"] = dt
-                hx["revision"].append(
-                    {
-                        "date": tracking["current_release_date"],
-                        "number": str(len(hx["revision"]) + 1),
-                        "summary": "Update",
-                    }
-                )
+            )
     hx["revision"].reverse()
     tracking["version"] = max(tracking["version"], hx["revision"][0]["number"])
     tracking["revision_history"] = hx
@@ -1435,16 +1437,13 @@ def import_product_tree(tree):
         try:
             with open(tree["easy_import"], "r") as f:
                 product_tree = json.load(f)
-        except FileNotFoundError:
-            pass
-    if not product_tree:
-        LOG.warning(
-            "Unable to load product tree file. Please verify that your "
-            "product tree is a valid json file. Producing a CSAF without this "
-            "component will cause schema validation to fail.\nVisit "
-            "https://github.com/owasp-dep-scan/dep-scan/blob/master"
-            "/test/data/product_tree.json for an example."
-        )
+        except [FileNotFoundError, JSONDecodeError]:
+            LOG.warning(
+                "Unable to load product tree file. Please verify that your "
+                "product tree is a valid json file. Visit "
+                "https://github.com/owasp-dep-scan/dep-scan/blob/master/test/data"
+                "/product_tree.json for an example."
+            )
     return product_tree
 
 

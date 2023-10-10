@@ -4,12 +4,12 @@ title = "Your Title"
 
 [publisher]
 # Required
-category = "vendor" # Valid categories are: coordinator, discoverer, other, translator, user, vendor
+# Valid categories are: coordinator, discoverer, other, translator, user, vendor
+category = "vendor"
 name = "Vendor McVendorson"
 namespace = "https://appthreat.com"
 # Optional
 contact_details = "vendor@mcvendorson.com"
-issuing_authority = ""
 
 [notes]
 # Category and text are required to add a note, add as many notes.note as you need
@@ -33,9 +33,9 @@ url = ""
 # Summary and url are required, include as many references.ref as you like
 # Category can be either "external" or "self"
 [[references.ref]]
-category = "self"
-summary = "summary1"
-url = "https://url.com"
+category = ""
+summary = ""
+url = ""
 
 [[references.ref]]
 category = ""
@@ -47,23 +47,20 @@ url = ""
 # id is required and best set by the document issuing authority
 [tracking]
 # Required
-current_release_date = ""   # Do not enclose dates if in valid datetime format
+current_release_date = ""   # ISO 8601
 id = ""
-initial_release_date = ""
-status = "draft"    # Valid statuses are: draft, final, interim
+initial_release_date = ""  # ISO 8601
+status = "draft"
 version = ""
 
 [tracking.revision_history]
 # Include as many revision_history.revision entries as you like
 [[tracking.revision_history.revision]]
-date = "2023-09-22T20:54:06.186927"
-number = "2"
-summary = "Update"
+date = ""
+number = ""
+summary = ""
 
-[[tracking.revision_history.revision]]
-date = "2022-09-22T20:54:06.186927"
-number = "1"
-summary = "Initial"
+
 
 
 
