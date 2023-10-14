@@ -11,10 +11,9 @@ namespace = "https://appthreat.com"
 # Optional
 contact_details = "vendor@mcvendorson.com"
 
-[notes]
 # Category and text are required to add a note, add as many notes.note as you need
 # Valid categories are: description, details, faq, general, legal_disclaimer, other, summary
-[[notes.note]]
+[[note]]
 audience = ""
 category = ""
 text = ""
@@ -29,15 +28,14 @@ text = ""
 label = ""
 url = ""
 
-[references]
 # Summary and url are required, include as many references.ref as you like
 # Category can be either "external" or "self"
-[[references.ref]]
+[[reference]]
 category = ""
 summary = ""
 url = ""
 
-[[references.ref]]
+[[reference]]
 category = ""
 summary = ""
 url = ""
@@ -53,9 +51,8 @@ initial_release_date = ""  # ISO 8601
 status = "draft"
 version = ""
 
-[tracking.revision_history]
-# Include as many revision_history.revision entries as you like
-[[tracking.revision_history.revision]]
+# Include as many revision entries as you like
+[[tracking.revision]]
 date = ""
 number = ""
 summary = ""

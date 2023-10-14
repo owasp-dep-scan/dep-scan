@@ -20,7 +20,7 @@ from vdb.lib.utils import parse_purl
 
 import oras.client
 
-from depscan.lib.csaf import export_csaf, download_toml_template
+from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib import privado, utils
 from depscan.lib.analysis import (
     PrepareVexOptions,
@@ -90,6 +90,13 @@ def build_args():
         dest="cache",
         help="Cache vulnerability information in platform specific "
         "user_data_dir",
+    )
+    parser.add_argument(
+        "--csaf",
+        action="store_true",
+        default=False,
+        dest="csaf",
+        help="Generate a CSAF",
     )
     parser.add_argument(
         "--sync",
@@ -259,13 +266,6 @@ def build_args():
         help="Display the version",
         action="version",
         version="%(prog)s " + get_version(),
-    )
-    parser.add_argument(
-        "--csaf",
-        action="store_true",
-        default=False,
-        dest="csaf",
-        help="Generate a CSAF",
     )
     return parser.parse_args()
 
@@ -618,14 +618,19 @@ def main():
         src_dir = os.getcwd()
     reports_dir = args.reports_dir
     if args.csaf:
-        os.environ["CSAF_MODE"] = "True"
-        if not os.path.exists((os.path.join(src_dir, "csaf.toml"))):
-            download_toml_template(os.path.join(src_dir, "csaf.toml"))
+        toml_file_path = os.path.join(src_dir, "csaf.toml")
+        if not os.path.exists(toml_file_path):
             LOG.info("CSAF toml not found, creating template in %s", src_dir)
+            write_toml(toml_file_path)
             LOG.info(
-                "Please fill out the toml with your project details and "
-                "run depscan again."
+                "Please fill out the toml with your details and rerun depscan."
             )
+            LOG.info("Check out our CSAF documentation for an explanation of "
+                     "this feature. https://github.com/owasp-dep-scan/dep-scan"
+                     "/blob/master/contrib/CSAF_README.md")
+            LOG.info("If you're just checking out how our generator works, "
+                     "feel free to skip filling out the toml and just rerun "
+                     "depscan.")
             sys.exit(0)
     # Detect the project types and perform the right type of scan
     if args.project_type:

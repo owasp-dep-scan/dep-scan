@@ -1,3 +1,5 @@
+import os.path
+
 from depscan.lib.csaf import (
     CsafOccurence,
     format_references,
@@ -21,46 +23,38 @@ def test_parse_revision_history():
         "initial_release_date": "2022-09-22T20:54:06.186927",
         "status": "final",
         "version": "2",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2023-10-02T23:50:07.457263",
-                    "number": "2",
-                    "summary": "Update",
-                },
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial",
-                },
-            ]
-        },
+        "revision": [
+            {
+                "date": "2023-10-02T23:50:07.457263",
+                "number": "2",
+                "summary": "Update",
+            },
+            {
+                "date": "2022-09-22T20:54:06.186927",
+                "number": "1",
+                "summary": "Initial",
+            },
+        ],
     }
     assert parse_revision_history(tracking) == {
-        "current_release_date": "2023-10-03T00:21:34.713557",
+        "current_release_date": "2023-10-03T00:21:34",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06.186927",
+        "revision": [
+            {
+                "date": "2022-09-22T20:54:06.186927",
+                "number": "1",
+                "summary": "Initial",
+            },
+            {
+                "date": "2023-10-02T23:50:07.457263",
+                "number": "2",
+                "summary": "Update",
+            },
+            {"date": "2023-10-03T00:21:34", "number": "3", "summary": "Update"},
+        ],
         "status": "final",
         "version": "3",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2023-10-03T00:21:34.713557",
-                    "number": "3",
-                    "summary": "Update",
-                },
-                {
-                    "date": "2023-10-02T23:50:07.457263",
-                    "number": "2",
-                    "summary": "Update",
-                },
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial",
-                },
-            ]
-        },
     }
     # add revision entry w/no existing entries when final
     tracking = {
@@ -69,114 +63,32 @@ def test_parse_revision_history():
         "initial_release_date": "2022-09-22T20:54:06.186927",
         "status": "final",
         "version": "",
-        "revision_history": {},
+        "revision": [],
     }
     assert parse_revision_history(tracking) == {
-        "current_release_date": "2022-09-22T20:54:06.186927",
+        "current_release_date": "2022-09-22T20:54:06",
         "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "revision": [
+            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
+        ],
         "status": "final",
         "version": "1",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial",
-                }
-            ]
-        },
     }
-    # when status is not final
+    # do not add when status is not final
     tracking = {
         "current_release_date": "2023-10-03T00:21:34.713557",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06.186927",
         "status": "draft",
         "version": "2",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial",
-                }
-            ]
-        },
-    }
-    assert parse_revision_history(tracking) == {
-        "current_release_date": "2023-10-03T00:21:34.713557",
-        "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
-        "status": "draft",
-        "version": "2",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial",
-                }
-            ]
-        },
-    }
-    # add revision entry w/no existing entries when not final
-    tracking = {
-        "current_release_date": "2022-09-22T20:54:06.186927",
-        "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
-        "status": "draft",
-        "version": "",
-        "revision_history": {},
-    }
-    assert parse_revision_history(tracking) == {
-        "current_release_date": "2022-09-22T20:54:06.186927",
-        "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
-        "status": "draft",
-        "version": "1",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial [draft]",
-                }
-            ]
-        },
-    }
-    # update initial revision entry when final
-    tracking = {
-        "current_release_date": "2022-09-22T20:54:06.186927",
-        "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
-        "status": "final",
-        "version": "1",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial [draft]",
-                }
-            ]
-        },
-    }
-    assert parse_revision_history(tracking) == {
-        "current_release_date": "2022-09-22T20:54:06.186927",
-        "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
-        "status": "final",
-        "version": "1",
-        "revision_history": {
-            "revision": [
-                {
-                    "date": "2022-09-22T20:54:06.186927",
-                    "number": "1",
-                    "summary": "Initial",
-                }
-            ]
-        },
+        "revision": [
+            {
+                "date": "2022-09-22T20:54:06.186927",
+                "number": "1",
+                "summary": "Initial",
+            }
+        ],
     }
 
 
@@ -308,47 +220,23 @@ def test_parse_cwe():
 def test_parse_toml():
     # If running tests using an IDE such as PyCharm, pytest may execute from
     # the test directory rather than the project root.
-    try:
-        metadata = import_csaf_toml("contrib/csaf.toml")
-    except FileNotFoundError:
-        metadata = import_csaf_toml("../contrib/csaf.toml")
+    if os.path.exists(os.path.join(os.getcwd(), "contrib/csaf.toml")):
+        filepath = os.path.join(os.getcwd(), "contrib/csaf.toml")
+    else:
+        filepath = "../contrib/csaf.toml"
+    metadata = import_csaf_toml(filepath)
     # We don't want a dynamically generated ID
     metadata["tracking"]["id"] = "1234"
     parsed_toml = parse_toml(metadata)
-    assert parsed_toml == {
-        "document": {
-            "aggregate_severity": {},
-            "category": "csaf_vex",
-            "csaf_version": "2.0",
-            "distribution": {"label": "", "text": "", "url": ""},
-            "lang": "en",
-            "notes": [
-                {"audience": "", "category": "", "text": "", "title": ""}
-            ],
-            "publisher": {
-                "category": "vendor",
-                "contact_details": "vendor@mcvendorson.com",
-                "name": "Vendor McVendorson",
-                "namespace": "https://appthreat.com",
-            },
-            "references": [
-                {"category": "", "summary": "", "url": ""},
-                {"category": "", "summary": "", "url": ""},
-            ],
-            "title": "Your Title",
-            "tracking": {
-                "current_release_date": "",
-                "id": "1234",
-                "initial_release_date": "",
-                "revision_history": {
-                    "revision": [{"date": "", "number": "", "summary": ""}]
-                },
-                "status": "draft",
-                "version": "",
-            },
-        },
-        "product_tree": None,
-        "vulnerabilities": [],
+    assert parsed_toml["document"]["category"] == "csaf_vex"
+    assert parsed_toml["document"]["notes"] == [
+        {"audience": "", "category": "", "text": "", "title": ""}
+    ]
+    assert parsed_toml["document"]["publisher"] == {
+        "category": "vendor",
+        "contact_details": "vendor@mcvendorson.com",
+        "name": "Vendor McVendorson",
+        "namespace": "https://appthreat.com",
     }
 
 
@@ -480,7 +368,8 @@ def test_csaf_occurence():
                 },
                 "fixed_location": "7.2.4",
             },
-            "short_description": "# protobufjs Prototype Pollution vulnerability\nprotobuf.js ("
+            "short_description": "# protobufjs Prototype Pollution "
+            "vulnerability\nprotobuf.js ("
             "aka protobufjs) 6.10.0 until 6.11.4 and 7.0.0 until 7.2.4 "
             "allows Prototype Pollution, a different vulnerability than "
             "CVE-2022-25878. A user-controlled protobuf message can be used "

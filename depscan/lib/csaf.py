@@ -1,19 +1,18 @@
-import logging
 import json
+import logging
 import os
 import re
 from copy import deepcopy
 from datetime import datetime
 from json import JSONDecodeError
 
-from requests import HTTPError
-
-import requests
 import toml
-import tomli
+from vdb.lib import convert_time
 
 from depscan.lib.logger import LOG
+from depscan.lib.utils import get_version
 
+TIME_FMT = "%Y-%m-%dT%H:%M:%S"
 
 CWE_MAP = {
     "CWE-5": "J2EE Misconfiguration: Data Transmission Without Encryption",
@@ -1082,15 +1081,39 @@ CWE_MAP = {
     "CWE-1395": "Dependency on Vulnerable Third-Party Component",
 }
 
-TOML_TEMPLATE = (
-    "https://raw.githubusercontent.com/owasp-dep-scan/dep-scan/master/contrib"
-    "/csaf.toml"
-)
+TOML_TEMPLATE = {
+    "depscan_version": get_version(),
+    "note": [
+        {"audience": "", "category": "", "text": "", "title": ""},
+        {"audience": "", "category": "", "text": "", "title": ""},
+    ],
+    "reference": [
+        {"category": "", "summary": "", "url": ""},
+        {"category": "", "summary": "", "url": ""},
+    ],
+    "distribution": {"label": "", "text": "", "url": ""},
+    "document": {"category": "csaf_vex", "title": "Your Title"},
+    "product_tree": {"easy_import": ""},
+    "publisher": {
+        "category": "vendor",
+        "contact_details": "vendor@mcvendorson.com",
+        "name": "Vendor McVendorson",
+        "namespace": "https://appthreat.com",
+    },
+    "tracking": {
+        "current_release_date": "",
+        "id": "",
+        "initial_release_date": "",
+        "status": "draft",
+        "version": "",
+        "revision": [{"date": "", "number": "", "summary": ""}],
+    },
+}
 
 ref_map = {
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
     r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)": "Bugzilla",
-    r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories":
+    r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories": 
         "GitHub Advisory",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/pull/\d+": "GitHub Pull Request",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/commit": "GitHub Commit",
@@ -1259,20 +1282,20 @@ def parse_cvss(res):
                 - baseSeverity (str): The base severity of the CVSS.
                 - version (str): The version of the CVSS.
                 - vectorString (str): The vector string of the CVSS.
-            If the CVSS vector string is empty, None is returned.
+            If the vector string or base score are missing, or the CVSS
+            version is not 3.0 or 3.1, None is returned.
     """
-    cvss_v3 = res["cvss_v3"]
-    if not cvss_v3.get("vector_string"):
-        LOG.warning(f"Could not find vector string for {res['id']}")
-        return None
+    cvss_v3 = res.get("cvss_v3")
     version = re.findall(r"3.0|3.1", cvss_v3["vector_string"])
-    if not version:
-        LOG.warning(f"No version found for {res['id']}")
-    else:
-        version = version[0]
-    if not cvss_v3:
-        LOG.warning(f"No cvss_v3 data found for {res['id']}")
+    # baseScore, vectorString, and version are required for a valid score
+    if (
+        not cvss_v3
+        or not cvss_v3.get("vector_string")
+        or not version
+        or not cvss_v3.get("base_score")
+    ):
         return None
+    version = version[0]
     return {
         "baseScore": cvss_v3["base_score"],
         "attackVector": cvss_v3["attack_vector"],
@@ -1296,7 +1319,6 @@ def format_references(ref):
         list: A list of dictionaries with the formatted references.
     """
     fmt_refs = [{"summary": get_ref_summary(r), "url": r} for r in ref]
-    refs = []
     ids = []
     github_advisory_regex = re.compile(r"GHSA-\w{4}-\w{4}-\w{4}$")
     github_issue_regex = re.compile(r"(?<=issues/)\d+")
@@ -1305,6 +1327,7 @@ def format_references(ref):
     )
     bugzilla_id_regex = re.compile(r"(?<=show_bug.cgi\?id=)\d+")
     redhat_advisory_regex = re.compile(r"RH[BS]A-\d{4}:\d+")
+    refs = []
     for reference in fmt_refs:
         r = reference["url"]
         summary = reference["summary"]
@@ -1324,16 +1347,17 @@ def format_references(ref):
             )
         elif summary == "Bugzilla":
             new_id = {
-                "system_name": bugzilla_regex.findall(r)[0].capitalize()
-                + " Bugzilla ID",
+                "system_name": f"{bugzilla_regex.findall(r)[0].capitalize()}"
+                f" Bugzilla ID",
                 "text": bugzilla_id_regex.findall(r)[0],
             }
             if new_id["system_name"] == "Redhat Bugzilla ID":
                 new_id["system_name"] = "Red Hat Bugzilla ID"
             ids.append(new_id)
-        elif summary == "Red Hat Security Advisory" or summary == (
-            "Red Hat Bug Fix Advisory"
-        ):
+        elif summary in [
+            "Red Hat Security Advisory",
+            "Red Hat Bug Fix Advisory",
+        ]:
             ids.append(
                 {
                     "system_name": summary,
@@ -1378,47 +1402,62 @@ def parse_revision_history(tracking):
     Returns:
         dict: The updated tracking object with the parsed revision history.
     """
-    hx = deepcopy(tracking["revision_history"])
-    status = tracking["status"]
-    rev = bool(tracking["revision_history"].get("revision", None))
-    comb = "-".join([status, str(rev)])
-    dt = get_date()
-    tracking["current_release_date"] = tracking.get("current_release_date", dt)
-    tracking["initial_release_date"] = tracking.get("initial_release_date", dt)
-    if not tracking.get("id"):
-        LOG.warning("No tracking id, generating one.")
-        tracking["id"] = f"{dt}_v{tracking['version']}"
-    if comb in {"draft-False", "final-False", "interim-False"}:
-        hx["revision"] = [
+    hx = deepcopy(tracking.get("revision", []))
+    if len(hx) > 0:
+        hx = cleanup_list(hx)
+    status = tracking.get("status")
+    if not status or len(status) == 0:
+        status = "draft"
+    dt = datetime.now().strftime(TIME_FMT)
+    tracking = cleanup_dict(tracking)
+    # Format dates
+    try:
+
+        tracking["initial_release_date"] = (
+            convert_time(tracking.get("initial_release_date", tracking.get(
+                "current_release_date", dt)))
+        ).strftime(TIME_FMT)
+        tracking["current_release_date"] = (
+            convert_time(tracking.get("current_release_date", tracking.get(
+                "initial_release_date")))
+        ).strftime(TIME_FMT)
+    except AttributeError:
+        LOG.warning("Your dates don't appear to be in ISO format.")
+    if status == "final" and len(hx) == 0:
+        hx.append(
             {
                 "date": tracking["initial_release_date"],
                 "number": "1",
-                "summary": "Initial"
-                if comb == "final-False"
-                else "Initial [draft]",
+                "summary": "Initial",
             }
-        ]
-    elif comb == "final-True":
-        hx["revision"] = sorted(hx["revision"], key=lambda x: x["number"])
-        tracking["initial_release_date"] = hx["revision"][0]["date"]
-        if hx["revision"][0]["summary"] == "Initial [draft]":
-            hx["revision"][0]["summary"] = "Initial"
-        else:
-            if (
-                tracking["current_release_date"]
-                == hx["revision"][-1]["date"]
-            ):
-                tracking["current_release_date"] = dt
-            hx["revision"].append(
-                {
-                    "date": tracking["current_release_date"],
-                    "number": str(len(hx["revision"]) + 1),
-                    "summary": "Update",
-                }
-            )
-    hx["revision"].reverse()
-    tracking["version"] = max(tracking["version"], hx["revision"][0]["number"])
-    tracking["revision_history"] = hx
+        )
+    elif status == "final" and len(hx) > 0:
+        hx = sorted(hx, key=lambda x: x["number"])
+        tracking["initial_release_date"] = hx[0]["date"]
+        if tracking["current_release_date"] == hx[-1]["date"]:
+            tracking["current_release_date"] = dt
+        hx.append(
+            {
+                "date": tracking["current_release_date"],
+                "number": str(len(hx) + 1),
+                "summary": "Update",
+            }
+        )
+    if len(hx) > 0:
+        tracking["version"] = str(
+            max(int(tracking.get("version", 0)), int(hx[-1]["number"]))
+        )
+    else:
+        tracking["version"] = "1"
+    if not tracking.get("id") or len(tracking.get("id")) == 0:
+        LOG.info("No tracking id, generating one.")
+        tracking["id"] = f"{dt}_v{tracking['version']}"
+    if (tracking["initial_release_date"]) > (tracking["current_release_date"]):
+        LOG.warning(
+            "Your initial release date is later than the current release date."
+        )
+    tracking["revision"] = hx
+    tracking["status"] = status
     return tracking
 
 
@@ -1437,12 +1476,18 @@ def import_product_tree(tree):
         try:
             with open(tree["easy_import"], "r") as f:
                 product_tree = json.load(f)
-        except [FileNotFoundError, JSONDecodeError]:
+        except JSONDecodeError:
             LOG.warning(
                 "Unable to load product tree file. Please verify that your "
                 "product tree is a valid json file. Visit "
-                "https://github.com/owasp-dep-scan/dep-scan/blob/master/test/data"
-                "/product_tree.json for an example."
+                "https://github.com/owasp-dep-scan/dep-scan/blob/master/test"
+                "/data/product_tree.json for an example."
+            )
+        except FileNotFoundError:
+            LOG.warning(
+                "Cannot locate product tree at %s. Please verify you "
+                "have entered the correct filepath in your csaf.toml.",
+                tree["easy_import"],
             )
     return product_tree
 
@@ -1462,55 +1507,33 @@ def parse_toml(metadata):
         Exception: If the 'initial_release_date' is later than the
         'current_release_date'.
     """
-    tracking = parse_revision_history(metadata["tracking"])
+    tracking = parse_revision_history(metadata.get("tracking"))
     refs = []
-    [refs.append(v) for k, v in metadata["references"].items()]
+    [refs.append(v) for v in metadata.get("reference")]
     notes = []
-    [notes.append(v) for k, v in metadata["notes"].items()]
+    [notes.append(v) for v in metadata.get("note")]
     product_tree = import_product_tree(metadata["product_tree"])
-    output = {
+    return {
         "document": {
             "aggregate_severity": {},
             "category": metadata["document"]["category"],
             "title": metadata["document"]["title"] or "Test",
             "csaf_version": "2.0",
-            "distribution": metadata["distribution"],
+            "distribution": metadata.get("distribution"),
             "lang": "en",
-            "notes": notes[0],
+            "notes": notes,
             "publisher": {
                 "category": metadata["publisher"]["category"],
-                "contact_details": metadata["publisher"]["contact_details"],
+                "contact_details": metadata["publisher"].get("contact_details"),
                 "name": metadata["publisher"]["name"],
                 "namespace": metadata["publisher"]["namespace"],
             },
-            "references": refs[0],
+            "references": refs,
             "tracking": tracking,
         },
         "product_tree": product_tree,
         "vulnerabilities": [],
     }
-    if (
-        output["document"]["tracking"]["initial_release_date"]
-        > output["document"]["tracking"]["current_release_date"]
-    ):
-        LOG.warning(
-            "You cannot have an initial release date later than the current "
-            "date. The most likely cause of this error is that you have "
-            "included a current_release_date in your toml but not an "
-            "initial_release_date, and we have had to use the current "
-            "date/time."
-        )
-    return output
-
-
-def get_date():
-    """
-    Get the current date and time in ISO 8601 format.
-
-    Returns:
-        str: The current date and time in ISO 8601 format.
-    """
-    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def export_csaf(results, src_dir, reports_dir):
@@ -1549,21 +1572,19 @@ def export_csaf(results, src_dir, reports_dir):
         )
         template["document"]["aggregate_severity"]["text"] = agg_severity
     new_results = cleanup_dict(template)
-    # We want to preserve revision_history.revision for the TOML
     metadata["tracking"] = deepcopy(new_results["document"]["tracking"])
-    metadata["tracking"]["id"] = ""
-    new_results["document"]["tracking"]["revision_history"] = new_results[
-        "document"
-    ]["tracking"]["revision_history"]["revision"]
+    # Reset the id if it's one we've generated
+    if re.match(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}_v", metadata["tracking"]["id"]
+    ):
+        metadata["tracking"]["id"] = ""
     outfile = os.path.join(
         reports_dir,
         f"csaf_v{new_results['document']['tracking']['version']}.json",
     )
     json.dump(new_results, open(outfile, "w"), indent=4)
     LOG.info("CSAF report written to %s", outfile)
-    with open(toml_file_path, "w") as f:
-        toml.dump(metadata, f)
-    LOG.info("CSAF template updated")
+    write_toml(toml_file_path, metadata)
 
 
 def import_csaf_toml(toml_file_path):
@@ -1577,43 +1598,39 @@ def import_csaf_toml(toml_file_path):
     Raises:
         TOMLDecodeError: If the TOML file contains duplicate keys or is invalid.
     """
-    with open(toml_file_path, "rb") as f:
-        try:
-            data = tomli.load(f)
-        except tomli.TOMLDecodeError as e:
-            LOG.error(
-                "Invalid TOML. Please make sure you do not have any duplicate "
-                "keys and that any filepaths are properly escaped if using "
-                "Windows."
-            )
-            exit(1)
-    return data
+    try:
+        with open(toml_file_path, "r") as f:
+            try:
+                return toml.load(f)
+            except toml.TomlDecodeError:
+                LOG.error(
+                    "Invalid TOML. Please make sure you do not have any "
+                    "duplicate keys and that any filepaths are properly escaped"
+                    "if using Windows."
+                )
+                exit(1)
+    except FileNotFoundError:
+        write_toml(toml_file_path)
+    return import_csaf_toml(toml_file_path)
 
 
-def download_toml_template(fn):
+def write_toml(toml_file_path, metadata=None):
     """
     Retrieves the TOML template file from the given URL and saves it to the
     specified file name.
 
     Parameters:
-        fn (str): The file name to save the TOML template to.
+        toml_file_path (str): The filepath to save the TOML template to.
 
-    Raises:
-        HTTPError: If the retrieval of the TOML template fails.
+        metadata (dict): A dictionary containing the TOML metadata.
 
     """
-    try:
-        response = requests.get(TOML_TEMPLATE)
-        if response.status_code == 200:
-            with open(fn, "wb") as file:
-                file.write(response.content)
-    except HTTPError:
-        LOG.error(
-            "Could not retrieve the CSAF toml template. Please visit "
-            "our repo at https://github.com/owasp-dep-scan/dep-scan and "
-            "manually download the csaf.toml file located in the contrib "
-            f"directory to {fn}."
-        )
+    if not metadata:
+        metadata = TOML_TEMPLATE
+    metadata["depscan_version"] = get_version()
+    with open(toml_file_path, "w") as f:
+        toml.dump(metadata, f)
+    LOG.info("The csaf.toml has been updated at %s", toml_file_path)
 
 
 def cleanup_list(d):

@@ -1,7 +1,7 @@
 # Purpose
 
 Generate CSAF vex documents populated with vulnerability results from 
-OWASP dep-scan
+OWASP dep-scan.
 
 
 ## Overview
@@ -25,58 +25,37 @@ OWASP dep-scan
    reports directory in your current directory).
 
 ### The csaf.toml
-The first time you run depscan against a specific directory, a csaf.
-toml template will be downloaded from our repo and you will be requested to fill 
-it out before running depscan again. This is a configuration file used to set 
-metadata fields outside the vulnerabilities section.
+The first time you run depscan with the --csaf option against a specific 
+directory, a csaf.toml template will be placed in your target directory and you 
+will be requested to fill it out before running depscan again. This is a 
+configuration file used to set metadata fields outside the vulnerabilities 
+section.
 
 #### Requirements
 
 In order to produce a valid CSAF, certain sections are required. An overview 
 is below, with required components in bold. 
-> Note: Where a top level category, such as Notes is not bolded, but one of its 
+> Where a top level category, such as Note is not bolded, but one of its 
 > members is, that indicates the bolded are only required if the parent category 
-> is included, e.g. a notes.note entry must include category and text, but a 
+> is included, e.g. a note entry must include category and text, but a 
 > valid CSAF does not require that any notes be included.:
-- **category** (default = csaf_vex)
-- **title**
-- **publisher**:
-  - **name**
-  - **category** (enum: coordinator, discoverer, other, translator, user, 
-    vendor)
-  - **namespace**
-  - contact_details
-- notes.note
-  - **category** (enum: description, details, faq, general, legal_disclaimer, other, summary)
-  - **text**
-  - audience
-  - title
-- references.ref
-  - **summary**
-  - **url**
-  - category (enum: self, external)
-- product_tree
-  - easy_import: As of now, we only support importing a product tree from a 
-    json file, the path of which should be specified here. [example](../test/data/product_tree.json)
-- distribution
-  - text
-  - tlp
-    - **label**
-    - url
-  
->Note: Although tracking and all of its components are required, if you do 
+
+
+| TOML Field        | Subcategories                                                                                   | Comments                                                                                                                                                                                                               |
+|-------------------|-------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **document**      | **category<br>title**                                                                           | default category is csaf_vex<br>category must match regex: `^[^\s\-_\.](.*[^\s\-_\.])?$`                                                                                                                               |
+| **publisher**     | **name**<br>**category**<br>**namespace**<br>contact_details                                    | <br>valid categories: coordinator, discoverer, other, translator, user, vendor<br><br>e.g. an email address                                                                                                            |
+| note              | **category**<br>**text**<br>audience<br>title                                                   | valid categories: description, details, faq, general, legal_disclaimer, other, summary<br><br>multiple note entries may be included under additional [note] headings                                                   |
+| reference         | **summary**<br>**url**<br>category                                                              | multiple reference entries may be included under additional [reference] headings<br><br>valid categories: self, external                                                                                               |
+| distribution      | text<br>tlp.**label**<br>tlp.url                                                                | If tlp is included, label is required<br>valid labels: AMBER, GREEN, RED, WHITE                                                                                                                                        |
+| product_tree      | easy_import                                                                                     | We support importing a product tree from a json file, the path of which should be specified here. <br>[example](../test/data/product_tree.json)                                                                        |
+| **tracking**      | **current_release_date**<br/>**initial_release_date**<br/>**version**<br/>**status**<br/>**id** | Please use ISO date formats if entering dates yourself.<br/><br/>valid statuses: draft, final, interim<br/>We will generate an id consisting of date and version if you do not include this, but id is best set by you |
+| tracking.revision | date<br/>number<br/>summary                                                                     | Leave this section alone. Depscan will add revision entries per final version.                                                                                                                                         |
+| depscan_version   |                                                                                                 | This field is automatically updated for our use to provide backward compatibility if the TOML options change                                                                                                           |
+
+>Although tracking and all of its components are required, if you do 
       not include them, we will use the current date/time and update the 
       version as appropriate.
-- **tracking**
-  - **current release date**
-  - **initial release date**
-  - **version**
-  - **id**
-  - **status** (enum: draft, final, interim)
-- **tracking.revision_history.revision**
-  Leave this section alone and depscan will add an initial entry plus
-    additional entries any time you run a scan and your tracking status is 
-    'final'
 
 >Feel free to preserve all fields on the toml if you may want them later. 
 > Entries without content will be omitted.
