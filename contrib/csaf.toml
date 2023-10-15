@@ -1,0 +1,65 @@
+[document]
+category = "csaf_vex"
+title = "Your Title"
+
+[publisher]
+# Required
+# Valid categories are: coordinator, discoverer, other, translator, user, vendor
+category = "vendor"
+name = "Vendor McVendorson"
+namespace = "https://appthreat.com"
+# Optional
+contact_details = "vendor@mcvendorson.com"
+
+# Category and text are required to add a note, add as many notes.note as you need
+# Valid categories are: description, details, faq, general, legal_disclaimer, other, summary
+[[note]]
+audience = ""
+category = ""
+text = ""
+title = ""
+
+[product_tree]
+easy_import = ""
+
+[distribution]
+text = ""
+# Label is required if tlp included
+label = ""
+url = ""
+
+# Summary and url are required, include as many references.ref as you like
+# Category can be either "external" or "self"
+[[reference]]
+category = ""
+summary = ""
+url = ""
+
+[[reference]]
+category = ""
+summary = ""
+url = ""
+
+# An entry for the data in this section will be added to the revision_history if the status is final
+# The current date/time is default if not provided
+# id is required and best set by the document issuing authority
+[tracking]
+# Required
+current_release_date = ""   # ISO 8601
+id = ""
+initial_release_date = ""  # ISO 8601
+status = "draft"
+version = ""
+
+# Include as many revision entries as you like
+[[tracking.revision]]
+date = ""
+number = ""
+summary = ""
+
+
+
+
+
+
+

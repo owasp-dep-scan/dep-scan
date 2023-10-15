@@ -12,6 +12,7 @@ OWASP dep-scan is a fully open-source security audit tool based on known vulnera
 - Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Generate Software Bill-of-Materials (SBoM) with Vulnerability Exploitability Exchange (VEX) information
+- Generate a Common Security Advisory Framework (CSAF) 2.0 document (check out the [CSAF Readme](contrib/CSAF_README.md))
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 ![Dependency Tree with Insights](docs/tree1.jpg)
@@ -138,24 +139,33 @@ depscan --src $PWD --reports-dir $PWD/reports
 Full list of options are below:
 
 ```bash
-usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] -i SRC_DIR
-              [--reports-dir REPORTS_DIR] [--no-error] [--deep]
+usage: depscan [-h] [--no-banner] [--cache] [--csaf] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--no-error]
+               [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table] [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN]
+               [--privado-json PRIVADO_JSON] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [-v]
+
+Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
+
+options:
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
   --cache               Cache vulnerability information in platform specific user_data_dir
+  --csaf                Generate a CSAF
   --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
+  --suggest             DEPRECATED: Suggest is the default mode for determining fix version.
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS
-                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma
-                        separated values accepted.
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
   -t PROJECT_TYPE, --type PROJECT_TYPE
                         Override project type if auto-detection is incorrect
   --bom BOM             Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.
-  -i SRC_DIR, --src SRC_DIR
-                        Source directory
+  -i SRC_DIR_IMAGE, --src SRC_DIR_IMAGE
+                        Source directory or container image or binary file
+  -o REPORT_FILE, --report_file REPORT_FILE
+                        DEPRECATED. Use reports directory since multiple files are created. Report filename with directory
   --reports-dir REPORTS_DIR
                         Reports directory
   --no-error            Continue on error to prevent build from breaking
+  --no-license-scan     DEPRECATED: dep-scan does not perform license scanning by default
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
@@ -167,6 +177,16 @@ usage: depscan [-h] [--no-banner] [--cache] [--sync] [--suggest] [--risk-audit] 
                         ThreatDB password
   --threatdb-token THREATDB_TOKEN
                         ThreatDB token for token based submission
+  --privado-json PRIVADO_JSON
+                        Optional: Enrich the VEX report with information from privado.ai json report. cdxgen can process and include privado info automatically so this argument is usually not required.
+  --server              Run depscan as a server
+  --server-host SERVER_HOST
+                        depscan server host
+  --server-port SERVER_PORT
+                        depscan server port
+  --cdxgen-server CDXGEN_SERVER
+                        cdxgen server url. Eg: http://cdxgen:9090
+  -v, --version         Display the version
 ```
 
 ### Scanning containers locally (Python version)
