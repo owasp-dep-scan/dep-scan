@@ -7,9 +7,11 @@ from urllib.parse import unquote_plus
 
 import httpx
 from defusedxml.ElementTree import parse
+from packageurl import PackageURL
 
+from depscan.lib.config import LANG_PKG_TYPES
 from depscan.lib.logger import LOG
-from depscan.lib.utils import cleanup_license_string, find_files
+from depscan.lib.utils import * # required because of circular import
 
 headers = {
     "Content-Type": "application/json",
@@ -450,3 +452,59 @@ def submit_bom(reports_dir, threatdb_params):
                             threatdb_server,
                             r.status_code,
                         )
+
+
+def parse_json_bom(bom_file, report_dir, project_types="ALL", bom_file_provided=False):
+    INVERSE_LANG_PKG_TYPES = {}
+    for key, value in LANG_PKG_TYPES.items():
+        if value not in INVERSE_LANG_PKG_TYPES:
+            INVERSE_LANG_PKG_TYPES[value] = key
+
+    project_wise_bom = {}
+    try:
+        with open(bom_file, 'r') as f:
+            bom_data = json.loads(f.read())
+            if not bom_data:
+                return None
+            bom_components = bom_data.get('components')
+            bom_metadata = bom_data
+            del bom_metadata['components']
+            if not bom_components:
+                return None
+
+            for component in bom_components:
+                purl = component.get('purl', '')
+                package_type = PackageURL.from_string(purl).to_dict().get('type', None)
+                if not package_type:
+                    continue
+                if bom_file_provided:
+                    project_wise_bom_key = INVERSE_LANG_PKG_TYPES.get(package_type, "java")  # default to java?
+                    if project_wise_bom.get(project_wise_bom_key, None) is None:
+                        project_wise_bom[project_wise_bom_key] = []
+                    project_wise_bom[project_wise_bom_key].append(component)
+                else:
+                    for project_type in LANG_PKG_TYPES:
+                        if project_types == "ALL":
+                            if package_type == LANG_PKG_TYPES[project_type]:
+                                if project_wise_bom.get(project_type, None) is None:
+                                    project_wise_bom[project_type] = []
+                                project_wise_bom[project_type].append(component)
+                                break
+                        else:
+                            if project_type in project_types:
+                                if project_wise_bom.get(project_type, None) is None:
+                                    project_wise_bom[project_type] = []
+                                project_wise_bom[project_type].append(component)
+            for project_type in project_wise_bom:
+                report_file_name = os.path.join(report_dir, f"sbom-{project_type}.json")
+                try:
+                    final_bom = bom_metadata
+                    final_bom['components'] = project_wise_bom[project_type]
+                    with open(report_file_name, "w") as f:
+                        f.write(json.dumps(final_bom, indent=4))
+                except Exception as e:
+                    LOG.exception(e)
+            return list(project_wise_bom.keys())
+    except Exception as e:
+        LOG.exception(e)
+        return None
