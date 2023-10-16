@@ -36,6 +36,7 @@ from depscan.lib.bom import (
     create_bom,
     get_pkg_by_type,
     get_pkg_list,
+    parse_json_bom,
     submit_bom,
 )
 from depscan.lib.config import (
@@ -632,15 +633,6 @@ def main():
                      "feel free to skip filling out the toml and just rerun "
                      "depscan.")
             sys.exit(0)
-    # Detect the project types and perform the right type of scan
-    if args.project_type:
-        project_types_list = args.project_type.split(",")
-    elif args.bom:
-        project_types_list = ["bom"]
-    elif not args.non_universal_scan:
-        project_types_list = [UNIVERSAL_SCAN_TYPE]
-    else:
-        project_types_list = utils.detect_project_type(src_dir)
     db = db_lib.get()
     run_cacher = args.cache
     areport_file = (
@@ -652,6 +644,24 @@ def main():
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
+
+    bom_file_provided = False
+    if not args.bom:
+        creation_status = utils.create_aggregate_bom(src_dir, reports_dir, cdxgen_server=args.cdxgen_server, deep_scan=args.deep_scan)
+        if creation_status is False:
+            LOG.error("Unable to create aggregate bom")
+            return
+        aggregate_bom_file = os.path.join(reports_dir, "sbom-aggregate.json")
+        LOG.info(f"To improve performance, cache this bom file ({aggregate_bom_file}) and invoke depscan with --bom instead of -i")
+    else:
+        bom_file_provided = True
+        aggregate_bom_file = args.bom
+
+    if args.project_type:
+        project_types_list = parse_json_bom(aggregate_bom_file, reports_dir, project_types=args.project_type.split(","), bom_file_provided=bom_file_provided)
+    else:
+        project_types_list = parse_json_bom(aggregate_bom_file, reports_dir, bom_file_provided=bom_file_provided)
+    
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: %s", project_types_list)
     # Enable license scanning
@@ -666,35 +676,16 @@ def main():
                 expand=False,
             )
         )
+    
     for project_type in project_types_list:
         results = []
         report_file = areport_file.replace(".json", f"-{project_type}.json")
         risk_report_file = areport_file.replace(
             ".json", f"-risk.{project_type}.json"
         )
-        LOG.info("=" * 80)
-        if args.bom and os.path.exists(args.bom):
-            bom_file = args.bom
-            creation_status = True
-        else:
-            bom_file = report_file.replace("depscan-", "sbom-")
-            creation_status = create_bom(
-                project_type,
-                bom_file,
-                src_dir,
-                args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server},
-            )
-        if not creation_status:
-            LOG.debug("Bom file %s was not created successfully", bom_file)
-            continue
-        LOG.debug("Scanning using the bom file %s", bom_file)
-        if not args.bom:
-            LOG.info(
-                "To improve performance, cache this bom file and invoke "
-                "depscan with --bom %s instead of -i",
-                bom_file,
-            )
+        bom_file = report_file.replace("depscan-", "sbom-")
+        # LOG.debug("Scanning using the bom file %s", bom_file)
+        LOG.info("Scanning using the bom file %s", bom_file)
         pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.debug("No packages found in the project!")

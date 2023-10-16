@@ -8,6 +8,7 @@ from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
+from depscan.lib.bom import create_bom
 
 lic_symbol_regex = re.compile(r"[(),]")
 
@@ -95,90 +96,12 @@ def is_exe(src):
     return False
 
 
-def detect_project_type(src_dir):
-    """Detect project type by looking for certain files
-
-    :param src_dir: Source directory
-    :return List of detected types
-    """
-    # container image support
-    if (
-        "docker.io" in src_dir
-        or "quay.io" in src_dir
-        or ":latest" in src_dir
-        or "@sha256" in src_dir
-        or src_dir.endswith(".tar")
-        or src_dir.endswith(".tar.gz")
-    ):
-        return ["docker"]
-    # Check if the source is an exe file. Assume go for all binaries for now
-    if is_exe(src_dir):
-        return ["go", "binary"]
-    project_types = []
-    if find_python_reqfiles(src_dir) or find_files(src_dir, ".py", quick=True):
-        project_types.append("python")
-    if find_files(src_dir, "pom.xml", quick=True) or find_files(
-        src_dir, ".gradle", quick=True
-    ):
-        project_types.append("java")
-    if find_files(src_dir, ".gradle.kts", quick=True):
-        project_types.append("kotlin")
-    if find_files(src_dir, "build.sbt", quick=True):
-        project_types.append("scala")
-    if (
-        find_files(src_dir, "package.json", quick=True)
-        or find_files(src_dir, "yarn.lock", quick=True)
-        or find_files(src_dir, "rush.json", quick=True)
-    ):
-        project_types.append("nodejs")
-    if find_files(src_dir, "go.sum", quick=True) or find_files(
-        src_dir, "Gopkg.lock", quick=True
-    ):
-        project_types.append("go")
-    if find_files(src_dir, "Cargo.lock", quick=True):
-        project_types.append("rust")
-    if find_files(src_dir, "composer.json", quick=True):
-        project_types.append("php")
-    if find_files(src_dir, ".csproj", quick=True):
-        project_types.append("dotnet")
-    if find_files(src_dir, "Gemfile", quick=True) or find_files(
-        src_dir, "Gemfile.lock", quick=True
-    ):
-        project_types.append("ruby")
-    if find_files(src_dir, "deps.edn", quick=True) or find_files(
-        src_dir, "project.clj", quick=True
-    ):
-        project_types.append("clojure")
-    if find_files(src_dir, "conan.lock", quick=True) or find_files(
-        src_dir, "conanfile.txt", quick=True
-    ):
-        project_types.append("cpp")
-    if find_files(src_dir, "pubspec.lock", quick=True) or find_files(
-        src_dir, "pubspec.yaml", quick=True
-    ):
-        project_types.append("dart")
-    if find_files(src_dir, "cabal.project.freeze", quick=True):
-        project_types.append("haskell")
-    if find_files(src_dir, "mix.lock", quick=True):
-        project_types.append("elixir")
-    if find_files(
-        os.path.join(src_dir, ".github", "workflows"),
-        ".yml",
-        quick=True,
-        filter=False,
-    ):
-        project_types.append("github")
-    # jars
-    if "java" not in project_types and find_files(src_dir, ".jar", quick=True):
-        project_types.append("jar")
-    # Jenkins plugins or plain old jars
-    if "java" not in project_types and find_files(src_dir, ".hpi", quick=True):
-        project_types.append("jenkins")
-    if find_files(src_dir, ".yml", quick=True) or find_files(
-        src_dir, ".yaml", quick=True
-    ):
-        project_types.append("yaml-manifest")
-    return project_types
+def create_aggregate_bom(src_dir, reports_dir, cdxgen_server=None, deep_scan=False): 
+    aggregate_bom_file = os.path.join(reports_dir, "sbom-aggregate.json")
+    creation_status = create_bom(config.UNIVERSAL_SCAN_TYPE, aggregate_bom_file, src_dir, deep_scan, {"cdxgen_server": cdxgen_server},)
+    if (not creation_status) or (not os.path.exists(aggregate_bom_file)):
+        return []
+    return creation_status
 
 
 def get_pkg_vendor_name(pkg):

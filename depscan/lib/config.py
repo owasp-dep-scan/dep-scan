@@ -213,6 +213,7 @@ LANG_PKG_TYPES = {
     "elixir": "hex",
     "github actions": "github",
     "github": "github",
+    "docker": "oci",
 }
 
 # OS Package types

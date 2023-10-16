@@ -9,6 +9,7 @@ dependencies = [
     "appthreat-vulnerability-db>=5.5.1",
     "defusedxml",
     "oras",
+    "packageurl-python==0.11.2",
     "PyYAML",
     "rich",
     "quart",
