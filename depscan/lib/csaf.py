@@ -1106,15 +1106,14 @@ TOML_TEMPLATE = {
         "initial_release_date": "",
         "status": "draft",
         "version": "",
-        "revision": [{"date": "", "number": "", "summary": ""}],
+        "revision_history": [{"date": "", "number": "", "summary": ""}],
     },
 }
 
 ref_map = {
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
-    r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)": "Bugzilla",
-    r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories": 
-        "GitHub Advisory",
+    r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
+    r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories": "GitHub Advisory",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/pull/\d+": "GitHub Pull Request",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/commit": "GitHub Commit",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/release": "GitHub Repository "
@@ -1128,6 +1127,7 @@ ref_map = {
     "Advisory",
     r"https://access.redhat.com/errata/rhsa-\d{4}:\d{4}": "Red Hat Security "
     "Advisory",
+    r"(?<=CiscoSecurityAdvisory/)[\w\d\-]+": "Cisco Security Advisory",
     "https://www.npmjs.com/advisories/": "NPM Advisory",
     r"https://www.npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
     "https://www.oracle.com/security-alerts": "Oracle Security Alert",
@@ -1320,52 +1320,78 @@ def format_references(ref):
     """
     fmt_refs = [{"summary": get_ref_summary(r), "url": r} for r in ref]
     ids = []
-    github_advisory_regex = re.compile(r"GHSA-\w{4}-\w{4}-\w{4}$")
-    github_issue_regex = re.compile(r"(?<=issues/)\d+")
-    bugzilla_regex = re.compile(
-        r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)"
-    )
-    bugzilla_id_regex = re.compile(r"(?<=show_bug.cgi\?id=)\d+")
-    redhat_advisory_regex = re.compile(r"RH[BS]A-\d{4}:\d+")
     refs = []
-    for reference in fmt_refs:
+    github_advisory_regex = re.compile(r"(GHSA-\w{4}-\w{4}-\w{4}$)")
+    github_issue_regex = re.compile(
+        r"(?<=https://github.com/)(?P<owner>["
+        r"^\s/]+)/(?P<repo>[^\s/]+)/issues/("
+        r"?P<id>\d+)"
+    )
+    bugzilla_regex = re.compile(
+        r"(?<=bugzilla.)(?P<owner>[^\s]+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)"
+    )
+    redhat_advisory_regex = re.compile(r"(RH[BS]A-\d{4}:\d+)")
+    cisco_regex = re.compile(r"(?<=CiscoSecurityAdvisory/)[\w\d\-]+")
+    id_types = [
+        "GitHub Advisory",
+        "GitHub Issue",
+        "Bugzilla",
+        "Cisco Security Advisory",
+        "Red Hat Security Advisory",
+        "Red Hat Bug Fix Advisory",
+    ]
+    parse = [i for i in fmt_refs if i.get("summary") in id_types]
+    for reference in parse:
         r = reference["url"]
         summary = reference["summary"]
         if summary == "GitHub Advisory":
-            ids.append(
-                {
-                    "system_name": summary,
-                    "text": github_advisory_regex.findall(r)[0],
-                }
-            )
+            if gha := re.search(github_advisory_regex, r):
+                ids.append(
+                    {
+                        "system_name": summary,
+                        "text": gha.group(0),
+                    }
+                )
         elif summary == "GitHub Issue":
-            ids.append(
-                {
-                    "system_name": summary,
-                    "text": github_issue_regex.findall(r)[0],
-                }
-            )
+            if issue := re.search(github_issue_regex, r):
+                ids.append(
+                    {
+                        "system_name": f'GitHub Issue [{issue.group("owner")}'
+                        f'/{issue.group("repo")}]',
+                        "text": issue.group("id"),
+                    }
+                )
         elif summary == "Bugzilla":
-            new_id = {
-                "system_name": f"{bugzilla_regex.findall(r)[0].capitalize()}"
-                f" Bugzilla ID",
-                "text": bugzilla_id_regex.findall(r)[0],
-            }
-            if new_id["system_name"] == "Redhat Bugzilla ID":
-                new_id["system_name"] = "Red Hat Bugzilla ID"
-            ids.append(new_id)
+            if bugzilla := re.search(bugzilla_regex, r):
+                new_id = {
+                    "system_name": f"{bugzilla.group('owner').capitalize()} Bugzilla ID",
+                    "text": bugzilla.group("id"),
+                }
+                if new_id["system_name"] == "Redhat Bugzilla ID":
+                    new_id["system_name"] = "Red Hat Bugzilla ID"
+                ids.append(new_id)
+        elif summary == "Cisco Security Advisory":
+            if csa := re.search(cisco_regex, r):
+                ids.append(
+                    {
+                        "system_name": summary,
+                        "text": csa.group(0),
+                    }
+                )
         elif summary in [
             "Red Hat Security Advisory",
             "Red Hat Bug Fix Advisory",
         ]:
-            ids.append(
-                {
-                    "system_name": summary,
-                    "text": redhat_advisory_regex.findall(r)[0],
-                }
-            )
-        refs.append(reference)
-    return ids, refs
+            if bugzilla_id := re.search(redhat_advisory_regex, r):
+                ids.append(
+                    {
+                        "system_name": summary,
+                        "text": bugzilla_id.group(0),
+                    }
+                )
+    new_ids = {(id["system_name"], id["text"]) for id in ids}
+    ids = [{"system_name": id[0], "text": id[1]} for id in new_ids]
+    return ids, fmt_refs
 
 
 def get_ref_summary(url):
@@ -1402,9 +1428,21 @@ def parse_revision_history(tracking):
     Returns:
         dict: The updated tracking object with the parsed revision history.
     """
-    hx = deepcopy(tracking.get("revision", []))
-    if len(hx) > 0:
+    hx = deepcopy(tracking.get("revision_history")) or []
+    if not hx and (tracking.get("version")) != "1":
+        LOG.warning("Revision history is empty. Correcting the version number.")
+        tracking["version"] = 1
+
+    elif hx and (len(hx) > 0):
         hx = cleanup_list(hx)
+        if tracking.get("status") == "final" and int(
+            tracking.get("version", 1)
+        ) > (len(hx) + 1):
+            LOG.warning(
+                "Revision history is inconsistent with the version "
+                "number. Correcting the version number."
+            )
+            tracking["version"] = int(len(hx) + 1)
     status = tracking.get("status")
     if not status or len(status) == 0:
         status = "draft"
@@ -1412,18 +1450,24 @@ def parse_revision_history(tracking):
     tracking = cleanup_dict(tracking)
     # Format dates
     try:
-
         tracking["initial_release_date"] = (
-            convert_time(tracking.get("initial_release_date", tracking.get(
-                "current_release_date", dt)))
+            convert_time(
+                tracking.get(
+                    "initial_release_date",
+                    tracking.get("current_release_date", dt),
+                )
+            )
         ).strftime(TIME_FMT)
         tracking["current_release_date"] = (
-            convert_time(tracking.get("current_release_date", tracking.get(
-                "initial_release_date")))
+            convert_time(
+                tracking.get(
+                    "current_release_date", tracking.get("initial_release_date")
+                )
+            )
         ).strftime(TIME_FMT)
     except AttributeError:
         LOG.warning("Your dates don't appear to be in ISO format.")
-    if status == "final" and len(hx) == 0:
+    if status == "final" and (not hx or len(hx) == 0):
         hx.append(
             {
                 "date": tracking["initial_release_date"],
@@ -1431,7 +1475,7 @@ def parse_revision_history(tracking):
                 "summary": "Initial",
             }
         )
-    elif status == "final" and len(hx) > 0:
+    elif status == "final":
         hx = sorted(hx, key=lambda x: x["number"])
         tracking["initial_release_date"] = hx[0]["date"]
         if tracking["current_release_date"] == hx[-1]["date"]:
@@ -1456,7 +1500,9 @@ def parse_revision_history(tracking):
         LOG.warning(
             "Your initial release date is later than the current release date."
         )
-    tracking["revision"] = hx
+    hx = sorted(hx, key=lambda x: x["number"])
+
+    tracking["revision_history"] = hx
     tracking["status"] = status
     return tracking
 
@@ -1536,6 +1582,21 @@ def parse_toml(metadata):
     }
 
 
+def toml_compatibility(metadata):
+    """
+    Applies any changes to the formatting of the TOML after a depscan
+    minor or patch update
+    """
+    # The 4.5.0 TOML referenced revision_history as revision
+    if metadata["depscan_version"] < "4.5.1":
+        metadata["tracking"]["revision_history"] = metadata["tracking"].get(
+            "revision"
+        )
+    if metadata["tracking"].get("revision"):
+        del metadata["tracking"]["revision"]
+    return metadata
+
+
 def export_csaf(results, src_dir, reports_dir):
     """
     Generates a CSAF JSON template from the given results.
@@ -1550,6 +1611,7 @@ def export_csaf(results, src_dir, reports_dir):
     """
     toml_file_path = os.path.join(src_dir, "csaf.toml")
     metadata = import_csaf_toml(toml_file_path)
+    metadata = toml_compatibility(metadata)
     template = parse_toml(metadata)
     agg_score = set()
     severity_ref = {
@@ -1572,6 +1634,10 @@ def export_csaf(results, src_dir, reports_dir):
         )
         template["document"]["aggregate_severity"]["text"] = agg_severity
     new_results = cleanup_dict(template)
+    # CSAF forbids revision entries unless the status is final, but requires
+    # this to be here nonetheless
+    if not new_results["document"]["tracking"].get("revision_history"):
+        new_results["document"]["tracking"]["revision_history"] = []
     metadata["tracking"] = deepcopy(new_results["document"]["tracking"])
     # Reset the id if it's one we've generated
     if re.match(
