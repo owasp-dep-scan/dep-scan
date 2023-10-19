@@ -147,6 +147,8 @@ def test_format_references():
         "https://example.com",
         "https://github.com/user/repo/release",
         "https://github.com/user/repo",
+        "https://bugzilla.redhat.com/show_bug.cgi?cve-2021-1234",
+
     ]
     [ids, refs] = format_references(ref)
     assert ids == [
@@ -154,44 +156,27 @@ def test_format_references():
         {"system_name": "Red Hat Bugzilla ID", "text": "2224245"},
         {"system_name": "GitHub Advisory", "text": "GHSA-1234-1234-1234"},
         {"system_name": "GitHub Advisory", "text": "GHSA-5432-5432-5432"},
+        {"system_name": "Red Hat Bugzilla ID", "text": "cve-2021-1234"},
     ]
-    assert refs == [
-        {
-            "summary": "Red Hat Security Advisory",
-            "url": "https://access.redhat.com/errata/RHSA-2023:5484",
-        },
-        {
-            "summary": "Bugzilla",
-            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2224245",
-        },
-        {
-            "summary": "CVE Record",
-            "url": "https://nvd.nist.gov/vuln/detail/cve-2021-1234",
-        },
-        {
-            "summary": "GitHub Advisory",
-            "url": "https://github.com/advisories/GHSA-1234-1234-1234",
-        },
-        {
-            "summary": "GitHub Advisory",
-            "url": "https://github.com/user/repo/security/advisories/GHSA-5432-5432"
-            "-5432",
-        },
-        {
-            "summary": "GitHub Pull Request",
-            "url": "https://github.com/user/repo/pull/123",
-        },
-        {
-            "summary": "GitHub Commit",
-            "url": "https://github.com/user/repo/commit/123",
-        },
-        {"summary": "Other", "url": "https://example.com"},
-        {
-            "summary": "GitHub Repository Release",
-            "url": "https://github.com/user/repo/release",
-        },
-        {"summary": "GitHub Repository", "url": "https://github.com/user/repo"},
-    ]
+    assert refs == [{'summary': 'Red Hat Security Advisory',
+  'url': 'https://access.redhat.com/errata/RHSA-2023:5484'},
+ {'summary': 'Bugzilla',
+  'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=2224245'},
+ {'summary': 'CVE Record',
+  'url': 'https://nvd.nist.gov/vuln/detail/cve-2021-1234'},
+ {'summary': 'GitHub Advisory',
+  'url': 'https://github.com/advisories/GHSA-1234-1234-1234'},
+ {'summary': 'GitHub Advisory',
+  'url': 'https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432'},
+ {'summary': 'GitHub Pull Request',
+  'url': 'https://github.com/user/repo/pull/123'},
+ {'summary': 'GitHub Commit', 'url': 'https://github.com/user/repo/commit/123'},
+ {'summary': 'Other', 'url': 'https://example.com'},
+ {'summary': 'GitHub Repository Release',
+  'url': 'https://github.com/user/repo/release'},
+ {'summary': 'GitHub Repository', 'url': 'https://github.com/user/repo'},
+ {'summary': 'Bugzilla',
+  'url': 'https://bugzilla.redhat.com/show_bug.cgi?cve-2021-1234'}]
 
 
 def test_parse_cwe():

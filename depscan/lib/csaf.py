@@ -1112,7 +1112,7 @@ TOML_TEMPLATE = {
 
 ref_map = {
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
-    r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)": "Bugzilla",
+    r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
     r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories": 
         "GitHub Advisory",
     r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/pull/\d+": "GitHub Pull Request",
@@ -1323,47 +1323,55 @@ def format_references(ref):
     github_advisory_regex = re.compile(r"GHSA-\w{4}-\w{4}-\w{4}$")
     github_issue_regex = re.compile(r"(?<=issues/)\d+")
     bugzilla_regex = re.compile(
-        r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?id=)"
+        r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi)"
     )
-    bugzilla_id_regex = re.compile(r"(?<=show_bug.cgi\?id=)\d+")
+    bugzilla_id_regex = re.compile(r"(?<=show_bug.cgi\?)\S+")
     redhat_advisory_regex = re.compile(r"RH[BS]A-\d{4}:\d+")
     refs = []
     for reference in fmt_refs:
         r = reference["url"]
         summary = reference["summary"]
         if summary == "GitHub Advisory":
-            ids.append(
-                {
-                    "system_name": summary,
-                    "text": github_advisory_regex.findall(r)[0],
-                }
-            )
+            gha = github_advisory_regex.findall(r)
+            if len(gha) > 0:
+                ids.append(
+                    {
+                        "system_name": summary,
+                        "text": gha[0],
+                    }
+                )
         elif summary == "GitHub Issue":
-            ids.append(
-                {
-                    "system_name": summary,
-                    "text": github_issue_regex.findall(r)[0],
-                }
-            )
+            issue = github_issue_regex.findall(r)
+            if len(issue) > 0:
+                ids.append(
+                    {
+                        "system_name": summary,
+                        "text": issue[0],
+                    }
+                )
         elif summary == "Bugzilla":
-            new_id = {
-                "system_name": f"{bugzilla_regex.findall(r)[0].capitalize()}"
-                f" Bugzilla ID",
-                "text": bugzilla_id_regex.findall(r)[0],
-            }
-            if new_id["system_name"] == "Redhat Bugzilla ID":
-                new_id["system_name"] = "Red Hat Bugzilla ID"
-            ids.append(new_id)
+            system_name = bugzilla_regex.findall(r)
+            bugzilla_id = bugzilla_id_regex.findall(r)
+            if len(bugzilla_id) > 0 and len(system_name) > 0:
+                new_id = {
+                    "system_name": f"{system_name[0].capitalize()} Bugzilla ID",
+                    "text": bugzilla_id[0].replace("id=", "")
+                }
+                if new_id["system_name"] == "Redhat Bugzilla ID":
+                    new_id["system_name"] = "Red Hat Bugzilla ID"
+                ids.append(new_id)
         elif summary in [
             "Red Hat Security Advisory",
             "Red Hat Bug Fix Advisory",
         ]:
-            ids.append(
-                {
-                    "system_name": summary,
-                    "text": redhat_advisory_regex.findall(r)[0],
-                }
-            )
+            bugzilla_id = redhat_advisory_regex.findall(r)
+            if len(bugzilla_id) > 0:
+                ids.append(
+                    {
+                        "system_name": summary,
+                        "text": bugzilla_id[0],
+                    }
+                )
         refs.append(reference)
     return ids, refs
 
