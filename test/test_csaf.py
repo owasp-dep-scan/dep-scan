@@ -18,19 +18,19 @@ from depscan.lib.csaf import (
 def test_parse_revision_history():
     # add revision entry w/existing entries when final
     tracking = {
-        "current_release_date": "2023-10-03T00:21:34.713557",
+        "current_release_date": "2023-10-03T00:21:34",
         "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
+        "initial_release_date": "2022-09-22T20:54:06",
         "status": "final",
         "version": "2",
-        "revision": [
+        "revision_history": [
             {
-                "date": "2023-10-02T23:50:07.457263",
+                "date": "2023-10-02T23:50:07",
                 "number": "2",
                 "summary": "Update",
             },
             {
-                "date": "2022-09-22T20:54:06.186927",
+                "date": "2022-09-22T20:54:06",
                 "number": "1",
                 "summary": "Initial",
             },
@@ -39,15 +39,15 @@ def test_parse_revision_history():
     assert parse_revision_history(tracking) == {
         "current_release_date": "2023-10-03T00:21:34",
         "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
-        "revision": [
+        "initial_release_date": "2022-09-22T20:54:06",
+        "revision_history": [
             {
-                "date": "2022-09-22T20:54:06.186927",
+                "date": "2022-09-22T20:54:06",
                 "number": "1",
                 "summary": "Initial",
             },
             {
-                "date": "2023-10-02T23:50:07.457263",
+                "date": "2023-10-02T23:50:07",
                 "number": "2",
                 "summary": "Update",
             },
@@ -63,13 +63,13 @@ def test_parse_revision_history():
         "initial_release_date": "2022-09-22T20:54:06.186927",
         "status": "final",
         "version": "",
-        "revision": [],
+        "revision_history": [],
     }
     assert parse_revision_history(tracking) == {
         "current_release_date": "2022-09-22T20:54:06",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06",
-        "revision": [
+        "revision_history": [
             {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
         ],
         "status": "final",
@@ -77,18 +77,105 @@ def test_parse_revision_history():
     }
     # do not add when status is not final
     tracking = {
-        "current_release_date": "2023-10-03T00:21:34.713557",
+        "current_release_date": "2023-10-03T00:21:34",
         "id": "ID",
-        "initial_release_date": "2022-09-22T20:54:06.186927",
+        "initial_release_date": "2022-09-22T20:54:06",
         "status": "draft",
         "version": "2",
-        "revision": [
+        "revision_history": [
             {
-                "date": "2022-09-22T20:54:06.186927",
+                "date": "2022-09-22T20:54:06",
                 "number": "1",
                 "summary": "Initial",
             }
         ],
+    }
+    assert parse_revision_history(tracking) == {
+        "current_release_date": "2023-10-03T00:21:34",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "status": "draft",
+        "version": "2",
+        "revision_history": [
+            {
+                "date": "2022-09-22T20:54:06",
+                "number": "1",
+                "summary": "Initial",
+            }
+        ],
+    }
+    # deal with a revision history inconsistent with the version number
+    tracking = {
+        "current_release_date": "2023-10-03T00:21:34",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "status": "final",
+        "version": "5",
+        "revision_history": [
+            {
+                "date": "2022-09-22T20:54:06",
+                "number": "1",
+                "summary": "Initial",
+            }
+        ],
+    }
+    assert parse_revision_history(tracking) == {
+        "current_release_date": "2023-10-03T00:21:34",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "status": "final",
+        "version": "2",
+        "revision_history": [
+            {
+                "date": "2022-09-22T20:54:06",
+                "number": "1",
+                "summary": "Initial",
+            },
+            {
+                "date": "2023-10-03T00:21:34",
+                "number": "2",
+                "summary": "Update",
+            },
+        ],
+    }
+
+    # Cope with a missing revision history
+    tracking = {
+        "current_release_date": "2022-09-22T20:54:06.186927",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06.186927",
+        "status": "final",
+        "version": "",
+    }
+    assert parse_revision_history(tracking) == {
+        "current_release_date": "2022-09-22T20:54:06",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "revision_history": [
+            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
+        ],
+        "status": "final",
+        "version": "1",
+    }
+
+    # Cope with a NoneType revision history
+    tracking = {
+        "current_release_date": "2022-09-22T20:54:06.186927",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06.186927",
+        "status": "final",
+        "version": "",
+        "revision_history": None,
+    }
+    assert parse_revision_history(tracking) == {
+        "current_release_date": "2022-09-22T20:54:06",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "revision_history": [
+            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
+        ],
+        "status": "final",
+        "version": "1",
     }
 
 
@@ -147,13 +234,25 @@ def test_format_references():
         "https://example.com",
         "https://github.com/user/repo/release",
         "https://github.com/user/repo",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234",
+        "https://github.com/FasterXML/jackson-databind/issues/2816"
+        "https://sec.cloudapps.cisco.com/security/center/content"
+        "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
     ]
     [ids, refs] = format_references(ref)
+    # For consistency in tests
+    ids = sorted(ids, key=lambda x: x["text"])
+    refs = sorted(refs, key=lambda x: x["url"])
     assert ids == [
-        {"system_name": "Red Hat Security Advisory", "text": "RHSA-2023:5484"},
         {"system_name": "Red Hat Bugzilla ID", "text": "2224245"},
+        {
+            "system_name": "GitHub Issue [FasterXML/jackson-databind]",
+            "text": "2816",
+        },
         {"system_name": "GitHub Advisory", "text": "GHSA-1234-1234-1234"},
         {"system_name": "GitHub Advisory", "text": "GHSA-5432-5432-5432"},
+        {"system_name": "Red Hat Security Advisory", "text": "RHSA-2023:5484"},
+        {"system_name": "Red Hat Bugzilla ID", "text": "cve-2021-1234"},
     ]
     assert refs == [
         {
@@ -165,32 +264,39 @@ def test_format_references():
             "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2224245",
         },
         {
-            "summary": "CVE Record",
-            "url": "https://nvd.nist.gov/vuln/detail/cve-2021-1234",
+            "summary": "Bugzilla",
+            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234",
+        },
+        {"summary": "Other", "url": "https://example.com"},
+        {
+            "summary": "GitHub Issue",
+            "url": "https://github.com/FasterXML/jackson-databind/issues/2816https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
         },
         {
             "summary": "GitHub Advisory",
             "url": "https://github.com/advisories/GHSA-1234-1234-1234",
         },
+        {"summary": "GitHub Repository", "url": "https://github.com/user/repo"},
         {
-            "summary": "GitHub Advisory",
-            "url": "https://github.com/user/repo/security/advisories/GHSA-5432-5432"
-            "-5432",
+            "summary": "GitHub Commit",
+            "url": "https://github.com/user/repo/commit/123",
         },
         {
             "summary": "GitHub Pull Request",
             "url": "https://github.com/user/repo/pull/123",
         },
         {
-            "summary": "GitHub Commit",
-            "url": "https://github.com/user/repo/commit/123",
-        },
-        {"summary": "Other", "url": "https://example.com"},
-        {
             "summary": "GitHub Repository Release",
             "url": "https://github.com/user/repo/release",
         },
-        {"summary": "GitHub Repository", "url": "https://github.com/user/repo"},
+        {
+            "summary": "GitHub Advisory",
+            "url": "https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432",
+        },
+        {
+            "summary": "CVE Record",
+            "url": "https://nvd.nist.gov/vuln/detail/cve-2021-1234",
+        },
     ]
 
 
