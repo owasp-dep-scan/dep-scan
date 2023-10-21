@@ -1587,8 +1587,8 @@ def toml_compatibility(metadata):
     Applies any changes to the formatting of the TOML after a depscan
     minor or patch update
     """
-    # The 4.5.0 TOML referenced revision_history as revision
-    if metadata["depscan_version"] < "4.5.1":
+    # The 4.3.0 TOML referenced revision_history as revision
+    if metadata["depscan_version"] < "4.3.1":
         metadata["tracking"]["revision_history"] = metadata["tracking"].get(
             "revision"
         )
