@@ -1111,39 +1111,42 @@ TOML_TEMPLATE = {
 }
 
 ref_map = {
+    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>("
+    r"?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel)-?[\w\d\-:]+)": "Advisory",
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
     r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
-    r"https://github.com/([\w\d\-.]+/[\w\d\-.]+/security/)?advisories": "GitHub Advisory",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/pull/\d+": "GitHub Pull Request",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/commit": "GitHub Commit",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/release": "GitHub Repository "
-    "Release",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/issues/?": "GitHub Issue",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/blob": "GitHub Blob Reference",
-    r"https://github.com/[\w\d\-.]+/[\w\d\-.]+/?$": "GitHub Repository",
-    "https://gist.github.com": "GitHub Gist",
-    r"https://github.com/": "GitHub Other",
-    r"https://access.redhat.com/errata/rhba-\d{4}:\d{4}": "Red Hat Bug Fix "
-    "Advisory",
-    r"https://access.redhat.com/errata/rhsa-\d{4}:\d{4}": "Red Hat Security "
-    "Advisory",
-    r"(?<=CiscoSecurityAdvisory/)[\w\d\-]+": "Cisco Security Advisory",
-    "https://www.npmjs.com/advisories/": "NPM Advisory",
-    r"https://www.npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
-    "https://www.oracle.com/security-alerts": "Oracle Security Alert",
-    "https://security.netapp.com/advisory": "NetApp Security Advisory",
-    "https://security.snyk.io/vuln": "Snyk Vulnerability Database Entry",
-    "https://snyk.io/vuln/": "Snyk Vulnerability Database Entry",
-    "https://www.debian.org/security": "Debian Security Advisory",
-    "https://security.gentoo.org/glsa": "Gentoo Security Advisory",
-    ".+advisory.?": "Advisory",
+    r"github.com/[\w\-.]+/[\w\-.]+/pull/\d+": "GitHub Pull Request",
+    r"github.com/[\w\-.]+/[\w\-.]+/release": "GitHub Repository Release",
+    r"(github|bitbucket|chromium)(?:.com|.org)/([\w\-.]+)/([\w\-.]+)/issues/("
+    r"?:detail\?id=)?(\d+)": "Issue",
+    r"github.com/[\w\-.]+/[\w\-.]+/blob": "GitHub Blob Reference",
+    r"github.com/[\w\-.]+/[\w\-.]+/commit": "GitHub Commit",
+    r"github.com/[\w\-.]+/[\w\-.]+/?$": "GitHub Repository",
+    "gist.github.com": "GitHub Gist",
+    r"github.com/": "GitHub Other",
+    "npmjs.com/advisories/": "NPM Advisory",
+    r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
+    "oracle.com/security-alerts": "Oracle Security Alert",
+    "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability "
+    "Database Entry",
+    "security.gentoo.org/glsa": "Advisory",
+    r"usn.ubuntu.com/[\d\-]+|ubuntu.com/security/notices/USN\-[\d\-]+": 
+        "Ubuntu Security Notice",
+    r"lists.[\w\-]+.org/[\S]+announce": "Mailing List Announcement",
+    r"lists.[\w\-]+.org/": "Mailing List Other",
+    "blog": "Blog Post",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/?(?!.)": "Bitbucket Repository",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/commits": "Bitbucket Commit",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/issues/\d+(/)?": "Bitbucket Issue",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/wiki/": "Bitbucket Wiki Entry",
+    r"https://vuldb.com/\?id.\d+": "VulDB Entry",
 }
-
 sorted_ref_map = sorted(ref_map.items(), key=lambda x: len(x[0]), reverse=True)
 sorted_ref_map = dict(sorted_ref_map)
 
 compiled_patterns = {
-    re.compile(pattern): value for pattern, value in sorted_ref_map.items()
+    re.compile(pattern, re.IGNORECASE): value for pattern, value in 
+    sorted_ref_map.items()
 }
 
 
@@ -1320,78 +1323,68 @@ def format_references(ref):
     """
     fmt_refs = [{"summary": get_ref_summary(r), "url": r} for r in ref]
     ids = []
-    refs = []
-    github_advisory_regex = re.compile(r"(GHSA-\w{4}-\w{4}-\w{4}$)")
-    github_issue_regex = re.compile(
-        r"(?<=https://github.com/)(?P<owner>["
-        r"^\s/]+)/(?P<repo>[^\s/]+)/issues/("
-        r"?P<id>\d+)"
+    issues_regex = re.compile(
+        r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<owner>["
+        r"\w\-.]+)/(?P<repo>[\w\-.]+)/issues/(?:detail\?id=)?(?P<id>\d+)", 
+        re.IGNORECASE
     )
+    advisory_regex = re.compile(
+        r"(?P<org>[^\s/.]+).(?:com|org)/(?:\S+/)*/?(?P<id>[\w\-:]+)", 
+        re.IGNORECASE)
     bugzilla_regex = re.compile(
-        r"(?<=bugzilla.)(?P<owner>[^\s]+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)"
+        r"(?<=bugzilla.)(?P<owner>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>"
+        r"\S+)", re.IGNORECASE)
+    usn_regex = re.compile(
+        r"(?<=usn.ubuntu.com/)[\d\-]+|(?<=ubuntu.com/security/notices/USN-)["
+        r"\d\-]+", re.IGNORECASE
     )
-    redhat_advisory_regex = re.compile(r"(RH[BS]A-\d{4}:\d+)")
-    cisco_regex = re.compile(r"(?<=CiscoSecurityAdvisory/)[\w\d\-]+")
-    id_types = [
-        "GitHub Advisory",
-        "GitHub Issue",
-        "Bugzilla",
-        "Cisco Security Advisory",
-        "Red Hat Security Advisory",
-        "Red Hat Bug Fix Advisory",
-    ]
+    id_types = ["Advisory", "Issue", "Ubuntu Security Notice", "Bugzilla"]
     parse = [i for i in fmt_refs if i.get("summary") in id_types]
+    refs = [i for i in fmt_refs if i.get("summary") not in id_types]
     for reference in parse:
-        r = reference["url"]
+        url = reference["url"]
         summary = reference["summary"]
-        if summary == "GitHub Advisory":
-            if gha := re.search(github_advisory_regex, r):
-                ids.append(
-                    {
-                        "system_name": summary,
-                        "text": gha.group(0),
-                    }
+        if summary == "Advisory":
+            url = url.replace("glsa/", "glsa-")
+            if adv := re.search(advisory_regex, url):
+                system_name = (
+                    (adv["org"].capitalize() + " Advisory")
+                    .replace("Redhat", "Red Hat")
+                    .replace("Zerodayinitiative", "Zero Day Initiative")
+                    .replace("Github", "GitHub")
+                    .replace("Netapp", "NetApp")
                 )
-        elif summary == "GitHub Issue":
-            if issue := re.search(github_issue_regex, r):
-                ids.append(
-                    {
-                        "system_name": f'GitHub Issue [{issue.group("owner")}'
-                        f'/{issue.group("repo")}]',
-                        "text": issue.group("id"),
-                    }
-                )
-        elif summary == "Bugzilla":
-            if bugzilla := re.search(bugzilla_regex, r):
-                new_id = {
-                    "system_name": f"{bugzilla.group('owner').capitalize()} Bugzilla ID",
-                    "text": bugzilla.group("id"),
+                ids.append({"system_name": system_name, "text": adv["id"]})
+                summary = system_name
+        elif issue := re.search(issues_regex, url):
+            summary = (
+                issue["host"].capitalize().replace("Github", "GitHub")
+                + " Issue"
+            )
+            ids.append(
+                {
+                    "system_name": summary
+                    + (
+                        f" [{issue['owner']}/{issue['repo']}]"
+                        if issue["owner"] != "p"
+                        else f" [{issue['repo']}]"
+                    ),
+                    "text": issue["id"],
                 }
-                if new_id["system_name"] == "Redhat Bugzilla ID":
-                    new_id["system_name"] = "Red Hat Bugzilla ID"
-                ids.append(new_id)
-        elif summary == "Cisco Security Advisory":
-            if csa := re.search(cisco_regex, r):
-                ids.append(
-                    {
-                        "system_name": summary,
-                        "text": csa.group(0),
-                    }
-                )
-        elif summary in [
-            "Red Hat Security Advisory",
-            "Red Hat Bug Fix Advisory",
-        ]:
-            if bugzilla_id := re.search(redhat_advisory_regex, r):
-                ids.append(
-                    {
-                        "system_name": summary,
-                        "text": bugzilla_id.group(0),
-                    }
-                )
-    new_ids = {(id["system_name"], id["text"]) for id in ids}
-    ids = [{"system_name": id[0], "text": id[1]} for id in new_ids]
-    return ids, fmt_refs
+            )
+        elif bugzilla := re.search(bugzilla_regex, url):
+            system_name = f"{bugzilla['owner'].capitalize()} Bugzilla"
+            system_name = system_name.replace("Redhat", "Red Hat")
+            ids.append(
+                {"system_name": f"{system_name} ID", "text": bugzilla["id"]}
+            )
+            summary = system_name
+        elif usn := re.search(usn_regex, url):
+            ids.append({"system_name": summary, "text": f"USN-{usn[0]}"})
+        refs.append({"summary": summary, "url": url})
+    new_ids = {(idx["system_name"], idx["text"]) for idx in ids}
+    ids = [{"system_name": idx[0], "text": idx[1]} for idx in new_ids]
+    return ids, refs
 
 
 def get_ref_summary(url):
@@ -1412,7 +1405,7 @@ def get_ref_summary(url):
         (
             value
             for pattern, value in compiled_patterns.items()
-            if pattern.search(url.lower())
+            if pattern.search(url)
         ),
         "Other",
     )
@@ -1468,13 +1461,19 @@ def parse_revision_history(tracking):
     except AttributeError:
         LOG.warning("Your dates don't appear to be in ISO format.")
     if status == "final" and (not hx or len(hx) == 0):
+        choose_date = max(
+            tracking.get("initial_release_date"),
+            tracking.get("current_release_date"),
+        )
         hx.append(
             {
-                "date": tracking["initial_release_date"],
+                "date": choose_date,
                 "number": "1",
                 "summary": "Initial",
             }
         )
+        tracking["current_release_date"] = choose_date
+        tracking["initial_release_date"] = choose_date
     elif status == "final":
         hx = sorted(hx, key=lambda x: x["number"])
         tracking["initial_release_date"] = hx[0]["date"]
@@ -1597,7 +1596,7 @@ def toml_compatibility(metadata):
     return metadata
 
 
-def export_csaf(results, src_dir, reports_dir):
+def export_csaf(results, src_dir, reports_dir, bom_file):
     """
     Generates a CSAF JSON template from the given results.
 
@@ -1605,6 +1604,7 @@ def export_csaf(results, src_dir, reports_dir):
         results (list): A list of results obtained from the analysis.
         src_dir (str): The source directory.
         reports_dir (str): The reports directory.
+        bom_file (str): The BOM file path
 
     Returns:
         None
@@ -1633,6 +1633,13 @@ def export_csaf(results, src_dir, reports_dir):
             + severity_ref[agg_score[0]][1:].lower()
         )
         template["document"]["aggregate_severity"]["text"] = agg_severity
+    if not template.get("product_tree"):
+        [template["product_tree"], extra_ref] = import_root_component(
+            bom_file)
+        if extra_ref and template["document"].get("references"):
+            template["document"]["references"].append(extra_ref)
+        elif extra_ref:
+            template["document"]["references"] = [extra_ref]
     new_results = cleanup_dict(template)
     # CSAF forbids revision entries unless the status is final, but requires
     # this to be here nonetheless
@@ -1744,3 +1751,43 @@ def cleanup_dict(d):
         if entry:
             new_dict[key] = entry
     return new_dict
+
+
+def import_root_component(bom_file):
+    """
+    Imports the root component from the given bom file into the csaf
+    """
+    with open(bom_file, "r") as f:
+        bom = json.load(f)
+
+    refs = []
+    product_tree = {}
+
+    if component := bom["metadata"].get("component"):
+        product_tree = {
+            "full_product_names": [
+                {
+                    "name": component.get("name"),
+                    "product_id": f"{component.get('name')}:"
+                                  f"{component.get('version')}",
+                    "product_identification_helper": {
+                        "purl": component.get("purl"),
+                    },
+                }
+            ]
+        }
+        if external_references := component.get("externalReferences"):
+            refs.extend(
+                {
+                    "summary": r.get("type"),
+                    "url": r.get("url"),
+                }
+                for r in external_references
+            )
+    if product_tree:
+        LOG.info("Successfully imported root component into the product tree.")
+    else:
+        LOG.info("Unable to import root component for product tree, "
+                 "so product tree will not be included.")
+
+    return product_tree, refs

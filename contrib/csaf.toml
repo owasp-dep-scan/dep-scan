@@ -1,3 +1,4 @@
+depscan_version = "4.3.1"
 [document]
 category = "csaf_vex"
 title = "Your Title"
@@ -52,7 +53,7 @@ status = "draft"
 version = ""
 
 # Include as many revision entries as you like
-[[tracking.revision]]
+[[tracking.revision_history]]
 date = ""
 number = ""
 summary = ""

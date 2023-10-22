@@ -823,7 +823,7 @@ def main():
             new_res = []
             for r in results:
                 new_res.append(r.to_dict())
-            export_csaf(new_res, src_dir, reports_dir)
+            export_csaf(new_res, src_dir, reports_dir, bom_file)
         # Summarise and print results
         summarise(
             project_type,

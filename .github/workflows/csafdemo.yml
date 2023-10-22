@@ -1,0 +1,43 @@
+name: CSAF Demo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      env:
+        VDB_HOME: "/home/runner/work/vdb_data"
+      run: |
+        oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip setuptools
+        pip install .[dev]
+        pip install check-jsonschema
+        mkdir -p vuln_spring
+        cd vuln_spring
+        curl -o csaf.toml https://gist.githubusercontent.com/cerrussell/895d983973f79a066db61b7ade765915/raw/f9a4430b6855b647d6645505ca8c72b005db3ddb/vuln-spring.toml
+        cp csaf.toml original_csaf.toml
+        curl -o bom.json https://gist.githubusercontent.com/cerrussell/d36743367da8e479c08e293897b13723/raw/b9b125e3aeb773dd847d3325984d267aa4fe5933/vuln-springbom.json
+        curl -o csaf_schema.json https://raw.githubusercontent.com/oasis-tcs/csaf/master/csaf_2.0/json_schema/csaf_json_schema.json
+    - name: Run depscan
+      env:
+        VDB_HOME: "/home/runner/work/vdb_data"
+      run: |
+        source venv/bin/activate
+        cd vuln_spring
+        depscan --no-error --bom ./bom.json --csaf
+    - name: Validate
+      run: |
+        source venv/bin/activate
+        check-jsonschema --schemafile /home/runner/work/demo-dep-scan/demo-dep-scan/vuln_spring/csaf_schema.json /home/runner/work/demo-dep-scan/demo-dep-scan/vuln_spring/reports/csaf_v2.json
+    - uses: actions/upload-artifact@v1
+      with:
+        path: "./vuln_spring"
+        name: vuln_spring

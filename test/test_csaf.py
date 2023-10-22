@@ -7,6 +7,7 @@ from depscan.lib.csaf import (
     parse_cwe,
     get_product_status,
     get_ref_summary,
+    import_root_component,
     parse_cvss,
     parse_revision_history,
     cleanup_list,
@@ -56,6 +57,7 @@ def test_parse_revision_history():
         "status": "final",
         "version": "3",
     }
+
     # add revision entry w/no existing entries when final
     tracking = {
         "current_release_date": "2022-09-22T20:54:06.186927",
@@ -75,6 +77,7 @@ def test_parse_revision_history():
         "status": "final",
         "version": "1",
     }
+
     # do not add when status is not final
     tracking = {
         "current_release_date": "2023-10-03T00:21:34",
@@ -104,6 +107,7 @@ def test_parse_revision_history():
             }
         ],
     }
+
     # deal with a revision history inconsistent with the version number
     tracking = {
         "current_release_date": "2023-10-03T00:21:34",
@@ -139,7 +143,7 @@ def test_parse_revision_history():
         ],
     }
 
-    # Cope with a missing revision history
+    # deal with a missing revision history
     tracking = {
         "current_release_date": "2022-09-22T20:54:06.186927",
         "id": "ID",
@@ -158,7 +162,7 @@ def test_parse_revision_history():
         "version": "1",
     }
 
-    # Cope with a NoneType revision history
+    # deal with a NoneType revision history
     tracking = {
         "current_release_date": "2022-09-22T20:54:06.186927",
         "id": "ID",
@@ -166,6 +170,26 @@ def test_parse_revision_history():
         "status": "final",
         "version": "",
         "revision_history": None,
+    }
+    assert parse_revision_history(tracking) == {
+        "current_release_date": "2022-09-22T20:54:06",
+        "id": "ID",
+        "initial_release_date": "2022-09-22T20:54:06",
+        "revision_history": [
+            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
+        ],
+        "status": "final",
+        "version": "1",
+    }
+
+    # update initial release date when adding initial release
+    tracking = {
+        "current_release_date": "2022-09-22T20:54:06.186927",
+        "id": "ID",
+        "initial_release_date": "2022-08-22T20:54:06.186927",
+        "status": "final",
+        "version": "1",
+        "revision_history": [],
     }
     assert parse_revision_history(tracking) == {
         "current_release_date": "2022-09-22T20:54:06",
@@ -198,10 +222,8 @@ def test_cleanup_dict():
 def test_get_ref_summary():
     url = "https://nvd.nist.gov/vuln/detail/cve-2021-1234"
     assert get_ref_summary(url) == "CVE Record"
-    url = "https://github.com/advisories"
-    assert get_ref_summary(url) == "GitHub Advisory"
-    url = "https://github.com/user/repo/security/advisories"
-    assert get_ref_summary(url) == "GitHub Advisory"
+    url = "https://github.com/user/repo/security/advisories/GHSA-1234-1234-1234"
+    assert get_ref_summary(url) == "Advisory"
     url = "https://github.com/user/repo/pull/123"
     assert get_ref_summary(url) == "GitHub Pull Request"
     url = "https://github.com/user/repo/commit/123"
@@ -217,7 +239,7 @@ def test_get_ref_summary():
     url = "https://access.redhat.com/security/cve/CVE-2023-26136"
     assert get_ref_summary(url) == "CVE Record"
     url = "https://access.redhat.com/errata/RHSA-2023:5484"
-    assert get_ref_summary(url) == "Red Hat Security Advisory"
+    assert get_ref_summary(url) == "Advisory"
     url = "https://bugzilla.redhat.com/show_bug.cgi?id=2224245"
     assert get_ref_summary(url) == "Bugzilla"
 
@@ -235,9 +257,11 @@ def test_format_references():
         "https://github.com/user/repo/release",
         "https://github.com/user/repo",
         "https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234",
-        "https://github.com/FasterXML/jackson-databind/issues/2816"
+        "https://github.com/FasterXML/jackson-databind/issues/2816",
         "https://sec.cloudapps.cisco.com/security/center/content"
         "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
+        "https://bitbucket.org/snakeyaml/snakeyaml/issues/525",
+        "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=47027",
     ]
     [ids, refs] = format_references(ref)
     # For consistency in tests
@@ -249,28 +273,42 @@ def test_format_references():
             "system_name": "GitHub Issue [FasterXML/jackson-databind]",
             "text": "2816",
         },
+        {"system_name": "Chromium Issue [oss-fuzz]", "text": "47027"},
+        {"system_name": "Bitbucket Issue [snakeyaml/snakeyaml]", "text": "525"},
         {"system_name": "GitHub Advisory", "text": "GHSA-1234-1234-1234"},
         {"system_name": "GitHub Advisory", "text": "GHSA-5432-5432-5432"},
-        {"system_name": "Red Hat Security Advisory", "text": "RHSA-2023:5484"},
+        {"system_name": "Red Hat Advisory", "text": "RHSA-2023:5484"},
+        {
+            "system_name": "Cisco Advisory",
+            "text": "cisco-sa-apache-log4j-qRuKNEbd",
+        },
         {"system_name": "Red Hat Bugzilla ID", "text": "cve-2021-1234"},
     ]
     assert refs == [
         {
-            "summary": "Red Hat Security Advisory",
+            "summary": "Red Hat Advisory",
             "url": "https://access.redhat.com/errata/RHSA-2023:5484",
         },
         {
-            "summary": "Bugzilla",
+            "summary": "Bitbucket Issue",
+            "url": "https://bitbucket.org/snakeyaml/snakeyaml/issues/525",
+        },
+        {
+            "summary": "Chromium Issue",
+            "url": "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=47027",
+        },
+        {
+            "summary": "Red Hat Bugzilla",
             "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2224245",
         },
         {
-            "summary": "Bugzilla",
+            "summary": "Red Hat Bugzilla",
             "url": "https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234",
         },
         {"summary": "Other", "url": "https://example.com"},
         {
             "summary": "GitHub Issue",
-            "url": "https://github.com/FasterXML/jackson-databind/issues/2816https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
+            "url": "https://github.com/FasterXML/jackson-databind/issues/2816",
         },
         {
             "summary": "GitHub Advisory",
@@ -291,11 +329,17 @@ def test_format_references():
         },
         {
             "summary": "GitHub Advisory",
-            "url": "https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432",
+            "url": "https://github.com/user/repo/security/advisories/GHSA"
+                   "-5432-5432-5432",
         },
         {
             "summary": "CVE Record",
             "url": "https://nvd.nist.gov/vuln/detail/cve-2021-1234",
+        },
+        {
+            "summary": "Cisco Advisory",
+            "url": "https://sec.cloudapps.cisco.com/security/center/content"
+                   "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
         },
     ]
 
@@ -508,9 +552,7 @@ def test_csaf_occurence():
     for r in res:
         vuln = CsafOccurence(r)
         occs.append(vuln)
-    result = []
-    for o in occs:
-        result.append(o.to_dict())
+    result = [o.to_dict() for o in occs]
     assert result == [
         {
             "cve": "CVE-2019-10790",
@@ -527,8 +569,7 @@ def test_csaf_occurence():
                 {
                     "category": "general",
                     "details": "Vulnerability Description",
-                    "text": "# TaffyDB can allow access to any data items in "
-                    "the DB "
+                    "text": "# TaffyDB can allow access to any data items in the DB "
                     "TaffyDB allows attackers to forge adding additional "
                     "properties into user input processed by taffy which can "
                     "allow access to any data items in the DB. Taffy sets an "
@@ -556,7 +597,7 @@ def test_csaf_occurence():
                         "scope": "UNCHANGED",
                         "userInteraction": "REQUIRED",
                         "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L"
-                        "/I:L/A:L",
+                                        "/I:L/A:L",
                         "version": "3.1",
                     },
                     "products": ["taffydb"],
@@ -567,8 +608,8 @@ def test_csaf_occurence():
             "cve": "CVE-2023-36665",
             "cwe": {
                 "id": "CWE-1321",
-                "name": "Improperly Controlled Modification of Object "
-                "Prototype Attributes",
+                "name": "Improperly Controlled Modification of Object Prototype "
+                "Attributes",
             },
             "discovery_date": "2023-07-05T15:30:24",
             "ids": [
@@ -605,22 +646,22 @@ def test_csaf_occurence():
             },
             "references": [
                 {
-                    "summary": "GitHub Advisory",
-                    "url": "https://github.com/markdown-it/markdown-it"
-                    "/security/advisories/GHSA-6vfc-qv3f-vr6c",
-                },
-                {
                     "summary": "CVE Record",
                     "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-21670",
                 },
                 {
                     "summary": "GitHub Commit",
                     "url": "https://github.com/markdown-it/markdown-it/commit"
-                    "/ffc49ab46b5b751cd2be0aabb146f2ef84986101",
+                           "/ffc49ab46b5b751cd2be0aabb146f2ef84986101",
                 },
                 {
                     "summary": "GitHub Repository",
                     "url": "https://github.com/markdown-it/markdown-it",
+                },
+                {
+                    "summary": "GitHub Advisory",
+                    "url": "https://github.com/markdown-it/markdown-it"
+                           "/security/advisories/GHSA-6vfc-qv3f-vr6c",
                 },
             ],
             "scores": [
@@ -633,11 +674,44 @@ def test_csaf_occurence():
                         "scope": "UNCHANGED",
                         "userInteraction": "REQUIRED",
                         "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H"
-                        "/I:H/A:H",
+                                        "/I:H/A:H",
                         "version": "3.1",
                     },
                     "products": ["protobufjs"],
                 }
             ],
+        },
+    ]
+
+
+def test_import_root_component():
+    if os.path.exists("test/data/bom-root-comp.json"):
+        [prod, ref] = import_root_component("test/data/bom-root-comp.json")
+    else:
+        [prod, ref] = import_root_component("data/bom-root-comp.json")
+
+    assert prod == {
+        "full_product_names": [
+            {
+                "name": "vuln-spring",
+                "product_id": "vuln-spring:0.0.1-SNAPSHOT",
+                "product_identification_helper": {
+                    "purl": "pkg:maven/com.example/vuln-spring@0.0.1-SNAPSHOT"
+                            "?type=jar"
+                },
+            }
+        ]
+    }
+
+    assert ref == [
+        {
+            "summary": "website",
+            "url": "https://projects.spring.io/spring-boot/#/spring"
+            "-boot-starter-parent/vuln-spring",
+        },
+        {
+            "summary": "vcs",
+            "url": "https://github.com/spring-projects/spring-boot"
+            "/spring-boot-starter-parent/vuln-spring",
         },
     ]
