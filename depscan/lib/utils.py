@@ -1,9 +1,9 @@
 import ast
 import os
-import pkg_resources
 import re
 from collections import defaultdict
 
+from importlib.metadata import distribution
 from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 
@@ -373,4 +373,4 @@ def get_version():
     """
     Returns the version of depscan
     """
-    return pkg_resources.get_distribution("owasp-depscan").version
+    return distribution("owasp-depscan").version
