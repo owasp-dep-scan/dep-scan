@@ -9,11 +9,11 @@ on:
       - '**/README.md'
   pull_request:
 jobs:
-  version_tests:
+  ubuntu_version_tests:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
       fail-fast: false
     steps:
@@ -30,12 +30,6 @@ jobs:
         python3 -m pip install .[dev]
         npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
-#    - name: VDB
-#      if: matrix.os != 'windows-latest'
-#      run: |
-#        rm -rf $VDB_HOME && mkdir -p $VDB_HOME
-#      env:
-#        VDB_HOME: "vdb_data"
     - name: Run pytest tests
       run: |
         python3 -m pip install -r contrib/requirements.txt
@@ -48,21 +42,21 @@ jobs:
       run: |
         mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
         # python3 depscan/cli.py --no-banner --cache --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o containertests_${{ matrix.os }}_python${{ matrix.python-version }}/depscan-scan.json -t docker
-        python3 depscan/cli.py --no-banner --cache --no-error --src shiftleft/scan-slim -o containertests_${{ matrix.os }}_python${{ matrix.python-version }}/depscan-slim.json -t docker,license --no-vuln-table
+        python3 depscan/cli.py --no-banner --no-error --src shiftleft/scan-slim -o containertests_${{ matrix.os }}_python${{ matrix.python-version }}/depscan-slim.json -t docker,license --no-vuln-table
         python3 depscan/cli.py --no-banner --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests_${{ matrix.os }}_python${{ matrix.python-version }}/depscan-redmine.json -t docker --no-vuln-table
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VDB_HOME: "vdb_data"
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
-  version_tests2:
+  ubuntu_version_tests2:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest]
         python-version: ['3.11']
     steps:
     - uses: actions/checkout@v4
@@ -90,15 +84,111 @@ jobs:
       run: |
         mkdir -p containertests_${{ matrix.os }}
         python3 -m pip install -r contrib/requirements.txt
+        cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
+        cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
         python3 depscan/cli.py --no-banner --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
         python3 depscan/cli.py --no-banner --no-error --src ./test/data/bom-yaml-manifest.json -o containertests_${{ matrix.os }}/depscan-yaml.json --no-vuln-table
-        python3 depscan/cli.py --no-banner --no-error --src repotests/microservices-demo -o containertests_${{ matrix.os }}/depscan-msd.json
-        python3 depscan/cli.py --no-banner --no-error --src repotests/NodeGoat --reports-dir containertests_${{ matrix.os }}/ng-reports
+        python3 depscan/cli.py --csaf --no-banner --no-error --src repotests/microservices-demo -o containertests_${{ matrix.os }}/depscan-msd.json --reports-dir containertests_${{ matrix.os }}/ng-reports
+        python3 depscan/cli.py --csaf --no-banner --no-error --src repotests/NodeGoat --reports-dir containertests_${{ matrix.os }}/ng-reports
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
-    - uses: actions/upload-artifact@v1
+    - uses: actions/upload-artifact@v3
       with:
         name: containertests_${{ matrix.os }}
         path: containertests_${{ matrix.os }}
+  version_tests_mac_win:
+    needs: ubuntu_version_tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-latest, windows-latest ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip setuptools
+          python3 -m pip install .[dev]
+      - name: Run pytest tests
+        run: |
+          python3 -m pip install -r contrib/requirements.txt
+          python3 -m pytest test
+        env:
+          PYTHONPATH: "."
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VDB_HOME: "vdb_data"
+      - name: Get boms generated earlier
+        uses: actions/download-artifact@v3
+        with:
+          name: containertests_ubuntu-latest_python3.11
+          path: containertests_ubuntu-latest_python3.11
+      - name: Test container images
+        run: |
+          mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
+          python3 depscan/cli.py --no-banner --cache --no-error --bom containertests_ubuntu-latest_python3.11/sbom-slim-docker.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }}/depscan-slim.json --no-vuln-table
+          python3 depscan/cli.py --no-banner --no-error --bom containertests_ubuntu-latest_python3.11/sbom-redmine-docker.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }}/depscan-redmine.json --no-vuln-table
+        env:
+          PYTHONPATH: "."
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VDB_HOME: "vdb_data"
+          PYTHONUTF8: 1
+      - uses: actions/upload-artifact@v3
+        with:
+          name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
+          path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
+  version_tests2_mac_win:
+    needs: ubuntu_version_tests2
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-latest, windows-latest ]
+        python-version: [ '3.11' ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install .[dev]
+      - name: Get boms generated earlier
+        uses: actions/download-artifact@v3
+        with:
+          name: containertests_ubuntu-latest
+          path: containertests_ubuntu-latest
+      - name: Test container images
+        shell: bash
+        run: |
+          mkdir -p containertests_${{ matrix.os }}
+          python3 -m pip install -r contrib/requirements.txt
+          mkdir -p containertests_ubuntu-latest/microservices
+          mkdir -p containertests_ubuntu-latest/NodeGoat
+          mv containertests_ubuntu-latest/sbom-msd-universal.json containertests_ubuntu-latest/microservices/sbom-msd-universal.json
+          mv containertests_ubuntu-latest/ng-reports/sbom-universal.json containertests_ubuntu-latest/nodegoat/sbom-universal.json
+          cp contrib/csaf.toml containertests_ubuntu-latest/microservices/csaf.toml
+          cp contrib/csaf.toml containertests_ubuntu-latest/nodegoat/csaf.toml
+          python3 depscan/cli.py --no-banner --no-error --bom containertests_ubuntu-latest/sbom-rocket-universal.json -o containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
+          python3 depscan/cli.py --csaf --no-banner --no-error --bom containertests_ubuntu-latest/microservices/sbom-msd-universal.json -o containertests_${{ matrix.os }}/depscan-msd.json --reports-dir containertests_${{ matrix.os }}/reports
+          python3 depscan/cli.py --csaf --no-banner --no-error --bom containertests_ubuntu-latest/nodegoat/sbom-universal.json -o containertests_${{ matrix.os }}/depscan-ng.json --reports-dir containertests_${{ matrix.os }}/ng-reports
+        env:
+          PYTHONPATH: "."
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONUTF8: 1
+      - uses: actions/upload-artifact@v3
+        with:
+          name: containertests_${{ matrix.os }}
+          path: containertests_${{ matrix.os }}
