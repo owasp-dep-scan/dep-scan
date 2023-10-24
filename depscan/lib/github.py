@@ -1,41 +1,62 @@
-from github import BadCredentialsException, Github, Auth, GithubException
-from dataclasses import dataclass
+from github import Github, Auth
+from depscan.lib import config
+import httpx
 
 
 class GitHub:
     # The GitHub instance object from the PyGithub library
     github = None
+    github_token = None
 
 
     def __init__(self, github_token: str) -> None:
         self.github = Github(auth=Auth.Token(github_token))
+        self.github_token = github_token
 
 
-    def authenticate(self) -> bool:
+    def can_authenticate(self) -> bool:
         """
-        Authenticates to the GitHub API
+        Calls the GitHub API to determine if the token is valid
 
         :return: Flag indicating whether authentication was successful or not
         """
-        try:
-            # Call the GitHub API to authenticate
-            self.github.get_user().name
-        except (BadCredentialsException, GithubException):
+        headers = {"Authorization": f"token {self.github_token}"}
+
+        response = httpx.get(
+            url='https://api.github.com/',
+            headers=headers,
+            follow_redirects=True,
+            timeout=config.request_timeout_sec
+        )
+
+        if response.status_code == 401:
             return False
-        return True
+        else:
+            return True
 
 
     def get_token_scopes(self) -> list:
         """
         Provides the scopes associated to the access token provided in the environment variable
+        Only classic personal access tokens will result in scopes returned from the GitHub API
 
         :return: List of token scopes
         """
-        if self.github.oauth_scopes is None:
-            self.authenticate()
+        headers = {"Authorization": f"token {self.github_token}"}
 
-        # Case when a classic token has no scopes assigned
-        if not self.github.oauth_scopes is None and len(self.github.oauth_scopes) == 1 and self.github.oauth_scopes[0] == '':
-            return None
+        response = httpx.get(
+            url='https://api.github.com/',
+            headers=headers,
+            follow_redirects=True,
+            timeout=config.request_timeout_sec
+        )
 
-        return self.github.oauth_scopes
+        oauth_scopes = response.headers.get('x-oauth-scopes')
+
+        if not oauth_scopes is None:
+            if oauth_scopes == '':
+                return None
+            else:
+                return oauth_scopes.split(', ')
+
+        return None

@@ -796,7 +796,7 @@ def main():
         if github_token:
             github_client = github.GitHub(github_token)
 
-            if not github_client.authenticate():
+            if not github_client.can_authenticate():
                 LOG.error("The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
             else:
                 sources_list.insert(0, GitHubSource())

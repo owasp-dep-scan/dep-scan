@@ -1,15 +1,11 @@
 from depscan.lib import github
 import httpretty
-import os
 
 
-user_url = 'https://api.github.com/user'
-user_success_response_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "github-response-user-success.json")
-with open(user_success_response_file) as file:
-    user_success_json = file.read()
+url = 'https://api.github.com/'
 
 
-def test_authenticate_success():
+def test_can_authenticate_success():
     httpretty.enable()
     httpretty.reset()
     
@@ -21,20 +17,19 @@ def test_authenticate_success():
 
     httpretty.register_uri(
         method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
+        uri=url,
         adding_headers=headers
     )
     
     github_client = github.GitHub('test-token')
-    result = github_client.authenticate()
+    result = github_client.can_authenticate()
 
     httpretty.disable()
 
     assert result == True
 
 
-def test_authenticate_unauthentiated():
+def test_can_authenticate_unauthentiated():
     httpretty.enable()
     httpretty.reset()
     
@@ -44,14 +39,14 @@ def test_authenticate_unauthentiated():
 
     httpretty.register_uri(
         method=httpretty.GET,
-        uri=user_url,
+        uri=url,
         body='{"message":"Bad credentials"}',
         adding_headers=headers,
         status=401
     )
     
     github_client = github.GitHub('test-token')
-    result = github_client.authenticate()
+    result = github_client.can_authenticate()
 
     httpretty.disable()
 
@@ -70,8 +65,7 @@ def test_get_token_scopes_success():
 
     httpretty.register_uri(
         method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
+        uri=url,
         adding_headers=headers
     )
     
@@ -93,8 +87,7 @@ def test_get_token_scopes_none():
 
     httpretty.register_uri(
         method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
+        uri=url,
         adding_headers=headers
     )
     
@@ -117,8 +110,7 @@ def test_get_token_scopes_empty():
 
     httpretty.register_uri(
         method=httpretty.GET,
-        uri=user_url,
-        body=user_success_json,
+        uri=url,
         adding_headers=headers
     )
     
