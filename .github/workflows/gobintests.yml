@@ -6,6 +6,9 @@ on:
       - master
     paths-ignore:
       - '**/README.md'
+      - 'dockertests.yml'
+      - 'pythonapp.yml'
+      - 'python-publish.yml'
   pull_request:
 jobs:
   build:
@@ -13,6 +16,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python

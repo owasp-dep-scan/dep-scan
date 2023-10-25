@@ -308,9 +308,10 @@ The following environment variables can be used to customise the behaviour.
 
 ## GitHub Security Advisory
 
-To download security advisories from GitHub, a personal access token with the following scope is necessary.
+To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
 
-- read:packages
+- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
+- Token (classic): Grant no permissions
 
 ```bash
 export GITHUB_TOKEN="<PAT token>"

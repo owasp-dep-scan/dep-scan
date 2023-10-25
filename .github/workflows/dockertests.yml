@@ -7,6 +7,9 @@ on:
       - feature/*
     paths-ignore:
       - '**/README.md'
+      - 'gobintests.yml'
+      - 'pythonapp.yml'
+      - 'python-publish.yml'
   pull_request:
 jobs:
   ubuntu_version_tests:
@@ -58,6 +61,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ['3.11']
+      fail-fast: false
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
