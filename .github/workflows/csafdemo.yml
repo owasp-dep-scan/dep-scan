@@ -36,7 +36,7 @@ jobs:
     - name: Validate
       run: |
         source venv/bin/activate
-        check-jsonschema --schemafile /home/runner/work/demo-dep-scan/demo-dep-scan/vuln_spring/csaf_schema.json /home/runner/work/demo-dep-scan/demo-dep-scan/vuln_spring/reports/csaf_v2.json
+        check-jsonschema --schemafile /home/runner/work/dep-scan/dep-scan/vuln_spring/csaf_schema.json /home/runner/work/dep-scan/dep-scan/vuln_spring/reports/csaf_v2.json
     - uses: actions/upload-artifact@v1
       with:
         path: "./vuln_spring"
