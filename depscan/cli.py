@@ -116,6 +116,12 @@ def build_args():
         "version.",
     )
     parser.add_argument(
+        "--no-suggest",
+        action="store_false",
+        dest="suggest",
+        help="Disable suggest mode",
+    )
+    parser.add_argument(
         "--risk-audit",
         action="store_true",
         default=True
@@ -817,6 +823,7 @@ def main():
             )
             LOG.debug("VDB data is stored at: %s", paths_list)
             run_cacher = False
+            db = db_lib.get()
         elif args.sync:
             for s in sources_list:
                 LOG.debug("Syncing %s", s.__class__.__name__)
