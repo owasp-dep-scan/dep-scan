@@ -139,36 +139,60 @@ depscan --src $PWD --reports-dir $PWD/reports
 Full list of options are below:
 
 ```bash
-usage: depscan [-h] [--no-banner] [--cache] [--csaf] [--sync] [--suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--no-error]
-               [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table] [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN]
-               [--privado-json PRIVADO_JSON] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [-v]
+usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--suggest]
+              [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS]
+              [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE]
+              [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--no-error]
+              [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
+              [--threatdb-server THREATDB_SERVER]
+              [--threatdb-username THREATDB_USERNAME]
+              [--threatdb-password THREATDB_PASSWORD]
+              [--threatdb-token THREATDB_TOKEN] [--privado-json PRIVADO_JSON]
+              [--server] [--server-host SERVER_HOST]
+              [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [-v]
 
-Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
+Fully open-source security and license audit for application dependencies and
+container images based on known vulnerabilities and advisories.
 
 options:
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
-  --cache               Cache vulnerability information in platform specific user_data_dir
+  --cache               Cache vulnerability information in platform specific
+                        user_data_dir
   --csaf                Generate a CSAF
-  --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
-  --suggest             DEPRECATED: Suggest is the default mode for determining fix version.
+  --sync                Sync to receive the latest vulnerability data. Should
+                        have invoked cache first.
+  --suggest             DEPRECATED: Suggest is the default mode for
+                        determining fix version.
+  --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS
-                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
+                        Private namespace to use while performing oss risk
+                        audit. Private packages should not be available in
+                        public registries by default. Comma separated values
+                        accepted.
   -t PROJECT_TYPE, --type PROJECT_TYPE
                         Override project type if auto-detection is incorrect
-  --bom BOM             Examine using the given Software Bill-of-Materials (SBoM) file in CycloneDX format. Use cdxgen command to produce one.
+  --bom BOM             Examine using the given Software Bill-of-Materials
+                        (SBoM) file in CycloneDX format. Use cdxgen command to
+                        produce one.
   -i SRC_DIR_IMAGE, --src SRC_DIR_IMAGE
                         Source directory or container image or binary file
   -o REPORT_FILE, --report_file REPORT_FILE
-                        DEPRECATED. Use reports directory since multiple files are created. Report filename with directory
+                        DEPRECATED. Use reports directory since multiple files
+                        are created. Report filename with directory
   --reports-dir REPORTS_DIR
                         Reports directory
   --no-error            Continue on error to prevent build from breaking
-  --no-license-scan     DEPRECATED: dep-scan does not perform license scanning by default
-  --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
-  --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
-  --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
+  --no-license-scan     DEPRECATED: dep-scan does not perform license scanning
+                        by default
+  --deep                Perform deep scan by passing this --deep argument to
+                        cdxgen. Useful while scanning docker images and OS
+                        packages.
+  --no-universal        Depscan would attempt to perform a single universal
+                        scan instead of individual scans per language type.
+  --no-vuln-table       Do not print the table with the full list of
+                        vulnerabilities. This can help reduce console output.
   --threatdb-server THREATDB_SERVER
                         ThreatDB server url. Eg: https://api.sbom.cx
   --threatdb-username THREATDB_USERNAME
@@ -178,7 +202,10 @@ options:
   --threatdb-token THREATDB_TOKEN
                         ThreatDB token for token based submission
   --privado-json PRIVADO_JSON
-                        Optional: Enrich the VEX report with information from privado.ai json report. cdxgen can process and include privado info automatically so this argument is usually not required.
+                        Optional: Enrich the VEX report with information from
+                        privado.ai json report. cdxgen can process and include
+                        privado info automatically so this argument is usually
+                        not required.
   --server              Run depscan as a server
   --server-host SERVER_HOST
                         depscan server host
