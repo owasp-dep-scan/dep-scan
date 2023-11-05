@@ -272,11 +272,6 @@ def exec_cdxgen(use_bin=True):
         else:
             return cdxgen_cmd
     else:
-        # cdxgen_cmd = (
-        #     os.environ.get("CDXGEN_CMD", "cdxgen")
-        #     if sys.platform != "win32"
-        #     else os.environ.get("CDXGEN_CMD", "cdxgen.CMD")
-        # )
         lbin = os.getenv("APPDATA") if sys.platform == "win32" else "local_bin"
         local_bin = resource_path(
             os.path.join(
@@ -377,12 +372,18 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             src_dir,
         )
     args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file]
-    if deep or project_type in ("jar", "jenkins"):
+    if deep or project_type in ("jar", "jenkins") or options.get("reachables"):
         args.append("--deep")
-        LOG.info("About to perform deep scan. This would take a while ...")
+        LOG.info("About to perform deep scan. This could take a while ...")
     args.append(src_dir)
     if cdxgen_cmd:
         exec_tool(args)
+        if options.get('reachables'):
+            evinse_cmd = cdxgen_cmd.replace("cdxgen", "evinse")
+            args = [evinse_cmd, "-i", bom_file, "-o",
+                    "bom.evinse.json", "-l", project_type,
+                    "--with-reachables", src_dir]
+            exec_tool(args)
     else:
         LOG.warning("Unable to locate cdxgen command. ")
     return os.path.exists(bom_file)

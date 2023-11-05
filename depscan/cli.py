@@ -27,6 +27,7 @@ from depscan.lib.analysis import (
     PrepareVexOptions,
     analyse_licenses,
     analyse_pkg_risks,
+    include_reachables,
     jsonl_report,
     prepare_vex,
     suggest_version,
@@ -114,6 +115,14 @@ def build_args():
         dest="suggest",
         help="DEPRECATED: Suggest is the default mode for determining fix "
         "version.",
+    )
+    parser.add_argument(
+        "--reachables",
+        action="store_true",
+        default=False,
+        dest="reachables",
+        help="Analyze reachability of direct dependencies. Available for "
+        "javascript, java, and python.",
     )
     parser.add_argument(
         "--no-suggest",
@@ -552,6 +561,7 @@ async def run_scan():
                 "type": project_type,
                 "multiProject": multi_project,
                 "cdxgen_server": cdxgen_server,
+                "reachables": q.get("reachables")
             },
         )
         if bom_status:
@@ -632,17 +642,21 @@ def main():
             LOG.info(
                 "Please fill out the toml with your details and rerun depscan."
             )
-            LOG.info("Check out our CSAF documentation for an explanation of "
-                     "this feature. https://github.com/owasp-dep-scan/dep-scan"
-                     "/blob/master/contrib/CSAF_README.md")
-            LOG.info("If you're just checking out how our generator works, "
-                     "feel free to skip filling out the toml and just rerun "
-                     "depscan.")
+            LOG.info(
+                "Check out our CSAF documentation for an explanation of "
+                "this feature. https://github.com/owasp-dep-scan/dep-scan"
+                "/blob/master/contrib/CSAF_README.md"
+            )
+            LOG.info(
+                "If you're just checking out how our generator works, "
+                "feel free to skip filling out the toml and just rerun "
+                "depscan."
+            )
             sys.exit(0)
     # Detect the project types and perform the right type of scan
     if args.project_type:
         project_types_list = args.project_type.split(",")
-    elif args.bom:
+    elif args.bom and not args.project_type:
         project_types_list = ["bom"]
     elif not args.non_universal_scan:
         project_types_list = [UNIVERSAL_SCAN_TYPE]
@@ -690,7 +704,8 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server},
+                {"cdxgen_server": args.cdxgen_server,
+                "reachables": args.reachables},
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -803,14 +818,16 @@ def main():
             github_client = github.GitHub(github_token)
 
             if not github_client.can_authenticate():
-                LOG.error("The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory")
+                LOG.error(
+                    "The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory"
+                )
             else:
                 sources_list.insert(0, GitHubSource())
                 scopes = github_client.get_token_scopes()
                 if not scopes is None and len(scopes) > 0:
                     LOG.warning(
                         "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
-                        ', '.join([scope for scope in scopes])
+                        ", ".join([scope for scope in scopes]),
                     )
         if run_cacher:
             LOG.debug(
@@ -839,11 +856,20 @@ def main():
         )
         if vdb_results:
             results += vdb_results
+        results = [r.to_dict() for r in results]
+        if args.reachables:
+            reached = include_reachables(bom_file, src_dir)
+            reached_purls = []
+            for r in reached:
+                for p in r["purls"]:
+                    reached_purls.append(p)
+            for res in results:
+                # new_res = deepcopy(res)
+                if res.get("purl") in reached_purls:
+                    res["reached"] = True
         if args.csaf:
-            new_res = []
-            for r in results:
-                new_res.append(r.to_dict())
-            export_csaf(new_res, src_dir, reports_dir, bom_file)
+            export_csaf(results, src_dir, reports_dir, bom_file,
+                        args.reachables)
         # Summarise and print results
         summarise(
             project_type,

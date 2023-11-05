@@ -1,4 +1,5 @@
 import json
+import os.path
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -60,7 +61,9 @@ def distro_package(package_issue):
     :return: bool
     """
     if package_issue:
-        all_parts = CPE_FULL_REGEX.match(package_issue.affected_location.cpe_uri)
+        all_parts = CPE_FULL_REGEX.match(
+            package_issue["affected_location"].get("cpe_uri")
+        )
         if (
             all_parts
             and all_parts.group("vendor")
@@ -109,7 +112,9 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
     :return: Constructed display string
     """
     full_pkg_display = current_pkg
-    highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
+    highlightable = tree_pkg and (
+        tree_pkg == current_pkg or tree_pkg in current_pkg
+    )
     if tree_pkg:
         try:
             if current_pkg.startswith("pkg:"):
@@ -117,7 +122,9 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     if version_used:
-                        full_pkg_display = f"""{purl_obj.get("name")}@{version_used}"""
+                        full_pkg_display = (
+                            f"""{purl_obj.get("name")}@{version_used}"""
+                        )
         except Exception:
             pass
     if extra_text and highlightable:
@@ -162,7 +169,9 @@ def pkg_sub_tree(
     if not bom_dependency_tree:
         return [purl], Tree(
             get_pkg_display(purl, purl, extra_text=extra_text),
-            style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
+            style=Style(
+                color="bright_red" if pkg_severity == "CRITICAL" else None
+            ),
         )
     if len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
@@ -246,7 +255,9 @@ def prepare_vex(options: PrepareVexOptions):
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
     # Retrieve any dependency tree from the SBoM
-    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(options.bom_file)
+    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(
+        options.bom_file
+    )
     oci_props = retrieve_oci_properties(bom_data)
     oci_product_types = oci_props.get("oci:image:componentTypes", "")
     for h in [
@@ -260,20 +271,20 @@ def prepare_vex(options: PrepareVexOptions):
         if h == "Score":
             justify = "right"
         table.add_column(header=h, justify=justify)
-    for res in options.results:
-        vuln_occ_dict = res.to_dict()
+    for vuln_occ_dict in options.results:
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
-        package_issue = res.package_issue
-        matched_by = res.matched_by
-        full_pkg = package_issue.affected_location.package
+        package_issue = vuln_occ_dict.get("package_issue")
+        matched_by = vuln_occ_dict.get("matched_by")
+        full_pkg = package_issue["affected_location"].get("package")
         project_type_pkg = (
-            f"{options.project_type}:" f"{package_issue.affected_location.package}"
+            f"{options.project_type}:"
+            f"{package_issue['affected_location'].get('package')}"
         )
-        if package_issue.affected_location.vendor:
+        if package_issue['affected_location'].get('vendor'):
             full_pkg = (
-                f"{package_issue.affected_location.vendor}:"
-                f"{package_issue.affected_location.package}"
+                f"{package_issue['affected_location'].get('vendor')}:"
+                f"{package_issue['affected_location'].get('package')}"
             )
         version = None
         if matched_by:
@@ -281,7 +292,7 @@ def prepare_vex(options: PrepareVexOptions):
             full_pkg = full_pkg + ":" + version
         # De-alias package names
         full_pkg = options.pkg_aliases.get(full_pkg, full_pkg)
-        version_used = package_issue.affected_location.version
+        version_used = package_issue['affected_location'].get('version')
         purl = options.purl_aliases.get(full_pkg, full_pkg)
         package_type = None
         insights = []
@@ -295,15 +306,15 @@ def prepare_vex(options: PrepareVexOptions):
                     qualifiers = purl_obj.get("qualifiers", {})
                     if package_type in config.OS_PKG_TYPES:
                         if (
-                            package_issue.affected_location.vendor
+                            package_issue['affected_location'].get('vendor')
                             and oci_product_types
-                            and package_issue.affected_location.vendor
+                            and package_issue['affected_location'].get('vendor')
                             not in oci_product_types
                         ):
                             # Some nvd data might match application CVEs for OS vendors which can be filtered
-                            if package_issue.affected_location.cpe_uri:
+                            if package_issue['affected_location'].get('cpe_uri'):
                                 all_parts = CPE_FULL_REGEX.match(
-                                    package_issue.affected_location.cpe_uri
+                                    package_issue['affected_location'].get('cpe_uri')
                                 )
                                 if (
                                     all_parts
@@ -314,14 +325,16 @@ def prepare_vex(options: PrepareVexOptions):
                                     continue
                             # Some vendors like suse leads to FP and can be turned off if our image do not have those types
                             # Some os packages might match application packages in NVD
-                            if package_issue.affected_location.vendor in ("suse",):
+                            if package_issue['affected_location'].get('vendor') in (
+                                "suse",
+                            ):
                                 continue
                             else:
                                 insights.append(
-                                    f"[#7C8082]:telescope: Vendor {package_issue.affected_location.vendor}"
+                                    f"[#7C8082]:telescope: Vendor {package_issue['affected_location'].get('vendor')}"
                                 )
                                 plain_insights.append(
-                                    f"Vendor {package_issue.affected_location.vendor}"
+                                    f"Vendor {package_issue['affected_location'].get('vendor')}"
                                 )
                         has_os_packages = True
                     if "ubuntu" in qualifiers.get("distro", ""):
@@ -336,11 +349,11 @@ def prepare_vex(options: PrepareVexOptions):
         ids_seen[vid + purl] = True
         # Find the best fix version
         fixed_location = best_fixed_location(
-            options.sug_version_dict.get(purl), package_issue.fixed_location
+            options.sug_version_dict.get(purl), package_issue['fixed_location']
         )
         if (
             options.sug_version_dict.get(purl) == placeholder_fix_version
-            or package_issue.fixed_location == placeholder_fix_version
+            or package_issue['fixed_location'] == placeholder_fix_version
         ):
             wont_fix_version_count += 1
         package_usage = "N/A"
@@ -378,7 +391,9 @@ def prepare_vex(options: PrepareVexOptions):
         )
         if is_required and package_type not in config.OS_PKG_TYPES:
             package_usage = ":direct_hit: Direct usage"
-        elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
+        elif (
+            not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
+        ) or (
             purl in optional_pkgs
             or full_pkg in optional_pkgs
             or project_type_pkg in optional_pkgs
@@ -390,7 +405,8 @@ def prepare_vex(options: PrepareVexOptions):
                 has_os_packages = True
             else:
                 package_usage = (
-                    "[spring_green4]:notebook: Indirect dependency[" "/spring_green4]"
+                    "[spring_green4]:notebook: Indirect dependency["
+                    "/spring_green4]"
                 )
         if package_usage != "N/A":
             insights.append(package_usage)
@@ -451,7 +467,9 @@ def prepare_vex(options: PrepareVexOptions):
             versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
             if fixed_location:
-                versions.append({"version": fixed_location, "status": "unaffected"})
+                versions.append(
+                    {"version": fixed_location, "status": "unaffected"}
+                )
                 recommendation = f"Update to {fixed_location} or later"
             affects = [{"ref": purl, "versions": versions}]
             analysis = {}
@@ -521,7 +539,9 @@ def prepare_vex(options: PrepareVexOptions):
                         },
                         {
                             "name": "depscan:prioritized",
-                            "value": "true" if pkg_group_rows.get(purl) else "false",
+                            "value": "true"
+                            if pkg_group_rows.get(purl)
+                            else "false",
                         },
                     ],
                 }
@@ -716,7 +736,7 @@ def summary_stats(results):
         "CRITICAL": 0,
     }
     for res in results:
-        summary[res.severity] += 1
+        summary[res.get("severity")] += 1
     return summary
 
 
@@ -745,20 +765,22 @@ def jsonl_report(
     optional_pkgs = scoped_pkgs.get("optional", [])
     excluded_pkgs = scoped_pkgs.get("excluded", [])
     with open(out_file_name, "w", encoding="utf-8") as outfile:
-        for data in results:
-            vuln_occ_dict = data.to_dict()
+        for vuln_occ_dict in results:
             vid = vuln_occ_dict.get("id")
-            package_issue = data.package_issue
-            full_pkg = package_issue.affected_location.package
-            if package_issue.affected_location.vendor:
+            package_issue = vuln_occ_dict.get("package_issue")
+            try:
+                full_pkg = package_issue["affected_location"].get("package")
+            except Exception as e:
+                print(package_issue)
+            if package_issue["affected_location"].get("vendor"):
                 full_pkg = (
-                    f"{package_issue.affected_location.vendor}:"
-                    f"{package_issue.affected_location.package}"
+                    f"{package_issue['affected_location'].get('vendor')}:"
+                    f"{package_issue['affected_location'].get('package')}"
                 )
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             full_pkg_display = full_pkg
-            version_used = package_issue.affected_location.version
+            version_used = package_issue['affected_location'].get("version")
             purl = purl_aliases.get(full_pkg, full_pkg)
             if purl:
                 try:
@@ -779,11 +801,11 @@ def jsonl_report(
             # package exists with and without a purl
             ids_seen[vid + purl] = True
             project_type_pkg = "{}:{}".format(
-                project_type, package_issue.affected_location.package
+                project_type, package_issue['affected_location'].get('package')
             )
             fixed_location = best_fixed_location(
                 sug_version_dict.get(purl),
-                package_issue.fixed_location,
+                package_issue["fixed_location"],
             )
             package_usage = "N/A"
             if (
@@ -821,7 +843,9 @@ def jsonl_report(
             outfile.write("\n")
 
 
-def analyse_pkg_risks(project_type, scoped_pkgs, risk_results, risk_report_file=None):
+def analyse_pkg_risks(
+    project_type, scoped_pkgs, risk_results, risk_report_file=None
+):
     """
     Identify package risk and write to a json file
 
@@ -946,7 +970,9 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 conditions_str = ", ".join(lic["conditions"])
                 if "http" not in conditions_str:
                     conditions_str = (
-                        conditions_str.replace("--", " for ").replace("-", " ").title()
+                        conditions_str.replace("--", " for ")
+                        .replace("-", " ")
+                        .title()
                     )
                 data = [
                     *pkg_ver,
@@ -1094,3 +1120,57 @@ def classify_links(related_urls):
         elif "cwe.mitre.org" in rurl:
             clinks["cwe"] = rurl
     return clinks
+
+
+def include_reachables(bom_file, src_dir):
+    """
+    Generates a list of reachable elements based on the given BOM file.
+
+    :param bom_file (str): The path to the BOM file.
+
+    :return: A list of dictionaries containing the reachable elements.
+    Each dictionary has two keys: 'purls' which is a list of package URLs,
+    and 'locs' which is a list of strings representing the file name and line
+    number of each reachable element.
+    """
+    with open(
+        os.path.join(src_dir, "reachables.slices.json"), "r", encoding="utf-8"
+    ) as f:
+        reachables = json.load(f).get('reachables')
+    reached = []
+    for flow in reachables:
+        if len(flow.get("purls", [])) > 0:
+            reached.append(
+                {
+                    "purls": flow.get("purls"),
+                    "locs": [
+                        f"{i['parentFileName'] + '#' + str(i['lineNumber'])}"
+                        for i in flow.get("flows")
+                    ],
+                }
+            )
+
+    # For now we will also include usability slice as well
+    with open(
+        os.path.join(src_dir, "bom.evinse.json"), "r", encoding="utf-8"
+    ) as f:
+        data = json.load(f)
+
+    for c in data["components"]:
+        loc = []
+        purl = c["purl"]
+        if c.get("evidence") and c["evidence"].get("occurrences"):
+            try:
+                loc = [i["location"] for i in c["evidence"]["occurrences"]]
+            except:
+                print(c)
+        elif c.get("evidence") and c["evidence"].get("callstack"):
+            loc = [i['location'] for i in c["evidence"].get("occurrences")]
+        if loc:
+            reached.append(
+                {
+                    "purls": [purl],
+                    "locs": loc,
+                }
+            )
+    return reached

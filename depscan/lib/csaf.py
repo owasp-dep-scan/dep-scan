@@ -1130,7 +1130,7 @@ ref_map = {
     "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability "
     "Database Entry",
     "security.gentoo.org/glsa": "Advisory",
-    r"usn.ubuntu.com/[\d\-]+|ubuntu.com/security/notices/USN\-[\d\-]+": 
+    r"usn.ubuntu.com/[\d\-]+|ubuntu.com/security/notices/USN\-[\d\-]+":
         "Ubuntu Security Notice",
     r"lists.[\w\-]+.org/[\S]+announce": "Mailing List Announcement",
     r"lists.[\w\-]+.org/": "Mailing List Other",
@@ -1145,7 +1145,7 @@ sorted_ref_map = sorted(ref_map.items(), key=lambda x: len(x[0]), reverse=True)
 sorted_ref_map = dict(sorted_ref_map)
 
 compiled_patterns = {
-    re.compile(pattern, re.IGNORECASE): value for pattern, value in 
+    re.compile(pattern, re.IGNORECASE): value for pattern, value in
     sorted_ref_map.items()
 }
 
@@ -1325,11 +1325,11 @@ def format_references(ref):
     ids = []
     issues_regex = re.compile(
         r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<owner>["
-        r"\w\-.]+)/(?P<repo>[\w\-.]+)/issues/(?:detail\?id=)?(?P<id>\d+)", 
+        r"\w\-.]+)/(?P<repo>[\w\-.]+)/issues/(?:detail\?id=)?(?P<id>\d+)",
         re.IGNORECASE
     )
     advisory_regex = re.compile(
-        r"(?P<org>[^\s/.]+).(?:com|org)/(?:\S+/)*/?(?P<id>[\w\-:]+)", 
+        r"(?P<org>[^\s/.]+).(?:com|org)/(?:\S+/)*/?(?P<id>[\w\-:]+)",
         re.IGNORECASE)
     bugzilla_regex = re.compile(
         r"(?<=bugzilla.)(?P<owner>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>"
@@ -1596,7 +1596,7 @@ def toml_compatibility(metadata):
     return metadata
 
 
-def export_csaf(results, src_dir, reports_dir, bom_file):
+def export_csaf(results, src_dir, reports_dir, bom_file, reachables):
     """
     Generates a CSAF JSON template from the given results.
 
@@ -1613,6 +1613,17 @@ def export_csaf(results, src_dir, reports_dir, bom_file):
     metadata = import_csaf_toml(toml_file_path)
     metadata = toml_compatibility(metadata)
     template = parse_toml(metadata)
+    if reachables:
+        template["document"]["notes"].append(
+            {
+                "category": "legal_disclaimer",
+                "text": "Depscan reachable code only covers the project source "
+                        "code, not the code of dependencies. A dependency may "
+                        "execute vulnerable code when called even if it is not "
+                        "in the project's source code. Regard the Depscan-set "
+                        "flag of 'code_not_in_execute_path' with this in mind."
+            }
+        )
     agg_score = set()
     severity_ref = {
         "CRITICAL": 1,
@@ -1623,8 +1634,12 @@ def export_csaf(results, src_dir, reports_dir, bom_file):
     for r in results:
         c = CsafOccurence(r)
         new_vuln = c.to_dict()
+        if not r.get("reached"):
+            new_vuln["properties"] = {"flags": {"label": "vulnerable_code_not_in_execute_path"}}
+            # TODO: Change product status?
+        else:
+            agg_score.add(severity_ref.get(c.severity))
         template["vulnerabilities"].append(new_vuln)
-        agg_score.add(severity_ref.get(c.severity))
     if agg_score := list(agg_score):
         agg_score.sort()
         severity_ref = {v: k for k, v in severity_ref.items()}
