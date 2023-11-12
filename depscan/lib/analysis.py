@@ -281,7 +281,7 @@ def prepare_vex(options: PrepareVexOptions):
             f"{options.project_type}:"
             f"{package_issue['affected_location'].get('package')}"
         )
-        if package_issue['affected_location'].get('vendor'):
+        if package_issue["affected_location"].get("vendor"):
             full_pkg = (
                 f"{package_issue['affected_location'].get('vendor')}:"
                 f"{package_issue['affected_location'].get('package')}"
@@ -292,7 +292,7 @@ def prepare_vex(options: PrepareVexOptions):
             full_pkg = full_pkg + ":" + version
         # De-alias package names
         full_pkg = options.pkg_aliases.get(full_pkg, full_pkg)
-        version_used = package_issue['affected_location'].get('version')
+        version_used = package_issue["affected_location"].get("version")
         purl = options.purl_aliases.get(full_pkg, full_pkg)
         package_type = None
         insights = []
@@ -306,15 +306,19 @@ def prepare_vex(options: PrepareVexOptions):
                     qualifiers = purl_obj.get("qualifiers", {})
                     if package_type in config.OS_PKG_TYPES:
                         if (
-                            package_issue['affected_location'].get('vendor')
+                            package_issue["affected_location"].get("vendor")
                             and oci_product_types
-                            and package_issue['affected_location'].get('vendor')
+                            and package_issue["affected_location"].get("vendor")
                             not in oci_product_types
                         ):
                             # Some nvd data might match application CVEs for OS vendors which can be filtered
-                            if package_issue['affected_location'].get('cpe_uri'):
+                            if package_issue["affected_location"].get(
+                                "cpe_uri"
+                            ):
                                 all_parts = CPE_FULL_REGEX.match(
-                                    package_issue['affected_location'].get('cpe_uri')
+                                    package_issue["affected_location"].get(
+                                        "cpe_uri"
+                                    )
                                 )
                                 if (
                                     all_parts
@@ -325,9 +329,9 @@ def prepare_vex(options: PrepareVexOptions):
                                     continue
                             # Some vendors like suse leads to FP and can be turned off if our image do not have those types
                             # Some os packages might match application packages in NVD
-                            if package_issue['affected_location'].get('vendor') in (
-                                "suse",
-                            ):
+                            if package_issue["affected_location"].get(
+                                "vendor"
+                            ) in ("suse",):
                                 continue
                             else:
                                 insights.append(
@@ -349,11 +353,11 @@ def prepare_vex(options: PrepareVexOptions):
         ids_seen[vid + purl] = True
         # Find the best fix version
         fixed_location = best_fixed_location(
-            options.sug_version_dict.get(purl), package_issue['fixed_location']
+            options.sug_version_dict.get(purl), package_issue["fixed_location"]
         )
         if (
             options.sug_version_dict.get(purl) == placeholder_fix_version
-            or package_issue['fixed_location'] == placeholder_fix_version
+            or package_issue["fixed_location"] == placeholder_fix_version
         ):
             wont_fix_version_count += 1
         package_usage = "N/A"
@@ -780,7 +784,7 @@ def jsonl_report(
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             full_pkg_display = full_pkg
-            version_used = package_issue['affected_location'].get("version")
+            version_used = package_issue["affected_location"].get("version")
             purl = purl_aliases.get(full_pkg, full_pkg)
             if purl:
                 try:
@@ -801,7 +805,7 @@ def jsonl_report(
             # package exists with and without a purl
             ids_seen[vid + purl] = True
             project_type_pkg = "{}:{}".format(
-                project_type, package_issue['affected_location'].get('package')
+                project_type, package_issue["affected_location"].get("package")
             )
             fixed_location = best_fixed_location(
                 sug_version_dict.get(purl),
@@ -1136,7 +1140,7 @@ def include_reachables(bom_file, src_dir):
     with open(
         os.path.join(src_dir, "reachables.slices.json"), "r", encoding="utf-8"
     ) as f:
-        reachables = json.load(f).get('reachables')
+        reachables = json.load(f).get("reachables")
     reached = []
     for flow in reachables:
         if len(flow.get("purls", [])) > 0:
@@ -1159,13 +1163,15 @@ def include_reachables(bom_file, src_dir):
     for c in data["components"]:
         loc = []
         purl = c["purl"]
-        if c.get("evidence") and c["evidence"].get("occurrences"):
-            try:
+        if c.get("evidence"):
+            if c["evidence"].get("occurrences"):
                 loc = [i["location"] for i in c["evidence"]["occurrences"]]
-            except:
-                print(c)
-        elif c.get("evidence") and c["evidence"].get("callstack"):
-            loc = [i['location'] for i in c["evidence"].get("occurrences")]
+            elif c["evidence"].get("callstack"):
+                callstack = c["evidence"].get("callstack")
+                loc.extend(
+                    flow["fullFilename"] + "#" + str(flow["line"])
+                    for flow in callstack.get("frames")
+                )
         if loc:
             reached.append(
                 {
