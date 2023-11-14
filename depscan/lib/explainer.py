@@ -61,13 +61,13 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         ):
             continue
         # Focus only on the prioritized list if available
-        if project_type in ("java",) and pkg_group_rows:
-            is_prioritized = False
-            for apurl in areach.get("purls"):
-                if pkg_group_rows.get(apurl):
-                    is_prioritized = True
-            if not is_prioritized:
-                continue
+        # if project_type in ("java",) and pkg_group_rows:
+        #     is_prioritized = False
+        #     for apurl in areach.get("purls"):
+        #         if pkg_group_rows.get(apurl):
+        #             is_prioritized = True
+        #     if not is_prioritized:
+        #         continue
         flow_tree, comment, source_sink_desc, has_check_tag = explain_flows(
             areach.get("flows"), areach.get("purls"), project_type
         )

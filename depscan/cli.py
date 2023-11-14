@@ -551,6 +551,7 @@ async def run_scan():
                 "type": project_type,
                 "multiProject": multi_project,
                 "cdxgen_server": cdxgen_server,
+                "profile": args.profile,
             },
         )
         if bom_status:
@@ -700,7 +701,7 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server},
+                {"cdxgen_server": args.cdxgen_server, "profile": args.profile},
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -809,20 +810,23 @@ def main():
         sources_list = [OSVSource(), NvdSource()]
         github_token = os.environ.get("GITHUB_TOKEN")
         if github_token and os.getenv("CI"):
-            github_client = github.GitHub(github_token)
+            try:
+                github_client = github.GitHub(github_token)
 
-            if not github_client.can_authenticate():
-                LOG.error(
-                    "The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory"
-                )
-            else:
-                sources_list.insert(0, GitHubSource())
-                scopes = github_client.get_token_scopes()
-                if scopes:
-                    LOG.warning(
-                        "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
-                        ", ".join(scopes),
+                if not github_client.can_authenticate():
+                    LOG.error(
+                        "The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory"
                     )
+                else:
+                    sources_list.insert(0, GitHubSource())
+                    scopes = github_client.get_token_scopes()
+                    if scopes:
+                        LOG.warning(
+                            "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
+                            ", ".join(scopes),
+                        )
+            except Exception:
+                pass
         if run_cacher:
             LOG.info(
                 "About to download the vulnerability database from %s. This might take a while ...",
@@ -851,6 +855,7 @@ def main():
         )
         if vdb_results:
             results += vdb_results
+        results = [r.to_dict() for r in results]
         direct_purls, reached_purls = find_purl_usages(
             bom_file, src_dir, args.reachables_slices_file
         )
