@@ -133,10 +133,10 @@ jobs:
         python3 -m pip install -r contrib/requirements.txt
         cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
         cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
-        python3 depscan/cli.py --no-banner --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
-        python3 depscan/cli.py --no-banner --no-error --src ./test/data/bom-yaml-manifest.json -o containertests_${{ matrix.os }}/depscan-yaml.json --no-vuln-table
-        python3 depscan/cli.py --csaf --no-banner --no-error --src repotests/microservices-demo -o containertests_${{ matrix.os }}/depscan-msd.json --reports-dir containertests_${{ matrix.os }}/ng-reports
-        python3 depscan/cli.py --csaf --no-banner --no-error --src repotests/NodeGoat --reports-dir containertests_${{ matrix.os }}/ng-reports
+        python3 depscan/cli.py --no-banner --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
+        python3 depscan/cli.py --no-banner --no-error --src ./test/data/bom-yaml-manifest.json -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-yaml.json --no-vuln-table
+        python3 depscan/cli.py --csaf --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-msd.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
+        python3 depscan/cli.py --csaf --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -225,8 +225,8 @@ jobs:
           python3 -m pip install -r contrib/requirements.txt
           mkdir -p containertests_ubuntu-latest/microservices
           mkdir -p containertests_ubuntu-latest/NodeGoat
-          mv ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-msd-universal.json containertests_ubuntu-latest/microservices/sbom-msd-universal.json
-          mv ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/ng-reports/sbom-universal.json containertests_ubuntu-latest/nodegoat/sbom-universal.json
+          mv containertests_ubuntu-latest/sbom-msd-universal.json containertests_ubuntu-latest/microservices/sbom-msd-universal.json
+          mv containertests_ubuntu-latest/ng-reports/sbom-universal.json containertests_ubuntu-latest/nodegoat/sbom-universal.json
           cp contrib/csaf.toml containertests_ubuntu-latest/microservices/csaf.toml
           cp contrib/csaf.toml containertests_ubuntu-latest/nodegoat/csaf.toml
           python3 depscan/cli.py --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-rocket-universal.json -o containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
