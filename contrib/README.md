@@ -9,4 +9,3 @@ Sample script to test the package risk scoring against all of npm
 ```
 PYTHONPATH=. python contrib/npm-watch.py
 ```
-

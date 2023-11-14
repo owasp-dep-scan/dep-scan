@@ -2,8 +2,8 @@ import ast
 import os
 import re
 from collections import defaultdict
-
 from importlib.metadata import distribution
+
 from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 

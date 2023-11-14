@@ -2,23 +2,23 @@ FROM almalinux:9.2-minimal
 
 LABEL maintainer="AppThreat" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
-      org.opencontainers.image.source="https://github.com/appthreat/dep-scan" \
-      org.opencontainers.image.url="https://appthreat.io" \
-      org.opencontainers.image.version="4.2.9" \
+      org.opencontainers.image.source="https://github.com/owasp-dep-scan/dep-scan" \
+      org.opencontainers.image.url="https://appthreat.com" \
+      org.opencontainers.image.version="5.0.0" \
       org.opencontainers.image.vendor="appthreat" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
       org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
-      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/appthreat/dep-scan --server"
+      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=22.3.r19-grl
-ARG SBT_VERSION=1.9.0
-ARG MAVEN_VERSION=3.9.2
-ARG GRADLE_VERSION=8.1.1
+ARG JAVA_VERSION=21.0.1-graalce
+ARG SBT_VERSION=1.9.7
+ARG MAVEN_VERSION=3.9.5
+ARG GRADLE_VERSION=8.3
 
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.20.4 \
+    GO_VERSION=1.21.1 \
     JAVA_VERSION=$JAVA_VERSION \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
@@ -31,8 +31,6 @@ ENV GOPATH=/opt/app-root/go \
     COMPOSER_ALLOW_SUPERUSER=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING="utf-8" \
-    NVD_START_YEAR=2018 \
-    GITHUB_PAGE_COUNT=2 \
     CDXGEN_CMD=cdxgen
 ENV PATH=${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${SBT_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:
 
@@ -52,7 +50,7 @@ RUN set -e; \
             ;; \
         *) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
     esac; \
-    echo -e "[nodejs]\nname=nodejs\nstream=20\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    echo -e "[nodejs]\nname=nodejs\nstream=21\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf module enable php ruby -y \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core python3.11 python3.11-devel python3.11-pip ruby ruby-devel \
         pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \

@@ -7,6 +7,8 @@ import os
 import sys
 import tempfile
 
+import httpx
+import oras.client
 from quart import Quart, request
 from rich.panel import Panel
 from rich.terminal_theme import MONOKAI
@@ -18,44 +20,34 @@ from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
 
-import oras.client
-
-from depscan.lib import privado, utils, github
-from depscan.lib.csaf import export_csaf, write_toml
-from depscan.lib import privado, utils
+from depscan.lib import github, utils, explainer
 from depscan.lib.analysis import (
-    PrepareVexOptions,
+    PrepareVdrOptions,
     analyse_licenses,
     analyse_pkg_risks,
-    include_reachables,
     jsonl_report,
-    prepare_vex,
+    prepare_vdr,
     suggest_version,
     summary_stats,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
-from depscan.lib.bom import (
-    create_bom,
-    get_pkg_by_type,
-    get_pkg_list,
-    submit_bom,
-)
+from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
 from depscan.lib.config import (
     UNIVERSAL_SCAN_TYPE,
     license_data_dir,
     spdx_license_list,
     vdb_database_url,
 )
+from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import LOG, console
-from depscan.lib.utils import get_version
+from depscan.lib.logger import DEBUG, LOG, console
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
 except Exception:
     pass
 
-at_logo = """
+LOGO = """
 ██████╗ ███████╗██████╗ ███████╗ ██████╗ █████╗ ███╗   ██╗
 ██╔══██╗██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗████╗  ██║
 ██║  ██║█████╗  ██████╔╝███████╗██║     ███████║██╔██╗ ██║
@@ -76,7 +68,8 @@ def build_args():
     parser = argparse.ArgumentParser(
         description="Fully open-source security and license audit for "
         "application dependencies and container images based on "
-        "known vulnerabilities and advisories."
+        "known vulnerabilities and advisories.",
+        epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more.",
     )
     parser.add_argument(
         "--no-banner",
@@ -90,15 +83,14 @@ def build_args():
         action="store_true",
         default=False,
         dest="cache",
-        help="Cache vulnerability information in platform specific "
-        "user_data_dir",
+        help="Cache vulnerability information in platform specific " "user_data_dir",
     )
     parser.add_argument(
         "--csaf",
         action="store_true",
         default=False,
         dest="csaf",
-        help="Generate a CSAF",
+        help="Generate a OASIS CSAF VEX document",
     )
     parser.add_argument(
         "--sync",
@@ -109,12 +101,26 @@ def build_args():
         "invoked cache first.",
     )
     parser.add_argument(
-        "--suggest",
+        "--profile",
+        default="generic",
+        choices=(
+            "appsec",
+            "research",
+            "operational",
+            "threat-modeling",
+            "license-compliance",
+            "generic",
+        ),
+        dest="profile",
+        help="Profile to use while generating the BOM.",
+    )
+    parser.add_argument(
+        "--reachables",
         action="store_true",
-        default=True,
-        dest="suggest",
-        help="DEPRECATED: Suggest is the default mode for determining fix "
-        "version.",
+        default=False,
+        dest="reachables",
+        help="Analyze reachability of direct dependencies. Available for "
+        "javascript, java, and python.",
     )
     parser.add_argument(
         "--reachables",
@@ -127,15 +133,14 @@ def build_args():
     parser.add_argument(
         "--no-suggest",
         action="store_false",
+        default="True",
         dest="suggest",
         help="Disable suggest mode",
     )
     parser.add_argument(
         "--risk-audit",
         action="store_true",
-        default=True
-        if os.getenv("ENABLE_OSS_RISK", "") in ["true", "1"]
-        else False,
+        default=os.getenv("ENABLE_OSS_RISK", "") in ("true", "1"),
         dest="risk_audit",
         help="Perform package risk audit (slow operation). Npm only.",
     )
@@ -157,7 +162,7 @@ def build_args():
     parser.add_argument(
         "--bom",
         dest="bom",
-        help="Examine using the given Software Bill-of-Materials (SBoM) file "
+        help="Examine using the given Software Bill-of-Materials (SBOM) file "
         "in CycloneDX format. Use cdxgen command to produce one.",
     )
     parser.add_argument(
@@ -175,9 +180,7 @@ def build_args():
     )
     parser.add_argument(
         "--reports-dir",
-        default=os.getenv(
-            "DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")
-        ),
+        default=os.getenv("DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")),
         dest="reports_dir",
         help="Reports directory",
     )
@@ -244,14 +247,6 @@ def build_args():
         help="ThreatDB token for token based submission",
     )
     parser.add_argument(
-        "--privado-json",
-        dest="privado_json",
-        default=os.path.join(os.getcwd(), ".privado", "privado.json"),
-        help="Optional: Enrich the VEX report with information from "
-        "privado.ai json report. cdxgen can process and include privado "
-        "info automatically so this argument is usually not required.",
-    )
-    parser.add_argument(
         "--server",
         action="store_true",
         default=False,
@@ -277,11 +272,30 @@ def build_args():
         help="cdxgen server url. Eg: http://cdxgen:9090",
     )
     parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        dest="enable_debug",
+        help="Run depscan in debug mode.",
+    )
+    parser.add_argument(
+        "--explain",
+        action="store_true",
+        default=False,
+        dest="explain",
+        help="Makes depscan to explain the various analysis. Useful for creating detailed reports.",
+    )
+    parser.add_argument(
+        "--reachables-slices-file",
+        dest="reachables_slices_file",
+        help="Path for the reachables slices file created by atom.",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="Display the version",
         action="version",
-        version="%(prog)s " + get_version(),
+        version="%(prog)s " + utils.get_version(),
     )
     return parser.parse_args()
 
@@ -304,9 +318,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
         LOG.debug("Empty package search attempted!")
     else:
         LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-    results, pkg_aliases, purl_aliases = utils.search_pkgs(
-        db, project_type, pkg_list
-    )
+    results, pkg_aliases, purl_aliases = utils.search_pkgs(db, project_type, pkg_list)
     # pkg_aliases is a dict that can be used to find the original vendor and
     # package name This way we consistently use the same names used by the
     # caller irrespective of how the result was obtained
@@ -344,7 +356,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
                             }
                         )
                         continue
-                    except Exception as e:
+                    except Exception:
                         pass
                 tmp_a = k.split(":")
                 if len(tmp_a) == 3:
@@ -363,9 +375,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
                 "Re-checking our suggestion to ensure there are no further "
                 "vulnerabilities"
             )
-            override_results, _, _ = utils.search_pkgs(
-                db, project_type, sug_pkg_list
-            )
+            override_results, _, _ = utils.search_pkgs(db, project_type, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
                 LOG.debug("Received override results: %s", new_sug_dict)
@@ -380,11 +390,12 @@ def summarise(
     pkg_aliases,
     purl_aliases,
     sug_version_dict,
-    scoped_pkgs={},
-    report_file=None,
-    bom_file=None,
-    privado_json_file=None,
+    scoped_pkgs,
+    report_file,
+    bom_file,
     no_vuln_table=False,
+    direct_purls=None,
+    reached_purls=None,
 ):
     """
     Method to summarise the results
@@ -395,8 +406,7 @@ def summarise(
     :param sug_version_dict: Dictionary containing version suggestions
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
-    :param bom_file: SBoM file
-    :param privado_json_file Privado json file
+    :param bom_file: SBOM file
     :param no_vuln_table: Boolean to indicate if the results should get printed
             to the console
     :return: A dict of vulnerability and severity summary statistics
@@ -413,8 +423,10 @@ def summarise(
             sug_version_dict,
             scoped_pkgs,
             report_file,
+            direct_purls=direct_purls,
+            reached_purls=reached_purls,
         )
-    options = PrepareVexOptions(
+    options = PrepareVdrOptions(
         project_type,
         results,
         pkg_aliases,
@@ -423,10 +435,12 @@ def summarise(
         scoped_pkgs=scoped_pkgs,
         no_vuln_table=no_vuln_table,
         bom_file=bom_file,
+        direct_purls=direct_purls,
+        reached_purls=reached_purls,
     )
-    pkg_vulnerabilities = prepare_vex(options)
+    pkg_vulnerabilities, pkg_group_rows = prepare_vdr(options)
+    vdr_file = bom_file.replace(".json", ".vdr.json")
     if pkg_vulnerabilities and bom_file:
-        vex_file = bom_file.replace(".json", ".vex.json")
         try:
             with open(bom_file, encoding="utf-8") as fp:
                 bom_data = json.load(fp)
@@ -442,7 +456,7 @@ def summarise(
                     # Update the tools section
                     if isinstance(tools, dict):
                         components = tools.get("components", [])
-                        ds_version = get_version()
+                        ds_version = utils.get_version()
                         ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
                         components.append(
                             {
@@ -458,25 +472,13 @@ def summarise(
                         bom_data["metadata"] = metadata
 
                     bom_data["vulnerabilities"] = pkg_vulnerabilities
-                    # Look for any privado json file
-                    if os.path.exists(privado_json_file):
-                        pservice = privado.process_report(privado_json_file)
-                        if pservice:
-                            LOG.info(
-                                "Including the service identified by privado "
-                                "from %s",
-                                privado_json_file,
-                            )
-                            if not bom_data.get("services"):
-                                bom_data["services"] = []
-                            bom_data["services"].insert(0, pservice)
-                    with open(vex_file, mode="w", encoding="utf-8") as vexfp:
-                        json.dump(bom_data, vexfp, indent=4)
-                        LOG.info("VEX file %s generated successfully", vex_file)
+                    with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
+                        json.dump(bom_data, vdrfp, indent=4)
+                        LOG.debug("VDR file %s generated successfully", vdr_file)
         except Exception:
-            LOG.warning("Unable to generate VEX file for this scan")
+            LOG.warning("Unable to generate VDR file for this scan")
     summary = summary_stats(results)
-    return summary
+    return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
 
 
 @app.get("/")
@@ -497,8 +499,7 @@ async def cache():
     db = db_lib.get()
     if not db_lib.index_count(db["index_file"]):
         oras_client = oras.client.OrasClient()
-        paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
-        LOG.debug(f"VDB data is stored at: {paths_list}")
+        oras_client.pull(target=vdb_database_url, outdir=data_dir)
         return {
             "error": "false",
             "message": "vulnerability database cached successfully",
@@ -512,7 +513,7 @@ async def cache():
 @app.route("/scan", methods=["GET", "POST"])
 async def run_scan():
     """
-    :return: A JSON response containing the SBoM file path and a list of
+    :return: A JSON response containing the SBOM file path and a list of
     vulnerabilities found in the scanned packages
     """
     q = request.args
@@ -523,6 +524,7 @@ async def run_scan():
     project_type = None
     results = []
     db = db_lib.get()
+    profile = "generic"
     if q.get("url"):
         url = q.get("url")
     if q.get("path"):
@@ -531,6 +533,8 @@ async def run_scan():
         multi_project = q.get("multiProject", "").lower() in ("true", "1")
     if q.get("type"):
         project_type = q.get("type")
+    if q.get("profile"):
+        profile = q.get("profile")
     if not url and params.get("url"):
         url = params.get("url")
     if not path and params.get("path"):
@@ -539,6 +543,8 @@ async def run_scan():
         multi_project = params.get("multiProject", "").lower() in ("true", "1")
     if not project_type and params.get("type"):
         project_type = params.get("type")
+    if not profile and params.get("profile"):
+        profile = params.get("profile")
     if not path and not url:
         return {"error": "true", "message": "path or url is required"}, 500
     if not db_lib.index_count(db["index_file"]):
@@ -561,7 +567,6 @@ async def run_scan():
                 "type": project_type,
                 "multiProject": multi_project,
                 "cdxgen_server": cdxgen_server,
-                "reachables": q.get("reachables")
             },
         )
         if bom_status:
@@ -579,7 +584,7 @@ async def run_scan():
             if vdb_results:
                 results += vdb_results
             bom_data = json.load(bfp)
-            options = PrepareVexOptions(
+            options = PrepareVdrOptions(
                 project_type,
                 results,
                 pkg_aliases,
@@ -588,16 +593,17 @@ async def run_scan():
                 scoped_pkgs={},
                 no_vuln_table=True,
                 bom_file=bfp.name,
+                direct_purls=None,
+                reached_purls=None,
             )
-            pkg_vulnerabilities = prepare_vex(options)
+            pkg_vulnerabilities, _ = prepare_vdr(options)
             if pkg_vulnerabilities:
                 bom_data["vulnerabilities"] = pkg_vulnerabilities
             return json.dumps(bom_data)
         else:
             return {
                 "error": "true",
-                "message": "Unable to generate SBoM. Check your input path or "
-                "url.",
+                "message": "Unable to generate SBOM. Check your input path or url.",
             }, 500
 
 
@@ -607,15 +613,14 @@ def run_server(args):
 
     :param args: Command line arguments passed to the function.
     """
-    print(at_logo)
-    console.print(
-        f"Depscan server running on {args.server_host}:{args.server_port}"
-    )
+    print(LOGO)
+    console.print(f"Depscan server running on {args.server_host}:{args.server_port}")
     app.config["CDXGEN_SERVER_URL"] = args.cdxgen_server
     app.run(
         host=args.server_host,
         port=args.server_port,
-        debug=True if os.getenv("SCAN_DEBUG_MODE") == "debug" else False,
+        debug=os.getenv("SCAN_DEBUG_MODE") == "debug"
+        or os.getenv("AT_DEBUG_MODE") == "debug",
         use_reloader=False,
     )
 
@@ -626,22 +631,27 @@ def main():
     and generates reports based on the results.
     """
     args = build_args()
+    # Should we turn on the debug mode
+    if args.enable_debug:
+        os.environ["AT_DEBUG_MODE"] = "debug"
+        LOG.setLevel(DEBUG)
     if args.server_mode:
         return run_server(args)
     if not args.no_banner:
-        print(at_logo)
+        print(LOGO)
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
         src_dir = os.getcwd()
     reports_dir = args.reports_dir
     if args.csaf:
-        toml_file_path = os.path.join(src_dir, "csaf.toml")
+        toml_file_path = os.getenv(
+            "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
+        )
         if not os.path.exists(toml_file_path):
             LOG.info("CSAF toml not found, creating template in %s", src_dir)
             write_toml(toml_file_path)
-            LOG.info(
-                "Please fill out the toml with your details and rerun depscan."
-            )
+            LOG.info("Please fill out the toml with your details and rerun depscan.")
+            LOG.info("Please fill out the toml with your details and rerun depscan.")
             LOG.info(
                 "Check out our CSAF documentation for an explanation of "
                 "this feature. https://github.com/owasp-dep-scan/dep-scan"
@@ -676,7 +686,7 @@ def main():
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: %s", project_types_list)
     # Enable license scanning
-    if "license" in project_types_list:
+    if "license" in project_types_list or "license" in args.profile:
         os.environ["FETCH_LICENSE"] = "true"
         project_types_list.remove("license")
         console.print(
@@ -690,22 +700,23 @@ def main():
     for project_type in project_types_list:
         results = []
         report_file = areport_file.replace(".json", f"-{project_type}.json")
-        risk_report_file = areport_file.replace(
-            ".json", f"-risk.{project_type}.json"
-        )
-        LOG.info("=" * 80)
+        risk_report_file = areport_file.replace(".json", f"-risk.{project_type}.json")
+        console.rule(style="gray37")
         if args.bom and os.path.exists(args.bom):
             bom_file = args.bom
             creation_status = True
         else:
-            bom_file = report_file.replace("depscan-", "sbom-")
+            if args.profile in ("appsec", "research"):
+                # The bom file has to be called bom.json for atom reachables to work :(
+                bom_file = os.path.join(src_dir, "bom.json")
+            else:
+                bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(
                 project_type,
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server,
-                "reachables": args.reachables},
+                {"cdxgen_server": args.cdxgen_server},
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -713,7 +724,7 @@ def main():
         LOG.debug("Scanning using the bom file %s", bom_file)
         if not args.bom:
             LOG.info(
-                "To improve performance, cache this bom file and invoke "
+                "To improve performance, cache the bom file and invoke "
                 "depscan with --bom %s instead of -i",
                 bom_file,
             )
@@ -722,7 +733,10 @@ def main():
             LOG.debug("No packages found in the project!")
             continue
         scoped_pkgs = utils.get_pkgs_by_scope(pkg_list)
-        if os.getenv("FETCH_LICENSE", "") in (True, "1", "true"):
+        if (
+            os.getenv("FETCH_LICENSE", "") in (True, "1", "true")
+            or "license" in args.profile
+        ):
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir, spdx_license_list),
                 pkg_list=pkg_list,
@@ -730,11 +744,10 @@ def main():
             license_report_file = os.path.join(
                 reports_dir, "license-" + project_type + ".json"
             )
-            analyse_licenses(
-                project_type, licenses_results, license_report_file
-            )
+            analyse_licenses(project_type, licenses_results, license_report_file)
         if project_type in risk_audit_map:
             if args.risk_audit:
+                console.rule(style="gray37")
                 console.print(
                     Panel(
                         f"Performing OSS Risk Audit for packages from "
@@ -771,7 +784,8 @@ def main():
                     )
                 )
         if project_type in type_audit_map:
-            LOG.info(
+            console.rule(style="gray37")
+            LOG.debug(
                 "Performing remote audit for %s of type %s",
                 src_dir,
                 project_type,
@@ -780,9 +794,7 @@ def main():
             try:
                 audit_results = audit(project_type, pkg_list)
                 if audit_results:
-                    LOG.debug(
-                        "Remote audit yielded %d results", len(audit_results)
-                    )
+                    LOG.debug("Remote audit yielded %d results", len(audit_results))
                     results = results + audit_results
             except Exception as e:
                 LOG.error("Remote audit was not successful")
@@ -808,9 +820,7 @@ def main():
         if not db_lib.index_count(db["index_file"]):
             run_cacher = True
         else:
-            LOG.debug(
-                "Vulnerability database loaded from %s", config.vdb_bin_file
-            )
+            LOG.debug("Vulnerability database loaded from %s", config.vdb_bin_file)
 
         sources_list = [OSVSource(), NvdSource()]
         github_token = os.environ.get("GITHUB_TOKEN")
@@ -830,21 +840,22 @@ def main():
                         ", ".join([scope for scope in scopes]),
                     )
         if run_cacher:
-            LOG.debug(
-                "About to download vdb from %s. This might take a while ...",
+            LOG.info(
+                "About to download the vulnerability database from %s. This might take a while ...",
                 vdb_database_url,
             )
             oras_client = oras.client.OrasClient()
-            paths_list = oras_client.pull(
-                target=vdb_database_url, outdir=data_dir
-            )
+            paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
             LOG.debug("VDB data is stored at: %s", paths_list)
             run_cacher = False
             db = db_lib.get()
         elif args.sync:
             for s in sources_list:
                 LOG.debug("Syncing %s", s.__class__.__name__)
-                s.download_recent()
+                try:
+                    s.download_recent()
+                except NotImplementedError:
+                    pass
                 run_cacher = False
         LOG.info(
             "Performing regular scan for %s using plugin %s",
@@ -856,22 +867,13 @@ def main():
         )
         if vdb_results:
             results += vdb_results
-        results = [r.to_dict() for r in results]
-        if args.reachables:
-            reached = include_reachables(bom_file, src_dir)
-            reached_purls = []
-            for r in reached:
-                for p in r["purls"]:
-                    reached_purls.append(p)
-            for res in results:
-                # new_res = deepcopy(res)
-                if res.get("purl") in reached_purls:
-                    res["reached"] = True
         if args.csaf:
-            export_csaf(results, src_dir, reports_dir, bom_file,
-                        args.reachables)
+            new_res = []
+            for r in results:
+                new_res.append(r.to_dict())
+            export_csaf(new_res, src_dir, reports_dir, bom_file)
         # Summarise and print results
-        summarise(
+        _, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
             project_type,
             results,
             pkg_aliases,
@@ -880,11 +882,36 @@ def main():
             scoped_pkgs=scoped_pkgs,
             report_file=report_file,
             bom_file=bom_file,
-            privado_json_file=args.privado_json,
             no_vuln_table=args.no_vuln_table,
+            direct_purls=direct_purls,
+            reached_purls=reached_purls,
         )
+        # Explain the results
+        if args.explain:
+            explainer.explain(
+                project_type,
+                src_dir,
+                args.reachables_slices_file,
+                vdr_file,
+                pkg_vulnerabilities,
+                pkg_group_rows,
+                direct_purls,
+                reached_purls,
+            )
+        # CSAF VEX export
+        if args.csaf:
+            export_csaf(
+                results,
+                src_dir,
+                reports_dir,
+                vdr_file,
+                pkg_vulnerabilities,
+                pkg_group_rows,
+                direct_purls=direct_purls,
+                reached_purls=reached_purls,
+            )
     console.save_html(html_file, theme=MONOKAI)
-    # Submit vex files to threatdb server
+    # Submit vdr/vex files to threatdb server
     if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
         submit_bom(
             reports_dir,

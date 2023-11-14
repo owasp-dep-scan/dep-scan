@@ -95,7 +95,7 @@
       },
       {
         "name": "oci:image:lastLayer:Env",
-        "value": "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/java/22.3.r19-grl/bin:/opt/maven/3.9.2/bin:/opt/gradle/8.1.1/bin:/opt/sbt/1.9.0/bin:/opt/app-root/go/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:\\nGOPATH=/opt/app-root/go\\nGO_VERSION=1.20.4\\nJAVA_VERSION=22.3.r19-grl\\nSBT_VERSION=1.9.0\\nMAVEN_VERSION=3.9.2\\nGRADLE_VERSION=8.1.1\\nGRADLE_OPTS=-Dorg.gradle.daemon=false\\nJAVA_HOME=/opt/java/22.3.r19-grl\\nMAVEN_HOME=/opt/maven/3.9.2\\nGRADLE_HOME=/opt/gradle/8.1.1\\nSBT_HOME=/opt/sbt/1.9.0\\nCOMPOSER_ALLOW_SUPERUSER=1\\nPYTHONUNBUFFERED=1\\nPYTHONIOENCODING=utf-8\\nNVD_START_YEAR=2018\\nGITHUB_PAGE_COUNT=2\\nCDXGEN_CMD=cdxgen"
+        "value": "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/opt/java/22.3.r19-grl/bin:/opt/maven/3.9.2/bin:/opt/gradle/8.1.1/bin:/opt/sbt/1.9.0/bin:/opt/app-root/go/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:\\nGOPATH=/opt/app-root/go\\nGO_VERSION=1.20.4\\nJAVA_VERSION=22.3.r19-grl\\nSBT_VERSION=1.9.0\\nMAVEN_VERSION=3.9.2\\nGRADLE_VERSION=8.1.1\\nGRADLE_OPTS=-Dorg.gradle.daemon=false\\nJAVA_HOME=/opt/java/22.3.r19-grl\\nMAVEN_HOME=/opt/maven/3.9.2\\nGRADLE_HOME=/opt/gradle/8.1.1\\nSBT_HOME=/opt/sbt/1.9.0\\nCOMPOSER_ALLOW_SUPERUSER=1\\nPYTHONUNBUFFERED=1\\nPYTHONIOENCODING=utf-8\\nCDXGEN_CMD=cdxgen"
       },
       {
         "name": "oci:image:componentTypes",

@@ -79,11 +79,9 @@ CWE_MAP = {
     "CWE-75": "Failure to Sanitize Special Elements into a Different Plane",
     "CWE-76": "Improper Neutralization of Equivalent Special Elements",
     "CWE-77": "Improper Neutralization of Special Elements used in a Command",
-    "CWE-78": "Improper Neutralization of Special Elements used in an OS "
-    "Command",
+    "CWE-78": "Improper Neutralization of Special Elements used in an OS " "Command",
     "CWE-79": "Improper Neutralization of Input During Web Page Generation",
-    "CWE-80": "Improper Neutralization of Script-Related HTML Tags in a Web "
-    "Page",
+    "CWE-80": "Improper Neutralization of Script-Related HTML Tags in a Web " "Page",
     "CWE-81": "Improper Neutralization of Script in an Error Message Web Page",
     "CWE-82": "Improper Neutralization of Script in Attributes of IMG Tags in "
     "a Web Page",
@@ -94,16 +92,13 @@ CWE_MAP = {
     "in Web Pages",
     "CWE-87": "Improper Neutralization of Alternate XSS Syntax",
     "CWE-88": "Improper Neutralization of Argument Delimiters in a Command",
-    "CWE-89": "Improper Neutralization of Special Elements used in an SQL "
-    "Command",
-    "CWE-90": "Improper Neutralization of Special Elements used in an LDAP "
-    "Query",
+    "CWE-89": "Improper Neutralization of Special Elements used in an SQL " "Command",
+    "CWE-90": "Improper Neutralization of Special Elements used in an LDAP " "Query",
     "CWE-91": "XML Injection",
     "CWE-92": "DEPRECATED: Improper Sanitization of Custom Special Characters",
     "CWE-93": "Improper Neutralization of CRLF Sequences",
     "CWE-94": "Improper Control of Generation of Code",
-    "CWE-95": "Improper Neutralization of Directives in Dynamically Evaluated "
-    "Code",
+    "CWE-95": "Improper Neutralization of Directives in Dynamically Evaluated " "Code",
     "CWE-96": "Improper Neutralization of Directives in Statically Saved Code",
     "CWE-97": "Improper Neutralization of Server-Side Includes",
     "CWE-98": "Improper Control of Filename for Include/Require Statement in "
@@ -211,8 +206,7 @@ CWE_MAP = {
     "CWE-208": "Observable Timing Discrepancy",
     "CWE-209": "Generation of Error Message Containing Sensitive Information",
     "CWE-210": "Self-generated Error Message Containing Sensitive Information",
-    "CWE-211": "Externally-Generated Error Message Containing Sensitive "
-    "Information",
+    "CWE-211": "Externally-Generated Error Message Containing Sensitive " "Information",
     "CWE-212": "Improper Removal of Sensitive Information Before Storage or "
     "Transfer",
     "CWE-213": "Exposure of Sensitive Information Due to Incompatible Policies",
@@ -343,8 +337,7 @@ CWE_MAP = {
     "CWE-347": "Improper Verification of Cryptographic Signature",
     "CWE-348": "Use of Less Trusted Source",
     "CWE-349": "Acceptance of Extraneous Untrusted Data With Trusted Data",
-    "CWE-350": "Reliance on Reverse DNS Resolution for a Security-Critical "
-    "Action",
+    "CWE-350": "Reliance on Reverse DNS Resolution for a Security-Critical " "Action",
     "CWE-351": "Insufficient Type Distinction",
     "CWE-352": "Cross-Site Request Forgery",
     "CWE-353": "Missing Support for Integrity Check",
@@ -352,8 +345,7 @@ CWE_MAP = {
     "CWE-356": "Product UI does not Warn User of Unsafe Actions",
     "CWE-357": "Insufficient UI Warning of Dangerous Operations",
     "CWE-358": "Improperly Implemented Security Check for Standard",
-    "CWE-359": "Exposure of Private Personal Information to an Unauthorized "
-    "Actor",
+    "CWE-359": "Exposure of Private Personal Information to an Unauthorized " "Actor",
     "CWE-360": "Trust of System Event Data",
     "CWE-362": "Concurrent Execution using Shared Resource with Improper "
     "Synchronization",
@@ -371,8 +363,7 @@ CWE_MAP = {
     "CWE-375": "Returning a Mutable Object to an Untrusted Caller",
     "CWE-377": "Insecure Temporary File",
     "CWE-378": "Creation of Temporary File With Insecure Permissions",
-    "CWE-379": "Creation of Temporary File in Directory with Insecure "
-    "Permissions",
+    "CWE-379": "Creation of Temporary File in Directory with Insecure " "Permissions",
     "CWE-382": "J2EE Bad Practices: Use of System.exit",
     "CWE-383": "J2EE Bad Practices: Direct Use of Threads",
     "CWE-384": "Session Fixation",
@@ -415,12 +406,10 @@ CWE_MAP = {
     "CWE-428": "Unquoted Search Path or Element",
     "CWE-430": "Deployment of Wrong Handler",
     "CWE-431": "Missing Handler",
-    "CWE-432": "Dangerous Signal Handler not Disabled During Sensitive "
-    "Operations",
+    "CWE-432": "Dangerous Signal Handler not Disabled During Sensitive " "Operations",
     "CWE-433": "Unparsed Raw Web Content Delivery",
     "CWE-434": "Unrestricted Upload of File with Dangerous Type",
-    "CWE-435": "Improper Interaction Between Multiple Correctly-Behaving "
-    "Entities",
+    "CWE-435": "Improper Interaction Between Multiple Correctly-Behaving " "Entities",
     "CWE-436": "Interpretation Conflict",
     "CWE-437": "Incomplete Model of Endpoint Features",
     "CWE-439": "Behavioral Change in New Version or Environment",
@@ -526,15 +515,13 @@ CWE_MAP = {
     "CWE-547": "Use of Hard-coded, Security-relevant Constants",
     "CWE-548": "Exposure of Information Through Directory Listing",
     "CWE-549": "Missing Password Field Masking",
-    "CWE-550": "Server-generated Error Message Containing Sensitive "
-    "Information",
+    "CWE-550": "Server-generated Error Message Containing Sensitive " "Information",
     "CWE-551": "Incorrect Behavior Order: Authorization Before Parsing and "
     "Canonicalization",
     "CWE-552": "Files or Directories Accessible to External Parties",
     "CWE-553": "Command Shell in Externally Accessible Directory",
     "CWE-554": "ASP.NET Misconfiguration: Not Using Input Validation Framework",
-    "CWE-555": "J2EE Misconfiguration: Plaintext Password in Configuration "
-    "File",
+    "CWE-555": "J2EE Misconfiguration: Plaintext Password in Configuration " "File",
     "CWE-556": "ASP.NET Misconfiguration: Use of Identity Impersonation",
     "CWE-558": "Use of getlogin",
     "CWE-560": "Use of umask",
@@ -544,8 +531,7 @@ CWE_MAP = {
     "CWE-564": "SQL Injection: Hibernate",
     "CWE-565": "Reliance on Cookies without Validation and Integrity Checking",
     "CWE-566": "Authorization Bypass Through User-Controlled SQL Primary Key",
-    "CWE-567": "Unsynchronized Access to Shared Data in a Multithreaded "
-    "Context",
+    "CWE-567": "Unsynchronized Access to Shared Data in a Multithreaded " "Context",
     "CWE-568": "finalize",
     "CWE-570": "Expression is Always False",
     "CWE-571": "Expression is Always True",
@@ -558,8 +544,7 @@ CWE_MAP = {
     "CWE-578": "EJB Bad Practices: Use of Class Loader",
     "CWE-579": "J2EE Bad Practices: Non-serializable Object Stored in Session",
     "CWE-580": "clone",
-    "CWE-581": "Object Model Violation: Just One of Equals and Hashcode "
-    "Defined",
+    "CWE-581": "Object Model Violation: Just One of Equals and Hashcode " "Defined",
     "CWE-582": "Array Declared Public, Final, and Static",
     "CWE-583": "finalize",
     "CWE-584": "Return Inside Finally Block",
@@ -588,11 +573,9 @@ CWE_MAP = {
     "CWE-607": "Public Static Final Field References Mutable Object",
     "CWE-608": "Struts: Non-private Field in ActionForm Class",
     "CWE-609": "Double-Checked Locking",
-    "CWE-610": "Externally Controlled Reference to a Resource in Another "
-    "Sphere",
+    "CWE-610": "Externally Controlled Reference to a Resource in Another " "Sphere",
     "CWE-611": "Improper Restriction of XML External Entity Reference",
-    "CWE-612": "Improper Authorization of Index Containing Sensitive "
-    "Information",
+    "CWE-612": "Improper Authorization of Index Containing Sensitive " "Information",
     "CWE-613": "Insufficient Session Expiration",
     "CWE-614": "Sensitive Cookie in HTTPS Session Without Secure Attribute",
     "CWE-615": "Inclusion of Sensitive Information in Source Code Comments",
@@ -720,8 +703,7 @@ CWE_MAP = {
     "CWE-789": "Memory Allocation with Excessive Size Value",
     "CWE-790": "Improper Filtering of Special Elements",
     "CWE-791": "Incomplete Filtering of Special Elements",
-    "CWE-792": "Incomplete Filtering of One or More Instances of Special "
-    "Elements",
+    "CWE-792": "Incomplete Filtering of One or More Instances of Special " "Elements",
     "CWE-793": "Only Filtering One Instance of a Special Element",
     "CWE-794": "Incomplete Filtering of Multiple Instances of Special Elements",
     "CWE-795": "Only Filtering Special Elements at a Specified Location",
@@ -741,8 +723,7 @@ CWE_MAP = {
     "CWE-825": "Expired Pointer Dereference",
     "CWE-826": "Premature Release of Resource During Expected Lifetime",
     "CWE-827": "Improper Control of Document Type Definition",
-    "CWE-828": "Signal Handler with Functionality that is not "
-    "Asynchronous-Safe",
+    "CWE-828": "Signal Handler with Functionality that is not " "Asynchronous-Safe",
     "CWE-829": "Inclusion of Functionality from Untrusted Control Sphere",
     "CWE-830": "Inclusion of Web Functionality from an Untrusted Source",
     "CWE-831": "Signal Handler Function Associated with Multiple Signals",
@@ -773,11 +754,9 @@ CWE_MAP = {
     "Expression Language Statement",
     "CWE-918": "Server-Side Request Forgery",
     "CWE-920": "Improper Restriction of Power Consumption",
-    "CWE-921": "Storage of Sensitive Data in a Mechanism without Access "
-    "Control",
+    "CWE-921": "Storage of Sensitive Data in a Mechanism without Access " "Control",
     "CWE-922": "Insecure Storage of Sensitive Information",
-    "CWE-923": "Improper Restriction of Communication Channel to Intended "
-    "Endpoints",
+    "CWE-923": "Improper Restriction of Communication Channel to Intended " "Endpoints",
     "CWE-924": "Improper Enforcement of Message Integrity During Transmission "
     "in a Communication Channel",
     "CWE-925": "Improper Verification of Intent by Broadcast Receiver",
@@ -787,11 +766,9 @@ CWE_MAP = {
     "CWE-940": "Improper Verification of Source of a Communication Channel",
     "CWE-941": "Incorrectly Specified Destination in a Communication Channel",
     "CWE-942": "Permissive Cross-domain Policy with Untrusted Domains",
-    "CWE-943": "Improper Neutralization of Special Elements in Data Query "
-    "Logic",
+    "CWE-943": "Improper Neutralization of Special Elements in Data Query " "Logic",
     "CWE-1004": "Sensitive Cookie Without HttpOnly Flag",
-    "CWE-1007": "Insufficient Visual Distinction of Homoglyphs Presented to "
-    "User",
+    "CWE-1007": "Insufficient Visual Distinction of Homoglyphs Presented to " "User",
     "CWE-1021": "Improper Restriction of Rendered UI Layers or Frames",
     "CWE-1022": "Use of Web Link to Untrusted Target with window.opener Access",
     "CWE-1023": "Incomplete Comparison with Missing Factors",
@@ -803,8 +780,7 @@ CWE_MAP = {
     "CWE-1039": "Automated Recognition Mechanism with Inadequate Detection or "
     "Handling of Adversarial Input Perturbations",
     "CWE-1041": "Use of Redundant Code",
-    "CWE-1042": "Static Member Data Element outside of a Singleton Class "
-    "Element",
+    "CWE-1042": "Static Member Data Element outside of a Singleton Class " "Element",
     "CWE-1043": "Data Element Aggregating an Excessively Large Number of "
     "Non-Primitive Elements",
     "CWE-1044": "Architecture with Number of Horizontal Layers Outside of "
@@ -816,16 +792,14 @@ CWE_MAP = {
     "CWE-1048": "Invokable Control Element with Large Number of Outward Calls",
     "CWE-1049": "Excessive Data Query Operations in a Large Data Table",
     "CWE-1050": "Excessive Platform Resource Consumption within a Loop",
-    "CWE-1051": "Initialization with Hard-Coded Network Resource "
-    "Configuration Data",
+    "CWE-1051": "Initialization with Hard-Coded Network Resource " "Configuration Data",
     "CWE-1052": "Excessive Use of Hard-Coded Literals in Initialization",
     "CWE-1053": "Missing Documentation for Design",
     "CWE-1054": "Invocation of a Control Element at an Unnecessarily Deep "
     "Horizontal Layer",
     "CWE-1055": "Multiple Inheritance from Concrete Classes",
     "CWE-1056": "Invokable Control Element with Variadic Parameters",
-    "CWE-1057": "Data Access Operations Outside of Expected Data Manager "
-    "Component",
+    "CWE-1057": "Data Access Operations Outside of Expected Data Manager " "Component",
     "CWE-1058": "Invokable Control Element in Multi-Thread Context with "
     "non-Final Static Storable or Member Element",
     "CWE-1059": "Insufficient Technical Documentation",
@@ -864,8 +838,7 @@ CWE_MAP = {
     "CWE-1087": "Class with Virtual Method without a Virtual Destructor",
     "CWE-1088": "Synchronous Access of Remote Resource without Timeout",
     "CWE-1089": "Large Data Table with Excessive Number of Indices",
-    "CWE-1090": "Method Containing Access of a Member Element from Another "
-    "Class",
+    "CWE-1090": "Method Containing Access of a Member Element from Another " "Class",
     "CWE-1091": "Use of Object without Invoking Destructor Method",
     "CWE-1092": "Use of Same Invokable Control Element in Multiple "
     "Architectural Layers",
@@ -945,8 +918,7 @@ CWE_MAP = {
     "CWE-1243": "Sensitive Non-Volatile Information Not Protected During Debug",
     "CWE-1244": "Internal Asset Exposed to Unsafe Debug Access Level or State",
     "CWE-1245": "Improper Finite State Machines",
-    "CWE-1246": "Improper Write Handling in Limited-write Non-Volatile "
-    "Memories",
+    "CWE-1246": "Improper Write Handling in Limited-write Non-Volatile " "Memories",
     "CWE-1247": "Improper Protection Against Voltage and Clock Glitches",
     "CWE-1248": "Semiconductor Defects in Hardware Logic with "
     "Security-Sensitive Implications",
@@ -960,8 +932,7 @@ CWE_MAP = {
     "CWE-1253": "Incorrect Selection of Fuse Values",
     "CWE-1254": "Incorrect Comparison Logic Granularity",
     "CWE-1255": "Comparison Logic is Vulnerable to Power Side-Channel Attacks",
-    "CWE-1256": "Improper Restriction of Software Interfaces to Hardware "
-    "Features",
+    "CWE-1256": "Improper Restriction of Software Interfaces to Hardware " "Features",
     "CWE-1257": "Improper Access Control Applied to Mirrored or Aliased "
     "Memory Regions",
     "CWE-1258": "Exposure of Sensitive System Information Due to Uncleared "
@@ -975,8 +946,7 @@ CWE_MAP = {
     "Control and Data Channels",
     "CWE-1265": "Unintended Reentrant Invocation of Non-reentrant Code Via "
     "Nested Calls",
-    "CWE-1266": "Improper Scrubbing of Sensitive Data from Decommissioned "
-    "Device",
+    "CWE-1266": "Improper Scrubbing of Sensitive Data from Decommissioned " "Device",
     "CWE-1267": "Policy Uses Obsolete Encoding",
     "CWE-1268": "Policy Privileges are not Assigned Consistently Between "
     "Control and Data Agents",
@@ -987,18 +957,15 @@ CWE_MAP = {
     "CWE-1272": "Sensitive Information Uncleared Before Debug/Power State "
     "Transition",
     "CWE-1273": "Device Unlock Credential Sharing",
-    "CWE-1274": "Improper Access Control for Volatile Memory Containing Boot "
-    "Code",
+    "CWE-1274": "Improper Access Control for Volatile Memory Containing Boot " "Code",
     "CWE-1275": "Sensitive Cookie with Improper SameSite Attribute",
     "CWE-1276": "Hardware Child Block Incorrectly Connected to Parent System",
     "CWE-1277": "Firmware Not Updateable",
     "CWE-1278": "Missing Protection Against Hardware Reverse Engineering "
     "Using Integrated Circuit",
-    "CWE-1279": "Cryptographic Operations are run Before Supporting Units are "
-    "Ready",
+    "CWE-1279": "Cryptographic Operations are run Before Supporting Units are " "Ready",
     "CWE-1280": "Access Control Check Implemented After Asset is Accessed",
-    "CWE-1281": "Sequence of Processor Instructions Leads to Unexpected "
-    "Behavior",
+    "CWE-1281": "Sequence of Processor Instructions Leads to Unexpected " "Behavior",
     "CWE-1282": "Assumed-Immutable Data is Stored in Writable Memory",
     "CWE-1283": "Mutable Attestation or Measurement Reporting Data",
     "CWE-1284": "Improper Validation of Specified Quantity in Input",
@@ -1020,30 +987,24 @@ CWE_MAP = {
     "CWE-1298": "Hardware Logic Contains Race Conditions",
     "CWE-1299": "Missing Protection Mechanism for Alternate Hardware Interface",
     "CWE-1300": "Improper Protection of Physical Side Channels",
-    "CWE-1301": "Insufficient or Incomplete Data Removal within Hardware "
-    "Component",
+    "CWE-1301": "Insufficient or Incomplete Data Removal within Hardware " "Component",
     "CWE-1302": "Missing Security Identifier",
     "CWE-1303": "Non-Transparent Sharing of Microarchitectural Resources",
     "CWE-1304": "Improperly Preserved Integrity of Hardware Configuration "
     "State During a Power Save/Restore Operation",
     "CWE-1310": "Missing Ability to Patch ROM Code",
     "CWE-1311": "Improper Translation of Security Attributes by Fabric Bridge",
-    "CWE-1312": "Missing Protection for Mirrored Regions in On-Chip Fabric "
-    "Firewall",
+    "CWE-1312": "Missing Protection for Mirrored Regions in On-Chip Fabric " "Firewall",
     "CWE-1313": "Hardware Allows Activation of Test or Debug Logic at Runtime",
     "CWE-1314": "Missing Write Protection for Parametric Data Values",
-    "CWE-1315": "Improper Setting of Bus Controlling Capability in Fabric "
-    "End-point",
+    "CWE-1315": "Improper Setting of Bus Controlling Capability in Fabric " "End-point",
     "CWE-1316": "Fabric-Address Map Allows Programming of Unwarranted "
     "Overlaps of Protected and Unprotected Ranges",
     "CWE-1317": "Improper Access Control in Fabric Bridge",
-    "CWE-1318": "Missing Support for Security Features in On-chip Fabrics or "
-    "Buses",
+    "CWE-1318": "Missing Support for Security Features in On-chip Fabrics or " "Buses",
     "CWE-1319": "Improper Protection against Electromagnetic Fault Injection",
-    "CWE-1320": "Improper Protection for Outbound Error Messages and Alert "
-    "Signals",
-    "CWE-1321": "Improperly Controlled Modification of Object Prototype "
-    "Attributes",
+    "CWE-1320": "Improper Protection for Outbound Error Messages and Alert " "Signals",
+    "CWE-1321": "Improperly Controlled Modification of Object Prototype " "Attributes",
     "CWE-1322": "Use of Blocking Code in Single-threaded, Non-blocking Context",
     "CWE-1323": "Improper Management of Sensitive Trace Data",
     "CWE-1324": "DEPRECATED: Sensitive Information Accessible by Physical "
@@ -1130,8 +1091,7 @@ ref_map = {
     "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability "
     "Database Entry",
     "security.gentoo.org/glsa": "Advisory",
-    r"usn.ubuntu.com/[\d\-]+|ubuntu.com/security/notices/USN\-[\d\-]+":
-        "Ubuntu Security Notice",
+    r"usn.ubuntu.com/[\d\-]+|ubuntu.com/security/notices/USN\-[\d\-]+": "Ubuntu Security Notice",
     r"lists.[\w\-]+.org/[\S]+announce": "Mailing List Announcement",
     r"lists.[\w\-]+.org/": "Mailing List Other",
     "blog": "Blog Post",
@@ -1141,12 +1101,11 @@ ref_map = {
     r"bitbucket.org/[^\s/]+/[^\s/]+/wiki/": "Bitbucket Wiki Entry",
     r"https://vuldb.com/\?id.\d+": "VulDB Entry",
 }
-sorted_ref_map = sorted(ref_map.items(), key=lambda x: len(x[0]), reverse=True)
-sorted_ref_map = dict(sorted_ref_map)
+sorted_ref_map = dict(sorted(ref_map.items(), key=lambda x: len(x[0]), reverse=True))
 
 compiled_patterns = {
-    re.compile(pattern, re.IGNORECASE): value for pattern, value in
-    sorted_ref_map.items()
+    re.compile(pattern, re.IGNORECASE): value
+    for pattern, value in sorted_ref_map.items()
 }
 
 
@@ -1237,17 +1196,18 @@ def parse_cwe(cwe):
         return fmt_cwe, new_notes
 
     cwe_ids = re.findall(r"CWE-[1-9]\d{0,5}", cwe)
-    for i in range(len(cwe_ids)):
-        cwe_name = CWE_MAP.get(cwe_ids[i], "UNABLE TO LOCATE CWE NAME")
+    for i, cweid in enumerate(cwe_ids):
+        cwe_name = CWE_MAP.get(cweid, "UNABLE TO LOCATE CWE NAME")
         if not cwe_name:
             LOG.warning(
-                f"We couldn't locate the name of the CWE with the following "
-                f"id: {cwe_ids[i]}. Help us out by reporting the id at "
-                f"https://github.com/owasp-dep-scan/dep-scan/issues."
+                "We couldn't locate the name of the CWE with the following "
+                "id: %s. Help us out by reporting the id at "
+                "https://github.com/owasp-dep-scan/dep-scan/issues.",
+                cweid,
             )
         if i == 0:
             fmt_cwe = {
-                "id": cwe_ids[i],
+                "id": cweid,
                 "name": cwe_name,
             }
         # CSAF 2.0 only allows a single CWE per vulnerability, so we add
@@ -1255,7 +1215,7 @@ def parse_cwe(cwe):
         else:
             new_notes.append(
                 {
-                    "title": f"Additional CWE: {cwe_ids[i]}",
+                    "title": f"Additional CWE: {cweid}",
                     "audience": "developers",
                     "category": "other",
                     "text": cwe_name,
@@ -1326,17 +1286,18 @@ def format_references(ref):
     issues_regex = re.compile(
         r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<owner>["
         r"\w\-.]+)/(?P<repo>[\w\-.]+)/issues/(?:detail\?id=)?(?P<id>\d+)",
-        re.IGNORECASE
+        re.IGNORECASE,
     )
     advisory_regex = re.compile(
-        r"(?P<org>[^\s/.]+).(?:com|org)/(?:\S+/)*/?(?P<id>[\w\-:]+)",
-        re.IGNORECASE)
+        r"(?P<org>[^\s/.]+).(?:com|org)/(?:\S+/)*/?(?P<id>[\w\-:]+)", re.IGNORECASE
+    )
     bugzilla_regex = re.compile(
-        r"(?<=bugzilla.)(?P<owner>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>"
-        r"\S+)", re.IGNORECASE)
+        r"(?<=bugzilla.)(?P<owner>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>" r"\S+)",
+        re.IGNORECASE,
+    )
     usn_regex = re.compile(
-        r"(?<=usn.ubuntu.com/)[\d\-]+|(?<=ubuntu.com/security/notices/USN-)["
-        r"\d\-]+", re.IGNORECASE
+        r"(?<=usn.ubuntu.com/)[\d\-]+|(?<=ubuntu.com/security/notices/USN-)[" r"\d\-]+",
+        re.IGNORECASE,
     )
     id_types = ["Advisory", "Issue", "Ubuntu Security Notice", "Bugzilla"]
     parse = [i for i in fmt_refs if i.get("summary") in id_types]
@@ -1357,10 +1318,7 @@ def format_references(ref):
                 ids.append({"system_name": system_name, "text": adv["id"]})
                 summary = system_name
         elif issue := re.search(issues_regex, url):
-            summary = (
-                issue["host"].capitalize().replace("Github", "GitHub")
-                + " Issue"
-            )
+            summary = issue["host"].capitalize().replace("Github", "GitHub") + " Issue"
             ids.append(
                 {
                     "system_name": summary
@@ -1375,9 +1333,7 @@ def format_references(ref):
         elif bugzilla := re.search(bugzilla_regex, url):
             system_name = f"{bugzilla['owner'].capitalize()} Bugzilla"
             system_name = system_name.replace("Redhat", "Red Hat")
-            ids.append(
-                {"system_name": f"{system_name} ID", "text": bugzilla["id"]}
-            )
+            ids.append({"system_name": f"{system_name} ID", "text": bugzilla["id"]})
             summary = system_name
         elif usn := re.search(usn_regex, url):
             ids.append({"system_name": summary, "text": f"USN-{usn[0]}"})
@@ -1402,11 +1358,7 @@ def get_ref_summary(url):
         raise TypeError("url must be a string")
 
     return next(
-        (
-            value
-            for pattern, value in compiled_patterns.items()
-            if pattern.search(url)
-        ),
+        (value for pattern, value in compiled_patterns.items() if pattern.search(url)),
         "Other",
     )
 
@@ -1428,9 +1380,9 @@ def parse_revision_history(tracking):
 
     elif hx and (len(hx) > 0):
         hx = cleanup_list(hx)
-        if tracking.get("status") == "final" and int(
-            tracking.get("version", 1)
-        ) > (len(hx) + 1):
+        if tracking.get("status") == "final" and int(tracking.get("version", 1)) > (
+            len(hx) + 1
+        ):
             LOG.warning(
                 "Revision history is inconsistent with the version "
                 "number. Correcting the version number."
@@ -1496,9 +1448,7 @@ def parse_revision_history(tracking):
         LOG.info("No tracking id, generating one.")
         tracking["id"] = f"{dt}_v{tracking['version']}"
     if (tracking["initial_release_date"]) > (tracking["current_release_date"]):
-        LOG.warning(
-            "Your initial release date is later than the current release date."
-        )
+        LOG.warning("Your initial release date is later than the current release date.")
     hx = sorted(hx, key=lambda x: x["number"])
 
     tracking["revision_history"] = hx
@@ -1519,7 +1469,7 @@ def import_product_tree(tree):
     product_tree = None
     if len(tree["easy_import"]) > 0:
         try:
-            with open(tree["easy_import"], "r") as f:
+            with open(tree["easy_import"], "r", encoding="utf-8") as f:
                 product_tree = json.load(f)
         except JSONDecodeError:
             LOG.warning(
@@ -1588,42 +1538,55 @@ def toml_compatibility(metadata):
     """
     # The 4.3.0 TOML referenced revision_history as revision
     if metadata["depscan_version"] < "4.3.1":
-        metadata["tracking"]["revision_history"] = metadata["tracking"].get(
-            "revision"
-        )
+        metadata["tracking"]["revision_history"] = metadata["tracking"].get("revision")
     if metadata["tracking"].get("revision"):
         del metadata["tracking"]["revision"]
     return metadata
 
 
-def export_csaf(results, src_dir, reports_dir, bom_file, reachables):
+def export_csaf(
+    results,
+    src_dir,
+    reports_dir,
+    vdr_file,
+    pkg_vulnerabilities,
+    pkg_group_rows,
+    direct_purls,
+    reached_purls,
+):
     """
     Generates a CSAF JSON template from the given results.
 
     Parameters:
-        results (list): A list of results obtained from the analysis.
+        results (list): Raw results from scan
         src_dir (str): The source directory.
         reports_dir (str): The reports directory.
-        bom_file (str): The BOM file path
+        vdr_file (str): The BOM file path
+        pkg_vulnerabilities (list): The list of vulnerabilities
+        pkg_group_rows (dict): Prioritized list of purls
+        direct_purls (dict): Package URLs with direct usages
+        reached_purls (dict): Package URLs with reachable flows
 
     Returns:
         None
     """
-    toml_file_path = os.path.join(src_dir, "csaf.toml")
+    toml_file_path = os.getenv(
+        "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
+    )
     metadata = import_csaf_toml(toml_file_path)
     metadata = toml_compatibility(metadata)
     template = parse_toml(metadata)
-    if reachables:
-        template["document"]["notes"].append(
-            {
-                "category": "legal_disclaimer",
-                "text": "Depscan reachable code only covers the project source "
-                        "code, not the code of dependencies. A dependency may "
-                        "execute vulnerable code when called even if it is not "
-                        "in the project's source code. Regard the Depscan-set "
-                        "flag of 'code_not_in_execute_path' with this in mind."
-            }
-        )
+    # FIXME: Could we move the below to the template itself
+    template["document"]["notes"].append(
+        {
+            "category": "legal_disclaimer",
+            "text": "Depscan reachable code only covers the project source "
+            "code, not the code of dependencies. A dependency may "
+            "execute vulnerable code when called even if it is not "
+            "in the project's source code. Regard the Depscan-set "
+            "flag of 'code_not_in_execute_path' with this in mind.",
+        }
+    )
     agg_score = set()
     severity_ref = {
         "CRITICAL": 1,
@@ -1634,8 +1597,11 @@ def export_csaf(results, src_dir, reports_dir, bom_file, reachables):
     for r in results:
         c = CsafOccurence(r)
         new_vuln = c.to_dict()
+        # FIXME: Rewrite this logic
         if not r.get("reached"):
-            new_vuln["properties"] = {"flags": {"label": "vulnerable_code_not_in_execute_path"}}
+            new_vuln["properties"] = {
+                "flags": {"label": "vulnerable_code_not_in_execute_path"}
+            }
             # TODO: Change product status?
         else:
             agg_score.add(severity_ref.get(c.severity))
@@ -1644,15 +1610,13 @@ def export_csaf(results, src_dir, reports_dir, bom_file, reachables):
         agg_score.sort()
         severity_ref = {v: k for k, v in severity_ref.items()}
         agg_severity = (
-            severity_ref[agg_score[0]][0]
-            + severity_ref[agg_score[0]][1:].lower()
+            severity_ref[agg_score[0]][0] + severity_ref[agg_score[0]][1:].lower()
         )
         template["document"]["aggregate_severity"]["text"] = agg_severity
     if not template.get("product_tree"):
-        [template["product_tree"], extra_ref] = import_root_component(
-            bom_file)
+        [template["product_tree"], extra_ref] = import_root_component(vdr_file)
         if extra_ref and template["document"].get("references"):
-            template["document"]["references"].append(extra_ref)
+            mplate["document"]["references"].append(extra_ref)
         elif extra_ref:
             template["document"]["references"] = [extra_ref]
     new_results = cleanup_dict(template)
@@ -1662,15 +1626,13 @@ def export_csaf(results, src_dir, reports_dir, bom_file, reachables):
         new_results["document"]["tracking"]["revision_history"] = []
     metadata["tracking"] = deepcopy(new_results["document"]["tracking"])
     # Reset the id if it's one we've generated
-    if re.match(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}_v", metadata["tracking"]["id"]
-    ):
+    if re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}_v", metadata["tracking"]["id"]):
         metadata["tracking"]["id"] = ""
     outfile = os.path.join(
         reports_dir,
         f"csaf_v{new_results['document']['tracking']['version']}.json",
     )
-    json.dump(new_results, open(outfile, "w"), indent=4)
+    json.dump(new_results, open(outfile, "w", encoding="utf-8"), indent=4)
     LOG.info("CSAF report written to %s", outfile)
     write_toml(toml_file_path, metadata)
 
@@ -1687,7 +1649,7 @@ def import_csaf_toml(toml_file_path):
         TOMLDecodeError: If the TOML file contains duplicate keys or is invalid.
     """
     try:
-        with open(toml_file_path, "r") as f:
+        with open(toml_file_path, "r", encoding="utf-8") as f:
             try:
                 return toml.load(f)
             except toml.TomlDecodeError:
@@ -1716,7 +1678,7 @@ def write_toml(toml_file_path, metadata=None):
     if not metadata:
         metadata = TOML_TEMPLATE
     metadata["depscan_version"] = get_version()
-    with open(toml_file_path, "w") as f:
+    with open(toml_file_path, "w", encoding="utf-8") as f:
         toml.dump(metadata, f)
     LOG.info("The csaf.toml has been updated at %s", toml_file_path)
 
@@ -1733,12 +1695,12 @@ def cleanup_list(d):
     the input list.
     """
     new_lst = []
-    for i in range(len(d)):
-        if isinstance(d[i], dict):
-            if entry := cleanup_dict(d[i]):
+    for i, dl in enumerate(d):
+        if isinstance(dl, dict):
+            if entry := cleanup_dict(dl):
                 new_lst.append(entry)
-        elif isinstance(d[i], str):
-            new_lst.append(d[i])
+        elif isinstance(dl, str):
+            new_lst.append(dl)
     return new_lst
 
 
@@ -1768,11 +1730,11 @@ def cleanup_dict(d):
     return new_dict
 
 
-def import_root_component(bom_file):
+def import_root_component(vdr_file):
     """
     Imports the root component from the given bom file into the csaf
     """
-    with open(bom_file, "r") as f:
+    with open(vdr_file, "r", encoding="utf-8") as f:
         bom = json.load(f)
 
     refs = []
@@ -1784,7 +1746,7 @@ def import_root_component(bom_file):
                 {
                     "name": component.get("name"),
                     "product_id": f"{component.get('name')}:"
-                                  f"{component.get('version')}",
+                    f"{component.get('version')}",
                     "product_identification_helper": {
                         "purl": component.get("purl"),
                     },
@@ -1802,7 +1764,9 @@ def import_root_component(bom_file):
     if product_tree:
         LOG.info("Successfully imported root component into the product tree.")
     else:
-        LOG.info("Unable to import root component for product tree, "
-                 "so product tree will not be included.")
+        LOG.info(
+            "Unable to import root component for product tree, "
+            "so product tree will not be included."
+        )
 
     return product_tree, refs

@@ -671,3 +671,22 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
     )[
         0
     ] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]
+
+
+def test_purl_usages():
+    test_evinse_file = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "bom-evinse-java.json"
+    )
+    direct_purls, reached_purls = analysis.find_purl_usages(
+        test_evinse_file, None, None
+    )
+    assert direct_purls == {
+        "pkg:maven/org.springframework/spring-jdbc@5.2.5.RELEASE?type=jar": 5,
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.33?type=jar": 12,
+        "pkg:maven/org.springframework/spring-context@5.2.5.RELEASE?type=jar": 12,
+        "pkg:maven/com.auth0/java-jwt@3.10.2?type=jar": 4,
+        "pkg:maven/org.slf4j/slf4j-api@1.7.30?type=jar": 2,
+        "pkg:maven/org.springframework.boot/spring-boot@2.2.6.RELEASE?type=jar": 1,
+        "pkg:maven/commons-io/commons-io@2.11.0?type=jar": 2,
+    }
+    assert not reached_purls

@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "4.3.3"
+version = "5.0.0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -59,3 +59,9 @@ packages = ["depscan", "depscan.lib", "vendor"]
 
 [tool.pytest.ini_options]
 addopts = "--verbose --cov-append --cov-report term --cov depscan"
+
+[tool.flake8]
+ignore = "E203, E266, E501, W503, W605"
+max-line-length = 80
+max-complexity = 18
+select = "B,C,E,F,W,T4,B9"

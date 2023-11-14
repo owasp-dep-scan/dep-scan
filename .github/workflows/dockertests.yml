@@ -55,6 +55,43 @@ jobs:
       with:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
+  reachable_tests:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ['3.11']
+      fail-fast: false
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Display Python version
+      run: python -c "import sys; print(sys.version)"
+    - name: Install dependencies
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install .[dev]
+        npm install -g @cyclonedx/cdxgen
+        mkdir -p repotests
+    - uses: actions/checkout@v4
+      with:
+        repository: 'HooliCorp/java-sec-code'
+        path: 'repotests/java-sec-code'
+    - name: Reachables tests
+      run: |
+        mkdir -p rtests_ubuntu
+        python3 depscan/cli.py --no-banner --no-error --src repotests/java-sec-code --reports-dir rtests_ubuntu -t java --profile research --explain
+      env:
+        PYTHONPATH: "."
+        VDB_HOME: "vdb_data"
+        PYTHONUTF8: 1
+    - uses: actions/upload-artifact@v3
+      with:
+        name: rtests_ubuntu
+        path: rtests_ubuntu
   ubuntu_version_tests2:
     runs-on: ${{ matrix.os }}
     strategy:

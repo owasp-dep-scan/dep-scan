@@ -136,3 +136,4 @@ dmypy.json
 .pyre/
 .coverage
 reports/
+.conda/

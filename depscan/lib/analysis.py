@@ -1,6 +1,6 @@
 import json
 import os.path
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.tree import Tree
 from vdb.lib import CPE_FULL_REGEX
 from vdb.lib.config import placeholder_fix_version
-from vdb.lib.utils import parse_purl
+from vdb.lib.utils import parse_purl, parse_cpe
 
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
@@ -77,7 +77,7 @@ def distro_package(package_issue):
 
 def retrieve_bom_dependency_tree(bom_file):
     """
-    Method to retrieve the dependency tree from a CycloneDX SBoM
+    Method to retrieve the dependency tree from a CycloneDX SBOM
 
     :param bom_file: Sbom to be loaded
     :return: Dependency tree as a list
@@ -112,9 +112,7 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
     :return: Constructed display string
     """
     full_pkg_display = current_pkg
-    highlightable = tree_pkg and (
-        tree_pkg == current_pkg or tree_pkg in current_pkg
-    )
+    highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
     if tree_pkg:
         try:
             if current_pkg.startswith("pkg:"):
@@ -122,9 +120,7 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     if version_used:
-                        full_pkg_display = (
-                            f"""{purl_obj.get("name")}@{version_used}"""
-                        )
+                        full_pkg_display = f"""{purl_obj.get("name")}@{version_used}"""
         except Exception:
             pass
     if extra_text and highlightable:
@@ -169,9 +165,7 @@ def pkg_sub_tree(
     if not bom_dependency_tree:
         return [purl], Tree(
             get_pkg_display(purl, purl, extra_text=extra_text),
-            style=Style(
-                color="bright_red" if pkg_severity == "CRITICAL" else None
-            ),
+            style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
         )
     if len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
@@ -210,42 +204,53 @@ def pkg_sub_tree(
 
 
 @dataclass
-class PrepareVexOptions:
+class PrepareVdrOptions:
     project_type: str
     results: List
     pkg_aliases: Dict
     purl_aliases: Dict
     sug_version_dict: Dict
     scoped_pkgs: Dict
-    no_vuln_table: bool = False
-    bom_file: Optional[str] = None
+    no_vuln_table: bool
+    bom_file: Optional[str]
+    direct_purls: Dict
+    reached_purls: Dict
 
 
-def prepare_vex(options: PrepareVexOptions):
+def prepare_vdr(options: PrepareVdrOptions):
     """
     Generates a report summary of the dependency scan results, creates a
     vulnerability table and a top priority table for packages that require
     attention, prints the recommendations, and returns a list of
     vulnerability details.
 
-    :param options: An instance of PrepareVexOptions containing the function parameters.
-    :return: A list of vulnerability details.
+    :param options: An instance of PrepareVdrOptions containing the function parameters.
+    :return: Tuple containing (A list of vulnerability details, prioritized list as a dict)
     """
     if not options.results:
         return []
     table = Table(
-        title=f"Dependency Scan Results ({options.project_type})",
+        title=f"Dependency Scan Results ({options.project_type.upper()})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
         show_lines=True,
+        min_width=150,
     )
     ids_seen = {}
+    direct_purls = options.direct_purls
+    if not direct_purls:
+        direct_purls = {}
+    reached_purls = options.reached_purls
+    if not reached_purls:
+        reached_purls = {}
     required_pkgs = options.scoped_pkgs.get("required", [])
     optional_pkgs = options.scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
     critical_count = 0
     has_poc_count = 0
+    has_reachable_poc_count = 0
     has_exploit_count = 0
+    has_reachable_exploit_count = 0
     fix_version_count = 0
     wont_fix_version_count = 0
     has_os_packages = False
@@ -254,10 +259,8 @@ def prepare_vex(options: PrepareVexOptions):
     distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
-    # Retrieve any dependency tree from the SBoM
-    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(
-        options.bom_file
-    )
+    # Retrieve any dependency tree from the SBOM
+    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(options.bom_file)
     oci_props = retrieve_oci_properties(bom_data)
     oci_product_types = oci_props.get("oci:image:componentTypes", "")
     for h in [
@@ -270,7 +273,7 @@ def prepare_vex(options: PrepareVexOptions):
         justify = "left"
         if h == "Score":
             justify = "right"
-        table.add_column(header=h, justify=justify)
+        table.add_column(header=h, justify=justify, vertical="top")
     for vuln_occ_dict in options.results:
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
@@ -286,12 +289,23 @@ def prepare_vex(options: PrepareVexOptions):
                 f"{package_issue['affected_location'].get('vendor')}:"
                 f"{package_issue['affected_location'].get('package')}"
             )
+        elif package_issue["affected_location"].get("cpe_uri"):
+            vendor, _, _, _ = parse_cpe(
+                package_issue["affected_location"].get("cpe_uri")
+            )
+            if vendor:
+                full_pkg = (
+                    f"{vendor}:" f"{package_issue['affected_location'].get('package')}"
+                )
         version = None
         if matched_by:
             version = matched_by.split("|")[-1]
             full_pkg = full_pkg + ":" + version
         # De-alias package names
-        full_pkg = options.pkg_aliases.get(full_pkg, full_pkg)
+        if options.pkg_aliases.get(full_pkg):
+            full_pkg = options.pkg_aliases.get(full_pkg)
+        else:
+            full_pkg = options.pkg_aliases.get(full_pkg.lower(), full_pkg)
         version_used = package_issue["affected_location"].get("version")
         purl = options.purl_aliases.get(full_pkg, full_pkg)
         package_type = None
@@ -312,13 +326,9 @@ def prepare_vex(options: PrepareVexOptions):
                             not in oci_product_types
                         ):
                             # Some nvd data might match application CVEs for OS vendors which can be filtered
-                            if package_issue["affected_location"].get(
-                                "cpe_uri"
-                            ):
+                            if package_issue["affected_location"].get("cpe_uri"):
                                 all_parts = CPE_FULL_REGEX.match(
-                                    package_issue["affected_location"].get(
-                                        "cpe_uri"
-                                    )
+                                    package_issue["affected_location"].get("cpe_uri")
                                 )
                                 if (
                                     all_parts
@@ -329,9 +339,9 @@ def prepare_vex(options: PrepareVexOptions):
                                     continue
                             # Some vendors like suse leads to FP and can be turned off if our image do not have those types
                             # Some os packages might match application packages in NVD
-                            if package_issue["affected_location"].get(
-                                "vendor"
-                            ) in ("suse",):
+                            if package_issue["affected_location"].get("vendor") in (
+                                "suse",
+                            ):
                                 continue
                             else:
                                 insights.append(
@@ -368,7 +378,9 @@ def prepare_vex(options: PrepareVexOptions):
         clinks = classify_links(
             related_urls,
         )
-        if (
+        if direct_purls.get(purl):
+            is_required = True
+        elif not direct_purls and (
             purl in required_pkgs
             or full_pkg in required_pkgs
             or project_type_pkg in required_pkgs
@@ -376,7 +388,6 @@ def prepare_vex(options: PrepareVexOptions):
             is_required = True
         if pkg_severity in ("CRITICAL", "HIGH"):
             if is_required:
-                pkg_requires_attn = True
                 pkg_attention_count += 1
             if fixed_location:
                 fix_version_count += 1
@@ -394,10 +405,11 @@ def prepare_vex(options: PrepareVexOptions):
             extra_text=f":left_arrow: {vid}",
         )
         if is_required and package_type not in config.OS_PKG_TYPES:
-            package_usage = ":direct_hit: Direct usage"
-        elif (
-            not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
-        ) or (
+            if direct_purls.get(purl):
+                package_usage = f":direct_hit: Used in [info]{str(direct_purls.get(purl))}[/info] locations"
+            else:
+                package_usage = ":direct_hit: Direct dependency"
+        elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
             purl in optional_pkgs
             or full_pkg in optional_pkgs
             or project_type_pkg in optional_pkgs
@@ -409,26 +421,56 @@ def prepare_vex(options: PrepareVexOptions):
                 has_os_packages = True
             else:
                 package_usage = (
-                    "[spring_green4]:notebook: Indirect dependency["
-                    "/spring_green4]"
+                    "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
                 )
         if package_usage != "N/A":
             insights.append(package_usage)
             plain_insights.append(package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
-            insights.append(
-                "[yellow]:notebook_with_decorative_cover: Has " "PoC[/yellow]"
-            )
-            plain_insights.append("Has PoC")
+            if reached_purls.get(purl):
+                insights.append(
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                )
+                plain_insights.append("Reachable and Exploitable")
+                has_reachable_poc_count += 1
+                has_reachable_exploit_count += 1
+                pkg_requires_attn = True
+            elif direct_purls.get(purl):
+                insights.append(
+                    "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
+                )
+                plain_insights.append("Bug Bounty target")
+            else:
+                insights.append(
+                    "[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]"
+                )
+                plain_insights.append("Has PoC")
             has_poc_count += 1
+            if pkg_severity in ("CRITICAL", "HIGH"):
+                pkg_requires_attn = True
         if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
-            insights.append(":receipt: Vendor Confirmed")
-            plain_insights.append("Vendor Confirmed")
+            if reached_purls.get(purl):
+                insights.append(":receipt: Reachable")
+                plain_insights.append("Reachable")
+            else:
+                insights.append(":receipt: Vendor Confirmed")
+                plain_insights.append("Vendor Confirmed")
         if clinks.get("exploit"):
-            insights.append(
-                "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
-            )
-            plain_insights.append("Known Exploits")
+            if reached_purls.get(purl) or direct_purls.get(purl):
+                insights.append(
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                )
+                plain_insights.append("Reachable and Exploitable")
+                has_reachable_exploit_count += 1
+                # Fail safe. Packages with exploits and direct usage without a reachable flow
+                # are still considered reachable to reduce false negatives
+                if not reached_purls.get(purl):
+                    reached_purls[purl] = 1
+            else:
+                insights.append(
+                    "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
+                )
+                plain_insights.append("Known Exploits")
             has_exploit_count += 1
             pkg_requires_attn = True
         if distro_package(package_issue):
@@ -451,10 +493,8 @@ def prepare_vex(options: PrepareVexOptions):
                 p_rich_tree,
                 "\n".join(insights),
                 fixed_location,
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}
-                {vuln_occ_dict.get("severity")}""",
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}
-                {vuln_occ_dict.get("cvss_score")}""",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
             )
         if purl:
             source = {}
@@ -471,9 +511,7 @@ def prepare_vex(options: PrepareVexOptions):
             versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
             if fixed_location:
-                versions.append(
-                    {"version": fixed_location, "status": "unaffected"}
-                )
+                versions.append({"version": fixed_location, "status": "unaffected"})
                 recommendation = f"Update to {fixed_location} or later"
             affects = [{"ref": purl, "versions": versions}]
             analysis = {}
@@ -543,25 +581,27 @@ def prepare_vex(options: PrepareVexOptions):
                         },
                         {
                             "name": "depscan:prioritized",
-                            "value": "true"
-                            if pkg_group_rows.get(purl)
-                            else "false",
+                            "value": "true" if pkg_group_rows.get(purl) else "false",
                         },
                     ],
                 }
             )
     if not options.no_vuln_table:
+        console.rule(style="gray37")
+        console.print()
         console.print(table)
+        console.print()
     if pkg_group_rows:
-        console.print("")
+        console.rule(style="gray37")
         utable = Table(
-            title=f"Top Priority ({options.project_type})",
+            title=f"Top Priority ({options.project_type.upper()})",
             box=box.DOUBLE_EDGE,
             header_style="bold magenta",
             show_lines=True,
+            min_width=150,
         )
-        for h in ("Package", "CVEs", "Fix Version"):
-            utable.add_column(header=h)
+        for h in ("Package", "CVEs", "Fix Version", "Reachable"):
+            utable.add_column(header=h, vertical="top")
         for k, v in pkg_group_rows.items():
             cve_list = []
             fv = None
@@ -573,16 +613,27 @@ def prepare_vex(options: PrepareVexOptions):
                 v[0].get("p_rich_tree"),
                 "\n".join(sorted(cve_list, reverse=True)),
                 f"[bright_green]{fv}[/bright_green]",
+                "[warning]Yes[/warning]" if reached_purls.get(k) else "",
             )
+        console.print()
         console.print(utable)
+        console.print()
     if options.scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
-            rmessage = (
-                f":point_right: [magenta]{has_exploit_count}"
-                f"[/magenta] out of {len(options.results)} vulnerabilities "
-                f"have known exploits and requires your ["
-                f"magenta]immediate[/magenta] attention."
-            )
+            if has_reachable_exploit_count:
+                rmessage = (
+                    f":point_right: [magenta]{has_reachable_exploit_count}"
+                    f"[/magenta] out of {len(options.results)} vulnerabilities "
+                    f"have [dark magenta]reachable[/dark magenta] exploits and requires your ["
+                    f"magenta]immediate[/magenta] attention."
+                )
+            else:
+                rmessage = (
+                    f":point_right: [magenta]{has_exploit_count}"
+                    f"[/magenta] out of {len(options.results)} vulnerabilities "
+                    f"have known exploits and requires your ["
+                    f"magenta]immediate[/magenta] attention."
+                )
             if not has_os_packages:
                 rmessage += (
                     "\nAdditional workarounds and configuration "
@@ -621,15 +672,21 @@ def prepare_vex(options: PrepareVexOptions):
                 )
             )
         elif pkg_attention_count:
-            rmessage = (
-                f":point_right: [magenta]{pkg_attention_count}"
-                f"[/magenta] out of {len(options.results)} vulnerabilities "
-                f"requires your attention."
-            )
-            if has_exploit_count:
-                rmessage += (
-                    f"\nPrioritize the [magenta]{has_exploit_count}"
+            if has_reachable_exploit_count:
+                rmessage = (
+                    f":point_right: Prioritize the [magenta]{has_reachable_exploit_count}"
+                    f"[/magenta] [bold magenta]reachable[/bold magenta] vulnerabilities with known exploits."
+                )
+            elif has_exploit_count:
+                rmessage = (
+                    f":point_right: Prioritize the [magenta]{has_exploit_count}"
                     f"[/magenta] vulnerabilities with known exploits."
+                )
+            else:
+                rmessage = (
+                    f":point_right: [info]{pkg_attention_count}"
+                    f"[/info] out of {len(options.results)} vulnerabilities "
+                    f"requires your attention."
                 )
             if fix_version_count:
                 if fix_version_count == pkg_attention_count:
@@ -718,7 +775,28 @@ def prepare_vex(options: PrepareVexOptions):
                 expand=False,
             )
         )
-    return pkg_vulnerabilities
+    if reached_purls:
+        console.rule(style="gray37")
+        sorted_reached_purls = sorted(
+            ((value, key) for (key, value) in reached_purls.items()), reverse=True
+        )[:3]
+        sorted_reached_dict = OrderedDict((k, v) for v, k in sorted_reached_purls)
+        rtable = Table(
+            title="Top Reachable Packages",
+            box=box.DOUBLE_EDGE,
+            header_style="bold magenta",
+            show_lines=True,
+            min_width=150,
+            caption="Implement a workflow to continuously monitor these packages for vulnerabilities and exploits.",
+        )
+        for h in ("Package", "Reachable Flows"):
+            rtable.add_column(header=h, vertical="top")
+        for k, v in sorted_reached_dict.items():
+            rtable.add_row(k, str(v))
+        console.print()
+        console.print(rtable)
+        console.print()
+    return pkg_vulnerabilities, pkg_group_rows
 
 
 def summary_stats(results):
@@ -752,9 +830,11 @@ def jsonl_report(
     sug_version_dict,
     scoped_pkgs,
     out_file_name,
+    direct_purls,
+    reached_purls,
 ):
     """
-    Produce vulnerability occurrence report in json format
+    Produce vulnerability occurrence report in jsonlines format
 
     :param scoped_pkgs: A dict of lists of required/optional/excluded packages.
     :param sug_version_dict: A dict mapping package names to suggested versions.
@@ -772,15 +852,23 @@ def jsonl_report(
         for vuln_occ_dict in results:
             vid = vuln_occ_dict.get("id")
             package_issue = vuln_occ_dict.get("package_issue")
-            try:
-                full_pkg = package_issue["affected_location"].get("package")
-            except Exception as e:
-                print(package_issue)
+            if not package_issue.get("affected_location"):
+                continue
+            full_pkg = package_issue["affected_location"].get("package")
             if package_issue["affected_location"].get("vendor"):
                 full_pkg = (
                     f"{package_issue['affected_location'].get('vendor')}:"
                     f"{package_issue['affected_location'].get('package')}"
                 )
+            elif package_issue["affected_location"].get("cpe_uri"):
+                vendor, _, _, _ = parse_cpe(
+                    package_issue["affected_location"].get("cpe_uri")
+                )
+                if vendor:
+                    full_pkg = (
+                        f"{vendor}:"
+                        f"{package_issue['affected_location'].get('package')}"
+                    )
             # De-alias package names
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
             full_pkg_display = full_pkg
@@ -804,16 +892,15 @@ def jsonl_report(
             # On occasions, this could still result in duplicates if the
             # package exists with and without a purl
             ids_seen[vid + purl] = True
-            project_type_pkg = "{}:{}".format(
-                project_type, package_issue["affected_location"].get("package")
-            )
+            project_type_pkg = f"""{project_type}:{package_issue["affected_location"].get("package")}"""
             fixed_location = best_fixed_location(
                 sug_version_dict.get(purl),
                 package_issue["fixed_location"],
             )
             package_usage = "N/A"
             if (
-                purl in required_pkgs
+                direct_purls.get(purl)
+                or purl in required_pkgs
                 or full_pkg in required_pkgs
                 or project_type_pkg in required_pkgs
             ):
@@ -842,14 +929,14 @@ def jsonl_report(
                 "cvss_score": vuln_occ_dict.get("cvss_score"),
                 "short_description": vuln_occ_dict.get("short_description"),
                 "related_urls": vuln_occ_dict.get("related_urls"),
+                "occurrence_count": direct_purls.get(purl, 0),
+                "reachable_flows": reached_purls.get(purl, 0),
             }
             json.dump(data_obj, outfile)
             outfile.write("\n")
 
 
-def analyse_pkg_risks(
-    project_type, scoped_pkgs, risk_results, risk_report_file=None
-):
+def analyse_pkg_risks(project_type, scoped_pkgs, risk_results, risk_report_file=None):
     """
     Identify package risk and write to a json file
 
@@ -864,6 +951,7 @@ def analyse_pkg_risks(
         title=f"Risk Audit Summary ({project_type})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
+        min_width=150,
     )
     report_data = []
     required_pkgs = scoped_pkgs.get("required", [])
@@ -958,6 +1046,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         title=f"License Scan Summary ({project_type})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
+        min_width=150,
     )
     headers = ["Package", "Version", "License Id", "License conditions"]
     for h in headers:
@@ -974,9 +1063,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 conditions_str = ", ".join(lic["conditions"])
                 if "http" not in conditions_str:
                     conditions_str = (
-                        conditions_str.replace("--", " for ")
-                        .replace("-", " ")
-                        .title()
+                        conditions_str.replace("--", " for ").replace("-", " ").title()
                     )
                 data = [
                     *pkg_ver,
@@ -1126,57 +1213,40 @@ def classify_links(related_urls):
     return clinks
 
 
-def include_reachables(bom_file, src_dir):
+def find_purl_usages(bom_file, src_dir, reachables_slices_file):
     """
     Generates a list of reachable elements based on the given BOM file.
 
     :param bom_file (str): The path to the BOM file.
+    :param src_dir (str): Source directory
+    :param reachables_slices_file: Path to the reachables slices file
 
-    :return: A list of dictionaries containing the reachable elements.
-    Each dictionary has two keys: 'purls' which is a list of package URLs,
-    and 'locs' which is a list of strings representing the file name and line
-    number of each reachable element.
+    :return: Tuple of direct_purls and reached_purls based on the occurrence and callstack evidences from the BOM.
+             If reachables slices json were found, the file would be read first.
     """
-    with open(
-        os.path.join(src_dir, "reachables.slices.json"), "r", encoding="utf-8"
-    ) as f:
-        reachables = json.load(f).get("reachables")
-    reached = []
-    for flow in reachables:
-        if len(flow.get("purls", [])) > 0:
-            reached.append(
-                {
-                    "purls": flow.get("purls"),
-                    "locs": [
-                        f"{i['parentFileName'] + '#' + str(i['lineNumber'])}"
-                        for i in flow.get("flows")
-                    ],
-                }
-            )
+    direct_purls = defaultdict(int)
+    reached_purls = defaultdict(int)
+    if (
+        not reachables_slices_file
+        and src_dir
+        and os.path.exists(os.path.join(src_dir, "reachables.slices.json"))
+    ):
+        reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
+    if reachables_slices_file:
+        with open(reachables_slices_file, "r", encoding="utf-8") as f:
+            reachables = json.load(f).get("reachables")
+        for flow in reachables:
+            if len(flow.get("purls", [])) > 0:
+                for apurl in flow.get("purls"):
+                    reached_purls[apurl] += 1
+    if bom_file and os.path.exists(bom_file):
+        # For now we will also include usability slice as well
+        with open(bom_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-    # For now we will also include usability slice as well
-    with open(
-        os.path.join(src_dir, "bom.evinse.json"), "r", encoding="utf-8"
-    ) as f:
-        data = json.load(f)
-
-    for c in data["components"]:
-        loc = []
-        purl = c["purl"]
-        if c.get("evidence"):
-            if c["evidence"].get("occurrences"):
-                loc = [i["location"] for i in c["evidence"]["occurrences"]]
-            elif c["evidence"].get("callstack"):
-                callstack = c["evidence"].get("callstack")
-                loc.extend(
-                    flow["fullFilename"] + "#" + str(flow["line"])
-                    for flow in callstack.get("frames")
-                )
-        if loc:
-            reached.append(
-                {
-                    "purls": [purl],
-                    "locs": loc,
-                }
-            )
-    return reached
+        for c in data["components"]:
+            purl = c["purl"]
+            if c.get("evidence"):
+                if c["evidence"].get("occurrences"):
+                    direct_purls[purl] += len(c["evidence"].get("occurrences"))
+    return dict(direct_purls), dict(reached_purls)

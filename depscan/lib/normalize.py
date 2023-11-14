@@ -213,7 +213,9 @@ def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
             )
         if version:
             full_pkg = full_pkg + ":" + version
-        if purl_aliases.get(full_pkg.lower()):
+        if purl_aliases.get(full_pkg):
+            dealias_dict[full_pkg] = purl_aliases.get(full_pkg)
+        elif purl_aliases.get(full_pkg.lower()):
             dealias_dict[full_pkg] = purl_aliases.get(full_pkg.lower())
         else:
             for k, v in pkg_aliases.items():

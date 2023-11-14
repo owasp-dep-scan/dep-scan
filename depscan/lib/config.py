@@ -430,3 +430,7 @@ max_request_failures = get_int_from_env("max_request_failures", 5)
 
 # Universal scan
 UNIVERSAL_SCAN_TYPE = "universal"
+
+max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
+
+max_reachable_explanations_purl = get_int_from_env("max_reachable_explanations_purl", 5)

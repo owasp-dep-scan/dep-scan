@@ -38,8 +38,9 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
             stderr=subprocess.STDOUT,
             cwd=cwd,
             env=os.environ.copy(),
-            shell=True if sys.platform == "win32" else False,
+            shell=sys.platform == "win32",
             encoding="utf-8",
+            check=False,
         )
         LOG.debug(cp.stdout)
     except Exception as e:
@@ -98,10 +99,12 @@ def get_licenses(ele):
     """
     license_list = []
     namespace = "{http://cyclonedx.org/schema/bom/1.5}"
-    for data in ele.findall("{0}licenses/{0}license/{0}id".format(namespace)):
+    for data in ele.findall(f"{namespace}licenses/{namespace}license/{namespace}id"):
         license_list.append(data.text)
     if not license_list:
-        for data in ele.findall("{0}licenses/{0}license/{0}name".format(namespace)):
+        for data in ele.findall(
+            f"{namespace}licenses/{namespace}license/{namespace}name"
+        ):
             if data and data.text:
                 ld_list = [data.text]
                 if "http" in data.text:
@@ -317,7 +320,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     not found.
     """
     cdxgen_server = options.get("cdxgen_server")
-    # Generate SBoM by calling cdxgen server
+    # Generate SBOM by calling cdxgen server
     if cdxgen_server:
         # Fallback to universal if no project type was provided
         if not project_type:
@@ -348,18 +351,18 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
                     except Exception as je:
                         LOG.error(je)
                         LOG.info(
-                            "Unable to generate SBoM with cdxgen server. "
+                            "Unable to generate SBOM with cdxgen server. "
                             "Trying to generate one locally."
                         )
                 else:
                     LOG.warning(
-                        "Unable to generate SBoM via cdxgen server due to %s",
+                        "Unable to generate SBOM via cdxgen server due to %s",
                         r.status_code,
                     )
             except Exception as e:
                 LOG.error(e)
                 LOG.info(
-                    "Unable to generate SBoM with cdxgen server. Trying to "
+                    "Unable to generate SBOM with cdxgen server. Trying to "
                     "generate one locally."
                 )
     cdxgen_cmd = exec_cdxgen()
@@ -375,15 +378,14 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     if deep or project_type in ("jar", "jenkins") or options.get("reachables"):
         args.append("--deep")
         LOG.info("About to perform deep scan. This could take a while ...")
+    if options.get("profile"):
+        args.append("--profile")
+        args.append(options.get("profile"))
+        if options.get("profile") != "generic":
+            LOG.debug("BOM Profile: %s", options.get("profile"))
     args.append(src_dir)
     if cdxgen_cmd:
-        exec_tool(args)
-        if options.get('reachables'):
-            evinse_cmd = cdxgen_cmd.replace("cdxgen", "evinse")
-            args = [evinse_cmd, "-i", bom_file, "-o",
-                    "bom.evinse.json", "-l", project_type,
-                    "--with-reachables", src_dir]
-            exec_tool(args)
+        exec_tool(args, src_dir)
     else:
         LOG.warning("Unable to locate cdxgen command. ")
     return os.path.exists(bom_file)
@@ -391,13 +393,13 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
 
 def submit_bom(reports_dir, threatdb_params):
     """
-    Method to submit the SBoM to threatdb for analysis
+    Method to submit the SBOM to threatdb for analysis
 
-    :param reports_dir: The directory where the SBoM reports are located.
+    :param reports_dir: The directory where the SBOM reports are located.
     :param threatdb_params: A dict of threatdb parameters
     """
-    vex_files = find_files(reports_dir, ".vex.json")
-    if vex_files:
+    vdr_files = find_files(reports_dir, ".vdr.json")
+    if vdr_files:
         threatdb_server = threatdb_params["threatdb_server"]
         if not threatdb_server.endswith("/import"):
             threatdb_server = f"{threatdb_server}/import"
@@ -425,7 +427,7 @@ def submit_bom(reports_dir, threatdb_params):
                         r.status_code,
                     )
             if token:
-                for vf in vex_files:
+                for vf in vdr_files:
                     files = {"file": open(vf, "rb")}
                     r = client.post(
                         threatdb_server,
@@ -436,18 +438,18 @@ def submit_bom(reports_dir, threatdb_params):
                         json_response = r.json()
                         if not json_response.get("success"):
                             LOG.debug(
-                                "Uploaded file %s was not processed " "successfully",
+                                "Uploaded file %s was not processed successfully",
                                 vf,
                             )
                         else:
                             LOG.debug(
-                                "Vex file %s was submitted successfully to "
+                                "VDR file %s was submitted successfully to "
                                 "the threatdb server",
                                 vf,
                             )
                     else:
                         LOG.warning(
-                            "Unable to submit vex file to %s due to %s",
+                            "Unable to submit VDR file to %s due to %s",
                             threatdb_server,
                             r.status_code,
                         )
