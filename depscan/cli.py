@@ -113,23 +113,7 @@ def build_args():
         ),
         dest="profile",
         help="Profile to use while generating the BOM.",
-    )
-    parser.add_argument(
-        "--reachables",
-        action="store_true",
-        default=False,
-        dest="reachables",
-        help="Analyze reachability of direct dependencies. Available for "
-        "javascript, java, and python.",
-    )
-    parser.add_argument(
-        "--reachables",
-        action="store_true",
-        default=False,
-        dest="reachables",
-        help="Analyze reachability of direct dependencies. Available for "
-        "javascript, java, and python.",
-    )
+    )    
     parser.add_argument(
         "--no-suggest",
         action="store_false",
