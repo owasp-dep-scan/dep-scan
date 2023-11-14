@@ -4,11 +4,10 @@ import re
 
 from rich import box
 from rich.panel import Panel
-from rich.style import Style
 from rich.table import Table
 from rich.tree import Tree
 
-from depscan.lib.logger import LOG, console
+from depscan.lib.logger import console
 from depscan.lib.config import (
     max_reachable_explanations,
 )

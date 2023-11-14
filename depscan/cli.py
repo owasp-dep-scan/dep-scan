@@ -7,7 +7,6 @@ import os
 import sys
 import tempfile
 
-import httpx
 import oras.client
 from quart import Quart, request
 from rich.panel import Panel
@@ -29,6 +28,7 @@ from depscan.lib.analysis import (
     prepare_vdr,
     suggest_version,
     summary_stats,
+    find_purl_usages,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
@@ -113,7 +113,7 @@ def build_args():
         ),
         dest="profile",
         help="Profile to use while generating the BOM.",
-    )    
+    )
     parser.add_argument(
         "--no-suggest",
         action="store_false",
@@ -808,7 +808,7 @@ def main():
 
         sources_list = [OSVSource(), NvdSource()]
         github_token = os.environ.get("GITHUB_TOKEN")
-        if github_token:
+        if github_token and os.getenv("CI"):
             github_client = github.GitHub(github_token)
 
             if not github_client.can_authenticate():
@@ -818,10 +818,10 @@ def main():
             else:
                 sources_list.insert(0, GitHubSource())
                 scopes = github_client.get_token_scopes()
-                if not scopes is None and len(scopes) > 0:
+                if scopes:
                     LOG.warning(
                         "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
-                        ", ".join([scope for scope in scopes]),
+                        ", ".join(scopes),
                     )
         if run_cacher:
             LOG.info(
@@ -851,11 +851,9 @@ def main():
         )
         if vdb_results:
             results += vdb_results
-        if args.csaf:
-            new_res = []
-            for r in results:
-                new_res.append(r.to_dict())
-            export_csaf(new_res, src_dir, reports_dir, bom_file)
+        direct_purls, reached_purls = find_purl_usages(
+            bom_file, src_dir, args.reachables_slices_file
+        )
         # Summarise and print results
         _, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
             project_type,
