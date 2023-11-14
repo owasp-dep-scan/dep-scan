@@ -1616,7 +1616,7 @@ def export_csaf(
     if not template.get("product_tree"):
         [template["product_tree"], extra_ref] = import_root_component(vdr_file)
         if extra_ref and template["document"].get("references"):
-            mplate["document"]["references"].append(extra_ref)
+            template["document"]["references"].append(extra_ref)
         elif extra_ref:
             template["document"]["references"] = [extra_ref]
     new_results = cleanup_dict(template)
