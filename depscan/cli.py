@@ -551,6 +551,7 @@ async def run_scan():
                 "type": project_type,
                 "multiProject": multi_project,
                 "cdxgen_server": cdxgen_server,
+                "profile": args.profile,
             },
         )
         if bom_status:
@@ -700,7 +701,7 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server},
+                {"cdxgen_server": args.cdxgen_server, "profile": args.profile},
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
