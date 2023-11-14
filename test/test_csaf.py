@@ -2,16 +2,16 @@ import os.path
 
 from depscan.lib.csaf import (
     CsafOccurence,
+    cleanup_dict,
+    cleanup_list,
     format_references,
-    import_csaf_toml,
-    parse_cwe,
     get_product_status,
     get_ref_summary,
+    import_csaf_toml,
     import_root_component,
     parse_cvss,
+    parse_cwe,
     parse_revision_history,
-    cleanup_list,
-    cleanup_dict,
     parse_toml,
 )
 
@@ -205,9 +205,7 @@ def test_parse_revision_history():
 
 def test_cleanup_list():
     assert cleanup_list([{}]) == []
-    assert cleanup_list([{"a": "a", "b": "b", "c": ""}]) == [
-        {"a": "a", "b": "b"}
-    ]
+    assert cleanup_list([{"a": "a", "b": "b", "c": ""}]) == [{"a": "a", "b": "b"}]
     assert cleanup_list(["test", None]) == ["test"]
 
 
@@ -330,7 +328,7 @@ def test_format_references():
         {
             "summary": "GitHub Advisory",
             "url": "https://github.com/user/repo/security/advisories/GHSA"
-                   "-5432-5432-5432",
+            "-5432-5432-5432",
         },
         {
             "summary": "CVE Record",
@@ -339,7 +337,7 @@ def test_format_references():
         {
             "summary": "Cisco Advisory",
             "url": "https://sec.cloudapps.cisco.com/security/center/content"
-                   "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
+            "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd",
         },
     ]
 
@@ -597,7 +595,7 @@ def test_csaf_occurence():
                         "scope": "UNCHANGED",
                         "userInteraction": "REQUIRED",
                         "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L"
-                                        "/I:L/A:L",
+                        "/I:L/A:L",
                         "version": "3.1",
                     },
                     "products": ["taffydb"],
@@ -652,7 +650,7 @@ def test_csaf_occurence():
                 {
                     "summary": "GitHub Commit",
                     "url": "https://github.com/markdown-it/markdown-it/commit"
-                           "/ffc49ab46b5b751cd2be0aabb146f2ef84986101",
+                    "/ffc49ab46b5b751cd2be0aabb146f2ef84986101",
                 },
                 {
                     "summary": "GitHub Repository",
@@ -661,7 +659,7 @@ def test_csaf_occurence():
                 {
                     "summary": "GitHub Advisory",
                     "url": "https://github.com/markdown-it/markdown-it"
-                           "/security/advisories/GHSA-6vfc-qv3f-vr6c",
+                    "/security/advisories/GHSA-6vfc-qv3f-vr6c",
                 },
             ],
             "scores": [
@@ -674,7 +672,7 @@ def test_csaf_occurence():
                         "scope": "UNCHANGED",
                         "userInteraction": "REQUIRED",
                         "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H"
-                                        "/I:H/A:H",
+                        "/I:H/A:H",
                         "version": "3.1",
                     },
                     "products": ["protobufjs"],
@@ -697,7 +695,7 @@ def test_import_root_component():
                 "product_id": "vuln-spring:0.0.1-SNAPSHOT",
                 "product_identification_helper": {
                     "purl": "pkg:maven/com.example/vuln-spring@0.0.1-SNAPSHOT"
-                            "?type=jar"
+                    "?type=jar"
                 },
             }
         ]

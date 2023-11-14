@@ -1,6 +1,6 @@
 # Introduction
 
-OWASP dep-scan is a fully open-source security audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
+OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
 
 ![Depscan logo](dep-scan.png)
 
@@ -10,12 +10,16 @@ OWASP dep-scan is a fully open-source security audit tool based on known vulnera
 ## Features
 
 - Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
+- Perform advanced reachability analysis for multiple languages (See reachability analysis)
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Generate Software Bill-of-Materials (SBoM) with Vulnerability Exploitability Exchange (VEX) information
-- Generate a Common Security Advisory Framework (CSAF) 2.0 document (check out the [CSAF Readme](contrib/CSAF_README.md))
+- Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
+- Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
+![Reachable Flows](docs/depscan-flows.png)
+
 ![Dependency Tree with Insights](docs/tree1.jpg)
+
 ![Dependency Tree with Insights](docs/prioritization.jpg)
 
 ### Vulnerability Data sources
@@ -106,7 +110,7 @@ curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0
 ```
 
 ```bash
-curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vex.json
+curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
 ```
 
 ### Use with ShiftLeft Scan
@@ -136,63 +140,41 @@ cd <project to scan>
 depscan --src $PWD --reports-dir $PWD/reports
 ```
 
-Full list of options are below:
+The full list of options is below:
 
 ```bash
-usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--suggest]
-              [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS]
-              [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE]
-              [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--no-error]
-              [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
-              [--threatdb-server THREATDB_SERVER]
-              [--threatdb-username THREATDB_USERNAME]
-              [--threatdb-password THREATDB_PASSWORD]
-              [--threatdb-token THREATDB_TOKEN] [--privado-json PRIVADO_JSON]
-              [--server] [--server-host SERVER_HOST]
-              [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [-v]
+usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORT_FILE]
+              [--reports-dir REPORTS_DIR] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table] [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server]
+              [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
 
-Fully open-source security and license audit for application dependencies and
-container images based on known vulnerabilities and advisories.
+Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
 options:
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
-  --cache               Cache vulnerability information in platform specific
-                        user_data_dir
-  --csaf                Generate a CSAF
-  --sync                Sync to receive the latest vulnerability data. Should
-                        have invoked cache first.
-  --suggest             DEPRECATED: Suggest is the default mode for
-                        determining fix version.
+  --cache               Cache vulnerability information in platform specific user_data_dir
+  --csaf                Generate a OASIS CSAF VEX document
+  --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
+  --profile {appsec,research,operational,threat-modeling,license-compliance,generic}
+                        Profile to use while generating the BOM.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --private-ns PRIVATE_NS
-                        Private namespace to use while performing oss risk
-                        audit. Private packages should not be available in
-                        public registries by default. Comma separated values
-                        accepted.
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
   -t PROJECT_TYPE, --type PROJECT_TYPE
                         Override project type if auto-detection is incorrect
-  --bom BOM             Examine using the given Software Bill-of-Materials
-                        (SBoM) file in CycloneDX format. Use cdxgen command to
-                        produce one.
+  --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
   -i SRC_DIR_IMAGE, --src SRC_DIR_IMAGE
                         Source directory or container image or binary file
   -o REPORT_FILE, --report_file REPORT_FILE
-                        DEPRECATED. Use reports directory since multiple files
-                        are created. Report filename with directory
+                        DEPRECATED. Use reports directory since multiple files are created. Report filename with directory
   --reports-dir REPORTS_DIR
                         Reports directory
   --no-error            Continue on error to prevent build from breaking
-  --no-license-scan     DEPRECATED: dep-scan does not perform license scanning
-                        by default
-  --deep                Perform deep scan by passing this --deep argument to
-                        cdxgen. Useful while scanning docker images and OS
-                        packages.
-  --no-universal        Depscan would attempt to perform a single universal
-                        scan instead of individual scans per language type.
-  --no-vuln-table       Do not print the table with the full list of
-                        vulnerabilities. This can help reduce console output.
+  --no-license-scan     DEPRECATED: dep-scan doesn't perform license scanning by default
+  --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
+  --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
+  --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
   --threatdb-server THREATDB_SERVER
                         ThreatDB server url. Eg: https://api.sbom.cx
   --threatdb-username THREATDB_USERNAME
@@ -201,11 +183,6 @@ options:
                         ThreatDB password
   --threatdb-token THREATDB_TOKEN
                         ThreatDB token for token based submission
-  --privado-json PRIVADO_JSON
-                        Optional: Enrich the VEX report with information from
-                        privado.ai json report. cdxgen can process and include
-                        privado info automatically so this argument is usually
-                        not required.
   --server              Run depscan as a server
   --server-host SERVER_HOST
                         depscan server host
@@ -213,6 +190,10 @@ options:
                         depscan server port
   --cdxgen-server CDXGEN_SERVER
                         cdxgen server url. Eg: http://cdxgen:9090
+  --debug               Run depscan in debug mode.
+  --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
+  --reachables-slices-file REACHABLES_SLICES_FILE
+                        Path for the reachables slices file created by atom.
   -v, --version         Display the version
 ```
 
@@ -261,8 +242,6 @@ To scan with custom environment variables based configuration
 ```bash
 docker run --rm \
     -e VDB_HOME=/db \
-    -e NVD_START_YEAR=2010 \
-    -e GITHUB_PAGE_COUNT=5 \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
     -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
@@ -272,7 +251,7 @@ In the above example, `/tmp` is mounted as `/db` into the container. This direct
 
 ## Supported languages and package format
 
-dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create Software Bill-of-Materials (SBoM) file for the project. This is then used for performing the scans.
+dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
 
 The following projects and package-dependency format is supported by cdxgen.
 
@@ -298,7 +277,7 @@ The following projects and package-dependency format is supported by cdxgen.
 
 **NOTE**
 
-The docker image for dep-scan currently doesn't bundle suitable java and maven commands required for bom generation. To workaround this limitation, you can -
+The docker image for dep-scan currently doesn't bundle suitable java and maven commands required for BOM generation. To workaround this limitation, you can -
 
 1. Use python-based execution from a VM containing the correct versions for java, maven and gradle.
 2. Generate the bom file by invoking `cdxgen` command locally and subsequently passing this to `dep-scan` via the `--bom` argument.
@@ -330,8 +309,6 @@ This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [
 The following environment variables can be used to customise the behaviour.
 
 - VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
-- NVD_START_YEAR - Default: 2018. Supports upto 2002
-- GITHUB_PAGE_COUNT - Default: 2. Supports upto 20
 
 ## GitHub Security Advisory
 
@@ -344,23 +321,45 @@ To download security advisories from GitHub, a personal access token with minima
 export GITHUB_TOKEN="<PAT token>"
 ```
 
+## Reachability analysis
+
+Depscan can perform reachability analysis for Java, JavaScript, TypeScript and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
+
+To receive a verbose output including the reachable flows, pass the argument `--explain`
+
+```shell
+--profile research -t language [--explain]
+```
+
+### Example analysis for a Java project
+
+```shell
+depscan --profile research -t java -i <source directory> --reports-dir <reports directory> --explain
+```
+
+### Example analysis for a JavaScript project
+
+```shell
+depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --explain
+```
+
 ## Suggest mode
 
-Fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
+Depscan comes with suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
 
 ![Normal mode](docs/depscan-normal.png)
-
-By passing an argument `--suggest` it is possible to force depscan to recheck the fix suggestions. This way the suggestion becomes more optimal for a given package group.
 
 ![Suggest mode](docs/depscan-suggest.png)
 
 Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
 
+Pass `--no-suggest` to disable this behavior.
+
 ## Package Risk audit
 
-`--risk-audit` argument enables package risk audit. Currently, only npm and pypi packages are supported in this mode. A number of risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
+`--risk-audit` argument enables package risk audit. Currently, only npm and pypi packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
 
-Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on public npm/pypi registry.
+Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on the public npm/pypi registry.
 
 For example, to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public, use the below argument.
 
@@ -396,7 +395,7 @@ export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4
 
 ## Live OS scan
 
-By passing `-t os`, depscan can generate an SBoM for a live operating system or a VM with OS packages and kernel information. Optionally, pass the argument `--deep` to generate an SBoM with both OS and application packages and to check for application vulnerabilities.
+By passing `-t os`, depscan can generate an SBOM for a live operating system or a VM with OS packages and kernel information. Optionally, pass the argument `--deep` to generate an SBOM with both OS and application packages and to check for application vulnerabilities.
 
 All OS packages.
 
@@ -428,7 +427,7 @@ dep-scan could auto-detect most cloud applications and Kubernetes manifest files
 
 ## Discord support
 
-The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel.
+The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel for enterprise support.
 
 ## License
 
