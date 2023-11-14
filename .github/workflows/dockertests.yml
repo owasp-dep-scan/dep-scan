@@ -68,6 +68,11 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '21'
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
@@ -184,6 +189,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VDB_HOME: "vdb_data"
           PYTHONUTF8: 1
+          AT_DEBUG_MODE: "debug"
       - uses: actions/upload-artifact@v3
         with:
           name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -230,6 +236,7 @@ jobs:
           PYTHONPATH: "."
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1
+          AT_DEBUG_MODE: "debug"
       - uses: actions/upload-artifact@v3
         with:
           name: containertests_${{ matrix.os }}
