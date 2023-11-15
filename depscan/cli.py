@@ -551,7 +551,7 @@ async def run_scan():
                 "type": project_type,
                 "multiProject": multi_project,
                 "cdxgen_server": cdxgen_server,
-                "profile": args.profile,
+                "profile": profile,
             },
         )
         if bom_status:

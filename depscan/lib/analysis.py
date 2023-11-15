@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional
 
 from rich import box
+from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.style import Style
 from rich.table import Table
@@ -339,11 +340,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                                     continue
                             # Some vendors like suse leads to FP and can be turned off if our image do not have those types
                             # Some os packages might match application packages in NVD
-                            if package_issue["affected_location"].get("vendor") in (
+                            if package_issue["affected_location"].get("vendor") not in (
                                 "suse",
                             ):
-                                continue
-                            else:
                                 insights.append(
                                     f"[#7C8082]:telescope: Vendor {package_issue['affected_location'].get('vendor')}"
                                 )
@@ -591,7 +590,13 @@ def prepare_vdr(options: PrepareVdrOptions):
         console.print(table)
         console.print()
     if pkg_group_rows:
-        console.rule(style="gray37")
+        psection = Markdown(
+            """## Next Steps
+
+Below are the vulnerabilities prioritized by depscan. Follow your team's remediation workflow to mitigate these findings.
+        """
+        )
+        console.print(psection)
         utable = Table(
             title=f"Top Priority ({options.project_type.upper()})",
             box=box.DOUBLE_EDGE,
@@ -713,7 +718,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         elif critical_count:
             console.print(
                 Panel(
-                    f"Prioritize the [magenta]{critical_count}"
+                    f":white_medium_small_square: Prioritize the [magenta]{critical_count}"
                     f"[/magenta] critical vulnerabilities confirmed by the "
                     f"vendor.",
                     title="Recommendation",
@@ -723,7 +728,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         else:
             if has_os_packages:
                 rmessage = (
-                    "Prioritize any vulnerabilities in libraries such "
+                    ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
                     "as glibc, openssl, or libcurl.\nAdditionally, "
                     "prioritize the vulnerabilities in packages that "
                     "provide executable binaries when there is a "
@@ -760,7 +765,7 @@ def prepare_vdr(options: PrepareVdrOptions):
     elif critical_count:
         console.print(
             Panel(
-                f"Prioritize the [magenta]{critical_count}"
+                f":white_medium_small_square: Prioritize the [magenta]{critical_count}"
                 f"[/magenta] critical vulnerabilities confirmed by the vendor.",
                 title="Recommendation",
                 expand=False,
@@ -775,18 +780,23 @@ def prepare_vdr(options: PrepareVdrOptions):
             )
         )
     if reached_purls:
-        console.rule(style="gray37")
         sorted_reached_purls = sorted(
             ((value, key) for (key, value) in reached_purls.items()), reverse=True
         )[:3]
         sorted_reached_dict = OrderedDict((k, v) for v, k in sorted_reached_purls)
+        rsection = Markdown(
+            """## Proactive Measures
+
+Below are the top reachable packages identified by depscan. Setup alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
+        """
+        )
+        console.print(rsection)
         rtable = Table(
             title="Top Reachable Packages",
             box=box.DOUBLE_EDGE,
             header_style="bold magenta",
             show_lines=True,
             min_width=150,
-            caption="Implement a workflow to continuously monitor these packages for vulnerabilities and exploits.",
         )
         for h in ("Package", "Reachable Flows"):
             rtable.add_column(header=h, vertical="top")

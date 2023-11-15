@@ -3,7 +3,7 @@ import os
 import re
 
 from rich import box
-from rich.panel import Panel
+from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 
@@ -43,7 +43,13 @@ def explain(
         with open(reachables_slices_file, "r", encoding="utf-8") as f:
             reachables_data = json.load(f)
             if reachables_data:
-                console.rule(style="gray37")
+                rsection = Markdown(
+                    """## Reachable Flows
+
+Below are some reachable flows identified by depscan. Use the provided tips to improve the securability of your application.
+                """
+                )
+                console.print(rsection)
                 explain_reachables(reachables_data, pkg_group_rows, project_type)
 
 
@@ -90,22 +96,19 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         if reachable_explanations + 1 > max_reachable_explanations:
             break
     if reachable_explanations:
+        tips = """## Secure Design Tips"""
+
         if checked_flows:
-            console.print(
-                Panel(
-                    "Review the detected validation/sanitization methods. Refactor the application to validate using custom middlewares to improve the security posture.",
-                    title="Recommendation",
-                    expand=False,
-                )
-            )
+            tips += """
+- Review the detected validation/sanitization methods in the application.
+- To improve the security posture, implement a common validation middleware.
+"""
         else:
-            console.print(
-                Panel(
-                    "Consider implementing a common validation/sanitization library to reduce the exploitability risk.",
-                    title="Recommendation",
-                    expand=False,
-                )
-            )
+            tips += """
+- Consider implementing a common validation/sanitization library to reduce the exploitability risk.
+"""
+        rsection = Markdown(tips)
+        console.print(rsection)
 
 
 def flow_to_source_sink(flow, purls, project_type):
@@ -157,6 +160,17 @@ def flow_to_source_sink(flow, purls, project_type):
     return source_sink_desc
 
 
+def filter_tags(tags):
+    if tags:
+        tags = [
+            atag
+            for atag in tags.split(", ")
+            if atag not in ("RESOLVED_MEMBER", "UNKNOWN_METHOD", "UNKNOWN_TYPE_DECL")
+        ]
+        return ", ".join(tags)
+    return tags
+
+
 def flow_to_str(flow, project_type):
     """"""
     has_check_tag = False
@@ -168,7 +182,7 @@ def flow_to_str(flow, project_type):
     ):
         file_loc = f'{flow.get("parentFileName").replace("src/main/java/", "").replace("src/main/scala/", "")}#{flow.get("lineNumber")}    '
     node_desc = flow.get("code").split("\n")[0]
-    tags = flow.get("tags")
+    tags = filter_tags(flow.get("tags"))
     if flow.get("label") == "METHOD_PARAMETER_IN":
         param_name = flow.get("name")
         if param_name == "this":
@@ -214,7 +228,7 @@ def explain_flows(flows, purls, project_type):
             ":exclamation_mark: Refactor this flow to reduce the number of external libraries used."
         )
     purls_str = "\n".join(purls)
-    comments.append(f"Reachable Packages:\n{purls_str}")
+    comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
     added_flows = []
     has_check_tag = False
     last_file_loc = None

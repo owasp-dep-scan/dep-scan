@@ -113,17 +113,6 @@ curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0
 curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
 ```
 
-### Use with ShiftLeft Scan
-
-dep-scan is integrated with [scan](https://github.com/ShiftLeftSecurity/sast-scan), a free and open-source SAST tool. To enable this feature simply pass `depscan` to the `--type` argument. [Refer](https://slscan.io) to the scan documentation for more information.
-
-```yaml
----
---type python,depscan,credscan
-```
-
-This approach should work for all CI environments supported by scan.
-
 ### Scanning projects locally (Python version)
 
 ```bash
@@ -131,7 +120,7 @@ sudo npm install -g @cyclonedx/cdxgen
 pip install owasp-depscan
 ```
 
-This would install two commands called `cdxgen` and `scan`.
+This would install two commands called `cdxgen` and `depscan`.
 
 You can invoke the scan command directly with the various options.
 
@@ -275,52 +264,6 @@ The following projects and package-dependency format is supported by cdxgen.
 | Jenkins Plugins          | .hpi files                                                                              |
 | YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
 
-**NOTE**
-
-The docker image for dep-scan currently doesn't bundle suitable java and maven commands required for BOM generation. To workaround this limitation, you can -
-
-1. Use python-based execution from a VM containing the correct versions for java, maven and gradle.
-2. Generate the bom file by invoking `cdxgen` command locally and subsequently passing this to `dep-scan` via the `--bom` argument.
-
-## Integration with CI environments
-
-### Integration with Azure DevOps
-
-Refer to [this example yaml](https://github.com/AppThreat/WebGoat/blob/develop/azure-pipelines.yml#L33) configuration for integrating dep-scan with Azure Pipelines. The build step would perform the scan and display the report inline as shown below:
-
-![Azure DevOps integration](docs/dep-scan-azure.png)
-
-### Integration with GitHub Actions
-
-This tool can be used with GitHub Actions using this [action](https://github.com/marketplace/actions/dep-scan).
-
-This repo self-tests itself with both sast-scan and dep-scan! Check the GitHub [workflow file](https://github.com/owasp-dep-scan/dep-scan/blob/master/.github/workflows/pythonapp.yml) of this repo.
-
-```yaml
-- name: Self dep-scan
-  uses: AppThreat/dep-scan-action@master
-  env:
-    VDB_HOME: ${{ github.workspace }}/db
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
-
-## Customization through environment variables
-
-The following environment variables can be used to customise the behaviour.
-
-- VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
-
-## GitHub Security Advisory
-
-To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
-
-- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
-- Token (classic): Grant no permissions
-
-```bash
-export GITHUB_TOKEN="<PAT token>"
-```
-
 ## Reachability analysis
 
 Depscan can perform reachability analysis for Java, JavaScript, TypeScript and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
@@ -341,6 +284,23 @@ depscan --profile research -t java -i <source directory> --reports-dir <reports 
 
 ```shell
 depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --explain
+```
+
+## Customization through environment variables
+
+The following environment variables can be used to customise the behaviour.
+
+- VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
+
+## GitHub Security Advisory
+
+To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
+
+- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
+- Token (classic): Grant no permissions
+
+```bash
+export GITHUB_TOKEN="<PAT token>"
 ```
 
 ## Suggest mode

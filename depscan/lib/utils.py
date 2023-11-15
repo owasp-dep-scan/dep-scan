@@ -406,5 +406,5 @@ def export_pdf(
             pdf_file = html_file.replace(".html", ".pdf")
         if os.path.exists(html_file):
             pdfkit.from_file(html_file, pdf_file, options=pdf_options)
-    except Exception as e:
+    except Exception:
         pass
