@@ -1,8 +1,8 @@
 import ast
 import os
 import re
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
 from importlib.metadata import distribution
 
 from vdb.lib import db as db_lib

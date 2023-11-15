@@ -433,4 +433,4 @@ UNIVERSAL_SCAN_TYPE = "universal"
 
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
-max_reachable_explanations_purl = get_int_from_env("max_reachable_explanations_purl", 5)
+max_purl_per_flow = get_int_from_env("max_purl_per_flow", 6)
