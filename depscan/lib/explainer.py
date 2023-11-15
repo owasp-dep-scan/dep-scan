@@ -7,10 +7,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
+from depscan.lib.config import max_reachable_explanations
 from depscan.lib.logger import console
-from depscan.lib.config import (
-    max_reachable_explanations,
-)
 
 
 def explain(
@@ -95,7 +93,7 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         if checked_flows:
             console.print(
                 Panel(
-                    "Review the detected validation/sanitization methods. Refactor the application to centralize the common valiidation operations to improve the security posture.",
+                    "Review the detected validation/sanitization methods. Refactor the application to centralize the common validation operations to improve the security posture.",
                     title="Recommendation",
                     expand=False,
                 )
@@ -162,9 +160,7 @@ def flow_to_str(flow):
             param_name = ""
         node_desc = f'{flow.get("parentMethodName")}([red]{param_name}[/red]) :right_arrow_curving_left:'
         if tags:
-            node_desc = (
-                f"{node_desc}\n[bold]Tags :label: [/bold] [italic]{tags}[/italic]\n"
-            )
+            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     elif flow.get("label") == "IDENTIFIER" and node_desc.startswith("<"):
         node_desc = flow.get("name")
     if flow.get("tags"):

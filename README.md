@@ -425,6 +425,10 @@ The license data is sourced from choosealicense.com and is quite limited. If the
 
 dep-scan could auto-detect most cloud applications and Kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
 
+## PDF reports
+
+Ensure [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) is installed or use the official container image to generate pdf reports. Use with `--explain` for more detailed reports.
+
 ## Discord support
 
 The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel for enterprise support.

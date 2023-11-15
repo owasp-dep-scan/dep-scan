@@ -1,6 +1,6 @@
 import json
 import os.path
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.tree import Tree
 from vdb.lib import CPE_FULL_REGEX
 from vdb.lib.config import placeholder_fix_version
-from vdb.lib.utils import parse_purl, parse_cpe
+from vdb.lib.utils import parse_cpe, parse_purl
 
 from depscan.lib import config
 from depscan.lib.logger import LOG, console

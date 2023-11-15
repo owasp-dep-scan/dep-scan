@@ -1,5 +1,6 @@
-import httpx
 import os
+
+import httpx
 from github import Auth, Github
 
 from depscan.lib import config

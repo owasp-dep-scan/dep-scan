@@ -10,7 +10,7 @@ import tempfile
 import oras.client
 from quart import Quart, request
 from rich.panel import Panel
-from rich.terminal_theme import MONOKAI
+from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
 from vdb.lib import db as db_lib
 from vdb.lib.config import data_dir
@@ -19,16 +19,16 @@ from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
 
-from depscan.lib import github, utils, explainer
+from depscan.lib import explainer, github, utils
 from depscan.lib.analysis import (
     PrepareVdrOptions,
     analyse_licenses,
     analyse_pkg_risks,
+    find_purl_usages,
     jsonl_report,
     prepare_vdr,
     suggest_version,
     summary_stats,
-    find_purl_usages,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import create_bom, get_pkg_by_type, get_pkg_list, submit_bom
@@ -665,6 +665,7 @@ def main():
         else os.path.join(reports_dir, "depscan.json")
     )
     html_file = areport_file.replace(".json", ".html")
+    pdf_file = areport_file.replace(".json", ".pdf")
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
@@ -897,7 +898,11 @@ def main():
                 direct_purls=direct_purls,
                 reached_purls=reached_purls,
             )
-    console.save_html(html_file, theme=MONOKAI)
+    console.save_html(
+        html_file,
+        theme=MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME,
+    )
+    utils.export_pdf(html_file, pdf_file)
     # Submit vdr/vex files to threatdb server
     if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
         submit_bom(
