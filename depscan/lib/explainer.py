@@ -7,10 +7,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
+from depscan.lib.config import max_purl_per_flow, max_reachable_explanations
 from depscan.lib.logger import console
-from depscan.lib.config import (
-    max_reachable_explanations,
-)
 
 
 def explain(
@@ -95,7 +93,7 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         if checked_flows:
             console.print(
                 Panel(
-                    "Review the detected validation/sanitization methods. Refactor the application to centralize the common valiidation operations to improve the security posture.",
+                    "Review the detected validation/sanitization methods. Refactor the application to validate using custom middlewares to improve the security posture.",
                     title="Recommendation",
                     expand=False,
                 )
@@ -135,7 +133,22 @@ def flow_to_source_sink(flow, purls, project_type):
         source_sink_desc = flow.get("code").split("\n")[0]
     elif project_type not in ("java") and flow.get("label") == "IDENTIFIER":
         source_sink_desc = flow.get("code").split("\n")[0]
-    if len(purls) == 1:
+    # Try to understand the source a bit more
+    if source_sink_desc.startswith("require("):
+        source_sink_desc = "Flow starts from a module import"
+    elif (
+        ".use(" in source_sink_desc
+        or ".subscribe(" in source_sink_desc
+        or ".on(" in source_sink_desc
+        or ".emit(" in source_sink_desc
+        or " => {" in source_sink_desc
+    ):
+        source_sink_desc = "Flow starts from a callback function"
+    elif (
+        "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower()
+    ):
+        source_sink_desc = "Flow starts from a middlware"
+    elif len(purls) == 1:
         source_sink_desc = f"{source_sink_desc} can be used to reach this package."
     else:
         source_sink_desc = (
@@ -144,7 +157,7 @@ def flow_to_source_sink(flow, purls, project_type):
     return source_sink_desc
 
 
-def flow_to_str(flow):
+def flow_to_str(flow, project_type):
     """"""
     has_check_tag = False
     file_loc = ""
@@ -162,11 +175,12 @@ def flow_to_str(flow):
             param_name = ""
         node_desc = f'{flow.get("parentMethodName")}([red]{param_name}[/red]) :right_arrow_curving_left:'
         if tags:
-            node_desc = (
-                f"{node_desc}\n[bold]Tags :label: [/bold] [italic]{tags}[/italic]\n"
-            )
-    elif flow.get("label") == "IDENTIFIER" and node_desc.startswith("<"):
-        node_desc = flow.get("name")
+            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
+    elif flow.get("label") == "IDENTIFIER":
+        if node_desc.startswith("<"):
+            node_desc = flow.get("name")
+        if project_type not in ("java") and tags:
+            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     if flow.get("tags"):
         if (
             "validation" in tags
@@ -175,16 +189,15 @@ def flow_to_str(flow):
             or "sanitize" in tags
         ):
             has_check_tag = True
-    elif flow.get("label") in ("CALL", "RETURN"):
+    elif flow.get("label") in ("CALL", "RETURN") or project_type not in ("java"):
         code = flow.get("code", "").lower()
         # Let's broaden and look for more check method patterns
         # This is not a great logic but since we're offering some ideas this should be ok
         # Hopefully, the tagger would improve to handle these cases in the future
         if (
-            "escape(" in code
-            or "encode(" in code
-            or "encrypt(" in code
-            or "validate" in code
+            re.search("(escape|encode|encrypt|validate|sanitize)", code)
+            or "authorize" in node_desc.lower()
+            or "authenticate" in node_desc.lower()
         ):
             has_check_tag = True
     if has_check_tag:
@@ -196,6 +209,10 @@ def explain_flows(flows, purls, project_type):
     """"""
     tree = None
     comments = []
+    if len(purls) > max_purl_per_flow:
+        comments.append(
+            ":exclamation_mark: Refactor this flow to reduce the number of external libraries used."
+        )
     purls_str = "\n".join(purls)
     comments.append(f"Reachable Packages:\n{purls_str}")
     added_flows = []
@@ -211,7 +228,7 @@ def explain_flows(flows, purls, project_type):
             continue
         if not source_sink_desc:
             source_sink_desc = flow_to_source_sink(aflow, purls, project_type)
-        file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow)
+        file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow, project_type)
         if last_file_loc == file_loc:
             continue
         last_file_loc = file_loc
@@ -227,6 +244,6 @@ def explain_flows(flows, purls, project_type):
     if has_check_tag:
         comments.insert(
             0,
-            ":white_medium_small_square: Check if the mitigation used in this flow is valid and appropriate for your security requirements.",
+            ":white_medium_small_square: Check if the mitigation(s) used in this flow is valid and appropriate for your security requirements.",
         )
     return tree, "\n".join(comments), source_sink_desc, has_check_tag
