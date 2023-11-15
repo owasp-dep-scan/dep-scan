@@ -587,7 +587,6 @@ def prepare_vdr(options: PrepareVdrOptions):
                 }
             )
     if not options.no_vuln_table:
-        console.rule(style="gray37")
         console.print()
         console.print(table)
         console.print()

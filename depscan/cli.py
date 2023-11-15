@@ -687,7 +687,6 @@ def main():
         results = []
         report_file = areport_file.replace(".json", f"-{project_type}.json")
         risk_report_file = areport_file.replace(".json", f"-risk.{project_type}.json")
-        console.rule(style="gray37")
         if args.bom and os.path.exists(args.bom):
             bom_file = args.bom
             creation_status = True
@@ -733,7 +732,6 @@ def main():
             analyse_licenses(project_type, licenses_results, license_report_file)
         if project_type in risk_audit_map:
             if args.risk_audit:
-                console.rule(style="gray37")
                 console.print(
                     Panel(
                         f"Performing OSS Risk Audit for packages from "
@@ -765,12 +763,11 @@ def main():
                         "Depscan supports OSS Risk audit for this "
                         "project.\nTo enable set the environment variable ["
                         "bold]ENABLE_OSS_RISK=true[/bold]",
-                        title="New Feature",
+                        title="Risk Audit Capability",
                         expand=False,
                     )
                 )
         if project_type in type_audit_map:
-            console.rule(style="gray37")
             LOG.debug(
                 "Performing remote audit for %s of type %s",
                 src_dir,
