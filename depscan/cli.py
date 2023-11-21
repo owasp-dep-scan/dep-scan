@@ -637,7 +637,6 @@ def main():
             LOG.info("CSAF toml not found, creating template in %s", src_dir)
             write_toml(toml_file_path)
             LOG.info("Please fill out the toml with your details and rerun depscan.")
-            LOG.info("Please fill out the toml with your details and rerun depscan.")
             LOG.info(
                 "Check out our CSAF documentation for an explanation of "
                 "this feature. https://github.com/owasp-dep-scan/dep-scan"
@@ -891,8 +890,6 @@ def main():
                 src_dir,
                 reports_dir,
                 vdr_file,
-                pkg_vulnerabilities,
-                pkg_group_rows,
                 direct_purls=direct_purls,
                 reached_purls=reached_purls,
             )
