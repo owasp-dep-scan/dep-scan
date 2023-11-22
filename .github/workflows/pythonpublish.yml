@@ -48,6 +48,13 @@ jobs:
       - name: Publish package distributions to PyPI
         if: startsWith(github.ref, 'refs/tags/')
         uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Setup nydus
+        run: |
+          curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
+          tar -xvf nydus-static-v2.2.4-linux-amd64.tgz
+          chmod +x nydus-static/*
+          mv nydus-static/* /usr/local/bin/
+          rm -rf nydus-static-v2.2.4-linux-amd64.tgz nydus-static
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
