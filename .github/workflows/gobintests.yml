@@ -1,4 +1,4 @@
-name: gobintests tests
+name: binary and nydus tests
 
 on:
   push:
@@ -10,6 +10,7 @@ on:
       - 'pythonapp.yml'
       - 'python-publish.yml'
   pull_request:
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,6 +24,13 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+    - name: setup nydus
+      run: |
+        curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
+        tar -xvf nydus-static-v2.2.4-linux-amd64.tgz
+        chmod +x nydus-static/*
+        mv nydus-static/* /usr/local/bin/
+        rm -rf nydus-static-v2.2.4-linux-amd64.tgz nydus-static
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
@@ -30,6 +38,29 @@ jobs:
         python3 -m pip install --upgrade pip setuptools
         python3 -m pip install .[dev]
         sudo npm install -g @cyclonedx/cdxgen
+    - name: setup nydus
+      run: |
+        RAFS_OUT=rafs_out
+        oras pull ghcr.io/appthreat/vdb:v5-rafs -o $RAFS_OUT
+        nydus-image unpack --blob $RAFS_OUT/data.rafs --output $VDB_HOME/vdb.tar --bootstrap $RAFS_OUT/meta.rafs
+        tar -C $VDB_HOME -xf $VDB_HOME/vdb.tar
+        rm $VDB_HOME/vdb.tar
+      env:
+        VDB_HOME: vdb_data_nydus
+    - name: Test with nydus
+      run: |
+        python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+      env:
+        PYTHONPATH: "."
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VDB_HOME: vdb_data_nydus
+    - name: Test without nydus
+      run: |
+        python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+      env:
+        PYTHONPATH: "."
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        VDB_HOME: vdb_data_default
     - name: Test go binaries
       run: |
         mkdir -p gobintests
