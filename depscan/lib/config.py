@@ -224,6 +224,7 @@ OS_PKG_TYPES = (
     "alpm",
     "docker",
     "oci",
+    "container",
     "generic",
     "qpkg",
     "buildroot",

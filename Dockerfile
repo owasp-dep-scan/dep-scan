@@ -16,13 +16,14 @@ ARG JAVA_VERSION=21.0.1-graalce
 ARG SBT_VERSION=1.9.7
 ARG MAVEN_VERSION=3.9.5
 ARG GRADLE_VERSION=8.3
-
+ARG NYDUS_VERSION=2.2.4
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=1.21.1 \
     JAVA_VERSION=$JAVA_VERSION \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
     GRADLE_VERSION=$GRADLE_VERSION \
+    NYDUS_VERSION=$NYDUS_VERSION \
     GRADLE_OPTS="-Dorg.gradle.daemon=false" \
     JAVA_HOME="/opt/java/${JAVA_VERSION}" \
     MAVEN_HOME="/opt/maven/${MAVEN_VERSION}" \
@@ -83,6 +84,11 @@ RUN set -e; \
     && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php \
     && mv composer.phar /usr/local/bin/composer \
     && python3 -m pip install pipenv certifi \
+    && curl -LO https://github.com/dragonflyoss/nydus/releases/download/v${NYDUS_VERSION}/nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz \
+    && tar -xvf nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz \
+    && chmod +x nydus-static/* \
+    && mv nydus-static/* /usr/local/bin/ \
+    && rm -rf nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz nydus-static \
     && cd /opt/dep-scan \
     && python3 -m pip install -e . \
     && chmod a-w -R /opt \
