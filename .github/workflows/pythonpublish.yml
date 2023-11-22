@@ -78,5 +78,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=depscan
           cache-to: type=gha,mode=max,scope=depscan
-          provenance: true
-          sbom: true
+      - name: nydusify
+        run: |
+          nydusify convert --oci --oci-ref --source ${{ steps.meta.outputs.tags }} --target ${{ steps.meta.outputs.tags }}-nydus --prefetch-dir /opt/dep-scan
+          nydusify check --target ${{ steps.meta.outputs.tags }}-nydus
+        if: github.ref == 'refs/heads/master'
+        continue-on-error: true
