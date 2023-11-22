@@ -385,7 +385,13 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             LOG.debug("BOM Profile: %s", options.get("profile"))
     args.append(src_dir)
     if cdxgen_cmd:
-        exec_tool(args, src_dir)
+        exec_tool(
+            args,
+            src_dir
+            if project_type not in ("docker", "oci", "container")
+            and os.path.exists(src_dir)
+            else None,
+        )
     else:
         LOG.warning("Unable to locate cdxgen command. ")
     return os.path.exists(bom_file)
