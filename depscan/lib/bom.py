@@ -389,7 +389,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             args,
             src_dir
             if project_type not in ("docker", "oci", "container")
-            and os.path.exists(src_dir)
+            and os.path.isdir(src_dir)
             else None,
         )
     else:
