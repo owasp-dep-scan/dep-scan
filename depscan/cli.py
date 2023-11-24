@@ -4,7 +4,9 @@
 import argparse
 import json
 import os
+import shutil
 import sys
+import tarfile
 import tempfile
 
 import oras.client
@@ -37,6 +39,7 @@ from depscan.lib.config import (
     license_data_dir,
     spdx_license_list,
     vdb_database_url,
+    vdb_rafs_database_url,
 )
 from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
@@ -827,12 +830,39 @@ def main():
             except Exception:
                 pass
         if run_cacher:
-            LOG.info(
-                "About to download the vulnerability database from %s. This might take a while ...",
-                vdb_database_url,
-            )
             oras_client = oras.client.OrasClient()
-            paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
+            use_rafs_image = False
+            nydus_image_command = shutil.which("nydus-image", mode=os.X_OK)
+
+            if nydus_image_command is not None:
+                LOG.info(
+                    "About to download the vulnerability database from %s. This might take a while ...",
+                    vdb_rafs_database_url,
+                )
+                use_rafs_image = True
+                try:
+                    rafs_data_dir = tempfile.TemporaryDirectory()
+                    paths_list = oras_client.pull(target=vdb_rafs_database_url, outdir=rafs_data_dir)
+                    os.system(
+                        f"{nydus_image_command} unpack --blob {rafs_data_dir}/data.rafs --output {data_dir}/vdb.tar --bootstrap {rafs_data_dir}/meta.rafs"
+                    )
+                    with tarfile.open(f"{data_dir}/vdb.tar", 'r') as tar:
+                        tar.extractall()
+                    os.remove(f"{data_dir}/vdb.tar")
+                except Exception as e:
+                    LOG.error(f"Error: {e}")
+                    LOG.error(
+                        f"Unable to pull the vulnerability database (rafs image) from {vdb_rafs_database_url}. Trying to pull the non-rafs-based VDB image."
+                    )
+                    use_rafs_image = False
+
+            if use_rafs_image is False:
+                LOG.info(
+                    "About to download the vulnerability database from %s. This might take a while ...",
+                    vdb_database_url,
+                )
+                paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
+
             LOG.debug("VDB data is stored at: %s", paths_list)
             run_cacher = False
             db = db_lib.get()
