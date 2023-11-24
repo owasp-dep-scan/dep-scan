@@ -298,6 +298,7 @@ npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
 pypi_server = "https://pypi.org/pypi"
 
 vdb_database_url = "ghcr.io/appthreat/vdb:v5"
+vdb_rafs_database_url = "ghcr.io/appthreat/vdb:v5-rafs"
 
 # Package risk scoring using a simple weighted formula with no backing
 # research All parameters and their max value and weight can be overridden
