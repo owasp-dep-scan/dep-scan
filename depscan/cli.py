@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -468,6 +469,43 @@ def summarise(
     return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
 
 
+def download_rafs_based_image():
+    rafs_image_downloaded, paths_list = False, None
+    nydus_image_command = shutil.which("nydus-image", mode=os.X_OK)
+    if nydus_image_command is not None:
+        LOG.info(
+            "About to download the vulnerability database from %s. This might take a while ...",
+            vdb_rafs_database_url,
+        )
+
+        try:
+            oras_client = oras.client.OrasClient()
+            rafs_data_dir = tempfile.TemporaryDirectory()
+            paths_list = oras_client.pull(target=vdb_rafs_database_url, outdir=rafs_data_dir.name)
+
+            if os.path.exists(f'{rafs_data_dir.name}/data.rafs') and os.path.exists(f'{rafs_data_dir.name}/meta.rafs'):
+                nydus_download_command = f"{nydus_image_command} unpack --blob {rafs_data_dir.name}/data.rafs --output {data_dir}/vdb.tar --bootstrap {rafs_data_dir.name}/meta.rafs"
+                _ = subprocess.run(nydus_download_command.split(), check=True)
+                if os.path.exists(f'{data_dir}/vdb.tar'):
+                    rafs_image_downloaded = True
+                    with tarfile.open(f"{data_dir}/vdb.tar", 'r') as tar:
+                        tar.extractall(path=data_dir)
+                    os.remove(f"{data_dir}/vdb.tar")
+                else:
+                    raise FileNotFoundError('vdb.tar not found')
+            else:
+                raise FileNotFoundError('data.rafs or meta.rafs not found')
+
+        except Exception as e:
+            LOG.info(f"Error: {e}")
+            LOG.info(
+                f"Unable to pull the vulnerability database (rafs image) from {vdb_rafs_database_url}. Trying to pull the non-rafs-based VDB image."
+            )
+            rafs_image_downloaded = False
+
+    return rafs_image_downloaded, data_dir
+
+
 @app.get("/")
 async def index():
     """
@@ -485,12 +523,18 @@ async def cache():
     """
     db = db_lib.get()
     if not db_lib.index_count(db["index_file"]):
-        oras_client = oras.client.OrasClient()
-        oras_client.pull(target=vdb_database_url, outdir=data_dir)
-        return {
-            "error": "false",
-            "message": "vulnerability database cached successfully",
-        }
+        rafs_image_downloaded, _ = download_rafs_based_image()
+        if not rafs_image_downloaded:
+            LOG.info(
+                "About to download the vulnerability database from %s. This might take a while ...",
+                vdb_database_url,
+            )
+            oras_client = oras.client.OrasClient()
+            oras_client.pull(target=vdb_database_url, outdir=data_dir)
+            return {
+                "error": "false",
+                "message": "vulnerability database cached successfully",
+            }
     return {
         "error": "false",
         "message": "vulnerability database already exists",
@@ -829,37 +873,13 @@ def main():
             except Exception:
                 pass
         if run_cacher:
-            oras_client = oras.client.OrasClient()
-            use_rafs_image = False
-            nydus_image_command = shutil.which("nydus-image", mode=os.X_OK)
-
-            if nydus_image_command is not None:
-                LOG.info(
-                    "About to download the vulnerability database from %s. This might take a while ...",
-                    vdb_rafs_database_url,
-                )
-                use_rafs_image = True
-                try:
-                    rafs_data_dir = tempfile.TemporaryDirectory()
-                    paths_list = oras_client.pull(target=vdb_rafs_database_url, outdir=rafs_data_dir)
-                    os.system(
-                        f"{nydus_image_command} unpack --blob {rafs_data_dir}/data.rafs --output {data_dir}/vdb.tar --bootstrap {rafs_data_dir}/meta.rafs"
-                    )
-                    with tarfile.open(f"{data_dir}/vdb.tar", 'r') as tar:
-                        tar.extractall()
-                    os.remove(f"{data_dir}/vdb.tar")
-                except Exception as e:
-                    LOG.error(f"Error: {e}")
-                    LOG.error(
-                        f"Unable to pull the vulnerability database (rafs image) from {vdb_rafs_database_url}. Trying to pull the non-rafs-based VDB image."
-                    )
-                    use_rafs_image = False
-
-            if use_rafs_image is False:
+            rafs_image_downloaded, paths_list = download_rafs_based_image()
+            if not rafs_image_downloaded:
                 LOG.info(
                     "About to download the vulnerability database from %s. This might take a while ...",
                     vdb_database_url,
                 )
+                oras_client = oras.client.OrasClient()
                 paths_list = oras_client.pull(target=vdb_database_url, outdir=data_dir)
 
             LOG.debug("VDB data is stored at: %s", paths_list)
