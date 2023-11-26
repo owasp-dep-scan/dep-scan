@@ -568,6 +568,7 @@ async def run_scan():
             )
             if vdb_results:
                 results += vdb_results
+            results = [r.to_dict() for r in results]
             bom_data = json.load(bfp)
             options = PrepareVdrOptions(
                 project_type,
