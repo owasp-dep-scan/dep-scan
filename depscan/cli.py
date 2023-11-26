@@ -581,16 +581,17 @@ async def run_scan():
         project_type = q.get("type")
     if q.get("profile"):
         profile = q.get("profile")
-    if not url and params.get("url"):
-        url = params.get("url")
-    if not path and params.get("path"):
-        path = params.get("path")
-    if not multi_project and params.get("multiProject"):
-        multi_project = params.get("multiProject", "").lower() in ("true", "1")
-    if not project_type and params.get("type"):
-        project_type = params.get("type")
-    if not profile and params.get("profile"):
-        profile = params.get("profile")
+    if params is not None:
+        if not url and params.get("url"):
+            url = params.get("url")
+        if not path and params.get("path"):
+            path = params.get("path")
+        if not multi_project and params.get("multiProject"):
+            multi_project = params.get("multiProject", "").lower() in ("true", "1")
+        if not project_type and params.get("type"):
+            project_type = params.get("type")
+        if not profile and params.get("profile"):
+            profile = params.get("profile")
     if not path and not url:
         return {"error": "true", "message": "path or url is required"}, 500
     if not db_lib.index_count(db["index_file"]):
@@ -599,60 +600,80 @@ async def run_scan():
             "message": "Vulnerability database is empty. Prepare the "
             "vulnerability database by invoking /cache endpoint "
             "before running scans.",
-        }, 500
+        }, 500, {"Content-Type": "application/json"}
+
     cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
-        bom_status = create_bom(
-            project_type,
-            bfp.name,
-            path,
-            True,
-            {
-                "url": url,
-                "path": path,
-                "type": project_type,
-                "multiProject": multi_project,
-                "cdxgen_server": cdxgen_server,
-                "profile": profile,
-            },
-        )
-        if bom_status:
-            LOG.debug("BOM file was generated successfully at %s", bfp.name)
-            pkg_list = get_pkg_list(bfp.name)
-            if not pkg_list:
-                return {}
-            if project_type in type_audit_map:
-                audit_results = audit(project_type, pkg_list)
-                if audit_results:
-                    results = results + audit_results
-            vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
-                db, project_type, pkg_list, True
-            )
-            if vdb_results:
-                results += vdb_results
-            results = [r.to_dict() for r in results]
-            bom_data = json.load(bfp)
-            options = PrepareVdrOptions(
+
+    process_bom_file, bom_file_path = False, None
+
+    # Path points to a project directory
+    if os.path.isdir(path):
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
+            bom_status = create_bom(
                 project_type,
-                results,
-                pkg_aliases,
-                purl_aliases,
-                sug_version_dict,
-                scoped_pkgs={},
-                no_vuln_table=True,
-                bom_file=bfp.name,
-                direct_purls=None,
-                reached_purls=None,
+                bfp.name,
+                path,
+                True,
+                {
+                    "url": url,
+                    "path": path,
+                    "type": project_type,
+                    "multiProject": multi_project,
+                    "cdxgen_server": cdxgen_server,
+                    "profile": profile,
+                },
             )
-            pkg_vulnerabilities, _ = prepare_vdr(options)
-            if pkg_vulnerabilities:
-                bom_data["vulnerabilities"] = pkg_vulnerabilities
-            return json.dumps(bom_data)
-        else:
-            return {
-                "error": "true",
+            if bom_status:
+                LOG.debug("BOM file was generated successfully at %s", bfp.name)
+                process_bom_file = bom_status
+                bom_file_path = bfp.name
+
+    # Path points to a SBOM file
+    else:
+        if os.path.exists(path):
+            process_bom_file = True
+            bom_file_path = path
+
+    if process_bom_file:
+        pkg_list = get_pkg_list(bom_file_path)
+        if not pkg_list:
+            return {}
+        if project_type in type_audit_map:
+            audit_results = audit(project_type, pkg_list)
+            if audit_results:
+                results = results + audit_results
+        vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
+            db, project_type, pkg_list, True
+        )
+        if vdb_results:
+            results += vdb_results
+        results = [r.to_dict() for r in results]
+        bom_data = None
+        with open(bom_file_path, encoding="utf-8") as fp:
+            bom_data = json.load(fp)
+        if not bom_data:
+            return {'error': 'true', 'message': 'Unable to generate SBOM. Check your input path or url.'}, 400, {"Content-Type": "application/json"}
+        options = PrepareVdrOptions(
+            project_type,
+            results,
+            pkg_aliases,
+            purl_aliases,
+            sug_version_dict,
+            scoped_pkgs={},
+            no_vuln_table=True,
+            bom_file=bom_file_path,
+            direct_purls=None,
+            reached_purls=None,
+        )
+        pkg_vulnerabilities, _ = prepare_vdr(options)
+        if pkg_vulnerabilities:
+            bom_data["vulnerabilities"] = pkg_vulnerabilities
+        return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
+
+    else:
+        return {"error": "true",
                 "message": "Unable to generate SBOM. Check your input path or url.",
-            }, 500
+            }, 500, {"Content-Type": "application/json"}
 
 
 def run_server(args):
