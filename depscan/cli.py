@@ -564,10 +564,12 @@ async def run_scan():
     """
     q = request.args
     params = await request.get_json()
+    uploaded_bom_file = await request.files
+
     url = None
     path = None
-    multi_project = None
-    project_type = None
+    multi_project = "false"
+    project_type = "universal"
     results = []
     db = db_lib.get()
     profile = "generic"
@@ -592,8 +594,8 @@ async def run_scan():
             project_type = params.get("type")
         if not profile and params.get("profile"):
             profile = params.get("profile")
-    if not path and not url:
-        return {"error": "true", "message": "path or url is required"}, 500
+    if not path and not url and (uploaded_bom_file.get('file', None) is None):
+        return {"error": "true", "message": "path or url or a bom file upload is required"}, 400
     if not db_lib.index_count(db["index_file"]):
         return {
             "error": "true",
@@ -603,8 +605,14 @@ async def run_scan():
         }, 500, {"Content-Type": "application/json"}
 
     cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
+    bom_file_path = None
 
-    process_bom_file, bom_file_path = False, None
+    if uploaded_bom_file.get('file', None) is not None:
+        LOG.debug('Processing uploaded file')
+        tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json")
+        with open(tmp_bom_file.name, 'w') as f:
+            f.write(uploaded_bom_file['file'].read().decode('utf-8'))
+        path = tmp_bom_file.name
 
     # Path points to a project directory
     if os.path.isdir(path):
@@ -625,16 +633,14 @@ async def run_scan():
             )
             if bom_status:
                 LOG.debug("BOM file was generated successfully at %s", bfp.name)
-                process_bom_file = bom_status
                 bom_file_path = bfp.name
 
     # Path points to a SBOM file
     else:
         if os.path.exists(path):
-            process_bom_file = True
             bom_file_path = path
 
-    if process_bom_file:
+    if bom_file_path is not None:
         pkg_list = get_pkg_list(bom_file_path)
         if not pkg_list:
             return {}
