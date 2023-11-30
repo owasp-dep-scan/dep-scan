@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+from defusedxml.ElementTree import parse
 import json
 import os
 import shutil
@@ -608,10 +609,18 @@ async def run_scan():
     bom_file_path = None
 
     if uploaded_bom_file.get('file', None) is not None:
+        bom_file_content = uploaded_bom_file['file'].read().decode('utf-8')
+        try:
+            _ = json.loads(bom_file_content)
+            _ = parse(bom_file_content)
+        except Exception as e:
+            LOG.info(e)
+            return {'error': 'true', 'message': 'The uploaded file must be a valid JSON or XML.'}, 400, {"Content-Type": "application/json"}
+
         LOG.debug('Processing uploaded file')
         tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json")
         with open(tmp_bom_file.name, 'w') as f:
-            f.write(uploaded_bom_file['file'].read().decode('utf-8'))
+            f.write(bom_file_content)
         path = tmp_bom_file.name
 
     # Path points to a project directory
