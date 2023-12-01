@@ -27,11 +27,6 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
     """
     try:
         LOG.debug('⚡︎ Executing "%s"', " ".join(args))
-        if os.environ.get("FETCH_LICENSE"):
-            LOG.debug(
-                "License information will be fetched from the registry. This "
-                "will take several minutes ..."
-            )
         cp = subprocess.run(
             args,
             stdout=stdout,
