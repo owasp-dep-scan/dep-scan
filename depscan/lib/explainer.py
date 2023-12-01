@@ -193,27 +193,20 @@ def flow_to_str(flow, project_type):
     elif flow.get("label") == "IDENTIFIER":
         if node_desc.startswith("<"):
             node_desc = flow.get("name")
-        if project_type not in ("java") and tags:
+        if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-    if flow.get("tags"):
-        if (
-            "validation" in tags
-            or "encode" in tags
-            or "encrypt" in tags
-            or "sanitize" in tags
+    if tags:
+        for ctag in (
+            "validation",
+            "encode",
+            "encrypt",
+            "sanitize",
+            "authentication",
+            "authorization",
         ):
-            has_check_tag = True
-    elif flow.get("label") in ("CALL", "RETURN") or project_type not in ("java"):
-        code = flow.get("code", "").lower()
-        # Let's broaden and look for more check method patterns
-        # This is not a great logic but since we're offering some ideas this should be ok
-        # Hopefully, the tagger would improve to handle these cases in the future
-        if (
-            re.search("(escape|encode|encrypt|validate|sanitize)", code)
-            or "authorize" in node_desc.lower()
-            or "authenticate" in node_desc.lower()
-        ):
-            has_check_tag = True
+            if ctag in tags:
+                has_check_tag = True
+                break
     if has_check_tag:
         node_desc = f"[green]{node_desc}[/green]"
     return file_loc, f"""[gray37]{file_loc}[/gray37]{node_desc}""", has_check_tag
@@ -234,10 +227,11 @@ def explain_flows(flows, purls, project_type):
     last_file_loc = None
     source_sink_desc = ""
     for aflow in flows:
-        if project_type in ("java",) and aflow.get("label") not in (
-            "METHOD_PARAMETER_IN",
-            "CALL",
-            "RETURN",
+        # For java, we are only interested in identifiers with tags to keep the flows simple to understand
+        if (
+            project_type in ("java", "jar", "android", "apk")
+            and aflow.get("label") == "IDENTIFIER"
+            and not aflow.get("tags")
         ):
             continue
         if not source_sink_desc:
