@@ -481,20 +481,33 @@ def download_rafs_based_image():
         try:
             oras_client = oras.client.OrasClient()
             rafs_data_dir = tempfile.TemporaryDirectory()
-            paths_list = oras_client.pull(target=vdb_rafs_database_url, outdir=rafs_data_dir.name)
+            paths_list = oras_client.pull(
+                target=vdb_rafs_database_url, outdir=rafs_data_dir.name
+            )
 
-            if os.path.exists(f'{rafs_data_dir.name}/data.rafs') and os.path.exists(f'{rafs_data_dir.name}/meta.rafs'):
-                nydus_download_command = f"{nydus_image_command} unpack --blob {rafs_data_dir.name}/data.rafs --output {data_dir}/vdb.tar --bootstrap {rafs_data_dir.name}/meta.rafs"
-                _ = subprocess.run(nydus_download_command.split(), check=True)
-                if os.path.exists(f'{data_dir}/vdb.tar'):
+            if os.path.exists(
+                os.path.join(rafs_data_dir.name, "data.rafs")
+            ) and os.path.exists(os.path.join(rafs_data_dir.name, "meta.rafs")):
+                nydus_download_command = [
+                    f"{nydus_image_command}",
+                    "unpack",
+                    "--blob",
+                    os.path.join(rafs_data_dir.name, "data.rafs"),
+                    "--output",
+                    os.path.join(data_dir, "vdb.tar"),
+                    "--bootstrap",
+                    os.path.join(rafs_data_dir.name, "meta.rafs"),
+                ]
+                _ = subprocess.run(nydus_download_command, check=True)
+                if os.path.exists(os.path.join(data_dir, "vdb.tar")):
                     rafs_image_downloaded = True
-                    with tarfile.open(f"{data_dir}/vdb.tar", 'r') as tar:
+                    with tarfile.open(os.path.join(data_dir, "vdb.tar"), "r") as tar:
                         tar.extractall(path=data_dir)
-                    os.remove(f"{data_dir}/vdb.tar")
+                    os.remove(os.path.join(data_dir, "vdb.tar"))
                 else:
-                    raise FileNotFoundError('vdb.tar not found')
+                    raise FileNotFoundError("vdb.tar not found")
             else:
-                raise FileNotFoundError('data.rafs or meta.rafs not found')
+                raise FileNotFoundError("data.rafs or meta.rafs not found")
 
         except Exception as e:
             LOG.info(f"Error: {e}")
