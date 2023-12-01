@@ -569,8 +569,8 @@ async def run_scan():
 
     url = None
     path = None
-    multi_project = "false"
-    project_type = "universal"
+    multi_project = None
+    project_type = None
     results = []
     db = db_lib.get()
     profile = "generic"
@@ -595,8 +595,12 @@ async def run_scan():
             project_type = params.get("type")
         if not profile and params.get("profile"):
             profile = params.get("profile")
+
     if not path and not url and (uploaded_bom_file.get('file', None) is None):
         return {"error": "true", "message": "path or url or a bom file upload is required"}, 400
+    if not project_type:
+        return {"error": "true", "message": "project type is required"}, 400
+
     if not db_lib.index_count(db["index_file"]):
         return {
             "error": "true",
@@ -609,16 +613,20 @@ async def run_scan():
     bom_file_path = None
 
     if uploaded_bom_file.get('file', None) is not None:
-        bom_file_content = uploaded_bom_file['file'].read().decode('utf-8')
+        bom_file = uploaded_bom_file['file']
+        bom_file_content = bom_file.read().decode('utf-8')
         try:
-            _ = json.loads(bom_file_content)
-            _ = parse(bom_file_content)
+            if str(bom_file.filename).endswith(".json"):
+                _ = json.loads(bom_file_content)
+            else:
+                _ = parse(bom_file_content)
         except Exception as e:
             LOG.info(e)
             return {'error': 'true', 'message': 'The uploaded file must be a valid JSON or XML.'}, 400, {"Content-Type": "application/json"}
 
         LOG.debug('Processing uploaded file')
-        tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json")
+        bom_file_suffix = str(bom_file.filename).split(".")[-1]
+        tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".bom.{bom_file_suffix}")
         with open(tmp_bom_file.name, 'w') as f:
             f.write(bom_file_content)
         path = tmp_bom_file.name
