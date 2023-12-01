@@ -1,7 +1,11 @@
 import os.path
+import re
+
+import pytest
 
 from depscan.lib.csaf import (
     CsafOccurence,
+    add_vulnerabilities,
     cleanup_dict,
     cleanup_list,
     format_references,
@@ -13,6 +17,8 @@ from depscan.lib.csaf import (
     parse_cwe,
     parse_revision_history,
     parse_toml,
+    verify_components_present,
+    version_helper,
 )
 
 
@@ -205,7 +211,9 @@ def test_parse_revision_history():
 
 def test_cleanup_list():
     assert cleanup_list([{}]) == []
-    assert cleanup_list([{"a": "a", "b": "b", "c": ""}]) == [{"a": "a", "b": "b"}]
+    assert cleanup_list([{"a": "a", "b": "b", "c": ""}]) == [
+        {"a": "a", "b": "b"}
+    ]
     assert cleanup_list(["test", None]) == ["test"]
 
 
@@ -431,7 +439,29 @@ def test_get_product_status():
             "fixed_location": None,
         },
         "1089386|taffydb|2.6.2",
-    ) == ("taffydb", {"known_affected": ["taffydb:<=2.7.3"]})
+    ) == (
+        "taffydb",
+        {"known_affected": ["taffydb:<=2.7.3"]},
+        "<=2.7.3",
+        "taffydb",
+    )
+
+    assert get_product_status(
+        {
+            "affected_location": {
+                "cpe_uri": "cpe:2.3:a:npm:taffydb:*:*:*:*:*:*:*:*",
+                "package": "taffydb",
+                "version": "<=2.7.3",
+            },
+            "fixed_location": None,
+        },
+        "1089386_32636283|taffygroup|taffydb|2.6.2",
+    ) == (
+        "taffydb",
+        {"known_affected": ["taffydb:<=2.7.3"]},
+        "<=2.7.3",
+        "taffygroup/taffydb",
+    )
 
 
 def test_csaf_occurence():
@@ -713,3 +743,973 @@ def test_import_root_component():
             "/spring-boot-starter-parent/vuln-spring",
         },
     ]
+
+
+def test_verify_components_present():
+    data = {
+        "document": {
+            "aggregate_severity": {"text": "Critical"},
+            "category": "csaf_vex",
+            "title": "Your Title",
+            "csaf_version": "2.0",
+            "lang": "en",
+            "publisher": {
+                "category": "vendor",
+                "contact_details": "vendor@mcvendorson.com",
+                "name": "Vendor McVendorson",
+                "namespace": "https://appthreat.com",
+            },
+            "references": [
+                {
+                    "category": "self",
+                    "summary": "dcksdnskljskl",
+                    "url": "sdhasdjhslk.com",
+                }
+            ],
+            "tracking": {
+                "status": "draft",
+                "initial_release_date": "2023-11-12T06:51:08",
+                "current_release_date": "2023-11-12T06:51:08",
+                "version": "1",
+                "id": "2023-11-22T10:35:03_v1",
+            },
+        },
+        "vulnerabilities": [
+            {
+                "id": "CVE-2020-36180",
+                "problem_type": "CWE-502",
+                "type": "fasterxml",
+                "severity": "HIGH",
+                "cvss_score": "8.1",
+                "cvss_v3": {
+                    "base_score": 8.1,
+                    "exploitability_score": 2.2,
+                    "impact_score": 5.9,
+                    "attack_vector": "NETWORK",
+                    "attack_complexity": "HIGH",
+                    "privileges_required": "NONE",
+                    "user_interaction": "NONE",
+                    "scope": "UNCHANGED",
+                    "confidentiality_impact": "HIGH",
+                    "integrity_impact": "HIGH",
+                    "availability_impact": "HIGH",
+                    "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                },
+                "package_issue": {
+                    "affected_location": {
+                        "cpe_uri": "cpe:2.3:a:fasterxml:jackson-databind:*:*:*:*:*:*:*:*",
+                        "package": "jackson-databind",
+                        "version": ">=2.7.0-<2.9.10.8",
+                    },
+                    "fixed_location": "2.9.10.8",
+                },
+                "short_description": "FasterXML jackson-databind 2.x before 2.9.10.8 mishandles the interaction between serialization gadgets and typing, related to org.apache.commons.dbcp2.cpdsadapter.DriverAdapterCPDS.",
+                "long_description": None,
+                "related_urls": [
+                    "https://github.com/FasterXML/jackson-databind/issues/3004",
+                    "https://cowtowncoder.medium.com/on-jackson-cves-dont-panic-here-is-what-you-need-to-know-54cd0d6e8062",
+                ],
+                "effective_severity": "HIGH",
+                "source_update_time": "2023-09-13T14:56:00",
+                "source_orig_time": "2021-01-07T00:15:00",
+                "matched_by": "3647951461_3647986090|fasterxml|jackson-databind|2.9.6",
+            },
+            {
+                "id": "CVE-2019-12086",
+                "problem_type": "CWE-502",
+                "type": "fasterxml",
+                "severity": "HIGH",
+                "cvss_score": "7.5",
+                "cvss_v3": {
+                    "base_score": 7.5,
+                    "exploitability_score": 3.9,
+                    "impact_score": 3.6,
+                    "attack_vector": "NETWORK",
+                    "attack_complexity": "LOW",
+                    "privileges_required": "NONE",
+                    "user_interaction": "NONE",
+                    "scope": "UNCHANGED",
+                    "confidentiality_impact": "HIGH",
+                    "integrity_impact": "NONE",
+                    "availability_impact": "NONE",
+                    "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                },
+                "package_issue": {
+                    "affected_location": {
+                        "cpe_uri": "cpe:2.3:a:fasterxml:jackson-databind:*:*:*:*:*:*:*:*",
+                        "package": "jackson-databind",
+                        "version": ">=2.9.0-<2.9.9",
+                    },
+                    "fixed_location": "2.9.9",
+                },
+                "short_description": "A Polymorphic Typing issue was discovered in FasterXML jackson-databind 2.x before 2.9.9. When Default Typing is enabled (either globally or for a specific property) for an externally exposed JSON endpoint, the service has the mysql-connector-java jar (8.0.14 or earlier) in the classpath, and an attacker can host a crafted MySQL server reachable by the victim, an attacker can send a crafted JSON message that allows them to read arbitrary local files on the server. This occurs because of missing com.mysql.cj.jdbc.admin.MiniAdmin validation.",
+                "long_description": None,
+                "related_urls": [
+                    "https://www.oracle.com/security-alerts/cpujul2020.html",
+                    "https://lists.apache.org/thread.html/rda99599896c3667f2cc9e9d34c7b6ef5d2bbed1f4801e1d75a2b0679@%3Ccommits.nifi.apache.org%3E",
+                    "https://www.oracle.com/security-alerts/cpuoct2020.html",
+                    "https://www.oracle.com/security-alerts/cpuApr2021.html",
+                    "https://www.oracle.com/security-alerts/cpuapr2022.html",
+                ],
+                "effective_severity": "HIGH",
+                "source_update_time": "2023-09-13T14:16:00",
+                "source_orig_time": "2019-05-17T17:29:00",
+                "matched_by": "3747044328_3747096861|fasterxml|jackson-databind|2.9.6",
+            },
+            {
+                "id": "CVE-2018-11784",
+                "problem_type": "CWE-601",
+                "type": "org.apache.tomcat.embed",
+                "severity": "MEDIUM",
+                "cvss_score": "4.3",
+                "cvss_v3": {
+                    "base_score": 4.3,
+                    "exploitability_score": 4.3,
+                    "impact_score": 4.3,
+                    "attack_vector": "NETWORK",
+                    "attack_complexity": "LOW",
+                    "privileges_required": "NONE",
+                    "user_interaction": "REQUIRED",
+                    "scope": "UNCHANGED",
+                    "confidentiality_impact": "MEDIUM",
+                    "integrity_impact": "MEDIUM",
+                    "availability_impact": "MEDIUM",
+                    "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+                },
+                "package_issue": {
+                    "affected_location": {
+                        "cpe_uri": "cpe:2.3:a:org.apache.tomcat.embed:tomcat-embed-core:*:*:*:*:*:*:*:*",
+                        "package": "tomcat-embed-core",
+                        "version": ">=8.5.0-<8.5.34",
+                    },
+                    "fixed_location": "8.5.34",
+                },
+                "short_description": "# Moderate severity vulnerability that affects org.apache.tomcat.embed:tomcat-embed-core\nWhen the default servlet in Apache Tomcat versions 9.0.0.M1 to 9.0.11, 8.5.0 to 8.5.33 and 7.0.23 to 7.0.90 returned a redirect to a directory (e.g. redirecting to '/foo/' when the user requested '/foo') a specially crafted URL could be used to cause the redirect to be generated to any URI of the attackers choice.",
+                "long_description": None,
+                "related_urls": [
+                    "https://nvd.nist.gov/vuln/detail/CVE-2018-11784",
+                    "https://access.redhat.com/errata/RHSA-2019:0130",
+                    "https://access.redhat.com/errata/RHSA-2019:0131",
+                    "https://access.redhat.com/errata/RHSA-2019:0485",
+                    "https://access.redhat.com/errata/RHSA-2019:1529",
+                    "https://github.com/advisories/GHSA-5q99-f34m-67gc",
+                    "https://seclists.org/bugtraq/2019/Dec/43",
+                    "https://security.netapp.com/advisory/ntap-20181014-0002/",
+                ],
+                "effective_severity": "MEDIUM",
+                "source_update_time": "2023-04-11T01:35:23",
+                "source_orig_time": "2018-10-17T16:31:02",
+                "matched_by": "2650801486_2650849443|org.apache.tomcat.embed|tomcat-embed-core|8.5.31",
+            },
+            {
+                "id": "CVE-2022-22971",
+                "problem_type": "CWE-770",
+                "type": "org.springframework",
+                "severity": "MEDIUM",
+                "cvss_score": "6.5",
+                "cvss_v3": {
+                    "base_score": 6.5,
+                    "exploitability_score": 6.5,
+                    "impact_score": 6.5,
+                    "attack_vector": "NETWORK",
+                    "attack_complexity": "LOW",
+                    "privileges_required": "NONE",
+                    "user_interaction": "REQUIRED",
+                    "scope": "UNCHANGED",
+                    "confidentiality_impact": "MEDIUM",
+                    "integrity_impact": "MEDIUM",
+                    "availability_impact": "MEDIUM",
+                    "vector_string": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+                },
+                "package_issue": {
+                    "affected_location": {
+                        "cpe_uri": "cpe:2.3:a:org.springframework:spring-core:*:*:*:*:*:*:*:*",
+                        "package": "spring-core",
+                        "version": ">=0-<5.2.22.RELEASE",
+                    },
+                    "fixed_location": "5.2.22.RELEASE",
+                },
+                "short_description": "# Allocation of Resources Without Limits or Throttling in Spring Framework\nIn spring framework versions prior to 5.3.20+ , 5.2.22+ and old unsupported versions, application with a STOMP over WebSocket endpoint is vulnerable to a denial of service attack by an authenticated user.",
+                "long_description": None,
+                "related_urls": [
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-22971",
+                    "https://security.netapp.com/advisory/ntap-20220616-0003/",
+                    "https://tanzu.vmware.com/security/cve-2022-22971",
+                    "https://www.oracle.com/security-alerts/cpujul2022.html",
+                ],
+                "effective_severity": "MEDIUM",
+                "source_update_time": "2023-04-11T01:33:53",
+                "source_orig_time": "2022-05-13T00:00:29",
+                "matched_by": "2660437234_2660469022|org.springframework|spring-core|5.0.7.RELEASE",
+            },
+            {
+                "id": "CVE-2022-40150",
+                "problem_type": "CWE-400,CWE-674",
+                "type": "org.codehaus.jettison",
+                "severity": "HIGH",
+                "cvss_score": "7.5",
+                "cvss_v3": {
+                    "base_score": 7.5,
+                    "exploitability_score": 7.5,
+                    "impact_score": 7.5,
+                    "attack_vector": "NETWORK",
+                    "attack_complexity": "LOW",
+                    "privileges_required": "NONE",
+                    "user_interaction": "REQUIRED",
+                    "scope": "UNCHANGED",
+                    "confidentiality_impact": "HIGH",
+                    "integrity_impact": "HIGH",
+                    "availability_impact": "HIGH",
+                    "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                },
+                "package_issue": {
+                    "affected_location": {
+                        "cpe_uri": "cpe:2.3:a:org.codehaus.jettison:jettison:*:*:*:*:*:*:*:*",
+                        "package": "jettison",
+                        "version": ">=0-<1.5.2",
+                    },
+                    "fixed_location": "1.5.2",
+                },
+                "short_description": "# Jettison memory exhaustion\nThose using Jettison to parse untrusted XML or JSON data may be vulnerable to Denial of Service attacks (DOS). If the parser is running on user supplied input, an attacker may supply content that causes the parser to crash by Out of memory. This effect may support a denial of service attack.",
+                "long_description": None,
+                "related_urls": [
+                    "https://nvd.nist.gov/vuln/detail/CVE-2022-40150",
+                    "https://github.com/jettison-json/jettison/issues/45",
+                    "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46549",
+                    "https://github.com/jettison-json/jettison",
+                    "https://lists.debian.org/debian-lts-announce/2022/12/msg00045.html",
+                    "https://www.debian.org/security/2023/dsa-5312",
+                ],
+                "effective_severity": "HIGH",
+                "source_update_time": "2023-07-13T19:19:12",
+                "source_orig_time": "2022-09-17T00:00:41",
+                "matched_by": "2662034264_2662079740|org.codehaus.jettison|jettison|1.3.7",
+            },
+        ],
+    }
+    metadata = {
+        "depscan_version": "4.3.3",
+        "note": [
+            {"audience": "", "category": "", "text": "", "title": ""},
+            {"audience": "", "category": "", "text": "", "title": ""},
+        ],
+        "reference": [
+            {
+                "category": "self",
+                "summary": "dcksdnskljskl",
+                "url": "sdhasdjhslk.com",
+            },
+            {"category": "", "summary": "", "url": ""},
+        ],
+        "distribution": {"label": "", "text": "", "url": ""},
+        "document": {"category": "csaf_vex", "title": "Your Title"},
+        "product_tree": {"easy_import": ""},
+        "publisher": {
+            "category": "vendor",
+            "contact_details": "vendor@mcvendorson.com",
+            "name": "Vendor McVendorson",
+            "namespace": "https://appthreat.com",
+        },
+        "tracking": {
+            "status": "draft",
+            "initial_release_date": "2023-11-12T06:51:08",
+            "current_release_date": "2023-11-12T06:51:08",
+            "version": "1",
+            "id": "",
+        },
+    }
+    if os.path.exists("test/data/bom-root-comp.json"):
+        vdr_file = "test/data/bom-root-comp.json"
+    else:
+        vdr_file = "data/bom-root-comp.json"
+
+    [template, new_metadata] = verify_components_present(
+        data, metadata, vdr_file
+    )
+    assert template["document"]["notes"] == [
+        {
+            "category": "legal_disclaimer",
+            "text": "Depscan reachable code only covers the "
+            "project source code, not the code of "
+            "dependencies. A dependency may execute "
+            "vulnerable code when called even if it is "
+            "not in the project's source code. Regard the "
+            "Depscan-set flag of "
+            "'code_not_in_execute_path' with this in "
+            "mind.",
+        }
+    ]
+    assert template["product_tree"] == {
+        "full_product_names": [
+            {
+                "name": "vuln-spring",
+                "product_id": "vuln-spring:0.0.1-SNAPSHOT",
+                "product_identification_helper": {
+                    "purl": "pkg:maven/com.example/vuln-spring@0.0.1-SNAPSHOT?type=jar"
+                },
+            }
+        ]
+    }
+
+    assert new_metadata["tracking"] == {
+        "current_release_date": "2023-11-12T06:51:08",
+        "id": "",
+        "initial_release_date": "2023-11-12T06:51:08",
+        "status": "draft",
+        "version": "1",
+    }
+
+
+def test_add_vulnerabilities():
+    data = {
+        "document": {
+            "aggregate_severity": {},
+            "category": "csaf_vex",
+            "title": "Your Title",
+            "csaf_version": "2.0",
+            "distribution": {"label": "", "text": "", "url": ""},
+            "lang": "en",
+            "notes": [
+                {"audience": "", "category": "", "text": "", "title": ""},
+                {"audience": "", "category": "", "text": "", "title": ""},
+            ],
+            "publisher": {
+                "category": "vendor",
+                "contact_details": "vendor@mcvendorson.com",
+                "name": "Vendor McVendorson",
+                "namespace": "https://appthreat.com",
+            },
+            "references": [
+                {
+                    "category": "self",
+                    "summary": "dcksdnskljskl",
+                    "url": "sdhasdjhslk.com",
+                },
+                {"category": "", "summary": "", "url": ""},
+            ],
+            "tracking": {
+                "status": "draft",
+                "initial_release_date": "2023-11-12T06:51:08",
+                "current_release_date": "2023-11-12T06:51:08",
+                "version": "1",
+                "id": "2023-11-21T21:39:14_v1",
+                "revision_history": [],
+            },
+        },
+        "product_tree": None,
+        "vulnerabilities": [],
+    }
+    reached_purls = {
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@8.5.31"
+        "?type=jar": 3,
+        "pkg:maven/org.codehaus.jettison/jettison@1.3.7?type=jar": 19,
+    }
+    direct_purls = {}
+    results = [
+        {
+            "id": "CVE-2020-36180",
+            "problem_type": "CWE-502",
+            "type": "fasterxml",
+            "severity": "HIGH",
+            "cvss_score": "8.1",
+            "cvss_v3": {
+                "base_score": 8.1,
+                "exploitability_score": 2.2,
+                "impact_score": 5.9,
+                "attack_vector": "NETWORK",
+                "attack_complexity": "HIGH",
+                "privileges_required": "NONE",
+                "user_interaction": "NONE",
+                "scope": "UNCHANGED",
+                "confidentiality_impact": "HIGH",
+                "integrity_impact": "HIGH",
+                "availability_impact": "HIGH",
+                "vector_string": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+            },
+            "package_issue": {
+                "affected_location": {
+                    "cpe_uri": "cpe:2.3:a:fasterxml:jackson-databind:*:*:*:*:*:*:*:*",
+                    "package": "jackson-databind",
+                    "version": ">=2.7.0-<2.9.10.8",
+                },
+                "fixed_location": "2.9.10.8",
+            },
+            "short_description": "FasterXML jackson-databind 2.x before 2.9.10.8 mishandles the interaction between serialization gadgets and typing, related to org.apache.commons.dbcp2.cpdsadapter.DriverAdapterCPDS.",
+            "long_description": None,
+            "related_urls": [
+                "https://github.com/FasterXML/jackson-databind/issues/3004",
+                "https://cowtowncoder.medium.com/on-jackson-cves-dont-panic-here-is-what-you-need-to-know-54cd0d6e8062",
+            ],
+            "effective_severity": "HIGH",
+            "source_update_time": "2023-09-13T14:56:00",
+            "source_orig_time": "2021-01-07T00:15:00",
+            "matched_by": "3647951461_3647986090|fasterxml|jackson-databind|2.9.6",
+        },
+        {
+            "id": "CVE-2019-12086",
+            "problem_type": "CWE-502",
+            "type": "fasterxml",
+            "severity": "HIGH",
+            "cvss_score": "7.5",
+            "cvss_v3": {
+                "base_score": 7.5,
+                "exploitability_score": 3.9,
+                "impact_score": 3.6,
+                "attack_vector": "NETWORK",
+                "attack_complexity": "LOW",
+                "privileges_required": "NONE",
+                "user_interaction": "NONE",
+                "scope": "UNCHANGED",
+                "confidentiality_impact": "HIGH",
+                "integrity_impact": "NONE",
+                "availability_impact": "NONE",
+                "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+            },
+            "package_issue": {
+                "affected_location": {
+                    "cpe_uri": "cpe:2.3:a:fasterxml:jackson-databind:*:*:*:*:*:*:*:*",
+                    "package": "jackson-databind",
+                    "version": ">=2.9.0-<2.9.9",
+                },
+                "fixed_location": "2.9.9",
+            },
+            "short_description": "A Polymorphic Typing issue was discovered in FasterXML jackson-databind 2.x before 2.9.9. When Default Typing is enabled (either globally or for a specific property) for an externally exposed JSON endpoint, the service has the mysql-connector-java jar (8.0.14 or earlier) in the classpath, and an attacker can host a crafted MySQL server reachable by the victim, an attacker can send a crafted JSON message that allows them to read arbitrary local files on the server. This occurs because of missing com.mysql.cj.jdbc.admin.MiniAdmin validation.",
+            "long_description": None,
+            "related_urls": [
+                "https://www.oracle.com/security-alerts/cpujul2020.html",
+                "https://lists.apache.org/thread.html/rda99599896c3667f2cc9e9d34c7b6ef5d2bbed1f4801e1d75a2b0679@%3Ccommits.nifi.apache.org%3E",
+                "https://www.oracle.com/security-alerts/cpuoct2020.html",
+                "https://www.oracle.com/security-alerts/cpuApr2021.html",
+                "https://www.oracle.com/security-alerts/cpuapr2022.html",
+            ],
+            "effective_severity": "HIGH",
+            "source_update_time": "2023-09-13T14:16:00",
+            "source_orig_time": "2019-05-17T17:29:00",
+            "matched_by": "3747044328_3747096861|fasterxml|jackson-databind|2.9.6",
+        },
+        {
+            "id": "CVE-2018-11784",
+            "problem_type": "CWE-601",
+            "type": "org.apache.tomcat.embed",
+            "severity": "MEDIUM",
+            "cvss_score": "4.3",
+            "cvss_v3": {
+                "base_score": 4.3,
+                "exploitability_score": 4.3,
+                "impact_score": 4.3,
+                "attack_vector": "NETWORK",
+                "attack_complexity": "LOW",
+                "privileges_required": "NONE",
+                "user_interaction": "REQUIRED",
+                "scope": "UNCHANGED",
+                "confidentiality_impact": "MEDIUM",
+                "integrity_impact": "MEDIUM",
+                "availability_impact": "MEDIUM",
+                "vector_string": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+            },
+            "package_issue": {
+                "affected_location": {
+                    "cpe_uri": "cpe:2.3:a:org.apache.tomcat.embed:tomcat-embed-core:*:*:*:*:*:*:*:*",
+                    "package": "tomcat-embed-core",
+                    "version": ">=8.5.0-<8.5.34",
+                },
+                "fixed_location": "8.5.34",
+            },
+            "short_description": "# Moderate severity vulnerability that affects org.apache.tomcat.embed:tomcat-embed-core\nWhen the default servlet in Apache Tomcat versions 9.0.0.M1 to 9.0.11, 8.5.0 to 8.5.33 and 7.0.23 to 7.0.90 returned a redirect to a directory (e.g. redirecting to '/foo/' when the user requested '/foo') a specially crafted URL could be used to cause the redirect to be generated to any URI of the attackers choice.",
+            "long_description": None,
+            "related_urls": [
+                "https://nvd.nist.gov/vuln/detail/CVE-2018-11784",
+                "https://access.redhat.com/errata/RHSA-2019:0130",
+                "https://access.redhat.com/errata/RHSA-2019:0131",
+                "https://access.redhat.com/errata/RHSA-2019:0485",
+                "https://access.redhat.com/errata/RHSA-2019:1529",
+                "https://github.com/advisories/GHSA-5q99-f34m-67gc",
+                "https://seclists.org/bugtraq/2019/Dec/43",
+                "https://security.netapp.com/advisory/ntap-20181014-0002/",
+            ],
+            "effective_severity": "MEDIUM",
+            "source_update_time": "2023-04-11T01:35:23",
+            "source_orig_time": "2018-10-17T16:31:02",
+            "matched_by": "2650801486_2650849443|org.apache.tomcat.embed|tomcat-embed-core|8.5.31",
+        },
+        {
+            "id": "CVE-2022-22971",
+            "problem_type": "CWE-770",
+            "type": "org.springframework",
+            "severity": "MEDIUM",
+            "cvss_score": "6.5",
+            "cvss_v3": {
+                "base_score": 6.5,
+                "exploitability_score": 6.5,
+                "impact_score": 6.5,
+                "attack_vector": "NETWORK",
+                "attack_complexity": "LOW",
+                "privileges_required": "NONE",
+                "user_interaction": "REQUIRED",
+                "scope": "UNCHANGED",
+                "confidentiality_impact": "MEDIUM",
+                "integrity_impact": "MEDIUM",
+                "availability_impact": "MEDIUM",
+                "vector_string": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+            },
+            "package_issue": {
+                "affected_location": {
+                    "cpe_uri": "cpe:2.3:a:org.springframework:spring-core:*:*:*:*:*:*:*:*",
+                    "package": "spring-core",
+                    "version": ">=0-<5.2.22.RELEASE",
+                },
+                "fixed_location": "5.2.22.RELEASE",
+            },
+            "short_description": "# Allocation of Resources Without Limits or Throttling in Spring Framework\nIn spring framework versions prior to 5.3.20+ , 5.2.22+ and old unsupported versions, application with a STOMP over WebSocket endpoint is vulnerable to a denial of service attack by an authenticated user.",
+            "long_description": None,
+            "related_urls": [
+                "https://nvd.nist.gov/vuln/detail/CVE-2022-22971",
+                "https://security.netapp.com/advisory/ntap-20220616-0003/",
+                "https://tanzu.vmware.com/security/cve-2022-22971",
+                "https://www.oracle.com/security-alerts/cpujul2022.html",
+            ],
+            "effective_severity": "MEDIUM",
+            "source_update_time": "2023-04-11T01:33:53",
+            "source_orig_time": "2022-05-13T00:00:29",
+            "matched_by": "2660437234_2660469022|org.springframework|spring-core|5.0.7.RELEASE",
+        },
+        {
+            "id": "CVE-2022-40150",
+            "problem_type": "CWE-400,CWE-674",
+            "type": "org.codehaus.jettison",
+            "severity": "HIGH",
+            "cvss_score": "7.5",
+            "cvss_v3": {
+                "base_score": 7.5,
+                "exploitability_score": 7.5,
+                "impact_score": 7.5,
+                "attack_vector": "NETWORK",
+                "attack_complexity": "LOW",
+                "privileges_required": "NONE",
+                "user_interaction": "REQUIRED",
+                "scope": "UNCHANGED",
+                "confidentiality_impact": "HIGH",
+                "integrity_impact": "HIGH",
+                "availability_impact": "HIGH",
+                "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+            },
+            "package_issue": {
+                "affected_location": {
+                    "cpe_uri": "cpe:2.3:a:org.codehaus.jettison:jettison:*:*:*:*:*:*:*:*",
+                    "package": "jettison",
+                    "version": ">=0-<1.5.2",
+                },
+                "fixed_location": "1.5.2",
+            },
+            "short_description": "# Jettison memory exhaustion\nThose using Jettison to parse untrusted XML or JSON data may be vulnerable to Denial of Service attacks (DOS). If the parser is running on user supplied input, an attacker may supply content that causes the parser to crash by Out of memory. This effect may support a denial of service attack.",
+            "long_description": None,
+            "related_urls": [
+                "https://nvd.nist.gov/vuln/detail/CVE-2022-40150",
+                "https://github.com/jettison-json/jettison/issues/45",
+                "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46549",
+                "https://github.com/jettison-json/jettison",
+                "https://lists.debian.org/debian-lts-announce/2022/12/msg00045.html",
+                "https://www.debian.org/security/2023/dsa-5312",
+            ],
+            "effective_severity": "HIGH",
+            "source_update_time": "2023-07-13T19:19:12",
+            "source_orig_time": "2022-09-17T00:00:41",
+            "matched_by": "2662034264_2662079740|org.codehaus.jettison|jettison|1.3.7",
+        },
+    ]
+    new_results = add_vulnerabilities(
+        data, results, direct_purls, reached_purls
+    )
+
+    assert new_results.get("vulnerabilities") == [
+        {
+            "cve": "CVE-2020-36180",
+            "cwe": {
+                "id": "CWE-502",
+                "name": "Deserialization of Untrusted Data",
+            },
+            "discovery_date": "2021-01-07T00:15:00",
+            "flags": [{"label": "vulnerable_code_not_in_execute_path"}],
+            "ids": [
+                {
+                    "system_name": "GitHub Issue [FasterXML/jackson-databind]",
+                    "text": "3004",
+                }
+            ],
+            "notes": [
+                {
+                    "category": "general",
+                    "details": "Vulnerability Description",
+                    "text": "FasterXML jackson-databind 2.x before 2.9.10.8 "
+                    "mishandles the interaction between serialization gadgets "
+                    "and typing, related to "
+                    "org.apache.commons.dbcp2.cpdsadapter.DriverAdapterCPDS.",
+                }
+            ],
+            "product_status": {
+                "fixed": ["jackson-databind:2.9.10.8"],
+                "known_affected": ["jackson-databind:>=2.7.0-<2.9.10.8"],
+            },
+            "references": [
+                {
+                    "summary": "Other",
+                    "url": "https://cowtowncoder.medium.com/on-jackson-cves-dont-panic-here-is-what-you-need-to-know-54cd0d6e8062",
+                },
+                {
+                    "summary": "GitHub Issue",
+                    "url": "https://github.com/FasterXML/jackson-databind/issues/3004",
+                },
+            ],
+            "scores": [
+                {
+                    "cvss_v3": {
+                        "attackVector": "NETWORK",
+                        "baseScore": 8.1,
+                        "baseSeverity": "HIGH",
+                        "privilegesRequired": "NONE",
+                        "scope": "UNCHANGED",
+                        "userInteraction": "NONE",
+                        "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                        "version": "3.1",
+                    },
+                    "products": ["jackson-databind"],
+                }
+            ],
+        },
+        {
+            "cve": "CVE-2019-12086",
+            "cwe": {
+                "id": "CWE-502",
+                "name": "Deserialization of Untrusted Data",
+            },
+            "discovery_date": "2019-05-17T17:29:00",
+            "flags": [{"label": "vulnerable_code_not_in_execute_path"}],
+            "ids": [],
+            "notes": [
+                {
+                    "category": "general",
+                    "details": "Vulnerability Description",
+                    "text": "A Polymorphic Typing issue was discovered in FasterXML "
+                    "jackson-databind 2.x before 2.9.9. When Default Typing "
+                    "is enabled (either globally or for a specific property) "
+                    "for an externally exposed JSON endpoint, the service has "
+                    "the mysql-connector-java jar (8.0.14 or earlier) in the "
+                    "classpath, and an attacker can host a crafted MySQL "
+                    "server reachable by the victim, an attacker can send a "
+                    "crafted JSON message that allows them to read arbitrary "
+                    "local files on the server. This occurs because of "
+                    "missing com.mysql.cj.jdbc.admin.MiniAdmin validation.",
+                }
+            ],
+            "product_status": {
+                "fixed": ["jackson-databind:2.9.9"],
+                "known_affected": ["jackson-databind:>=2.9.0-<2.9.9"],
+            },
+            "references": [
+                {
+                    "summary": "Oracle Security Alert",
+                    "url": "https://www.oracle.com/security-alerts/cpujul2020.html",
+                },
+                {
+                    "summary": "Mailing List Other",
+                    "url": "https://lists.apache.org/thread.html/rda99599896c3667f2cc9e9d34c7b6ef5d2bbed1f4801e1d75a2b0679@%3Ccommits.nifi.apache.org%3E",
+                },
+                {
+                    "summary": "Oracle Security Alert",
+                    "url": "https://www.oracle.com/security-alerts/cpuoct2020.html",
+                },
+                {
+                    "summary": "Oracle Security Alert",
+                    "url": "https://www.oracle.com/security-alerts/cpuApr2021.html",
+                },
+                {
+                    "summary": "Oracle Security Alert",
+                    "url": "https://www.oracle.com/security-alerts/cpuapr2022.html",
+                },
+            ],
+            "scores": [
+                {
+                    "cvss_v3": {
+                        "attackVector": "NETWORK",
+                        "baseScore": 7.5,
+                        "baseSeverity": "HIGH",
+                        "privilegesRequired": "NONE",
+                        "scope": "UNCHANGED",
+                        "userInteraction": "NONE",
+                        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                        "version": "3.1",
+                    },
+                    "products": ["jackson-databind"],
+                }
+            ],
+        },
+        {
+            "cve": "CVE-2018-11784",
+            "cwe": {
+                "id": "CWE-601",
+                "name": "URL Redirection to Untrusted Site",
+            },
+            "discovery_date": "2018-10-17T16:31:02",
+            "ids": [
+                {
+                    "system_name": "GitHub Advisory",
+                    "text": "GHSA-5q99-f34m-67gc",
+                },
+                {"system_name": "Red Hat Advisory", "text": "RHSA-2019:0130"},
+                {"system_name": "Red Hat Advisory", "text": "RHSA-2019:0131"},
+                {"system_name": "Red Hat Advisory", "text": "RHSA-2019:0485"},
+                {"system_name": "Red Hat Advisory", "text": "RHSA-2019:1529"},
+                {
+                    "system_name": "NetApp Advisory",
+                    "text": "ntap-20181014-0002",
+                },
+            ],
+            "notes": [
+                {
+                    "category": "general",
+                    "details": "Vulnerability Description",
+                    "text": "# Moderate severity vulnerability that affects "
+                    "org.apache.tomcat.embed:tomcat-embed-core When the "
+                    "default servlet in Apache Tomcat versions 9.0.0.M1 to "
+                    "9.0.11, 8.5.0 to 8.5.33 and 7.0.23 to 7.0.90 returned a "
+                    "redirect to a directory (e.g. redirecting to '/foo/' "
+                    "when the user requested '/foo') a specially crafted URL "
+                    "could be used to cause the redirect to be generated to "
+                    "any URI of the attackers choice.",
+                }
+            ],
+            "product_status": {
+                "fixed": ["tomcat-embed-core:8.5.34"],
+                "known_affected": ["tomcat-embed-core:>=8.5.0-<8.5.34"],
+            },
+            "references": [
+                {
+                    "summary": "CVE Record",
+                    "url": "https://nvd.nist.gov/vuln/detail/CVE-2018-11784",
+                },
+                {
+                    "summary": "Other",
+                    "url": "https://seclists.org/bugtraq/2019/Dec/43",
+                },
+                {
+                    "summary": "Red Hat Advisory",
+                    "url": "https://access.redhat.com/errata/RHSA-2019:0130",
+                },
+                {
+                    "summary": "Red Hat Advisory",
+                    "url": "https://access.redhat.com/errata/RHSA-2019:0131",
+                },
+                {
+                    "summary": "Red Hat Advisory",
+                    "url": "https://access.redhat.com/errata/RHSA-2019:0485",
+                },
+                {
+                    "summary": "Red Hat Advisory",
+                    "url": "https://access.redhat.com/errata/RHSA-2019:1529",
+                },
+                {
+                    "summary": "GitHub Advisory",
+                    "url": "https://github.com/advisories/GHSA-5q99-f34m-67gc",
+                },
+                {
+                    "summary": "NetApp Advisory",
+                    "url": "https://security.netapp.com/advisory/ntap-20181014-0002/",
+                },
+            ],
+            "scores": [
+                {
+                    "cvss_v3": {
+                        "attackVector": "NETWORK",
+                        "baseScore": 4.3,
+                        "baseSeverity": "MEDIUM",
+                        "privilegesRequired": "NONE",
+                        "scope": "UNCHANGED",
+                        "userInteraction": "REQUIRED",
+                        "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:L/A:N",
+                        "version": "3.0",
+                    },
+                    "products": ["tomcat-embed-core"],
+                }
+            ],
+        },
+        {
+            "cve": "CVE-2022-22971",
+            "cwe": {
+                "id": "CWE-770",
+                "name": "Allocation of Resources Without Limits or Throttling",
+            },
+            "discovery_date": "2022-05-13T00:00:29",
+            "flags": [{"label": "vulnerable_code_not_in_execute_path"}],
+            "ids": [
+                {"system_name": "NetApp Advisory", "text": "ntap-20220616-0003"}
+            ],
+            "notes": [
+                {
+                    "category": "general",
+                    "details": "Vulnerability Description",
+                    "text": "# Allocation of Resources Without Limits or Throttling "
+                    "in Spring Framework In spring framework versions prior "
+                    "to 5.3.20+ , 5.2.22+ and old unsupported versions, "
+                    "application with a STOMP over WebSocket endpoint is "
+                    "vulnerable to a denial of service attack by an "
+                    "authenticated user.",
+                }
+            ],
+            "product_status": {
+                "fixed": ["spring-core:5.2.22.RELEASE"],
+                "known_affected": ["spring-core:>=0-<5.2.22.RELEASE"],
+            },
+            "references": [
+                {
+                    "summary": "CVE Record",
+                    "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-22971",
+                },
+                {
+                    "summary": "CVE Record",
+                    "url": "https://tanzu.vmware.com/security/cve-2022-22971",
+                },
+                {
+                    "summary": "Oracle Security Alert",
+                    "url": "https://www.oracle.com/security-alerts/cpujul2022.html",
+                },
+                {
+                    "summary": "NetApp Advisory",
+                    "url": "https://security.netapp.com/advisory/ntap-20220616-0003/",
+                },
+            ],
+            "scores": [
+                {
+                    "cvss_v3": {
+                        "attackVector": "NETWORK",
+                        "baseScore": 6.5,
+                        "baseSeverity": "MEDIUM",
+                        "privilegesRequired": "NONE",
+                        "scope": "UNCHANGED",
+                        "userInteraction": "REQUIRED",
+                        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+                        "version": "3.1",
+                    },
+                    "products": ["spring-core"],
+                }
+            ],
+        },
+        {
+            "cve": "CVE-2022-40150",
+            "cwe": {
+                "id": "CWE-400",
+                "name": "Uncontrolled Resource Consumption",
+            },
+            "discovery_date": "2022-09-17T00:00:41",
+            "ids": [
+                {
+                    "system_name": "GitHub Issue [jettison-json/jettison]",
+                    "text": "45",
+                },
+                {"system_name": "Chromium Issue [oss-fuzz]", "text": "46549"},
+                {"system_name": "Debian Advisory", "text": "dsa-5312"},
+            ],
+            "notes": [
+                {
+                    "audience": "developers",
+                    "category": "other",
+                    "text": "Uncontrolled Recursion",
+                    "title": "Additional CWE: CWE-674",
+                },
+                {
+                    "category": "general",
+                    "details": "Vulnerability Description",
+                    "text": "# Jettison memory exhaustion Those using Jettison to "
+                    "parse untrusted XML or JSON data may be vulnerable to "
+                    "Denial of Service attacks (DOS). If the parser is "
+                    "running on user supplied input, an attacker may supply "
+                    "content that causes the parser to crash by Out of "
+                    "memory. This effect may support a denial of service "
+                    "attack.",
+                },
+            ],
+            "product_status": {
+                "fixed": ["jettison:1.5.2"],
+                "known_affected": ["jettison:>=0-<1.5.2"],
+            },
+            "references": [
+                {
+                    "summary": "CVE Record",
+                    "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-40150",
+                },
+                {
+                    "summary": "GitHub Repository",
+                    "url": "https://github.com/jettison-json/jettison",
+                },
+                {
+                    "summary": "Mailing List Announcement",
+                    "url": "https://lists.debian.org/debian-lts-announce/2022/12/msg00045.html",
+                },
+                {
+                    "summary": "GitHub Issue",
+                    "url": "https://github.com/jettison-json/jettison/issues/45",
+                },
+                {
+                    "summary": "Chromium Issue",
+                    "url": "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=46549",
+                },
+                {
+                    "summary": "Debian Advisory",
+                    "url": "https://www.debian.org/security/2023/dsa-5312",
+                },
+            ],
+            "scores": [
+                {
+                    "cvss_v3": {
+                        "attackVector": "NETWORK",
+                        "baseScore": 7.5,
+                        "baseSeverity": "HIGH",
+                        "privilegesRequired": "NONE",
+                        "scope": "UNCHANGED",
+                        "userInteraction": "REQUIRED",
+                        "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                        "version": "3.1",
+                    },
+                    "products": ["jettison"],
+                }
+            ],
+        },
+    ]
+
+
+def test_version_helper():
+    # Returns True if the version in 'reached' satisfies the conditions
+    # specified by 'vdata'.
+    reached = ["1.0.0", "2.0.0", "3.0.0"]
+    vdata = {"lower": "2.0.0", "lmod": ">=", "upper": "3.0.0", "umod": "<"}
+    result = version_helper(reached, vdata)
+    assert result is True
+
+    # Returns False if the version in 'reached' does not satisfy the
+    # conditions specified by 'vdata'.
+    vdata = {"lower": "4.0.0", "lmod": ">=", "upper": "5.0.0", "umod": "<"}
+    result = version_helper(reached, vdata)
+    assert result is False
+
+    # Returns True if the lower bound modifier is ">=" and the version in
+    # 'reached' is equal to the lower bound of the version range.
+    vdata = {"lower": "2.0.0", "lmod": ">=", "upper": "3.0.0", "umod": "<"}
+    result = version_helper(reached, vdata)
+    assert result is True
+
+    # Returns False if the lower bound modifier is ">=" and the version in
+    # 'reached' is less than the lower bound of the version range.
+    vdata = {"lower": "4.0.0", "lmod": ">=", "upper": "5.0.0", "umod": "<"}
+    result = version_helper(reached, vdata)
+    assert result is False
+
+    # Returns False if the upper bound modifier is "<=" and the version in
+    # 'reached' is greater than the upper bound of the version range.
+    vdata = {"lower": "2.0.0", "lmod": ">=", "upper": "3.0.0", "umod": "<="}
+    result = version_helper(reached, vdata)
+    assert result is True
+
+    #  Returns False if the lower bound modifier is ">" and the version in
+    # 'reached' is less than or equal to the lower bound of the version range.
+    vdata = {"lower": "2.0.0", "lmod": ">", "upper": "3.0.0", "umod": "<"}
+    result = version_helper(reached, vdata)
+    assert result is False
