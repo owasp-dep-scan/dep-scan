@@ -1,9 +1,9 @@
-name: Lint
+# We could automatically update PRs, but that would require additional
+# research to identify if/how that can be done securely.
 
-on: [push, pull_request, workflow_dispatch]
+name: Lint PR
 
-permissions:
-  contents: read
+on: [pull_request]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
