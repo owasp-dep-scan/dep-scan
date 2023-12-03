@@ -1,6 +1,9 @@
 # Introduction
 
-OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
+OWASP dep-scan is a next-generation security and risk audit tool based on known
+vulnerabilities, advisories, and license limitations for project dependencies.
+Both local repositories and container images are supported as the input, and the
+tool is ideal for CI environments with built-in build-breaker logic.
 
 ![Depscan logo](dep-scan.png)
 
@@ -9,12 +12,18 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 
 ## Features
 
-- Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
-- Perform advanced reachability analysis for multiple languages (See reachability analysis)
-- Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
-- Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
-- Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
+- Scan most application code - local repos, Linux container images, Kubernetes
+  manifests, and OS - to identify known CVEs with prioritization
+- Perform advanced reachability analysis for multiple languages (See
+  reachability analysis)
+- Package vulnerability scanning is performed locally and is quite fast. No
+  server is used!
+- Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure
+  Report (VDR) information
+- Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check
+  out the [CSAF Readme](contrib/CSAF_README.md))
+- Perform deep packages risk audit for dependency confusion attacks and
+  maintenance risks (See risk audit)
 
 ![Reachable Flows](docs/depscan-flows.png)
 
@@ -45,15 +54,21 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 - Chainguard
 - Wolfi OS
 
-Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache` for the first time. dep-scan would also download the appropriate database based on project type automatically.
+Application vulnerabilities would be reported for all Linux distros and Windows.
+To download the full vulnerability database suitable for scanning OS, invoke
+dep-scan with `--cache` for the first time. dep-scan would also download the
+appropriate database based on project type automatically.
 
 ## Usage
 
-dep-scan is ideal for use during continuous integration (CI) and as a local development tool.
+dep-scan is ideal for use during continuous integration (CI) and as a local
+development tool.
 
 ### OCI Artifacts via ORAS cli
 
-Use [ORAS cli](https://oras.land/docs/) to download the dep-scan binary and the vulnerability database for effortless integration. Example workflow is [here](https://github.com/appthreat/images-info/blob/main/.github/workflows/build.yml#L13).
+Use [ORAS cli](https://oras.land/docs/) to download the dep-scan binary and the
+vulnerability database for effortless integration. Example workflow
+is [here](https://github.com/appthreat/images-info/blob/main/.github/workflows/build.yml#L13).
 
 ```bash
 export VDB_HOME=depscan
@@ -64,7 +79,9 @@ oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
 
 ### Single binary executables
 
-Download the executable binary for your operating system from the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases). These binary bundle the following:
+Download the executable binary for your operating system from
+the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases).
+These binary bundle the following:
 
 - dep-scan with Python 3.10
 - cdxgen with Node.js 18
@@ -85,7 +102,8 @@ curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/
 
 ### Server mode
 
-dep-scan and cdxgen could be run in server mode. Use the included docker compose file to get started.
+dep-scan and cdxgen could be run in server mode. Use the included docker compose
+file to get started.
 
 ```bash
 git clone https://github.com/owasp-dep-scan/dep-scan
@@ -206,7 +224,8 @@ You can also specify the image using the sha256 digest
 depscan --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
 ```
 
-You can also save container images using docker or podman save command and pass the archive to depscan for scanning.
+You can also save container images using docker or podman save command and pass
+the archive to depscan for scanning.
 
 ```bash
 docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
@@ -214,11 +233,13 @@ docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
 depscan --no-error --src /tmp/scanslim.tar -o reports/depscan-scan.json -t docker
 ```
 
-Refer to the docker tests under GitHub action workflow for this repo for more examples.
+Refer to the docker tests under GitHub action workflow for this repo for more
+examples.
 
 ### Scanning projects locally (Docker container)
 
-`ghcr.io/owasp-dep-scan/dep-scan` container image can be used to perform the scan.
+`ghcr.io/owasp-dep-scan/dep-scan` container image can be used to perform the
+scan.
 
 To scan with default settings
 
@@ -236,16 +257,21 @@ docker run --rm \
     -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
 ```
 
-In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
+In the above example, `/tmp` is mounted as `/db` into the container. This
+directory is then specified as `VDB_HOME` for caching the vulnerability
+information. This way the database can be cached and reused to improve
+performance.
 
 ## Supported languages and package format
 
-dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
+dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally
+to create Software Bill-of-Materials (SBOM) file for the project. This is then
+used for performing the scans.
 
 The following projects and package-dependency format is supported by cdxgen.
 
 | Language                 | Package format                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------- |
+|--------------------------|-----------------------------------------------------------------------------------------|
 | node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js              |
 | java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel                    |
 | php                      | composer.lock                                                                           |
@@ -266,9 +292,14 @@ The following projects and package-dependency format is supported by cdxgen.
 
 ## Reachability analysis
 
-Depscan can perform reachability analysis for Java, JavaScript, TypeScript and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
+Depscan can perform reachability analysis for Java, JavaScript, TypeScript and
+Python with built-in support for
+parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply
+invoke depscan with the `research` profile and language type to enable this
+feature.
 
-To receive a verbose output including the reachable flows, pass the argument `--explain`
+To receive a verbose output including the reachable flows, pass the
+argument `--explain`
 
 ```shell
 --profile research -t language [--explain]
@@ -290,13 +321,16 @@ depscan --profile research -t js -i <source directory> --reports-dir <reports di
 
 The following environment variables can be used to customise the behaviour.
 
-- VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
+- VDB_HOME - Directory to use for caching database. For docker based execution,
+  this directory should get mounted as a volume from the host
 
 ## GitHub Security Advisory
 
-To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
+To download security advisories from GitHub, a personal access token with
+minimal permissions is necessary.
 
-- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
+- Fine-grained token: Grant no permissions and select the following for
+  repository access: `Public Repositories (read-only)`
 - Token (classic): Grant no permissions
 
 ```bash
@@ -305,30 +339,42 @@ export GITHUB_TOKEN="<PAT token>"
 
 ## Suggest mode
 
-Depscan comes with suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
+Depscan comes with suggest mode enabled by default to simplify the triaging
+experience. The fix version for each vulnerability is retrieved from the
+sources. Sometimes, there might be known vulnerabilities in the fix version
+reported. Eg: in the below screenshot the fix versions suggested for
+jackson-databind might contain known vulnerabilities.
 
 ![Normal mode](docs/depscan-normal.png)
 
 ![Suggest mode](docs/depscan-suggest.png)
 
-Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
+Notice, how the new suggested version is `2.9.10.5` which is an optimal fix
+version. Please note that the optimal fix version may not be the appropriate
+version for your application based on compatibility.
 
 Pass `--no-suggest` to disable this behavior.
 
 ## Package Risk audit
 
-`--risk-audit` argument enables package risk audit. Currently, only npm and pypi packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
+`--risk-audit` argument enables package risk audit. Currently, only npm and pypi
+packages are supported in this mode. Some risk factors are identified and
+assigned weights to compute a final risk score. Packages that then exceed a
+maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
 
-Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on the public npm/pypi registry.
+Use `--private-ns` to specify the private package namespace that should be
+checked for dependency confusion type issues where a private package is
+available on the public npm/pypi registry.
 
-For example, to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public, use the below argument.
+For example, to check if private packages with namespaces @appthreat and
+@shiftleft are not accidentally made public, use the below argument.
 
 ```
 --private-ns appthreat,shiftleft
 ```
 
 | Risk category                  | Default Weight | Reason                                                                                                                                                                                                     |
-| ------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|--------------------------------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | pkg_private_on_public_registry | 4              | Private package is available on a public registry                                                                                                                                                          |
 | pkg_min_versions               | 2              | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages                            |
 | mod_create_min_seconds         | 1              | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
@@ -345,17 +391,25 @@ Refer to `pkg_query.py::get_category_score` method for the risk formula.
 
 ### Automatic adjustment
 
-A parameter called `created_now_quarantine_seconds` is used to identify packages that are safely past the quarantine period (1 year). Certain risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past the quarantine period. This adjustment helps reduce noise since it is unlikely that a malicious package can exist in a registry unnoticed for over a year.
+A parameter called `created_now_quarantine_seconds` is used to identify packages
+that are safely past the quarantine period (1 year). Certain risks such
+as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past
+the quarantine period. This adjustment helps reduce noise since it is unlikely
+that a malicious package can exist in a registry unnoticed for over a year.
 
 ### Configuring weights
 
 All parameters can be customized by using environment variables. For eg:
 
-export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4.
+export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to
+4.
 
 ## Live OS scan
 
-By passing `-t os`, depscan can generate an SBOM for a live operating system or a VM with OS packages and kernel information. Optionally, pass the argument `--deep` to generate an SBOM with both OS and application packages and to check for application vulnerabilities.
+By passing `-t os`, depscan can generate an SBOM for a live operating system or
+a VM with OS packages and kernel information. Optionally, pass the
+argument `--deep` to generate an SBOM with both OS and application packages and
+to check for application vulnerabilities.
 
 All OS packages.
 
@@ -371,30 +425,69 @@ depscan -t os --deep -i . -o reports/depscan.json
 
 ## License scan
 
-dep-scan can scan the dependencies for any license limitations and report them directly on the console log. To enable license scanning set the environment variable `FETCH_LICENSE` to `true`.
+dep-scan can scan the dependencies for any license limitations and report them
+directly on the console log. To enable license scanning set the environment
+variable `FETCH_LICENSE` to `true`.
 
 ```
 export FETCH_LICENSE=true
 ```
 
-The license data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behavior could change in the future once the detection logic gets improved.
+The license data is sourced from choosealicense.com and is quite limited. If the
+license of a given package cannot be reliably matched against this list it will
+get silently ignored to reduce any noise. This behavior could change in the
+future once the detection logic gets improved.
 
 ![License scan](docs/license-scan.png)
 
 ## Kubernetes and Cloud apps
 
-dep-scan could auto-detect most cloud applications and Kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
+dep-scan could auto-detect most cloud applications and Kubernetes manifest
+files. Pass the argument `-t yaml-manifest` to manually specify the type.
 
 ## PDF reports
 
-Ensure [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) is installed or use the official container image to generate pdf reports. Use with `--explain` for more detailed reports.
+Ensure [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) is installed or use
+the official container image to generate pdf reports. Use with `--explain` for
+more detailed reports.
 
 ## Discord support
 
-The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel for enterprise support.
+The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd)
+channel for enterprise support.
 
 ## License
 
 MIT License
 
-This project was donated to the OWASP Foundation in August 2023 by AppThreat Ltd.
+This project was donated to the OWASP Foundation in August 2023 by AppThreat
+Ltd.
+
+## Contributing
+
+### Submitting pull requests
+
+We welcome contributions! A few guidelines and considerations to keep in mind:
+
+* Base all your work off of the **master** branch, and rebase and address any
+  merge conflicts that occur.
+
+
+* Add new tests or update existing ones to demonstrate your code works. Ideally
+  this will occur and all tests will be passing before we go to review.
+
+
+* Pre-commit is used in the Lint workflow to make sure code in pull-requests is
+  formatted as desired. You may check if the pre-commit check for pull
+  requests will pass by running `pre-commit run --all-files` locally.
+
+
+* Sign your commits with a GPG key that you've
+  [added to your GitHub account](https://docs.github.com/en/authentication/managing-commit-signature-verification/adding-a-gpg-key-to-your-github-account).
+  If you don't have a GPG key, it is easy to generate one - just follow the
+  [GitHub docs](https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key).
+
+
+* Be sure your
+  [author field in git](https://www.git-tower.com/learn/git/faq/change-author-name-email)
+  is properly filled out with your name and email address.
