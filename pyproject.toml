@@ -45,6 +45,7 @@ scan = "depscan.cli:main"
 [project.optional-dependencies]
 dev = ["black",
 "flake8",
+"pylint",
 "pytest",
 "pytest-cov",
 "httpretty"
@@ -66,3 +67,60 @@ ignore = "E203, E266, E501, W503, W605"
 max-line-length = 80
 max-complexity = 18
 select = "B,C,E,F,W,T4,B9"
+
+[tool.pylint.main]
+# Files or directories to be skipped. They should be base names, not paths.
+ignore = ["vendor", "test"]
+#ignore-patterns = ["^\\.#"]
+suggestion-mode = true
+
+[tool.pylint.basic]
+argument-naming-style = "snake_case"
+attr-naming-style = "snake_case"
+class-attribute-naming-style = "any"
+class-const-naming-style = "UPPER_CASE"
+class-naming-style = "PascalCase"
+const-naming-style = "UPPER_CASE"
+docstring-min-length = -1
+function-naming-style = "snake_case"
+inlinevar-naming-style = "any"
+method-naming-style = "snake_case"
+module-naming-style = "snake_case"
+#no-docstring-rgx = "^_"
+variable-naming-style = "snake_case"
+
+[tool.pylint.classes]
+check-protected-access-in-special-methods = true
+defining-attr-methods = ["__init__", "__new__", "setUp", "asyncSetUp", "__post_init__"]
+exclude-protected = ["_asdict", "_fields", "_replace", "_source", "_make", "os._exit"]
+valid-classmethod-first-arg = ["cls"]
+valid-metaclass-classmethod-first-arg = ["mcs"]
+
+[tool.pylint.design]
+max-args = 5
+max-attributes = 7
+max-bool-expr = 5
+max-branches = 12
+max-locals = 15
+max-returns = 6
+max-statements = 50
+
+[tool.pylint.format]
+#expected-line-ending-format = "LF"
+#ignore-long-lines = "^\\s*(# )?<?https?://\\S+>?$"
+indent-after-paren = 4
+indent-string = "    "
+max-line-length = 80
+single-line-class-stmt = true
+single-line-if-stmt = true
+
+[tool.pylint.logging]
+logging-format-style = "new"
+logging-modules = ["logging"]
+
+
+
+
+
+
+

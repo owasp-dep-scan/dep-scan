@@ -19,12 +19,19 @@ repos:
 #    hooks:
 #      - id: black
 
-  # Note: Noqa has been added for functions that already exceed max complexity.
+  - repo: https://github.com/pycqa/pylint
+    rev: v3.0.2
+    hooks:
+      - id: pylint
+        exclude: 'test'
+        args: [--disable=broad-exception-caught, --disable=import-error, ]
+
+   # Note: Noqa has been added for functions that already exceed max complexity.
   - repo: https://github.com/PyCQA/flake8
     rev: 6.1.0
     hooks:
       - id: flake8
-        additional_dependencies: [ flake8-length ]
+        args: [--statistics]
 
 ci:
   autofix_prs: false
