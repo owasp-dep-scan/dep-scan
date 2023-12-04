@@ -113,7 +113,9 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
     :return: Constructed display string
     """
     full_pkg_display = current_pkg
-    highlightable = tree_pkg and (tree_pkg == current_pkg or tree_pkg in current_pkg)
+    highlightable = tree_pkg and (
+        tree_pkg == current_pkg or tree_pkg in current_pkg
+    )
     if tree_pkg:
         try:
             if current_pkg.startswith("pkg:"):
@@ -121,7 +123,9 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     if version_used:
-                        full_pkg_display = f"""{purl_obj.get("name")}@{version_used}"""
+                        full_pkg_display = (
+                            f"""{purl_obj.get("name")}@{version_used}"""
+                        )
         except Exception:
             pass
     if extra_text and highlightable:
@@ -166,7 +170,9 @@ def pkg_sub_tree(
     if not bom_dependency_tree:
         return [purl], Tree(
             get_pkg_display(purl, purl, extra_text=extra_text),
-            style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
+            style=Style(
+                color="bright_red" if pkg_severity == "CRITICAL" else None
+            ),
         )
     if len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
@@ -261,7 +267,9 @@ def prepare_vdr(options: PrepareVdrOptions):
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
     # Retrieve any dependency tree from the SBOM
-    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(options.bom_file)
+    bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(
+        options.bom_file
+    )
     oci_props = retrieve_oci_properties(bom_data)
     oci_product_types = oci_props.get("oci:image:componentTypes", "")
     for h in [
@@ -296,7 +304,8 @@ def prepare_vdr(options: PrepareVdrOptions):
             )
             if vendor:
                 full_pkg = (
-                    f"{vendor}:" f"{package_issue['affected_location'].get('package')}"
+                    f"{vendor}:"
+                    f"{package_issue['affected_location'].get('package')}"
                 )
         version = None
         if matched_by:
@@ -327,9 +336,13 @@ def prepare_vdr(options: PrepareVdrOptions):
                             not in oci_product_types
                         ):
                             # Some nvd data might match application CVEs for OS vendors which can be filtered
-                            if package_issue["affected_location"].get("cpe_uri"):
+                            if package_issue["affected_location"].get(
+                                "cpe_uri"
+                            ):
                                 all_parts = CPE_FULL_REGEX.match(
-                                    package_issue["affected_location"].get("cpe_uri")
+                                    package_issue["affected_location"].get(
+                                        "cpe_uri"
+                                    )
                                 )
                                 if (
                                     all_parts
@@ -340,9 +353,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                                     continue
                             # Some vendors like suse leads to FP and can be turned off if our image do not have those types
                             # Some os packages might match application packages in NVD
-                            if package_issue["affected_location"].get("vendor") not in (
-                                "suse",
-                            ):
+                            if package_issue["affected_location"].get(
+                                "vendor"
+                            ) not in ("suse",):
                                 insights.append(
                                     f"[#7C8082]:telescope: Vendor {package_issue['affected_location'].get('vendor')}"
                                 )
@@ -370,6 +383,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         ):
             wont_fix_version_count += 1
         package_usage = "N/A"
+        plain_package_usage = "N/A"
         pkg_severity = vuln_occ_dict.get("severity")
         is_required = False
         pkg_requires_attn = False
@@ -406,9 +420,15 @@ def prepare_vdr(options: PrepareVdrOptions):
         if is_required and package_type not in config.OS_PKG_TYPES:
             if direct_purls.get(purl):
                 package_usage = f":direct_hit: Used in [info]{str(direct_purls.get(purl))}[/info] locations"
+                plain_package_usage = (
+                    f"Used in {str(direct_purls.get(purl))} locations"
+                )
             else:
                 package_usage = ":direct_hit: Direct dependency"
-        elif (not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1) or (
+                plain_package_usage = "Direct dependency"
+        elif (
+            not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
+        ) or (
             purl in optional_pkgs
             or full_pkg in optional_pkgs
             or project_type_pkg in optional_pkgs
@@ -417,14 +437,14 @@ def prepare_vdr(options: PrepareVdrOptions):
                 package_usage = (
                     "[spring_green4]:notebook: Local install[/spring_green4]"
                 )
+                plain_package_usage = "Local install"
                 has_os_packages = True
             else:
-                package_usage = (
-                    "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
-                )
+                package_usage = "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
+                plain_package_usage = "Indirect dependency"
         if package_usage != "N/A":
             insights.append(package_usage)
-            plain_insights.append(package_usage)
+            plain_insights.append(plain_package_usage)
         if clinks.get("poc") or clinks.get("Bug Bounty"):
             if reached_purls.get(purl):
                 insights.append(
@@ -510,7 +530,9 @@ def prepare_vdr(options: PrepareVdrOptions):
             versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
             if fixed_location:
-                versions.append({"version": fixed_location, "status": "unaffected"})
+                versions.append(
+                    {"version": fixed_location, "status": "unaffected"}
+                )
                 recommendation = f"Update to {fixed_location} or later"
             affects = [{"ref": purl, "versions": versions}]
             analysis = {}
@@ -580,7 +602,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                         },
                         {
                             "name": "depscan:prioritized",
-                            "value": "true" if pkg_group_rows.get(purl) else "false",
+                            "value": "true"
+                            if pkg_group_rows.get(purl)
+                            else "false",
                         },
                     ],
                 }
@@ -753,11 +777,14 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     this result."""
                 console.print(Panel(rmessage, title="Recommendation"))
             else:
+                rmessage = ":white_check_mark: No package requires immediate attention."
+                if reached_purls:
+                    rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are not reachable."
+                elif direct_purls:
+                    rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies."
                 console.print(
                     Panel(
-                        ":white_check_mark: No package requires immediate "
-                        "attention since the major vulnerabilities are found "
-                        "only in dev packages and indirect dependencies.",
+                        rmessage,
                         title="Recommendation",
                         expand=False,
                     )
@@ -781,9 +808,12 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
         )
     if reached_purls:
         sorted_reached_purls = sorted(
-            ((value, key) for (key, value) in reached_purls.items()), reverse=True
+            ((value, key) for (key, value) in reached_purls.items()),
+            reverse=True,
         )[:3]
-        sorted_reached_dict = OrderedDict((k, v) for v, k in sorted_reached_purls)
+        sorted_reached_dict = OrderedDict(
+            (k, v) for v, k in sorted_reached_purls
+        )
         rsection = Markdown(
             """## Proactive Measures
 
@@ -945,7 +975,9 @@ def jsonl_report(
             outfile.write("\n")
 
 
-def analyse_pkg_risks(project_type, scoped_pkgs, risk_results, risk_report_file=None):
+def analyse_pkg_risks(
+    project_type, scoped_pkgs, risk_results, risk_report_file=None
+):
     """
     Identify package risk and write to a json file
 
@@ -1072,7 +1104,9 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 conditions_str = ", ".join(lic["conditions"])
                 if "http" not in conditions_str:
                     conditions_str = (
-                        conditions_str.replace("--", " for ").replace("-", " ").title()
+                        conditions_str.replace("--", " for ")
+                        .replace("-", " ")
+                        .title()
                     )
                 data = [
                     *pkg_ver,

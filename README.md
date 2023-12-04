@@ -1,6 +1,6 @@
 # Introduction
 
-OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for CI environments with built-in build-breaker logic.
+OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for integration with ASPM/VM platforms and in CI environments.
 
 ![Depscan logo](dep-scan.png)
 
@@ -133,7 +133,7 @@ The full list of options is below:
 
 ```bash
 usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORT_FILE]
-              [--reports-dir REPORTS_DIR] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table] [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server]
+              [--reports-dir REPORTS_DIR] [--deep] [--no-universal] [--no-vuln-table] [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server]
               [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
@@ -159,8 +159,6 @@ options:
                         DEPRECATED. Use reports directory since multiple files are created. Report filename with directory
   --reports-dir REPORTS_DIR
                         Reports directory
-  --no-error            Continue on error to prevent build from breaking
-  --no-license-scan     DEPRECATED: dep-scan doesn't perform license scanning by default
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
@@ -191,19 +189,19 @@ options:
 Scan `latest` tag of the container `shiftleft/scan-slim`
 
 ```bash
-depscan --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
+depscan --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
 ```
 
 Include `license` to the type to perform license audit.
 
 ```bash
-depscan --no-error --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
+depscan --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
 ```
 
 You can also specify the image using the sha256 digest
 
 ```bash
-depscan --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+depscan --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
 ```
 
 You can also save container images using docker or podman save command and pass the archive to depscan for scanning.
@@ -211,7 +209,7 @@ You can also save container images using docker or podman save command and pass 
 ```bash
 docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
 # podman save --format oci-archive -o /tmp/scanslim.tar shiftleft/scan-slim:latest
-depscan --no-error --src /tmp/scanslim.tar -o reports/depscan-scan.json -t docker
+depscan --src /tmp/scanslim.tar -o reports/depscan-scan.json -t docker
 ```
 
 Refer to the docker tests under GitHub action workflow for this repo for more examples.
