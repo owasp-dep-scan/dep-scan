@@ -608,31 +608,41 @@ async def run_scan():
         if not path and params.get("path"):
             path = params.get("path")
         if not multi_project and params.get("multiProject"):
-            multi_project = params.get("multiProject", "").lower() in ("true", "1")
+            multi_project = params.get("multiProject", "").lower() in (
+                "true",
+                "1",
+            )
         if not project_type and params.get("type"):
             project_type = params.get("type")
         if not profile and params.get("profile"):
             profile = params.get("profile")
 
-    if not path and not url and (uploaded_bom_file.get('file', None) is None):
-        return {"error": "true", "message": "path or url or a bom file upload is required"}, 400
+    if not path and not url and (uploaded_bom_file.get("file", None) is None):
+        return {
+            "error": "true",
+            "message": "path or url or a bom file upload is required",
+        }, 400
     if not project_type:
         return {"error": "true", "message": "project type is required"}, 400
 
     if not db_lib.index_count(db["index_file"]):
-        return {
-            "error": "true",
-            "message": "Vulnerability database is empty. Prepare the "
-            "vulnerability database by invoking /cache endpoint "
-            "before running scans.",
-        }, 500, {"Content-Type": "application/json"}
+        return (
+            {
+                "error": "true",
+                "message": "Vulnerability database is empty. Prepare the "
+                "vulnerability database by invoking /cache endpoint "
+                "before running scans.",
+            },
+            500,
+            {"Content-Type": "application/json"},
+        )
 
     cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
     bom_file_path = None
 
-    if uploaded_bom_file.get('file', None) is not None:
-        bom_file = uploaded_bom_file['file']
-        bom_file_content = bom_file.read().decode('utf-8')
+    if uploaded_bom_file.get("file", None) is not None:
+        bom_file = uploaded_bom_file["file"]
+        bom_file_content = bom_file.read().decode("utf-8")
         try:
             if str(bom_file.filename).endswith(".json"):
                 _ = json.loads(bom_file_content)
@@ -640,18 +650,29 @@ async def run_scan():
                 _ = parse(bom_file_content)
         except Exception as e:
             LOG.info(e)
-            return {'error': 'true', 'message': 'The uploaded file must be a valid JSON or XML.'}, 400, {"Content-Type": "application/json"}
+            return (
+                {
+                    "error": "true",
+                    "message": "The uploaded file must be a valid JSON or XML.",
+                },
+                400,
+                {"Content-Type": "application/json"},
+            )
 
-        LOG.debug('Processing uploaded file')
+        LOG.debug("Processing uploaded file")
         bom_file_suffix = str(bom_file.filename).split(".")[-1]
-        tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".bom.{bom_file_suffix}")
-        with open(tmp_bom_file.name, 'w') as f:
+        tmp_bom_file = tempfile.NamedTemporaryFile(
+            delete=False, suffix=f".bom.{bom_file_suffix}"
+        )
+        with open(tmp_bom_file.name, "w") as f:
             f.write(bom_file_content)
         path = tmp_bom_file.name
 
     # Path points to a project directory
     if os.path.isdir(path):
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".bom.json"
+        ) as bfp:
             bom_status = create_bom(
                 project_type,
                 bfp.name,
@@ -693,7 +714,14 @@ async def run_scan():
         with open(bom_file_path, encoding="utf-8") as fp:
             bom_data = json.load(fp)
         if not bom_data:
-            return {'error': 'true', 'message': 'Unable to generate SBOM. Check your input path or url.'}, 400, {"Content-Type": "application/json"}
+            return (
+                {
+                    "error": "true",
+                    "message": "Unable to generate SBOM. Check your input path or url.",
+                },
+                400,
+                {"Content-Type": "application/json"},
+            )
         options = PrepareVdrOptions(
             project_type,
             results,
@@ -712,9 +740,14 @@ async def run_scan():
         return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
 
     else:
-        return {"error": "true",
+        return (
+            {
+                "error": "true",
                 "message": "Unable to generate SBOM. Check your input path or url.",
-            }, 500, {"Content-Type": "application/json"}
+            },
+            500,
+            {"Content-Type": "application/json"},
+        )
 
 
 def run_server(args):
