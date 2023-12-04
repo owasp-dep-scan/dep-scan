@@ -8,7 +8,6 @@ from depscan.lib import explainer
 
 @pytest.fixture
 def test_data():
-    results = []
     with open(
         os.path.join(
             os.path.dirname(os.path.realpath(__file__)),

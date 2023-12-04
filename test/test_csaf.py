@@ -1,7 +1,4 @@
 import os.path
-import re
-
-import pytest
 
 from depscan.lib.csaf import (
     CsafOccurence,

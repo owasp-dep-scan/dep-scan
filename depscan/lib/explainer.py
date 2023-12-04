@@ -54,7 +54,6 @@ Below are some reachable flows identified by depscan. Use the provided tips to i
 
 
 def explain_reachables(reachables, pkg_group_rows, project_type):
-    """"""
     reachable_explanations = 0
     checked_flows = 0
     for areach in reachables.get("reachables", []):

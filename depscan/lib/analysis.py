@@ -218,7 +218,7 @@ class PrepareVdrOptions:
     reached_purls: Dict
 
 
-def prepare_vdr(options: PrepareVdrOptions):
+def prepare_vdr(options: PrepareVdrOptions):  # noqa: C901
     """
     Generates a report summary of the dependency scan results, creates a
     vulnerability table and a top priority table for packages that require
@@ -892,8 +892,8 @@ def jsonl_report(
                             full_pkg = f"""{purl_obj.get("namespace")}/
                             {purl_obj.get("name")}@{purl_obj.get("version")}"""
                         else:
-                            full_pkg = f"""{purl_obj.get("name")}@{purl_obj
-                                .get("version")}"""
+                            full_pkg = f"""
+                            {purl_obj.get("name")}@{purl_obj.get("version")}"""
                 except Exception:
                     pass
             if ids_seen.get(vid + purl):
@@ -945,7 +945,8 @@ def jsonl_report(
             outfile.write("\n")
 
 
-def analyse_pkg_risks(project_type, scoped_pkgs, risk_results, risk_report_file=None):
+def analyse_pkg_risks(project_type, scoped_pkgs, risk_results,  # noqa: C901
+                      risk_report_file=None):
     """
     Identify package risk and write to a json file
 

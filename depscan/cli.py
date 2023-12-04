@@ -470,7 +470,7 @@ def summarise(
 
 
 def download_rafs_based_image():
-    rafs_image_downloaded, paths_list = False, None
+    rafs_image_downloaded = False
     nydus_image_command = shutil.which("nydus-image", mode=os.X_OK)
     if nydus_image_command is not None:
         LOG.info(
@@ -479,11 +479,7 @@ def download_rafs_based_image():
         )
 
         try:
-            oras_client = oras.client.OrasClient()
             rafs_data_dir = tempfile.TemporaryDirectory()
-            paths_list = oras_client.pull(
-                target=vdb_rafs_database_url, outdir=rafs_data_dir.name
-            )
 
             if os.path.exists(
                 os.path.join(rafs_data_dir.name, "data.rafs")
@@ -557,7 +553,7 @@ async def cache():
 
 
 @app.route("/scan", methods=["GET", "POST"])
-async def run_scan():
+async def run_scan():  # noqa: C901
     """
     :return: A JSON response containing the SBOM file path and a list of
     vulnerabilities found in the scanned packages
@@ -673,7 +669,7 @@ def run_server(args):
     )
 
 
-def main():
+def main():  # noqa: C901
     """
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.

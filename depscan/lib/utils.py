@@ -96,7 +96,7 @@ def is_exe(src):
     return False
 
 
-def detect_project_type(src_dir):
+def detect_project_type(src_dir):  # noqa: C901
     """Detect project type by looking for certain files
 
     :param src_dir: Source directory

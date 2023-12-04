@@ -29,7 +29,7 @@ COMMON_SUFFIXES = [
 ]
 
 
-def create_pkg_variations(pkg_dict):
+def create_pkg_variations(pkg_dict):  # noqa: C901
     """
     Method to create variations of the given package by considering vendor
     and package aliases
