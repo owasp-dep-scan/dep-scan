@@ -105,12 +105,27 @@ curl http://0.0.0.0:7070/cache
 
 Use the `/scan` endpoint to perform scans.
 
+> [!NOTE]
+> The `type` parameter is mandatory in server mode.
+
+* Scanning a local directory.
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
+* Scanning a SBOM file (present locally).
+```bash
+curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
+```
+
+* Scanning a GitHub repo.
 ```bash
 curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
+```
+
+* Uploading a SBOM file and generating results based on it.
+```bash
+curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
 ```
 
 ### Scanning projects locally (Python version)
