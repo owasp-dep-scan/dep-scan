@@ -412,9 +412,6 @@ def summarise(
             to the console
     :return: A dict of vulnerability and severity summary statistics
     """
-    if not results:
-        LOG.info("No oss vulnerabilities detected for type %s ✅", project_type)
-        return None
     if report_file:
         jsonl_report(
             project_type,
@@ -500,7 +497,7 @@ def download_rafs_based_image():
                 target=vdb_rafs_database_url, outdir=rafs_data_dir.name
             )
 
-            if os.path.exists(
+            if paths_list and os.path.exists(
                 os.path.join(rafs_data_dir.name, "data.rafs")
             ) and os.path.exists(os.path.join(rafs_data_dir.name, "meta.rafs")):
                 nydus_download_command = [
@@ -530,10 +527,9 @@ def download_rafs_based_image():
             else:
                 raise FileNotFoundError("data.rafs or meta.rafs not found")
 
-        except Exception as e:
-            LOG.info(f"Error: {e}")
+        except Exception:
             LOG.info(
-                f"Unable to pull the vulnerability database (rafs image) from {vdb_rafs_database_url}. Trying to pull the non-rafs-based VDB image."
+                "Unable to pull the vulnerability database (rafs image) from %s. Trying to pull the non-rafs-based VDB image.", vdb_rafs_database_url
             )
             rafs_image_downloaded = False
 
@@ -660,11 +656,11 @@ async def run_scan():
             )
 
         LOG.debug("Processing uploaded file")
-        bom_file_suffix = str(bom_file.filename).split(".")[-1]
+        bom_file_suffix = str(bom_file.filename).rsplit(".", maxsplit=1)[-1]
         tmp_bom_file = tempfile.NamedTemporaryFile(
             delete=False, suffix=f".bom.{bom_file_suffix}"
         )
-        with open(tmp_bom_file.name, "w") as f:
+        with open(tmp_bom_file.name, "w", encoding="utf-8") as f:
             f.write(bom_file_content)
         path = tmp_bom_file.name
 

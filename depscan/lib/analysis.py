@@ -235,7 +235,7 @@ def prepare_vdr(options: PrepareVdrOptions):
     :return: Tuple containing (A list of vulnerability details, prioritized list as a dict)
     """
     if not options.results:
-        return []
+        return [], {}
     table = Table(
         title=f"Dependency Scan Results ({options.project_type.upper()})",
         box=box.DOUBLE_EDGE,
@@ -1135,7 +1135,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         LOG.info("No license violation detected ✅")
 
 
-def suggest_version(results, pkg_aliases={}, purl_aliases={}):
+def suggest_version(results, pkg_aliases=None, purl_aliases=None):
     """
     Provide version suggestions
 
@@ -1147,6 +1147,8 @@ def suggest_version(results, pkg_aliases={}, purl_aliases={}):
     sug_map = {}
     if not pkg_aliases:
         pkg_aliases = {}
+    if not purl_aliases:
+        purl_aliases = {}
     for res in results:
         if isinstance(res, dict):
             full_pkg = res.get("package")
