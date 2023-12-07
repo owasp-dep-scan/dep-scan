@@ -11,6 +11,9 @@ on:
       - 'pythonapp.yml'
       - 'python-publish.yml'
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 jobs:
   ubuntu_version_tests:
     runs-on: ${{ matrix.os }}
