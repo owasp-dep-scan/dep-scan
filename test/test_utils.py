@@ -86,3 +86,39 @@ def test_is_exe():
     assert not utils.is_exe(os.path.join(__file__))
     if os.path.exists("/bin/ls"):
         assert utils.is_exe("/bin/ls")
+
+def test_template_report():
+    utils.render_template_report(
+        jsonl_report_file=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "depscan-java.json",
+        ),
+        template_file=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "report-template.j2",
+        ),
+        result_file="rendered.report"
+    )
+    with open("rendered.report", "r", encoding="utf-8") as report_file:
+        rendered_report = report_file.read()
+
+    assert rendered_report == """\
+there are 13 vulns in here:
+
+* CVE-2018-5968 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2018-12022 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2018-12023 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2019-17267 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2020-9547 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2020-10673 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2020-9548 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2019-14892 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2020-8840 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2019-20330 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2019-10172 - org.codehaus.jackson:jackson-mapper-asl
+* CVE-2019-17531 - com.fasterxml.jackson.core:jackson-databind
+* CVE-2019-16943 - com.fasterxml.jackson.core:jackson-databind
+"""
+    os.remove("rendered.report")

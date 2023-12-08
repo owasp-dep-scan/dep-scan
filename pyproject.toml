@@ -15,6 +15,7 @@ dependencies = [
     "PyGithub",
     "toml",
     "pdfkit",
+    "Jinja2",
 ]
 
 requires-python = ">=3.8"
