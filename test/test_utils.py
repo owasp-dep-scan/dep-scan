@@ -94,6 +94,13 @@ def test_template_report():
             "data",
             "depscan-java.json",
         ),
+        summary={
+            "UNSPECIFIED": 0,
+            "LOW": 3,
+            "MEDIUM": 5,
+            "HIGH": 2,
+            "CRITICAL": 1,
+        },
         template_file=os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             "data",
@@ -120,5 +127,7 @@ there are 13 vulns in here:
 * CVE-2019-10172 - org.codehaus.jackson:jackson-mapper-asl
 * CVE-2019-17531 - com.fasterxml.jackson.core:jackson-databind
 * CVE-2019-16943 - com.fasterxml.jackson.core:jackson-databind
-"""
+That's 3 of low severity,
+5 medium, 2 high,
+1 critical and 0 unspecified ones."""
     os.remove("rendered.report")

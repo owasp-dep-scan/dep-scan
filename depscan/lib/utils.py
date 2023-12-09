@@ -411,13 +411,15 @@ def export_pdf(
     except Exception:
         pass
 
+
 def render_template_report(
     jsonl_report_file,
+    summary,
     template_file,
     result_file,
 ):
     """
-    Render the given json_report_file using the template_file with Jinja
+    Render the given json_report_file and summary dict using the template_file with Jinja
     """
     with open(jsonl_report_file, "r", encoding="utf-8") as jsonl_file:
         json_report = [json.loads(jline) for jline in jsonl_file.readlines()]
@@ -425,6 +427,9 @@ def render_template_report(
         template = tmpl_file.read()
     jinja_env = Environment(autoescape=False)
     jinja_tmpl = jinja_env.from_string(template)
-    report_result = jinja_tmpl.render(vulnerabilities=json_report)
+    report_result = jinja_tmpl.render(
+        vulnerabilities=json_report,
+        summary=summary,
+    )
     with open(result_file, "w", encoding="utf-8") as outfile:
         outfile.write(report_result)

@@ -1046,7 +1046,7 @@ def main():
             bom_file, src_dir, args.reachables_slices_file
         )
         # Summarise and print results
-        _, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
+        summary, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
             project_type,
             results,
             pkg_aliases,
@@ -1089,11 +1089,15 @@ def main():
     )
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished
-    if args.report_template:
-        if os.path.isfile(args.report_template):
-            utils.render_template_report(report_file, args.report_template, os.path.join(reports_dir, args.report_name))
-        else:
-            LOG.warning("Template file %s doesn't exist, custom report not created.", args.report_template)
+    if args.report_template and os.path.isfile(args.report_template):
+        utils.render_template_report(
+            jsonl_report_file=report_file,
+            summary=summary,
+            template_file=args.report_template,
+            result_file=os.path.join(reports_dir, args.report_name),
+        )
+    elif args.report_template:
+        LOG.warning("Template file %s doesn't exist, custom report not created.", args.report_template)
     # Submit vdr/vex files to threatdb server
     if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
         submit_bom(

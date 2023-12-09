@@ -422,9 +422,18 @@ There were {{ vulnerabilities | length }} issues identified:
 {% for vuln in vulnerabilities -%}
 * {{ vuln.id }} - {{ vuln.package }}
 {% endfor %}
+
+Severity counts:
+* Low: {{ summary.LOW }}
+* Medium: {{ summary.MEDIUM }}
+* High: {{ summary.HIGH }}
+* Critical: {{ summary.CRITICAL }}
+* Unspecified: {{ summary.UNSPECIFIED }}
 ```
 
-The `vulnerabilities` object is the same list that can be found in the `depscan-bom.json` report file, furthermore insights are imaginably, please reach out or contribute on demand.
+The `vulnerabilities` object is the same list that can be found in the `depscan-bom.json` report file,
+`summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
+Furthermore insights are imaginably to be made available to the template, please reach out or contribute on demand.
 
 ## Discord support
 
