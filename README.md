@@ -10,6 +10,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 ## Features
 
 - Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
+- Run the application as a GUI or CLI
 - Perform advanced reachability analysis for multiple languages (See reachability analysis)
 - Package vulnerability scanning is performed locally and is quite fast. No server is used!
 - Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
@@ -127,6 +128,24 @@ curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "typ
 ```bash
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
 ```
+
+### Running as a GUI
+dep-scan can also be run in a Graphical User Interface (GUI) mode via the `--gui` or `-g` flag.
+
+```bash
+depscan --gui
+```
+The above command opens a separate window with the GUI and shows the available input options.
+
+![Dep-Scan GUI](dep-scan-gui.png)
+
+
+The GUI can also be populated with default parameters by passing the `--gui` flag with the required parameters.
+
+```bash
+depscan --gui -t <project_type> --src <input_directory>
+```
+
 
 ### Scanning projects locally (Python version)
 
