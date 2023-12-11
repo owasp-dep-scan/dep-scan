@@ -147,9 +147,10 @@ depscan --src $PWD --reports-dir $PWD/reports
 The full list of options is below:
 
 ```bash
-usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORT_FILE]
-              [--reports-dir REPORTS_DIR] [--deep] [--no-universal] [--no-vuln-table] [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server]
-              [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
+usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM]
+              [-i SRC_DIR_IMAGE] [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
+              [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
+              [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
@@ -174,6 +175,12 @@ options:
                         DEPRECATED. Use reports directory since multiple files are created. Report filename with directory
   --reports-dir REPORTS_DIR
                         Reports directory
+  --report-template REPORT_TEMPLATE
+                        Jinja template file used for rendering a custom report
+  --report-name REPORT_NAME
+                        Filename of the custom report written to the --reports-dir
+  --no-error            UNUSED: Continue on error to prevent build from breaking
+  --no-license-scan     UNUSED: dep-scan doesn't perform license scanning by default
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
@@ -401,6 +408,32 @@ dep-scan could auto-detect most cloud applications and Kubernetes manifest files
 ## PDF reports
 
 Ensure [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) is installed or use the official container image to generate pdf reports. Use with `--explain` for more detailed reports.
+
+## Custom reports
+
+dep-scan can be provided with a [Jinja](https://jinja.palletsprojects.com/en/3.1.x/) template using the `--report-template` parameter.
+Giving it will pass the vulnerability report into your template for rendering the report.
+
+Please find a basic example here:
+
+```jinja
+There were {{ vulnerabilities | length }} issues identified:
+
+{% for vuln in vulnerabilities -%}
+* {{ vuln.id }} - {{ vuln.package }}
+{% endfor %}
+
+Severity counts:
+* Low: {{ summary.LOW }}
+* Medium: {{ summary.MEDIUM }}
+* High: {{ summary.HIGH }}
+* Critical: {{ summary.CRITICAL }}
+* Unspecified: {{ summary.UNSPECIFIED }}
+```
+
+The `vulnerabilities` object is the same list that can be found in the `depscan-bom.json` report file,
+`summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
+Furthermore insights are imaginably to be made available to the template, please reach out or contribute on demand.
 
 ## Discord support
 

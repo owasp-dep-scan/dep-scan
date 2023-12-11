@@ -1,9 +1,11 @@
 import ast
 import os
 import re
+import json
 from collections import defaultdict
 from datetime import datetime
 from importlib.metadata import distribution
+from jinja2 import Environment
 
 from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
@@ -408,3 +410,26 @@ def export_pdf(
             pdfkit.from_file(html_file, pdf_file, options=pdf_options)
     except Exception:
         pass
+
+
+def render_template_report(
+    jsonl_report_file,
+    summary,
+    template_file,
+    result_file,
+):
+    """
+    Render the given json_report_file and summary dict using the template_file with Jinja
+    """
+    with open(jsonl_report_file, "r", encoding="utf-8") as jsonl_file:
+        json_report = [json.loads(jline) for jline in jsonl_file.readlines()]
+    with open(template_file, "r", encoding="utf-8") as tmpl_file:
+        template = tmpl_file.read()
+    jinja_env = Environment(autoescape=False)
+    jinja_tmpl = jinja_env.from_string(template)
+    report_result = jinja_tmpl.render(
+        vulnerabilities=json_report,
+        summary=summary,
+    )
+    with open(result_file, "w", encoding="utf-8") as outfile:
+        outfile.write(report_result)

@@ -182,6 +182,17 @@ def build_args():
         help="Reports directory",
     )
     parser.add_argument(
+        "--report-template",
+        dest="report_template",
+        help="Jinja template file used for rendering a custom report",
+    )
+    parser.add_argument(
+        "--report-name",
+        default="rendered.report",
+        dest="report_name",
+        help="Filename of the custom report written to the --reports-dir",
+    )
+    parser.add_argument(
         "--no-error",
         action="store_true",
         default=False,
@@ -1035,7 +1046,7 @@ def main():
             bom_file, src_dir, args.reachables_slices_file
         )
         # Summarise and print results
-        _, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
+        summary, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
             project_type,
             results,
             pkg_aliases,
@@ -1077,6 +1088,16 @@ def main():
         else DEFAULT_TERMINAL_THEME,
     )
     utils.export_pdf(html_file, pdf_file)
+    # render report into template if wished
+    if args.report_template and os.path.isfile(args.report_template):
+        utils.render_template_report(
+            jsonl_report_file=report_file,
+            summary=summary,
+            template_file=args.report_template,
+            result_file=os.path.join(reports_dir, args.report_name),
+        )
+    elif args.report_template:
+        LOG.warning("Template file %s doesn't exist, custom report not created.", args.report_template)
     # Submit vdr/vex files to threatdb server
     if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
         submit_bom(

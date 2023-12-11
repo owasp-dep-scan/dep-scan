@@ -842,7 +842,7 @@ def summary_stats(results):
     """
     Generate summary stats
 
-    :param results: List of scan results objects wuth severity attribute.
+    :param results: List of scan results objects with severity attribute.
     :return: A dictionary containing the summary statistics for the severity
     levels of the vulnerabilities in the results list.
     """

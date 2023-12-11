@@ -1,0 +1,9 @@
+there are {{ vulnerabilities | length }} vulns in here:
+
+{% for vuln in vulnerabilities -%}
+* {{ vuln.id }} - {{ vuln.package }}
+{% endfor -%}
+
+That's {{ summary.LOW }} of low severity,
+{{ summary.MEDIUM }} medium, {{ summary.HIGH }} high,
+{{ summary.CRITICAL }} critical and {{ summary.UNSPECIFIED }} unspecified ones.
