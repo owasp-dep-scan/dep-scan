@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "appthreat-vulnerability-db>=5.5.4",
     "defusedxml",
+    "Gooey==1.0.8.1",
     "oras",
     "PyYAML",
     "rich",

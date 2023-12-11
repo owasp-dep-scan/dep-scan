@@ -11,6 +11,7 @@ import sys
 import tarfile
 import tempfile
 
+from gooey import Gooey
 import oras.client
 from quart import Quart, request
 from rich.panel import Panel
@@ -71,6 +72,29 @@ app = Quart(__name__)
 app.config.from_prefixed_env()
 
 
+def check_gui_arg():
+    if len(sys.argv) > 1 and (sys.argv[1] == '--gui' or sys.argv[1] == '-g'):
+        del sys.argv[1]
+        sys.argv.append("--no-banner")
+        return True
+
+    ignore_gooey = "--ignore-gooey"
+    if ignore_gooey in sys.argv:
+        ind = sys.argv.index(ignore_gooey)
+        if ind > 0:
+            del sys.argv[ind]
+            return False
+    return False
+
+
+def AutoGooey(func):
+    if check_gui_arg():
+        return Gooey(func, advanced=True, program_name="DepScan", image_dir=os.path.join(os.getcwd(), "gui_icons"), language="english", default_size=(970, 600), use_cmd_args=True)
+    else:
+        return func
+
+
+@AutoGooey
 def build_args():
     """
     Constructs command line arguments for the depscan tool
@@ -128,7 +152,7 @@ def build_args():
     parser.add_argument(
         "--no-suggest",
         action="store_false",
-        default="True",
+        default=True,
         dest="suggest",
         help="Disable suggest mode",
     )
