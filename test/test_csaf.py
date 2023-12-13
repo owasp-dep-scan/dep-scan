@@ -1,7 +1,4 @@
 import os.path
-import re
-
-import pytest
 
 from depscan.lib.csaf import (
     CsafOccurence,
@@ -397,6 +394,7 @@ def test_parse_toml():
 
 
 def test_parse_cvss():
+    # Test parsing
     res = {
         "cvss_v3": {
             "attack_complexity": "LOW",
@@ -424,7 +422,70 @@ def test_parse_cvss():
         "version": "3.1",
         "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
     }
+    res["cvss_v3"]["vector_string"] = "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
+    assert parse_cvss(res) == {
+        "baseScore": 7.5,
+        "attackVector": "NETWORK",
+        "privilegesRequired": "NONE",
+        "userInteraction": "NONE",
+        "scope": "UNCHANGED",
+        "baseSeverity": "HIGH",
+        "version": "3.0",
+        "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I",
+    }
+    # Test no cvss_v3
+    res = {
+        "severity": "HIGH",
+        "id": "CVE-2023-37788",
+    }
+    assert parse_cvss(res) is None
+    res["cvss_v3"] = {}
+    assert parse_cvss(res) is None
+    # Test missing or pre-3.0 vector string
+    res = {
+        "cvss_v3": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "HIGH",
+            "base_score": 7.5,
+            "impact_score": 7.5,
+            "confidentiality_impact": "NONE",
+            "integrity_impact": "NONE",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE",
+        },
+        "severity": "HIGH",
+        "id": "CVE-2023-37788",
+    }
+    assert parse_cvss(res) is None
+    res["cvss_v3"]["vector_string"] = "CVSS:2.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
+    assert parse_cvss(res) is None
     res["cvss_v3"]["vector_string"] = ""
+    assert parse_cvss(res) is None
+    res["cvss_v3"]["vector_string"] = None
+    assert parse_cvss(res) is None
+    # Test missing base score
+    res = {
+        "cvss_v3": {
+            "attack_complexity": "LOW",
+            "attack_vector": "NETWORK",
+            "availability_impact": "HIGH",
+            "impact_score": 7.5,
+            "confidentiality_impact": "NONE",
+            "integrity_impact": "NONE",
+            "privileges_required": "NONE",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE",
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        },
+        "severity": "HIGH",
+        "id": "CVE-2023-37788",
+    }
+    assert parse_cvss(res) is None
+    res["cvss_v3"]["base_score"] = ""
+    assert parse_cvss(res) is None
+    res["cvss_v3"]["base_score"] = None
     assert parse_cvss(res) is None
 
 
