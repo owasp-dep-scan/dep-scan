@@ -1298,26 +1298,26 @@ def parse_cvss(res):
             If the vector string or base score are missing, or the CVSS
             version is not 3.0 or 3.1, None is returned.
     """
-    cvss_v3 = res.get("cvss_v3")
-    version = re.findall(r"3.0|3.1", cvss_v3["vector_string"])
+
     # baseScore, vectorString, and version are required for a valid score
+    cvss_v3 = res.get("cvss_v3")
     if (
-        not cvss_v3
-        or not cvss_v3.get("vector_string")
-        or not version
-        or not cvss_v3.get("base_score")
+            not cvss_v3
+            or not (vector_string := cvss_v3.get("vector_string"))
+            or not (version := re.findall(r"3.0|3.1", cvss_v3.get("vector_string", "")))
+            or not (base_score := cvss_v3.get("base_score"))
     ):
         return None
     version = version[0]
     return {
-        "baseScore": cvss_v3["base_score"],
-        "attackVector": cvss_v3["attack_vector"],
-        "privilegesRequired": cvss_v3["privileges_required"],
-        "userInteraction": cvss_v3["user_interaction"],
-        "scope": cvss_v3["scope"],
-        "baseSeverity": res["severity"],
+        "baseScore": base_score,
+        "attackVector": cvss_v3.get("attack_vector"),
+        "privilegesRequired": cvss_v3.get("privileges_required"),
+        "userInteraction": cvss_v3.get("user_interaction"),
+        "scope": cvss_v3.get("scope"),
+        "baseSeverity": res.get("severity"),
         "version": version,
-        "vectorString": cvss_v3["vector_string"],
+        "vectorString": vector_string,
     }
 
 
