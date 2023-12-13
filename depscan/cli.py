@@ -1105,8 +1105,6 @@ def main():
                 src_dir,
                 reports_dir,
                 vdr_file,
-                direct_purls=direct_purls,
-                reached_purls=reached_purls,
             )
     console.save_html(
         html_file,
