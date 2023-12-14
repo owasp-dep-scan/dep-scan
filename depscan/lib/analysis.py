@@ -11,7 +11,7 @@ from rich.style import Style
 from rich.table import Table
 from rich.tree import Tree
 from vdb.lib import CPE_FULL_REGEX
-from vdb.lib.config import placeholder_fix_version
+from vdb.lib.config import placeholder_exclude_version, placeholder_fix_version
 from vdb.lib.utils import parse_cpe, parse_purl
 
 from depscan.lib import config
@@ -84,7 +84,7 @@ def retrieve_bom_dependency_tree(bom_file):
     :return: Dependency tree as a list
     """
     if not bom_file:
-        return []
+        return [], None
     try:
         with open(bom_file, encoding="utf-8") as bfp:
             bom_data = json.load(bfp)
@@ -97,6 +97,8 @@ def retrieve_bom_dependency_tree(bom_file):
 
 def retrieve_oci_properties(bom_data):
     props = {}
+    if not bom_data:
+        return props
     for p in bom_data.get("metadata", {}).get("properties", []):
         if p.get("name", "").startswith("oci:image:"):
             props[p.get("name")] = p.get("value")
@@ -1174,7 +1176,11 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
         else:
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
-        version_upgrades.add(fixed_location)
+        if (
+            fixed_location != placeholder_fix_version
+            and fixed_location != placeholder_exclude_version
+        ):
+            version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades
     for k, v in pkg_fix_map.items():
         # Don't go near certain packages

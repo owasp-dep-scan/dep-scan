@@ -54,10 +54,10 @@ def create_pkg_variations(pkg_dict):
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
-                if qualifiers.get("distro_name"):
+                if qualifiers and qualifiers.get("distro_name"):
                     os_distro_name = qualifiers.get("distro_name")
                     name_aliases.add(f"""{os_distro_name}/{name}""")
-                if qualifiers.get("distro"):
+                if qualifiers and qualifiers.get("distro"):
                     os_distro = qualifiers.get("distro")
                     name_aliases.add(f"""{os_distro}/{name}""")
                     # almalinux-9.2 becomes almalinux-9
@@ -70,6 +70,7 @@ def create_pkg_variations(pkg_dict):
     if vendor:
         vendor_aliases.add(vendor)
         vendor_aliases.add(vendor.lower())
+        vendor_aliases.add(vendor.lstrip("@"))
         if (
             vendor.startswith("org.")
             or vendor.startswith("io.")
@@ -94,7 +95,6 @@ def create_pkg_variations(pkg_dict):
             vendor_aliases.add("golang")
     if pkg_type not in config.OS_PKG_TYPES:
         name_aliases.add("package_" + name)
-        vendor_aliases.add(pkg_type)
         if purl.startswith("pkg:composer"):
             vendor_aliases.add("get" + name)
             vendor_aliases.add(name + "_project")
@@ -168,7 +168,7 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add(name + "-bin")
     else:
         # Filter vendor aliases that are also name aliases
-        vendor_aliases = [x for x in vendor_aliases if x not in name_aliases]
+        vendor_aliases = [x for x in vendor_aliases if x not in name_aliases or x == vendor]
     if len(vendor_aliases) > 0:
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
