@@ -299,6 +299,11 @@ def build_args():
         help="Path for the reachables slices file created by atom.",
     )
     parser.add_argument(
+        "--purl",
+        dest="search_purl",
+        help="Scan a single package url.",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="Display the version",
@@ -448,7 +453,7 @@ def summarise(
         reached_purls=reached_purls,
     )
     pkg_vulnerabilities, pkg_group_rows = prepare_vdr(options)
-    vdr_file = bom_file.replace(".json", ".vdr.json")
+    vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
     if pkg_vulnerabilities and bom_file:
         try:
             with open(bom_file, encoding="utf-8") as fp:
@@ -508,9 +513,15 @@ def download_rafs_based_image():
                 target=vdb_rafs_database_url, outdir=rafs_data_dir.name
             )
 
-            if paths_list and os.path.exists(
-                os.path.join(rafs_data_dir.name, "data.rafs")
-            ) and os.path.exists(os.path.join(rafs_data_dir.name, "meta.rafs")):
+            if (
+                paths_list
+                and os.path.exists(
+                    os.path.join(rafs_data_dir.name, "data.rafs")
+                )
+                and os.path.exists(
+                    os.path.join(rafs_data_dir.name, "meta.rafs")
+                )
+            ):
                 nydus_download_command = [
                     f"{nydus_image_command}",
                     "unpack",
@@ -540,7 +551,8 @@ def download_rafs_based_image():
 
         except Exception:
             LOG.info(
-                "Unable to pull the vulnerability database (rafs image) from %s. Trying to pull the non-rafs-based VDB image.", vdb_rafs_database_url
+                "Unable to pull the vulnerability database (rafs image) from %s. Trying to pull the non-rafs-based VDB image.",
+                vdb_rafs_database_url,
             )
             rafs_image_downloaded = False
 
@@ -819,6 +831,12 @@ def main():
     # Detect the project types and perform the right type of scan
     if args.project_type:
         project_types_list = args.project_type.split(",")
+    elif args.search_purl:
+        purl_obj = parse_purl(args.search_purl)
+        purl_obj["purl"] = args.search_purl
+        purl_obj["vendor"] = purl_obj.get("namespace")
+        project_types_list = [purl_obj.get("type")]
+        pkg_list = [purl_obj]
     elif args.bom and not args.project_type:
         project_types_list = ["bom"]
     elif not args.non_universal_scan:
@@ -857,7 +875,12 @@ def main():
         risk_report_file = areport_file.replace(
             ".json", f"-risk.{project_type}.json"
         )
-        if args.bom and os.path.exists(args.bom):
+        # Are we scanning a single purl
+        if args.search_purl:
+            bom_file = None
+            creation_status = True
+        # Are we scanning a bom file
+        elif args.bom and os.path.exists(args.bom):
             bom_file = args.bom
             creation_status = True
         else:
@@ -876,14 +899,15 @@ def main():
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
             continue
-        LOG.debug("Scanning using the bom file %s", bom_file)
-        if not args.bom:
-            LOG.info(
-                "To improve performance, cache the bom file and invoke "
-                "depscan with --bom %s instead of -i",
-                bom_file,
-            )
-        pkg_list = get_pkg_list(bom_file)
+        if bom_file:
+            LOG.debug("Scanning using the bom file %s", bom_file)
+            if not args.bom:
+                LOG.info(
+                    "To improve performance, cache the bom file and invoke "
+                    "depscan with --bom %s instead of -i",
+                    bom_file,
+                )
+            pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
             LOG.debug("No packages found in the project!")
             continue
@@ -1097,7 +1121,10 @@ def main():
             result_file=os.path.join(reports_dir, args.report_name),
         )
     elif args.report_template:
-        LOG.warning("Template file %s doesn't exist, custom report not created.", args.report_template)
+        LOG.warning(
+            "Template file %s doesn't exist, custom report not created.",
+            args.report_template,
+        )
     # Submit vdr/vex files to threatdb server
     if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
         submit_bom(

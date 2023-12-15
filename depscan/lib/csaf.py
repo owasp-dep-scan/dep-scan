@@ -1577,6 +1577,7 @@ def parse_toml(metadata):
         'current_release_date'.
     """
     tracking = parse_revision_history(metadata.get("tracking"))
+    # FIXME: Could this be simplified as list comprehension without append
     refs = []
     [refs.append(v) for v in metadata.get("reference")]
     notes = []

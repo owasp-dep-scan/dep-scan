@@ -108,22 +108,26 @@ Use the `/scan` endpoint to perform scans.
 > [!NOTE]
 > The `type` parameter is mandatory in server mode.
 
-* Scanning a local directory.
+- Scanning a local directory.
+
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
-* Scanning a SBOM file (present locally).
+- Scanning a SBOM file (present locally).
+
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
-* Scanning a GitHub repo.
+- Scanning a GitHub repo.
+
 ```bash
 curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
 ```
 
-* Uploading a SBOM file and generating results based on it.
+- Uploading a SBOM file and generating results based on it.
+
 ```bash
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
 ```
@@ -203,6 +207,7 @@ options:
   --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
   --reachables-slices-file REACHABLES_SLICES_FILE
                         Path for the reachables slices file created by atom.
+  --purl SEARCH_PURL    Scan a single package url.
   -v, --version         Display the version
 ```
 
