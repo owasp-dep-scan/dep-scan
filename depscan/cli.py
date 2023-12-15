@@ -1115,7 +1115,8 @@ def main():
     # render report into template if wished
     if args.report_template and os.path.isfile(args.report_template):
         utils.render_template_report(
-            jsonl_report_file=report_file,
+            vdr_file=vdr_file,
+            bom_file=bom_file,
             summary=summary,
             template_file=args.report_template,
             result_file=os.path.join(reports_dir, args.report_name),

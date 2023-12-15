@@ -1,0 +1,24 @@
+{% if vulnerabilities %}
+⚠ **Vulnerability Report**
+
+| Artifact | Vulnerability | Severity (CVSS v3) | Recommendation |
+|----------|---------------|-----------------|----------------|
+{% for vuln in vulnerabilities %}
+{%- set ns = namespace(score='', severity='unspecified') -%}
+
+{%- set vuln_desc = vuln.description | replace('|', '&vert;') | replace('\n', '<br />') | replace('"', "'") -%}
+
+{%- for rating in vuln.ratings -%}
+{%- if 'CVSSv3' in rating.method -%}
+{%- set ns.score = rating.score -%}
+{%- set ns.severity = rating.severity -%}
+{%- endif -%}
+{%- endfor -%}
+
+{%- set severity_icon = {'unspecified': '⚪', 'low': '🔵', 'medium': '🟡', 'high': '🟠', 'critical': '🔴'}[ns.severity] -%}
+
+| `{{ (vuln.affects | first).ref }}` | <details><summary>[{{ vuln.id }}]({{ vuln.source.url }} "{{ vuln.source.name }}")</summary>{{ vuln_desc }}</details> | {{ severity_icon }}&nbsp;{{ ns.severity | capitalize }}&nbsp;({{ ns.score }}) | {{ vuln.recommendation | d('', true) }} |
+{% endfor -%}
+{% else %}
+🏆 _No vulnerabilities found_
+{% endif %}
