@@ -1173,7 +1173,11 @@ class CsafOccurence:
         )
         self.references = res["related_urls"]
         self.type = (res["type"],)
-        self.severity = res["severity"]
+        self.severity = (
+            res["severity"] if (
+            res["severity"] in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]) else (
+            "UNKNOWN")
+        )
         self.orig_date = res["source_orig_time"] or None
         self.update_date = res["source_update_time"] or None
 
@@ -1186,7 +1190,8 @@ class CsafOccurence:
         vuln["product_status"] = self.product_status
         [ids, vuln["references"]] = format_references(self.references)
         vuln["ids"] = ids
-        vuln["scores"] = [{"cvss_v3": self.cvss_v3, "products": [self.pkg]}]
+        if self.cvss_v3:
+            vuln["scores"] = [{"cvss_v3": self.cvss_v3, "products": [self.pkg]}]
         self.notes.append(
             {
                 "category": "general",
@@ -1299,26 +1304,31 @@ def parse_cvss(res):
             version is not 3.0 or 3.1, None is returned.
     """
 
-    # baseScore, vectorString, and version are required for a valid score
+    # baseScore, baseSeverity, vectorString, and version are required
     cvss_v3 = res.get("cvss_v3")
     if (
             not cvss_v3
             or not (vector_string := cvss_v3.get("vector_string"))
-            or not (version := re.findall(r"3.0|3.1", cvss_v3.get("vector_string", "")))
+            or not (version := re.findall(r"3.0|3.1",
+                                          cvss_v3.get("vector_string", "")))
             or not (base_score := cvss_v3.get("base_score"))
+            or (severity := res.get("severity")) not in
+            ["CRITICAL", "HIGH", "MEDIUM", "LOW", "NONE"]
     ):
         return None
     version = version[0]
-    return {
+    cvss_v3_data = {
         "baseScore": base_score,
+        "baseSeverity": severity,
         "attackVector": cvss_v3.get("attack_vector"),
         "privilegesRequired": cvss_v3.get("privileges_required"),
         "userInteraction": cvss_v3.get("user_interaction"),
         "scope": cvss_v3.get("scope"),
-        "baseSeverity": res.get("severity"),
         "version": version,
         "vectorString": vector_string,
     }
+
+    return cvss_v3_data
 
 
 def format_references(ref):
@@ -1873,6 +1883,8 @@ def add_vulnerabilities(data, results, direct_purls, reached_purls):
         "HIGH": 2,
         "MEDIUM": 3,
         "LOW": 4,
+        "UNKNOWN": 5,
+        "NONE": 6,
     }
     affected_regex = re.compile(
         r"(?P<lmod>[>=]{1,2})(?P<lower>\w+(?:.\w+)?(?:.\w+)?)-(?P<umod>[<=]{"
@@ -1884,7 +1896,7 @@ def add_vulnerabilities(data, results, direct_purls, reached_purls):
     for r in results:
         c = CsafOccurence(r)
         new_vuln = c.to_dict()
-        agg_score.add(severity_ref.get(c.severity))
+        agg_score.add(severity_ref.get(c.severity, 5))
         if c.search_string:
             found = reached_dict.get(c.search_string)
             if not found:
