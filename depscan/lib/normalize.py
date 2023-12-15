@@ -155,10 +155,12 @@ def create_pkg_variations(pkg_dict):
         for suffix in COMMON_SUFFIXES:
             if name.endswith(suffix):
                 name_aliases.add(name.replace(suffix, ""))
-        for k, v in config.package_alias.items():
-            if name.startswith(k) or k.startswith(name) or v.startswith(name):
-                name_aliases.add(k)
-                name_aliases.add(v)
+        # The below aliasing is resulting in several false positives for npm
+        if pkg_type not in ("npm",):
+            for k, v in config.package_alias.items():
+                if name.startswith(k) or k.startswith(name) or v.startswith(name):
+                    name_aliases.add(k)
+                    name_aliases.add(v)
     if pkg_type in config.OS_PKG_TYPES:
         if "lib" in name:
             name_aliases.add(name.replace("lib", ""))
