@@ -100,6 +100,15 @@ def retrieve_bom_dependency_tree(bom_file):
 
 
 def retrieve_oci_properties(bom_data):
+    """
+    Retrieves OCI properties from the given BOM data.
+
+    :param bom_data: The BOM data to retrieve OCI properties from.
+    :type bom_data: dict
+
+    :return: A dictionary containing the retrieved OCI properties.
+    :rtype: dict
+    """
     props = {}
     if not bom_data:
         return props
@@ -628,12 +637,9 @@ def prepare_vdr(options: PrepareVdrOptions):
             cwes = []
             if problem_type:
                 cwes = split_cwe(problem_type)
-            pkg_vulnerabilities.append(
-                {
+            vuln = {
                     "bom-ref": f"{vid}/{purl}",
                     "id": vid,
-                    "published": vuln_occ_dict.get("source_orig_time"),
-                    "updated": vuln_occ_dict.get("source_update_time"),
                     "source": source,
                     "ratings": ratings,
                     "cwes": cwes,
@@ -644,7 +650,12 @@ def prepare_vdr(options: PrepareVdrOptions):
                     "affects": affects,
                     "properties": properties,
                 }
-            )
+            if (source_orig_time := vuln_occ_dict.get("source_orig_time")):
+                vuln["published"] = source_orig_time
+            if (source_update_time := vuln_occ_dict.get("source_update_time")):
+                vuln["updated"] = source_update_time
+            pkg_vulnerabilities.append(vuln)
+
     if not options.no_vuln_table:
         console.print()
         console.print(table)
@@ -653,7 +664,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         psection = Markdown(
             """## Next Steps
 
-Below are the vulnerabilities prioritized by depscan. Follow your team's 
+Below are the vulnerabilities prioritized by depscan. Follow your team's
 remediation workflow to mitigate these findings."""
         )
         console.print(psection)
@@ -725,12 +736,12 @@ remediation workflow to mitigate these findings."""
                         f"for updates."
                     )
                 if has_redhat_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages 
-                    with status "out of support" or "won't fix" are excluded 
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages
+                    with status "out of support" or "won't fix" are excluded
                     from this result."""
                 if has_ubuntu_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages 
-                    with status "DNE" or "needs-triaging" are excluded from 
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages
+                    with status "DNE" or "needs-triaging" are excluded from
                     this result."""
             console.print(
                 Panel(
@@ -867,8 +878,8 @@ remediation workflow to mitigate these findings."""
         rsection = Markdown(
             """## Proactive Measures
 
-Below are the top reachable packages identified by depscan. Setup alerts and 
-notifications to actively monitor these packages for new vulnerabilities and 
+Below are the top reachable packages identified by depscan. Setup alerts and
+notifications to actively monitor these packages for new vulnerabilities and
 exploits."""
         )
         console.print(rsection)
@@ -901,19 +912,16 @@ def cvss_to_vdr(res):
     """
     cvss_v3 = res.get("cvss_v3")
     # baseScore, baseSeverity, vectorString, version are required
-    if (
-            not cvss_v3
-            or not (vector_string := cvss_v3.get("vector_string"))
-            or not (version := re.findall(
-            r"3.0|3.1", cvss_v3.get("vector_string", "")
-            ))
-            or not (base_score := cvss_v3.get("base_score"))
-            or not (base_severity := res.get("severity"))
+    if not cvss_v3 or not (vector_string := cvss_v3.get("vector_string")):
+        return {}
+    if (not (
+        version := re.search(r"3.0|3.1", cvss_v3.get("vector_string"))) or
+            not (base_score := cvss_v3.get("base_score")) or
+            not (base_severity := res.get("severity"))
     ):
-        return None
-    version = version[0]
+        return {}
     cvss_props =  [
-        {"name": "cvssVersion", "value": version},
+        {"name": "cvssVersion", "value": vector_string[version.start():version.end()]},
         {"name": "cvssBaseScore", "value": base_score},
         {"name": "cvssVectorString", "value": vector_string},
         {"name": "cvssAttackVector", "value": cvss_v3.get("attack_vector")},
@@ -937,9 +945,9 @@ def split_cwe(cwe):
     """
     cwe_ids = []
 
-    if type(cwe) is str:
+    if isinstance(cwe, str):
         cwe_ids = re.findall(CWE_SPLITTER, cwe)
-    elif type(cwe) is list:
+    elif isinstance(cwe, list):
         cwes = "|".join(cwe)
         cwe_ids = re.findall(CWE_SPLITTER, cwes)
 

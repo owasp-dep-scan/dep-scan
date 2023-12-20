@@ -747,9 +747,9 @@ def test_cvss_to_vdr():
         "severity": "HIGH",
         "id": "CVE-2023-37788",
     }
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     res["cvss_v3"] = {}
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     # Test missing or pre-3.0 vector string
     res = {
         "cvss_v3": {
@@ -767,13 +767,13 @@ def test_cvss_to_vdr():
         "severity": "HIGH",
         "id": "CVE-2023-37788",
     }
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     res["cvss_v3"]["vector_string"] = "CVSS:2.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     res["cvss_v3"]["vector_string"] = ""
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     res["cvss_v3"]["vector_string"] = None
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     # Test missing base score
     res = {
         "cvss_v3": {
@@ -791,10 +791,10 @@ def test_cvss_to_vdr():
         "severity": "HIGH",
         "id": "CVE-2023-37788",
     }
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     res["cvss_v3"]["base_score"] = ""
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
     res["cvss_v3"]["base_score"] = None
-    assert cvss_to_vdr(res) is None
+    assert cvss_to_vdr(res) == {}
 
 

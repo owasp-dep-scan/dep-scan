@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import re
@@ -5,6 +6,7 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 from json import JSONDecodeError
+from packageurl import PackageURL
 
 import toml
 from vdb.lib import convert_time
@@ -1106,12 +1108,6 @@ COMPILED_REF_PATTERNS = {
     for pattern, value in SORTED_REF_MAP.items()
 }
 
-PURL_REGEX = re.compile(
-    r"(?P<pkg>pkg:([^/@?]+)/([^/@?]+)/?(?:[^/@?]+)?)@(?P<version>\w+(?:"
-    r"\.\w+\.)?(?:\w+\.?)?(?:\w+)?)(?P<type>\?type=\w+)?",
-    re.IGNORECASE,
-)
-
 ISSUES_REGEX = re.compile(
     r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<owner>["
     r"\w\-.]+)/(?P<repo>[\w\-.]+)/issues/(?:detail\?id=)?(?P<id>\d+)",
@@ -1134,37 +1130,38 @@ USN_REGEX = re.compile(
 
 def vdr_to_csaf(res):
     """
-    Processes a vulnerability from the VDR format to the CSAF format.
+    Processes a vulnerability from the VDR format to CSAF format.
 
 
     :param res: The metadata for a single vulnerability.
     :type res: dict
 
-    :return: The processed vulnerability in the CSAF format.
+    :return: The processed vulnerability in CSAF format.
     :rtype: dict
     """
     cve = res.get("id", "")
-    acknowledgements = get_acknowledgements(res.get("source"))
-    pkgs = [i.get("ref") for i in res.get("affects")]
-    cwe, notes = parse_cwe(res.get("cwes"))
-    product_status = get_product_status(res.get("affects"))
-    cvss_v3 = parse_cvss(res.get("properties"))
+    acknowledgements = get_acknowledgements(res.get("source", {}))
+    pkgs = get_products(res.get("affects", []))
+    cwe, notes = parse_cwe(res.get("cwes", []))
+    product_status = get_product_status(res.get("affects", []))
+    cvss_v3 = parse_cvss(res.get("properties", []))
     description = (
-        res["description"]
+        res.get("description", "")
         .replace("\n", " ")
         .replace("\t", " ")
         .replace("\n", " ")
         .replace("\t", " ")
     )
-    ids, references = format_references(res.get("advisories"))
+    ids, references = format_references(res.get("advisories", []))
     orig_date = res.get("published")
     update_date = res.get("updated")
+    discovery_date = orig_date or update_date
     vuln = {}
     if cve.startswith("CVE"):
         vuln["cve"] = cve
     vuln["cwe"] = cwe
     vuln["acknowledgements"] = acknowledgements
-    vuln["discovery_date"] = str(orig_date) or str(update_date)
+    vuln["discovery_date"] = str(discovery_date) if discovery_date else None
     vuln["product_status"] = product_status
     vuln["references"] = references
     vuln["ids"] = ids
@@ -1181,6 +1178,30 @@ def vdr_to_csaf(res):
     return vuln
 
 
+def get_products(affects):
+    """
+    Generates a list of unique product URLs based on the given list of affects.
+
+    :param affects: Affected and fixed versions with associated purls
+    :type affects: list[dict]
+
+    :return: Packages affected by the vulnerability
+    :rtype: list
+    """
+    products = set()
+    for i in affects:
+        product = ''
+        try:
+            purl = PackageURL.from_string(i.get("ref", ""))
+            if purl.namespace:
+                product += f'{purl.namespace}/'
+            product += f'{purl.name}@{purl.version}'
+        except ValueError:
+            product = i.get("ref", "")
+        products.add(product)
+    return list(products)
+
+
 def get_acknowledgements(source):
     """
     Generates the acknowledgements from the source data information
@@ -1188,14 +1209,14 @@ def get_acknowledgements(source):
     :type source: dict
 
     :return: A dictionary containing the acknowledgements
-    :rtype: dict or None
+    :rtype: dict
     """
     if not source.get("name"):
-        return None
+        return {}
 
     return {
         "organization": source["name"],
-        "urls": [source["url"]]
+        "urls": [source.get("url")]
     }
 
 
@@ -1204,25 +1225,35 @@ def get_product_status(affects):
     Generates the product status
 
     :param affects: List with the version information in a dict
-    :type affects: list
+    :type affects: list[dict]
 
     :return: A dictionary containing the product status
     :rtype: dict
     """
+    if not affects:
+        return {}
+
     known_affected = []
     fixed = []
     for i in affects:
-        if match := PURL_REGEX.match(i.get("ref")):
-            ppkg = match.group("pkg")
-            ptype = match.group("type") or ""
-        else:
-            LOG.debug("Invalid PURL: %s", i.get("ref"))
-            continue
-        for v in i.get("versions"):
-            if v["status"] == "affected":
+        for v in i.get("versions", []):
+            purl = None
+            with contextlib.suppress(ValueError):
+                purl = PackageURL.from_string(i.get("ref", ""))
+                namespace = purl.namespace
+                pkg_name = purl.name
+                version = purl.version
+            if purl and v.get("status") == "affected":
+                known_affected.append(
+                    f'{namespace}/{pkg_name}@{version}')
+            elif purl and v.get("status") == "unaffected":
+                fixed.append(f'{namespace}/{pkg_name}@{v.get("version")}')
+            elif not purl and v.get("status") == "affected":
                 known_affected.append(i.get("ref"))
-            elif v["status"] == "unaffected":
-                fixed.append(f"{ppkg}@" + v["version"] + ptype)
+
+    known_affected = [i.replace("None/", "") for i in known_affected]
+    fixed = [i.replace("None/", "") for i in fixed]
+
     return {"known_affected": known_affected, "fixed": fixed}
 
 
@@ -1240,7 +1271,7 @@ def parse_cwe(cwe):
     fmt_cwe = None
     new_notes = []
 
-    if len(cwe) == 0:
+    if not cwe:
         return fmt_cwe, new_notes
 
     for i, cwe_id in enumerate(cwe):
@@ -1265,27 +1296,29 @@ def parse_cvss(props):
     Parses the CVSS information from pkg_vulnerabilities
 
     :param props: The list of properties for the vulnerability
-    :type props: list
+    :type props: list[dict]
 
     :return: The parsed CVSS information as a single dictionary
-    :rtype: dict or None
+    :rtype: dict
     """
-    if len(props) < 8:
-        return None
-    cvss_v3 = {
+    if not props:
+        return {}
+    cvss_v3_dict = {
         i["name"]: i["value"] for i in props if i["name"].startswith("cvss")
     }
 
-    return {
-        "baseScore": cvss_v3.get("cvssBaseScore"),
-        "attackVector": cvss_v3.get("cvssAttackVector"),
-        "privilegesRequired": cvss_v3.get("cvssPrivilegesRequired"),
-        "userInteraction": cvss_v3.get("cvssUserInteraction"),
-        "scope": cvss_v3.get("cvssScope"),
-        "baseSeverity": cvss_v3.get("cvssBaseSeverity"),
-        "version": cvss_v3.get("cvssVersion"),
-        "vectorString": cvss_v3.get("cvssVectorString"),
+    cvss_v3 = {
+        "baseScore": cvss_v3_dict.get("cvssBaseScore"),
+        "attackVector": cvss_v3_dict.get("cvssAttackVector"),
+        "privilegesRequired": cvss_v3_dict.get("cvssPrivilegesRequired"),
+        "userInteraction": cvss_v3_dict.get("cvssUserInteraction"),
+        "scope": cvss_v3_dict.get("cvssScope"),
+        "baseSeverity": cvss_v3_dict.get("cvssBaseSeverity"),
+        "version": cvss_v3_dict.get("cvssVersion"),
+        "vectorString": cvss_v3_dict.get("cvssVectorString"),
     }
+
+    return cleanup_dict(cvss_v3)
 
 
 def format_references(advisories):
@@ -1298,6 +1331,8 @@ def format_references(advisories):
     :return: A list of dictionaries with the formatted references.
     :rtype: list
     """
+    if not advisories:
+        return [], []
     ref = [i["url"] for i in advisories]
     fmt_refs = [{"summary": get_ref_summary(r), "url": r} for r in ref]
     ids = []
@@ -1511,11 +1546,8 @@ def parse_toml(metadata):
     :return: The processed metadata ready to use in the CSAF document.
     """
     tracking = parse_revision_history(metadata.get("tracking"))
-    # FIXME: Could this be simplified as list comprehension without append
-    refs = []
-    [refs.append(v) for v in metadata.get("reference")]
-    notes = []
-    [notes.append(v) for v in metadata.get("note")]
+    refs = list(metadata.get("reference"))
+    notes = list(metadata.get("note"))
     product_tree = import_product_tree(metadata["product_tree"])
     return {
         "document": {
@@ -1633,7 +1665,7 @@ def write_toml(toml_file_path, metadata=None):
     metadata["depscan_version"] = get_version()
     with open(toml_file_path, "w", encoding="utf-8") as f:
         toml.dump(metadata, f)
-    LOG.info("The csaf.toml has been updated at %s", toml_file_path)
+    LOG.debug("The csaf.toml has been updated at %s", toml_file_path)
 
 
 def cleanup_list(d):
@@ -1716,9 +1748,9 @@ def import_root_component(bom_file):
                 for r in external_references
             )
     if product_tree:
-        LOG.info("Successfully imported root component into the product tree.")
+        LOG.debug("Successfully imported root component into the product tree.")
     else:
-        LOG.info(
+        LOG.debug(
             "Unable to import root component for product tree, so product "
             "tree will not be included."
         )

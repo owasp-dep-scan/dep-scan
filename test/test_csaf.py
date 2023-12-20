@@ -1,22 +1,12 @@
 import os.path
 
 
-from depscan.lib.csaf import (
-    add_vulnerabilities,
-    cleanup_dict,
-    cleanup_list,
-    format_references,
-    get_acknowledgements,
-    get_product_status,
-    get_ref_summary,
-    import_csaf_toml,
-    import_root_component,
-    parse_cvss,
-    parse_cwe,
-    parse_revision_history,
-    parse_toml,
-    verify_components_present,
-)
+from depscan.lib.csaf import (add_vulnerabilities, cleanup_dict, cleanup_list,
+                              format_references, get_acknowledgements,
+                              get_product_status, get_products, get_ref_summary,
+                              import_csaf_toml, import_root_component,
+                              parse_cvss, parse_cwe, parse_revision_history,
+                              parse_toml, verify_components_present, )
 
 
 def test_parse_revision_history():
@@ -446,13 +436,22 @@ def test_parse_cvss():
             "name": "cvssVectorString",
             "value": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
         },
-        {"name": "cvssAttackVector", "value": "NETWORK"},
         {"name": "cvssPrivilegesRequired", "value": "NONE"},
         {"name": "cvssUserInteraction", "value": "NONE"},
         {"name": "cvssScope", "value": "UNCHANGED"},
         {"name": "cvssBaseSeverity", "value": "CRITICAL"},
         {"name": "affected_version_range", "value": ">=2.9.0-<2.9.8"},
     ]
+    assert parse_cvss(props) == {
+        "baseScore": 9.8,
+        "baseSeverity": "CRITICAL",
+        "privilegesRequired": "NONE",
+        "scope": "UNCHANGED",
+        "userInteraction": "NONE",
+        "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+        "version": "3.0",
+    }
+    props.append({"name": "cvssAttackVector", "value": "NETWORK"},)
     assert parse_cvss(props) == {
         "attackVector": "NETWORK",
         "baseScore": 9.8,
@@ -463,16 +462,7 @@ def test_parse_cvss():
         "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
         "version": "3.0",
     }
-    props = [
-        {
-            "name": "depscan:insights",
-            "value": "Direct dependency\\nVendor Confirmed\\nKnown Exploits",
-        },
-        {"name": "depscan:prioritized", "value": "true"},
-        {"name": "cvssVersion", "value": "3.0"},
-        {"name": "affected_version_range", "value": ">=2.9.0-<2.9.8"},
-    ]
-    assert parse_cvss(props) is None
+    assert parse_cvss([]) == {}
 
 
 def test_get_product_status():
@@ -487,14 +477,9 @@ def test_get_product_status():
             ],
         }
     ]
-    assert get_product_status(affected) == ({
-        "known_affected": [
-            "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type=jar"
-        ],
-        "fixed": [
-            "pkg:maven/org.apache.httpcomponents/httpclient@4.5.13?type=jar"
-        ],
-    })
+    assert get_product_status(affected) == {
+        'fixed': ['org.apache.httpcomponents/httpclient@4.5.13'],
+        'known_affected': ['org.apache.httpcomponents/httpclient@4.5.5']}
     affected = [
         {
             "ref": (
@@ -505,13 +490,36 @@ def test_get_product_status():
             ],
         }
     ]
-
-    assert get_product_status(affected) == ({
-        "fixed": [],
-        "known_affected": [
-            "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type=jar"
-        ],
-    })
+    assert get_product_status(affected) == {
+        'fixed': [],
+        'known_affected': ['org.apache.httpcomponents/httpclient@4.5.5']}
+    affected = [
+        {
+            "ref": (
+                "pkg:golang/golang.org/x/net@v0.15.0"
+            ),
+            "versions": [
+                {"version": "0.15.0", "status": "affected"},
+            ],
+        }
+    ]
+    assert get_product_status(affected) == {
+        'fixed': [], 'known_affected': ['golang.org/x/net@v0.15.0']}
+    affected = [
+        {
+            "ref": (
+                "pkg:golang/go.opentelemetry.io/contrib/instrumentation"
+                "/google.golang.org/grpc/otelgrpc@v0.44.0"
+            ),
+            "versions": [
+                {"version": "0.44.0", "status": "affected"},
+            ],
+        }
+    ]
+    assert get_product_status(affected) == {
+        'fixed': [],
+        'known_affected': ['go.opentelemetry.io/contrib/instrumentation'
+                           '/google.golang.org/grpc/otelgrpc@v0.44.0']}
 
 
 def test_import_root_component():
@@ -844,7 +852,6 @@ def test_add_vulnerabilities():
         },
     ]
     new_results = add_vulnerabilities(template, pkg_vulnerabilities)
-
     assert new_results.get("vulnerabilities") == [
         {
             "acknowledgements": {
@@ -890,12 +897,10 @@ def test_add_vulnerabilities():
             ],
             "product_status": {
                 "fixed": [
-                    "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2"
-                    ".12.7.1?type=jar"
+                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
                 ],
                 "known_affected": [
-                    "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2"
-                    ".9.6?type=jar"
+                    "com.fasterxml.jackson.core/jackson-databind@2.9.6"
                 ],
             },
             "references": [
@@ -931,8 +936,7 @@ def test_add_vulnerabilities():
                         "version": "3.1",
                     },
                     "products": [
-                        "pkg:maven/com.fasterxml.jackson.core/jackson"
-                        "-databind@2.9.6?type=jar"
+                        "com.fasterxml.jackson.core/jackson-databind@2.9.6"
                     ],
                 }
             ],
@@ -967,12 +971,10 @@ def test_add_vulnerabilities():
             ],
             "product_status": {
                 "fixed": [
-                    "pkg:maven/com.fasterxml.jackson.core/jackson"
-                    "-databind@2.12.7.1?type=jar"
+                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
                 ],
                 "known_affected": [
-                    "pkg:maven/com.fasterxml.jackson.core"
-                    "/jackson-databind@2.9.6?type=jar"
+                    "com.fasterxml.jackson.core/jackson-databind@2.9.6"
                 ],
             },
             "references": [
@@ -1013,13 +1015,41 @@ def test_add_vulnerabilities():
                         "version": "3.1",
                     },
                     "products": [
-                        "pkg:maven/com.fasterxml.jackson.core"
-                        "/jackson-databind@2.9.6?type=jar"
+                        "com.fasterxml.jackson.core/jackson-databind@2.9.6"
                     ],
                 }
             ],
         },
     ]
+    pkg_vulnerabilities[1]["source"] = {}
+    pkg_vulnerabilities[1]["affects"] = []
+    pkg_vulnerabilities[1]["properties"] = []
+    pkg_vulnerabilities[1]["advisories"] = []
+    new_results = add_vulnerabilities(template, pkg_vulnerabilities)
+    assert new_results.get("vulnerabilities")[1] == {
+        'acknowledgements': {},
+        'cve': 'CVE-2021-20190',
+        'cwe': {'id': '502', 'name': 'Deserialization of Untrusted Data'},
+        'discovery_date': '2021-01-19T17:15:00',
+        'ids': [],
+        'notes': [{'category': 'general',
+                   'details': 'Vulnerability Description',
+                   'text': 'A flaw was found in jackson-databind before '
+                           '2.9.10.7. FasterXML mishandles the interaction '
+                           'between serialization gadgets and typing. The '
+                           'highest threat from this vulnerability is to data '
+                           'confidentiality and integrity as well as system '
+                           'availability.'}],
+        'product_status': {},
+        'references': [],
+        'scores': [{'cvss_v3': {}, 'products': []}]}
+    assert new_results.get("vulnerabilities")[1]["acknowledgements"] == {}
+    assert new_results.get("vulnerabilities")[1]["product_status"] == {}
+    assert new_results.get("vulnerabilities")[1]["scores"] == [
+        {'cvss_v3': {}, 'products': []}]
+
+    new_results = add_vulnerabilities(template, [])
+    assert new_results.get("vulnerabilities") == []
 
 
 def test_get_acknowledgements():
@@ -1032,4 +1062,28 @@ def test_get_acknowledgements():
         "urls": ["https://nvd.nist.gov/vuln/detail/CVE-2021-20190"],
     }
     source = {"url": "https://nvd.nist.gov/vuln/detail/CVE-2021-20190"}
-    assert get_acknowledgements(source) is None
+    assert get_acknowledgements(source) == {}
+
+
+def test_get_products():
+    assert get_products([]) == []
+    affects = [
+        {
+            "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9"
+                   ".6?type=jar"
+        },
+        {
+            "ref": "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type"
+                   "=jar"
+        },
+        {
+            "ref": "pkg:pypi/setuptools@65.5.0"
+        }
+            ]
+    result = get_products(affects)
+    result.sort()
+    assert result == [
+        'com.fasterxml.jackson.core/jackson-databind@2.9.6',
+        'org.apache.httpcomponents/httpclient@4.5.5',
+        'setuptools@65.5.0'
+    ]

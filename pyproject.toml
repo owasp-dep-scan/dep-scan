@@ -16,6 +16,7 @@ dependencies = [
     "toml",
     "pdfkit",
     "Jinja2",
+    "packageurl-python",
 ]
 
 requires-python = ">=3.8"
