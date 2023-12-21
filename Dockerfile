@@ -1,4 +1,4 @@
-FROM almalinux:9.2-minimal
+FROM almalinux:9.3-minimal
 
 LABEL maintainer="AppThreat" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
@@ -13,12 +13,12 @@ LABEL maintainer="AppThreat" \
 
 ARG TARGETPLATFORM
 ARG JAVA_VERSION=21.0.1-graalce
-ARG SBT_VERSION=1.9.7
-ARG MAVEN_VERSION=3.9.5
-ARG GRADLE_VERSION=8.3
+ARG SBT_VERSION=1.9.8
+ARG MAVEN_VERSION=3.9.6
+ARG GRADLE_VERSION=8.5
 ARG NYDUS_VERSION=2.2.4
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.21.1 \
+    GO_VERSION=1.21.5 \
     JAVA_VERSION=$JAVA_VERSION \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
