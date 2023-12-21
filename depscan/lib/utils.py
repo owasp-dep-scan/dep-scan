@@ -413,22 +413,33 @@ def export_pdf(
 
 
 def render_template_report(
-    jsonl_report_file,
+    vdr_file,
+    bom_file,
     summary,
     template_file,
     result_file,
 ):
     """
-    Render the given json_report_file and summary dict using the template_file with Jinja
+    Render the given vdr_file (falling back to bom_file if no vdr was written)
+    and summary dict using the template_file with Jinja, rendered output is written
+    to named result_file in reports directory.
     """
-    with open(jsonl_report_file, "r", encoding="utf-8") as jsonl_file:
-        json_report = [json.loads(jline) for jline in jsonl_file.readlines()]
+    if vdr_file and os.path.isfile(vdr_file):
+        with open(vdr_file, "r", encoding="utf-8") as f:
+            bom = json.load(f)
+    else:
+        with open(bom_file, "r", encoding="utf-8") as f:
+            bom = json.load(f)
     with open(template_file, "r", encoding="utf-8") as tmpl_file:
         template = tmpl_file.read()
     jinja_env = Environment(autoescape=False)
     jinja_tmpl = jinja_env.from_string(template)
     report_result = jinja_tmpl.render(
-        vulnerabilities=json_report,
+        metadata=bom.get('metadata', None),
+        vulnerabilities=bom.get('vulnerabilities', None),
+        components=bom.get('components', None),
+        dependencies=bom.get('dependencies', None),
+        services=bom.get('services', None),
         summary=summary,
     )
     with open(result_file, "w", encoding="utf-8") as outfile:

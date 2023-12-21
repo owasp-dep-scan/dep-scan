@@ -422,11 +422,19 @@ Giving it will pass the vulnerability report into your template for rendering th
 Please find a basic example here:
 
 ```jinja
+{% if metadata -%}
+Report for {{ metadata.component.group }}:{{ metadata.component.name }}:{{ metadata.component.version }}
+{% endif -%}
+
+{% if vulnerabilities -%}
 There were {{ vulnerabilities | length }} issues identified:
 
 {% for vuln in vulnerabilities -%}
-* {{ vuln.id }} - {{ vuln.package }}
-{% endfor %}
+* {{ vuln['bom-ref'] }} - {{ vuln.recommendation }}
+{% endfor -%}
+{% else -%}
+🏆 _No vulnerabilities found_
+{% endif -%}
 
 Severity counts:
 * Low: {{ summary.LOW }}
@@ -436,9 +444,18 @@ Severity counts:
 * Unspecified: {{ summary.UNSPECIFIED }}
 ```
 
-The `vulnerabilities` object is the same list that can be found in the `depscan-bom.json` report file,
+The objects available are taken from the CycloneDX *.vdr.json BOM file generated, just have a look to the file for its full structure:
+
+* `metadata`
+* `vulnerabilities`
+* `components`
+* `dependencies`
+* `services`
+
 `summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
 Furthermore insights are imaginably to be made available to the template, please reach out or contribute on demand.
+
+We appreciate if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
 
 ## Discord support
 

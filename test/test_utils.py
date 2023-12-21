@@ -87,12 +87,17 @@ def test_is_exe():
     if os.path.exists("/bin/ls"):
         assert utils.is_exe("/bin/ls")
 
-def test_template_report():
+def test_template_report_from_vdr():
     utils.render_template_report(
-        jsonl_report_file=os.path.join(
+        vdr_file=os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
             "data",
-            "depscan-java.json",
+            "jinja-report.vdr.json",
+        ),
+        bom_file=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "jinja-report.bom.json",
         ),
         summary={
             "UNSPECIFIED": 0,
@@ -112,22 +117,45 @@ def test_template_report():
         rendered_report = report_file.read()
 
     assert rendered_report == """\
-there are 13 vulns in here:
+Report for io.github.heubeck:examiner:1.11.26
+Component count: 228
+* BIT-apisix-2023-44487/pkg:maven/io.netty/netty-codec-http2@4.1.94.Final?type=jar - Update to 4.1.100.Final or later
+* CVE-2023-4043/pkg:maven/org.eclipse.parsson/parsson@1.1.2?type=jar - Update to 1.1.4 or later
+"""
+    os.remove("rendered.report")
 
-* CVE-2018-5968 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2018-12022 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2018-12023 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2019-17267 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2020-9547 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2020-10673 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2020-9548 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2019-14892 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2020-8840 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2019-20330 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2019-10172 - org.codehaus.jackson:jackson-mapper-asl
-* CVE-2019-17531 - com.fasterxml.jackson.core:jackson-databind
-* CVE-2019-16943 - com.fasterxml.jackson.core:jackson-databind
-That's 3 of low severity,
-5 medium, 2 high,
-1 critical and 0 unspecified ones."""
+def test_template_report_from_bom():
+    utils.render_template_report(
+        vdr_file=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "no-vdr-here",
+        ),
+        bom_file=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "jinja-report.bom.json",
+        ),
+        summary={
+            "UNSPECIFIED": 0,
+            "LOW": 0,
+            "MEDIUM": 0,
+            "HIGH": 0,
+            "CRITICAL": 0,
+        },
+        template_file=os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "data",
+            "report-template.j2",
+        ),
+        result_file="rendered.report"
+    )
+    with open("rendered.report", "r", encoding="utf-8") as report_file:
+        rendered_report = report_file.read()
+
+    assert rendered_report == """\
+Report for io.github.heubeck:examiner:1.11.27
+Component count: 230
+🏆 No vulnerabilities found 🎉
+"""
     os.remove("rendered.report")

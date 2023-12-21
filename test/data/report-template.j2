@@ -1,9 +1,15 @@
-there are {{ vulnerabilities | length }} vulns in here:
+{% if metadata -%}
+Report for {{ metadata.component.group }}:{{ metadata.component.name }}:{{ metadata.component.version }}
+{% endif -%}
 
+{% if components -%}
+Component count: {{ components | length }}
+{% endif -%}
+
+{% if vulnerabilities -%}
 {% for vuln in vulnerabilities -%}
-* {{ vuln.id }} - {{ vuln.package }}
+* {{ vuln['bom-ref'] }} - {{ vuln.recommendation }}
 {% endfor -%}
-
-That's {{ summary.LOW }} of low severity,
-{{ summary.MEDIUM }} medium, {{ summary.HIGH }} high,
-{{ summary.CRITICAL }} critical and {{ summary.UNSPECIFIED }} unspecified ones.
+{% else -%}
+🏆 No vulnerabilities found 🎉
+{% endif -%}
