@@ -869,6 +869,7 @@ def main():
                 expand=False,
             )
         )
+    summary, vdr_file, bom_file  = None, None, None
     for project_type in project_types_list:
         results = []
         report_file = areport_file.replace(".json", f"-{project_type}.json")
