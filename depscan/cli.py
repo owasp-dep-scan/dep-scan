@@ -795,6 +795,8 @@ def main():
     and generates reports based on the results.
     """
     args = build_args()
+    # declare variables that get initialized only conditionally
+    summary, vdr_file, bom_file, pkg_list = None, None, None, None
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
