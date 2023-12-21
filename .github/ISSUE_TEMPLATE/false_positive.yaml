@@ -1,0 +1,30 @@
+name: False-Positive Finding
+description: Report a false-positive vulnerability matching
+title: "False-Positive: "
+labels: ["false-positive"]
+assignees:
+  - cerrussell
+  - prabhu
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Thank you for reporting a false-positive finding.
+
+  - type: textarea
+    id: false-positive-purl
+    attributes:
+      label: PURL of wrongly matched component
+      description: |
+        Please insert the purl of the component, that was reported for CVEs for no reason.
+    validations:
+      required: true
+
+  - type: textarea
+    id: depscan-output
+    attributes:
+      label: Depscan findings
+      description: |
+        Please insert the output of `depscan --no-banner --sync --purl "purl-of-the-wrong-positive"` here.
+    validations:
+      required: true
