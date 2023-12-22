@@ -54,11 +54,10 @@ def create_pkg_variations(pkg_dict):
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
-                namespace = purl_obj.get("namespace")
-                # npm is known for packages with no group
-                # To reduce false positives we retain such empty groups here
-                if pkg_type in ("npm",) and namespace is None:
-                    vendor_aliases.add("")
+                # npm is resulting in false positives
+                # Let's disable aliasing for now. See #194, #195, #196
+                if pkg_type in ("npm",):
+                    return pkg_list
                 if qualifiers and qualifiers.get("distro_name"):
                     os_distro_name = qualifiers.get("distro_name")
                     name_aliases.add(f"""{os_distro_name}/{name}""")
