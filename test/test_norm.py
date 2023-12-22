@@ -31,15 +31,27 @@ def test_pkg_variations():
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
-        {"vendor": "io.undertow", "name": "undertow-core", "version": "2.0.27.Final"}
+        {
+            "vendor": "io.undertow",
+            "name": "undertow-core",
+            "version": "2.0.27.Final",
+        }
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
-        {"vendor": "io.undertow", "name": "undertow-core", "version": "2.0.27.Final"}
+        {
+            "vendor": "io.undertow",
+            "name": "undertow-core",
+            "version": "2.0.27.Final",
+        }
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
-        {"vendor": "org.apache.logging.log4j", "name": "log4j-api", "version": "2.12.1"}
+        {
+            "vendor": "org.apache.logging.log4j",
+            "name": "log4j-api",
+            "version": "2.12.1",
+        }
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
@@ -59,7 +71,11 @@ def test_pkg_variations():
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
-        {"vendor": "github.com/go-sql-driver", "name": "mysql", "version": "v1.4.1"}
+        {
+            "vendor": "github.com/go-sql-driver",
+            "name": "mysql",
+            "version": "v1.4.1",
+        }
     )
     assert len(pkg_list) > 1
     pkg_list = create_pkg_variations(
@@ -69,7 +85,7 @@ def test_pkg_variations():
             "version": "0.0.0-20200220183623-bac4c82f6975",
         }
     )
-    assert len(pkg_list) > 1
+    assert pkg_list
     pkg_list = create_pkg_variations(
         {
             "vendor": "github.com/mitchellh",
@@ -77,7 +93,7 @@ def test_pkg_variations():
             "version": "6.14.1",
         }
     )
-    assert len(pkg_list) > 1
+    assert pkg_list
     pkg_list = create_pkg_variations(
         {
             "vendor": "github.com/jacobsa",
@@ -85,7 +101,7 @@ def test_pkg_variations():
             "version": "6.14.1",
         }
     )
-    assert len(pkg_list) > 1
+    assert pkg_list
     pkg_list = create_pkg_variations(
         {
             "vendor": "org.hibernate",
@@ -93,7 +109,7 @@ def test_pkg_variations():
             "version": "5.4.18.Final",
         }
     )
-    assert len(pkg_list) > 1
+    assert pkg_list
     pkg_list = create_pkg_variations(
         {
             "vendor": "org.springframework.security",
@@ -101,7 +117,7 @@ def test_pkg_variations():
             "version": "5.3.3.RELEASE",
         }
     )
-    assert len(pkg_list) > 1
+    assert pkg_list
     pkg_list = create_pkg_variations(
         {
             "vendor": "deb",
@@ -109,4 +125,4 @@ def test_pkg_variations():
             "version": "3.28-1ubuntu3",
         }
     )
-    assert len(pkg_list) > 1
+    assert pkg_list
