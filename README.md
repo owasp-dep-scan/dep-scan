@@ -9,12 +9,12 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 
 ## Features
 
-- Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
-- Perform advanced reachability analysis for multiple languages (See reachability analysis)
-- Package vulnerability scanning is performed locally and is quite fast. No server is used!
-- Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
-- Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
-- Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
+-   Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
+-   Perform advanced reachability analysis for multiple languages (See reachability analysis)
+-   Package vulnerability scanning is performed locally and is quite fast. No server is used!
+-   Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
+-   Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
+-   Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 ![Reachable Flows](docs/depscan-flows.png)
 
@@ -24,26 +24,26 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 
 ### Vulnerability Data sources
 
-- OSV
-- NVD
-- GitHub
-- NPM
-- Linux [vuln-list](https://github.com/appthreat/vuln-list)
+-   OSV
+-   NVD
+-   GitHub
+-   NPM
+-   Linux [vuln-list](https://github.com/appthreat/vuln-list)
 
 ### Linux distros
 
-- AlmaLinux
-- Debian
-- Alpine
-- Amazon Linux
-- Arch Linux
-- RHEL/CentOS
-- Rocky Linux
-- Ubuntu
-- OpenSUSE/SLES
-- Photon
-- Chainguard
-- Wolfi OS
+-   AlmaLinux
+-   Debian
+-   Alpine
+-   Amazon Linux
+-   Arch Linux
+-   RHEL/CentOS
+-   Rocky Linux
+-   Ubuntu
+-   OpenSUSE/SLES
+-   Photon
+-   Chainguard
+-   Wolfi OS
 
 Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 
@@ -66,9 +66,9 @@ oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
 
 Download the executable binary for your operating system from the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases). These binary bundle the following:
 
-- dep-scan with Python 3.10
-- cdxgen with Node.js 18
-- cdxgen binary plugins
+-   dep-scan with Python 3.10
+-   cdxgen with Node.js 18
+-   cdxgen binary plugins
 
 ```bash
 curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan-linux-amd64
@@ -108,25 +108,25 @@ Use the `/scan` endpoint to perform scans.
 > [!NOTE]
 > The `type` parameter is mandatory in server mode.
 
-- Scanning a local directory.
+-   Scanning a local directory.
 
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
-- Scanning a SBOM file (present locally).
+-   Scanning a SBOM file (present locally).
 
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
-- Scanning a GitHub repo.
+-   Scanning a GitHub repo.
 
 ```bash
 curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
 ```
 
-- Uploading a SBOM file and generating results based on it.
+-   Uploading a SBOM file and generating results based on it.
 
 ```bash
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
@@ -315,14 +315,14 @@ depscan --profile research -t js -i <source directory> --reports-dir <reports di
 
 The following environment variables can be used to customise the behaviour.
 
-- VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
+-   VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
 
 ## GitHub Security Advisory
 
 To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
 
-- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
-- Token (classic): Grant no permissions
+-   Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
+-   Token (classic): Grant no permissions
 
 ```bash
 export GITHUB_TOKEN="<PAT token>"
@@ -444,18 +444,31 @@ Severity counts:
 * Unspecified: {{ summary.UNSPECIFIED }}
 ```
 
-The objects available are taken from the CycloneDX *.vdr.json BOM file generated, just have a look to the file for its full structure:
+The objects available are taken from the CycloneDX \*.vdr.json BOM file generated, just have a look to the file for its full structure:
 
-* `metadata`
-* `vulnerabilities`
-* `components`
-* `dependencies`
-* `services`
+-   `metadata`
+-   `vulnerabilities`
+-   `components`
+-   `dependencies`
+-   `services`
 
 `summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
 Furthermore insights are imaginably to be made available to the template, please reach out or contribute on demand.
 
 We appreciate if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
+
+## Performance tuning
+
+### Use nydus to speed up the initial vdb download
+
+vdb v5 is published in RAFS (Registry Accelerated File System) format with better de-duplication and packing. depscan would automatically use this image if `nydus-static` binary is available in the PATH.
+
+```shell
+curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
+tar -xvf nydus-static-v2.2.4-linux-amd64.tgz
+chmod +x nydus-static/*
+mv nydus-static/* /usr/local/bin/
+```
 
 ## Discord support
 

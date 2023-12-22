@@ -54,6 +54,11 @@ def create_pkg_variations(pkg_dict):
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
+                namespace = purl_obj.get("namespace")
+                # npm is known for packages with no group
+                # To reduce false positives we retain such empty groups here
+                if pkg_type in ("npm",) and namespace is None:
+                    vendor_aliases.add("")
                 if qualifiers and qualifiers.get("distro_name"):
                     os_distro_name = qualifiers.get("distro_name")
                     name_aliases.add(f"""{os_distro_name}/{name}""")
@@ -62,7 +67,9 @@ def create_pkg_variations(pkg_dict):
                     name_aliases.add(f"""{os_distro}/{name}""")
                     # almalinux-9.2 becomes almalinux-9
                     if "-" in os_distro and "." in os_distro:
-                        name_aliases.add(f"""{os_distro.rsplit(".", 1)[0]}/{name}""")
+                        name_aliases.add(
+                            f"""{os_distro.rsplit(".", 1)[0]}/{name}"""
+                        )
         except Exception:
             tmp_parts = purl.split(":")
             if tmp_parts and len(tmp_parts) > 1:
@@ -94,7 +101,6 @@ def create_pkg_variations(pkg_dict):
         ]:
             vendor_aliases.add("golang")
     if pkg_type not in config.OS_PKG_TYPES:
-        name_aliases.add("package_" + name)
         if purl.startswith("pkg:composer"):
             vendor_aliases.add("get" + name)
             vendor_aliases.add(name + "_project")
@@ -118,8 +124,6 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("python-" + name)
         vendor_aliases.add(name + "project")
     elif purl.startswith("pkg:npm"):
-        if not name.startswith("node-"):
-            name_aliases.add("node-" + name)
         # pg-promise CVE is filed as pg
         if name.endswith("-promise"):
             name_aliases.add(name.replace("-promise", ""))
@@ -158,7 +162,11 @@ def create_pkg_variations(pkg_dict):
         # The below aliasing is resulting in several false positives for npm
         if pkg_type not in ("npm",):
             for k, v in config.package_alias.items():
-                if name.startswith(k) or k.startswith(name) or v.startswith(name):
+                if (
+                    name.startswith(k)
+                    or k.startswith(name)
+                    or v.startswith(name)
+                ):
                     name_aliases.add(k)
                     name_aliases.add(v)
     if pkg_type in config.OS_PKG_TYPES:
@@ -170,14 +178,20 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add(name + "-bin")
     else:
         # Filter vendor aliases that are also name aliases
-        vendor_aliases = [x for x in vendor_aliases if x not in name_aliases or x == vendor]
-    if len(vendor_aliases) > 0:
+        vendor_aliases = [
+            x for x in vendor_aliases if x not in name_aliases or x == vendor
+        ]
+    if len(vendor_aliases) > 1:
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
                 pkg_list.append(
-                    {"vendor": vvar, "name": nvar, "version": pkg_dict["version"]}
+                    {
+                        "vendor": vvar,
+                        "name": nvar,
+                        "version": pkg_dict["version"],
+                    }
                 )
-    else:
+    elif len(name_aliases) > 1:
         for nvar in list(name_aliases):
             pkg_list.append(
                 {
