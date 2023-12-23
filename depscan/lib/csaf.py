@@ -1613,8 +1613,9 @@ def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
         reports_dir,
         f"csaf_v{new_results['document']['tracking']['version']}.json",
     )
+
     with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(new_results, f, indent=4)
+        json.dump(new_results, f, indent=4, sort_keys=True)
     LOG.info("CSAF report written to %s", outfile)
     write_toml(toml_file_path, metadata)
 
