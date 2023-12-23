@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os.path
 import re
@@ -5,6 +6,7 @@ from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from packageurl import PackageURL
 from rich import box
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -626,11 +628,9 @@ def prepare_vdr(options: PrepareVdrOptions):
             # example, if package x has a cve for all versions prior to
             # 2.0.0, I want to see a single vulnerability listing for that
             # cve rather than one for each vulnerable version present.
-            if package_issue.get("affected_location"):
-                properties.append({
-                    "name": "affected_version_range",
-                    "value": package_issue["affected_location"].get("version"),
-                })
+            affected_version_range = get_version_range(package_issue, purl)
+            if affected_version_range:
+                properties.append(affected_version_range)
             advisories = []
             for k, v in clinks.items():
                 advisories.append({"title": k, "url": v})
@@ -650,9 +650,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                     "affects": affects,
                     "properties": properties,
                 }
-            if (source_orig_time := vuln_occ_dict.get("source_orig_time")):
+            if source_orig_time := vuln_occ_dict.get("source_orig_time"):
                 vuln["published"] = source_orig_time
-            if (source_update_time := vuln_occ_dict.get("source_update_time")):
+            if source_update_time := vuln_occ_dict.get("source_update_time"):
                 vuln["updated"] = source_update_time
             pkg_vulnerabilities.append(vuln)
 
@@ -900,6 +900,30 @@ exploits."""
     return pkg_vulnerabilities, pkg_group_rows
 
 
+def get_version_range(package_issue, purl):
+    new_prop = {}
+    if (affected_location := package_issue.get("affected_location")) and (
+            affected_version := affected_location.get("version")):
+        try:
+            ppurl = PackageURL.from_string(purl)
+            new_prop = {
+                "name": "affectedVersionRange",
+                "value": f'{ppurl.name}@'
+                         f'{affected_version}'
+            }
+            if ppurl.namespace:
+                new_prop["value"] = f'{ppurl.namespace}/{new_prop["value"]}'
+        except ValueError:
+            ppurl = purl.split("@")
+            if len(ppurl) == 2:
+                new_prop = {
+                    "name": "affectedVersionRange",
+                    "value": f'{ppurl[0]}@{affected_version}'
+                }
+
+    return new_prop
+
+
 def cvss_to_vdr(res):
     """
     Parses the CVSS information for inclusion in the VDR file.
@@ -951,11 +975,8 @@ def split_cwe(cwe):
         cwes = "|".join(cwe)
         cwe_ids = re.findall(CWE_SPLITTER, cwes)
 
-    try:
+    with contextlib.suppress([ValueError, TypeError]):
         cwe_ids = [int(cwe_id) for cwe_id in cwe_ids]
-    except [ValueError, TypeError]:
-        pass
-
     return cwe_ids
 
 

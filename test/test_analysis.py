@@ -4,7 +4,7 @@ import os
 import pytest
 
 from depscan.lib import analysis
-from depscan.lib.analysis import cvss_to_vdr, split_cwe
+from depscan.lib.analysis import cvss_to_vdr, get_version_range, split_cwe
 
 
 @pytest.fixture
@@ -796,5 +796,27 @@ def test_cvss_to_vdr():
     assert cvss_to_vdr(res) == {}
     res["cvss_v3"]["base_score"] = None
     assert cvss_to_vdr(res) == {}
+
+
+def test_get_version_range():
+    # Test empty
+    assert get_version_range({}, "") == {}
+
+    # Test all components present
+    package_issue = {
+        'affected_location': {
+            'version': '>=2.9.0-<3.0.0'
+        }, 'fixed_location': '3.0.0'}
+    purl = "pkg:maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar"
+    assert get_version_range(package_issue, purl) == {
+        "name": "affectedVersionRange",
+        "value": "org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0"
+    }
+
+    # Test invalid purl
+    purl = "maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar"
+    assert get_version_range(package_issue, purl) == {
+        'name': 'affectedVersionRange',
+        'value': 'maven/org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0'}
 
 

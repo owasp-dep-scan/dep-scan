@@ -3,10 +3,10 @@ import os.path
 
 from depscan.lib.csaf import (add_vulnerabilities, cleanup_dict, cleanup_list,
                               format_references, get_acknowledgements,
-                              get_product_status, get_products, get_ref_summary,
-                              import_csaf_toml, import_root_component,
-                              parse_cvss, parse_cwe, parse_revision_history,
-                              parse_toml, verify_components_present, )
+                              get_products, get_ref_summary, import_csaf_toml,
+                              import_root_component, parse_cvss, parse_cwe,
+                              parse_revision_history, parse_toml,
+                              verify_components_present, )
 
 
 def test_parse_revision_history():
@@ -440,7 +440,7 @@ def test_parse_cvss():
         {"name": "cvssUserInteraction", "value": "NONE"},
         {"name": "cvssScope", "value": "UNCHANGED"},
         {"name": "cvssBaseSeverity", "value": "CRITICAL"},
-        {"name": "affected_version_range", "value": ">=2.9.0-<2.9.8"},
+        {"name": "affectedVersionRange", "value": ">=2.9.0-<2.9.8"},
     ]
     assert parse_cvss(props) == {
         "baseScore": 9.8,
@@ -465,61 +465,66 @@ def test_parse_cvss():
     assert parse_cvss([]) == {}
 
 
-def test_get_product_status():
-    affected = [
+def test_get_products():
+    assert get_products([], []) == ([], {})
+    affects = [
         {
-            "ref": (
-                "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type=jar"
-            ),
+            "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9"
+                   ".6?type=jar",
+            "versions": [
+                {"version": "2.9.6", "status": "affected"},
+                {"version": "2.9.8", "status": "unaffected"},
+            ]
+        },
+        {
+            "ref": "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type"
+                   "=jar",
             "versions": [
                 {"version": "4.5.5", "status": "affected"},
                 {"version": "4.5.13", "status": "unaffected"},
-            ],
-        }
-    ]
-    assert get_product_status(affected) == {
-        'fixed': ['org.apache.httpcomponents/httpclient@4.5.13'],
-        'known_affected': ['org.apache.httpcomponents/httpclient@4.5.5']}
-    affected = [
+            ]
+        },
         {
-            "ref": (
-                "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type=jar"
-            ),
+            "ref": "pkg:pypi/setuptools@65.5.0",
             "versions": [
-                {"version": "4.5.5", "status": "affected"},
-            ],
-        }
-    ]
-    assert get_product_status(affected) == {
-        'fixed': [],
-        'known_affected': ['org.apache.httpcomponents/httpclient@4.5.5']}
-    affected = [
+                {"version": "65.5.0", "status": "affected"},
+            ]
+        },
         {
-            "ref": (
-                "pkg:golang/golang.org/x/net@v0.15.0"
-            ),
-            "versions": [
-                {"version": "0.15.0", "status": "affected"},
-            ],
-        }
+            "ref": "pkg:golang/golang.org/x/net@v0.15.0",
+            "versions": [{"version": "0.15.0", "status": "affected"}, ],
+        },
+            ]
+    props = [
+        {"name": "affectedVersionRange",
+         "value": "com.fasterxml.jackson.core/jackson-databind@>=2.9.0-<2.9.8"},
+        {"name": "affectedVersionRange",
+         "value": "org.apache.httpcomponents/httpclient@>=4.5.0-<4.5.13"},
+        {"name": "affectedVersionRange", "value": "setuptools@>=65.5.0"},
     ]
-    assert get_product_status(affected) == {
-        'fixed': [], 'known_affected': ['golang.org/x/net@v0.15.0']}
-    affected = [
-        {
-            "ref": (
-                "pkg:golang/go.opentelemetry.io/contrib/instrumentation"
-                "/google.golang.org/grpc/otelgrpc@v0.44.0"
-            ),
-            "versions": [
-                {"version": "0.44.0", "status": "affected"},
-            ],
-        }
+    [products, product_status] = get_products(affects, props)
+    products.sort()
+    assert products == [
+        'com.fasterxml.jackson.core/jackson-databind@2.9.6',
+        'com.fasterxml.jackson.core/jackson-databind@>=2.9.0-<2.9.8',
+        'golang.org/x/net@v0.15.0',
+        'org.apache.httpcomponents/httpclient@4.5.5',
+        'org.apache.httpcomponents/httpclient@>=4.5.0-<4.5.13',
+        'setuptools@65.5.0',
+        'setuptools@>=65.5.0'
     ]
-    assert get_product_status(affected) == {
-        'fixed': [],
-        'known_affected': ['go.opentelemetry.io/contrib/instrumentation'
-                           '/google.golang.org/grpc/otelgrpc@v0.44.0']}
+    assert product_status == {
+        'fixed': ['com.fasterxml.jackson.core/jackson-databind@2.9.8',
+           'org.apache.httpcomponents/httpclient@4.5.13'],
+        'known_affected': [
+            'com.fasterxml.jackson.core/jackson-databind@2.9.6',
+            'org.apache.httpcomponents/httpclient@4.5.5',
+            'setuptools@65.5.0',
+            'golang.org/x/net@v0.15.0',
+            'com.fasterxml.jackson.core/jackson-databind@>=2.9.0-<2.9.8',
+            'org.apache.httpcomponents/httpclient@>=4.5.0-<4.5.13',
+            'setuptools@>=65.5.0'
+        ]}
 
 
 def test_import_root_component():
@@ -1064,26 +1069,3 @@ def test_get_acknowledgements():
     source = {"url": "https://nvd.nist.gov/vuln/detail/CVE-2021-20190"}
     assert get_acknowledgements(source) == {}
 
-
-def test_get_products():
-    assert get_products([]) == []
-    affects = [
-        {
-            "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9"
-                   ".6?type=jar"
-        },
-        {
-            "ref": "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type"
-                   "=jar"
-        },
-        {
-            "ref": "pkg:pypi/setuptools@65.5.0"
-        }
-            ]
-    result = get_products(affects)
-    result.sort()
-    assert result == [
-        'com.fasterxml.jackson.core/jackson-databind@2.9.6',
-        'org.apache.httpcomponents/httpclient@4.5.5',
-        'setuptools@65.5.0'
-    ]
