@@ -536,6 +536,7 @@ def download_rafs_based_image():
                     nydus_download_command,
                     check=True,
                     stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )
                 if os.path.exists(os.path.join(data_dir, "vdb.tar")):
                     rafs_image_downloaded = True

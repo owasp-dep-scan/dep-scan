@@ -57,11 +57,16 @@ logging.basicConfig(
     ],
 )
 LOG = logging.getLogger(__name__)
-for _ in ("httpx", "oras"):
-    logging.getLogger(_).disabled = True
 
 # Set logging level
-if os.getenv("SCAN_DEBUG_MODE") == "debug" or os.getenv("AT_DEBUG_MODE") == "debug":
+if (
+    os.getenv("SCAN_DEBUG_MODE") == "debug"
+    or os.getenv("AT_DEBUG_MODE") == "debug"
+):
     LOG.setLevel(logging.DEBUG)
 
 DEBUG = logging.DEBUG
+
+for log_name, log_obj in logging.Logger.manager.loggerDict.items():
+    if log_name != __name__:
+        log_obj.disabled = True
