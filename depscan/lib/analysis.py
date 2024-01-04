@@ -141,8 +141,9 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     if version_used:
-                        full_pkg_display = (f"{purl_obj.get("name")}"
-                                            f"@{version_used}")
+                        full_pkg_display = (
+                            f"""{purl_obj.get("name")}@{version_used}"""
+                        )
         except Exception:
             pass
     if extra_text and highlightable:
@@ -894,14 +895,14 @@ def cvss_to_vdr_rating(vuln_occ_dict):
         "score": cvss_score,
         "severity": pkg_severity,
     }]
-    method = "CVSSv31"
+    method = "31"
     if vuln_occ_dict.get("cvss_v3") and (
             vector_string := vuln_occ_dict["cvss_v3"].get("vector_string")):
         ratings[0]["vector"] = vector_string
         with contextlib.suppress(CVSSError):
-            method = f"CVSSv{cvss.CVSS3(vector_string).as_json().get(
-                'version').replace('.', '').replace('0', '')}"
-    ratings[0]["method"] = method
+            method = cvss.CVSS3(vector_string).as_json().get('version')
+            method = method.replace('.', '').replace('0', '')
+    ratings[0]["method"] = f"CVSSv{method}"
 
     return ratings
 
