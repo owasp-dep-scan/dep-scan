@@ -2,22 +2,17 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from defusedxml.ElementTree import parse
 import json
 import os
-import shutil
-import subprocess
 import sys
-import tarfile
 import tempfile
 
-import oras.client
+from defusedxml.ElementTree import parse
 from quart import Quart, request
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
 from vdb.lib import db as db_lib
-from vdb.lib.config import data_dir
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
@@ -45,12 +40,11 @@ from depscan.lib.config import (
     UNIVERSAL_SCAN_TYPE,
     license_data_dir,
     spdx_license_list,
-    vdb_database_url,
-    vdb_rafs_database_url,
 )
 from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, console
+from depscan.lib.orasclient import download_image
 
 try:
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -497,69 +491,6 @@ def summarise(
     return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
 
 
-def download_rafs_based_image():
-    rafs_image_downloaded, paths_list = False, None
-    nydus_image_command = shutil.which("nydus-image", mode=os.X_OK)
-    if nydus_image_command is not None:
-        LOG.info(
-            "About to download the vulnerability database from %s. This might take a while ...",
-            vdb_rafs_database_url,
-        )
-
-        try:
-            oras_client = oras.client.OrasClient()
-            rafs_data_dir = tempfile.TemporaryDirectory()
-            paths_list = oras_client.pull(
-                target=vdb_rafs_database_url, outdir=rafs_data_dir.name
-            )
-
-            if (
-                paths_list
-                and os.path.exists(
-                    os.path.join(rafs_data_dir.name, "data.rafs")
-                )
-                and os.path.exists(
-                    os.path.join(rafs_data_dir.name, "meta.rafs")
-                )
-            ):
-                nydus_download_command = [
-                    f"{nydus_image_command}",
-                    "unpack",
-                    "--blob",
-                    os.path.join(rafs_data_dir.name, "data.rafs"),
-                    "--output",
-                    os.path.join(data_dir, "vdb.tar"),
-                    "--bootstrap",
-                    os.path.join(rafs_data_dir.name, "meta.rafs"),
-                ]
-                _ = subprocess.run(
-                    nydus_download_command,
-                    check=True,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-                if os.path.exists(os.path.join(data_dir, "vdb.tar")):
-                    rafs_image_downloaded = True
-                    with tarfile.open(
-                        os.path.join(data_dir, "vdb.tar"), "r"
-                    ) as tar:
-                        tar.extractall(path=data_dir)
-                    os.remove(os.path.join(data_dir, "vdb.tar"))
-                else:
-                    raise FileNotFoundError("vdb.tar not found")
-            else:
-                raise FileNotFoundError("data.rafs or meta.rafs not found")
-
-        except Exception:
-            LOG.info(
-                "Unable to pull the vulnerability database (rafs image) from %s. Trying to pull the non-rafs-based VDB image.",
-                vdb_rafs_database_url,
-            )
-            rafs_image_downloaded = False
-
-    return rafs_image_downloaded, data_dir
-
-
 @app.get("/")
 async def index():
     """
@@ -577,17 +508,16 @@ async def cache():
     """
     db = db_lib.get()
     if not db_lib.index_count(db["index_file"]):
-        rafs_image_downloaded, _ = download_rafs_based_image()
-        if not rafs_image_downloaded:
-            LOG.info(
-                "About to download the vulnerability database from %s. This might take a while ...",
-                vdb_database_url,
-            )
-            oras_client = oras.client.OrasClient()
-            oras_client.pull(target=vdb_database_url, outdir=data_dir)
+        paths_list = download_image()
+        if paths_list:
             return {
                 "error": "false",
                 "message": "vulnerability database cached successfully",
+            }
+        else:
+            return {
+                "error": "true",
+                "message": "vulnerability database was not cached",
             }
     return {
         "error": "false",
@@ -1036,17 +966,7 @@ def main():
             except Exception:
                 pass
         if run_cacher:
-            rafs_image_downloaded, paths_list = download_rafs_based_image()
-            if not rafs_image_downloaded:
-                LOG.info(
-                    "About to download the vulnerability database from %s. This might take a while ...",
-                    vdb_database_url,
-                )
-                oras_client = oras.client.OrasClient()
-                paths_list = oras_client.pull(
-                    target=vdb_database_url, outdir=data_dir
-                )
-
+            paths_list = download_image()
             LOG.debug("VDB data is stored at: %s", paths_list)
             run_cacher = False
             db = db_lib.get()

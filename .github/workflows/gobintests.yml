@@ -45,7 +45,7 @@ jobs:
       run: |
         mkdir -p $VDB_HOME
         RAFS_OUT=rafs_out
-        oras pull ghcr.io/appthreat/vdb:v5-rafs -o $RAFS_OUT
+        oras pull ghcr.io/appthreat/vdb-10y:v5-rafs -o $RAFS_OUT
         nydus-image unpack --blob $RAFS_OUT/data.rafs --output $VDB_HOME/vdb.tar --bootstrap $RAFS_OUT/meta.rafs
         tar -C $VDB_HOME -xf $VDB_HOME/vdb.tar
         rm $VDB_HOME/vdb.tar
@@ -77,7 +77,7 @@ jobs:
         chmod +x minikube-linux-amd64
         rm *.zip
         cd ..
-        oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
+        oras pull ghcr.io/appthreat/vdb-10y:v5 -o $VDB_HOME
         python3 depscan/cli.py --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
         python3 depscan/cli.py --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
         python3 depscan/cli.py --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go

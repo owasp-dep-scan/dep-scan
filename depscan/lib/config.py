@@ -243,6 +243,8 @@ OS_PKG_TYPES = (
     "suse",
     "photon",
     "microsoft",
+    "wolfi",
+    "chainguard",
 )
 
 # List of Linux distros with support for editions
@@ -297,8 +299,22 @@ npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
 
 pypi_server = "https://pypi.org/pypi"
 
-vdb_database_url = "ghcr.io/appthreat/vdb:v5"
-vdb_rafs_database_url = "ghcr.io/appthreat/vdb:v5-rafs"
+vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdb:v5")
+vdb_rafs_database_url = os.getenv(
+    "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v5-rafs"
+)
+
+# Larger 10 year database
+vdb_10y_database_url = os.getenv(
+    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5"
+)
+vdb_10y_rafs_database_url = os.getenv(
+    "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5-rafs"
+)
+
+if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
+    vdb_database_url = vdb_10y_database_url
+    vdb_rafs_database_url = vdb_10y_rafs_database_url
 
 # Package risk scoring using a simple weighted formula with no backing
 # research All parameters and their max value and weight can be overridden
@@ -322,7 +338,9 @@ mod_create_min_seconds = get_float_from_env(
 mod_create_min_seconds_max = get_float_from_env(
     "mod_create_min_seconds_max", 1000 * seconds_in_day
 )
-mod_create_min_seconds_weight = get_float_from_env("mod_create_min_seconds_weight", 1)
+mod_create_min_seconds_weight = get_float_from_env(
+    "mod_create_min_seconds_weight", 1
+)
 
 # At least 12 hours difference between the latest version and the current time
 latest_now_min_seconds = get_float_from_env(
@@ -331,7 +349,9 @@ latest_now_min_seconds = get_float_from_env(
 latest_now_min_seconds_max = get_float_from_env(
     "latest_now_min_seconds_max", 1000 * seconds_in_day
 )
-latest_now_min_seconds_weight = get_float_from_env("latest_now_min_seconds_weight", 0.5)
+latest_now_min_seconds_weight = get_float_from_env(
+    "latest_now_min_seconds_weight", 0.5
+)
 
 # Time period after which certain risks can be considered safe. Quarantine
 # period For eg: Packages that are over 1 year old
@@ -352,7 +372,9 @@ latest_now_max_seconds = get_float_from_env(
 latest_now_max_seconds_max = get_float_from_env(
     "latest_now_max_seconds_max", 6 * 365 * seconds_in_day
 )
-latest_now_max_seconds_weight = get_float_from_env("latest_now_max_seconds_weight", 0.5)
+latest_now_max_seconds_weight = get_float_from_env(
+    "latest_now_max_seconds_weight", 0.5
+)
 
 # Package should have at least 2 maintainers
 pkg_min_maintainers = get_float_from_env("pkg_min_maintainers", 2)
