@@ -507,3 +507,23 @@ OS_VULN_KEY_CWES = (
     788,
     789,
 )
+
+max_distro_vulnerabilities = get_int_from_env("max_distro_vulnerabilities", 200)
+
+OS_PKG_UNINSTALLABLE = (
+    "openssh",
+    "cups",
+    "imagemagick",
+    "curl",
+    "tar",
+    "git",
+    "avahi",
+    "libssh",
+    "subversion",
+)
+
+OS_PKG_IGNORABLE = (
+    "linux",
+    "systemd",
+    "ncurses",
+)

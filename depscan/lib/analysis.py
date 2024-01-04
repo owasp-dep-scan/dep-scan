@@ -302,6 +302,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         cwes = []
         if problem_type:
             cwes = split_cwe(problem_type)
+        has_flagged_cwe = False
         package_issue = vuln_occ_dict.get("package_issue")
         matched_by = vuln_occ_dict.get("matched_by")
         full_pkg = package_issue["affected_location"].get("package")
@@ -336,6 +337,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         package_type = None
         insights = []
         plain_insights = []
+        purl_obj = None
         if purl and purl.startswith("pkg:"):
             purl_obj = parse_purl(purl)
             if purl_obj:
@@ -369,16 +371,32 @@ def prepare_vdr(options: PrepareVdrOptions):
                             ):
                                 fp_count += 1
                                 continue
-                        insights.append(f"[#7C8082]:telescope: Vendor {vendor}")
+                        insights.append(
+                            f"[#7C8082]:telescope: Vendor {vendor}[/#7C8082]"
+                        )
                         plain_insights.append(f"Vendor {vendor}")
                     has_os_packages = True
                     for acwe in cwes:
                         if acwe in config.OS_VULN_KEY_CWES:
                             insights.append(
-                                ":triangular_flag: Flagged weakness"
+                                "[#7C8082]:triangular_flag: Flagged weakness[/#7C8082]"
                             )
                             plain_insights.append("Flagged weakness")
+                            has_flagged_cwe = True
                             break
+                    if not has_flagged_cwe:
+                        if purl_obj.get("name") in config.OS_PKG_IGNORABLE:
+                            insights.append(
+                                "[#7C8082]:mute: Suppress for containers[/#7C8082]"
+                            )
+                            plain_insights.append("Suppress for containers")
+                        elif (
+                            purl_obj.get("name") in config.OS_PKG_UNINSTALLABLE
+                        ):
+                            insights.append(
+                                "[#7C8082]:scissors: Uninstall candidate[/#7C8082]"
+                            )
+                            plain_insights.append("Uninstall candidate")
                 if qualifiers:
                     if "ubuntu" in qualifiers.get("distro", ""):
                         has_ubuntu_packages = True
@@ -509,6 +527,19 @@ def prepare_vdr(options: PrepareVdrOptions):
                 # false negatives
                 if not reached_purls.get(purl):
                     reached_purls[purl] = 1
+            elif has_flagged_cwe:
+                if purl_obj and purl_obj.get("name") in ("glibc", "openssl"):
+                    insights.append(
+                        "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                    )
+                    plain_insights.append("Reachable and Exploitable")
+                    has_reachable_exploit_count += 1
+                else:
+                    insights.append(
+                        "[bright_red]:exclamation_mark: Exploitable[/bright_red]"
+                    )
+                    plain_insights.append("Exploitable")
+                    has_exploit_count += 1
             else:
                 insights.append(
                     "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
@@ -679,19 +710,25 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     )
             else:
                 rmessage += (
-                    "\nConsider trimming this image by removing any "
+                    "\n:scissors: Consider trimming this image by removing any "
                     "unwanted packages. Alternatively, use a slim "
                     "base image."
                 )
                 if distro_packages_count and distro_packages_count < len(
-                    options.results
+                    pkg_vulnerabilities
                 ):
-                    rmessage += (
-                        f"\nNOTE: [magenta]{distro_packages_count}"
-                        f"[/magenta] distro-specific vulnerabilities "
-                        f"out of {len(pkg_vulnerabilities)} could be prioritized "
-                        f"for updates."
-                    )
+                    if (
+                        len(pkg_vulnerabilities)
+                        > config.max_distro_vulnerabilities
+                    ):
+                        rmessage += f"\nNOTE: Check if the base image or the kernel version used is End-of-Life (EOL)."
+                    else:
+                        rmessage += (
+                            f"\nNOTE: [magenta]{distro_packages_count}"
+                            f"[/magenta] distro-specific vulnerabilities "
+                            f"out of {len(pkg_vulnerabilities)} could be prioritized "
+                            f"for updates."
+                        )
                 if has_redhat_packages:
                     rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
                 if has_ubuntu_packages:
@@ -763,11 +800,7 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                 rmessage = (
                     ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
                     "as glibc, openssl, or libcurl.\nAdditionally, "
-                    "prioritize the vulnerabilities in packages that "
-                    "provide executable binaries when there is a "
-                    "Remote Code Execution or File Write "
-                    "vulnerability in the containerized application "
-                    "or service."
+                    "prioritize the vulnerabilities with 'Flagged weakness' under insights."
                 )
                 rmessage += (
                     "\nVulnerabilities in Linux Kernel packages can "
