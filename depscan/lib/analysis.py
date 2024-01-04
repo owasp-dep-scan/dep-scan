@@ -338,6 +338,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         insights = []
         plain_insights = []
         purl_obj = None
+        vendor = None
         if purl and purl.startswith("pkg:"):
             purl_obj = parse_purl(purl)
             if purl_obj:
@@ -378,14 +379,20 @@ def prepare_vdr(options: PrepareVdrOptions):
                     has_os_packages = True
                     for acwe in cwes:
                         if acwe in config.OS_VULN_KEY_CWES:
-                            insights.append(
-                                "[#7C8082]:triangular_flag: Flagged weakness[/#7C8082]"
-                            )
-                            plain_insights.append("Flagged weakness")
                             has_flagged_cwe = True
                             break
-                    if not has_flagged_cwe:
-                        if purl_obj.get("name") in config.OS_PKG_IGNORABLE:
+                    # Don't flag the cwe for ignorable os packages
+                    if has_flagged_cwe and (
+                        purl_obj.get("name") in config.OS_PKG_UNINSTALLABLE
+                        or purl_obj.get("name") in config.OS_PKG_IGNORABLE
+                        or vendor in config.OS_PKG_IGNORABLE
+                    ):
+                        has_flagged_cwe = False
+                    else:
+                        if (
+                            purl_obj.get("name") in config.OS_PKG_IGNORABLE
+                            or vendor in config.OS_PKG_IGNORABLE
+                        ):
                             insights.append(
                                 "[#7C8082]:mute: Suppress for containers[/#7C8082]"
                             )
@@ -397,6 +404,12 @@ def prepare_vdr(options: PrepareVdrOptions):
                                 "[#7C8082]:scissors: Uninstall candidate[/#7C8082]"
                             )
                             plain_insights.append("Uninstall candidate")
+                    # If the flag remains after all the suppressions then add it as an insight
+                    if has_flagged_cwe:
+                        insights.append(
+                            "[#7C8082]:triangular_flag: Flagged weakness[/#7C8082]"
+                        )
+                        plain_insights.append("Flagged weakness")
                 if qualifiers:
                     if "ubuntu" in qualifiers.get("distro", ""):
                         has_ubuntu_packages = True
@@ -528,7 +541,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                 if not reached_purls.get(purl):
                     reached_purls[purl] = 1
             elif has_flagged_cwe:
-                if purl_obj and purl_obj.get("name") in ("glibc", "openssl"):
+                if (vendor and vendor in ("gnu",)) or (
+                    purl_obj and purl_obj.get("name") in ("glibc", "openssl")
+                ):
                     insights.append(
                         "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
                     )

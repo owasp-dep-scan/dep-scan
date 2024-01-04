@@ -520,10 +520,8 @@ OS_PKG_UNINSTALLABLE = (
     "avahi",
     "libssh",
     "subversion",
+    "vim",
+    "vim-minimal",
 )
 
-OS_PKG_IGNORABLE = (
-    "linux",
-    "systemd",
-    "ncurses",
-)
+OS_PKG_IGNORABLE = ("linux", "systemd", "ncurses", "kernel")
