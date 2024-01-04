@@ -6,6 +6,8 @@ from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+import cvss
+from cvss import CVSSError
 from packageurl import PackageURL
 from rich import box
 from rich.markdown import Markdown
@@ -20,7 +22,6 @@ from vdb.lib.utils import parse_cpe, parse_purl
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
-from depscan.lib.csaf import cleanup_list
 
 # -*- coding: utf-8 -*-
 
@@ -249,7 +250,8 @@ def prepare_vdr(options: PrepareVdrOptions):
     vulnerability details.
 
     :param options: An instance of PrepareVdrOptions containing the function parameters.
-    :return: Tuple containing (A list of vulnerability details, prioritized list as a dict)
+    :return: Vulnerability details, dictionary of prioritized items
+    :rtype: Tuple[List, Dict]
     """
     if not options.results:
         return [], {}
@@ -261,12 +263,8 @@ def prepare_vdr(options: PrepareVdrOptions):
         min_width=150,
     )
     ids_seen = {}
-    direct_purls = options.direct_purls
-    if not direct_purls:
-        direct_purls = {}
-    reached_purls = options.reached_purls
-    if not reached_purls:
-        reached_purls = {}
+    direct_purls = options.direct_purls or {}
+    reached_purls = options.reached_purls or {}
     required_pkgs = options.scoped_pkgs.get("required", [])
     optional_pkgs = options.scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
@@ -440,8 +438,9 @@ def prepare_vdr(options: PrepareVdrOptions):
         )
         if is_required and package_type not in config.OS_PKG_TYPES:
             if direct_purls.get(purl):
-                package_usage = f""":direct_hit: Used in [info]
-                {str(direct_purls.get(purl))}[/info] locations"""
+                package_usage = (f":direct_hit: Used in [info]"
+                                 f"{str(direct_purls.get(purl))}"
+                                 f"[/info] locations")
                 plain_package_usage = (
                     f"Used in {str(direct_purls.get(purl))} locations"
                 )
@@ -539,10 +538,10 @@ def prepare_vdr(options: PrepareVdrOptions):
                 p_rich_tree,
                 "\n".join(insights),
                 fixed_location,
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}
-                {vuln_occ_dict.get("severity")}""",
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}
-                {vuln_occ_dict.get("cvss_score")}""",
+                f"{"[bright_red]" if pkg_severity == "CRITICAL" else ""}"
+                f"{vuln_occ_dict.get("severity")}",
+                f"{"[bright_red]" if pkg_severity == "CRITICAL" else ""}"
+                f"{vuln_occ_dict.get("cvss_score")}",
             )
         if purl:
             source = {}
@@ -583,28 +582,7 @@ def prepare_vdr(options: PrepareVdrOptions):
                     "state": "in_triage",
                     "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
                 }
-            score = 2.0
-            try:
-                score = float(vuln_occ_dict.get("cvss_score"))
-            except Exception:
-                pass
-            sev_to_use = pkg_severity.lower()
-            if sev_to_use not in (
-                "critical",
-                "high",
-                "medium",
-                "low",
-                "info",
-                "none",
-            ):
-                sev_to_use = "unknown"
-            ratings = [
-                {
-                    "score": score,
-                    "severity": sev_to_use,
-                    "method": "CVSSv31",
-                }
-            ]
+            ratings = cvss_to_vdr_rating(vuln_occ_dict)
             properties = [
                         {
                             "name": "depscan:insights",
@@ -616,18 +594,6 @@ def prepare_vdr(options: PrepareVdrOptions):
                             else "false",
                         },
                     ]
-            # Additional CVSS score data
-            cvss_data = cvss_to_vdr(vuln_occ_dict)
-            if cvss_data:
-                properties += cvss_data
-                # Not all ratings are v3.1
-                if cvss_data[0]["value"] != "3.1":
-                    ratings[0]["method"] = "CVSSv" + cvss_data[0]["value"]
-            # CAVEAT: I am adding the full version range as it is not user
-            # friendly to list the same vulnerability multiple times - for
-            # example, if package x has a cve for all versions prior to
-            # 2.0.0, I want to see a single vulnerability listing for that
-            # cve rather than one for each vulnerable version present.
             affected_version_range = get_version_range(package_issue, purl)
             if affected_version_range:
                 properties.append(affected_version_range)
@@ -901,6 +867,14 @@ exploits."""
 
 
 def get_version_range(package_issue, purl):
+    """
+    Generates a version range object for inclusion in the vdr file.
+
+    :param package_issue: Vulnerability data dict
+    :param purl: Package URL string
+
+    :return: A list containing a dictionary with version range information.
+    """
     new_prop = {}
     if (affected_location := package_issue.get("affected_location")) and (
             affected_version := affected_location.get("version")):
@@ -924,38 +898,34 @@ def get_version_range(package_issue, purl):
     return new_prop
 
 
-def cvss_to_vdr(res):
+def cvss_to_vdr_rating(vuln_occ_dict):
     """
-    Parses the CVSS information for inclusion in the VDR file.
+    Generates a rating object for inclusion in the vdr file.
 
-    :param res: A dictionary containing the CVSS information.
+    :param vuln_occ_dict: Vulnerability data
 
-    :return: A list of dictionaries containing the CVSS information.
-            If the vector string or base score are missing, or the CVSS
-            version is not 3.0 or 3.1, None is returned.
+    :return: A list containing a dictionary with CVSS score information.
     """
-    cvss_v3 = res.get("cvss_v3")
-    # baseScore, baseSeverity, vectorString, version are required
-    if not cvss_v3 or not (vector_string := cvss_v3.get("vector_string")):
-        return {}
-    if (not (
-        version := re.search(r"3.0|3.1", cvss_v3.get("vector_string"))) or
-            not (base_score := cvss_v3.get("base_score")) or
-            not (base_severity := res.get("severity"))
-    ):
-        return {}
-    cvss_props =  [
-        {"name": "cvssVersion", "value": vector_string[version.start():version.end()]},
-        {"name": "cvssBaseScore", "value": base_score},
-        {"name": "cvssVectorString", "value": vector_string},
-        {"name": "cvssAttackVector", "value": cvss_v3.get("attack_vector")},
-        {"name": "cvssPrivilegesRequired",
-         "value": cvss_v3.get("privileges_required")},
-        {"name": "cvssUserInteraction", "value": cvss_v3.get("user_interaction")},
-        {"name": "cvssScope", "value": cvss_v3.get("scope")},
-        {"name": "cvssBaseSeverity", "value": base_severity},
-    ]
-    return cleanup_list(cvss_props)
+    cvss_score = vuln_occ_dict.get("cvss_score", 2.0)
+    with contextlib.suppress(ValueError, TypeError):
+        cvss_score = float(cvss_score)
+    if (pkg_severity := vuln_occ_dict.get("severity", "").lower()) not in (
+            "critical", "high", "medium", "low", "info", "none",):
+        pkg_severity = "unknown"
+    ratings = [{
+        "score": cvss_score,
+        "severity": pkg_severity,
+    }]
+    method = "CVSSv31"
+    if vuln_occ_dict.get("cvss_v3") and (
+            vector_string := vuln_occ_dict["cvss_v3"].get("vector_string")):
+        ratings[0]["vector"] = vector_string
+        with contextlib.suppress(CVSSError):
+            method = f"CVSSv{cvss.CVSS3(vector_string).as_json().get(
+                'version').replace('.', '').replace('0', '')}"
+    ratings[0]["method"] = method
+
+    return ratings
 
 
 def split_cwe(cwe):
@@ -975,7 +945,7 @@ def split_cwe(cwe):
         cwes = "|".join(cwe)
         cwe_ids = re.findall(CWE_SPLITTER, cwes)
 
-    with contextlib.suppress([ValueError, TypeError]):
+    with contextlib.suppress(ValueError, TypeError):
         cwe_ids = [int(cwe_id) for cwe_id in cwe_ids]
     return cwe_ids
 
@@ -1063,11 +1033,12 @@ def jsonl_report(
                     if purl_obj:
                         version_used = purl_obj.get("version")
                         if purl_obj.get("namespace"):
-                            full_pkg = f"""{purl_obj.get("namespace")}/
-                            {purl_obj.get("name")}@{purl_obj.get("version")}"""
+                            full_pkg = (f"{purl_obj.get("namespace")}"
+                                        f"{purl_obj.get("name")}@"
+                                        f"{purl_obj.get("version")}")
                         else:
-                            full_pkg = f"""{purl_obj.get('name')}@
-                            {purl_obj.get('version')}"""
+                            full_pkg = (f"{purl_obj.get('name')}"
+                                        f"@{purl_obj.get('version')}")
                 except Exception:
                     pass
             if ids_seen.get(vid + purl):
@@ -1075,8 +1046,9 @@ def jsonl_report(
             # On occasions, this could still result in duplicates if the
             # package exists with and without a purl
             ids_seen[vid + purl] = True
-            project_type_pkg = f"""{project_type}:
-            {package_issue["affected_location"].get("package")}"""
+            project_type_pkg = (f"{project_type}:"
+                                f"{package_issue["affected_location"]
+                                    .get("package")}")
             fixed_location = best_fixed_location(
                 sug_version_dict.get(purl),
                 package_issue["fixed_location"],
@@ -1175,7 +1147,7 @@ def analyse_pkg_risks(
             risk_metrics.get("risk_score") > config.pkg_max_risk_score
             or risk_metrics.get("pkg_private_on_public_registry_risk")
         ):
-            risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
+            risk_score = f"{round(risk_metrics.get("risk_score"), 2)}"
             data = [
                 pkg,
                 package_usage,
@@ -1319,10 +1291,7 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
         else:
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
-        if (
-            fixed_location != placeholder_fix_version
-            and fixed_location != placeholder_exclude_version
-        ):
+        if fixed_location not in (placeholder_fix_version, placeholder_exclude_version):
             version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades
     for k, v in pkg_fix_map.items():
@@ -1413,9 +1382,12 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
     """
     Generates a list of reachable elements based on the given BOM file.
 
-    :param bom_file (str): The path to the BOM file.
-    :param src_dir (str): Source directory
+    :param bom_file: The path to the BOM file.
+    :type bom_file: str
+    :param src_dir: Source directory
+    :type src_dir: str
     :param reachables_slices_file: Path to the reachables slices file
+    :type reachables_slices_file: str
 
     :return: Tuple of direct_purls and reached_purls based on the occurrence and
                 callstack evidences from the BOM. If reachables slices json were
@@ -1443,7 +1415,6 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
 
         for c in data["components"]:
             purl = c["purl"]
-            if c.get("evidence"):
-                if c["evidence"].get("occurrences"):
-                    direct_purls[purl] += len(c["evidence"].get("occurrences"))
+            if c.get("evidence") and c["evidence"].get("occurrences"):
+                direct_purls[purl] += len(c["evidence"].get("occurrences"))
     return dict(direct_purls), dict(reached_purls)

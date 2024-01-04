@@ -1,4 +1,3 @@
-import contextlib
 import json
 import os
 import re
@@ -6,6 +5,9 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 from json import JSONDecodeError
+
+import cvss
+from cvss import CVSSError
 from packageurl import PackageURL
 
 import toml
@@ -1144,7 +1146,7 @@ def vdr_to_csaf(res):
         res.get("affects", []), res.get("properties", [])
     )
     cwe, notes = parse_cwe(res.get("cwes", []))
-    cvss_v3 = parse_cvss(res.get("properties", []))
+    cvss_v3 = parse_cvss(res.get("ratings", [{}]))
     description = (
         res.get("description", "")
         .replace("\n", " ")
@@ -1299,32 +1301,27 @@ def parse_cwe(cwe):
     return fmt_cwe, new_notes
 
 
-def parse_cvss(props):
+def parse_cvss(ratings):
     """
     Parses the CVSS information from pkg_vulnerabilities
 
-    :param props: The list of properties for the vulnerability
-    :type props: list[dict]
+    :param ratings: The ratings data
+    :type ratings: list[dict]
 
     :return: The parsed CVSS information as a single dictionary
     :rtype: dict
     """
-    if not props:
+    if not ratings or not (vector_string := ratings[0].get("vector")):
         return {}
-    cvss_v3_dict = {
-        i["name"]: i["value"] for i in props if i["name"].startswith("cvss")
-    }
+    try:
+        cvss_v3 = cvss.CVSS3(vector_string)
+        cvss_v3.check_mandatory()
+    except [CVSSError, ValueError]:
+        return {}
 
-    cvss_v3 = {
-        "baseScore": cvss_v3_dict.get("cvssBaseScore"),
-        "attackVector": cvss_v3_dict.get("cvssAttackVector"),
-        "privilegesRequired": cvss_v3_dict.get("cvssPrivilegesRequired"),
-        "userInteraction": cvss_v3_dict.get("cvssUserInteraction"),
-        "scope": cvss_v3_dict.get("cvssScope"),
-        "baseSeverity": cvss_v3_dict.get("cvssBaseSeverity"),
-        "version": cvss_v3_dict.get("cvssVersion"),
-        "vectorString": cvss_v3_dict.get("cvssVectorString"),
-    }
+    cvss_v3_dict = cvss_v3.as_json()
+
+    cvss_v3 = {k: v for k, v in cvss_v3_dict.items() if v != "NOT_DEFINED"}
 
     return cleanup_dict(cvss_v3)
 

@@ -4,7 +4,7 @@ import os
 import pytest
 
 from depscan.lib import analysis
-from depscan.lib.analysis import cvss_to_vdr, get_version_range, split_cwe
+from depscan.lib.analysis import cvss_to_vdr_rating, get_version_range, split_cwe
 
 
 @pytest.fixture
@@ -702,100 +702,33 @@ def test_split_cwe():
     assert split_cwe("[CWE-20, CWE-1333]") == ([20, 1333])
 
 
-def test_cvss_to_vdr():
+def test_cvss_to_vdr_rating():
+    res = {
+        "cvss_v3": {},
+        "severity": "HIGH",
+    }
+    # Test missing score and vector string
+    assert cvss_to_vdr_rating(res) == [
+        {'method': 'CVSSv31', 'score': 2.0, 'severity': 'high'}]
     # Test parsing
-    res = {
-        "cvss_v3": {
-            "attack_complexity": "LOW",
-            "attack_vector": "NETWORK",
-            "availability_impact": "HIGH",
-            "base_score": 7.5,
-            "impact_score": 7.5,
-            "confidentiality_impact": "NONE",
-            "integrity_impact": "NONE",
-            "privileges_required": "NONE",
-            "scope": "UNCHANGED",
-            "user_interaction": "NONE",
-            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-        },
-        "severity": "HIGH",
-        "id": "CVE-2023-37788",
-    }
-    assert cvss_to_vdr(res) == [
-        {'name': 'cvssVersion', 'value': '3.1'},
-        {'name': 'cvssBaseScore', 'value': 7.5},
-        {'name': 'cvssVectorString',
-         'value': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'},
-        {'name': 'cvssAttackVector', 'value': 'NETWORK'},
-        {'name': 'cvssPrivilegesRequired', 'value': 'NONE'},
-        {'name': 'cvssUserInteraction', 'value': 'NONE'},
-        {'name': 'cvssScope', 'value': 'UNCHANGED'},
-        {'name': 'cvssBaseSeverity', 'value': 'HIGH'}]
-    res["cvss_v3"]["vector_string"] = "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
-    assert cvss_to_vdr(res) == [
-        {'name': 'cvssVersion', 'value': '3.0'},
-        {'name': 'cvssBaseScore', 'value': 7.5},
-        {'name': 'cvssVectorString',
-         'value': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I'},
-        {'name': 'cvssAttackVector', 'value': 'NETWORK'},
-        {'name': 'cvssPrivilegesRequired', 'value': 'NONE'},
-        {'name': 'cvssUserInteraction', 'value': 'NONE'},
-        {'name': 'cvssScope', 'value': 'UNCHANGED'},
-        {'name': 'cvssBaseSeverity', 'value': 'HIGH'}]
-    # Test no cvss_v3
-    res = {
-        "severity": "HIGH",
-        "id": "CVE-2023-37788",
-    }
-    assert cvss_to_vdr(res) == {}
-    res["cvss_v3"] = {}
-    assert cvss_to_vdr(res) == {}
-    # Test missing or pre-3.0 vector string
-    res = {
-        "cvss_v3": {
-            "attack_complexity": "LOW",
-            "attack_vector": "NETWORK",
-            "availability_impact": "HIGH",
-            "base_score": 7.5,
-            "impact_score": 7.5,
-            "confidentiality_impact": "NONE",
-            "integrity_impact": "NONE",
-            "privileges_required": "NONE",
-            "scope": "UNCHANGED",
-            "user_interaction": "NONE",
-        },
-        "severity": "HIGH",
-        "id": "CVE-2023-37788",
-    }
-    assert cvss_to_vdr(res) == {}
-    res["cvss_v3"]["vector_string"] = "CVSS:2.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
-    assert cvss_to_vdr(res) == {}
-    res["cvss_v3"]["vector_string"] = ""
-    assert cvss_to_vdr(res) == {}
-    res["cvss_v3"]["vector_string"] = None
-    assert cvss_to_vdr(res) == {}
-    # Test missing base score
-    res = {
-        "cvss_v3": {
-            "attack_complexity": "LOW",
-            "attack_vector": "NETWORK",
-            "availability_impact": "HIGH",
-            "impact_score": 7.5,
-            "confidentiality_impact": "NONE",
-            "integrity_impact": "NONE",
-            "privileges_required": "NONE",
-            "scope": "UNCHANGED",
-            "user_interaction": "NONE",
-            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
-        },
-        "severity": "HIGH",
-        "id": "CVE-2023-37788",
-    }
-    assert cvss_to_vdr(res) == {}
-    res["cvss_v3"]["base_score"] = ""
-    assert cvss_to_vdr(res) == {}
-    res["cvss_v3"]["base_score"] = None
-    assert cvss_to_vdr(res) == {}
+    res["cvss_v3"]["vector_string"] = ("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
+                                       ":N/A:H")
+    res["cvss_score"] = 7.5
+
+    assert cvss_to_vdr_rating(res) == [{
+        'method': 'CVSSv31',
+        'score': 7.5,
+        'severity': 'high',
+        'vector': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
+    }]
+    res["cvss_v3"]["vector_string"] = ("CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
+                                       ":N/A:H")
+    assert cvss_to_vdr_rating(res) == [{
+        'method': 'CVSSv3',
+        'score': 7.5,
+        'severity': 'high',
+        'vector': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
+    }]
 
 
 def test_get_version_range():

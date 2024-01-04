@@ -429,40 +429,33 @@ def test_parse_toml():
 
 
 def test_parse_cvss():
-    props = [
-        {"name": "cvssVersion", "value": "3.0"},
-        {"name": "cvssBaseScore", "value": 9.8},
-        {
-            "name": "cvssVectorString",
-            "value": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
-        },
-        {"name": "cvssPrivilegesRequired", "value": "NONE"},
-        {"name": "cvssUserInteraction", "value": "NONE"},
-        {"name": "cvssScope", "value": "UNCHANGED"},
-        {"name": "cvssBaseSeverity", "value": "CRITICAL"},
-        {"name": "affectedVersionRange", "value": ">=2.9.0-<2.9.8"},
-    ]
-    assert parse_cvss(props) == {
-        "baseScore": 9.8,
-        "baseSeverity": "CRITICAL",
-        "privilegesRequired": "NONE",
-        "scope": "UNCHANGED",
-        "userInteraction": "NONE",
-        "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
-        "version": "3.0",
+    assert parse_cvss([{
+        "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]) == {
+        'attackComplexity': 'LOW',
+        'attackVector': 'NETWORK',
+        'availabilityImpact': 'HIGH',
+        'baseScore': 9.8,
+        'baseSeverity': 'CRITICAL',
+        'confidentialityImpact': 'HIGH',
+        'environmentalScore': 9.8,
+        'environmentalSeverity': 'CRITICAL',
+        'integrityImpact': 'HIGH',
+        'modifiedAttackComplexity': 'LOW',
+        'modifiedAttackVector': 'NETWORK',
+        'modifiedAvailabilityImpact': 'HIGH',
+        'modifiedConfidentialityImpact': 'HIGH',
+        'modifiedIntegrityImpact': 'HIGH',
+        'modifiedPrivilegesRequired': 'NONE',
+        'modifiedUserInteraction': 'NONE',
+        'privilegesRequired': 'NONE',
+        'scope': 'UNCHANGED',
+        'temporalScore': 9.8,
+        'temporalSeverity': 'CRITICAL',
+        'userInteraction': 'NONE',
+        'vectorString': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+        'version': '3.0'
     }
-    props.append({"name": "cvssAttackVector", "value": "NETWORK"},)
-    assert parse_cvss(props) == {
-        "attackVector": "NETWORK",
-        "baseScore": 9.8,
-        "baseSeverity": "CRITICAL",
-        "privilegesRequired": "NONE",
-        "scope": "UNCHANGED",
-        "userInteraction": "NONE",
-        "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
-        "version": "3.0",
-    }
-    assert parse_cvss([]) == {}
+    assert parse_cvss([{}]) == {}
 
 
 def test_get_products():
@@ -723,7 +716,12 @@ def test_add_vulnerabilities():
                 "url": "https://nvd.nist.gov/vuln/detail/CVE-2020-10673",
             },
             "ratings": [
-                {"score": 8.8, "severity": "high", "method": "CVSSv31"}
+                {
+                    "score": 8.8,
+                    "severity": "high",
+                    "method": "CVSSv31",
+                    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
+                }
             ],
             "cwes": [668, 520, 521],
             "description": (
@@ -766,17 +764,6 @@ def test_add_vulnerabilities():
                     "value": "Direct dependency\\nVendor Confirmed",
                 },
                 {"name": "depscan:prioritized", "value": "true"},
-                {"name": "cvssVersion", "value": "3.1"},
-                {"name": "cvssBaseScore", "value": 8.8},
-                {
-                    "name": "cvssVectorString",
-                    "value": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
-                },
-                {"name": "cvssAttackVector", "value": "NETWORK"},
-                {"name": "cvssPrivilegesRequired", "value": "NONE"},
-                {"name": "cvssUserInteraction", "value": "REQUIRED"},
-                {"name": "cvssScope", "value": "UNCHANGED"},
-                {"name": "cvssBaseSeverity", "value": "HIGH"},
                 {
                     "name": "affected_version_range",
                     "value": ">=2.9.0-<2.9.10.4",
@@ -794,7 +781,12 @@ def test_add_vulnerabilities():
                 "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-20190",
             },
             "ratings": [
-                {"score": 8.1, "severity": "high", "method": "CVSSv31"}
+                {
+                    "score": 8.1,
+                    "severity": "high",
+                    "method": "CVSSv31",
+                    "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+                }
             ],
             "cwes": [502],
             "description": (
@@ -838,17 +830,6 @@ def test_add_vulnerabilities():
                     "value": "Direct dependency\\nVendor Confirmed",
                 },
                 {"name": "depscan:prioritized", "value": "true"},
-                {"name": "cvssVersion", "value": "3.1"},
-                {"name": "cvssBaseScore", "value": 8.1},
-                {
-                    "name": "cvssVectorString",
-                    "value": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
-                },
-                {"name": "cvssAttackVector", "value": "NETWORK"},
-                {"name": "cvssPrivilegesRequired", "value": "NONE"},
-                {"name": "cvssUserInteraction", "value": "NONE"},
-                {"name": "cvssScope", "value": "UNCHANGED"},
-                {"name": "cvssBaseSeverity", "value": "HIGH"},
                 {
                     "name": "affected_version_range",
                     "value": ">=2.7.0-<2.9.10.7",
@@ -927,19 +908,32 @@ def test_add_vulnerabilities():
                 },
             ],
             "scores": [
-                {
-                    "cvss_v3": {
-                        "attackVector": "NETWORK",
-                        "baseScore": 8.8,
-                        "baseSeverity": "HIGH",
-                        "privilegesRequired": "NONE",
-                        "scope": "UNCHANGED",
-                        "userInteraction": "REQUIRED",
-                        "vectorString": (
-                            "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H"
-                        ),
-                        "version": "3.1",
-                    },
+                {'cvss_v3': {
+                    'attackComplexity': 'LOW',
+                    'attackVector': 'NETWORK',
+                    'availabilityImpact': 'HIGH',
+                    'baseScore': 8.8,
+                    'baseSeverity': 'HIGH',
+                    'confidentialityImpact': 'HIGH',
+                    'environmentalScore': 8.8,
+                    'environmentalSeverity': 'HIGH',
+                    'integrityImpact': 'HIGH',
+                    'modifiedAttackComplexity': 'LOW',
+                    'modifiedAttackVector': 'NETWORK',
+                    'modifiedAvailabilityImpact': 'HIGH',
+                    'modifiedConfidentialityImpact': 'HIGH',
+                    'modifiedIntegrityImpact': 'HIGH',
+                    'modifiedPrivilegesRequired': 'NONE',
+                    'modifiedUserInteraction': 'REQUIRED',
+                    'privilegesRequired': 'NONE',
+                    'scope': 'UNCHANGED',
+                    'temporalScore': 8.8,
+                    'temporalSeverity': 'HIGH',
+                    'userInteraction': 'REQUIRED',
+                    'vectorString': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H'
+                                    '/A:H',
+                    'version': '3.1'
+                },
                     "products": [
                         "com.fasterxml.jackson.core/jackson-databind@2.9.6"
                     ],
@@ -1007,17 +1001,31 @@ def test_add_vulnerabilities():
             ],
             "scores": [
                 {
-                    "cvss_v3": {
-                        "attackVector": "NETWORK",
-                        "baseScore": 8.1,
-                        "baseSeverity": "HIGH",
-                        "privilegesRequired": "NONE",
-                        "scope": "UNCHANGED",
-                        "userInteraction": "NONE",
-                        "vectorString": (
-                            "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
-                        ),
-                        "version": "3.1",
+                    'cvss_v3': {
+                        'attackComplexity': 'HIGH',
+                        'attackVector': 'NETWORK',
+                        'availabilityImpact': 'HIGH',
+                        'baseScore': 8.1,
+                        'baseSeverity': 'HIGH',
+                        'confidentialityImpact': 'HIGH',
+                        'environmentalScore': 8.1,
+                        'environmentalSeverity': 'HIGH',
+                        'integrityImpact': 'HIGH',
+                        'modifiedAttackComplexity': 'HIGH',
+                        'modifiedAttackVector': 'NETWORK',
+                        'modifiedAvailabilityImpact': 'HIGH',
+                        'modifiedConfidentialityImpact': 'HIGH',
+                        'modifiedIntegrityImpact': 'HIGH',
+                        'modifiedPrivilegesRequired': 'NONE',
+                        'modifiedUserInteraction': 'NONE',
+                        'privilegesRequired': 'NONE',
+                        'scope': 'UNCHANGED',
+                        'temporalScore': 8.1,
+                        'temporalSeverity': 'HIGH',
+                        'userInteraction': 'NONE',
+                        'vectorString': 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H'
+                                        '/I:H/A:H',
+                        'version': '3.1'
                     },
                     "products": [
                         "com.fasterxml.jackson.core/jackson-databind@2.9.6"
@@ -1026,33 +1034,6 @@ def test_add_vulnerabilities():
             ],
         },
     ]
-    pkg_vulnerabilities[1]["source"] = {}
-    pkg_vulnerabilities[1]["affects"] = []
-    pkg_vulnerabilities[1]["properties"] = []
-    pkg_vulnerabilities[1]["advisories"] = []
-    new_results = add_vulnerabilities(template, pkg_vulnerabilities)
-    assert new_results.get("vulnerabilities")[1] == {
-        'acknowledgements': {},
-        'cve': 'CVE-2021-20190',
-        'cwe': {'id': '502', 'name': 'Deserialization of Untrusted Data'},
-        'discovery_date': '2021-01-19T17:15:00',
-        'ids': [],
-        'notes': [{'category': 'general',
-                   'details': 'Vulnerability Description',
-                   'text': 'A flaw was found in jackson-databind before '
-                           '2.9.10.7. FasterXML mishandles the interaction '
-                           'between serialization gadgets and typing. The '
-                           'highest threat from this vulnerability is to data '
-                           'confidentiality and integrity as well as system '
-                           'availability.'}],
-        'product_status': {},
-        'references': [],
-        'scores': [{'cvss_v3': {}, 'products': []}]}
-    assert new_results.get("vulnerabilities")[1]["acknowledgements"] == {}
-    assert new_results.get("vulnerabilities")[1]["product_status"] == {}
-    assert new_results.get("vulnerabilities")[1]["scores"] == [
-        {'cvss_v3': {}, 'products': []}]
-
     new_results = add_vulnerabilities(template, [])
     assert new_results.get("vulnerabilities") == []
 

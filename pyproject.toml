@@ -17,6 +17,7 @@ dependencies = [
     "pdfkit",
     "Jinja2",
     "packageurl-python",
+    "cvss",
 ]
 
 requires-python = ">=3.8"
