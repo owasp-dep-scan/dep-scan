@@ -299,6 +299,9 @@ def prepare_vdr(options: PrepareVdrOptions):
     for vuln_occ_dict in options.results:
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
+        cwes = []
+        if problem_type:
+            cwes = split_cwe(problem_type)
         package_issue = vuln_occ_dict.get("package_issue")
         matched_by = vuln_occ_dict.get("matched_by")
         full_pkg = package_issue["affected_location"].get("package")
@@ -369,10 +372,18 @@ def prepare_vdr(options: PrepareVdrOptions):
                         insights.append(f"[#7C8082]:telescope: Vendor {vendor}")
                         plain_insights.append(f"Vendor {vendor}")
                     has_os_packages = True
-                if "ubuntu" in qualifiers.get("distro", ""):
-                    has_ubuntu_packages = True
-                if "rhel" in qualifiers.get("distro", ""):
-                    has_redhat_packages = True
+                    for acwe in cwes:
+                        if acwe in config.OS_VULN_KEY_CWES:
+                            insights.append(
+                                ":triangular_flag: Flagged weakness"
+                            )
+                            plain_insights.append("Flagged weakness")
+                            break
+                if qualifiers:
+                    if "ubuntu" in qualifiers.get("distro", ""):
+                        has_ubuntu_packages = True
+                    if "rhel" in qualifiers.get("distro", ""):
+                        has_redhat_packages = True
         if ids_seen.get(vid + purl):
             fp_count += 1
             continue
@@ -581,9 +592,6 @@ def prepare_vdr(options: PrepareVdrOptions):
             advisories = []
             for k, v in clinks.items():
                 advisories.append({"title": k, "url": v})
-            cwes = []
-            if problem_type:
-                cwes = split_cwe(problem_type)
             vuln = {
                 "bom-ref": f"{vid}/{purl}",
                 "id": vid,
