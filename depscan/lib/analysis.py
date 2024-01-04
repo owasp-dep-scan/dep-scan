@@ -141,9 +141,8 @@ def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
                 if purl_obj:
                     version_used = purl_obj.get("version")
                     if version_used:
-                        full_pkg_display = (
-                            f"""{purl_obj.get("name")}@{version_used}"""
-                        )
+                        full_pkg_display = (f"{purl_obj.get("name")}"
+                                            f"@{version_used}")
         except Exception:
             pass
     if extra_text and highlightable:
@@ -470,8 +469,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         if clinks.get("poc") or clinks.get("Bug Bounty"):
             if reached_purls.get(purl):
                 insights.append(
-                    "[bright_red]:exclamation_mark: Reachable and "
-                    "Exploitable[/bright_red]"
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
                 )
                 plain_insights.append("Reachable and Exploitable")
                 has_reachable_poc_count += 1
@@ -479,8 +477,7 @@ def prepare_vdr(options: PrepareVdrOptions):
                 pkg_requires_attn = True
             elif direct_purls.get(purl):
                 insights.append(
-                    "[yellow]:notebook_with_decorative_cover: Bug Bounty "
-                    "target[/yellow]"
+                    "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
                 )
                 plain_insights.append("Bug Bounty target")
             else:
@@ -501,8 +498,7 @@ def prepare_vdr(options: PrepareVdrOptions):
         if clinks.get("exploit"):
             if reached_purls.get(purl) or direct_purls.get(purl):
                 insights.append(
-                    "[bright_red]:exclamation_mark: Reachable and "
-                    "Exploitable[/bright_red]"
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
                 )
                 plain_insights.append("Reachable and Exploitable")
                 has_reachable_exploit_count += 1
@@ -538,10 +534,8 @@ def prepare_vdr(options: PrepareVdrOptions):
                 p_rich_tree,
                 "\n".join(insights),
                 fixed_location,
-                f"{"[bright_red]" if pkg_severity == "CRITICAL" else ""}"
-                f"{vuln_occ_dict.get("severity")}",
-                f"{"[bright_red]" if pkg_severity == "CRITICAL" else ""}"
-                f"{vuln_occ_dict.get("cvss_score")}",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
+                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
             )
         if purl:
             source = {}
@@ -555,10 +549,7 @@ def prepare_vdr(options: PrepareVdrOptions):
                     "name": "GitHub",
                     "url": f"https://github.com/advisories/{vid}",
                 }
-            versions = [{
-                "version": version_used,
-                "status": "affected"
-            }]
+            versions = [{"version": version_used, "status": "affected"}]
             recommendation = ""
             if fixed_location:
                 versions.append(
@@ -630,8 +621,8 @@ def prepare_vdr(options: PrepareVdrOptions):
         psection = Markdown(
             """## Next Steps
 
-Below are the vulnerabilities prioritized by depscan. Follow your team's
-remediation workflow to mitigate these findings."""
+Below are the vulnerabilities prioritized by depscan. Follow your team's remediation workflow to mitigate these findings.
+        """
         )
         console.print(psection)
         utable = Table(
@@ -665,8 +656,8 @@ remediation workflow to mitigate these findings."""
                 rmessage = (
                     f":point_right: [magenta]{has_reachable_exploit_count}"
                     f"[/magenta] out of {len(options.results)} vulnerabilities "
-                    f"have [dark magenta]reachable[/dark magenta] exploits "
-                    f"and requires your [magenta]immediate[/magenta] attention."
+                    f"have [dark magenta]reachable[/dark magenta] exploits and requires your ["
+                    f"magenta]immediate[/magenta] attention."
                 )
             else:
                 rmessage = (
@@ -702,13 +693,9 @@ remediation workflow to mitigate these findings."""
                         f"for updates."
                     )
                 if has_redhat_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages
-                    with status "out of support" or "won't fix" are excluded
-                    from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
                 if has_ubuntu_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages
-                    with status "DNE" or "needs-triaging" are excluded from
-                    this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
             console.print(
                 Panel(
                     rmessage,
@@ -719,10 +706,8 @@ remediation workflow to mitigate these findings."""
         elif pkg_attention_count:
             if has_reachable_exploit_count:
                 rmessage = (
-                    f":point_right: Prioritize the [magenta]"
-                    f"{has_reachable_exploit_count}[/magenta] [bold magenta]"
-                    f"reachable[/bold magenta] vulnerabilities with known "
-                    f"exploits."
+                    f":point_right: Prioritize the [magenta]{has_reachable_exploit_count}"
+                    f"[/magenta] [bold magenta]reachable[/bold magenta] vulnerabilities with known exploits."
                 )
             elif has_exploit_count:
                 rmessage = (
@@ -763,9 +748,9 @@ remediation workflow to mitigate these findings."""
         elif critical_count:
             console.print(
                 Panel(
-                    f":white_medium_small_square: Prioritize the [magenta]"
-                    f"{critical_count}[/magenta] critical vulnerabilities "
-                    f"confirmed by the vendor.",
+                    f":white_medium_small_square: Prioritize the [magenta]{critical_count}"
+                    f"[/magenta] critical vulnerabilities confirmed by the "
+                    f"vendor.",
                     title="Recommendation",
                     expand=False,
                 )
@@ -773,19 +758,20 @@ remediation workflow to mitigate these findings."""
         else:
             if has_os_packages:
                 rmessage = (
-                    ":white_medium_small_square: Prioritize any "
-                    "vulnerabilities in libraries such as glibc, openssl, "
-                    "or libcurl.\nAdditionally, prioritize the "
-                    "vulnerabilities in packages that provide executable "
-                    "binaries when there is a Remote Code Execution or File "
-                    "Write vulnerability in the containerized application or "
-                    "service."
+                    ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
+                    "as glibc, openssl, or libcurl.\nAdditionally, "
+                    "prioritize the vulnerabilities in packages that "
+                    "provide executable binaries when there is a "
+                    "Remote Code Execution or File Write "
+                    "vulnerability in the containerized application "
+                    "or service."
                 )
                 rmessage += (
-                    "\nVulnerabilities in Linux Kernel packages can be "
-                    "usually ignored in containerized environments as long as "
-                    "the vulnerability doesn't lead to any 'container-escape' "
-                    "type vulnerabilities."
+                    "\nVulnerabilities in Linux Kernel packages can "
+                    "be usually ignored in containerized "
+                    "environments as long as the vulnerability "
+                    "doesn't lead to any 'container-escape' type "
+                    "vulnerabilities."
                 )
                 if has_redhat_packages:
                     rmessage += """\nNOTE: Vulnerabilities in RedHat packages
@@ -797,17 +783,11 @@ remediation workflow to mitigate these findings."""
                     this result."""
                 console.print(Panel(rmessage, title="Recommendation"))
             else:
-                rmessage = (":white_check_mark: No package requires immediate "
-                            "attention.")
+                rmessage = ":white_check_mark: No package requires immediate attention."
                 if reached_purls:
-                    rmessage = (":white_check_mark: No package requires "
-                                "immediate attention since the major "
-                                "vulnerabilities are not reachable.")
+                    rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are not reachable."
                 elif direct_purls:
-                    rmessage = (":white_check_mark: No package requires "
-                                "immediate attention since the major "
-                                "vulnerabilities are found only in dev "
-                                "packages and indirect dependencies.")
+                    rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies."
                 console.print(
                     Panel(
                         rmessage,
@@ -818,9 +798,8 @@ remediation workflow to mitigate these findings."""
     elif critical_count:
         console.print(
             Panel(
-                f":white_medium_small_square: Prioritize the [magenta"
-                f"]{critical_count}[/magenta] critical vulnerabilities "
-                f"confirmed by the vendor.",
+                f":white_medium_small_square: Prioritize the [magenta]{critical_count}"
+                f"[/magenta] critical vulnerabilities confirmed by the vendor.",
                 title="Recommendation",
                 expand=False,
             )
@@ -844,9 +823,8 @@ remediation workflow to mitigate these findings."""
         rsection = Markdown(
             """## Proactive Measures
 
-Below are the top reachable packages identified by depscan. Setup alerts and
-notifications to actively monitor these packages for new vulnerabilities and
-exploits."""
+Below are the top reachable packages identified by depscan. Setup alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
+        """
         )
         console.print(rsection)
         rtable = Table(
@@ -1033,12 +1011,11 @@ def jsonl_report(
                     if purl_obj:
                         version_used = purl_obj.get("version")
                         if purl_obj.get("namespace"):
-                            full_pkg = (f"{purl_obj.get("namespace")}"
-                                        f"{purl_obj.get("name")}@"
-                                        f"{purl_obj.get("version")}")
+                            full_pkg = f"""{purl_obj.get("namespace")}/
+                            {purl_obj.get("name")}@{purl_obj.get("version")}"""
                         else:
-                            full_pkg = (f"{purl_obj.get('name')}"
-                                        f"@{purl_obj.get('version')}")
+                            full_pkg = f"""{purl_obj.get("name")}@{purl_obj
+                                .get("version")}"""
                 except Exception:
                     pass
             if ids_seen.get(vid + purl):
@@ -1046,9 +1023,7 @@ def jsonl_report(
             # On occasions, this could still result in duplicates if the
             # package exists with and without a purl
             ids_seen[vid + purl] = True
-            project_type_pkg = (f"{project_type}:"
-                                f"{package_issue["affected_location"]
-                                    .get("package")}")
+            project_type_pkg = f"""{project_type}:{package_issue["affected_location"].get("package")}"""
             fixed_location = best_fixed_location(
                 sug_version_dict.get(purl),
                 package_issue["fixed_location"],
@@ -1147,7 +1122,7 @@ def analyse_pkg_risks(
             risk_metrics.get("risk_score") > config.pkg_max_risk_score
             or risk_metrics.get("pkg_private_on_public_registry_risk")
         ):
-            risk_score = f"{round(risk_metrics.get("risk_score"), 2)}"
+            risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
                 pkg,
                 package_usage,
