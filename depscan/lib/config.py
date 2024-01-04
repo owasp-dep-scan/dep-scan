@@ -459,6 +459,7 @@ max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 6)
 
+# List of CWEs that could lead to damages, exploits, and container escapes
 OS_VULN_KEY_CWES = (
     23,
     24,
