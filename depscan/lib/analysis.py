@@ -1,9 +1,14 @@
+import contextlib
 import json
 import os.path
+import re
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+import cvss
+from cvss import CVSSError
+from packageurl import PackageURL
 from rich import box
 from rich.markdown import Markdown
 from rich.panel import Panel
@@ -22,6 +27,8 @@ from depscan.lib.utils import max_version
 
 
 NEWLINE = "\\n"
+
+CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
 
 
 def best_fixed_location(sug_version, orig_fixed_location):
@@ -96,6 +103,15 @@ def retrieve_bom_dependency_tree(bom_file):
 
 
 def retrieve_oci_properties(bom_data):
+    """
+    Retrieves OCI properties from the given BOM data.
+
+    :param bom_data: The BOM data to retrieve OCI properties from.
+    :type bom_data: dict
+
+    :return: A dictionary containing the retrieved OCI properties.
+    :rtype: dict
+    """
     props = {}
     if not bom_data:
         return props
@@ -234,7 +250,8 @@ def prepare_vdr(options: PrepareVdrOptions):
     vulnerability details.
 
     :param options: An instance of PrepareVdrOptions containing the function parameters.
-    :return: Tuple containing (A list of vulnerability details, prioritized list as a dict)
+    :return: Vulnerability details, dictionary of prioritized items
+    :rtype: Tuple[List, Dict]
     """
     if not options.results:
         return [], {}
@@ -246,12 +263,8 @@ def prepare_vdr(options: PrepareVdrOptions):
         min_width=150,
     )
     ids_seen = {}
-    direct_purls = options.direct_purls
-    if not direct_purls:
-        direct_purls = {}
-    reached_purls = options.reached_purls
-    if not reached_purls:
-        reached_purls = {}
+    direct_purls = options.direct_purls or {}
+    reached_purls = options.reached_purls or {}
     required_pkgs = options.scoped_pkgs.get("required", [])
     optional_pkgs = options.scoped_pkgs.get("optional", [])
     pkg_attention_count = 0
@@ -309,7 +322,6 @@ def prepare_vdr(options: PrepareVdrOptions):
                     f"{vendor}:"
                     f"{package_issue['affected_location'].get('package')}"
                 )
-        version = None
         if matched_by:
             version = matched_by.split("|")[-1]
             full_pkg = full_pkg + ":" + version
@@ -337,7 +349,8 @@ def prepare_vdr(options: PrepareVdrOptions):
                             and package_issue["affected_location"].get("vendor")
                             not in oci_product_types
                         ):
-                            # Some nvd data might match application CVEs for OS vendors which can be filtered
+                            # Some nvd data might match application CVEs for
+                            # OS vendors which can be filtered
                             if package_issue["affected_location"].get(
                                 "cpe_uri"
                             ):
@@ -353,16 +366,20 @@ def prepare_vdr(options: PrepareVdrOptions):
                                     not in config.OS_PKG_TYPES
                                 ):
                                     continue
-                            # Some vendors like suse leads to FP and can be turned off if our image do not have those types
-                            # Some os packages might match application packages in NVD
-                            if package_issue["affected_location"].get(
+                            # Some vendors like suse leads to FP and can be
+                            # turned off if our image do not have those types
+                            # Some os packages might match application
+                            # packages in NVD
+                            vendor = package_issue["affected_location"].get(
                                 "vendor"
-                            ) not in ("suse",):
+                            )
+                            if vendor not in ("suse",):
+
                                 insights.append(
-                                    f"[#7C8082]:telescope: Vendor {package_issue['affected_location'].get('vendor')}"
+                                    f"[#7C8082]:telescope: Vendor {vendor}"
                                 )
                                 plain_insights.append(
-                                    f"Vendor {package_issue['affected_location'].get('vendor')}"
+                                    f"Vendor {vendor}"
                                 )
                         has_os_packages = True
                     if "ubuntu" in qualifiers.get("distro", ""):
@@ -421,7 +438,9 @@ def prepare_vdr(options: PrepareVdrOptions):
         )
         if is_required and package_type not in config.OS_PKG_TYPES:
             if direct_purls.get(purl):
-                package_usage = f":direct_hit: Used in [info]{str(direct_purls.get(purl))}[/info] locations"
+                package_usage = (f":direct_hit: Used in [info]"
+                                 f"{str(direct_purls.get(purl))}"
+                                 f"[/info] locations")
                 plain_package_usage = (
                     f"Used in {str(direct_purls.get(purl))} locations"
                 )
@@ -442,7 +461,8 @@ def prepare_vdr(options: PrepareVdrOptions):
                 plain_package_usage = "Local install"
                 has_os_packages = True
             else:
-                package_usage = "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
+                package_usage = ("[spring_green4]:notebook: Indirect "
+                                 "dependency[/spring_green4]")
                 plain_package_usage = "Indirect dependency"
         if package_usage != "N/A":
             insights.append(package_usage)
@@ -483,8 +503,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                 )
                 plain_insights.append("Reachable and Exploitable")
                 has_reachable_exploit_count += 1
-                # Fail safe. Packages with exploits and direct usage without a reachable flow
-                # are still considered reachable to reduce false negatives
+                # Fail safe. Packages with exploits and direct usage without
+                # a reachable flow are still considered reachable to reduce
+                # false negatives
                 if not reached_purls.get(purl):
                     reached_purls[purl] = 1
             else:
@@ -553,40 +574,28 @@ def prepare_vdr(options: PrepareVdrOptions):
                     "state": "in_triage",
                     "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
                 }
-            score = 2.0
-            try:
-                score = float(vuln_occ_dict.get("cvss_score"))
-            except Exception:
-                pass
-            sev_to_use = pkg_severity.lower()
-            if sev_to_use not in (
-                "critical",
-                "high",
-                "medium",
-                "low",
-                "info",
-                "none",
-            ):
-                sev_to_use = "unknown"
-            ratings = [
-                {
-                    "score": score,
-                    "severity": sev_to_use,
-                    "method": "CVSSv31",
-                }
-            ]
+            ratings = cvss_to_vdr_rating(vuln_occ_dict)
+            properties = [
+                        {
+                            "name": "depscan:insights",
+                            "value": "\\n".join(plain_insights),
+                        },
+                        {
+                            "name": "depscan:prioritized",
+                            "value": "true" if pkg_group_rows.get(purl)
+                            else "false",
+                        },
+                    ]
+            affected_version_range = get_version_range(package_issue, purl)
+            if affected_version_range:
+                properties.append(affected_version_range)
             advisories = []
             for k, v in clinks.items():
                 advisories.append({"title": k, "url": v})
             cwes = []
             if problem_type:
-                try:
-                    acwe = int(problem_type.lower().replace("cwe-", ""))
-                    cwes = [acwe]
-                except Exception:
-                    pass
-            pkg_vulnerabilities.append(
-                {
+                cwes = split_cwe(problem_type)
+            vuln = {
                     "bom-ref": f"{vid}/{purl}",
                     "id": vid,
                     "source": source,
@@ -597,20 +606,14 @@ def prepare_vdr(options: PrepareVdrOptions):
                     "advisories": advisories,
                     "analysis": analysis,
                     "affects": affects,
-                    "properties": [
-                        {
-                            "name": "depscan:insights",
-                            "value": "\\n".join(plain_insights),
-                        },
-                        {
-                            "name": "depscan:prioritized",
-                            "value": "true"
-                            if pkg_group_rows.get(purl)
-                            else "false",
-                        },
-                    ],
+                    "properties": properties,
                 }
-            )
+            if source_orig_time := vuln_occ_dict.get("source_orig_time"):
+                vuln["published"] = source_orig_time
+            if source_update_time := vuln_occ_dict.get("source_update_time"):
+                vuln["updated"] = source_update_time
+            pkg_vulnerabilities.append(vuln)
+
     if not options.no_vuln_table:
         console.print()
         console.print(table)
@@ -727,10 +730,12 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                         "remediate."
                     )
                 else:
+                    v_text = 'vulnerability' if fix_version_count == 1 \
+                        else 'vulnerabilities'
                     rmessage += (
                         f"\nYou can remediate [bright_green]"
                         f"{fix_version_count}[/bright_green] "
-                        f"{'vulnerability' if fix_version_count == 1 else 'vulnerabilities'} "
+                        f"{v_text} "
                         f"by updating the packages using the fix "
                         f"version :thumbsup:"
                     )
@@ -840,6 +845,90 @@ Below are the top reachable packages identified by depscan. Setup alerts and not
     return pkg_vulnerabilities, pkg_group_rows
 
 
+def get_version_range(package_issue, purl):
+    """
+    Generates a version range object for inclusion in the vdr file.
+
+    :param package_issue: Vulnerability data dict
+    :param purl: Package URL string
+
+    :return: A list containing a dictionary with version range information.
+    """
+    new_prop = {}
+    if (affected_location := package_issue.get("affected_location")) and (
+            affected_version := affected_location.get("version")):
+        try:
+            ppurl = PackageURL.from_string(purl)
+            new_prop = {
+                "name": "affectedVersionRange",
+                "value": f'{ppurl.name}@'
+                         f'{affected_version}'
+            }
+            if ppurl.namespace:
+                new_prop["value"] = f'{ppurl.namespace}/{new_prop["value"]}'
+        except ValueError:
+            ppurl = purl.split("@")
+            if len(ppurl) == 2:
+                new_prop = {
+                    "name": "affectedVersionRange",
+                    "value": f'{ppurl[0]}@{affected_version}'
+                }
+
+    return new_prop
+
+
+def cvss_to_vdr_rating(vuln_occ_dict):
+    """
+    Generates a rating object for inclusion in the vdr file.
+
+    :param vuln_occ_dict: Vulnerability data
+
+    :return: A list containing a dictionary with CVSS score information.
+    """
+    cvss_score = vuln_occ_dict.get("cvss_score", 2.0)
+    with contextlib.suppress(ValueError, TypeError):
+        cvss_score = float(cvss_score)
+    if (pkg_severity := vuln_occ_dict.get("severity", "").lower()) not in (
+            "critical", "high", "medium", "low", "info", "none",):
+        pkg_severity = "unknown"
+    ratings = [{
+        "score": cvss_score,
+        "severity": pkg_severity,
+    }]
+    method = "31"
+    if vuln_occ_dict.get("cvss_v3") and (
+            vector_string := vuln_occ_dict["cvss_v3"].get("vector_string")):
+        ratings[0]["vector"] = vector_string
+        with contextlib.suppress(CVSSError):
+            method = cvss.CVSS3(vector_string).as_json().get('version')
+            method = method.replace('.', '').replace('0', '')
+    ratings[0]["method"] = f"CVSSv{method}"
+
+    return ratings
+
+
+def split_cwe(cwe):
+    """
+    Split the given CWE string into a list of CWE IDs.
+
+    :param cwe: The problem issue taken from a vulnerability object
+
+    :return: A list of CWE IDs
+    :rtype: list
+    """
+    cwe_ids = []
+
+    if isinstance(cwe, str):
+        cwe_ids = re.findall(CWE_SPLITTER, cwe)
+    elif isinstance(cwe, list):
+        cwes = "|".join(cwe)
+        cwe_ids = re.findall(CWE_SPLITTER, cwes)
+
+    with contextlib.suppress(ValueError, TypeError):
+        cwe_ids = [int(cwe_id) for cwe_id in cwe_ids]
+    return cwe_ids
+
+
 def summary_stats(results):
     """
     Generate summary stats
@@ -884,6 +973,8 @@ def jsonl_report(
     :param results: List of vulnerabilities found
     :param pkg_aliases: Package alias
     :param out_file_name: Output filename
+    :param direct_purls: A list of direct purls
+    :param reached_purls: A list of reached purls
     """
     ids_seen = {}
     required_pkgs = scoped_pkgs.get("required", [])
@@ -1143,6 +1234,7 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
 
     :param results: List of package issue objects or dicts
     :param pkg_aliases: Dict of package names and aliases
+    :param purl_aliases: Dict of purl names and aliases
     :return: Dict mapping each package to its suggested version
     """
     pkg_fix_map = {}
@@ -1166,7 +1258,6 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
                     f"{package_issue.affected_location.vendor}:"
                     f"{package_issue.affected_location.package}"
                 )
-        version = None
         if matched_by:
             version = matched_by.split("|")[-1]
             full_pkg = full_pkg + ":" + version
@@ -1176,10 +1267,7 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
         else:
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
-        if (
-            fixed_location != placeholder_fix_version
-            and fixed_location != placeholder_exclude_version
-        ):
+        if fixed_location not in (placeholder_fix_version, placeholder_exclude_version):
             version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades
     for k, v in pkg_fix_map.items():
@@ -1261,6 +1349,8 @@ def classify_links(related_urls):
             clinks["Bug Bounty"] = rurl
         elif "cwe.mitre.org" in rurl:
             clinks["cwe"] = rurl
+        else:
+            clinks["other"] = rurl
     return clinks
 
 
@@ -1268,12 +1358,16 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
     """
     Generates a list of reachable elements based on the given BOM file.
 
-    :param bom_file (str): The path to the BOM file.
-    :param src_dir (str): Source directory
+    :param bom_file: The path to the BOM file.
+    :type bom_file: str
+    :param src_dir: Source directory
+    :type src_dir: str
     :param reachables_slices_file: Path to the reachables slices file
+    :type reachables_slices_file: str
 
-    :return: Tuple of direct_purls and reached_purls based on the occurrence and callstack evidences from the BOM.
-             If reachables slices json were found, the file would be read first.
+    :return: Tuple of direct_purls and reached_purls based on the occurrence and
+                callstack evidences from the BOM. If reachables slices json were
+                found, the file is read first.
     """
     direct_purls = defaultdict(int)
     reached_purls = defaultdict(int)
@@ -1297,7 +1391,6 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
 
         for c in data["components"]:
             purl = c["purl"]
-            if c.get("evidence"):
-                if c["evidence"].get("occurrences"):
-                    direct_purls[purl] += len(c["evidence"].get("occurrences"))
+            if c.get("evidence") and c["evidence"].get("occurrences"):
+                direct_purls[purl] += len(c["evidence"].get("occurrences"))
     return dict(direct_purls), dict(reached_purls)

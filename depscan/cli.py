@@ -1101,12 +1101,10 @@ def main():
         # CSAF VEX export
         if args.csaf:
             export_csaf(
-                results,
+                pkg_vulnerabilities,
                 src_dir,
                 reports_dir,
-                vdr_file,
-                direct_purls=direct_purls,
-                reached_purls=reached_purls,
+                bom_file,
             )
     console.save_html(
         html_file,

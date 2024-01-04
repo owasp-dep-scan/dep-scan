@@ -4,6 +4,7 @@ import os
 import pytest
 
 from depscan.lib import analysis
+from depscan.lib.analysis import cvss_to_vdr_rating, get_version_range, split_cwe
 
 
 @pytest.fixture
@@ -690,3 +691,65 @@ def test_purl_usages():
         "pkg:maven/commons-io/commons-io@2.11.0?type=jar": 2,
     }
     assert not reached_purls
+
+
+def test_split_cwe():
+    assert split_cwe("['CWE-20', 'CWE-668']") == [20, 668]
+    assert split_cwe("CWE-1333") == [1333]
+    assert split_cwe("") == ([])
+    assert split_cwe("CWE-20") == ([20])
+    assert split_cwe(None) == ([])
+    assert split_cwe("[CWE-20, CWE-1333]") == ([20, 1333])
+
+
+def test_cvss_to_vdr_rating():
+    res = {
+        "cvss_v3": {},
+        "severity": "HIGH",
+    }
+    # Test missing score and vector string
+    assert cvss_to_vdr_rating(res) == [
+        {'method': 'CVSSv31', 'score': 2.0, 'severity': 'high'}]
+    # Test parsing
+    res["cvss_v3"]["vector_string"] = ("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
+                                       ":N/A:H")
+    res["cvss_score"] = 7.5
+
+    assert cvss_to_vdr_rating(res) == [{
+        'method': 'CVSSv31',
+        'score': 7.5,
+        'severity': 'high',
+        'vector': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
+    }]
+    res["cvss_v3"]["vector_string"] = ("CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
+                                       ":N/A:H")
+    assert cvss_to_vdr_rating(res) == [{
+        'method': 'CVSSv3',
+        'score': 7.5,
+        'severity': 'high',
+        'vector': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
+    }]
+
+
+def test_get_version_range():
+    # Test empty
+    assert get_version_range({}, "") == {}
+
+    # Test all components present
+    package_issue = {
+        'affected_location': {
+            'version': '>=2.9.0-<3.0.0'
+        }, 'fixed_location': '3.0.0'}
+    purl = "pkg:maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar"
+    assert get_version_range(package_issue, purl) == {
+        "name": "affectedVersionRange",
+        "value": "org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0"
+    }
+
+    # Test invalid purl
+    purl = "maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar"
+    assert get_version_range(package_issue, purl) == {
+        'name': 'affectedVersionRange',
+        'value': 'maven/org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0'}
+
+
