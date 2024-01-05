@@ -243,6 +243,8 @@ OS_PKG_TYPES = (
     "suse",
     "photon",
     "microsoft",
+    "wolfi",
+    "chainguard",
 )
 
 # List of Linux distros with support for editions
@@ -297,8 +299,22 @@ npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
 
 pypi_server = "https://pypi.org/pypi"
 
-vdb_database_url = "ghcr.io/appthreat/vdb:v5"
-vdb_rafs_database_url = "ghcr.io/appthreat/vdb:v5-rafs"
+vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdb:v5")
+vdb_rafs_database_url = os.getenv(
+    "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v5-rafs"
+)
+
+# Larger 10 year database
+vdb_10y_database_url = os.getenv(
+    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5"
+)
+vdb_10y_rafs_database_url = os.getenv(
+    "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5-rafs"
+)
+
+if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
+    vdb_database_url = vdb_10y_database_url
+    vdb_rafs_database_url = vdb_10y_rafs_database_url
 
 # Package risk scoring using a simple weighted formula with no backing
 # research All parameters and their max value and weight can be overridden
@@ -322,7 +338,9 @@ mod_create_min_seconds = get_float_from_env(
 mod_create_min_seconds_max = get_float_from_env(
     "mod_create_min_seconds_max", 1000 * seconds_in_day
 )
-mod_create_min_seconds_weight = get_float_from_env("mod_create_min_seconds_weight", 1)
+mod_create_min_seconds_weight = get_float_from_env(
+    "mod_create_min_seconds_weight", 1
+)
 
 # At least 12 hours difference between the latest version and the current time
 latest_now_min_seconds = get_float_from_env(
@@ -331,7 +349,9 @@ latest_now_min_seconds = get_float_from_env(
 latest_now_min_seconds_max = get_float_from_env(
     "latest_now_min_seconds_max", 1000 * seconds_in_day
 )
-latest_now_min_seconds_weight = get_float_from_env("latest_now_min_seconds_weight", 0.5)
+latest_now_min_seconds_weight = get_float_from_env(
+    "latest_now_min_seconds_weight", 0.5
+)
 
 # Time period after which certain risks can be considered safe. Quarantine
 # period For eg: Packages that are over 1 year old
@@ -352,7 +372,9 @@ latest_now_max_seconds = get_float_from_env(
 latest_now_max_seconds_max = get_float_from_env(
     "latest_now_max_seconds_max", 6 * 365 * seconds_in_day
 )
-latest_now_max_seconds_weight = get_float_from_env("latest_now_max_seconds_weight", 0.5)
+latest_now_max_seconds_weight = get_float_from_env(
+    "latest_now_max_seconds_weight", 0.5
+)
 
 # Package should have at least 2 maintainers
 pkg_min_maintainers = get_float_from_env("pkg_min_maintainers", 2)
@@ -436,3 +458,89 @@ UNIVERSAL_SCAN_TYPE = "universal"
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 6)
+
+# List of CWEs that could lead to damages, exploits, and container escapes
+OS_VULN_KEY_CWES = (
+    20,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    58,
+    61,
+    62,
+    64,
+    65,
+    67,
+    69,
+    73,
+    77,
+    78,
+    79,
+    91,
+    119,
+    120,
+    121,
+    122,
+    125,
+    126,
+    127,
+    200,
+    250,
+    264,
+    269,
+    279,
+    416,
+    422,
+    439,
+    502,
+    506,
+    507,
+    508,
+    509,
+    510,
+    511,
+    512,
+    514,
+    515,
+    552,
+    553,
+    786,
+    787,
+    788,
+    789,
+    862,
+    1386,
+)
+
+max_distro_vulnerabilities = get_int_from_env("max_distro_vulnerabilities", 200)
+
+OS_PKG_UNINSTALLABLE = (
+    "openssh",
+    "cups",
+    "imagemagick",
+    "curl",
+    "tar",
+    "git",
+    "avahi",
+    "libssh",
+    "subversion",
+    "vim",
+    "vim-minimal",
+)
+
+OS_PKG_IGNORABLE = ("linux", "systemd", "ncurses", "kernel")

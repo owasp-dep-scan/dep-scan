@@ -8,35 +8,36 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 [![Discord](https://img.shields.io/badge/-Discord-lime?style=for-the-badge&logo=discord&logoColor=white&color=black)](https://discord.gg/pF4BYWEJcS)
 
 ## Contents
-- [Features](#features)
-    - [Vulnerability Data sources](#vulnerability-data-sources)
-    - [Linux distros](#linux-distros)
-- [Usage](#usage)
-    - [OCI Artifacts via ORAS cli](#oci-artifacts-via-oras-cli)
-    - [Single binary executables](#single-binary-executables)
-    - [Server mode](#server-mode)
-    - [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
-    - [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
-    - [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
-- [Supported languages and package format](#supported-languages-and-package-format)
-- [Reachability analysis](#reachability-analysis)
-    - [Example analysis for a Java project](#example-analysis-for-a-java-project)
-    - [Example analysis for a JavaScript project](#example-analysis-for-a-javascript-project)
-- [Customization through environment variables](#customization-through-environment-variables)
-- [GitHub Security Advisory](#github-security-advisory)
-- [Suggest mode](#suggest-mode)
-- [Package Risk audit](#package-risk-audit)
-    - [Automatic adjustment](#automatic-adjustment)
-    - [Configuring weights](#configuring-weights)
-- [Live OS scan](#live-os-scan)
-- [License scan](#license-scan)
-- [Kubernetes and Cloud apps](#kubernetes-and-cloud-apps)
-- [PDF reports](#pdf-reports)
-- [Custom reports](#custom-reports)
-- [Performance tuning](#performance-tuning)
-    - [Use nydus to speed up the initial vdb download](#use-nydus-to-speed-up-the-initial-vdb-download)
-- [Discord support](#discord-support)
-- [License](#license)
+
+-   [Features](#features)
+    -   [Vulnerability Data sources](#vulnerability-data-sources)
+    -   [Linux distros](#linux-distros)
+-   [Usage](#usage)
+    -   [OCI Artifacts via ORAS cli](#oci-artifacts-via-oras-cli)
+    -   [Single binary executables](#single-binary-executables)
+    -   [Server mode](#server-mode)
+    -   [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
+    -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
+    -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
+-   [Supported languages and package format](#supported-languages-and-package-format)
+-   [Reachability analysis](#reachability-analysis)
+    -   [Example analysis for a Java project](#example-analysis-for-a-java-project)
+    -   [Example analysis for a JavaScript project](#example-analysis-for-a-javascript-project)
+-   [Customization through environment variables](#customization-through-environment-variables)
+-   [GitHub Security Advisory](#github-security-advisory)
+-   [Suggest mode](#suggest-mode)
+-   [Package Risk audit](#package-risk-audit)
+    -   [Automatic adjustment](#automatic-adjustment)
+    -   [Configuring weights](#configuring-weights)
+-   [Live OS scan](#live-os-scan)
+-   [License scan](#license-scan)
+-   [Kubernetes and Cloud apps](#kubernetes-and-cloud-apps)
+-   [PDF reports](#pdf-reports)
+-   [Custom reports](#custom-reports)
+-   [Performance tuning](#performance-tuning)
+    -   [Use nydus to speed up the initial vdb download](#use-nydus-to-speed-up-the-initial-vdb-download)
+-   [Discord support](#discord-support)
+-   [License](#license)
 
 ## Features
 
@@ -90,15 +91,18 @@ Use [ORAS cli](https://oras.land/docs/) to download the vulnerability database f
 export VDB_HOME=depscan
 mkdir -p $VDB_HOME
 oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
+# oras pull ghcr.io/appthreat/vdb-10y:v5 -o $VDB_HOME
 oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
 ```
+
+Use `vdb-10y` which is a larger database with vulnerability data spanning the last 10 years from 2014. In contrast, vdb with a starting year of 2018 is appropriate for most users.
 
 ### Single binary executables
 
 Download the executable binary for your operating system from the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases). These binary bundle the following:
 
--   dep-scan with Python 3.10
--   cdxgen with Node.js 18
+-   dep-scan with Python 3.11
+-   cdxgen with Node.js 21
 -   cdxgen binary plugins
 
 ```bash
@@ -347,6 +351,8 @@ depscan --profile research -t js -i <source directory> --reports-dir <reports di
 The following environment variables can be used to customise the behaviour.
 
 -   VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
+-   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdb:v5
+-   USE_VDB_10Y - Set to true to use the larger 10 year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5
 
 ## GitHub Security Advisory
 

@@ -35,7 +35,6 @@ console = Console(
     log_time=False,
     log_path=False,
     theme=custom_theme,
-    width=int(os.getenv("COLUMNS", "270")),
     color_system="256",
     force_terminal=True,
     highlight=True,
