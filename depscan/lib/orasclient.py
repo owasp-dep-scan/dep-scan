@@ -135,5 +135,8 @@ def download_image():
         if apath.endswith(".tar.gz"):
             with tarfile.open(apath, "r") as tarf:
                 tarf.extractall(path=data_dir)
+            try:
                 os.remove(apath)
+            except OSError:
+                pass
     return paths_list
