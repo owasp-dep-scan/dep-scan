@@ -25,6 +25,6 @@ body:
     attributes:
       label: Depscan findings
       description: |
-        Please insert the output of `depscan --no-banner --sync --purl "purl-of-the-wrong-positive"` here.
+        Please insert the output of `depscan --purl "purl-of-the-wrong-positive"` here.
     validations:
       required: true

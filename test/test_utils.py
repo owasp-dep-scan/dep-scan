@@ -99,6 +99,8 @@ def test_template_report_from_vdr():
             "data",
             "jinja-report.bom.json",
         ),
+        pkg_vulnerabilities=[],
+        pkg_group_rows=[],
         summary={
             "UNSPECIFIED": 0,
             "LOW": 3,
@@ -136,6 +138,8 @@ def test_template_report_from_bom():
             "data",
             "jinja-report.bom.json",
         ),
+        pkg_vulnerabilities=[],
+        pkg_group_rows=[],
         summary={
             "UNSPECIFIED": 0,
             "LOW": 0,

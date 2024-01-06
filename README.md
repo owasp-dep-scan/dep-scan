@@ -120,7 +120,7 @@ curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/
 
 ### Server mode
 
-dep-scan and cdxgen could be run in server mode. Use the included docker compose file to get started.
+dep-scan and cdxgen could be run in server mode. Use the included docker-compose file to get started.
 
 ```bash
 git clone https://github.com/owasp-dep-scan/dep-scan
@@ -254,7 +254,7 @@ Scan `latest` tag of the container `shiftleft/scan-slim`
 depscan --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
 ```
 
-Include `license` to the type to perform license audit.
+Include `license` to the type to perform the license audit.
 
 ```bash
 depscan --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
@@ -274,7 +274,7 @@ docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
 depscan --src /tmp/scanslim.tar -o reports/depscan-scan.json -t docker
 ```
 
-Refer to the docker tests under GitHub action workflow for this repo for more examples.
+Refer to the docker tests under the GitHub action workflow for this repo for more examples.
 
 ### Scanning projects locally (Docker container)
 
@@ -300,7 +300,7 @@ In the above example, `/tmp` is mounted as `/db` into the container. This direct
 
 ## Supported languages and package format
 
-dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
+dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create a Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
 
 The following projects and package-dependency format is supported by cdxgen.
 
@@ -348,11 +348,11 @@ depscan --profile research -t js -i <source directory> --reports-dir <reports di
 
 ## Customization through environment variables
 
-The following environment variables can be used to customise the behaviour.
+The following environment variables can be used to customize the behavior.
 
--   VDB_HOME - Directory to use for caching database. For docker based execution, this directory should get mounted as a volume from the host
--   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdb:v5
--   USE_VDB_10Y - Set to true to use the larger 10 year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5
+-   VDB_HOME - Directory to use for caching database. For docker-based execution, this directory should get mounted as a volume from the host
+-   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdbgz:v5
+-   USE_VDB_10Y - Set to true to use the larger 10-year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5
 
 ## GitHub Security Advisory
 
@@ -367,7 +367,7 @@ export GITHUB_TOKEN="<PAT token>"
 
 ## Suggest mode
 
-Depscan comes with suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
+Depscan comes with a suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
 
 ![Normal mode](docs/depscan-normal.png)
 
@@ -379,7 +379,7 @@ Pass `--no-suggest` to disable this behavior.
 
 ## Package Risk audit
 
-`--risk-audit` argument enables package risk audit. Currently, only npm and pypi packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
+`--risk-audit` argument enables package risk audit. Currently, only npm and PyPI packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
 
 Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on the public npm/pypi registry.
 
@@ -481,7 +481,7 @@ Severity counts:
 * Unspecified: {{ summary.UNSPECIFIED }}
 ```
 
-The objects available are taken from the CycloneDX \*.vdr.json BOM file generated, just have a look to the file for its full structure:
+The objects available are taken from the CycloneDX \*.vdr.json BOM file generated, just have a look at the file for its full structure:
 
 -   `metadata`
 -   `vulnerabilities`
@@ -490,9 +490,11 @@ The objects available are taken from the CycloneDX \*.vdr.json BOM file generate
 -   `services`
 
 `summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
-Furthermore insights are imaginably to be made available to the template, please reach out or contribute on demand.
+`pkg_vulnerabilities` - Same as `vulnerabilities` from the VDR
+`pkg_group_rows` - List of vulnerability id and the dependency tree prioritized by depscan.
 
-We appreciate if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
+Furthermore, insights are imaginable to be made available to the template, please reach out or contribute on demand.
+We appreciate it if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
 
 ## Performance tuning
 

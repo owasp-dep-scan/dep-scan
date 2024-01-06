@@ -299,14 +299,14 @@ npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
 
 pypi_server = "https://pypi.org/pypi"
 
-vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdb:v5")
+vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbgz:v5")
 vdb_rafs_database_url = os.getenv(
     "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v5-rafs"
 )
 
 # Larger 10 year database
 vdb_10y_database_url = os.getenv(
-    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5"
+    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbgz-10y:v5"
 )
 vdb_10y_rafs_database_url = os.getenv(
     "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5-rafs"

@@ -80,7 +80,9 @@ def is_binary_string(content):
     """
     Method to check if the given content is a binary string
     """
-    textchars = bytearray({7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F})
+    textchars = bytearray(
+        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7F}
+    )
     return bool(content.translate(None, textchars))
 
 
@@ -231,16 +233,22 @@ def search_pkgs(db, project_type, pkg_list):
         version = pkg.get("version")
         if pkg.get("purl"):
             purl_aliases[pkg.get("purl")] = pkg.get("purl")
-            purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = pkg.get("purl")
+            purl_aliases[
+                f"{vendor.lower()}:{name.lower()}:{version}"
+            ] = pkg.get("purl")
             if not purl_aliases.get(f"{vendor.lower()}:{name.lower()}"):
-                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get("purl")
+                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get(
+                    "purl"
+                )
         if variations:
             for vari in variations:
                 vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
-                pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"].append(
-                    vari_full_pkg
+                pkg_aliases[
+                    f"{vendor.lower()}:{name.lower()}:{version}"
+                ].append(vari_full_pkg)
+                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get(
+                    "purl"
                 )
-                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
     quick_res = db_lib.bulk_index_search(expanded_list)
     raw_results = db_lib.pkg_bulk_search(db, quick_res)
     raw_results = normalize.dedup(project_type, raw_results)
@@ -417,6 +425,8 @@ def export_pdf(
 def render_template_report(
     vdr_file,
     bom_file,
+    pkg_vulnerabilities,
+    pkg_group_rows,
     summary,
     template_file,
     result_file,
@@ -437,12 +447,14 @@ def render_template_report(
     jinja_env = Environment(autoescape=False)
     jinja_tmpl = jinja_env.from_string(template)
     report_result = jinja_tmpl.render(
-        metadata=bom.get('metadata', None),
-        vulnerabilities=bom.get('vulnerabilities', None),
-        components=bom.get('components', None),
-        dependencies=bom.get('dependencies', None),
-        services=bom.get('services', None),
+        metadata=bom.get("metadata", None),
+        vulnerabilities=bom.get("vulnerabilities", None),
+        components=bom.get("components", None),
+        dependencies=bom.get("dependencies", None),
+        services=bom.get("services", None),
         summary=summary,
+        pkg_vulnerabilities=pkg_vulnerabilities,
+        pkg_group_rows=pkg_group_rows,
     )
     with open(result_file, "w", encoding="utf-8") as outfile:
         outfile.write(report_result)
