@@ -1,12 +1,13 @@
 import ast
+import json
 import os
 import re
-import json
+import shutil
 from collections import defaultdict
 from datetime import datetime
 from importlib.metadata import distribution
-from jinja2 import Environment
 
+from jinja2 import Environment
 from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 
@@ -401,15 +402,16 @@ def export_pdf(
         "minimum-font-size": "12",
         "disable-smart-shrinking": "",
     }
-    try:
-        import pdfkit
+    if shutil.which("wkhtmltopdf"):
+        try:
+            import pdfkit
 
-        if not pdf_file and html_file:
-            pdf_file = html_file.replace(".html", ".pdf")
-        if os.path.exists(html_file):
-            pdfkit.from_file(html_file, pdf_file, options=pdf_options)
-    except Exception:
-        pass
+            if not pdf_file and html_file:
+                pdf_file = html_file.replace(".html", ".pdf")
+            if os.path.exists(html_file):
+                pdfkit.from_file(html_file, pdf_file, options=pdf_options)
+        except Exception:
+            pass
 
 
 def render_template_report(
