@@ -656,10 +656,11 @@ def prepare_vdr(options: PrepareVdrOptions):
             if source_update_time := vuln_occ_dict.get("source_update_time"):
                 vuln["updated"] = source_update_time
             pkg_vulnerabilities.append(vuln)
-
-    if not options.no_vuln_table:
-        console.print()
-        console.print(table)
+    # If the user doesn't want any table output return quickly
+    if options.no_vuln_table:
+        return pkg_vulnerabilities, pkg_group_rows
+    console.print()
+    console.print(table)
     if pkg_group_rows:
         psection = Markdown(
             """
