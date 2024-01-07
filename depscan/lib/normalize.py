@@ -194,7 +194,7 @@ def create_pkg_variations(pkg_dict):
         for nvar in list(name_aliases):
             pkg_list.append(
                 {
-                    "vendor": pkg_dict.get("vendor"),
+                    "vendor": pkg_dict.get("vendor"), # Could be none which is fine
                     "name": nvar,
                     "version": pkg_dict["version"],
                 }

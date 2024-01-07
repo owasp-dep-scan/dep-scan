@@ -25,7 +25,6 @@ from depscan.lib import config
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version
 
-
 NEWLINE = "\\n"
 
 CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
@@ -225,6 +224,27 @@ def pkg_sub_tree(
     )
 
 
+def is_os_target_sw(package_issue):
+    """
+    Since we rely on NVD, we filter those target_sw that definitely belong to a language
+    """
+    if package_issue and package_issue["affected_location"].get("cpe_uri"):
+        all_parts = CPE_FULL_REGEX.match(
+            package_issue["affected_location"].get("cpe_uri")
+        )
+        if (
+            all_parts
+            and all_parts.group("target_sw") != "*"
+            and (
+                all_parts.group("target_sw") in config.LANG_PKG_TYPES.keys()
+                or all_parts.group("target_sw")
+                in config.LANG_PKG_TYPES.values()
+            )
+        ):
+            return False
+    return True
+
+
 @dataclass
 class PrepareVdrOptions:
     project_type: str
@@ -338,15 +358,43 @@ def prepare_vdr(options: PrepareVdrOptions):
         insights = []
         plain_insights = []
         purl_obj = None
-        vendor = None
-        if purl and purl.startswith("pkg:"):
+        vendor = package_issue["affected_location"].get("vendor")
+        # If the match was based on name and version alone then the alias might legitimately lack a full purl
+        # Such results are usually false positives but could yield good hits at times
+        # So, instead of suppressing fully we try our best to tune and reduce the FP
+        if not purl.startswith("pkg:"):
+            if options.project_type in config.OS_PKG_TYPES:
+                if vendor and (
+                    vendor in config.LANG_PKG_TYPES.values()
+                    or vendor in config.LANG_PKG_TYPES.keys()
+                ):
+                    fp_count += 1
+                    continue
+                # Some nvd data might match application CVEs for
+                # OS vendors which can be filtered
+                if not is_os_target_sw(package_issue):
+                    fp_count += 1
+                    continue
+        else:
             purl_obj = parse_purl(purl)
             if purl_obj:
                 version_used = purl_obj.get("version")
                 package_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
                 if package_type in config.OS_PKG_TYPES:
-                    vendor = package_issue["affected_location"].get("vendor")
+                    # Bug #208 - do not report application CVEs
+                    if vendor and (
+                        vendor in config.LANG_PKG_TYPES.values()
+                        or vendor in config.LANG_PKG_TYPES.keys()
+                    ):
+                        fp_count += 1
+                        continue
+                    if package_type and (
+                        package_type in config.LANG_PKG_TYPES.values()
+                        or package_type in config.LANG_PKG_TYPES.keys()
+                    ):
+                        fp_count += 1
+                        continue
                     if (
                         vendor
                         and oci_product_types
@@ -358,20 +406,9 @@ def prepare_vdr(options: PrepareVdrOptions):
                             continue
                         # Some nvd data might match application CVEs for
                         # OS vendors which can be filtered
-                        if package_issue["affected_location"].get("cpe_uri"):
-                            all_parts = CPE_FULL_REGEX.match(
-                                package_issue["affected_location"].get(
-                                    "cpe_uri"
-                                )
-                            )
-                            if (
-                                all_parts
-                                and all_parts.group("target_sw") != "*"
-                                and all_parts.group("target_sw")
-                                not in config.OS_PKG_TYPES
-                            ):
-                                fp_count += 1
-                                continue
+                        if not is_os_target_sw(package_issue):
+                            fp_count += 1
+                            continue
                         insights.append(
                             f"[#7C8082]:telescope: Vendor {vendor}[/#7C8082]"
                         )
@@ -659,8 +696,9 @@ def prepare_vdr(options: PrepareVdrOptions):
     # If the user doesn't want any table output return quickly
     if options.no_vuln_table:
         return pkg_vulnerabilities, pkg_group_rows
-    console.print()
-    console.print(table)
+    if pkg_vulnerabilities:
+        console.print()
+        console.print(table)
     if pkg_group_rows:
         psection = Markdown(
             """

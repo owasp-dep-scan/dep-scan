@@ -199,6 +199,7 @@ LANG_PKG_TYPES = {
     "js": "npm",
     "javascript": "npm",
     "nodejs": "npm",
+    "npmjs": "npm",
     "go": "golang",
     "golang": "golang",
     "ruby": "gem",
