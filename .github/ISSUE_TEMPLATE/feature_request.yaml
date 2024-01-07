@@ -2,9 +2,6 @@ name: Feature Request
 description: Request a new feature or change
 title: "Feature: "
 labels: ["enhancement"]
-assignees:
-  - cerrussell
-  - prabhu
 body:
   - type: markdown
     attributes:

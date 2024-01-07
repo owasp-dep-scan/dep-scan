@@ -43,6 +43,9 @@ class VdbDistributionRegistry(oras.provider.Registry):
 
 
 def download_rafs_based_image():
+    """
+    Method to download RAFS based vdb files from a oci registry
+    """
     rafs_image_downloaded, paths_list = False, None
     nydus_image_command = shutil.which("nydus-image", mode=os.X_OK)
     if nydus_image_command is not None:
@@ -92,8 +95,8 @@ def download_rafs_based_image():
                     rafs_image_downloaded = True
                     with tarfile.open(
                         os.path.join(data_dir, "vdb.tar"), "r"
-                    ) as tar:
-                        tar.extractall(path=data_dir)
+                    ) as tarf:
+                        tarf.extractall(path=data_dir)
                     os.remove(os.path.join(data_dir, "vdb.tar"))
                 else:
                     raise FileNotFoundError("vdb.tar not found")
@@ -111,6 +114,9 @@ def download_rafs_based_image():
 
 
 def download_image():
+    """
+    Method to download vdb files from a oci registry
+    """
     rafs_image_downloaded, paths_list = download_rafs_based_image()
     if rafs_image_downloaded:
         return paths_list
@@ -119,9 +125,18 @@ def download_image():
         vdb_database_url,
     )
     oras_client = oras.client.OrasClient(registry=VdbDistributionRegistry())
-    return oras_client.pull(
+    paths_list = oras_client.pull(
         target=vdb_database_url,
         outdir=data_dir,
         allowed_media_type=[],
         overwrite=True,
     )
+    for apath in paths_list:
+        if apath.endswith(".tar.gz"):
+            with tarfile.open(apath, "r") as tarf:
+                tarf.extractall(path=data_dir)
+            try:
+                os.remove(apath)
+            except OSError:
+                pass
+    return paths_list

@@ -1038,6 +1038,8 @@ def main():
         utils.render_template_report(
             vdr_file=vdr_file,
             bom_file=bom_file,
+            pkg_vulnerabilities=pkg_vulnerabilities,
+            pkg_group_rows=pkg_group_rows,
             summary=summary,
             template_file=args.report_template,
             result_file=os.path.join(reports_dir, args.report_name),
