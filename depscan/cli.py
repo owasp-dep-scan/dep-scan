@@ -727,7 +727,14 @@ def main():
     """
     args = build_args()
     # declare variables that get initialized only conditionally
-    summary, vdr_file, bom_file, pkg_list, pkg_vulnerabilities, pkg_group_rows = None, None, None, None, None, None
+    (
+        summary,
+        vdr_file,
+        bom_file,
+        pkg_list,
+        pkg_vulnerabilities,
+        pkg_group_rows,
+    ) = (None, None, None, None, None, None)
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
@@ -738,7 +745,11 @@ def main():
         print(LOGO)
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
-        src_dir = os.getcwd()
+        if src_dir == ".":
+            src_dir = os.getcwd()
+        # Try to infer from the bom file
+        elif args.bom and os.path.exists(args.bom):
+            src_dir = os.path.dirname(os.path.realpath(args.bom))
     reports_dir = args.reports_dir
     if args.csaf:
         toml_file_path = os.getenv(

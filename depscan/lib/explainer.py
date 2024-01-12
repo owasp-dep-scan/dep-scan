@@ -42,7 +42,7 @@ def explain(
     if reachables_slices_file:
         with open(reachables_slices_file, "r", encoding="utf-8") as f:
             reachables_data = json.load(f)
-            if reachables_data:
+            if reachables_data and reachables_data.get("reachables"):
                 rsection = Markdown(
                     """## Reachable Flows
 
@@ -50,7 +50,9 @@ Below are some reachable flows identified by depscan. Use the provided tips to i
                 """
                 )
                 console.print(rsection)
-                explain_reachables(reachables_data, pkg_group_rows, project_type)
+                explain_reachables(
+                    reachables_data, pkg_group_rows, project_type
+                )
 
 
 def explain_reachables(reachables, pkg_group_rows, project_type):
@@ -75,7 +77,7 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         flow_tree, comment, source_sink_desc, has_check_tag = explain_flows(
             areach.get("flows"), areach.get("purls"), project_type
         )
-        if not source_sink_desc:
+        if not source_sink_desc or not flow_tree:
             continue
         rtable = Table(
             box=box.DOUBLE_EDGE,
@@ -111,7 +113,7 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         console.print(rsection)
 
 
-def flow_to_source_sink(flow, purls, project_type):
+def flow_to_source_sink(idx, flow, purls, project_type):
     """ """
     source_sink_desc = ""
     param_name = flow.get("name")
@@ -119,15 +121,23 @@ def flow_to_source_sink(flow, purls, project_type):
     param_str = "Parameter"
     if param_name == "this":
         param_name = ""
+    parent_file = flow.get("parentFileName", "")
+    parent_method = flow.get("parentMethodName", "")
     # Improve the labels based on the language
-    if re.search(".(js|ts|jsx|tsx|py|cs)$", flow.get("parentFileName", "")):
+    if re.search(".(js|ts|jsx|tsx|py|cs|php)$", parent_file):
         method_str = "function"
         param_str = "argument"
+        if parent_method in ("handleRequest",):
+            method_str = f"handler {method_str}"
+        elif parent_method in ("__construct", "__init"):
+            method_str = f"constructor"
+        elif project_type in ("php",) and parent_method.startswith("__"):
+            method_str = f"magic {method_str}"
     if flow.get("label") == "METHOD_PARAMETER_IN":
         if param_name:
-            source_sink_desc = f"""{param_str} [red]{param_name}[/red] :right_arrow_curving_left: to the {method_str} [bold]{flow.get('parentMethodName')}[/bold]"""
+            source_sink_desc = f"""{param_str} [red]{param_name}[/red] :right_arrow_curving_left: to the {method_str} [bold]{parent_method}[/bold]"""
         else:
-            source_sink_desc = f"""{method_str.capitalize()} [red]{flow.get('parentMethodName')}[/red] :right_arrow_curving_left:"""
+            source_sink_desc = f"""{method_str.capitalize()} [red]{parent_method}[/red] :right_arrow_curving_left:"""
     elif flow.get("label") == "CALL" and flow.get("isExternal"):
         method_full_name = flow.get("fullName", "")
         if not method_full_name.startswith("<"):
@@ -148,11 +158,14 @@ def flow_to_source_sink(flow, purls, project_type):
     ):
         source_sink_desc = "Flow starts from a callback function"
     elif (
-        "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower()
+        "middleware" in source_sink_desc.lower()
+        or "route" in source_sink_desc.lower()
     ):
         source_sink_desc = "Flow starts from a middlware"
     elif len(purls) == 1:
-        source_sink_desc = f"{source_sink_desc} can be used to reach this package."
+        source_sink_desc = (
+            f"{source_sink_desc} can be used to reach this package."
+        )
     else:
         source_sink_desc = (
             f"{source_sink_desc} can be used to reach {len(purls)} packages."
@@ -165,7 +178,8 @@ def filter_tags(tags):
         tags = [
             atag
             for atag in tags.split(", ")
-            if atag not in ("RESOLVED_MEMBER", "UNKNOWN_METHOD", "UNKNOWN_TYPE_DECL")
+            if atag
+            not in ("RESOLVED_MEMBER", "UNKNOWN_METHOD", "UNKNOWN_TYPE_DECL")
         ]
         return ", ".join(tags)
     return tags
@@ -189,12 +203,16 @@ def flow_to_str(flow, project_type):
             param_name = ""
         node_desc = f'{flow.get("parentMethodName")}([red]{param_name}[/red]) :right_arrow_curving_left:'
         if tags:
-            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
+            node_desc = (
+                f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
+            )
     elif flow.get("label") == "IDENTIFIER":
         if node_desc.startswith("<"):
             node_desc = flow.get("name")
         if tags:
-            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
+            node_desc = (
+                f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
+            )
     if tags:
         for ctag in (
             "validation",
@@ -209,7 +227,11 @@ def flow_to_str(flow, project_type):
                 break
     if has_check_tag:
         node_desc = f"[green]{node_desc}[/green]"
-    return file_loc, f"""[gray37]{file_loc}[/gray37]{node_desc}""", has_check_tag
+    return (
+        file_loc,
+        f"""[gray37]{file_loc}[/gray37]{node_desc}""",
+        has_check_tag,
+    )
 
 
 def explain_flows(flows, purls, project_type):
@@ -226,7 +248,7 @@ def explain_flows(flows, purls, project_type):
     has_check_tag = False
     last_file_loc = None
     source_sink_desc = ""
-    for aflow in flows:
+    for idx, aflow in enumerate(flows):
         # For java, we are only interested in identifiers with tags to keep the flows simple to understand
         if (
             project_type in ("java", "jar", "android", "apk")
@@ -235,8 +257,12 @@ def explain_flows(flows, purls, project_type):
         ):
             continue
         if not source_sink_desc:
-            source_sink_desc = flow_to_source_sink(aflow, purls, project_type)
-        file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow, project_type)
+            source_sink_desc = flow_to_source_sink(
+                idx, aflow, purls, project_type
+            )
+        file_loc, flow_str, has_check_tag_flow = flow_to_str(
+            aflow, project_type
+        )
         if last_file_loc == file_loc:
             continue
         last_file_loc = file_loc
