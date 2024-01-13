@@ -346,6 +346,18 @@ depscan --profile research -t java -i <source directory> --reports-dir <reports 
 depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --explain
 ```
 
+### Example analysis for a PHP project
+
+Ensure PHP > 7.4 is installed. However, we support scanning PHP 5.2 - 8.3. Alternatively, use the depscan container image.
+
+```shell
+depscan --profile research -t php -i <source directory> --reports-dir <reports directory> --explain
+```
+
+<img src="docs/php-reach1.png" alt="PHP Reachability" width="256">
+
+<img src="docs/not-reachable.png" alt="PHP NOT Reachability" width="256">
+
 ## Customization through environment variables
 
 The following environment variables can be used to customize the behavior.
