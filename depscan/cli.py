@@ -745,7 +745,7 @@ def main():
         print(LOGO)
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
-        if src_dir == ".":
+        if src_dir == "." or args.search_purl:
             src_dir = os.getcwd()
         # Try to infer from the bom file
         elif args.bom and os.path.exists(args.bom):
