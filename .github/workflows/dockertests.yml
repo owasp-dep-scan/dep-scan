@@ -12,7 +12,7 @@ on:
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   ubuntu_version_tests:
     runs-on: ${{ matrix.os }}
