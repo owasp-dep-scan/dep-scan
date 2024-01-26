@@ -1,14 +1,6 @@
 name: binary and nydus tests
 
 on:
-  push:
-    branches:
-      - feature/*
-    paths-ignore:
-      - '**/README.md'
-      - 'dockertests.yml'
-      - 'pythonapp.yml'
-      - 'python-publish.yml'
   pull_request:
   workflow_dispatch:
 concurrency:

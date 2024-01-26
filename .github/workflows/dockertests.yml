@@ -1,14 +1,6 @@
 name: docker tests
 
 on:
-  push:
-    branches:
-      - feature/*
-    paths-ignore:
-      - '**/README.md'
-      - 'gobintests.yml'
-      - 'pythonapp.yml'
-      - 'python-publish.yml'
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
