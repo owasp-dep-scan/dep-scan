@@ -539,9 +539,9 @@ def prepare_vdr(options: PrepareVdrOptions):
         if clinks.get("poc") or clinks.get("Bug Bounty"):
             if reached_purls.get(purl):
                 insights.append(
-                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                    "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
                 )
-                plain_insights.append("Reachable and Exploitable")
+                plain_insights.append("Reachable Bounty target")
                 has_reachable_poc_count += 1
                 has_reachable_exploit_count += 1
                 pkg_requires_attn = True
@@ -560,8 +560,10 @@ def prepare_vdr(options: PrepareVdrOptions):
                 pkg_requires_attn = True
         if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
             if reached_purls.get(purl):
-                insights.append(":receipt: Reachable")
-                plain_insights.append("Reachable")
+                # If it has a poc, an insight might have gotten added above
+                if not pkg_requires_attn:
+                    insights.append(":receipt: Reachable")
+                    plain_insights.append("Reachable")
             else:
                 insights.append(":receipt: Vendor Confirmed")
                 plain_insights.append("Vendor Confirmed")

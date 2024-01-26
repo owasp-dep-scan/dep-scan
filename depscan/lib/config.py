@@ -151,6 +151,7 @@ package_alias = {
     "json-smart": "json-smart-v2",
     "ojdbc7": "jdbc",
     "System.Text": ".net",
+    "System.Net": "asp.net_core",
     "Microsoft.IdentityModel.Clients.ActiveDirectory": "active_directory_authentication_library",
     "starkbank_ecdsa": "ecdsa-elixir",
     "php-pear": "pear-core-minimal",
