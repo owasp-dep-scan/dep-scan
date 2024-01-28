@@ -12,7 +12,7 @@ LABEL maintainer="AppThreat" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=21.0.1-graalce
+ARG JAVA_VERSION=21.0.2-graalce
 ARG SBT_VERSION=1.9.8
 ARG MAVEN_VERSION=3.9.6
 ARG GRADLE_VERSION=8.5
