@@ -6,17 +6,19 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - /Volumes/Work:/app # Set this to your directory containing sources
+      - /mnt/work:/app # Set this to your directory containing sources
       - /tmp:/tmp
-    entrypoint: cdxgen --server --server-host 0.0.0.0 --server-port 9090
+    entrypoint: node /opt/cdxgen/bin/cdxgen.js --server --server-host 0.0.0.0 --server-port 9090
 
   depscan:
     build: .
     ports:
       - "7070:7070"
     volumes:
-      - /Volumes/Work:/app # Set this to your directory containing sources
+      - /mnt/work:/app # Set this to your directory containing sources
       - /tmp:/tmp
     entrypoint: depscan --server --server-host 0.0.0.0 --server-port 7070 --cdxgen-server http://cdxgen:9090
     environment:
-      VDB_HOME: /tmp/vdb
+      VDB_HOME: /app/vdb
+    links:
+      - "cdxgen:cdxgen"
