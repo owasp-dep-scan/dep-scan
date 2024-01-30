@@ -542,12 +542,15 @@ async def run_scan():
     results = []
     db = db_lib.get()
     profile = "generic"
+    deep = False
     if q.get("url"):
         url = q.get("url")
     if q.get("path"):
         path = q.get("path")
     if q.get("multiProject"):
         multi_project = q.get("multiProject", "").lower() in ("true", "1")
+    if q.get("deep"):
+        deep = q.get("deep", "").lower() in ("true", "1")
     if q.get("type"):
         project_type = q.get("type")
     if q.get("profile"):
@@ -559,6 +562,11 @@ async def run_scan():
             path = params.get("path")
         if not multi_project and params.get("multiProject"):
             multi_project = params.get("multiProject", "").lower() in (
+                "true",
+                "1",
+            )
+        if not deep and params.get("deep"):
+            deep = params.get("deep", "").lower() in (
                 "true",
                 "1",
             )
@@ -619,7 +627,8 @@ async def run_scan():
         path = tmp_bom_file.name
 
     # Path points to a project directory
-    if os.path.isdir(path):
+    # Bug# 233. Path could be a url
+    if url or (path and os.path.isdir(path)):
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".bom.json"
         ) as bfp:
@@ -627,7 +636,7 @@ async def run_scan():
                 project_type,
                 bfp.name,
                 path,
-                True,
+                deep,
                 {
                     "url": url,
                     "path": path,
