@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   cdxgen:
-    image: ghcr.io/appthreat/cdxgen
+    image: ghcr.io/cyclonedx/cdxgen:latest
     ports:
       - "9090:9090"
     volumes:
