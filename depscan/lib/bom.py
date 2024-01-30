@@ -94,7 +94,9 @@ def get_licenses(ele):
     """
     license_list = []
     namespace = "{http://cyclonedx.org/schema/bom/1.5}"
-    for data in ele.findall(f"{namespace}licenses/{namespace}license/{namespace}id"):
+    for data in ele.findall(
+        f"{namespace}licenses/{namespace}license/{namespace}id"
+    ):
         license_list.append(data.text)
     if not license_list:
         for data in ele.findall(
@@ -179,9 +181,13 @@ def get_pkg_list_json(jsonfile):
                                 licenses.append(license_obj.get("id"))
                             elif license_obj.get("name"):
                                 licenses.append(
-                                    cleanup_license_string(license_obj.get("name"))
+                                    cleanup_license_string(
+                                        license_obj.get("name")
+                                    )
                                 )
-                    pkgs.append({**comp, "vendor": vendor, "licenses": licenses})
+                    pkgs.append(
+                        {**comp, "vendor": vendor, "licenses": licenses}
+                    )
         except Exception:
             # Ignore json errors
             pass
@@ -225,7 +231,9 @@ def get_pkg_by_type(pkg_list, pkg_type):
     if not pkg_list:
         return []
     return [
-        pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)
+        pkg
+        for pkg in pkg_list
+        if pkg.get("purl", "").startswith("pkg:" + pkg_type)
     ]
 
 
@@ -322,7 +330,9 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             project_type = "universal"
         if not src_dir and options.get("path"):
             src_dir = options.get("path")
-        with httpx.Client(http2=True, base_url=cdxgen_server, timeout=180) as client:
+        with httpx.Client(
+            http2=True, base_url=cdxgen_server, timeout=180
+        ) as client:
             sbom_url = f"{cdxgen_server}/sbom"
             LOG.debug("Invoking cdxgen server at %s", sbom_url)
             try:
@@ -340,7 +350,9 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
                     try:
                         json_response = r.json()
                         if json_response:
-                            with open(bom_file, mode="w", encoding="utf-8") as fp:
+                            with open(
+                                bom_file, mode="w", encoding="utf-8"
+                            ) as fp:
                                 json.dump(json_response, fp)
                             return os.path.exists(bom_file)
                     except Exception as je:
@@ -378,12 +390,15 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
         args.append(options.get("profile"))
         if options.get("profile") != "generic":
             LOG.debug("BOM Profile: %s", options.get("profile"))
-    args.append(src_dir)
+    # Bug #233 - Source directory could be None when working with url
+    if src_dir:
+        args.append(src_dir)
     if cdxgen_cmd:
         exec_tool(
             args,
             src_dir
             if project_type not in ("docker", "oci", "container")
+            and src_dir
             and os.path.isdir(src_dir)
             else None,
         )
@@ -405,10 +420,14 @@ def submit_bom(reports_dir, threatdb_params):
         if not threatdb_server.endswith("/import"):
             threatdb_server = f"{threatdb_server}/import"
         login_url = threatdb_server.replace("/import", "/login")
-        with httpx.Client(http2=True, base_url=threatdb_server, timeout=180) as client:
+        with httpx.Client(
+            http2=True, base_url=threatdb_server, timeout=180
+        ) as client:
             token = threatdb_params.get("threatdb_token")
             if not token:
-                LOG.debug("Attempting to retrieve access token from %s", login_url)
+                LOG.debug(
+                    "Attempting to retrieve access token from %s", login_url
+                )
                 r = client.post(
                     login_url,
                     json={
