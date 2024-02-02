@@ -45,7 +45,7 @@ jobs:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VDB_HOME: "vdb_data"
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -67,10 +67,10 @@ jobs:
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
     - name: Set up JDK
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '19'
+        java-version: '21'
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
@@ -81,7 +81,7 @@ jobs:
         mkdir -p repotests
     - uses: actions/checkout@v4
       with:
-        repository: 'HooliCorp/java-sec-code'
+        repository: 'ngcloudsec/java-sec-code'
         path: 'repotests/java-sec-code'
     - name: Reachables tests
       run: |
@@ -95,7 +95,7 @@ jobs:
         VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
         AT_DEBUG_MODE: "debug"
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: rtests_ubuntu
         path: rtests_ubuntu
@@ -147,7 +147,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}
         path: containertests_${{ matrix.os }}
@@ -184,7 +184,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VDB_HOME: "vdb_data"
       - name: Get boms generated earlier
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: containertests_ubuntu-latest_python3.11
           path: containertests_ubuntu-latest_python3.11
@@ -227,7 +227,7 @@ jobs:
           python3 -m pip install --upgrade pip
           python3 -m pip install .[dev]
       - name: Get boms generated earlier
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: containertests_ubuntu-latest
           path: containertests_ubuntu-latest
@@ -250,7 +250,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1
           AT_DEBUG_MODE: "debug"
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: containertests_${{ matrix.os }}
           path: containertests_${{ matrix.os }}
