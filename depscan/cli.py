@@ -744,6 +744,21 @@ def main():
         pkg_vulnerabilities,
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
+    if os.getenv("GITHUB_ACTION").lower() == "__appthreat_dep-scan-action" \
+        and not os.getenv("INPUT_THANK_YOU") == ("I have sponsored "
+                                                 "OWASP-dep-scan."):
+        console.print(
+            Panel(
+                "OWASP relies on donations to fund our projects.\n\n"
+                "Donate at https://owasp.org/donate/?reponame=www-project-dep"
+                "-scan&title=OWASP+depscan. \n\nAfter you have done so, "
+                "make sure you have configured the action with thank_you: 'I "
+                "have sponsored OWASP-dep-scan.'",
+                title="Please make a donation",
+                expand=False,
+            )
+        )
+        sys.exit(1)
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
