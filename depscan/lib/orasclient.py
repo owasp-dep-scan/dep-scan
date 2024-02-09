@@ -132,7 +132,7 @@ def download_image():
         overwrite=True,
     )
     for apath in paths_list:
-        if apath.endswith(".tar.gz"):
+        if apath.endswith(".tar.gz") or apath.endswith(".tar.xz"):
             with tarfile.open(apath, "r") as tarf:
                 tarf.extractall(path=data_dir)
             try:
