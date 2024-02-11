@@ -54,9 +54,17 @@ def create_pkg_variations(pkg_dict):
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
-                # npm is resulting in false positives
-                # Let's disable aliasing for now. See #194, #195, #196
                 if pkg_type in ("npm",):
+                    # vendorless package could have npm as the vendor name from sources such as osv
+                    # So we need 1 more alias
+                    if not purl_obj.get("namespace") and not vendor:
+                        pkg_list.append(
+                            {
+                                "vendor": "npm",
+                                "name": pkg_dict.get("name"),
+                                "version": pkg_dict.get("version"),
+                            }
+                        )
                     return pkg_list
                 if qualifiers and qualifiers.get("distro_name"):
                     os_distro_name = qualifiers.get("distro_name")
@@ -192,9 +200,10 @@ def create_pkg_variations(pkg_dict):
                 )
     elif len(name_aliases) > 1:
         for nvar in list(name_aliases):
+            # vendor could be none which is fine
             pkg_list.append(
                 {
-                    "vendor": pkg_dict.get("vendor"), # Could be none which is fine
+                    "vendor": pkg_dict.get("vendor"),
                     "name": nvar,
                     "version": pkg_dict["version"],
                 }
