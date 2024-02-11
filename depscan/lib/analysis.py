@@ -777,7 +777,7 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                         len(pkg_vulnerabilities)
                         > config.max_distro_vulnerabilities
                     ):
-                        rmessage += f"\nNOTE: Check if the base image or the kernel version used is End-of-Life (EOL)."
+                        rmessage += "\nNOTE: Check if the base image or the kernel version used is End-of-Life (EOL)."
                     else:
                         rmessage += (
                             f"\nNOTE: [magenta]{distro_packages_count}"
@@ -1118,8 +1118,7 @@ def jsonl_report(
                         full_pkg = f"""{purl_obj.get("namespace")}/
                         {purl_obj.get("name")}@{purl_obj.get("version")}"""
                     else:
-                        full_pkg = f"""{purl_obj.get("name")}@{purl_obj
-                            .get("version")}"""
+                        full_pkg = f"""{purl_obj.get("name")}@{purl_obj.get("version")}"""
             if ids_seen.get(vid + purl):
                 continue
             # On occasions, this could still result in duplicates if the

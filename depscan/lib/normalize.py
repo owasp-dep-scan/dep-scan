@@ -91,11 +91,11 @@ def create_pkg_variations(pkg_dict):
             or vendor.startswith("com.")
             or vendor.startswith("net.")
         ):
-            tmpA = vendor.split(".")
+            tmp_a = vendor.split(".")
             # Automatically add short vendor forms
-            if len(tmpA) > 1 and len(tmpA[1]) > 3:
-                if tmpA[1] != name:
-                    vendor_aliases.add(tmpA[1])
+            if len(tmp_a) > 1 and len(tmp_a[1]) > 3:
+                if tmp_a[1] != name:
+                    vendor_aliases.add(tmp_a[1])
     # Add some common vendor aliases
     if purl.startswith("pkg:golang") and not name.startswith("go"):
         vendor_aliases.add("go")
