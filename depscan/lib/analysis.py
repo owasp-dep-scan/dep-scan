@@ -212,8 +212,9 @@ def pkg_sub_tree(
                 style=get_tree_style(purl, pkg_tree[0]),
             )
             if len(pkg_tree) > 1:
+                subtree = tree
                 for p in pkg_tree[1:]:
-                    tree.add(
+                    subtree = subtree.add(
                         get_pkg_display(purl, p, extra_text=extra_text),
                         style=get_tree_style(purl, p),
                     )
