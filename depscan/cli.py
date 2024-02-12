@@ -746,7 +746,7 @@ def main():
     ) = (None, None, None, None, None, None)
     if os.getenv("GITHUB_ACTION", "").lower() == "__appthreat_dep-scan-action" \
         and not os.getenv("INPUT_THANK_YOU", "") == ("I have sponsored "
-                                                 "OWASP-dep-scan."):
+                                                     "OWASP-dep-scan."):
         console.print(
             Panel(
                 "OWASP relies on donations to fund our projects.\n\n"
