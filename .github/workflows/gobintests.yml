@@ -56,6 +56,7 @@ jobs:
         VDB_HOME: vdb_data_nydus
     - name: Test without nydus
       run: |
+        rm -rf vdb_data_nydus
         python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
       env:
         PYTHONPATH: "."
@@ -63,6 +64,7 @@ jobs:
         VDB_HOME: vdb_data_default
     - name: Test go binaries
       run: |
+        rm -rf vdb_data_default
         mkdir -p gobintests
         cd gobintests
         wget -q https://releases.hashicorp.com/terraform/1.0.7/terraform_1.0.7_linux_amd64.zip
