@@ -353,9 +353,9 @@ def scan(db, project_type, pkg_list, suggest_mode):
                         purl_obj = parse_purl(k)
                         vendor = purl_obj.get("namespace")
                         if not vendor:
-                            vendor = purl_obj.get("type")
-                        name = purl_obj.get("name")
-                        version = purl_obj.get("version")
+                            vendor = purl_obj.get("type") or ""
+                        name = purl_obj.get("name") or ""
+                        version = purl_obj.get("version") or ""
                         sug_pkg_list.append(
                             {
                                 "vendor": vendor,
@@ -774,6 +774,8 @@ def main():
         # Try to infer from the bom file
         elif args.bom and os.path.exists(args.bom):
             src_dir = os.path.dirname(os.path.realpath(args.bom))
+        else:
+            src_dir = os.getcwd()
     reports_dir = args.reports_dir
     if args.csaf:
         toml_file_path = os.getenv(
@@ -805,7 +807,7 @@ def main():
         purl_obj["vendor"] = purl_obj.get("namespace")
         project_types_list = [purl_obj.get("type")]
         pkg_list = [purl_obj]
-    elif args.bom and not args.project_type:
+    elif args.bom:
         project_types_list = ["bom"]
     elif not args.non_universal_scan:
         project_types_list = [UNIVERSAL_SCAN_TYPE]
