@@ -143,14 +143,15 @@ jobs:
         python3 -m pip install -r contrib/requirements.txt
         cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
         cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
-        python3 depscan/cli.py --no-banner --no-error --src ubuntu:latest -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
         python3 depscan/cli.py --no-banner --no-error --src ./test/data/bom-yaml-manifest.json -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-yaml.json --no-vuln-table
+        python3 depscan/cli.py --no-banner --no-error --src ubuntu:latest -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
         python3 depscan/cli.py --csaf --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-msd.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
         python3 depscan/cli.py --csaf --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PYTHONUTF8: 1
+        SCAN_DEBUG_MODE: debug
     - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}
