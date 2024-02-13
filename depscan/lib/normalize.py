@@ -40,9 +40,9 @@ def create_pkg_variations(pkg_dict):
     pkg_list = [{**pkg_dict}]
     vendor_aliases = set()
     name_aliases = set()
-    vendor = pkg_dict.get("vendor")
-    name = pkg_dict.get("name")
-    purl = pkg_dict.get("purl", "")
+    vendor = pkg_dict.get("vendor") or ""
+    name = pkg_dict.get("name") or ""
+    purl = pkg_dict.get("purl") or ""
     pkg_type = ""
     name_aliases.add(name)
     name_aliases.add(name.lower())
