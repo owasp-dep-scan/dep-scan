@@ -139,8 +139,6 @@ jobs:
         path: 'repotests/NodeGoat'
     - name: Test container images
       run: |
-        df -h
-        ls -lh /mnt
         mkdir -p containertests_${{ matrix.os }}
         python3 -m pip install -r contrib/requirements.txt
         cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
