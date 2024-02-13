@@ -27,6 +27,10 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Trim CI agent
+      run: |
+        chmod +x contrib/free_disk_space.sh
+        ./contrib/free_disk_space.sh
     - name: setup nydus
       run: |
         curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
@@ -53,6 +57,7 @@ jobs:
         VDB_HOME: vdb_data_nydus
     - name: Test with nydus
       run: |
+        rm -rf vdb_data_nydus
         python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
       env:
         PYTHONPATH: "."
@@ -67,6 +72,7 @@ jobs:
         VDB_HOME: vdb_data_default
     - name: Test go binaries
       run: |
+        rm -rf vdb_data_default
         mkdir -p gobintests
         cd gobintests
         wget -q https://releases.hashicorp.com/terraform/1.0.7/terraform_1.0.7_linux_amd64.zip
