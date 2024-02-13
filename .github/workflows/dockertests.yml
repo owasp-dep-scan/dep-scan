@@ -42,7 +42,6 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: "vdb_data"
     - name: Test container images
       run: |
         mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -52,7 +51,6 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: "vdb_data"
     - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -100,7 +98,6 @@ jobs:
         python3 depscan/cli.py --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/rtests_ubuntu -t java --profile research --explain
       env:
         PYTHONPATH: "."
-        VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
         AT_DEBUG_MODE: "debug"
     - uses: actions/upload-artifact@v4
@@ -146,15 +143,15 @@ jobs:
         python3 -m pip install -r contrib/requirements.txt
         cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
         cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
-        python3 depscan/cli.py --no-banner --no-error --src rocket.chat@sha256:379f7afa0e67497c363ac9a9b3e7e6a6d31deee228233307c987e4a0c68b28e6 -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
-        python3 depscan/cli.py --no-banner --no-error --src ./test/data/bom-yaml-manifest.json -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-yaml.json --no-vuln-table
-        python3 depscan/cli.py --csaf --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-msd.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
-        python3 depscan/cli.py --csaf --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
+        python3 depscan/cli.py --no-banner --no-error --bom ./test/data/bom-yaml-manifest.json -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-yaml.json --no-vuln-table
+        python3 depscan/cli.py --no-banner --no-error -t docker --src ubuntu:latest -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
+        python3 depscan/cli.py --csaf --no-banner --no-error -t go --src ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/depscan-msd.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
+        python3 depscan/cli.py --csaf --no-banner --no-error -t js --src ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
+        SCAN_DEBUG_MODE: debug
     - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}
@@ -190,7 +187,6 @@ jobs:
         env:
           PYTHONPATH: "."
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VDB_HOME: "vdb_data"
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4
         with:
@@ -204,7 +200,6 @@ jobs:
         env:
           PYTHONPATH: "."
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VDB_HOME: "vdb_data"
           PYTHONUTF8: 1
           AT_DEBUG_MODE: "debug"
       - uses: actions/upload-artifact@v3
@@ -250,13 +245,13 @@ jobs:
           python3 -m pip install -r contrib/requirements.txt
           mkdir -p containertests_ubuntu-latest/microservices
           mkdir -p containertests_ubuntu-latest/NodeGoat
-          mv containertests_ubuntu-latest/sbom-msd-universal.json containertests_ubuntu-latest/microservices/sbom-msd-universal.json
-          mv containertests_ubuntu-latest/ng-reports/sbom-universal.json containertests_ubuntu-latest/nodegoat/sbom-universal.json
+          mv containertests_ubuntu-latest/sbom-msd-go.json containertests_ubuntu-latest/microservices/sbom-msd-go.json
+          mv containertests_ubuntu-latest/ng-reports/sbom-js.json containertests_ubuntu-latest/nodegoat/sbom-js.json
           cp contrib/csaf.toml containertests_ubuntu-latest/microservices/csaf.toml
           cp contrib/csaf.toml containertests_ubuntu-latest/nodegoat/csaf.toml
-          python3 depscan/cli.py --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-rocket-universal.json -o containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
-          python3 depscan/cli.py --csaf --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/microservices/sbom-msd-universal.json -o containertests_${{ matrix.os }}/depscan-msd.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/reports
-          python3 depscan/cli.py --csaf --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/nodegoat/sbom-universal.json -o containertests_${{ matrix.os }}/depscan-ng.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
+          python3 depscan/cli.py --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-rocket-docker.json -o containertests_${{ matrix.os }}/depscan-rocket.json --no-vuln-table
+          python3 depscan/cli.py --csaf --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/microservices/sbom-msd-go.json -o containertests_${{ matrix.os }}/depscan-msd.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/reports
+          python3 depscan/cli.py --csaf --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/nodegoat/sbom-js.json -o containertests_${{ matrix.os }}/depscan-ng.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
         env:
           PYTHONPATH: "."
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
