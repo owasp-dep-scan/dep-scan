@@ -42,7 +42,6 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: "vdb_data"
     - name: Test container images
       run: |
         mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -52,7 +51,6 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: "vdb_data"
     - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -100,7 +98,6 @@ jobs:
         python3 depscan/cli.py --no-banner --no-error --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/rtests_ubuntu -t java --profile research --explain
       env:
         PYTHONPATH: "."
-        VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
         AT_DEBUG_MODE: "debug"
     - uses: actions/upload-artifact@v4
@@ -155,7 +152,6 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: "vdb_data"
         PYTHONUTF8: 1
     - uses: actions/upload-artifact@v4
       with:
@@ -192,7 +188,6 @@ jobs:
         env:
           PYTHONPATH: "."
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VDB_HOME: "vdb_data"
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4
         with:
@@ -206,7 +201,6 @@ jobs:
         env:
           PYTHONPATH: "."
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VDB_HOME: "vdb_data"
           PYTHONUTF8: 1
           AT_DEBUG_MODE: "debug"
       - uses: actions/upload-artifact@v3
