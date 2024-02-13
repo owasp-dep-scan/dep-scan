@@ -1313,10 +1313,12 @@ def parse_cvss(ratings):
     """
     if not ratings or not (vector_string := ratings[0].get("vector")):
         return {}
+    if vector_string == "None":
+        return {}
     try:
         cvss_v3 = cvss.CVSS3(vector_string)
         cvss_v3.check_mandatory()
-    except [CVSSError, ValueError]:
+    except (CVSSError, ValueError):
         return {}
 
     cvss_v3_dict = cvss_v3.as_json()
