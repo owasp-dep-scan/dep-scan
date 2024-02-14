@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from vdb.lib import KNOWN_PKG_TYPES
 from vdb.lib.config import placeholder_exclude_version
 from vdb.lib.utils import parse_purl
@@ -50,7 +52,7 @@ def create_pkg_variations(pkg_dict):
     os_distro = None
     if purl:
         try:
-            purl_obj = parse_purl(purl)
+            purl_obj: Dict[str, Any] | None = parse_purl(purl)
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
@@ -66,6 +68,24 @@ def create_pkg_variations(pkg_dict):
                             }
                         )
                     return pkg_list
+                # For Rubygems, version string could include the plaform.
+                # So we create an alias without the platform to improve the results
+                if pkg_type in ("gem",):
+                    for plaform_marker in config.RUBY_PLATFORM_MARKERS:
+                        if (
+                            pkg_dict.get("version")
+                            and plaform_marker in pkg_dict["version"]
+                        ):
+                            pkg_list.append(
+                                {
+                                    "vendor": vendor,
+                                    "name": pkg_dict.get("name"),
+                                    "version": pkg_dict["version"].split(
+                                        plaform_marker
+                                    )[0],
+                                }
+                            )
+                            break
                 if qualifiers and qualifiers.get("distro_name"):
                     os_distro_name = qualifiers.get("distro_name")
                     name_aliases.add(f"""{os_distro_name}/{name}""")

@@ -6,6 +6,7 @@ import shutil
 from collections import defaultdict
 from datetime import datetime
 from importlib.metadata import distribution
+from typing import Any, Dict, List
 
 from jinja2 import Environment
 from vdb.lib import db as db_lib
@@ -55,18 +56,18 @@ def find_python_reqfiles(path):
     return result
 
 
-def find_files(src, src_ext_name, quick=False, filter=True):
+def find_files(src, src_ext_name, quick=False, filter_dirs=True):
     """
     Method to find files with given extension
 
     :param src: source directory to search
     :param src_ext_name: type of source file
     :param quick: only return first match found
-    :param filter: filter out ignored directories
+    :param filter_dirs: filter out ignored directories
     """
     result = []
     for root, dirs, files in os.walk(src):
-        if filter:
+        if filter_dirs:
             filter_ignored_dirs(dirs)
         for file in files:
             if file == src_ext_name or file.endswith(src_ext_name):
@@ -171,7 +172,7 @@ def detect_project_type(src_dir):
         os.path.join(src_dir, ".github", "workflows"),
         ".yml",
         quick=True,
-        filter=False,
+        filter_dirs=False,
     ):
         project_types.append("github")
     # jars
@@ -209,7 +210,7 @@ def get_pkg_vendor_name(pkg):
     return vendor, name
 
 
-def search_pkgs(db, project_type, pkg_list):
+def search_pkgs(db, project_type: str | None, pkg_list: List[Dict[str, Any]]):
     """
     Method to search packages in our vulnerability database
 
