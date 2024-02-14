@@ -549,3 +549,15 @@ OS_PKG_UNINSTALLABLE = (
 )
 
 OS_PKG_IGNORABLE = ("linux", "systemd", "ncurses", "kernel")
+
+RUBY_PLATFORM_MARKERS = [
+  "-x86_64",
+  "-x86",
+  "-x64",
+  "-aarch",
+  "-arm",
+  "-ruby",
+  "-universal",
+  "-java",
+  "-truffle"
+]
