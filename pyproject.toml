@@ -38,6 +38,8 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/owasp-dep-scan/dep-scan"
+Bug-Tracker = "https://github.com/owasp-dep-scan/dep-scan/issues"
+Funding = "https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan"
 
 [project.scripts]
 depscan = "depscan.cli:main"
