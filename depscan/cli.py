@@ -398,7 +398,11 @@ def process_suggestions(k, v):
     # De-alias the vendor and package name
     full_pkg = f"{vendor}:{name}:{version}"
     full_pkg = aliases.get(full_pkg, full_pkg)
-    vendor, name, version = full_pkg.split(":")
+    split_pkg = full_pkg.split(":")
+    if len(split_pkg) == 3:
+        vendor, name, version = split_pkg
+    elif split_pkg:
+        name = split_pkg[0]
     pkg_list.append({"vendor": vendor, "name": name, "version": version})
     return pkg_list, aliases
 
