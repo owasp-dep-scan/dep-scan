@@ -51,7 +51,7 @@ RUN set -e; \
             ;; \
         *) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
     esac; \
-    echo -e "[nodejs]\nname=nodejs\nstream=21\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    echo -e "[nodejs]\nname=nodejs\nstream=20\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf module enable php ruby -y \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
         python3.11 python3.11-devel python3.11-pip ruby ruby-devel \
