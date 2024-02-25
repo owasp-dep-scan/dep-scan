@@ -1494,7 +1494,7 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
             data = json.load(f)
 
         for c in data["components"]:
-            purl = c["purl"]
+            purl = c.get("purl", "")
             if c.get("evidence") and c["evidence"].get("occurrences"):
                 direct_purls[purl] += len(c["evidence"].get("occurrences"))
     return dict(direct_purls), dict(reached_purls)
