@@ -140,6 +140,8 @@ def create_pkg_variations(pkg_dict):
         if not name.startswith("python-"):
             name_aliases.add("python-" + name)
             name_aliases.add("python-" + name + "_project")
+            # Eg: numpy:numpy
+            vendor_aliases.add(name)
             # Issue #262
             # Eg: cpe:2.3:a:microsoft:azure_storage_blobs:*:*:*:*:*:python:*:*
             # pypi name is pkg:pypi/azure-storage-blob@12.8.0
@@ -204,10 +206,12 @@ def create_pkg_variations(pkg_dict):
         if "-bin" not in name:
             name_aliases.add(name + "-bin")
     else:
-        # Filter vendor aliases that are also name aliases
-        vendor_aliases = [
-            x for x in vendor_aliases if x not in name_aliases or x == vendor
-        ]
+        # Filter vendor aliases that are also name aliases for non pypi packages
+        # This is needed for numpy which has the vendor name numpy
+        if not purl.startswith("pkg:pypi"):
+            vendor_aliases = [
+                x for x in vendor_aliases if x not in name_aliases or x == vendor
+            ]
     if len(vendor_aliases) > 1:
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
