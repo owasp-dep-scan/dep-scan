@@ -219,7 +219,7 @@ def create_pkg_variations(pkg_dict):
                     {
                         "vendor": vvar,
                         "name": nvar,
-                        "version": pkg_dict["version"],
+                        "version": pkg_dict.get("version", ""),
                     }
                 )
     elif len(name_aliases) > 1:
@@ -229,7 +229,7 @@ def create_pkg_variations(pkg_dict):
                 {
                     "vendor": pkg_dict.get("vendor"),
                     "name": nvar,
-                    "version": pkg_dict["version"],
+                    "version": pkg_dict.get("version", ""),
                 }
             )
     return pkg_list
