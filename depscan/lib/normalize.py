@@ -130,6 +130,8 @@ def create_pkg_variations(pkg_dict):
                 vendor_aliases.add(v)
             elif name == k:
                 vendor_aliases.add(v)
+            elif name.startswith(v):
+                vendor_aliases.add(k)
     # This will add false positives to ubuntu
     if "/" in name and os_distro and "ubuntu" not in os_distro:
         name_aliases.add(name.split("/")[-1])
@@ -138,6 +140,11 @@ def create_pkg_variations(pkg_dict):
         if not name.startswith("python-"):
             name_aliases.add("python-" + name)
             name_aliases.add("python-" + name + "_project")
+            # Issue #262
+            # Eg: cpe:2.3:a:microsoft:azure_storage_blobs:*:*:*:*:*:python:*:*
+            # pypi name is pkg:pypi/azure-storage-blob@12.8.0
+            if not name.endswith("s"):
+                name_aliases.add(name.replace("-", "_") + "s")
         vendor_aliases.add("pip")
         vendor_aliases.add("pypi")
         vendor_aliases.add("python")
