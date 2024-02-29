@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 from vdb.lib import KNOWN_PKG_TYPES
 from vdb.lib.config import placeholder_exclude_version
 from vdb.lib.utils import parse_purl
@@ -40,9 +42,9 @@ def create_pkg_variations(pkg_dict):
     pkg_list = [{**pkg_dict}]
     vendor_aliases = set()
     name_aliases = set()
-    vendor = pkg_dict.get("vendor")
-    name = pkg_dict.get("name")
-    purl = pkg_dict.get("purl", "")
+    vendor = pkg_dict.get("vendor") or ""
+    name = pkg_dict.get("name") or ""
+    purl = pkg_dict.get("purl") or ""
     pkg_type = ""
     name_aliases.add(name)
     name_aliases.add(name.lower())
@@ -50,14 +52,40 @@ def create_pkg_variations(pkg_dict):
     os_distro = None
     if purl:
         try:
-            purl_obj = parse_purl(purl)
+            purl_obj: Dict[str, Any] | None = parse_purl(purl)
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
-                # npm is resulting in false positives
-                # Let's disable aliasing for now. See #194, #195, #196
                 if pkg_type in ("npm",):
+                    # vendorless package could have npm as the vendor name from sources such as osv
+                    # So we need 1 more alias
+                    if not purl_obj.get("namespace") and not vendor:
+                        pkg_list.append(
+                            {
+                                "vendor": "npm",
+                                "name": pkg_dict.get("name"),
+                                "version": pkg_dict.get("version"),
+                            }
+                        )
                     return pkg_list
+                # For Rubygems, version string could include the plaform.
+                # So we create an alias without the platform to improve the results
+                if pkg_type in ("gem",):
+                    for plaform_marker in config.RUBY_PLATFORM_MARKERS:
+                        if (
+                            pkg_dict.get("version")
+                            and plaform_marker in pkg_dict["version"]
+                        ):
+                            pkg_list.append(
+                                {
+                                    "vendor": vendor,
+                                    "name": pkg_dict.get("name"),
+                                    "version": pkg_dict["version"].split(
+                                        plaform_marker
+                                    )[0],
+                                }
+                            )
+                            break
                 if qualifiers and qualifiers.get("distro_name"):
                     os_distro_name = qualifiers.get("distro_name")
                     name_aliases.add(f"""{os_distro_name}/{name}""")
@@ -83,11 +111,11 @@ def create_pkg_variations(pkg_dict):
             or vendor.startswith("com.")
             or vendor.startswith("net.")
         ):
-            tmpA = vendor.split(".")
+            tmp_a = vendor.split(".")
             # Automatically add short vendor forms
-            if len(tmpA) > 1 and len(tmpA[1]) > 3:
-                if tmpA[1] != name:
-                    vendor_aliases.add(tmpA[1])
+            if len(tmp_a) > 1 and len(tmp_a[1]) > 3:
+                if tmp_a[1] != name:
+                    vendor_aliases.add(tmp_a[1])
     # Add some common vendor aliases
     if purl.startswith("pkg:golang") and not name.startswith("go"):
         vendor_aliases.add("go")
@@ -109,6 +137,8 @@ def create_pkg_variations(pkg_dict):
                 vendor_aliases.add(v)
             elif name == k:
                 vendor_aliases.add(v)
+            elif name.startswith(v):
+                vendor_aliases.add(k)
     # This will add false positives to ubuntu
     if "/" in name and os_distro and "ubuntu" not in os_distro:
         name_aliases.add(name.split("/")[-1])
@@ -117,6 +147,13 @@ def create_pkg_variations(pkg_dict):
         if not name.startswith("python-"):
             name_aliases.add("python-" + name)
             name_aliases.add("python-" + name + "_project")
+            # Eg: numpy:numpy
+            vendor_aliases.add(name)
+            # Issue #262
+            # Eg: cpe:2.3:a:microsoft:azure_storage_blobs:*:*:*:*:*:python:*:*
+            # pypi name is pkg:pypi/azure-storage-blob@12.8.0
+            if not name.endswith("s"):
+                name_aliases.add(name.replace("-", "_") + "s")
         vendor_aliases.add("pip")
         vendor_aliases.add("pypi")
         vendor_aliases.add("python")
@@ -176,10 +213,12 @@ def create_pkg_variations(pkg_dict):
         if "-bin" not in name:
             name_aliases.add(name + "-bin")
     else:
-        # Filter vendor aliases that are also name aliases
-        vendor_aliases = [
-            x for x in vendor_aliases if x not in name_aliases or x == vendor
-        ]
+        # Filter vendor aliases that are also name aliases for non pypi packages
+        # This is needed for numpy which has the vendor name numpy
+        if not purl.startswith("pkg:pypi"):
+            vendor_aliases = [
+                x for x in vendor_aliases if x not in name_aliases or x == vendor
+            ]
     if len(vendor_aliases) > 1:
         for vvar in list(vendor_aliases):
             for nvar in list(name_aliases):
@@ -192,11 +231,12 @@ def create_pkg_variations(pkg_dict):
                 )
     elif len(name_aliases) > 1:
         for nvar in list(name_aliases):
+            # vendor could be none which is fine
             pkg_list.append(
                 {
-                    "vendor": pkg_dict.get("vendor"), # Could be none which is fine
+                    "vendor": pkg_dict.get("vendor"),
                     "name": nvar,
-                    "version": pkg_dict["version"],
+                    "version": pkg_dict.get("version", ""),
                 }
             )
     return pkg_list

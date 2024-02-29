@@ -4,13 +4,17 @@ from depscan.lib import config
 from depscan.lib.pkg_query import npm_metadata, pypi_metadata
 
 # Dict mapping project type to the audit source
-type_audit_map = {"nodejs": NpmSource(), "js": NpmSource(), "npm": NpmSource()}
+type_audit_map = {"nodejs": NpmSource(), "js": NpmSource(), "javascript": NpmSource(), "ts": NpmSource(),
+                  "typescript": NpmSource(), "npm": NpmSource()}
 
 # Dict mapping project type to risk audit
 risk_audit_map = {
     "npm": npm_metadata,
     "nodejs": npm_metadata,
     "js": npm_metadata,
+    "javascript": npm_metadata,
+    "ts": npm_metadata,
+    "typescript": npm_metadata,
     "python": pypi_metadata,
     "py": pypi_metadata,
     "pypi": pypi_metadata,

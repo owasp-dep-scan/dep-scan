@@ -130,7 +130,7 @@ def flow_to_source_sink(idx, flow, purls, project_type):
         if parent_method in ("handleRequest",):
             method_str = f"handler {method_str}"
         elif parent_method in ("__construct", "__init"):
-            method_str = f"constructor"
+            method_str = "constructor"
         elif project_type in ("php",) and parent_method.startswith("__"):
             method_str = f"magic {method_str}"
     if flow.get("label") == "METHOD_PARAMETER_IN":

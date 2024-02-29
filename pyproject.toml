@@ -1,12 +1,12 @@
 [project]
 name = "owasp-depscan"
-version = "5.2.4"
+version = "6.0.0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db==5.5.10",
+    "appthreat-vulnerability-db>=5.6.2",
     "defusedxml",
     "oras==0.1.26",
     "PyYAML",
@@ -20,7 +20,7 @@ dependencies = [
     "cvss",
 ]
 
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 classifiers = [
@@ -29,8 +29,6 @@ classifiers = [
     "Intended Audience :: System Administrators",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -40,6 +38,8 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/owasp-dep-scan/dep-scan"
+Bug-Tracker = "https://github.com/owasp-dep-scan/dep-scan/issues"
+Funding = "https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan"
 
 [project.scripts]
 depscan = "depscan.cli:main"

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import contextlib
 import json
 import os
 import sys
@@ -46,11 +47,8 @@ from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, console
 from depscan.lib.orasclient import download_image
 
-try:
+with contextlib.suppress(Exception):
     os.environ["PYTHONIOENCODING"] = "utf-8"
-except Exception:
-    pass
-
 LOGO = """
 ██████╗ ███████╗██████╗ ███████╗ ██████╗ █████╗ ███╗   ██╗
 ██╔══██╗██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗████╗  ██║
@@ -73,7 +71,7 @@ def build_args():
         description="Fully open-source security and license audit for "
         "application dependencies and container images based on "
         "known vulnerabilities and advisories.",
-        epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more.",
+        epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more",
     )
     parser.add_argument(
         "--no-banner",
@@ -285,7 +283,8 @@ def build_args():
         action="store_true",
         default=False,
         dest="explain",
-        help="Makes depscan to explain the various analysis. Useful for creating detailed reports.",
+        help="Makes depscan to explain the various analysis. Useful for "
+             "creating detailed reports.",
     )
     parser.add_argument(
         "--reachables-slices-file",
@@ -345,41 +344,11 @@ def scan(db, project_type, pkg_list, suggest_mode):
             for k, v in sug_version_dict.items():
                 if not v:
                     continue
-                vendor = ""
-                version = v
-                # Key is already a purl
-                if k.startswith("pkg:"):
-                    try:
-                        purl_obj = parse_purl(k)
-                        vendor = purl_obj.get("namespace")
-                        if not vendor:
-                            vendor = purl_obj.get("type")
-                        name = purl_obj.get("name")
-                        version = purl_obj.get("version")
-                        sug_pkg_list.append(
-                            {
-                                "vendor": vendor,
-                                "name": name,
-                                "version": version,
-                                "purl": k,
-                            }
-                        )
-                        continue
-                    except Exception:
-                        pass
-                tmp_a = k.split(":")
-                if len(tmp_a) == 3:
-                    vendor = tmp_a[0]
-                    name = tmp_a[1]
-                else:
-                    name = tmp_a[0]
-                # De-alias the vendor and package name
-                full_pkg = f"{vendor}:{name}:{version}"
-                full_pkg = pkg_aliases.get(full_pkg, full_pkg)
-                vendor, name, version = full_pkg.split(":")
-                sug_pkg_list.append(
-                    {"vendor": vendor, "name": name, "version": version}
-                )
+                sug, aliases = process_suggestions(k, v)
+                if sug:
+                    sug_pkg_list.extend(sug)
+                if aliases:
+                    pkg_aliases |= aliases
             LOG.debug(
                 "Re-checking our suggestion to ensure there are no further "
                 "vulnerabilities"
@@ -393,6 +362,49 @@ def scan(db, project_type, pkg_list, suggest_mode):
                 for nk, nv in new_sug_dict.items():
                     sug_version_dict[nk] = nv
     return results, pkg_aliases, sug_version_dict, purl_aliases
+
+
+def process_suggestions(k, v):
+    """
+    Processes suggestions for package information and returns a list of packages
+    along with their aliases.
+
+    :param k: Package URL
+    :param v: Suggested version
+
+    :returns: A list of packages and a dict of aliases
+    :rtype: tuple[list, dict]
+    """
+    vendor = ""
+    version = v
+    pkg_list = []
+    aliases = {}
+    # Key is already a purl
+    if k.startswith("pkg:"):
+        with contextlib.suppress(Exception):
+            purl_obj = parse_purl(k)
+            vendor = purl_obj.get("namespace", purl_obj.get("type"))
+            name = purl_obj.get("name")
+            version = purl_obj.get("version")
+            pkg_list.append(
+                {"vendor": vendor, "name": name, "version": version,
+                    "purl": k, })  # continue
+    tmp_a = k.split(":")
+    if len(tmp_a) == 3:
+        vendor = tmp_a[0]
+        name = tmp_a[1]
+    else:
+        name = tmp_a[0]
+    # De-alias the vendor and package name
+    full_pkg = f"{vendor}:{name}:{version}"
+    full_pkg = aliases.get(full_pkg, full_pkg)
+    split_pkg = full_pkg.split(":")
+    if len(split_pkg) == 3:
+        vendor, name, version = split_pkg
+    elif split_pkg:
+        name = split_pkg[0]
+    pkg_list.append({"vendor": vendor, "name": name, "version": version})
+    return pkg_list, aliases
 
 
 def summarise(
@@ -413,13 +425,15 @@ def summarise(
     :param project_type: Project type
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
-    :param purl_aliases: Package URL to package name aliase
+    :param purl_aliases: Package URL to package name aliases
     :param sug_version_dict: Dictionary containing version suggestions
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
     :param bom_file: SBOM file
     :param no_vuln_table: Boolean to indicate if the results should get printed
             to the console
+    :param direct_purls: Dict of direct purls
+    :param reached_purls: Dict of reached purls
     :return: A dict of vulnerability and severity summary statistics
     """
     if report_file:
@@ -451,44 +465,93 @@ def summarise(
     if pkg_vulnerabilities and bom_file:
         try:
             with open(bom_file, encoding="utf-8") as fp:
-                bom_data = json.load(fp)
-                if bom_data:
-                    # Add depscan information as metadata
-                    metadata = bom_data.get("metadata", {})
-                    tools = metadata.get("tools", {})
-                    bom_version = str(bom_data.get("version", 1))
-                    # Update the version
-                    if bom_version.isdigit():
-                        bom_version = int(bom_version) + 1
-                        bom_data["version"] = bom_version
-                    # Update the tools section
-                    if isinstance(tools, dict):
-                        components = tools.get("components", [])
-                        ds_version = utils.get_version()
-                        ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
-                        components.append(
-                            {
-                                "type": "application",
-                                "name": "owasp-depscan",
-                                "version": ds_version,
-                                "purl": ds_purl,
-                                "bom-ref": ds_purl,
-                            }
-                        )
-                        tools["components"] = components
-                        metadata["tools"] = tools
-                        bom_data["metadata"] = metadata
-
-                    bom_data["vulnerabilities"] = pkg_vulnerabilities
-                    with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
-                        json.dump(bom_data, vdrfp, indent=4)
-                        LOG.debug(
-                            "VDR file %s generated successfully", vdr_file
-                        )
-        except Exception:
+                if bom_data := json.load(fp):
+                    export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+        except json.JSONDecodeError:
             LOG.warning("Unable to generate VDR file for this scan")
     summary = summary_stats(results)
     return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
+
+
+def summarise_tools(tools, metadata, bom_data):
+    """
+    Helper function to add depscan information as metadata
+    :param tools: Tools section of the SBOM
+    :param metadata: Metadata section of the SBOM
+    :param bom_data: SBOM data
+    :return: None
+    """
+    components = tools.get("components", [])
+    ds_version = utils.get_version()
+    ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
+    components.append(
+        {
+            "type": "application",
+            "name": "owasp-depscan",
+            "version": ds_version,
+            "purl": ds_purl,
+            "bom-ref": ds_purl,
+        }
+    )
+    bom_data["tools"] = {"components": components}
+    bom_data["metadata"] = metadata
+    return bom_data
+
+
+def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
+    """
+    Exports the Bill of Materials (BOM) data along with package vulnerabilities
+    to a Vulnerability Data Report (VDR) file.
+
+    :param bom_data: SBOM data
+    :param pkg_vulnerabilities: Package vulnerabilities
+    :param vdr_file: VDR file path
+    """
+    # Add depscan information as metadata
+    metadata = bom_data.get("metadata", {})
+    tools = metadata.get("tools", {})
+    bom_version = str(bom_data.get("version", 0))
+    # Update the version
+    if bom_version.isdigit():
+        bom_data["version"] = int(bom_version) + 1
+    # Update the tools section
+    if isinstance(tools, dict):
+        bom_data = summarise_tools(tools, metadata, bom_data)
+    bom_data["vulnerabilities"] = pkg_vulnerabilities
+    with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
+        json.dump(bom_data, vdrfp, indent=4)
+    LOG.debug(
+        "VDR file %s generated successfully", vdr_file
+    )
+
+
+def set_project_types(args, src_dir):
+    """
+    Detects the project types and perform the right type of scan
+
+    :param args: cli arguments
+    :param src_dir: source directory
+
+    :return: A tuple containing the package list, the parsed package URL object,
+    and the list of project types.
+    """
+    pkg_list, purl_obj = [], {}
+
+    if args.project_type:
+        project_types_list = args.project_type.split(",")
+    elif args.search_purl:
+        purl_obj = parse_purl(args.search_purl)
+        purl_obj["purl"] = args.search_purl
+        purl_obj["vendor"] = purl_obj.get("namespace")
+        project_types_list = [purl_obj.get("type")]
+        pkg_list = [purl_obj]
+    elif args.bom:
+        project_types_list = ["bom"]
+    elif not args.non_universal_scan:
+        project_types_list = [UNIVERSAL_SCAN_TYPE]
+    else:
+        project_types_list = utils.detect_project_type(src_dir)
+    return pkg_list, project_types_list
 
 
 @app.get("/")
@@ -508,17 +571,15 @@ async def cache():
     """
     db = db_lib.get()
     if not db_lib.index_count(db["index_file"]):
-        paths_list = download_image()
-        if paths_list:
+        if download_image():
             return {
                 "error": "false",
                 "message": "vulnerability database cached successfully",
             }
-        else:
-            return {
-                "error": "true",
-                "message": "vulnerability database was not cached",
-            }
+        return {
+            "error": "true",
+            "message": "vulnerability database was not cached",
+        }
     return {
         "error": "false",
         "message": "vulnerability database already exists",
@@ -542,12 +603,15 @@ async def run_scan():
     results = []
     db = db_lib.get()
     profile = "generic"
+    deep = False
     if q.get("url"):
         url = q.get("url")
     if q.get("path"):
         path = q.get("path")
     if q.get("multiProject"):
         multi_project = q.get("multiProject", "").lower() in ("true", "1")
+    if q.get("deep"):
+        deep = q.get("deep", "").lower() in ("true", "1")
     if q.get("type"):
         project_type = q.get("type")
     if q.get("profile"):
@@ -559,6 +623,11 @@ async def run_scan():
             path = params.get("path")
         if not multi_project and params.get("multiProject"):
             multi_project = params.get("multiProject", "").lower() in (
+                "true",
+                "1",
+            )
+        if not deep and params.get("deep"):
+            deep = params.get("deep", "").lower() in (
                 "true",
                 "1",
             )
@@ -619,7 +688,8 @@ async def run_scan():
         path = tmp_bom_file.name
 
     # Path points to a project directory
-    if os.path.isdir(path):
+    # Bug# 233. Path could be a url
+    if url or (path and os.path.isdir(path)):
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=".bom.json"
         ) as bfp:
@@ -627,7 +697,7 @@ async def run_scan():
                 project_type,
                 bfp.name,
                 path,
-                True,
+                deep,
                 {
                     "url": url,
                     "path": path,
@@ -660,14 +730,14 @@ async def run_scan():
         if vdb_results:
             results += vdb_results
         results = [r.to_dict() for r in results]
-        bom_data = None
         with open(bom_file_path, encoding="utf-8") as fp:
             bom_data = json.load(fp)
         if not bom_data:
             return (
                 {
                     "error": "true",
-                    "message": "Unable to generate SBOM. Check your input path or url.",
+                    "message": "Unable to generate SBOM. Check your input "
+                               "path or url.",
                 },
                 400,
                 {"Content-Type": "application/json"},
@@ -681,23 +751,23 @@ async def run_scan():
             scoped_pkgs={},
             no_vuln_table=True,
             bom_file=bom_file_path,
-            direct_purls=None,
-            reached_purls=None,
+            direct_purls={},
+            reached_purls={},
         )
         pkg_vulnerabilities, _ = prepare_vdr(options)
         if pkg_vulnerabilities:
             bom_data["vulnerabilities"] = pkg_vulnerabilities
         return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
 
-    else:
-        return (
-            {
-                "error": "true",
-                "message": "Unable to generate SBOM. Check your input path or url.",
-            },
-            500,
-            {"Content-Type": "application/json"},
-        )
+    return (
+        {
+            "error": "true",
+            "message": "Unable to generate SBOM. Check your input path or "
+                       "url.",
+        },
+        500,
+        {"Content-Type": "application/json"},
+    )
 
 
 def run_server(args):
@@ -735,6 +805,21 @@ def main():
         pkg_vulnerabilities,
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
+    if os.getenv("GITHUB_ACTION", "").lower() == "__appthreat_dep-scan-action" \
+        and not os.getenv("INPUT_THANK_YOU", "") == ("I have sponsored "
+                                                     "OWASP-dep-scan."):
+        console.print(
+            Panel(
+                "OWASP relies on donations to fund our projects.\n\n"
+                "Donate at https://owasp.org/donate/?reponame=www-project-dep"
+                "-scan&title=OWASP+depscan. \n\nAfter you have done so, "
+                "make sure you have configured the action with thank_you: 'I "
+                "have sponsored OWASP-dep-scan.'",
+                title="Please make a donation",
+                expand=False,
+            )
+        )
+        sys.exit(1)
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
@@ -750,6 +835,8 @@ def main():
         # Try to infer from the bom file
         elif args.bom and os.path.exists(args.bom):
             src_dir = os.path.dirname(os.path.realpath(args.bom))
+        else:
+            src_dir = os.getcwd()
     reports_dir = args.reports_dir
     if args.csaf:
         toml_file_path = os.getenv(
@@ -772,27 +859,11 @@ def main():
                 "depscan."
             )
             sys.exit(0)
-    # Detect the project types and perform the right type of scan
-    if args.project_type:
-        project_types_list = args.project_type.split(",")
-    elif args.search_purl:
-        purl_obj = parse_purl(args.search_purl)
-        purl_obj["purl"] = args.search_purl
-        purl_obj["vendor"] = purl_obj.get("namespace")
-        project_types_list = [purl_obj.get("type")]
-        pkg_list = [purl_obj]
-    elif args.bom and not args.project_type:
-        project_types_list = ["bom"]
-    elif not args.non_universal_scan:
-        project_types_list = [UNIVERSAL_SCAN_TYPE]
-    else:
-        project_types_list = utils.detect_project_type(src_dir)
+    pkg_list, project_types_list = set_project_types(args, src_dir)
     db = db_lib.get()
     run_cacher = args.cache
     areport_file = (
-        args.report_file
-        if args.report_file
-        else os.path.join(reports_dir, "depscan.json")
+        args.report_file or os.path.join(reports_dir, "depscan.json")
     )
     html_file = areport_file.replace(".json", ".html")
     pdf_file = areport_file.replace(".json", ".pdf")
@@ -829,7 +900,7 @@ def main():
             creation_status = True
         else:
             if args.profile in ("appsec", "research"):
-                # The bom file has to be called bom.json for atom reachables to work :(
+                # The bom file has to be called bom.json for atom reachables :(
                 bom_file = os.path.join(src_dir, "bom.json")
             else:
                 bom_file = report_file.replace("depscan-", "sbom-")
@@ -964,14 +1035,24 @@ def main():
 
                 if not github_client.can_authenticate():
                     LOG.error(
-                        "The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory"
+                        "The GitHub personal access token supplied appears to "
+                        "be invalid or expired. Please see: "
+                        "https://github.com/owasp-dep-scan/dep-scan#github"
+                        "-security-advisory"
                     )
                 else:
                     sources_list.insert(0, GitHubSource())
                     scopes = github_client.get_token_scopes()
                     if scopes:
                         LOG.warning(
-                            "The GitHub personal access token was granted more permissions than is necessary for depscan to operate, including the scopes of: %s. It is recommended to use a dedicated token with only the minimum scope necesary for depscan to operate. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory",
+                            "The GitHub personal access token was granted "
+                            "more permissions than is necessary for depscan "
+                            "to operate, including the scopes of: %s. It is "
+                            "recommended to use a dedicated token with only "
+                            "the minimum scope necesary for depscan to "
+                            "operate. Please see: "
+                            "https://github.com/owasp-dep-scan/dep-scan"
+                            "#github-security-advisory",
                             ", ".join(scopes),
                         )
             except Exception:

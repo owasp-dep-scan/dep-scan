@@ -1,25 +1,17 @@
 name: binary and nydus tests
 
 on:
-  push:
-    branches:
-      - feature/*
-    paths-ignore:
-      - '**/README.md'
-      - 'dockertests.yml'
-      - 'pythonapp.yml'
-      - 'python-publish.yml'
   pull_request:
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12']
       fail-fast: false
     steps:
     - uses: actions/checkout@v4
@@ -27,6 +19,10 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Trim CI agent
+      run: |
+        chmod +x contrib/free_disk_space.sh
+        ./contrib/free_disk_space.sh
     - name: setup nydus
       run: |
         curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
@@ -45,7 +41,7 @@ jobs:
       run: |
         mkdir -p $VDB_HOME
         RAFS_OUT=rafs_out
-        oras pull ghcr.io/appthreat/vdb-10y:v5-rafs -o $RAFS_OUT
+        oras pull ghcr.io/appthreat/vdb:v5-rafs -o $RAFS_OUT
         nydus-image unpack --blob $RAFS_OUT/data.rafs --output $VDB_HOME/vdb.tar --bootstrap $RAFS_OUT/meta.rafs
         tar -C $VDB_HOME -xf $VDB_HOME/vdb.tar
         rm $VDB_HOME/vdb.tar
@@ -54,6 +50,7 @@ jobs:
     - name: Test with nydus
       run: |
         python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+        rm -rf vdb_data_nydus
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -64,7 +61,6 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: vdb_data_default
     - name: Test go binaries
       run: |
         mkdir -p gobintests
@@ -77,7 +73,7 @@ jobs:
         chmod +x minikube-linux-amd64
         rm *.zip
         cd ..
-        oras pull ghcr.io/appthreat/vdb-10y:v5 -o $VDB_HOME
+        oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
         python3 depscan/cli.py --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
         python3 depscan/cli.py --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
         python3 depscan/cli.py --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
