@@ -1,5 +1,6 @@
 import ast
 import json
+import logging
 import os
 import re
 import shutil
@@ -8,11 +9,14 @@ from datetime import datetime
 from importlib.metadata import distribution
 from typing import Any, Dict, List
 
+from blint.utils import gen_file_list
+from blint.analysis import AnalysisRunner, report
 from jinja2 import Environment
 from vdb.lib import db as db_lib
 from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
+from depscan.lib.logger import LOG
 
 lic_symbol_regex = re.compile(r"[(),]")
 
@@ -459,3 +463,20 @@ def render_template_report(
     )
     with open(result_file, "w", encoding="utf-8") as outfile:
         outfile.write(report_result)
+
+
+def run_blint(src_dir, reports_dir):
+    """
+    Runs BLint analysis on the source directory and generates reports.
+        :param: src_dir: The path to the source directory.
+        :param: reports_dir: The path to the reports directory.
+    """
+    files = gen_file_list([src_dir])
+    LOG.debug(f"Running BLint on {len(files)} from {src_dir}.")
+    analyzer = AnalysisRunner()
+    try:
+        findings, reviews, fuzzables = analyzer.start(files, reports_dir)
+    except Exception as e:
+        LOG.exception(f"Error running BLint: {e}")
+        return
+    report(src_dir, reports_dir, findings, reviews, files, fuzzables)

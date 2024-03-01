@@ -219,7 +219,7 @@ options:
   --report-name REPORT_NAME
                         Filename of the custom report written to the --reports-dir
   --no-error            UNUSED: Continue on error to prevent build from breaking
-  --no-license-scan     UNUSED: dep-scan doesn't perform license scanning by default
+  --no-license-scan     UNUSED: dep-scan doesn\'t perform license scanning by default
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
@@ -243,6 +243,7 @@ options:
   --reachables-slices-file REACHABLES_SLICES_FILE
                         Path for the reachables slices file created by atom.
   --purl SEARCH_PURL    Scan a single package url.
+  -b, --blint           Include binary analysis with BLint.
   -v, --version         Display the version
 ```
 

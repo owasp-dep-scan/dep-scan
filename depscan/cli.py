@@ -46,6 +46,7 @@ from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, console
 from depscan.lib.orasclient import download_image
+from depscan.lib.utils import run_blint
 
 with contextlib.suppress(Exception):
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -295,6 +296,14 @@ def build_args():
         "--purl",
         dest="search_purl",
         help="Scan a single package url.",
+    )
+    parser.add_argument(
+        "-b",
+        "--blint",
+        action="store_true",
+        default=False,
+        dest="blint",
+        help="Include binary analysis with BLint.",
     )
     parser.add_argument(
         "-v",
@@ -838,6 +847,11 @@ def main():
         else:
             src_dir = os.getcwd()
     reports_dir = args.reports_dir
+    # Create reports directory
+    if reports_dir and not os.path.exists(reports_dir):
+        os.makedirs(reports_dir, exist_ok=True)
+    if args.blint:
+        run_blint(src_dir, reports_dir)
     if args.csaf:
         toml_file_path = os.getenv(
             "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
@@ -867,9 +881,6 @@ def main():
     )
     html_file = areport_file.replace(".json", ".html")
     pdf_file = areport_file.replace(".json", ".pdf")
-    # Create reports directory
-    if reports_dir and not os.path.exists(reports_dir):
-        os.makedirs(reports_dir, exist_ok=True)
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: %s", project_types_list)
     # Enable license scanning
