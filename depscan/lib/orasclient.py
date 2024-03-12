@@ -22,7 +22,7 @@ class VdbDistributionRegistry(oras.provider.Registry):
     jsonschema.exceptions.ValidationError: Additional properties are not allowed ('artifactType' was unexpected)
     """
 
-    def get_manifest(self, container, allowed_media_type=None):
+    def get_manifest(self, container, allowed_media_type=None, refresh_headers=True):
         """
         Retrieve a manifest for a package.
 
