@@ -25,7 +25,6 @@ from depscan.lib.analysis import (
     analyse_licenses,
     analyse_pkg_risks,
     find_purl_usages,
-    jsonl_report,
     prepare_vdr,
     suggest_version,
     summary_stats,
@@ -388,22 +387,23 @@ def process_suggestions(k, v):
             version = purl_obj.get("version")
             pkg_list.append(
                 {"vendor": vendor, "name": name, "version": version,
-                    "purl": k, })  # continue
-    tmp_a = k.split(":")
-    if len(tmp_a) == 3:
-        vendor = tmp_a[0]
-        name = tmp_a[1]
+                    "purl": k, })
     else:
-        name = tmp_a[0]
-    # De-alias the vendor and package name
-    full_pkg = f"{vendor}:{name}:{version}"
-    full_pkg = aliases.get(full_pkg, full_pkg)
-    split_pkg = full_pkg.split(":")
-    if len(split_pkg) == 3:
-        vendor, name, version = split_pkg
-    elif split_pkg:
-        name = split_pkg[0]
-    pkg_list.append({"vendor": vendor, "name": name, "version": version})
+        tmp_a = k.split(":")
+        if len(tmp_a) == 3:
+            vendor = tmp_a[0]
+            name = tmp_a[1]
+        else:
+            name = tmp_a[0]
+        # De-alias the vendor and package name
+        full_pkg = f"{vendor}:{name}:{version}"
+        full_pkg = aliases.get(full_pkg, full_pkg)
+        split_pkg = full_pkg.split(":")
+        if len(split_pkg) == 3:
+            vendor, name, version = split_pkg
+        elif split_pkg:
+            name = split_pkg[0]
+        pkg_list.append({"vendor": vendor, "name": name, "version": version})
     return pkg_list, aliases
 
 
@@ -436,18 +436,6 @@ def summarise(
     :param reached_purls: Dict of reached purls
     :return: A dict of vulnerability and severity summary statistics
     """
-    if report_file:
-        jsonl_report(
-            project_type,
-            results,
-            pkg_aliases,
-            purl_aliases,
-            sug_version_dict,
-            scoped_pkgs,
-            report_file,
-            direct_purls=direct_purls,
-            reached_purls=reached_purls,
-        )
     options = PrepareVdrOptions(
         project_type,
         results,

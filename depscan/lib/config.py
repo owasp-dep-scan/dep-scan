@@ -59,7 +59,7 @@ vendor_alias = {
     "org.apache.commons.beanutils": "commons-beanutils",
     "org.apache.commons.collections": "commons-collections",
     "org.apache.solr": "apache_solr",
-    "org.springframework": "pivotal_software",
+    "org.springframework": "vmware",
     "io.undertow": "redhat",
     "ch.qos.logback": "logback",
     "ch.qos.slf4j": "slf4j",

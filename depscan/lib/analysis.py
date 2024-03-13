@@ -1056,119 +1056,6 @@ def summary_stats(results):
     return summary
 
 
-def jsonl_report(
-    project_type,
-    results,
-    pkg_aliases,
-    purl_aliases,
-    sug_version_dict,
-    scoped_pkgs,
-    out_file_name,
-    direct_purls,
-    reached_purls,
-):
-    """
-    DEPRECATED: Produce vulnerability occurrence report in jsonlines format
-    This method should use the pkg_vulnerabilities from prepare_vdr
-
-    :param scoped_pkgs: A dict of lists of required/optional/excluded packages.
-    :param sug_version_dict: A dict mapping package names to suggested versions.
-    :param purl_aliases: A dict mapping package names to their purl aliases.
-    :param project_type: Project type
-    :param results: List of vulnerabilities found
-    :param pkg_aliases: Package alias
-    :param out_file_name: Output filename
-    :param direct_purls: A list of direct purls
-    :param reached_purls: A list of reached purls
-    """
-    ids_seen = {}
-    required_pkgs = scoped_pkgs.get("required", [])
-    optional_pkgs = scoped_pkgs.get("optional", [])
-    excluded_pkgs = scoped_pkgs.get("excluded", [])
-    with open(out_file_name, "w", encoding="utf-8") as outfile:
-        for vuln_occ_dict in results:
-            vid = vuln_occ_dict.get("id")
-            package_issue = vuln_occ_dict.get("package_issue")
-            if not package_issue.get("affected_location"):
-                continue
-            full_pkg = package_issue["affected_location"].get("package")
-            if package_issue["affected_location"].get("vendor"):
-                full_pkg = (
-                    f"{package_issue['affected_location'].get('vendor')}:"
-                    f"{package_issue['affected_location'].get('package')}"
-                )
-            elif package_issue["affected_location"].get("cpe_uri"):
-                vendor, _, _, _ = parse_cpe(
-                    package_issue["affected_location"].get("cpe_uri")
-                )
-                if vendor:
-                    full_pkg = (
-                        f"{vendor}:"
-                        f"{package_issue['affected_location'].get('package')}"
-                    )
-            # De-alias package names
-            full_pkg = pkg_aliases.get(full_pkg, full_pkg)
-            full_pkg_display = full_pkg
-            version_used = package_issue["affected_location"].get("version")
-            purl = purl_aliases.get(full_pkg, full_pkg)
-            if purl:
-                purl_obj = parse_purl(purl)
-                if purl_obj:
-                    version_used = purl_obj.get("version")
-                    if purl_obj.get("namespace"):
-                        full_pkg = f"""{purl_obj.get("namespace")}/
-                        {purl_obj.get("name")}@{purl_obj.get("version")}"""
-                    else:
-                        full_pkg = f"""{purl_obj.get("name")}@{purl_obj.get("version")}"""
-            if ids_seen.get(vid + purl):
-                continue
-            # On occasions, this could still result in duplicates if the
-            # package exists with and without a purl
-            ids_seen[vid + purl] = True
-            project_type_pkg = f"""{project_type}:{package_issue["affected_location"].get("package")}"""
-            fixed_location = best_fixed_location(
-                sug_version_dict.get(purl),
-                package_issue["fixed_location"],
-            )
-            package_usage = "N/A"
-            if (
-                direct_purls.get(purl)
-                or purl in required_pkgs
-                or full_pkg in required_pkgs
-                or project_type_pkg in required_pkgs
-            ):
-                package_usage = "required"
-            elif (
-                purl in optional_pkgs
-                or full_pkg in optional_pkgs
-                or project_type_pkg in optional_pkgs
-            ):
-                package_usage = "optional"
-            elif (
-                purl in excluded_pkgs
-                or full_pkg in excluded_pkgs
-                or project_type_pkg in excluded_pkgs
-            ):
-                package_usage = "excluded"
-            data_obj = {
-                "id": vid,
-                "package": full_pkg_display,
-                "purl": purl,
-                "package_type": vuln_occ_dict.get("type"),
-                "package_usage": package_usage,
-                "version": version_used,
-                "fix_version": fixed_location,
-                "severity": vuln_occ_dict.get("severity"),
-                "cvss_score": vuln_occ_dict.get("cvss_score"),
-                "short_description": vuln_occ_dict.get("short_description"),
-                "related_urls": vuln_occ_dict.get("related_urls"),
-                "occurrence_count": direct_purls.get(purl, 0),
-                "reachable_flows": reached_purls.get(purl, 0),
-            }
-            json.dump(data_obj, outfile)
-            outfile.write("\n")
-
-
 def analyse_pkg_risks(
     project_type, scoped_pkgs, risk_results, risk_report_file=None
 ):
@@ -1307,9 +1194,9 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                     "{}{}".format(
                         "[cyan]"
                         if "GPL" in lic["spdx-id"]
-                        or "CC-BY-" in lic["spdx-id"]
-                        or "Facebook" in lic["spdx-id"]
-                        or "WTFPL" in lic["spdx-id"]
+                           or "CC-BY-" in lic["spdx-id"]
+                           or "Facebook" in lic["spdx-id"]
+                           or "WTFPL" in lic["spdx-id"]
                         else "",
                         lic["spdx-id"],
                     ),
