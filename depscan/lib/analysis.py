@@ -1192,12 +1192,14 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
                 data = [
                     *pkg_ver,
                     "{}{}".format(
-                        "[cyan]"
-                        if "GPL" in lic["spdx-id"]
-                           or "CC-BY-" in lic["spdx-id"]
-                           or "Facebook" in lic["spdx-id"]
-                           or "WTFPL" in lic["spdx-id"]
-                        else "",
+                        (
+                            "[cyan]"
+                            if "GPL" in lic["spdx-id"]
+                            or "CC-BY-" in lic["spdx-id"]
+                            or "Facebook" in lic["spdx-id"]
+                            or "WTFPL" in lic["spdx-id"]
+                            else ""
+                        ),
                         lic["spdx-id"],
                     ),
                     conditions_str,
@@ -1285,6 +1287,8 @@ def classify_links(related_urls):
             clinks["GitHub PR"] = rurl
         elif "github.com" in rurl and "/issues" in rurl:
             clinks["GitHub Issue"] = rurl
+        elif "bitbucket.org" in rurl and "/issues" in rurl:
+            clinks["Bitbucket Issue"] = rurl
         elif "poc" in rurl:
             clinks["poc"] = rurl
         elif "apache.org" in rurl and "security" in rurl:
@@ -1305,29 +1309,71 @@ def classify_links(related_urls):
         elif "support.apple.com" in rurl:
             clinks["Apple Security"] = rurl
             clinks["vendor"] = rurl
+        elif "access.redhat.com" in rurl:
+            clinks["Red Hat Security"] = rurl
+            clinks["vendor"] = rurl
+        elif "oracle.com" in rurl and "security" in rurl:
+            clinks["Oracle Security"] = rurl
+            clinks["vendor"] = rurl
         elif "gitlab.alpinelinux.org" in rurl or "bugs.busybox.net" in rurl:
             clinks["vendor"] = rurl
-        elif "redhat.com" in rurl or "oracle.com" in rurl:
+        elif (
+            "redhat.com" in rurl
+            or "oracle.com" in rurl
+            or "curl.haxx.se" in rurl
+            or "nodejs.org" in rurl
+            or "/security." in rurl
+            or "/securityadvisories." in rurl
+            or "sec-consult.com" in rurl
+            or "jenkins.io/security" in rurl
+            or "support.f5.com" in rurl
+            or "suricata-ids.org/" in rurl
+            or "foxitsoftware.com/support/" in rurl
+            or "success.trendmicro.com/" in rurl
+            or "docs.jamf.com/" in rurl
+            or "www.postgresql.org/about" in rurl
+        ):
             clinks["vendor"] = rurl
+        elif "wordpress" in rurl or "wpvulndb" in rurl:
+            clinks["wordpress"] = rurl
+        elif "chrome.google.com/webstore" in rurl:
+            clinks["Chrome Extension"] = rurl
         elif (
             "openwall.com" in rurl
             or "oss-security" in rurl
             or "www.mail-archive.com" in rurl
-            or "lists.debian.org" in rurl
-            or "lists.fedoraproject.org" in rurl
+            or "lists." in rurl
             or "portal.msrc.microsoft.com" in rurl
-            or "lists.opensuse.org" in rurl
+            or "mail." in rurl
+            or "securityfocus." in rurl
+            or "securitytracker." in rurl
+            or "/discussion/" in rurl
+            or "/archives/" in rurl
+            or "groups." in rurl
         ):
             clinks["Mailing List"] = rurl
-            clinks["vendor"] = rurl
         elif (
             "exploit-db" in rurl
             or "exploit-database" in rurl
             or "seebug.org" in rurl
             or "seclists.org" in rurl
             or "nu11secur1ty" in rurl
+            or "packetstormsecurity.com" in rurl
+            or "coresecurity.com" in rurl
+            or "project-zero" in rurl
+            or "0dd.zone" in rurl
+            or "snyk.io/research/" in rurl
+            or "chromium.googlesource.com/infra" in rurl
+            or "synacktiv.com" in rurl
+            or "bishopfox.com" in rurl
+            or "zerodayinitiative.com" in rurl
+            or "www.samba.org/samba/security/" in rurl
+            or "www.synology.com/support/security/" in rurl
+            or "us-cert.gov/advisories" in rurl
         ):
             clinks["exploit"] = rurl
+        elif "oss-fuzz" in rurl:
+            clinks["OSS-Fuzz"] = rurl
         elif "github.com/advisories" in rurl:
             clinks["GitHub Advisory"] = rurl
         elif (
@@ -1340,6 +1386,10 @@ def classify_links(related_urls):
             clinks["Bug Bounty"] = rurl
         elif "cwe.mitre.org" in rurl:
             clinks["cwe"] = rurl
+        elif "/community" in rurl or "/forum" in rurl or "/discuss" in rurl:
+            clinks["Forum"] = rurl
+        elif "bugzilla." in rurl or "bugs." in rurl or "chat." in rurl:
+            clinks["Issue"] = rurl
         else:
             clinks["other"] = rurl
     return clinks
