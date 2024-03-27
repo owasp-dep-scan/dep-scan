@@ -74,7 +74,7 @@ RUN set -e; \
     && sdk offline enable \
     && mv /root/.sdkman/candidates/* /opt/ \
     && rm -rf /root/.sdkman \
-    && npm install -g @cyclonedx/cdxgen \
+    && npm install -g @cyclonedx/cdxgen@10.2.5 \
     && cdxgen --version \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
