@@ -117,9 +117,6 @@ def download_image():
     """
     Method to download vdb files from a oci registry
     """
-    rafs_image_downloaded, paths_list = download_rafs_based_image()
-    if rafs_image_downloaded:
-        return paths_list
     LOG.info(
         "About to download the vulnerability database from %s. This might take a while ...",
         vdb_database_url,
@@ -132,7 +129,7 @@ def download_image():
         overwrite=True,
     )
     for apath in paths_list:
-        if apath.endswith(".tar.gz"):
+        if apath.endswith(".tar.gz") or apath.endswith(".tar.xz"):
             with tarfile.open(apath, "r") as tarf:
                 tarf.extractall(path=data_dir)
             try:

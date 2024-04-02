@@ -508,19 +508,6 @@ The objects available are taken from the CycloneDX \*.vdr.json BOM file generate
 Furthermore, insights are imaginable to be made available to the template, please reach out or contribute on demand.
 We appreciate it if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
 
-## Performance tuning
-
-### Use nydus to speed up the initial vdb download
-
-vdb v5 is published in RAFS (Registry Accelerated File System) format with better de-duplication and packing. depscan would automatically use this image if `nydus-static` binary is available in the PATH.
-
-```shell
-curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
-tar -xvf nydus-static-v2.2.4-linux-amd64.tgz
-chmod +x nydus-static/*
-mv nydus-static/* /usr/local/bin/
-```
-
 ## Discord support
 
 The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel for enterprise support.

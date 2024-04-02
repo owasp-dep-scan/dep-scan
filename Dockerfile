@@ -86,11 +86,6 @@ RUN set -e; \
     && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php \
     && mv composer.phar /usr/local/bin/composer \
     && python3 -m pip install pipenv certifi \
-    && curl -LO https://github.com/dragonflyoss/nydus/releases/download/v${NYDUS_VERSION}/nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz \
-    && tar -xvf nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz \
-    && chmod +x nydus-static/* \
-    && mv nydus-static/* /usr/local/bin/ \
-    && rm -rf nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz nydus-static \
     && cd /opt/dep-scan \
     && python3 -m pip install -e . \
     && chmod a-w -R /opt \
