@@ -1110,6 +1110,7 @@ def analyse_pkg_risks(
         if risk_metrics.get("risk_score") and (
             risk_metrics.get("risk_score") > config.pkg_max_risk_score
             or risk_metrics.get("pkg_private_on_public_registry_risk")
+            or risk_metrics.get("pkg_deprecated_risk")
         ):
             risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
