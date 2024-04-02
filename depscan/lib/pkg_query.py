@@ -319,6 +319,11 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     versions_dict = pkg_metadata.get("releases", {})
     versions = [ver[0] for k, ver in versions_dict.items() if ver]
     is_deprecated = info.get("yanked") and info.get("yanked_reason")
+    # Some packages like pypi:azure only mention deprecated in the description
+    # without yanking the package
+    pkg_description = info.get("description", "").lower()
+    if not is_deprecated and ("is deprecated" in pkg_description or "no longer maintained" in pkg_description):
+        is_deprecated = True
     latest_deprecated = False
     first_version = None
     latest_version = None
