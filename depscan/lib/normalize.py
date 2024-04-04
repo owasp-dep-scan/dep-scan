@@ -106,7 +106,8 @@ def create_pkg_variations(pkg_dict):
         ):
             tmpA = vendor.split(".")
             # Automatically add short vendor forms
-            if len(tmpA) > 1 and len(tmpA[1]) > 3:
+            # Increase to 6 to reduce false positives when the package name is core
+            if len(tmpA) > 1 and len(tmpA[1]) > 6:
                 if tmpA[1] != name:
                     vendor_aliases.add(tmpA[1])
     # Add some common vendor aliases
