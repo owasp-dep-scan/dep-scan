@@ -131,6 +131,13 @@ def build_args():
         help="Perform package risk audit (slow operation). Npm only.",
     )
     parser.add_argument(
+        "--required-only",
+        action="store_true",
+        dest="required_only",
+        help="Include only the required dependencies when building the SBOM with"
+        " cdxgen to ignore dependencies such as devDependencies for npm."
+    )
+    parser.add_argument(
         "--private-ns",
         dest="private_ns",
         default=os.getenv("PKG_PRIVATE_NAMESPACE"),
@@ -897,7 +904,7 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server, "profile": args.profile},
+                {"cdxgen_server": args.cdxgen_server, "profile": args.profile, "required_only": args.required_only},
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
