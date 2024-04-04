@@ -106,7 +106,8 @@ def create_pkg_variations(pkg_dict):
         ):
             tmpA = vendor.split(".")
             # Automatically add short vendor forms
-            if len(tmpA) > 1 and len(tmpA[1]) > 3:
+            # Increase to 6 to reduce false positives when the package name is core
+            if len(tmpA) > 1 and len(tmpA[1]) > 6:
                 if tmpA[1] != name:
                     vendor_aliases.add(tmpA[1])
     # Add some common vendor aliases
@@ -208,7 +209,8 @@ def create_pkg_variations(pkg_dict):
     else:
         # Filter vendor aliases that are also name aliases for non pypi packages
         # This is needed for numpy which has the vendor name numpy
-        if not purl.startswith("pkg:pypi"):
+        # Also needed for nuget. Eg: selenium:selenium
+        if not purl.startswith("pkg:pypi") and not purl.startswith("pkg:nuget"):
             vendor_aliases = [
                 x for x in vendor_aliases if x not in name_aliases or x == vendor
             ]
