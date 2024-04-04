@@ -208,7 +208,8 @@ def create_pkg_variations(pkg_dict):
     else:
         # Filter vendor aliases that are also name aliases for non pypi packages
         # This is needed for numpy which has the vendor name numpy
-        if not purl.startswith("pkg:pypi"):
+        # Also needed for nuget. Eg: selenium:selenium
+        if not purl.startswith("pkg:pypi") and not purl.startswith("pkg:nuget"):
             vendor_aliases = [
                 x for x in vendor_aliases if x not in name_aliases or x == vendor
             ]
