@@ -390,6 +390,8 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
         args.append(options.get("profile"))
         if options.get("profile") != "generic":
             LOG.debug("BOM Profile: %s", options.get("profile"))
+    if options.get("required_only"):
+        args.append("--required-only")
     # Bug #233 - Source directory could be None when working with url
     if src_dir:
         args.append(src_dir)
