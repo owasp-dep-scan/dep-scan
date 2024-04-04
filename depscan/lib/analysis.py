@@ -225,6 +225,24 @@ def pkg_sub_tree(
     )
 
 
+def is_lang_sw_edition(package_issue):
+    """Check if the specified sw_edition belongs to any application package type"""
+    if package_issue and package_issue["affected_location"].get("cpe_uri"):
+        all_parts = CPE_FULL_REGEX.match(
+            package_issue["affected_location"].get("cpe_uri")
+        )
+        if not all_parts or all_parts.group("sw_edition") in ("*", "-"):
+            return True
+        if (
+            config.LANG_PKG_TYPES.get(all_parts.group("sw_edition"))
+            or all_parts.group("sw_edition")
+            in config.LANG_PKG_TYPES.values()
+        ):
+            return True
+        return False
+    return True
+
+
 def is_os_target_sw(package_issue):
     """
     Since we rely on NVD, we filter those target_sw that definitely belong to a language
@@ -235,7 +253,7 @@ def is_os_target_sw(package_issue):
         )
         if (
             all_parts
-            and all_parts.group("target_sw") != "*"
+            and all_parts.group("target_sw") not in ("*", "-")
             and (
                 config.LANG_PKG_TYPES.get(all_parts.group("target_sw"))
                 or all_parts.group("target_sw")
@@ -383,7 +401,7 @@ def prepare_vdr(options: PrepareVdrOptions):
                 package_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
                 # Filter application CVEs from distros
-                if config.LANG_PKG_TYPES.get(package_type) and vendor and vendor in config.OS_PKG_TYPES:
+                if (config.LANG_PKG_TYPES.get(package_type) or package_type in config.LANG_PKG_TYPES.values()) and ((vendor and vendor in config.OS_PKG_TYPES) or not is_lang_sw_edition(package_issue)):
                     fp_count += 1
                     continue
                 if package_type in config.OS_PKG_TYPES:
