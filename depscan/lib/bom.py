@@ -393,7 +393,6 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
             LOG.debug("BOM Profile: %s", options.get("profile"))
     if options.get("cdxgen_args"):
         args += shlex.split(options.get("cdxgen_args"))
-        print(args)
     # Bug #233 - Source directory could be None when working with url
     if src_dir:
         args.append(src_dir)
