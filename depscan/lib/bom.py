@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -322,6 +323,8 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     :returns: True if the command was executed. False if the executable was
     not found.
     """
+    print(options)
+    print(options.get("cdxgen_args"))
     cdxgen_server = options.get("cdxgen_server")
     # Generate SBOM by calling cdxgen server
     if cdxgen_server:
@@ -390,8 +393,9 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
         args.append(options.get("profile"))
         if options.get("profile") != "generic":
             LOG.debug("BOM Profile: %s", options.get("profile"))
-    if options.get("required_only"):
-        args.append("--required-only")
+    if options.get("cdxgen_args"):
+        args += shlex.split(options.get("cdxgen_args"))
+        print(args)
     # Bug #233 - Source directory could be None when working with url
     if src_dir:
         args.append(src_dir)
