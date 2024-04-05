@@ -323,8 +323,6 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     :returns: True if the command was executed. False if the executable was
     not found.
     """
-    print(options)
-    print(options.get("cdxgen_args"))
     cdxgen_server = options.get("cdxgen_server")
     # Generate SBOM by calling cdxgen server
     if cdxgen_server:
