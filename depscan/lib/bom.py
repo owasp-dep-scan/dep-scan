@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -390,6 +391,8 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
         args.append(options.get("profile"))
         if options.get("profile") != "generic":
             LOG.debug("BOM Profile: %s", options.get("profile"))
+    if options.get("cdxgen_args"):
+        args += shlex.split(options.get("cdxgen_args"))
     # Bug #233 - Source directory could be None when working with url
     if src_dir:
         args.append(src_dir)
