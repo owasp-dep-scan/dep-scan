@@ -131,6 +131,12 @@ def build_args():
         help="Perform package risk audit (slow operation). Npm only.",
     )
     parser.add_argument(
+        "--cdxgen-args",
+        default=os.getenv("CDXGEN_ARGS"),
+        dest="cdxgen_args",
+        help="Additional arguments to pass to cdxgen"
+    )
+    parser.add_argument(
         "--private-ns",
         dest="private_ns",
         default=os.getenv("PKG_PRIVATE_NAMESPACE"),
@@ -897,7 +903,7 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server, "profile": args.profile},
+                {"cdxgen_server": args.cdxgen_server, "profile": args.profile, "cdxgen_args": args.cdxgen_args},
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
