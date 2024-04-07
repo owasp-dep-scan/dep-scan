@@ -232,23 +232,21 @@ def search_pkgs(db, project_type, pkg_list):
         vendor, name = get_pkg_vendor_name(pkg)
         version = pkg.get("version")
         if pkg.get("purl"):
+            ppurl = pkg.get("purl")
             purl_aliases[pkg.get("purl")] = pkg.get("purl")
-            purl_aliases[
-                f"{vendor.lower()}:{name.lower()}:{version}"
-            ] = pkg.get("purl")
+            purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = ppurl
+            if ppurl.startswith("pkg:npm"):
+                purl_aliases[f"npm:{vendor.lower()}/{name.lower()}:{version}"] = ppurl
             if not purl_aliases.get(f"{vendor.lower()}:{name.lower()}"):
-                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = pkg.get(
-                    "purl"
-                )
+                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = ppurl
         if variations:
             for vari in variations:
                 vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
                 pkg_aliases[
                     f"{vendor.lower()}:{name.lower()}:{version}"
                 ].append(vari_full_pkg)
-                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get(
-                    "purl"
-                )
+                if pkg.get("purl"):
+                    purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
     quick_res = db_lib.bulk_index_search(expanded_list)
     raw_results = db_lib.pkg_bulk_search(db, quick_res)
     raw_results = normalize.dedup(project_type, raw_results)
