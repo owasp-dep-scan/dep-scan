@@ -178,6 +178,13 @@ def create_pkg_variations(pkg_dict):
             name_aliases.add(name_parts[-1].lower())
         if name.lower().startswith("system"):
             vendor_aliases.add("microsoft")
+        # Support for runtime components
+        # See #294
+        if name.lower().startswith("runtime.") and "system." in name.lower():
+            runtime_part = name.split(".System")[0]
+            name_with_runtime = name.replace(f"{runtime_part}.", "") + "." + runtime_part
+            name_aliases.add(name_with_runtime)
+            name_aliases.add(name_with_runtime.replace(".runtime.native", ""))
     elif purl.startswith("pkg:gem") or purl.startswith("pkg:rubygems"):
         vendor_aliases.add("gem")
         vendor_aliases.add("rubygems")
