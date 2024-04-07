@@ -4,7 +4,7 @@ LABEL maintainer="AppThreat" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
       org.opencontainers.image.source="https://github.com/owasp-dep-scan/dep-scan" \
       org.opencontainers.image.url="https://appthreat.com" \
-      org.opencontainers.image.version="5.2.x" \
+      org.opencontainers.image.version="5.3.x" \
       org.opencontainers.image.vendor="appthreat" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
@@ -74,7 +74,7 @@ RUN set -e; \
     && sdk offline enable \
     && mv /root/.sdkman/candidates/* /opt/ \
     && rm -rf /root/.sdkman \
-    && npm install -g @cyclonedx/cdxgen@10.2.6 \
+    && npm install -g @cyclonedx/cdxgen@10.3.0 \
     && cdxgen --version \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
