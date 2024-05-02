@@ -157,7 +157,9 @@ package_alias = {
     "Microsoft.IdentityModel.Clients.ActiveDirectory": "active_directory_authentication_library",
     "starkbank_ecdsa": "ecdsa-elixir",
     "php-pear": "pear-core-minimal",
-    "Selenium.WebDriver": "selenium"
+    "Selenium.WebDriver": "selenium",
+    "selenium": "selenium",
+    "numpy": "numpy"
 }
 
 # Default ignore list

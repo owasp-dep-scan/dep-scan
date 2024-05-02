@@ -220,12 +220,12 @@ def create_pkg_variations(pkg_dict):
         if "-bin" not in name:
             name_aliases.add(name + "-bin")
     else:
-        # Filter vendor aliases that are also name aliases for non pypi packages
+        # Filter vendor aliases that are also name aliases
         # This is needed for numpy which has the vendor name numpy
         # Also needed for nuget. Eg: selenium:selenium
-        if not purl.startswith("pkg:pypi") and not purl.startswith("pkg:nuget"):
+        if not purl.startswith("pkg:nuget"):
             vendor_aliases = [
-                x for x in vendor_aliases if x not in name_aliases or x == vendor
+                x for x in vendor_aliases if x not in name_aliases or x == vendor or config.package_alias.get(x) is not None
             ]
     if len(vendor_aliases) > 1:
         for vvar in list(vendor_aliases):
