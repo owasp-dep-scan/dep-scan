@@ -17,6 +17,7 @@ ARG SBT_VERSION=1.9.8
 ARG MAVEN_VERSION=3.9.6
 ARG GRADLE_VERSION=8.5
 ARG NYDUS_VERSION=2.2.4
+ARG CDXGEN_VERSION=10.5.1
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=1.21.5 \
     JAVA_VERSION=$JAVA_VERSION \
@@ -52,7 +53,6 @@ RUN set -e; \
         *) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
     esac; \
     echo -e "[nodejs]\nname=nodejs\nstream=20\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
-    && microdnf module enable php ruby -y \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
         python3.11 python3.11-devel python3.11-pip ruby ruby-devel \
         libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel \
@@ -74,7 +74,7 @@ RUN set -e; \
     && sdk offline enable \
     && mv /root/.sdkman/candidates/* /opt/ \
     && rm -rf /root/.sdkman \
-    && npm install -g @cyclonedx/cdxgen@10.5.0 \
+    && npm install -g @cyclonedx/cdxgen@${CDXGEN_VERSION} \
     && cdxgen --version \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
