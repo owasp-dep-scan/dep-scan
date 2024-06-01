@@ -12,12 +12,10 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     -   [Vulnerability Data sources](#vulnerability-data-sources)
     -   [Linux distros](#linux-distros)
 -   [Usage](#usage)
-    -   [OCI Artifacts via ORAS cli](#oci-artifacts-via-oras-cli)
-    -   [Single binary executables](#single-binary-executables)
-    -   [Server mode](#server-mode)
     -   [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
     -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
+    -   [Server mode](#server-mode)
 -   [Supported languages and package format](#supported-languages-and-package-format)
 -   [Reachability analysis](#reachability-analysis)
     -   [Example analysis for a Java project](#example-analysis-for-a-java-project)
@@ -278,20 +276,6 @@ The following projects and package-dependency format is supported by cdxgen.
 | GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
 | Jenkins Plugins          | .hpi files                                                                              |
 | YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
-
-### OCI Artifacts via ORAS cli
-
-Use [ORAS cli](https://oras.land/docs/) to download the vulnerability database for effortless integration. An example workflow is [here](https://github.com/owasp-dep-scan/dep-scan/blob/master/.github/workflows/gobintests.yml#L44-L53).
-
-```bash
-export VDB_HOME=depscan
-mkdir -p $VDB_HOME
-oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-# oras pull ghcr.io/appthreat/vdb-10y:v5 -o $VDB_HOME
-oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
-```
-
-Use `vdb-10y` which is a larger database with vulnerability data spanning the last 10 years from 2014. In contrast, vdb with a starting year of 2018 is appropriate for most users.
 
 ### Server mode
 
