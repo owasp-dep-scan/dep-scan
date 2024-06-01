@@ -34,7 +34,7 @@ def best_fixed_location(sug_version, orig_fixed_location):
     """
     Compares the suggested version with the version from the original fixed
     location and returns the best version based on the major versions.
-    See: https://github.com/AppThreat/dep-scan/issues/72
+    See: https://github.com/owasp-dep-scan/dep-scan/issues/72
 
     :param sug_version: Suggested version
     :param orig_fixed_location: Version from original fixed location

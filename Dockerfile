@@ -1,26 +1,26 @@
 FROM almalinux:9.4-minimal
 
-LABEL maintainer="AppThreat" \
+LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
       org.opencontainers.image.source="https://github.com/owasp-dep-scan/dep-scan" \
-      org.opencontainers.image.url="https://appthreat.com" \
+      org.opencontainers.image.url="https://owasp.org/www-project-dep-scan" \
       org.opencontainers.image.version="6.0.0" \
-      org.opencontainers.image.vendor="appthreat" \
+      org.opencontainers.image.vendor="owasp-dep-scan" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
       org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=21.0.2-graalce
+ARG JAVA_VERSION=22.0.1-tem
 ARG SBT_VERSION=1.9.8
-ARG MAVEN_VERSION=3.9.6
-ARG GRADLE_VERSION=8.5
-ARG NYDUS_VERSION=2.2.4
+ARG MAVEN_VERSION=3.9.7
+ARG GRADLE_VERSION=8.8
+ARG NYDUS_VERSION=2.2.5
 ARG PYTHON_VERSION=3.12
 
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.21.5 \
+    GO_VERSION=1.22.3 \
     JAVA_VERSION=$JAVA_VERSION \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
@@ -62,9 +62,9 @@ RUN set -e; \
     && python3 --version \
     && node --version \
     && python3 -m pip install --upgrade pip \
-    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.${ARCH_NAME}.rpm \
-    && rpm -ivh wkhtmltox-0.12.6.1-2.almalinux9.${ARCH_NAME}.rpm \
-    && rm wkhtmltox-0.12.6.1-2.almalinux9.${ARCH_NAME}.rpm \
+    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && rpm -ivh wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && rm wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
     && curl -s "https://get.sdkman.io" | bash \
     && source "$HOME/.sdkman/bin/sdkman-init.sh" \
     && echo -e "sdkman_auto_answer=true\nsdkman_selfupdate_feature=false\nsdkman_auto_env=true\nsdkman_curl_connect_timeout=20\nsdkman_curl_max_time=0" >> $HOME/.sdkman/etc/config \
