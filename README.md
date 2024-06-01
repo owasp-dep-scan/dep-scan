@@ -5,7 +5,6 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 ![Depscan logo](dep-scan.png)
 
 [![release](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml/badge.svg)](https://github.com/owasp-dep-scan/dep-scan/actions/workflows/pythonpublish.yml)
-[![Discord](https://img.shields.io/badge/-Discord-lime?style=for-the-badge&logo=discord&logoColor=white&color=black)](https://discord.gg/pF4BYWEJcS)
 
 ## Contents
 
@@ -13,12 +12,10 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     -   [Vulnerability Data sources](#vulnerability-data-sources)
     -   [Linux distros](#linux-distros)
 -   [Usage](#usage)
-    -   [OCI Artifacts via ORAS cli](#oci-artifacts-via-oras-cli)
-    -   [Single binary executables](#single-binary-executables)
-    -   [Server mode](#server-mode)
     -   [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
     -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
+    -   [Server mode](#server-mode)
 -   [Supported languages and package format](#supported-languages-and-package-format)
 -   [Reachability analysis](#reachability-analysis)
     -   [Example analysis for a Java project](#example-analysis-for-a-java-project)
@@ -77,95 +74,11 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 -   Chainguard
 -   Wolfi OS
 
-Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `--cache` for the first time. dep-scan would also download the appropriate database based on project type automatically.
+Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 
 ## Usage
 
 dep-scan is ideal for use during continuous integration (CI) and as a local development tool.
-
-### OCI Artifacts via ORAS cli
-
-Use [ORAS cli](https://oras.land/docs/) to download the vulnerability database for effortless integration. Example workflow is [here](https://github.com/owasp-dep-scan/dep-scan/blob/master/.github/workflows/gobintests.yml#L44-L53).
-
-```bash
-export VDB_HOME=depscan
-mkdir -p $VDB_HOME
-oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-# oras pull ghcr.io/appthreat/vdb-10y:v5 -o $VDB_HOME
-oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
-```
-
-Use `vdb-10y` which is a larger database with vulnerability data spanning the last 10 years from 2014. In contrast, vdb with a starting year of 2018 is appropriate for most users.
-
-### Single binary executables
-
-Download the executable binary for your operating system from the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases). These binary bundle the following:
-
--   dep-scan with Python 3.11
--   cdxgen with Node.js 21
--   cdxgen binary plugins
-
-```bash
-curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan-linux-amd64
-chmod +x depscan-linux-amd64
-./depscan-linux-amd64 --help
-```
-
-On Windows,
-
-```powershell
-curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan.exe
-.\depscan.exe --help
-```
-
-### Server mode
-
-dep-scan and cdxgen could be run in server mode. Use the included docker-compose file to get started.
-
-```bash
-git clone https://github.com/owasp-dep-scan/dep-scan
-docker compose up
-```
-
-```bash
-depscan --server --server-host 0.0.0.0 --server-port 7070
-```
-
-In server mode, use `/cache` endpoint to cache the vulnerability database.
-
-```bash
-# This would take over 5 minutes
-curl http://0.0.0.0:7070/cache
-```
-
-Use the `/scan` endpoint to perform scans.
-
-> [!NOTE]
-> The `type` parameter is mandatory in server mode.
-
--   Scanning a local directory.
-
-```bash
-curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan
-```
-
--   Scanning a SBOM file (present locally).
-
-```bash
-curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
-```
-
--   Scanning a GitHub repo.
-
-```bash
-curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
-```
-
--   Uploading a SBOM file and generating results based on it.
-
-```bash
-curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
-```
 
 ### Scanning projects locally (Python version)
 
@@ -186,7 +99,7 @@ depscan --src $PWD --reports-dir $PWD/reports
 The full list of options is below:
 
 ```bash
-usage: cli.py [-h] [--no-banner] [--cache] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM]
+usage: cli.py [-h] [--no-banner] [] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM]
               [-i SRC_DIR_IMAGE] [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
               [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
               [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
@@ -196,7 +109,7 @@ Fully open-source security and license audit for application dependencies and co
 options:
   -h, --help            show this help message and exit
   --no-banner           Do not display banner
-  --cache               Cache vulnerability information in platform specific user_data_dir
+                 Cache vulnerability information in platform specific user_data_dir
   --csaf                Generate a OASIS CSAF VEX document
   --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
   --profile {appsec,research,operational,threat-modeling,license-compliance,generic}
@@ -248,16 +161,22 @@ options:
 
 ### Scanning containers locally (Python version)
 
+Scan a Java project.
+
+```bash
+depscan --src <path> -o containertests/depscan-scan.json -t java
+```
+
 Scan `latest` tag of the container `shiftleft/scan-slim`
 
 ```bash
-depscan --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
+depscan --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
 ```
 
 Include `license` to the type to perform the license audit.
 
 ```bash
-depscan --cache --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
+depscan --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
 ```
 
 You can also specify the image using the sha256 digest
@@ -298,32 +217,6 @@ docker run --rm \
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
 
-## Supported languages and package format
-
-dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create a Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
-
-The following projects and package-dependency format is supported by cdxgen.
-
-| Language                 | Package format                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js              |
-| java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel                    |
-| php                      | composer.lock                                                                           |
-| python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl, .egg-info |
-| go                       | binary, go.mod, go.sum, Gopkg.lock                                                      |
-| ruby                     | Gemfile.lock, gemspec                                                                   |
-| rust                     | binary, Cargo.toml, Cargo.lock                                                          |
-| .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg           |
-| dart                     | pubspec.lock, pubspec.yaml                                                              |
-| haskell                  | cabal.project.freeze                                                                    |
-| elixir                   | mix.lock                                                                                |
-| c/c++                    | conan.lock, conanfile.txt                                                               |
-| clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                                         |
-| docker / oci image       | All supported languages and Linux OS packages                                           |
-| GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
-| Jenkins Plugins          | .hpi files                                                                              |
-| YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
-
 ## Reachability analysis
 
 Depscan can perform reachability analysis for Java, JavaScript, TypeScript and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
@@ -357,6 +250,76 @@ depscan --profile research -t php -i <source directory> --reports-dir <reports d
 <img src="docs/php-reach1.png" alt="PHP Reachability" width="256">
 
 <img src="docs/not-reachable.png" alt="PHP NOT Reachability" width="256">
+
+## Supported languages and package format
+
+dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create a Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
+
+The following projects and package-dependency format is supported by cdxgen.
+
+| Language                 | Package format                                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js              |
+| java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel                    |
+| php                      | composer.lock                                                                           |
+| python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl, .egg-info |
+| go                       | binary, go.mod, go.sum, Gopkg.lock                                                      |
+| ruby                     | Gemfile.lock, gemspec                                                                   |
+| rust                     | binary, Cargo.toml, Cargo.lock                                                          |
+| .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg           |
+| dart                     | pubspec.lock, pubspec.yaml                                                              |
+| haskell                  | cabal.project.freeze                                                                    |
+| elixir                   | mix.lock                                                                                |
+| c/c++                    | conan.lock, conanfile.txt                                                               |
+| clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                                         |
+| docker / oci image       | All supported languages and Linux OS packages                                           |
+| GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
+| Jenkins Plugins          | .hpi files                                                                              |
+| YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
+
+### Server mode
+
+dep-scan and cdxgen could be run in server mode. Use the included docker-compose file to get started.
+
+```bash
+git clone https://github.com/owasp-dep-scan/dep-scan
+docker compose up
+```
+
+```bash
+depscan --server --server-host 0.0.0.0 --server-port 7070
+```
+
+In server mode, use `/cache` endpoint to cache the vulnerability database.
+
+```bash
+# This would take over 5 minutes
+curl http://0.0.0.0:7070/cache
+```
+
+Use the `/scan` endpoint to perform scans.
+
+> [!NOTE]
+> The `type` parameter is mandatory in server mode.
+
+-   Scanning a local directory.
+    Scanning an SBOM file (present locally).
+
+```bash
+curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
+```
+
+-   Scanning a GitHub repo.
+
+```bash
+curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
+```
+
+-   Uploading an SBOM file and generating results based on it.
+
+```bash
+curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
+```
 
 ## Customization through environment variables
 
@@ -507,23 +470,6 @@ The objects available are taken from the CycloneDX \*.vdr.json BOM file generate
 
 Furthermore, insights are imaginable to be made available to the template, please reach out or contribute on demand.
 We appreciate it if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
-
-## Performance tuning
-
-### Use nydus to speed up the initial vdb download
-
-vdb v5 is published in RAFS (Registry Accelerated File System) format with better de-duplication and packing. depscan would automatically use this image if `nydus-static` binary is available in the PATH.
-
-```shell
-curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
-tar -xvf nydus-static-v2.2.4-linux-amd64.tgz
-chmod +x nydus-static/*
-mv nydus-static/* /usr/local/bin/
-```
-
-## Discord support
-
-The developers could be reached via the [discord](https://discord.gg/DCNxzaeUpd) channel for enterprise support.
 
 ## License
 
