@@ -752,17 +752,15 @@ def main():
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
     if (
-        os.getenv("GITHUB_ACTION")
+        os.getenv("CI")
         and not args.no_banner
         and not os.getenv("INPUT_THANK_YOU", "")
         == ("I have sponsored OWASP-dep-scan.")
     ):
         console.print(
             Panel(
-                "OWASP relies on donations to fund our projects.\n\n"
-                "Please donate at: https://owasp.org/donate/?reponame=www-project"
-                "-dep-scan&title=OWASP+depscan.",
-                title="Donate to OWASP",
+                "OWASP relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
+                title="Support OWASP Foundation",
                 expand=False,
             )
         )
