@@ -1,5 +1,6 @@
 import math
 from datetime import datetime
+from semver import Version
 
 import httpx
 from rich.progress import Progress
@@ -40,7 +41,9 @@ def get_lookup_url(registry_type, pkg):
     return None, None
 
 
-def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None):
+def metadata_from_registry(
+    registry_type, scoped_pkgs, pkg_list, private_ns=None
+):
     """
     Method to query registry for the package metadata
 
@@ -64,7 +67,9 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
         redirect_stdout=False,
         refresh_per_second=1,
     ) as progress:
-        task = progress.add_task("[green] Auditing packages", total=len(pkg_list))
+        task = progress.add_task(
+            "[green] Auditing packages", total=len(pkg_list)
+        )
         for pkg in pkg_list:
             if circuit_breaker:
                 LOG.info(
@@ -96,14 +101,16 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 if private_ns:
                     namespace_prefixes = private_ns.split(",")
                     for ns in namespace_prefixes:
-                        if key.lower().startswith(ns.lower()) or key.lower().startswith(
-                            "@" + ns.lower()
-                        ):
+                        if key.lower().startswith(
+                            ns.lower()
+                        ) or key.lower().startswith("@" + ns.lower()):
                             is_private_pkg = True
                             break
                 risk_metrics = {}
                 if registry_type == "npm":
-                    risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = npm_pkg_risk(
+                        json_data, is_private_pkg, scope
+                    )
                 elif registry_type == "pypi":
                     project_type_pkg = f"python:{key}".lower()
                     required_pkgs = scoped_pkgs.get("required", [])
@@ -124,7 +131,9 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                         or project_type_pkg in excluded_pkgs
                     ):
                         scope = "excluded"
-                    risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = pypi_pkg_risk(
+                        json_data, is_private_pkg, scope, pkg
+                    )
                 metadata_dict[key] = {
                     "scope": scope,
                     "pkg_metadata": json_data,
@@ -269,14 +278,17 @@ def compute_time_risks(
     # Check if the package is at least 1 year old. Quarantine period.
     if created_now_diff.total_seconds() < config.created_now_quarantine_seconds:
         risk_metrics["created_now_quarantine_seconds_risk"] = True
-        risk_metrics[
-            "created_now_quarantine_seconds_value"
-        ] = latest_now_diff.total_seconds()
+        risk_metrics["created_now_quarantine_seconds_value"] = (
+            latest_now_diff.total_seconds()
+        )
 
     # Check for the maximum seconds difference between latest version and now
     if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
+        print(latest_now_diff.total_seconds(), config.latest_now_max_seconds)
         risk_metrics["latest_now_max_seconds_risk"] = True
-        risk_metrics["latest_now_max_seconds_value"] = latest_now_diff.total_seconds()
+        risk_metrics["latest_now_max_seconds_value"] = (
+            latest_now_diff.total_seconds()
+        )
         # Since the package is quite old we can relax the min versions risk
         risk_metrics["pkg_min_versions_risk"] = False
     else:
@@ -287,17 +299,19 @@ def compute_time_risks(
         # packages
         if mod_create_diff.total_seconds() < config.mod_create_min_seconds:
             risk_metrics["mod_create_min_seconds_risk"] = True
-            risk_metrics[
-                "mod_create_min_seconds_value"
-            ] = mod_create_diff.total_seconds()
+            risk_metrics["mod_create_min_seconds_value"] = (
+                mod_create_diff.total_seconds()
+            )
     # Check for the minimum seconds difference between latest version and now
     if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
         risk_metrics["latest_now_min_seconds_risk"] = True
-        risk_metrics["latest_now_min_seconds_value"] = latest_now_diff.total_seconds()
+        risk_metrics["latest_now_min_seconds_value"] = (
+            latest_now_diff.total_seconds()
+        )
     return risk_metrics
 
 
-def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
+def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
     Calculate various package risks based on the metadata from pypi.
 
@@ -319,15 +333,38 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     versions_dict = pkg_metadata.get("releases", {})
     versions = [ver[0] for k, ver in versions_dict.items() if ver]
     is_deprecated = info.get("yanked") and info.get("yanked_reason")
+    if not is_deprecated and pkg and pkg.get("version"):
+        theversion = versions_dict.get(pkg.get("version"), [])
+        if isinstance(theversion, list):
+            theversion = theversion[0]
+        if theversion.get("yanked"):
+            is_deprecated = True
     # Some packages like pypi:azure only mention deprecated in the description
     # without yanking the package
     pkg_description = info.get("description", "").lower()
-    if not is_deprecated and ("is deprecated" in pkg_description or "no longer maintained" in pkg_description):
+    if not is_deprecated and (
+        "is deprecated" in pkg_description
+        or "no longer maintained" in pkg_description
+    ):
         is_deprecated = True
     latest_deprecated = False
-    first_version = None
-    latest_version = None
-
+    version_nums = list(versions_dict.keys())
+    # Ignore empty versions without metadata. Thanks pypi
+    version_nums = [ver for ver in version_nums if versions_dict.get(ver)]
+    try:
+        first_version_num = min(
+            version_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+        latest_version_num = max(
+            version_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+    except (ValueError, TypeError):
+        first_version_num = version_nums[0]
+        latest_version_num = version_nums[-1]
+    first_version = versions_dict.get(first_version_num)[0]
+    latest_version = versions_dict.get(latest_version_num)[0]
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
         risk_metrics["pkg_private_on_public_registry_risk"] = True
@@ -338,8 +375,6 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
         if len(versions) < config.pkg_min_versions:
             risk_metrics["pkg_min_versions_risk"] = True
             risk_metrics["pkg_min_versions_value"] = len(versions)
-        first_version = versions[0]
-        latest_version = versions[-1]
         # Check if the latest version is deprecated
         if latest_version and latest_version.get("yanked"):
             latest_deprecated = True

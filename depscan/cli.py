@@ -137,7 +137,7 @@ def build_args():
         "--cdxgen-args",
         default=os.getenv("CDXGEN_ARGS"),
         dest="cdxgen_args",
-        help="Additional arguments to pass to cdxgen"
+        help="Additional arguments to pass to cdxgen",
     )
     parser.add_argument(
         "--private-ns",
@@ -741,6 +741,7 @@ def main():
     and generates reports based on the results.
     """
     args = build_args()
+    perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
         summary,
@@ -750,21 +751,21 @@ def main():
         pkg_vulnerabilities,
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
-    if os.getenv("GITHUB_ACTION", "").lower() == "__appthreat_dep-scan-action" \
-        and not os.getenv("INPUT_THANK_YOU", "") == ("I have sponsored "
-                                                 "OWASP-dep-scan."):
+    if (
+        os.getenv("GITHUB_ACTION")
+        and not args.no_banner
+        and not os.getenv("INPUT_THANK_YOU", "")
+        == ("I have sponsored OWASP-dep-scan.")
+    ):
         console.print(
             Panel(
                 "OWASP relies on donations to fund our projects.\n\n"
-                "Donate at: https://owasp.org/donate/?reponame=www-project"
-                "-dep-scan&title=OWASP+depscan.\n\nAfter you have done so, "
-                "make sure you have configured the action with thank_you: 'I "
-                "have sponsored OWASP-dep-scan.'",
-                title="Please make a donation",
+                "Please donate at: https://owasp.org/donate/?reponame=www-project"
+                "-dep-scan&title=OWASP+depscan.",
+                title="Donate to OWASP",
                 expand=False,
             )
         )
-        sys.exit(1)
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
@@ -808,6 +809,8 @@ def main():
     if args.project_type:
         project_types_list = args.project_type.split(",")
     elif args.search_purl:
+        # Automatically enable risk audit for single purl searches
+        perform_risk_audit = True
         purl_obj = parse_purl(args.search_purl)
         purl_obj["purl"] = args.search_purl
         purl_obj["vendor"] = purl_obj.get("namespace")
@@ -870,7 +873,11 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server, "profile": args.profile, "cdxgen_args": args.cdxgen_args},
+                {
+                    "cdxgen_server": args.cdxgen_server,
+                    "profile": args.profile,
+                    "cdxgen_args": args.cdxgen_args,
+                },
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -903,7 +910,7 @@ def main():
                 project_type, licenses_results, license_report_file
             )
         if project_type in risk_audit_map:
-            if args.risk_audit:
+            if perform_risk_audit:
                 console.print(
                     Panel(
                         f"Performing OSS Risk Audit for packages from "
@@ -1071,9 +1078,9 @@ def main():
             )
     console.save_html(
         html_file,
-        theme=MONOKAI
-        if os.getenv("USE_DARK_THEME")
-        else DEFAULT_TERMINAL_THEME,
+        theme=(
+            MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME
+        ),
     )
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished
