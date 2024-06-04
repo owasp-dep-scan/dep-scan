@@ -80,7 +80,7 @@ def build_args():
         action="store_true",
         default=False,
         dest="no_banner",
-        help="Do not display banner",
+        help="Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.",
     )
     parser.add_argument(
         "--cache",
@@ -911,15 +911,16 @@ def main():
             )
         if project_type in risk_audit_map:
             if perform_risk_audit:
-                console.print(
-                    Panel(
-                        f"Performing OSS Risk Audit for packages from "
-                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
-                        f"[/bold]. This will take a while ...",
-                        title="OSS Risk Audit",
-                        expand=False,
+                if len(pkg_list) > 1:
+                    console.print(
+                        Panel(
+                            f"Performing OSS Risk Audit for packages from "
+                            f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                            f"[/bold]. This will take a while ...",
+                            title="OSS Risk Audit",
+                            expand=False,
+                        )
                     )
-                )
                 try:
                     risk_results = risk_audit(
                         project_type,
@@ -1028,11 +1029,12 @@ def main():
                 except NotImplementedError:
                     pass
                 run_cacher = False
-        LOG.info(
-            "Performing regular scan for %s using plugin %s",
-            src_dir,
-            project_type,
-        )
+        if len(pkg_list) > 1:
+            LOG.info(
+                "Performing regular scan for %s using plugin %s",
+                src_dir,
+                project_type,
+            )
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
             db, project_type, pkg_list, args.suggest
         )
