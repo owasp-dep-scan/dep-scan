@@ -97,27 +97,6 @@ oras pull ghcr.io/owasp-dep-scan/depscan:v4 -o $VDB_HOME
 
 Use `vdb-10y` which is a larger database with vulnerability data spanning the last 10 years from 2014. In contrast, vdb with a starting year of 2018 is appropriate for most users.
 
-### Single binary executables
-
-Download the executable binary for your operating system from the [releases page](https://github.com/owasp-dep-scan/depscan-bin/releases). These binary bundle the following:
-
--   dep-scan with Python 3.11
--   cdxgen with Node.js 21
--   cdxgen binary plugins
-
-```bash
-curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan-linux-amd64
-chmod +x depscan-linux-amd64
-./depscan-linux-amd64 --help
-```
-
-On Windows,
-
-```powershell
-curl -LO https://github.com/owasp-dep-scan/depscan-bin/releases/latest/download/depscan.exe
-.\depscan.exe --help
-```
-
 ### Server mode
 
 dep-scan and cdxgen could be run in server mode. Use the included docker-compose file to get started.
@@ -149,19 +128,14 @@ Use the `/scan` endpoint to perform scans.
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
--   Scanning a SBOM file (present locally).
+-   Scanning an SBOM file (present locally).
 
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
 -   Scanning a GitHub repo.
-
-```bash
-curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
-```
-
--   Uploading a SBOM file and generating results based on it.
+    Uploading an SBOM file and generating results based on it.
 
 ```bash
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
@@ -266,7 +240,7 @@ You can also specify the image using the sha256 digest
 depscan --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
 ```
 
-You can also save container images using docker or podman save command and pass the archive to depscan for scanning.
+You can also save container images using the docker or podman save command and pass the archive to depscan for scanning.
 
 ```bash
 docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
