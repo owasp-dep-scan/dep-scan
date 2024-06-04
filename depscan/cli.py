@@ -759,8 +759,8 @@ def main():
     ):
         console.print(
             Panel(
-                "OWASP relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
-                title="Support OWASP Foundation",
+                "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
+                title="Donate to the OWASP Foundation",
                 expand=False,
             )
         )
