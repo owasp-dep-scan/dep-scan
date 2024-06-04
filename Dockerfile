@@ -1,10 +1,10 @@
-FROM almalinux:9.3-minimal
+FROM almalinux:9.4-minimal
 
 LABEL maintainer="AppThreat" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
       org.opencontainers.image.source="https://github.com/owasp-dep-scan/dep-scan" \
       org.opencontainers.image.url="https://appthreat.com" \
-      org.opencontainers.image.version="5.3.x" \
+      org.opencontainers.image.version="5.4.x" \
       org.opencontainers.image.vendor="appthreat" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
@@ -12,14 +12,16 @@ LABEL maintainer="AppThreat" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=21.0.2-graalce
+ARG JAVA_VERSION=22.0.1-tem
 ARG SBT_VERSION=1.9.8
-ARG MAVEN_VERSION=3.9.6
-ARG GRADLE_VERSION=8.5
-ARG NYDUS_VERSION=2.2.4
-ARG CDXGEN_VERSION=10.5.1
+ARG MAVEN_VERSION=3.9.7
+ARG GRADLE_VERSION=8.8
+ARG NYDUS_VERSION=2.2.5
+ARG CDXGEN_VERSION=10.5.2
+ARG PYTHON_VERSION=3.12
+
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.21.5 \
+    GO_VERSION=1.22.3 \
     JAVA_VERSION=$JAVA_VERSION \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
@@ -54,16 +56,16 @@ RUN set -e; \
     esac; \
     echo -e "[nodejs]\nname=nodejs\nstream=20\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
-        python3.11 python3.11-devel python3.11-pip ruby ruby-devel \
+        python${PYTHON_VERSION} python${PYTHON_VERSION}-devel python${PYTHON_VERSION}-pip ruby ruby-devel \
         libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel \
         pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
-    && alternatives --install /usr/bin/python3 python /usr/bin/python3.11 1 \
+    && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 1 \
     && python3 --version \
     && node --version \
     && python3 -m pip install --upgrade pip \
-    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox-0.12.6.1-2.almalinux9.${ARCH_NAME}.rpm \
-    && rpm -ivh wkhtmltox-0.12.6.1-2.almalinux9.${ARCH_NAME}.rpm \
-    && rm wkhtmltox-0.12.6.1-2.almalinux9.${ARCH_NAME}.rpm \
+    && curl -LO https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && rpm -ivh wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
+    && rm wkhtmltox-0.12.6.1-3.almalinux9.${ARCH_NAME}.rpm \
     && curl -s "https://get.sdkman.io" | bash \
     && source "$HOME/.sdkman/bin/sdkman-init.sh" \
     && echo -e "sdkman_auto_answer=true\nsdkman_selfupdate_feature=false\nsdkman_auto_env=true\nsdkman_curl_connect_timeout=20\nsdkman_curl_max_time=0" >> $HOME/.sdkman/etc/config \
