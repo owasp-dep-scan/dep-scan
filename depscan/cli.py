@@ -80,7 +80,7 @@ def build_args():
         action="store_true",
         default=False,
         dest="no_banner",
-        help="Do not display banner",
+        help="Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.",
     )
     parser.add_argument(
         "--cache",
@@ -137,7 +137,7 @@ def build_args():
         "--cdxgen-args",
         default=os.getenv("CDXGEN_ARGS"),
         dest="cdxgen_args",
-        help="Additional arguments to pass to cdxgen"
+        help="Additional arguments to pass to cdxgen",
     )
     parser.add_argument(
         "--private-ns",
@@ -741,6 +741,7 @@ def main():
     and generates reports based on the results.
     """
     args = build_args()
+    perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
         summary,
@@ -750,21 +751,19 @@ def main():
         pkg_vulnerabilities,
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
-    if os.getenv("GITHUB_ACTION", "").lower() == "__appthreat_dep-scan-action" \
-        and not os.getenv("INPUT_THANK_YOU", "") == ("I have sponsored "
-                                                 "OWASP-dep-scan."):
+    if (
+        os.getenv("CI")
+        and not args.no_banner
+        and not os.getenv("INPUT_THANK_YOU", "")
+        == ("I have sponsored OWASP-dep-scan.")
+    ):
         console.print(
             Panel(
-                "OWASP relies on donations to fund our projects.\n\n"
-                "Donate at: https://owasp.org/donate/?reponame=www-project"
-                "-dep-scan&title=OWASP+depscan.\n\nAfter you have done so, "
-                "make sure you have configured the action with thank_you: 'I "
-                "have sponsored OWASP-dep-scan.'",
-                title="Please make a donation",
+                "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
+                title="Donate to the OWASP Foundation",
                 expand=False,
             )
         )
-        sys.exit(1)
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
@@ -808,6 +807,8 @@ def main():
     if args.project_type:
         project_types_list = args.project_type.split(",")
     elif args.search_purl:
+        # Automatically enable risk audit for single purl searches
+        perform_risk_audit = True
         purl_obj = parse_purl(args.search_purl)
         purl_obj["purl"] = args.search_purl
         purl_obj["vendor"] = purl_obj.get("namespace")
@@ -870,7 +871,11 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server, "profile": args.profile, "cdxgen_args": args.cdxgen_args},
+                {
+                    "cdxgen_server": args.cdxgen_server,
+                    "profile": args.profile,
+                    "cdxgen_args": args.cdxgen_args,
+                },
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -903,16 +908,17 @@ def main():
                 project_type, licenses_results, license_report_file
             )
         if project_type in risk_audit_map:
-            if args.risk_audit:
-                console.print(
-                    Panel(
-                        f"Performing OSS Risk Audit for packages from "
-                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
-                        f"[/bold]. This will take a while ...",
-                        title="OSS Risk Audit",
-                        expand=False,
+            if perform_risk_audit:
+                if len(pkg_list) > 1:
+                    console.print(
+                        Panel(
+                            f"Performing OSS Risk Audit for packages from "
+                            f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                            f"[/bold]. This will take a while ...",
+                            title="OSS Risk Audit",
+                            expand=False,
+                        )
                     )
-                )
                 try:
                     risk_results = risk_audit(
                         project_type,
@@ -995,7 +1001,7 @@ def main():
                 github_client = github.GitHub(github_token)
 
                 if not github_client.can_authenticate():
-                    LOG.error(
+                    LOG.info(
                         "The GitHub personal access token supplied appears to be invalid or expired. Please see: https://github.com/owasp-dep-scan/dep-scan#github-security-advisory"
                     )
                 else:
@@ -1021,11 +1027,12 @@ def main():
                 except NotImplementedError:
                     pass
                 run_cacher = False
-        LOG.info(
-            "Performing regular scan for %s using plugin %s",
-            src_dir,
-            project_type,
-        )
+        if len(pkg_list) > 1:
+            LOG.info(
+                "Performing regular scan for %s using plugin %s",
+                src_dir,
+                project_type,
+            )
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
             db, project_type, pkg_list, args.suggest
         )
@@ -1071,9 +1078,9 @@ def main():
             )
     console.save_html(
         html_file,
-        theme=MONOKAI
-        if os.getenv("USE_DARK_THEME")
-        else DEFAULT_TERMINAL_THEME,
+        theme=(
+            MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME
+        ),
     )
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished
