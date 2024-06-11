@@ -23,10 +23,10 @@ def get_lookup_url(registry_type, pkg):
         vendor = pkg.get("vendor")
         name = pkg.get("name")
     else:
-        tmpA = pkg.split("|")
-        name = tmpA[len(tmpA) - 2]
-        if len(tmpA) == 3:
-            vendor = tmpA[0]
+        tmp_a = pkg.split("|")
+        name = tmp_a[len(tmp_a) - 2]
+        if len(tmp_a) == 3:
+            vendor = tmp_a[0]
     key = name
     # Prefix vendor for npm
     if registry_type == "npm":
