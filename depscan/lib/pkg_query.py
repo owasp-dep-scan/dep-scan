@@ -1,5 +1,6 @@
 import math
 from datetime import datetime
+from semver import Version
 
 import httpx
 from rich.progress import Progress
@@ -124,7 +125,7 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                         or project_type_pkg in excluded_pkgs
                     ):
                         scope = "excluded"
-                    risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope, pkg)
                 metadata_dict[key] = {
                     "scope": scope,
                     "pkg_metadata": json_data,
@@ -297,13 +298,15 @@ def compute_time_risks(
     return risk_metrics
 
 
-def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
+def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
     Calculate various package risks based on the metadata from pypi.
 
     :param pkg_metadata: A dict containing the metadata of the package from PyPI
     :param is_private_pkg: Boolean to indicate if this package is private
     :param scope: Package scope
+    :param pkg: Package object
+
     :return: Dict of risk metrics and corresponding PyPI values.
     """
     risk_metrics = {
@@ -319,14 +322,35 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     versions_dict = pkg_metadata.get("releases", {})
     versions = [ver[0] for k, ver in versions_dict.items() if ver]
     is_deprecated = info.get("yanked") and info.get("yanked_reason")
+    if not is_deprecated and pkg and pkg.get("version"):
+        theversion = versions_dict.get(pkg.get("version"), [])
+        if isinstance(theversion, list):
+            theversion = theversion[0]
+        if theversion.get("yanked"):
+            is_deprecated = True
     # Some packages like pypi:azure only mention deprecated in the description
     # without yanking the package
     pkg_description = info.get("description", "").lower()
     if not is_deprecated and ("is deprecated" in pkg_description or "no longer maintained" in pkg_description):
         is_deprecated = True
     latest_deprecated = False
-    first_version = None
-    latest_version = None
+    version_nums = list(versions_dict.keys())
+    # Ignore empty versions without metadata. Thanks pypi
+    version_nums = [ver for ver in version_nums if versions_dict.get(ver)]
+    try:
+        first_version_num = min(
+            version_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+        latest_version_num = max(
+            version_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+    except (ValueError, TypeError):
+        first_version_num = version_nums[0]
+        latest_version_num = version_nums[-1]
+    first_version = versions_dict.get(first_version_num)[0]
+    latest_version = versions_dict.get(latest_version_num)[0]
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
@@ -338,8 +362,6 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
         if len(versions) < config.pkg_min_versions:
             risk_metrics["pkg_min_versions_risk"] = True
             risk_metrics["pkg_min_versions_value"] = len(versions)
-        first_version = versions[0]
-        latest_version = versions[-1]
         # Check if the latest version is deprecated
         if latest_version and latest_version.get("yanked"):
             latest_deprecated = True

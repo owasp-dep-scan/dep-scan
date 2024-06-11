@@ -306,6 +306,7 @@ def prepare_vdr(options: PrepareVdrOptions):
     fp_count = 0
     pkg_attention_count = 0
     critical_count = 0
+    malicious_count = 0
     has_poc_count = 0
     has_reachable_poc_count = 0
     has_exploit_count = 0
@@ -376,6 +377,10 @@ def prepare_vdr(options: PrepareVdrOptions):
         package_type = None
         insights = []
         plain_insights = []
+        if vid.startswith("MAL-"):
+            insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
+            plain_insights.append("Malicious")
+            malicious_count += 1
         purl_obj = None
         vendor = package_issue["affected_location"].get("vendor")
         # If the match was based on name and version alone then the alias might legitimately lack a full purl
@@ -760,7 +765,18 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
         console.print()
         console.print(utable)
         console.print()
-    if options.scoped_pkgs or has_exploit_count:
+    if malicious_count:
+        rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
+        if malicious_count > 1:
+            rmessage = f":stop_sign: {malicious_count} malicious packages found in this project! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove the packages from all affected applications."
+        console.print(
+            Panel(
+                rmessage,
+                title="Action Required",
+                expand=False,
+            )
+        )
+    elif options.scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
             if has_reachable_exploit_count:
                 rmessage = (
@@ -898,18 +914,19 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     this result."""
                 console.print(Panel(rmessage, title="Recommendation"))
             else:
-                rmessage = ":white_check_mark: No package requires immediate attention."
+                rmessage = None
                 if reached_purls:
                     rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are not reachable."
                 elif direct_purls:
                     rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies."
-                console.print(
-                    Panel(
-                        rmessage,
-                        title="Recommendation",
-                        expand=False,
+                if rmessage:
+                    console.print(
+                        Panel(
+                            rmessage,
+                            title="Recommendation",
+                            expand=False,
+                        )
                     )
-                )
     elif critical_count:
         console.print(
             Panel(

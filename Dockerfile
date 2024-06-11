@@ -56,7 +56,7 @@ RUN set -e; \
     echo -e "[nodejs]\nname=nodejs\nstream=20\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
         python${PYTHON_VERSION} python${PYTHON_VERSION}-devel python${PYTHON_VERSION}-pip ruby ruby-devel \
-        libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel \
+        libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel diffutils \
         pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
     && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 1 \
     && python3 --version \

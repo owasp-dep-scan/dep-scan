@@ -191,7 +191,7 @@ def test_pypi_confusion_risks():
     )
     with open(test_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None)
+        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics == {
             "pkg_deprecated_risk": False,
             "pkg_min_versions_risk": False,
@@ -207,7 +207,7 @@ def test_pypi_confusion_risks():
     )
     with open(test_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None)
+        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics == {
             "pkg_deprecated_risk": False,
             "pkg_min_versions_risk": False,
@@ -223,7 +223,7 @@ def test_pypi_confusion_risks():
     )
     with open(test_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None)
+        risk_metrics = pypi_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics
         assert risk_metrics["pkg_min_versions_risk"]
 
