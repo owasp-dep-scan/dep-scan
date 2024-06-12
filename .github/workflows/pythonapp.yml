@@ -36,3 +36,7 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=depscan test
+    - name: cli tests
+      run: |
+        python depscan/cli.py --purl "pkg:pypi/requests@2.32.1"
+        python depscan/cli.py --purl "pkg:pypi/reqwestss@0.1.0"

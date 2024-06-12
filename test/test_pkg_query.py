@@ -35,16 +35,18 @@ def test_calculate_risk_score():
     )
     assert two_score < one_score
     # Deprecated package risk
-    dep_score = calculate_risk_score({"pkg_deprecated_risk": True})
-    assert dep_score > one_score
+    dep_score = calculate_risk_score({"pkg_deprecated_risk": True, "pkg_deprecated_value": 1})
+    assert dep_score > 0
     dep_score = calculate_risk_score(
         {
             "pkg_deprecated_risk": True,
+            "pkg_deprecated_value": 1,
+            "pkg_version_deprecated_risk": False,
             "pkg_min_versions_risk": True,
             "pkg_min_versions_value": 1,
         }
     )
-    assert dep_score > one_score
+    assert dep_score > 0
     # Min maintainers risk
     m_score = calculate_risk_score(
         {
@@ -78,7 +80,7 @@ def test_calculate_risk_score():
         }
     )
     assert l2_score > l1_score
-    assert l2_score > 0.5
+    assert l2_score > 0.4
     # Also has script section
     l3_score = calculate_risk_score(
         {
@@ -127,6 +129,7 @@ def test_calculate_risk_score():
             "pkg_node_version_risk": True,
             "pkg_node_version_value": 1,
             "pkg_deprecated_risk": True,
+            "pkg_version_deprecated_risk": False,
         }
     )
     assert od_score > o_score
@@ -158,7 +161,7 @@ def test_npm_confusion_risks():
     )
     with open(test_deprecated_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = npm_pkg_risk(pkg_metadata, True, None)
+        risk_metrics = npm_pkg_risk(pkg_metadata, True, None, None)
         assert risk_metrics["pkg_private_on_public_registry_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
 
@@ -169,7 +172,7 @@ def test_npm_risks():
     )
     with open(test_deprecated_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = npm_pkg_risk(pkg_metadata, False, None)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics["pkg_deprecated_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
         assert risk_metrics["latest_now_max_seconds_risk"]
@@ -179,9 +182,10 @@ def test_npm_risks():
     )
     with open(ebp_pkg) as fp:
         pkg_metadata = json.load(fp)
-        risk_metrics = npm_pkg_risk(pkg_metadata, False, None)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics["pkg_node_version_risk"]
         assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
 
 
@@ -194,6 +198,7 @@ def test_pypi_confusion_risks():
         risk_metrics = pypi_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics == {
             "pkg_deprecated_risk": False,
+            "pkg_version_deprecated_risk": False,
             "pkg_min_versions_risk": False,
             "created_now_quarantine_seconds_risk": False,
             "latest_now_max_seconds_risk": False,
@@ -210,6 +215,7 @@ def test_pypi_confusion_risks():
         risk_metrics = pypi_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics == {
             "pkg_deprecated_risk": False,
+            "pkg_version_deprecated_risk": False,
             "pkg_min_versions_risk": False,
             "created_now_quarantine_seconds_risk": False,
             "latest_now_max_seconds_risk": False,

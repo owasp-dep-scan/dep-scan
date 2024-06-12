@@ -534,8 +534,6 @@ def set_project_types(args, src_dir):
     if args.project_type:
         project_types_list = args.project_type.split(",")
     elif args.search_purl:
-        # Automatically enable risk audit for single purl searches
-        perform_risk_audit = True
         purl_obj = parse_purl(args.search_purl)
         purl_obj["purl"] = args.search_purl
         purl_obj["vendor"] = purl_obj.get("namespace")
@@ -855,6 +853,9 @@ def main():
             )
             sys.exit(0)
     pkg_list, project_types_list = set_project_types(args, src_dir)
+    if args.search_purl:
+        # Automatically enable risk audit for single purl searches
+        perform_risk_audit = True
     db = db_lib.get()
     run_cacher = args.cache
     areport_file = (

@@ -104,7 +104,7 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                             break
                 risk_metrics = {}
                 if registry_type == "npm":
-                    risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope, pkg)
                 elif registry_type == "pypi":
                     project_type_pkg = f"python:{key}".lower()
                     required_pkgs = scoped_pkgs.get("required", [])
@@ -198,7 +198,7 @@ def get_category_score(
         weight = float(weight)
     except ValueError:
         weight = config.default_weight
-    return (math.log(1 + param) / math.log(1 + max(param, max_value))) * weight
+    return 0 if weight == 0 or math.log(1 + max(param, max_value)) == 0 else (math.log(1 + param) / math.log(1 + max(param, max_value))) * weight
 
 
 def calculate_risk_score(risk_metrics):
@@ -311,6 +311,7 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
     risk_metrics = {
         "pkg_deprecated_risk": False,
+        "pkg_version_deprecated_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -322,12 +323,13 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     versions_dict = pkg_metadata.get("releases", {})
     versions = [ver[0] for k, ver in versions_dict.items() if ver]
     is_deprecated = info.get("yanked") and info.get("yanked_reason")
+    is_version_deprecated = False
     if not is_deprecated and pkg and pkg.get("version"):
         theversion = versions_dict.get(pkg.get("version"), [])
         if isinstance(theversion, list):
             theversion = theversion[0]
         if theversion.get("yanked"):
-            is_deprecated = True
+            is_version_deprecated = True
     # Some packages like pypi:azure only mention deprecated in the description
     # without yanking the package
     pkg_description = info.get("description", "").lower()
@@ -384,6 +386,9 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     if is_deprecated or latest_deprecated:
         risk_metrics["pkg_deprecated_risk"] = True
         risk_metrics["pkg_deprecated_value"] = 1
+    elif is_version_deprecated:
+        risk_metrics["pkg_version_deprecated_risk"] = True
+        risk_metrics["pkg_version_deprecated_value"] = 1
     # Add package scope related weight
     if scope:
         risk_metrics[f"pkg_{scope}_scope_risk"] = True
@@ -393,7 +398,7 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     return risk_metrics
 
 
-def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
+def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
     Calculate various npm package risks based on the metadata from npm. The
     keys in the risk_metrics dict is based on the parameters specified in
@@ -403,11 +408,14 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     :param pkg_metadata: A dict containing the metadata of the npm package.
     :param is_private_pkg: Boolean to indicate if this package is private
     :param scope: Package scope
+    :param pkg: Package object
+
     :return: A dict containing the calculated risks and score.
     """
     # Some default values to ensure the structure is non-empty
     risk_metrics = {
         "pkg_deprecated_risk": False,
+        "pkg_version_deprecated_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -421,15 +429,22 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
         risk_metrics["pkg_private_on_public_registry_risk"] = True
         risk_metrics["pkg_private_on_public_registry_value"] = 1
     versions = pkg_metadata.get("versions", {})
+    theversion = None
+    if pkg and pkg.get("version"):
+        theversion = pkg_metadata.get(pkg.get("version"))
     latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})
     # Check for scripts block
     scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
     is_deprecated = versions.get(latest_version, {}).get("deprecated", None)
+    is_version_deprecated = True if theversion and theversion.get("deprecated") else False
     # Is the package deprecated
     if is_deprecated:
         risk_metrics["pkg_deprecated_risk"] = True
         risk_metrics["pkg_deprecated_value"] = 1
+    elif is_version_deprecated:
+        risk_metrics["pkg_version_deprecated_risk"] = True
+        risk_metrics["pkg_version_deprecated_value"] = 1
     scripts_block_list = []
     # There are some packages on npm with incorrectly configured scripts
     # block Good news is that the install portion would only for if the

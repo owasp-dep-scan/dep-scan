@@ -103,7 +103,7 @@ def get_licenses(ele):
         for data in ele.findall(
             f"{namespace}licenses/{namespace}license/{namespace}name"
         ):
-            if data and data.text:
+            if data is not None and data.text:
                 ld_list = [data.text]
                 if "http" in data.text:
                     ld_list = [

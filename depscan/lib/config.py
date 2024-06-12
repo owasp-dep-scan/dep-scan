@@ -406,8 +406,12 @@ pkg_node_version_max = get_float_from_env("pkg_node_version_max", 16)
 pkg_node_version_weight = get_float_from_env("pkg_node_version_weight", 0.5)
 
 # Package deprecated
-pkg_deprecated_weight = get_float_from_env("pkg_deprecated_weight", 1)
-pkg_deprecated_max = get_float_from_env("pkg_deprecated_max", 1)
+pkg_deprecated_weight = get_float_from_env("pkg_deprecated_weight", 2)
+pkg_deprecated_max = get_float_from_env("pkg_deprecated_max", 0)
+
+# Package version deprecated
+pkg_version_deprecated_weight = get_float_from_env("pkg_version_deprecated_weight", 2)
+pkg_version_deprecated_max = get_float_from_env("pkg_version_deprecated_weight", 0)
 
 # Package dependency confusion
 pkg_private_on_public_registry_weight = get_float_from_env(
@@ -438,6 +442,7 @@ total_weight = (
     + pkg_required_scope_weight
     + pkg_optional_scope_weight
     + pkg_deprecated_weight
+    + pkg_version_deprecated_weight
     + pkg_private_on_public_registry_weight
 )
 
@@ -450,6 +455,7 @@ risk_help_text = {
     "pkg_node_version": "Outdated Node version",
     "pkg_install_scripts": "Runs scripts on install",
     "pkg_deprecated": "Deprecated",
+    "pkg_version_deprecated": "Deprecated version",
     "pkg_private_on_public_registry": "Private package is public",
 }
 

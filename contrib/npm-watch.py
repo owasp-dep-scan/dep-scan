@@ -13,7 +13,7 @@ with httpx.stream("GET", url=url, params=settings, timeout=30) as r:
             try:
                 json_obj = json.loads(line)
                 npm_pkg = json_obj.get("id")
-                risk_metrics = npm_pkg_risk(json_obj.get("doc"), False, None)
+                risk_metrics = npm_pkg_risk(json_obj.get("doc"), False, None, npm_pkg)
                 if risk_metrics and risk_metrics["risk_score"] > 0.4:
                     print(npm_pkg, risk_metrics)
             except Exception as e:
