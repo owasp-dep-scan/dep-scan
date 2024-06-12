@@ -42,6 +42,7 @@ def test_calculate_risk_score():
             "pkg_deprecated_risk": True,
             "pkg_deprecated_value": 1,
             "pkg_version_deprecated_risk": False,
+            "pkg_version_missing_risk": False,
             "pkg_min_versions_risk": True,
             "pkg_min_versions_value": 1,
         }
@@ -130,6 +131,7 @@ def test_calculate_risk_score():
             "pkg_node_version_value": 1,
             "pkg_deprecated_risk": True,
             "pkg_version_deprecated_risk": False,
+            "pkg_version_missing_risk": False,
         }
     )
     assert od_score > o_score
@@ -186,6 +188,7 @@ def test_npm_risks():
         assert risk_metrics["pkg_node_version_risk"]
         assert not risk_metrics["pkg_deprecated_risk"]
         assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
 
 
@@ -199,6 +202,7 @@ def test_pypi_confusion_risks():
         assert risk_metrics == {
             "pkg_deprecated_risk": False,
             "pkg_version_deprecated_risk": False,
+            "pkg_version_missing_risk": False,
             "pkg_min_versions_risk": False,
             "created_now_quarantine_seconds_risk": False,
             "latest_now_max_seconds_risk": False,
@@ -216,6 +220,7 @@ def test_pypi_confusion_risks():
         assert risk_metrics == {
             "pkg_deprecated_risk": False,
             "pkg_version_deprecated_risk": False,
+            "pkg_version_missing_risk": False,
             "pkg_min_versions_risk": False,
             "created_now_quarantine_seconds_risk": False,
             "latest_now_max_seconds_risk": False,

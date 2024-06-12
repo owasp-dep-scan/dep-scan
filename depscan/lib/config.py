@@ -304,10 +304,10 @@ def get_int_from_env(name, default):
     return int(get_float_from_env(name, default))
 
 
-npm_server = "https://registry.npmjs.org"
-npm_app_info = {"name": "appthreat-depscan", "version": "1.0.0"}
+NPM_SERVER = "https://registry.npmjs.org"
+npm_app_info = {"name": "owasp-depscan", "version": "6.0.0"}
 
-pypi_server = "https://pypi.org/pypi"
+PYPI_SERVER = "https://pypi.org/pypi"
 
 vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v5")
 vdb_rafs_database_url = os.getenv(
@@ -331,10 +331,10 @@ if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
 # using environment variables
 
 # Some constants and defaults
-seconds_in_day = 24 * 60 * 60
-seconds_in_hour = 60 * 60
-default_max_value = 100
-default_weight = 1
+SECONDS_IN_DAY = 24 * 60 * 60
+SECONDS_IN_HOUR = 60 * 60
+DEFAULT_MAX_VALUE = 100
+DEFAULT_WEIGHT = 1
 
 # Package should have at least 3 versions
 pkg_min_versions = get_float_from_env("pkg_min_versions", 3)
@@ -343,10 +343,10 @@ pkg_min_versions_weight = get_float_from_env("pkg_min_versions_weight", 2)
 
 # At least 12 hours difference between the creation and modified time
 mod_create_min_seconds = get_float_from_env(
-    "mod_create_min_seconds", 12 * seconds_in_hour
+    "mod_create_min_seconds", 12 * SECONDS_IN_HOUR
 )
 mod_create_min_seconds_max = get_float_from_env(
-    "mod_create_min_seconds_max", 1000 * seconds_in_day
+    "mod_create_min_seconds_max", 1000 * SECONDS_IN_DAY
 )
 mod_create_min_seconds_weight = get_float_from_env(
     "mod_create_min_seconds_weight", 1
@@ -354,10 +354,10 @@ mod_create_min_seconds_weight = get_float_from_env(
 
 # At least 12 hours difference between the latest version and the current time
 latest_now_min_seconds = get_float_from_env(
-    "latest_now_min_seconds", 12 * seconds_in_hour
+    "latest_now_min_seconds", 12 * SECONDS_IN_HOUR
 )
 latest_now_min_seconds_max = get_float_from_env(
-    "latest_now_min_seconds_max", 1000 * seconds_in_day
+    "latest_now_min_seconds_max", 1000 * SECONDS_IN_DAY
 )
 latest_now_min_seconds_weight = get_float_from_env(
     "latest_now_min_seconds_weight", 0.5
@@ -366,10 +366,10 @@ latest_now_min_seconds_weight = get_float_from_env(
 # Time period after which certain risks can be considered safe. Quarantine
 # period For eg: Packages that are over 1 year old
 created_now_quarantine_seconds = get_float_from_env(
-    "created_now_quarantine_seconds", 365 * seconds_in_day
+    "created_now_quarantine_seconds", 365 * SECONDS_IN_DAY
 )
 created_now_quarantine_seconds_max = get_float_from_env(
-    "created_now_quarantine_seconds_max", 365 * seconds_in_day
+    "created_now_quarantine_seconds_max", 365 * SECONDS_IN_DAY
 )
 created_now_quarantine_seconds_weight = get_float_from_env(
     "created_now_quarantine_seconds_weight", 0.5
@@ -377,10 +377,10 @@ created_now_quarantine_seconds_weight = get_float_from_env(
 
 # Max package age - 6 years
 latest_now_max_seconds = get_float_from_env(
-    "latest_now_max_seconds", 6 * 365 * seconds_in_day
+    "latest_now_max_seconds", 6 * 365 * SECONDS_IN_DAY
 )
 latest_now_max_seconds_max = get_float_from_env(
-    "latest_now_max_seconds_max", 6 * 365 * seconds_in_day
+    "latest_now_max_seconds_max", 6 * 365 * SECONDS_IN_DAY
 )
 latest_now_max_seconds_weight = get_float_from_env(
     "latest_now_max_seconds_weight", 0.5
@@ -388,7 +388,7 @@ latest_now_max_seconds_weight = get_float_from_env(
 
 # Package should have at least 2 maintainers
 pkg_min_maintainers = get_float_from_env("pkg_min_maintainers", 2)
-pkg_min_maintainers_max = get_float_from_env("pkg_min_maintainers_max", 10)
+pkg_min_maintainers_max = get_float_from_env("pkg_min_maintainers_max", 20)
 pkg_min_maintainers_weight = get_float_from_env("pkg_min_maintainers_weight", 2)
 
 # Package should have at least 2 users
@@ -401,7 +401,7 @@ pkg_install_scripts_max = get_float_from_env("pkg_install_scripts_max", 0)
 pkg_install_scripts_weight = get_float_from_env("pkg_install_scripts_weight", 2)
 
 # Node version risk
-pkg_node_version = os.getenv("pkg_node_version".upper(), "0.,4,6")
+pkg_node_version = os.getenv("pkg_node_version".upper(), "0.,4,6,8,10,12")
 pkg_node_version_max = get_float_from_env("pkg_node_version_max", 16)
 pkg_node_version_weight = get_float_from_env("pkg_node_version_weight", 0.5)
 
@@ -411,7 +411,11 @@ pkg_deprecated_max = get_float_from_env("pkg_deprecated_max", 0)
 
 # Package version deprecated
 pkg_version_deprecated_weight = get_float_from_env("pkg_version_deprecated_weight", 2)
-pkg_version_deprecated_max = get_float_from_env("pkg_version_deprecated_weight", 0)
+pkg_version_deprecated_max = get_float_from_env("pkg_version_deprecated_max", 0)
+
+# Package version missing
+pkg_version_missing_weight = get_float_from_env("pkg_version_missing_weight", 2)
+pkg_version_missing_max = get_float_from_env("pkg_version_missing_max", 0)
 
 # Package dependency confusion
 pkg_private_on_public_registry_weight = get_float_from_env(
@@ -443,6 +447,7 @@ total_weight = (
     + pkg_optional_scope_weight
     + pkg_deprecated_weight
     + pkg_version_deprecated_weight
+    + pkg_version_missing_weight
     + pkg_private_on_public_registry_weight
 )
 
@@ -456,6 +461,7 @@ risk_help_text = {
     "pkg_install_scripts": "Runs scripts on install",
     "pkg_deprecated": "Deprecated",
     "pkg_version_deprecated": "Deprecated version",
+    "pkg_version_missing": "Non-existent version",
     "pkg_private_on_public_registry": "Private package is public",
 }
 

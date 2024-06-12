@@ -35,9 +35,9 @@ def get_lookup_url(registry_type, pkg):
             if not vendor.startswith("@"):
                 vendor = "@" + vendor
             key = f"{vendor}/{name}"
-        return key, f"{config.npm_server}/{key}"
+        return key, f"{config.NPM_SERVER}/{key}"
     elif registry_type == "pypi":
-        return key, f"{config.pypi_server}/{key}/json"
+        return key, f"{config.PYPI_SERVER}/{key}/json"
     return None, None
 
 
@@ -175,7 +175,7 @@ def pypi_metadata(scoped_pkgs, pkg_list, private_ns=None):
 
 
 def get_category_score(
-    param, max_value=config.default_max_value, weight=config.default_weight
+    param, max_value=config.DEFAULT_MAX_VALUE, weight=config.DEFAULT_WEIGHT
 ):
     """
     Return parameter score given its current value, max value and
@@ -193,11 +193,11 @@ def get_category_score(
     try:
         max_value = float(max_value)
     except ValueError:
-        max_value = config.default_max_value
+        max_value = config.DEFAULT_MAX_VALUE
     try:
         weight = float(weight)
     except ValueError:
-        weight = config.default_weight
+        weight = config.DEFAULT_WEIGHT
     return 0 if weight == 0 or math.log(1 + max(param, max_value)) == 0 else (math.log(1 + param) / math.log(1 + max(param, max_value))) * weight
 
 
@@ -221,10 +221,10 @@ def calculate_risk_score(risk_metrics):
             risk_category = k.replace("_risk", "")
             risk_category_value = risk_metrics.get(f"{risk_category}_value", 0)
             risk_category_max = getattr(
-                config, f"{risk_category}_max", config.default_max_value
+                config, f"{risk_category}_max", config.DEFAULT_MAX_VALUE
             )
             risk_category_weight = getattr(
-                config, f"{risk_category}_weight", config.default_weight
+                config, f"{risk_category}_weight", config.DEFAULT_WEIGHT
             )
             risk_category_base = getattr(config, f"{risk_category}", 0)
             value = risk_category_value
@@ -312,6 +312,7 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     risk_metrics = {
         "pkg_deprecated_risk": False,
         "pkg_version_deprecated_risk": False,
+        "pkg_version_missing_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -326,10 +327,14 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     is_version_deprecated = False
     if not is_deprecated and pkg and pkg.get("version"):
         theversion = versions_dict.get(pkg.get("version"), [])
-        if isinstance(theversion, list):
+        if isinstance(theversion, list) and len(theversion) > 0:
             theversion = theversion[0]
-        if theversion.get("yanked"):
+        elif theversion and theversion.get("yanked"):
             is_version_deprecated = True
+        # Check if the version exists in the registry
+        if not theversion:
+            risk_metrics["pkg_version_missing_risk"] = True
+            risk_metrics["pkg_version_missing_value"] = 1
     # Some packages like pypi:azure only mention deprecated in the description
     # without yanking the package
     pkg_description = info.get("description", "").lower()
@@ -416,6 +421,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     risk_metrics = {
         "pkg_deprecated_risk": False,
         "pkg_version_deprecated_risk": False,
+        "pkg_version_missing_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -432,6 +438,10 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     theversion = None
     if pkg and pkg.get("version"):
         theversion = versions.get(pkg.get("version"))
+        # Check if the version exists in the registry
+        if not theversion:
+            risk_metrics["pkg_version_missing_risk"] = True
+            risk_metrics["pkg_version_missing_value"] = 1
     latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})
     # Check for scripts block
