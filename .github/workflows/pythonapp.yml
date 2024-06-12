@@ -40,3 +40,4 @@ jobs:
       run: |
         python depscan/cli.py --purl "pkg:pypi/requests@2.32.1"
         python depscan/cli.py --purl "pkg:pypi/reqwestss@0.1.0"
+        python depscan/cli.py --purl "pkg:npm/%40appthreat/cdxgen@7.0.5"

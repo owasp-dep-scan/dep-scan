@@ -431,12 +431,12 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     versions = pkg_metadata.get("versions", {})
     theversion = None
     if pkg and pkg.get("version"):
-        theversion = pkg_metadata.get(pkg.get("version"))
+        theversion = versions.get(pkg.get("version"))
     latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})
     # Check for scripts block
     scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
-    is_deprecated = versions.get(latest_version, {}).get("deprecated", None)
+    is_deprecated = versions.get(latest_version, {}).get("deprecated", None) is not None
     is_version_deprecated = True if theversion and theversion.get("deprecated") else False
     # Is the package deprecated
     if is_deprecated:
