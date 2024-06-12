@@ -422,6 +422,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         "pkg_deprecated_risk": False,
         "pkg_version_deprecated_risk": False,
         "pkg_version_missing_risk": False,
+        "pkg_includes_binary_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -442,6 +443,13 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         if not theversion:
             risk_metrics["pkg_version_missing_risk"] = True
             risk_metrics["pkg_version_missing_value"] = 1
+        # Check if there is any binary downloaded and offered
+        elif theversion.get("binary"):
+            risk_metrics["pkg_includes_binary_risk"] = True
+            risk_metrics["pkg_includes_binary_value"] = 1
+            # Capture the remote host
+            if theversion["binary"].get("host"):
+                risk_metrics["pkg_includes_binary_info"] = f'Host: {theversion["binary"].get("host")}\nBinary: {theversion["binary"].get("module_name")}'
     latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})
     # Check for scripts block
@@ -455,6 +463,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     elif is_version_deprecated:
         risk_metrics["pkg_version_deprecated_risk"] = True
         risk_metrics["pkg_version_deprecated_value"] = 1
+        risk_metrics["pkg_version_deprecated_reason"] = theversion.get("deprecated")
     scripts_block_list = []
     # There are some packages on npm with incorrectly configured scripts
     # block Good news is that the install portion would only for if the

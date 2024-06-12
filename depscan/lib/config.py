@@ -417,6 +417,10 @@ pkg_version_deprecated_max = get_float_from_env("pkg_version_deprecated_max", 0)
 pkg_version_missing_weight = get_float_from_env("pkg_version_missing_weight", 2)
 pkg_version_missing_max = get_float_from_env("pkg_version_missing_max", 0)
 
+# Package includes binary
+pkg_includes_binary_weight = get_float_from_env("pkg_includes_binary_weight", 2)
+pkg_includes_binary_max = get_float_from_env("pkg_includes_binary_max", 0)
+
 # Package dependency confusion
 pkg_private_on_public_registry_weight = get_float_from_env(
     "pkg_private_on_public_registry_weight", 4
@@ -448,6 +452,7 @@ total_weight = (
     + pkg_deprecated_weight
     + pkg_version_deprecated_weight
     + pkg_version_missing_weight
+    + pkg_includes_binary_weight
     + pkg_private_on_public_registry_weight
 )
 
@@ -462,6 +467,7 @@ risk_help_text = {
     "pkg_deprecated": "Deprecated",
     "pkg_version_deprecated": "Deprecated version",
     "pkg_version_missing": "Non-existent version",
+    "pkg_includes_binary": "Includes binary",
     "pkg_private_on_public_registry": "Private package is public",
 }
 

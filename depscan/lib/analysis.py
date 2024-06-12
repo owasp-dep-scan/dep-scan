@@ -1146,12 +1146,14 @@ def analyse_pkg_risks(
             package_usage_simple = "No"
         if not risk_metrics:
             continue
+        # Some risks gets special treatment for display
         if risk_metrics.get("risk_score") and (
             risk_metrics.get("risk_score") > config.pkg_max_risk_score
             or risk_metrics.get("pkg_private_on_public_registry_risk")
             or risk_metrics.get("pkg_deprecated_risk")
             or risk_metrics.get("pkg_version_deprecated_risk")
             or risk_metrics.get("pkg_version_missing_risk")
+            or risk_metrics.get("pkg_includes_binary_risk")
         ):
             risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
@@ -1170,10 +1172,15 @@ def analyse_pkg_risks(
                 if rk.endswith("_risk") and rv is True:
                     rcat = rk.replace("_risk", "")
                     help_text = config.risk_help_text.get(rcat)
+                    extra_info = risk_metrics.get(f"{rcat}_info")
+                    if extra_info:
+                        help_text = f"{help_text}\n{extra_info}"
                     # Only add texts that are available.
                     if help_text:
                         if rcat in (
                             "pkg_deprecated",
+                            "pkg_version_deprecated",
+                            "pkg_includes_binary",
                             "pkg_private_on_public_registry",
                         ):
                             risk_categories.append(f":cross_mark: {help_text}")

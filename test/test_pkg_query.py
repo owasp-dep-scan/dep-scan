@@ -81,7 +81,7 @@ def test_calculate_risk_score():
         }
     )
     assert l2_score > l1_score
-    assert l2_score > 0.4
+    assert l2_score > 0.3
     # Also has script section
     l3_score = calculate_risk_score(
         {
@@ -188,6 +188,18 @@ def test_npm_risks():
         assert risk_metrics["pkg_node_version_risk"]
         assert not risk_metrics["pkg_deprecated_risk"]
         assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+
+    fsevents_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "npm-fsevents-metadata.json"
+    )
+    with open(fsevents_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.2.10"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert risk_metrics["pkg_version_deprecated_risk"]
         assert not risk_metrics["pkg_version_missing_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
 
