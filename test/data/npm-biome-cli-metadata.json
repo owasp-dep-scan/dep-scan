@@ -1,0 +1,2822 @@
+{
+  "_id": "@biomejs/cli-linux-x64",
+  "_rev": "58-622cddea44cfe09418620e9912ebeb70",
+  "name": "@biomejs/cli-linux-x64",
+  "dist-tags": { "nightly": "1.7.4-nightly.125f34b", "latest": "1.8.1" },
+  "versions": {
+    "0.1.0-nightly.7b90623": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "0.1.0-nightly.7b90623",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@0.1.0-nightly.7b90623",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "10d529d3aaf78e2039c5b5dea5ff8f2c8489c709",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-0.1.0-nightly.7b90623.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-w0FGRMrrZovXHoDBq/huFPKCSaMnIkKBwzVWlgID+dDNT1cO/pAp1p1bPCRQ3NNNv3B3nDqr1h7WRgGq8gwiLw==",
+        "signatures": [
+          {
+            "sig": "MEUCIE1eEnwteuLy6PW6zPhcnaNnTBCHMWc76lknmdfyhhYDAiEAiz2Tfy/03QUA9JF1zztv1N8RGdRmRqafnEjQnJ3HXbU=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "unpackedSize": 14471144
+      },
+      "gitHead": "7b90623471a3c096a7ddc01db32f120ed84d8e1a",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_0.1.0-nightly.7b90623_1692363049993_0.6724184209770376",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "0.1.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "0.1.2",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@0.1.2",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "7d2b948fb07fd48d43f2d33a00be89c27d6a2d41",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-0.1.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-QlMUpuY3eZd9JYVbnnZqG0UliYfkne8ZiSNIy1TGb1AfOlgjgyzbYHHVb4+pciULRY0/qxMCCTWpMl7E2V8moA==",
+        "signatures": [
+          {
+            "sig": "MEQCIF5dXPZ8I1ztFTwp23DXFy7FWLWvEJw6XzVDzl4STcjsAiAnMht2p1/uP1XUAvcTe7msnOFnq7xF1B4TRHYxAmFKwA==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "unpackedSize": 14471128
+      },
+      "gitHead": "506ee2ef43a5bca9805680c09b0bd4f74911b9e3",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_0.1.2_1692372632991_0.9372365016033524",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "0.1.2-nightly.506ee2e": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "0.1.2-nightly.506ee2e",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@0.1.2-nightly.506ee2e",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "7f75ddfef500a335d44f019738fd5051afbea162",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-0.1.2-nightly.506ee2e.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-qsS+zpg6CHXEZt32YWaNlZB4ZSticfxYppofcuEKeGfPIoVd8szdFix9CiW+mGfI+1N4OBCGclvmuo/7SfQnIA==",
+        "signatures": [
+          {
+            "sig": "MEUCIC7bfj6ThvxN+rbrhI/6CuBNHPf3+77+x4E1pZ+FBfFCAiEAnTRTqyx/z9djgP2k8OCDZ0NdWtM7QA/tu+OAqsgh8PI=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "unpackedSize": 14471144
+      },
+      "readme": "ERROR: No README data found!",
+      "gitHead": "506ee2ef43a5bca9805680c09b0bd4f74911b9e3",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_0.1.2-nightly.506ee2e_1692407564547_0.6500197619237278",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "0.2.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "0.2.0",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@0.2.0",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "49c19e84fe4269991a79e92a1647df7718b16365",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-0.2.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-ZhOKUh6gShSCpnZzv8zaXg4twxOloi0iXWIrIxyfuNmFEsIZpQbDRxlWiZDGCjwlQGE90jn3rsV/xGQtrbbh6A==",
+        "signatures": [
+          {
+            "sig": "MEUCIQDFZgypVOxvu13DoVxLM8Y7UEC3WzCf1L3BlsQh0FmwQAIgAdWZ0UwrUWFIDCe6vHEL0wGu7wlHRndz3YYZDoCkbzg=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "unpackedSize": 14471128
+      },
+      "gitHead": "4b26fd1d558a1c6e3b74f2af8dc9d0de9fbeffcb",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_0.2.0_1692560848562_0.32014054349970533",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "0.2.0-nightly.0b5a3fd": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "0.2.0-nightly.0b5a3fd",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@0.2.0-nightly.0b5a3fd",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "261f45e0fb601b9ae65a944fb564edb95403ef9b",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-0.2.0-nightly.0b5a3fd.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-mdcYuOI/t44oAcImLJscLlGMHZ5eVTN9EkZ5wNcR/rQWtp/BZJwjKOWgXcUcAgvyh84iwAGjQWMphNmcwhmyPQ==",
+        "signatures": [
+          {
+            "sig": "MEQCIHISkhyP+ZlqGpLRdhEpceKMaOrkrzqBPKslwftTDPkmAiApTsaJjpOA1cEsGHaISr9q9Sv2Aw2LDf++l7IFwQIT8g==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "unpackedSize": 14524392
+      },
+      "readme": "ERROR: No README data found!",
+      "gitHead": "0b5a3fd25c46170fb75f62f297ea6e403a57a144",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_0.2.0-nightly.0b5a3fd_1692666910829_0.3011059367181077",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "0.2.3": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "0.2.3",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@0.2.3",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "8acb354e3a79fa966e8719a26cd1d5a9e213eddc",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-0.2.3.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-Pwmdo4IGdT8Uz8jWSvvg2MnL+wxW50m/+VW+xoGj3Cu+MO7xHdubHp4540ekMGlpqU4YrmPVyKXCQY22t785JA==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCZev1HswXHfq9RqseAVCt43E4SZ3/iBA2t+D3DoJyZyQIgB0k67mYtne3n0Bq8UiuH1qHna5qKRYBiosPl3a3ZJNU=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@0.2.3",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 14536836
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "fe92e3c75f7f7aec268fafe4ac6c9e9f1adfe542",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_0.2.3_1692910971913_0.43514427998171645",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.0.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.0.0",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.0.0",
+      "maintainers": [
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "9ce1fc2cf36035b9a0d75786b587e8f4c8a00b75",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.0.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-FK6hYZ0Lkk39eXYx1+2ZWtLkApc0RdOpcjDVM96JbvI0bxqvNnm193BPXuxh5A/fCl6N28RNUvcKnZ5LbgZ0Yw==",
+        "signatures": [
+          {
+            "sig": "MEUCIBbncvUxTxtWtsHVdogC8VTs6wQm0lG2ebIAkGQ6MIqgAiEA6XUTAAgV8FFEpCt3IvjvbFg/jNaKvSGtmdQ36eQfnS4=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.0.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 14536836
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "b53e79c349ebc5b93017fd870172bc98b4276b4a",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.0.0_1693205936629_0.5971049504930881",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.1.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.1.0",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.1.0",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "eba7e8500239202b94c1489d4a4ea5c140fb0b59",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.1.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-fsKs7kANBtTR8y/qqoWqIQPmkC7VtnsVN3sy5wmqzT7vjHyZPJoL1QDIiZlYDJO6pVBOjkRniNFCQhtXkZDfWA==",
+        "signatures": [
+          {
+            "sig": "MEQCIEKf0Nf3klv1dsMEV8tT7tssqWXKOQN7K7XZ/E6BfCBHAiBjSiwVgPnir2vZR/ktpV8K05IPu/3uFPQ9A9V0vLDh0Q==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.1.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15192196
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "f015196fda04c1f8f045419d7230242db1eabbe0",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.1.0_1694027423592_0.6532273204903376",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.1.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.1.1",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.1.1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "d52a5285963bb0a72a517d423b318705ba6192e9",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.1.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-KlcTmf2PrheSWrqmHPENFnFHxZYUvHZjJp7Y59sRAkHThCLljMbU1rNa8E4IWEM747wAn0BgkaKZ744GCDeShg==",
+        "signatures": [
+          {
+            "sig": "MEUCIQD0lnWHpa24EY+SnMMFVtDnHQwnzR80OTfhgXp20gTYdwIgSipyes2lVgWzKFV9aagm+inpWuLq5/+Uw/F1NIk5/pc=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.1.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15229060
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "a947fc901953f11b5210cbd13770cf086d19c48a",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.1.1_1694080567787_0.8094816373798097",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.1.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.1.2",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.1.2",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "25ed0d4720673848c829a50ad67538466364037c",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.1.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-TYIUjCXbY+kxnJgv8GESplMagB1GdOcMV21JGRATqnhUI4BvG6sjs3gfi+sdjLBQdbHhsISXW3yfUlv07HKqhg==",
+        "signatures": [
+          {
+            "sig": "MEQCIBZ+aRjCvRsHt3GSXqjIQqd6LAW8Ug7TTkxlhkDJgRotAiA9EmJGgIaxzYkul0cbYFWb/X12eisQy/vSP+K/hHbmhw==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.1.2",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15229060
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "cde65810dc5a5fa0be30da9ddfe27d2769e71731",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.1.2_1694114504383_0.7222727883302535",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.1.2-nightly.9c28238": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.1.2-nightly.9c28238",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.1.2-nightly.9c28238",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "c179ea844285a31dfcfff27481d4cf3c66db7635",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.1.2-nightly.9c28238.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-2O8ODFtfodCQI5EQsaQ9h+MkEItPkVoC232XqOH7ONDbdlFWpEg3Fwd2W+vGusSrzIumCbzrS7+mggYicMLbTA==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCPYns/c1nDU2iXyjxP8QY/Ql87L2yLcTuyCPyG9Fa5pQIgQMoXYiwJdSKTCaNxh8gniwO5h66LYeQTPBT85bR4vhw=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.1.2-nightly.9c28238",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15306900
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "9c282383760a1265e94805ded0f6d886c2fe1579",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.1.2-nightly.9c28238_1694753760395_0.12731802622619304",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.2.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.2.0",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.2.0",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "97fc75d588fdbfb1c6102766e255d5b81e3d3f1d",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.2.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-nBq8YfqkGbq/ltTP3+5PEihgEOAMpfiCuhBzWbv/RwNgVMcNKOLSpLKD5Uc/ik5DL6limEjE9ZW7gy3l/Dit7A==",
+        "signatures": [
+          {
+            "sig": "MEUCIF31xjZDkOlb1aB5xXe2iCo4cZnfxyN5lU+ok1zBHUCcAiEAxbxixAv4gTT2jIB0ALNcn0fSQZoyotddxiJ6jqoAaJw=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.2.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15282308
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "1897c244ae26561bb9aa49c85a7ddd1d3353e417",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.2.0_1694787207593_0.15781845728231958",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.2.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.2.1",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.2.1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "7fbe2763621f0c8aa8b7e321da4c077051463bc3",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.2.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-gzTpmpvBmSFu6oeUeFKP8C34WpV91rha4gS+3swAuw5G+C4PosOTpAVPKnElbgl9iS0+stfP73tXARQUXySDPA==",
+        "signatures": [
+          {
+            "sig": "MEQCIC2bGuBmP0tKLt80kSMcKox7Fbb7Zf9Ra73J/tTAcw48AiBYoDMZ1oOx52Oju39jpcmDS5IMytaiVtxYelPD3G7KVA==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.2.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15229060
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "9aa5c4eb1b3995a3242e383073613f2df6147a16",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.2.1_1694797688795_0.5295553891334108",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.2.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.2.2",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.2.2",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "4c55181f8231e7aa05b2841944a48dd81af443b8",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.2.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-5Zr+iM7lUKsw81p9PkXRESuH2/AhRZ6RCWkgE+FSLcxMhXy/4RDR+o2YQDsJM6cWKIzOJM05vDHTGrDq7vXE4A==",
+        "signatures": [
+          {
+            "sig": "MEUCIAINHBdJlt59Q7hv8ry+lhPN4iGHPUrI8fBbrLHq21SCAiEAs2iRqV7xi1FSAVXYz92eyjJ4bbV+awPKssMTtz3SECc=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.2.2",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v0.2" }
+        },
+        "unpackedSize": 15233156
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "b4dadd8ed0f9e123cfaf7acc9fee8c96e19aa3dc",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.6.7",
+      "directories": {},
+      "_nodeVersion": "18.17.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.2.2_1694856623358_0.9679420542853081",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.2.2-nightly.1e3fc94": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.2.2-nightly.1e3fc94",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.2.2-nightly.1e3fc94",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "f4dc2261619887faf22b6faee8a7d7d0b320a62c",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.2.2-nightly.1e3fc94.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-6onnAntNJQHDvjztmCqjF/Bt3oqqyKN1106E2ivtWjSdEu2OvXW8XrWE0DZsvEV6glkbD+8wk19qeOmVBnF9iA==",
+        "signatures": [
+          {
+            "sig": "MEQCIC54mk/8wsEaPMLdwb7R4G1RwujYzkTYjMSpnCEMozVKAiBJs1NoJYsrmOeMxpWJTK4gJ+zejP8zO/oZHydZdoJKFQ==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.2.2-nightly.1e3fc94",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16056756
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "1e3fc94cad65904d8e6847835c6c4c896db47bc1",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.2.2-nightly.1e3fc94_1696954116296_0.2570704790945604",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.2.2-nightly.ee2e2ab": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.2.2-nightly.ee2e2ab",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.2.2-nightly.ee2e2ab",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "0f84ecd153d453933e78ac1f0fb73c89954df7f2",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.2.2-nightly.ee2e2ab.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-rAJHM2lnpXd1CIec+/3XPfzS/fWdnzy5FUYDxeUc5L14zsmN+Dwkl/MyqMae+ZN3WEP3jko4hW0V/R6p4Ztavw==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCFXHpdrR5HG/3yuQe8Y/2CYkcl9qwpVWdY9x885/XaugIhANScfnMaNg41IUShA/nXrWb0j8Gvu/uYK2b1AE6t7NAV",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.2.2-nightly.ee2e2ab",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 15913436
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "ee2e2ab72dd146f72c3493047ca7ec7da13e3505",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.2.2-nightly.ee2e2ab_1697267945798_0.6381622932610593",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.0",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.3.0",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "edbe082b79d86180127d2f57bc274fe3c7a1dcfd",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-ZH+PvgAZ3nr69O8Tb+MO+08k+0PhG0paWhkIaUW1AUlD7ruIpk+dlHp3DjHauSPFDZkNIxj6utwI1c5lP8hF9w==",
+        "signatures": [
+          {
+            "sig": "MEUCICtNspW+bKKhHZKVn3Fm5ooTNO+rM8J3lSXXBZmAU6I9AiEApodlJCeaPnw2iNy3ibF+4ZJ+h8XHLTctM8P1hWEWdNM=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16093644
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "5dcae83f52f8257efd023e99d84431e40b8630e9",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.0_1697706215709_0.7442307417578615",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.1",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.3.1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "47604e949f4cb9c4343e03a088cd86f7768a4359",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-8ENayCpYXXC77a7AxDNjC+pPKMYteLzysxhkCCZ7Gd2sWtrH8iMM45JL8wQJhoHz5NT3+qgsfGafiNuxeVAVlg==",
+        "signatures": [
+          {
+            "sig": "MEQCIEJPwOvXqv2tv1E2TI452YGQ0TOjZqEKT0zNpK5KIJQWAiBZ0Ek6LsiPTHfV0sqp7VHxyt1JA3V9T+sK1Yv6bu90Tw==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16110028
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "7d9080cf3084085d8a5a8bc1a00de6c0d294b6a2",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.1_1697799428395_0.35281547825752746",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.2",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.3.2",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "ed0e023cc77f661a2f2c61b84769a8a07cd2a966",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-7GtH2bMGxTnZpdNZvxAUEW9hk52fwVJr2DXSSakgMmYaZ3XgC3gcSRLicYIA5vL4Ppvjai2cmh6TOp1P7EPtGw==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCQTowiaSzhAQc44F6DazfZQgRCRGjt+sm3LyCnx2q87gIgZ6kNI/PzqpY5WtG4GLbE/T2NnxXU6OLoSGBOvwJ1ZDY=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.2",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16204236
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "6c38b0fa1b292d7b9e5c9fef758f51e1816e8134",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.2_1698708190252_0.8218594041024541",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.3": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.3",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.3.3",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "fd3e4ed41a42805ec289956b32eaec7b6a10aa2f",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.3.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-bqB05fwJnRZwRlcm/BS/s4qPickqiXZkiU/nOYvHApfsPeqgSHgv5HWoBYuSUjgqBbX3XZJArsC5dCcVW7vAJw==",
+        "signatures": [
+          {
+            "sig": "MEUCIAVlZR/ZxBfoRAjEA/l+8Rqhiidp/JBijZA6mQJ+P5esAiEAxoSq6fxnDXVCuH+SZK1ujL8F/1zt2Kx29G60pesLnyQ=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.3",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16204236
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "af24597c1877c7b5a96bb7cc59bab655a577116f",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.3_1698740380371_0.734443818556495",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.3-nightly.8475169": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.3-nightly.8475169",
+      "license": "MIT",
+      "_id": "@biomejs/cli-linux-x64@1.3.3-nightly.8475169",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "fdfadabf609e4c0eb2495d98ad13c1b24e923d50",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.3-nightly.8475169.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-UxFEtdQC+P8laVSuDt707uHbiVFcOQEV3mN+GGKaq9FTBDWUs9Xt7jyYz8XBmbJ5FeBNx2+wGATBn/zyddwcFw==",
+        "signatures": [
+          {
+            "sig": "MEUCICu0uZdU2KFyrW7y6xH/5b8yDictASEZFxFM57nuB3pwAiEA1H6Hfq2oIiV3Z6zPOz1AYLikVKKRfKw4P5Tg4bCipQ0=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.3-nightly.8475169",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16282140
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "8475169ddc89aab85859b08949e75d44979c8b99",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.3-nightly.8475169_1699512699350_0.783002295286465",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.3-nightly.ced82da": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.3-nightly.ced82da",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.3.3-nightly.ced82da",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "05f89b849e62edebcb59ff479ca2bb2112fde1dc",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.3-nightly.ced82da.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-igZS1gjlBosk8KEbDI7gDjRBzThEBwwV1kC40/ugklLEjUkx04nQY/zDtFCRdSYznqVZC5ZEf2XNohm/WT6ZCg==",
+        "signatures": [
+          {
+            "sig": "MEUCIFjX2AC0g9wkt6ojODewxOHnItBvIe5DCZn1+V+G+O7xAiEAxAxmq19HDsuGGvUS1gAu36kEV+h2qgqzKANasg4yzHE=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.3-nightly.ced82da",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16466474
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "ced82dae5368fcaf4287816c5197f01e32208ec2",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.3-nightly.ced82da_1700617506266_0.7440823973716604",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.3.3-nightly.38797b7": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.3.3-nightly.38797b7",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.3.3-nightly.38797b7",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "097d31d1d9cc042cd9bda9d1b596e9cf9eb8fc20",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.3.3-nightly.38797b7.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-ulivn1j6Jh2xcuQo7LI6k1x+sZ6p/V4ljM0/vpAsH9MlrjuXwqvoWNKG++qkgyW1woqqSQyS3gz+HQxjd9OWtA==",
+        "signatures": [
+          {
+            "sig": "MEQCIBqYtuh8qprsgQCqMEGBVUz44MjmWB/nYhOVp+5D5s4YAiASciNWGC2ESPbC7OyxgQPLbC1ZmeelBqVpD9nhHccJ+w==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.3.3-nightly.38797b7",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16466474
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "38797b78335d623933823c441d884c574f86204c",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.3.3-nightly.38797b7_1700671676704_0.5271121976635602",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.0",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.0",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "813d191b020a90aa829a5fc37dfeea393696a0f1",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-LIxTuU2zSbIHM9XDYjQphJ5UU8h2eS7yR8uIvGYSba7Qt9AKqfbenyVJTsVnoj1CXxxgKNVSc/wVmlOlGz5DBQ==",
+        "signatures": [
+          {
+            "sig": "MEQCIHMvBU1VWxtYlD5ORHPToXYyaOHuUA1+e4DlHtK3UvnIAiBImAeJDR1FKmmhCzban8b5JcxxMEACd5Mhr4QerWyqrA==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16396826
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "889593e3f983a6fec642d20eea3c7f94d58fc7e1",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.0_1701103523785_0.08972587126461895",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "2639daeab1be205cfe444a8d5a3f76aa3a59b956",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-9YOZw3qBd/KUj63A6Hn2zZgzGb2nbESM0qNmeMXgmqinVKM//uc4OgY5TuKITuGjMSvcVxxd4dX1IzYjV9qvNQ==",
+        "signatures": [
+          {
+            "sig": "MEUCIAR9OJE3C/dls3P1Z0wCWlwArBtNexmBPpRxopzSu58cAiEA8zyDea7jnFYgnJDBgg8hnP/KhB4tg07CTGIGV9qIPSY=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16372250
+      },
+      "engines": { "node": ">=14.*" },
+      "gitHead": "a88751306242058374575b9f511e3c22213032b6",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1_1701373682835_0.040673465611871906",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1-nightly.bc772a3": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1-nightly.bc772a3",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1-nightly.bc772a3",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "00503f96f80a5dbd65df6c59ca258b4b6f99de52",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1-nightly.bc772a3.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-bD4dRy9/9o+XOL42XVz1ROqI6/mbFO3NdRt3YFYP4N6bQY6dJ0VGJYHtJ+bOZ2minyZ/UcbQr47NVMg+BbM6QA==",
+        "signatures": [
+          {
+            "sig": "MEQCICEfJcaX6HYH5ZYZ9fQk69H7vfEuw7WzONCAWczyHE12AiAmybWFvNm7rqoARJ5tC1tsb/LOvg9VGiBIPQoGTUekKw==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1-nightly.bc772a3",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16532010
+      },
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "bc772a3079230245f3a89b5b17b67ef56be1228d",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "9.8.1",
+      "directories": {},
+      "_nodeVersion": "18.18.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1-nightly.bc772a3_1701749595574_0.3778590524930081",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1-nightly.570d680": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1-nightly.570d680",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1-nightly.570d680",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "124f163edfcadf6c7861a1dc1b32f76d00a960dc",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1-nightly.570d680.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-BVo4ZxOanNEnxb79jhSrDrc5rFSTYmOc2TBClcdI1uFsUZvXjssUzQm31tjFhD77/uGGfqG3/IqTqHDOoaWORA==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCm7kRwhzacOmZvE2XrSfusqconB2ef/+cDyCn7SmK4SgIgYmEqrdVwlAOsk01j93RqJEWDZKM0AkO98wNAkd3n3mA=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1-nightly.570d680",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 16777787
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "570d6802f830532871c1ae86ea61c9f712cf4235",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1-nightly.570d680_1702453730111_0.2570892728667695",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1-nightly.e087146": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1-nightly.e087146",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1-nightly.e087146",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "6c68f2d728f05c831342339253812b5463c0fc32",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1-nightly.e087146.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-TcRcfW0JY8yOf1ghI2mOpw9ttqelP7aKIs6HjV1dNn51taHKclbzYMyxkV9z6SQGXRXhjsaHy9KcYHQdiSuJJA==",
+        "signatures": [
+          {
+            "sig": "MEYCIQD8wjibdqPy5B7l7ODyvK4WThk5U2ITsEoS2q/ZX+0MZgIhAPy8k/0r35zE8VBSkFbNdTlkUf9Q8IT/LkUoRNF8wm33",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1-nightly.e087146",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 18444955
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "e0871469bd6930af7462b41db8e035ce91ee566a",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1-nightly.e087146_1702556279353_0.2511538282464414",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1-nightly.efc084c": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1-nightly.efc084c",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1-nightly.efc084c",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "e44acc06697653450d0189f232b81ebf1d819bb0",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1-nightly.efc084c.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-REncpaSSvPJwgB3LF/1pPl4TkSzG96FRxqf9gYbDyVznT2XOOo3KubHfu48sLfhi6p2Z3sSOo4VHU4RuvgZYwA==",
+        "signatures": [
+          {
+            "sig": "MEQCICwAbXxOqIG4yPt7rNIpPBkOCk04Cjz2FZjUTrLwRPCcAiBoiXvw3dtXEoiXj+LlXhWltjmfrXFceekVKRmuzxY72A==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1-nightly.efc084c",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 18391739
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "efc084ce1355c3de4c6104c3beff61abb8ce82d1",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1-nightly.efc084c_1703143311877_0.10955985675599789",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1-nightly.22dd4e1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1-nightly.22dd4e1",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1-nightly.22dd4e1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "a24b7575decd89f1f1564b6fa5d7470cdc480c64",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1-nightly.22dd4e1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-7NJa/2Odtlniiv3SsFgmDCz36yPKkBJv/2vOlAY5TuKPOS2le2L5jvvv+zHP8OxIXQNLWY1LkpZYrqubJI+7fA==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCuW7uksH6vOYB/flv0qn8FMikmRTALLspmzcNnigkP6gIhAIlqcg3am7aodpVob+oN+xrEXqBcv9ZrJCDMUjCdqNHM",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1-nightly.22dd4e1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 18342587
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "22dd4e1c6990b9b6e8cfdeecdac37e787852bd13",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1-nightly.22dd4e1_1703309235695_0.6076642339598213",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.4.1-nightly.d869a33": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.4.1-nightly.d869a33",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.4.1-nightly.d869a33",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "b077ab07b843bd05af2e9500324c3af0321e2b8c",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.4.1-nightly.d869a33.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-CAsJ4XsRO22qzWtNaMxD0SsBiLIcHfHxI3HOv68bHeXbdJH+p6WKg32KDencyJpgXbleVq1oPzmrVg610SdmpA==",
+        "signatures": [
+          {
+            "sig": "MEYCIQDfAuUbCBFsZb3gxNuxkvFgGTF9R8OJ4aegteJKzfXRBAIhAMqHq1w91hn0xiawsoswMJraaYtanZTe/L5zYbV7lheD",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.4.1-nightly.d869a33",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 20407099
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "d869a333de3ead700ef14432e7bda341dec548e5",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.4.1-nightly.d869a33_1704289191771_0.4979539869087557",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.0",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.0",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "273dc39c8dea8ce02e0bb842355ffb9a7e94b201",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-TlTsG+ptSmnDTUsAAYsXyGOXMcFiF8SiwhPdj4YsNkJRgx9M2curEVcTVm66FINIPK6VJTUcEDahFlx3NPUOzA==",
+        "signatures": [
+          {
+            "sig": "MEUCIQC3qqfQYLKV9+cNSR9ePuRkmeHsFeLURVYcxT2UKJ3PSwIgPu3efS3Ejd2DdnMdZDPUKgMyIg2j315mPAcHfpQxeIA=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 20615979
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "c1fdabcde7f6517aa48bc511e71c8c66796637dd",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.0_1704725228105_0.648368215068799",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.1",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "0f6afaf035c6a07fe757d58a315f3a75e49f8987",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-YDM0gZP4UbAuaBI3DVbUuj5X+Omm6uxzD1Qpc6hcduH1kzXzs9L0ee7cn/kJtNndoXR8MlmUS0O0/wWvZf2YaA==",
+        "signatures": [
+          {
+            "sig": "MEUCIDju8T8Bjiu64RkEuWZ3p0v0FgKXsMx/7A/fbQHM/couAiEArykTw2lZMLZOStES0g0rIuvCjiIaUgEYHguY6hQRXBY=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 20685611
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "0ed9e3ef0a1ac0bcf3ba7f0030999dbc3e34a619",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.1_1704893325906_0.988386623276224",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.2",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.2",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "9247165d0514a6f0fa17f9c8cd49c7d9769a9641",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-ixqJtUHtF0ho1+1DTZQLAEwHGSqvmvHhAAFXZQoaSdABn+IcITYExlFVA3bGvASy/xtPjRhTx42hVwPtLwMHwg==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCloPWHoRRu63pSzjF+3a47sujkQn81H6IZnmyWS+9PEgIgLEhCHYcAZbDqQ60Ome3ktGGDZG38dUdcE28Xz0063CU=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.2",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 19276555
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "80bb3d7d978ca2eb376190ac7cfdcd45902a6b75",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.2_1705313535222_0.7246378780150926",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.2-nightly.91c7730": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.2-nightly.91c7730",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.2-nightly.91c7730",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "58e234c5819da618a370d2d8ace5b9a7a51e007c",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.2-nightly.91c7730.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-FiWV0+3Rp1aXRXYHtdRdRxkaO0uePvQfkI69Ry51aAx25Ug3P+iUzJMRL7PuanjSoxjI9no3wZd8dYgnr7YElw==",
+        "signatures": [
+          {
+            "sig": "MEUCIQC0aR/U0bFlHHwJcVkQLwr4GP3bnMR9AOakw2x/y7Jd4AIgDDtrvuOZqRXtjQ5P9hDT5Rg6q4ZJ8AUKRvAQZRaUFus=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.2-nightly.91c7730",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 19645211
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "91c7730005d46765bfaaffda6486abdc46126c99",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.2-nightly.91c7730_1705661353118_0.9062687794260322",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "3934339eac9ec14307cb73541158cbf1695bfb79",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-YQrSArQvcv4FYsk7Q91Yv4uuu5F8hJyORVcv3zsjCLGkjIjx2RhjYLpTL733SNL7v33GmOlZY0eFR1ko38tuUw==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCLVxjK5HrVi0eiFMqyn2fubx10qFOAxB2zY9wmLY2j3gIgfyco8GHzHxHvvqJPl4u8vAjymfsu97TrVJweCcK9sCc=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 19710731
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "906de83449b5066554cd8e97c78a1f8e43749016",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3_1705922626755_0.5129463665815683",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3-nightly.24fcf19": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3-nightly.24fcf19",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3-nightly.24fcf19",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "0f0c581bb5bf31ced2f82815dbe194dd5ac7dcf5",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3-nightly.24fcf19.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-T3sfho4vtl6Xttilt+eiTgWx59IVrdzG0Sm4Hkaq1zHZMoBiybnqbo0ZZiuTrYaGGOQcyR/qPOdyxizNClA12g==",
+        "signatures": [
+          {
+            "sig": "MEUCIGWI7f+eV7D6WDLfRa+jzm/dmqkVB74splJ3T1CEnBSzAiEAoDEUJc0dqBScRSoRdkcfCDMRdgsupSjTDk3fjaevzZg=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3-nightly.24fcf19",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 19940123
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "24fcf192db01c5e9146c416fa280a361bfa2811d",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3-nightly.24fcf19_1706105518721_0.18417311332148523",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3-nightly.6cbf1c7": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3-nightly.6cbf1c7",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3-nightly.6cbf1c7",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "4835684bcfaf92b65d94b0426bbf1ab0ee38b8de",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3-nightly.6cbf1c7.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-/ZBDxvJZpEUiOFf25vDu5tzURXd+cLKnrwHFyDH8EivEB6AWD3k/+BHZ/QvYCTcAOzXktnEoAESONyDX/FPsXw==",
+        "signatures": [
+          {
+            "sig": "MEUCIDvZ7Z4lhmc6eEMAr2HAALMQr8cnOrbguuE4v/k2X7k8AiEA7KjvHpmPX3BB43polJK0z8tkx8WnmYWLWeAkmxjld24=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3-nightly.6cbf1c7",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 19878683
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "6cbf1c7498b2e61b2160ac15bcbad7b48094fa5c",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.3",
+      "directories": {},
+      "_nodeVersion": "18.19.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3-nightly.6cbf1c7_1706814241661_0.2605658176431973",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3-nightly.d2858ee": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3-nightly.d2858ee",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3-nightly.d2858ee",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "d0da14f2071728c83276399adb9b74d22488a10d",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3-nightly.d2858ee.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-gRB8YsgzmrsBj5fiXZrXpVaOtSW7cFNgE7/8AomN5jxw/dln6Ys3HrPR7VK91mSHHUgSVZhLc2uR5fJ3kmA4vw==",
+        "signatures": [
+          {
+            "sig": "MEQCICXRsVab414Xuf3OVHJEM/ZKq99nNzrd8ElJLDJUtxkNAiAzL8utguK0QjAdWpu0IOoDf26a1ni6N8pO1K/BBJiGuw==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3-nightly.d2858ee",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 20460411
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "d2858ee3df9dd1e3a6ce716f47f663bb45c5a5a7",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3-nightly.d2858ee_1707796538336_0.21230473558326302",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3-nightly.dca6a7a": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3-nightly.dca6a7a",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3-nightly.dca6a7a",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "d556dad726ef1f45bceb0d326638d7ae09237f24",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3-nightly.dca6a7a.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-stu42cF/RkVSJm90hG2pAkAn5gWBleeraIup4SKPS9vBl7Jmw10zztEtX/6Hp3hZ0Ap3T5FeV8xTqxlmOaz/nw==",
+        "signatures": [
+          {
+            "sig": "MEUCIHnoEDJFcwqTIQ4nrBEUpLQOGgXG7H41g6AB/Ju4TNY9AiEA0kN0HAhll5jIQru//VtusQW0c9+yUff6q2GHmwhV9NQ=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3-nightly.dca6a7a",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21031387
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "dca6a7a8a7db39789cfb0fa8164d8b7a47e9becd",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3-nightly.dca6a7a_1707827706411_0.2678731965484151",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3-nightly.69f9031": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3-nightly.69f9031",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3-nightly.69f9031",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "511c169d25f01fe02677a7ed175e7881419e8789",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3-nightly.69f9031.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-peLPoILAosQRtdyeUuG0ili40W9pL3S9HpBtUTy6OQ+HyKfDksV+r2aDGks4pgDvKXXqOoEEUkBvtdTe2quoqA==",
+        "signatures": [
+          {
+            "sig": "MEUCIAaPba6iv3RD02tlX54LpcdonWaHsF4HXMSZiIWwJUCYAiEA69jvua0rM97mDA1b4euXnq0D23nHUP/iFvDIkIONLt8=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3-nightly.69f9031",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21285243
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "69f9031c8a8e86a09eb2b3489202f280bed6a7b8",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3-nightly.69f9031_1708523498473_0.2090308112033341",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.5.3-nightly.4fa841c": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.5.3-nightly.4fa841c",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.5.3-nightly.4fa841c",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "bde42383de82240c39ef52142a9501d5bbd6a44a",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.5.3-nightly.4fa841c.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-6MzpgKtunNIcXaC4MsF4LMTYkooOXQlv6RBuhoQ5vyca2JVh1V0XfT3i9ZEqEGDhB+RAFBuVSUZesWVLpBUikg==",
+        "signatures": [
+          {
+            "sig": "MEUCIA2WwyvR0mBDzoLuNramd7SqSOXHX8KdxKOyqTiYoWcKAiEA1eMMLoQeIZud0sR2ot689JXH6GNJwf2mCGqaK0FEY1M=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.5.3-nightly.4fa841c",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21113371
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.*" },
+      "gitHead": "4fa841c6b613a1373273c57ecabc91cfffa6173f",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.5.3-nightly.4fa841c_1709727463474_0.8610277780880042",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.0",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.0",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "bcab0e71981a5601d85ea3ef09454b262764b776",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-b6mWu9Cu4w5B3K46wq9SlxKEZEEL6II/6HFNAuZ4YL8mOeQ0FTMU+wNMJFKkmkSE2zvim3xwW3PknmbLKbe3Mg==",
+        "signatures": [
+          {
+            "sig": "MEUCIB6emuiVbLpJS97Lbn8TErUmS4cZ8Cdr1hHRE4mAxW3zAiEA1+/1a6DLy792wKA+t7meA1wxNxgr2qp8+QwxPtYGLRs=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21129739
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "560628b380b0b1f61303c8e5ca2175d3b4794089",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.0_1709908253418_0.14786491965493398",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.1",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.1",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "aaa91cb1679a7e86e88cc577a32695f154bfe4b5",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-BYAzenlMF3QdngjNFw9QVBXKGNzeecqwF3pwDgUGEvU7OJpn1/lyVkJVxYPtVGRNdjQ9e6l/s8NjKuBpW/ZR4Q==",
+        "signatures": [
+          {
+            "sig": "MEQCICYGF9K83e09xBsh+WIO5FjgaMFwhjY6J6Lah5loLFzPAiAizdIOuY2B9wnCdY5l1eFLieL6q8MpapGM3sQI90xMhg==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21125675
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "4ed1cbe96bc9e6d7092e88dd0a54ff8ce78037e5",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.1_1710244094971_0.6431454148174325",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.2",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.2",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "9a206818507b250486a2e073416ebfcd5054b895",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-S6Wc5YX6aLDLMzwlDmiw/kjK62Ex+xzE432M5ge9q8tSCluGeHIzrenrJlu8E0xPG2FEipDaK4iqwnjS9O6e2A==",
+        "signatures": [
+          {
+            "sig": "MEUCICjlSleoRgHMOj3XjOVHvB9/SZQkv+t5ibw1Cg94F8CSAiEAtIJlxo13mwp3L/T+fhjQwQlJxVDTrfPzUCo78orEcas=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.2",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21477931
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "7669b334ecfb9580abe83bbf6141232805f0e4bd",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.2_1711097786746_0.014357738385743168",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.3": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.3",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.3",
+      "maintainers": [
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "697f5005412a5cce9976eec5478f4788c95d2ad7",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.3.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-vyn8TQaTZg617hjqFitwGmb1St5XXvq6I3vmxU/QFalM74BryMSvYCrYWb2Yw/TkykdEwZTMGYp+SWHRb04fTg==",
+        "signatures": [
+          {
+            "sig": "MEUCIQClfR5rX5coIx7xMhgLOg9TKpfIBkFKw0r7hDpwbJAjxgIgcc0S5gKD443t2SXQZ+V42lyPmky/4frNwp/utu/i9SQ=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.3",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21481963
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.*" },
+      "gitHead": "23b5a73ac7ccd4920f13919aaa712b9364020e88",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.3_1711387224533_0.4121009781096199",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.4": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.4",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.4",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "545b205dea20195b1fa64f5a0e60331a70133518",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.4.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-qTWhuIw+/ePvOkjE9Zxf5OqSCYxtAvcTJtVmZT8YQnmY2I62JKNV2m7tf6O5ViKZUOP0mOQ6NgqHKcHH1eT8jw==",
+        "signatures": [
+          {
+            "sig": "MEUCIH/aeelEfGyef4fRgqC0pq7p6IdJyLDvTOMtd7VBQ8IGAiEAg24thBaC4pp8ma1Zum/yOIbu1odMpPGqO2Y33aQQiys=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.4",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21498350
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "f6fd1ef7130e7bcd1466aa78ae7295fc5fdd5d58",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.2.4",
+      "directories": {},
+      "_nodeVersion": "20.11.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.4_1712141846288_0.6441149238658381",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.4-nightly.a995ada": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.4-nightly.a995ada",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.4-nightly.a995ada",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "7ba0b136078cdf48bd5c2bfe480bfd0412f93e24",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.4-nightly.a995ada.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-zT2etmR1gT2l4mWAOf+kMU+wPjZIaxKWyI24kQASUtQmVV2fpZBPWtmkuyyPa0JcAl0jYlyws5fCeMwsYEAJww==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCmpFzMv7CCA9Du3a4PM1BscwOYIlKoEbqEHmwp7u54gwIhAMs1eEU34wSAnetDSjhQxFzlNKmmiT6bPC5BeUwMZW1F",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.4-nightly.a995ada",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21531134
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "a995adaccf4cfee110981e37f2f1d61321d6765b",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.0",
+      "directories": {},
+      "_nodeVersion": "20.12.0",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.4-nightly.a995ada_1712418458257_0.7628545606851347",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.6.4-nightly.abab451": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.6.4-nightly.abab451",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.6.4-nightly.abab451",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "7770ad708290a1f04296e3a0bbcafa5fa81fa727",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.6.4-nightly.abab451.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-Z/etg8TyEsdN1uVaIUrjN4fsYO09z+t65AxJjd3vk7ci0eOkar43cENppiz0tdjTCafV28n+h6ESCdJIW9Qyog==",
+        "signatures": [
+          {
+            "sig": "MEUCIBYGwDsWmvI3fLJualUhwiDU38yeSfGRDHboOwdm+HUGAiEAmG2DuvzQ7vDgGrTru4zH3Kol4lVhLAEYmRbki2D/j5g=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.6.4-nightly.abab451",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21826046
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "abab4510760a4de4cf070b70ffe6a63aee5f1f07",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.0",
+      "directories": {},
+      "_nodeVersion": "20.12.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.6.4-nightly.abab451_1712728585874_0.9313435519363091",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.7.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.7.0",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.7.0",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "c2de603cbfeaa1db268b396adc280df1b540386f",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.7.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-1y+odKQsyHcw0JCGRuqhbx7Y6jxOVSh4lGIVDdJxW1b55yD22DY1kcMEfhUte6f95OIc2uqfkwtiI6xQAiZJdw==",
+        "signatures": [
+          {
+            "sig": "MEQCIHA0jrNp1MSECkLjkWA4eC+AoZZqgpo5LoCHGvkeuM3fAiAGUSq97noWIIRn9sqW45gi9Slx9/EQem1MZFZsG4U6YQ==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.7.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21899790
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "2dce6af835cc9339669b09f3a758de36a90b15f7",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.0",
+      "directories": {},
+      "_nodeVersion": "20.12.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.7.0_1713184701647_0.09020495307701126",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.7.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.7.1",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.7.1",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "6ac6e680778a5b9125f2aa9685d7d14de2fa7319",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.7.1.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-3wmCsGcC3KZ4pfTknXHfyMMlXPMhgfXVAcG5GlrR+Tq2JGiAw0EUydaLpsSBEbcG7IxH6OiUZEJZ95kAycCHBA==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCDdPny5GlqVA7cDKLtOqqHmw40KaK4emYvjHk0nQaUPwIhAMvZ4HO2OiJyuRxdnox7zS3Yx8O6cmFdsbVwXv9ckmKG",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.7.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 22030862
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "aba7b0c1c40a6137b3b78064841f621b53aa5fd0",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.0",
+      "directories": {},
+      "_nodeVersion": "20.12.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.7.1_1713800848295_0.6181012976049312",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.7.2": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.7.2",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.7.2",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "0071ea5a25f5ec5bbc1b3e6984a454bd198fbd6f",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.7.2.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-vXXyox8/CQijBxAu0+r8FfSO7JlC4tob3PbaFda8gPJFRz2uFJw39HtxVUwbTV1EcU6wSPh4SiRu5sZfP1VHrQ==",
+        "signatures": [
+          {
+            "sig": "MEUCIQCrbAITb1X8+Le+wpzD8pDSXr0v3yrhisXG/pXDPXybOgIgfIaB179QQppumlw35heaf0VUVehrfdec6IdHDbE2zSU=",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.7.2",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 22395438
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "2c70d3fde5b13ec9ef0915d22837ab8321b6737f",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.0",
+      "directories": {},
+      "_nodeVersion": "20.12.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.7.2_1714481323294_0.06151136232544796",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.7.3": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.7.3",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.7.3",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "nissy-dev", "email": "nd.12021218@gmail.com" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "7112b22e32a8626d0f11d92e43d0cc034c50723d",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.7.3.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-vnedYcd5p4keT3iD48oSKjOIRPYcjSNNbd8MO1bKo9ajg3GwQXZLAH+0Cvlr+eMsO67/HddWmscSQwTFrC/uPA==",
+        "signatures": [
+          {
+            "sig": "MEYCIQCfDrh6GbF2KmRCV/+JGt+2rfqOgo4PMjGGiUVpNkyNHgIhALnBX0UJHXTJ1CBwtoGXLupP9ETrOzZKSHEpHR4jSOE6",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.7.3",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 21830230
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "b9f90b7ee63506a1995bc29f4e389efec25a1525",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.0",
+      "directories": {},
+      "_nodeVersion": "20.12.2",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.7.3_1714990252726_0.926606106277589",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.7.4-nightly.125f34b": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.7.4-nightly.125f34b",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.7.4-nightly.125f34b",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "4d97d4e132e14f5988794c90bc8874a855abeac7",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.7.4-nightly.125f34b.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-2Pdd4GFG1LoaK0aFqS+4aQPfH08UDjS7c68/9q4AjNjiYsMSzQ6sFJfElejgqaLgW3ohFeo8WHKFJ2RaAz/DrQ==",
+        "signatures": [
+          {
+            "sig": "MEQCIE2komYXV3wG1cF1fQdleUnv03vTg9VcSvB64i1WVV4iAiAEf1xPuE9d+R/2zZZRSHfe7qV3e4Xpbb6lgIiPRG0lbg==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.7.4-nightly.125f34b",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 24620161
+      },
+      "libc": ["glibc"],
+      "readme": "ERROR: No README data found!",
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "125f34b8b45ea01cfb7a4da42a111937e9d61300",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.2",
+      "directories": {},
+      "_nodeVersion": "20.13.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.7.4-nightly.125f34b_1716448410546_0.9558668363784366",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.8.0": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.8.0",
+      "license": "MIT OR Apache-2.0",
+      "_id": "@biomejs/cli-linux-x64@1.8.0",
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "homepage": "https://biomejs.dev",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "dist": {
+        "shasum": "de1ab7649324c72b74e16c5234ef6191a8bc34fd",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.8.0.tgz",
+        "fileCount": 2,
+        "integrity": "sha512-cmgmhlD4QUxMhL1VdaNqnB81xBHb3R7huVNyYnPYzP+AykZ7XqJbPd1KcWAszNjUk2AHdx0aLKEBwCOWemxb2g==",
+        "signatures": [
+          {
+            "sig": "MEQCIAfwQUvKnVaxFq3lOYYzRKC5nEE8o4H5Mu8OtYwJeWAFAiBIfxEWfn/59HWK3isVn116W2C7EoimBXBdUfE70HKJLg==",
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+          }
+        ],
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.8.0",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "unpackedSize": 24894513
+      },
+      "libc": ["glibc"],
+      "engines": { "node": ">=14.21.3" },
+      "gitHead": "378c05edd47608a1b8cba725564c807b2e772bd6",
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "repository": {
+        "url": "git+https://github.com/biomejs/biome.git",
+        "type": "git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "_npmVersion": "10.5.2",
+      "directories": {},
+      "_nodeVersion": "20.13.1",
+      "_hasShrinkwrap": false,
+      "_npmOperationalInternal": {
+        "tmp": "tmp/cli-linux-x64_1.8.0_1717501525015_0.8337973963392948",
+        "host": "s3://npm-registry-packages"
+      }
+    },
+    "1.8.1": {
+      "name": "@biomejs/cli-linux-x64",
+      "version": "1.8.1",
+      "license": "MIT OR Apache-2.0",
+      "repository": {
+        "type": "git",
+        "url": "git+https://github.com/biomejs/biome.git",
+        "directory": "packages/@biomejs/biome"
+      },
+      "engines": { "node": ">=14.21.3" },
+      "homepage": "https://biomejs.dev",
+      "os": ["linux"],
+      "cpu": ["x64"],
+      "libc": ["glibc"],
+      "_id": "@biomejs/cli-linux-x64@1.8.1",
+      "gitHead": "39db99b1cd087d6aa46ecfecba6adbfa0d45a303",
+      "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+      "_nodeVersion": "20.14.0",
+      "_npmVersion": "10.7.0",
+      "dist": {
+        "integrity": "sha512-AeBycVdNrTzsyYKEOtR2R0Ph0hCD0sCshcp2aOnfGP0hCZbtFg09D0SdKLbyzKntisY41HxKVrydYiaApp+2uw==",
+        "shasum": "fbc14410e402d901a6271d4b3b88a391cbf8c959",
+        "tarball": "https://registry.npmjs.org/@biomejs/cli-linux-x64/-/cli-linux-x64-1.8.1.tgz",
+        "fileCount": 2,
+        "unpackedSize": 25087189,
+        "attestations": {
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@biomejs%2fcli-linux-x64@1.8.1",
+          "provenance": { "predicateType": "https://slsa.dev/provenance/v1" }
+        },
+        "signatures": [
+          {
+            "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA",
+            "sig": "MEUCICmLvIHk4Zqcaf6iGPToLUSKlVx9pEd4rseQDT0lJbUIAiEAsCsZ0f09i6Yh4wIK2bmHBWjXxFgEb4oULNjUJ4tt49M="
+          }
+        ]
+      },
+      "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+      "directories": {},
+      "maintainers": [
+        { "name": "nhedger", "email": "nicolas@hedger.ch" },
+        { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+        { "name": "ematipico", "email": "my.burning@gmail.com" },
+        { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+      ],
+      "_npmOperationalInternal": {
+        "host": "s3://npm-registry-packages",
+        "tmp": "tmp/cli-linux-x64_1.8.1_1718027014198_0.6927071666787943"
+      },
+      "_hasShrinkwrap": false
+    }
+  },
+  "time": {
+    "created": "2023-08-18T12:50:49.906Z",
+    "modified": "2024-06-10T13:43:34.929Z",
+    "0.1.0-nightly.7b90623": "2023-08-18T12:50:50.274Z",
+    "0.1.2": "2023-08-18T15:30:33.265Z",
+    "0.1.2-nightly.506ee2e": "2023-08-19T01:12:44.816Z",
+    "0.2.0": "2023-08-20T19:47:28.875Z",
+    "0.2.0-nightly.0b5a3fd": "2023-08-22T01:15:11.203Z",
+    "0.2.3": "2023-08-24T21:02:52.181Z",
+    "1.0.0": "2023-08-28T06:58:57.020Z",
+    "1.1.0": "2023-09-06T19:10:23.896Z",
+    "1.1.1": "2023-09-07T09:56:08.073Z",
+    "1.1.2": "2023-09-07T19:21:44.676Z",
+    "1.1.2-nightly.9c28238": "2023-09-15T04:56:00.758Z",
+    "1.2.0": "2023-09-15T14:13:27.872Z",
+    "1.2.1": "2023-09-15T17:08:09.172Z",
+    "1.2.2": "2023-09-16T09:30:23.677Z",
+    "1.2.2-nightly.1e3fc94": "2023-10-10T16:08:36.610Z",
+    "1.2.2-nightly.ee2e2ab": "2023-10-14T07:19:06.237Z",
+    "1.3.0": "2023-10-19T09:03:36.061Z",
+    "1.3.1": "2023-10-20T10:57:08.727Z",
+    "1.3.2": "2023-10-30T23:23:10.555Z",
+    "1.3.3": "2023-10-31T08:19:41.106Z",
+    "1.3.3-nightly.8475169": "2023-11-09T06:51:39.745Z",
+    "1.3.3-nightly.ced82da": "2023-11-22T01:45:06.597Z",
+    "1.3.3-nightly.38797b7": "2023-11-22T16:47:57.009Z",
+    "1.4.0": "2023-11-27T16:45:24.007Z",
+    "1.4.1": "2023-11-30T19:48:03.124Z",
+    "1.4.1-nightly.bc772a3": "2023-12-05T04:13:15.895Z",
+    "1.4.1-nightly.570d680": "2023-12-13T07:48:50.339Z",
+    "1.4.1-nightly.e087146": "2023-12-14T12:17:59.830Z",
+    "1.4.1-nightly.efc084c": "2023-12-21T07:21:52.271Z",
+    "1.4.1-nightly.22dd4e1": "2023-12-23T05:27:16.024Z",
+    "1.4.1-nightly.d869a33": "2024-01-03T13:39:52.067Z",
+    "1.5.0": "2024-01-08T14:47:08.354Z",
+    "1.5.1": "2024-01-10T13:28:46.199Z",
+    "1.5.2": "2024-01-15T10:12:15.930Z",
+    "1.5.2-nightly.91c7730": "2024-01-19T10:49:13.368Z",
+    "1.5.3": "2024-01-22T11:23:47.720Z",
+    "1.5.3-nightly.24fcf19": "2024-01-24T14:11:58.968Z",
+    "1.5.3-nightly.6cbf1c7": "2024-02-01T19:04:02.129Z",
+    "1.5.3-nightly.d2858ee": "2024-02-13T03:55:38.621Z",
+    "1.5.3-nightly.dca6a7a": "2024-02-13T12:35:06.752Z",
+    "1.5.3-nightly.69f9031": "2024-02-21T13:51:38.768Z",
+    "1.5.3-nightly.4fa841c": "2024-03-06T12:17:43.837Z",
+    "1.6.0": "2024-03-08T14:30:53.778Z",
+    "1.6.1": "2024-03-12T11:48:15.251Z",
+    "1.6.2": "2024-03-22T08:56:27.041Z",
+    "1.6.3": "2024-03-25T17:20:24.840Z",
+    "1.6.4": "2024-04-03T10:57:26.581Z",
+    "1.6.4-nightly.a995ada": "2024-04-06T15:47:38.512Z",
+    "1.6.4-nightly.abab451": "2024-04-10T05:56:26.181Z",
+    "1.7.0": "2024-04-15T12:38:21.943Z",
+    "1.7.1": "2024-04-22T15:47:28.562Z",
+    "1.7.2": "2024-04-30T12:48:43.664Z",
+    "1.7.3": "2024-05-06T10:10:52.979Z",
+    "1.7.4-nightly.125f34b": "2024-05-23T07:13:30.852Z",
+    "1.8.0": "2024-06-04T11:45:25.361Z",
+    "1.8.1": "2024-06-10T13:43:34.488Z"
+  },
+  "maintainers": [
+    { "name": "nhedger", "email": "nicolas@hedger.ch" },
+    { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },
+    { "name": "ematipico", "email": "my.burning@gmail.com" },
+    { "name": "conaclos", "email": "victorien+npm@elvinger.fr" }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/biomejs/biome.git",
+    "directory": "packages/@biomejs/biome"
+  },
+  "license": "MIT OR Apache-2.0",
+  "homepage": "https://biomejs.dev",
+  "bugs": { "url": "https://github.com/biomejs/biome/issues" },
+  "readme": "ERROR: No README data found!",
+  "readmeFilename": ""
+}

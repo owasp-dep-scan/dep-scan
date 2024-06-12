@@ -203,6 +203,43 @@ def test_npm_risks():
         assert not risk_metrics["pkg_version_missing_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
 
+    sqlite_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "npm-sqlite3-metadata.json"
+    )
+    with open(sqlite_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "5.0.2"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_includes_binary_info"]
+
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "5.0.3"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_includes_binary_info"]
+
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "5.1.7"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_includes_binary_info"]
+
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "5.1.7-rc.0"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_includes_binary_info"]
+
 
 def test_pypi_confusion_risks():
     test_pkg = os.path.join(

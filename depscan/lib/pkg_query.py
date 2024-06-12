@@ -36,7 +36,7 @@ def get_lookup_url(registry_type, pkg):
                 vendor = "@" + vendor
             key = f"{vendor}/{name}"
         return key, f"{config.NPM_SERVER}/{key}"
-    elif registry_type == "pypi":
+    if registry_type == "pypi":
         return key, f"{config.PYPI_SERVER}/{key}/json"
     return None, None
 
@@ -436,6 +436,10 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics["pkg_private_on_public_registry_risk"] = True
         risk_metrics["pkg_private_on_public_registry_value"] = 1
     versions = pkg_metadata.get("versions", {})
+    latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
+    engines_block_dict = versions.get(latest_version, {}).get("engines", {})
+    # Check for scripts block
+    scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
     theversion = None
     if pkg and pkg.get("version"):
         theversion = versions.get(pkg.get("version"))
@@ -443,17 +447,24 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         if not theversion:
             risk_metrics["pkg_version_missing_risk"] = True
             risk_metrics["pkg_version_missing_value"] = 1
+        # Get the version specific engines and scripts block
+        if theversion.get("engines"):
+            engines_block_dict = theversion.get("engines")
+        if theversion.get("scripts"):
+            scripts_block_dict = theversion.get("scripts")
         # Check if there is any binary downloaded and offered
-        elif theversion.get("binary"):
+        if theversion.get("binary"):
             risk_metrics["pkg_includes_binary_risk"] = True
             risk_metrics["pkg_includes_binary_value"] = 1
             # Capture the remote host
             if theversion["binary"].get("host"):
                 risk_metrics["pkg_includes_binary_info"] = f'Host: {theversion["binary"].get("host")}\nBinary: {theversion["binary"].get("module_name")}'
-    latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
-    engines_block_dict = versions.get(latest_version, {}).get("engines", {})
-    # Check for scripts block
-    scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
+            # For some packages,
+            elif theversion["binary"].get("napi_versions"):
+                if theversion.get("homepage"):
+                    risk_metrics["pkg_includes_binary_info"] = f'Homepage: {theversion.get("homepage")}'
+                elif theversion.get("repository", {}).get("url"):
+                    risk_metrics["pkg_includes_binary_info"] = f'Repository: {theversion.get("repository").get("url")}'
     is_deprecated = versions.get(latest_version, {}).get("deprecated", None) is not None
     is_version_deprecated = True if theversion and theversion.get("deprecated") else False
     # Is the package deprecated
@@ -473,9 +484,14 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         scripts_block_list = [
             block
             for block in scripts_block_dict.keys()
-            if "preinstall" in block or "postinstall" in block
+            if block in ("preinstall", "postinstall", "prebuild")
         ]
-
+        # Detect the use of prebuild-install
+        # https://github.com/prebuild/prebuild-install
+        if not risk_metrics.get("pkg_includes_binary_risk"):
+            if scripts_block_dict.get("prebuild", "").startswith("prebuild "):
+                risk_metrics["pkg_includes_binary_risk"] = True
+                risk_metrics["pkg_includes_binary_value"] = 1
     # If the package has fewer than minimum number of versions
     if len(versions) < config.pkg_min_versions:
         risk_metrics["pkg_min_versions_risk"] = True
