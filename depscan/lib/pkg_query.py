@@ -463,7 +463,8 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     elif is_version_deprecated:
         risk_metrics["pkg_version_deprecated_risk"] = True
         risk_metrics["pkg_version_deprecated_value"] = 1
-        risk_metrics["pkg_version_deprecated_reason"] = theversion.get("deprecated")
+        # The deprecation reason for a specific version are often useful
+        risk_metrics["pkg_version_deprecated_info"] = theversion.get("deprecated")
     scripts_block_list = []
     # There are some packages on npm with incorrectly configured scripts
     # block Good news is that the install portion would only for if the

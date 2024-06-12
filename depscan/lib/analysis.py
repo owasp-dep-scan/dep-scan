@@ -1188,7 +1188,7 @@ def analyse_pkg_risks(
                             risk_categories.append(f":warning: {help_text}")
                         risk_categories_simple.append(help_text)
             data.append("\n".join(risk_categories))
-            edata.append(", ".join(risk_categories_simple))
+            edata.append("~~".join(risk_categories_simple))
             table.add_row(*data)
             report_data.append(dict(zip(headers, edata)))
     if report_data:
