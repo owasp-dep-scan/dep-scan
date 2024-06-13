@@ -240,6 +240,43 @@ def test_npm_risks():
         assert not risk_metrics["pkg_min_versions_risk"]
         assert risk_metrics["pkg_includes_binary_info"]
 
+    biome_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "npm-biome-metadata.json"
+    )
+    with open(biome_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.8.1"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_attested_check"]
+        assert risk_metrics["pkg_attested_info"] == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+
+    biomec_pkg = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "data", "npm-biome-cli-metadata.json"
+    )
+    with open(biomec_pkg) as fp:
+        pkg_metadata = json.load(fp)
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.8.1"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_attested_check"]
+        assert risk_metrics["pkg_attested_info"] == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+
+        risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.8.0"})
+        assert risk_metrics["pkg_includes_binary_risk"]
+        assert not risk_metrics["pkg_deprecated_risk"]
+        assert not risk_metrics["pkg_version_deprecated_risk"]
+        assert not risk_metrics["pkg_version_missing_risk"]
+        assert not risk_metrics["pkg_min_versions_risk"]
+        assert risk_metrics["pkg_attested_check"]
+        assert risk_metrics["pkg_attested_info"] == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+
 
 def test_pypi_confusion_risks():
     test_pkg = os.path.join(

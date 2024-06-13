@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -W ignore::DeprecationWarning
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -820,7 +820,8 @@ def main():
     if args.server_mode:
         return run_server(args)
     if not args.no_banner:
-        print(LOGO)
+        with contextlib.suppress(UnicodeEncodeError):
+            print(LOGO)
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
         if src_dir == "." or args.search_purl:

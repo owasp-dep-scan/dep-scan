@@ -2674,7 +2674,6 @@
         },
         "unpackedSize": 24894513
       },
-      "libc": ["glibc"],
       "engines": { "node": ">=14.21.3" },
       "gitHead": "378c05edd47608a1b8cba725564c807b2e772bd6",
       "_npmUser": { "name": "dominionl", "email": "denis_bezrukov@mail.ru" },

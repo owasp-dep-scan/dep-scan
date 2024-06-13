@@ -442,7 +442,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
     theversion = None
     if pkg and pkg.get("version"):
-        theversion = versions.get(pkg.get("version"))
+        theversion = versions.get(pkg.get("version"), {})
         # Check if the version exists in the registry
         if not theversion:
             risk_metrics["pkg_version_missing_risk"] = True
@@ -465,6 +465,34 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
                     risk_metrics["pkg_includes_binary_info"] = f'Homepage: {theversion.get("homepage")}'
                 elif theversion.get("repository", {}).get("url"):
                     risk_metrics["pkg_includes_binary_info"] = f'Repository: {theversion.get("repository").get("url")}'
+        # Look for slsa attestations
+        if theversion.get("dist", {}).get("attestations") and theversion.get("dist", {}).get("signatures"):
+            attestations = theversion.get("dist").get("attestations")
+            signatures = theversion.get("dist").get("signatures")
+            if attestations.get("url").startswith("https://registry.npmjs.org/") and attestations.get("provenance", {}).get("predicateType", "") == "https://slsa.dev/provenance/v1":
+                risk_metrics["pkg_attested_check"] = True
+                risk_metrics["pkg_attested_value"] = len(signatures)
+                risk_metrics["pkg_attested_info"] = "\n".join([sig.get("keyid") for sig in signatures])
+        # In some packages like biomejs, there would be no binary section
+        # case 1: the optional dependencies section might have a bunch of packages for each os
+        # case 2: there could be a libc attribute
+        # case 3: fileCount <= 2 and size > 20 MB
+        if not theversion.get("binary"):
+            binary_count = 1
+            if theversion.get("bin"):
+                binary_count = max(len(theversion.get("bin", {}).keys()), 1)
+            for opkg in theversion.get("optionalDependencies", {}).keys():
+                if "linux" in opkg or "darwin" in opkg or "win32" in opkg or "arm64" in opkg or "musl" in opkg:
+                    risk_metrics["pkg_includes_binary_risk"] = True
+                    risk_metrics["pkg_includes_binary_value"] = binary_count
+                    break
+            if not risk_metrics.get("pkg_includes_binary_risk"):
+                if theversion.get("libc"):
+                    risk_metrics["pkg_includes_binary_risk"] = True
+                    risk_metrics["pkg_includes_binary_value"] = len(theversion.get("libc", []))
+                elif theversion.get("dist", {}).get("fileCount", 0) <= 2 and theversion.get("dist", {}).get("unpackedSize") and (theversion.get("dist", {}).get("unpackedSize", 0) / (1000 * 1000)) > 20:
+                    risk_metrics["pkg_includes_binary_risk"] = True
+                    risk_metrics["pkg_includes_binary_value"] = 1
     is_deprecated = versions.get(latest_version, {}).get("deprecated", None) is not None
     is_version_deprecated = True if theversion and theversion.get("deprecated") else False
     # Is the package deprecated

@@ -1154,6 +1154,7 @@ def analyse_pkg_risks(
             or risk_metrics.get("pkg_version_deprecated_risk")
             or risk_metrics.get("pkg_version_missing_risk")
             or risk_metrics.get("pkg_includes_binary_risk")
+            or risk_metrics.get("pkg_attested_check")
         ):
             risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
@@ -1169,8 +1170,8 @@ def analyse_pkg_risks(
             risk_categories = []
             risk_categories_simple = []
             for rk, rv in risk_metrics.items():
-                if rk.endswith("_risk") and rv is True:
-                    rcat = rk.replace("_risk", "")
+                if (rk.endswith("_risk") or rk.endswith("_check")) and rv is True:
+                    rcat = rk.removesuffix("_risk").removesuffix("_check")
                     help_text = config.risk_help_text.get(rcat)
                     extra_info = risk_metrics.get(f"{rcat}_info")
                     if extra_info:
@@ -1184,6 +1185,8 @@ def analyse_pkg_risks(
                             "pkg_private_on_public_registry",
                         ):
                             risk_categories.append(f":cross_mark: {help_text}")
+                        elif rk.endswith("_check"):
+                            risk_categories.append(f":white_heavy_check_mark: {help_text}")
                         else:
                             risk_categories.append(f":warning: {help_text}")
                         risk_categories_simple.append(help_text)
