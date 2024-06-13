@@ -289,7 +289,7 @@ def build_args():
         default=False,
         dest="explain",
         help="Makes depscan to explain the various analysis. Useful for "
-             "creating detailed reports.",
+        "creating detailed reports.",
     )
     parser.add_argument(
         "--reachables-slices-file",
@@ -392,8 +392,13 @@ def process_suggestions(k, v):
             name = purl_obj.get("name")
             version = purl_obj.get("version")
             pkg_list.append(
-                {"vendor": vendor, "name": name, "version": version,
-                    "purl": k, })
+                {
+                    "vendor": vendor,
+                    "name": name,
+                    "version": version,
+                    "purl": k,
+                }
+            )
     else:
         tmp_a = k.split(":")
         if len(tmp_a) == 3:
@@ -514,9 +519,7 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
         json.dump(bom_data, vdrfp, indent=4)
-    LOG.debug(
-        "VDR file %s generated successfully", vdr_file
-    )
+    LOG.debug("VDR file %s generated successfully", vdr_file)
 
 
 def set_project_types(args, src_dir):
@@ -730,8 +733,7 @@ async def run_scan():
             return (
                 {
                     "error": "true",
-                    "message": "Unable to generate SBOM. Check your input "
-                               "path or url.",
+                    "message": "Unable to generate SBOM. Check your input path or url.",
                 },
                 400,
                 {"Content-Type": "application/json"},
@@ -756,8 +758,7 @@ async def run_scan():
     return (
         {
             "error": "true",
-            "message": "Unable to generate SBOM. Check your input path or "
-                       "url.",
+            "message": "Unable to generate SBOM. Check your input path or url.",
         },
         500,
         {"Content-Type": "application/json"},
@@ -802,6 +803,7 @@ def main():
     ) = (None, None, None, None, None, None)
     if (
         os.getenv("CI")
+        and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
         and not args.no_banner
         and not os.getenv("INPUT_THANK_YOU", "")
         == ("I have sponsored OWASP-dep-scan.")
@@ -859,9 +861,7 @@ def main():
         perform_risk_audit = True
     db = db_lib.get()
     run_cacher = args.cache
-    areport_file = (
-        args.report_file or os.path.join(reports_dir, "depscan.json")
-    )
+    areport_file = args.report_file or os.path.join(reports_dir, "depscan.json")
     html_file = areport_file.replace(".json", ".html")
     pdf_file = areport_file.replace(".json", ".pdf")
     # Create reports directory
@@ -906,7 +906,11 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server, "profile": args.profile, "cdxgen_args": args.cdxgen_args},
+                {
+                    "cdxgen_server": args.cdxgen_server,
+                    "profile": args.profile,
+                    "cdxgen_args": args.cdxgen_args,
+                },
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -1119,9 +1123,9 @@ def main():
             )
     console.save_html(
         html_file,
-        theme=MONOKAI
-        if os.getenv("USE_DARK_THEME")
-        else DEFAULT_TERMINAL_THEME,
+        theme=(
+            MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME
+        ),
     )
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished

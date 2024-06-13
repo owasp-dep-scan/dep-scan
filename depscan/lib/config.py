@@ -86,7 +86,7 @@ vendor_alias = {
     "io.springfox": "smartbear",
     "log4net": "apache",
     "github": "github actions",
-    "microsoft": "azure"
+    "microsoft": "azure",
 }
 
 # Package aliases
@@ -159,7 +159,7 @@ package_alias = {
     "php-pear": "pear-core-minimal",
     "Selenium.WebDriver": "selenium",
     "selenium": "selenium",
-    "numpy": "numpy"
+    "numpy": "numpy",
 }
 
 # Default ignore list
@@ -410,7 +410,9 @@ pkg_deprecated_weight = get_float_from_env("pkg_deprecated_weight", 2)
 pkg_deprecated_max = get_float_from_env("pkg_deprecated_max", 0)
 
 # Package version deprecated
-pkg_version_deprecated_weight = get_float_from_env("pkg_version_deprecated_weight", 2)
+pkg_version_deprecated_weight = get_float_from_env(
+    "pkg_version_deprecated_weight", 2
+)
 pkg_version_deprecated_max = get_float_from_env("pkg_version_deprecated_max", 0)
 
 # Package version missing

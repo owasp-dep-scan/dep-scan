@@ -235,8 +235,7 @@ def is_lang_sw_edition(package_issue):
             return True
         if (
             config.LANG_PKG_TYPES.get(all_parts.group("sw_edition"))
-            or all_parts.group("sw_edition")
-            in config.LANG_PKG_TYPES.values()
+            or all_parts.group("sw_edition") in config.LANG_PKG_TYPES.values()
         ):
             return True
         return False
@@ -406,7 +405,13 @@ def prepare_vdr(options: PrepareVdrOptions):
                 package_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
                 # Filter application CVEs from distros
-                if (config.LANG_PKG_TYPES.get(package_type) or package_type in config.LANG_PKG_TYPES.values()) and ((vendor and vendor in config.OS_PKG_TYPES) or not is_lang_sw_edition(package_issue)):
+                if (
+                    config.LANG_PKG_TYPES.get(package_type)
+                    or package_type in config.LANG_PKG_TYPES.values()
+                ) and (
+                    (vendor and vendor in config.OS_PKG_TYPES)
+                    or not is_lang_sw_edition(package_issue)
+                ):
                     fp_count += 1
                     continue
                 if package_type in config.OS_PKG_TYPES:
@@ -1170,7 +1175,9 @@ def analyse_pkg_risks(
             risk_categories = []
             risk_categories_simple = []
             for rk, rv in risk_metrics.items():
-                if (rk.endswith("_risk") or rk.endswith("_check")) and rv is True:
+                if (
+                    rk.endswith("_risk") or rk.endswith("_check")
+                ) and rv is True:
                     rcat = rk.removesuffix("_risk").removesuffix("_check")
                     help_text = config.risk_help_text.get(rcat)
                     extra_info = risk_metrics.get(f"{rcat}_info")
@@ -1186,7 +1193,9 @@ def analyse_pkg_risks(
                         ):
                             risk_categories.append(f":cross_mark: {help_text}")
                         elif rk.endswith("_check"):
-                            risk_categories.append(f":white_heavy_check_mark: {help_text}")
+                            risk_categories.append(
+                                f":white_heavy_check_mark: {help_text}"
+                            )
                         else:
                             risk_categories.append(f":warning: {help_text}")
                         risk_categories_simple.append(help_text)
