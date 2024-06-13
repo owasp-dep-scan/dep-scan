@@ -284,7 +284,6 @@ def compute_time_risks(
 
     # Check for the maximum seconds difference between latest version and now
     if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
-        print(latest_now_diff.total_seconds(), config.latest_now_max_seconds)
         risk_metrics["latest_now_max_seconds_risk"] = True
         risk_metrics["latest_now_max_seconds_value"] = (
             latest_now_diff.total_seconds()
