@@ -441,12 +441,15 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     # Check for scripts block
     scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
     theversion = None
-    if pkg and pkg.get("version"):
-        theversion = versions.get(pkg.get("version"), {})
+    if pkg:
+        if pkg.get("version"):
+            theversion = versions.get(pkg.get("version"), {})
         # Check if the version exists in the registry
         if not theversion:
             risk_metrics["pkg_version_missing_risk"] = True
             risk_metrics["pkg_version_missing_value"] = 1
+            # Proceed with the rest of checks using the latest version
+            theversion = latest_version
         # Get the version specific engines and scripts block
         if theversion.get("engines"):
             engines_block_dict = theversion.get("engines")
