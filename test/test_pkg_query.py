@@ -161,7 +161,7 @@ def test_npm_confusion_risks():
     test_deprecated_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "cdxgen-metadata.json"
     )
-    with open(test_deprecated_pkg) as fp:
+    with open(test_deprecated_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, True, None, None)
         assert risk_metrics["pkg_private_on_public_registry_risk"]
@@ -172,7 +172,7 @@ def test_npm_risks():
     test_deprecated_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bcrypt-metadata.json"
     )
-    with open(test_deprecated_pkg) as fp:
+    with open(test_deprecated_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics["pkg_deprecated_risk"]
@@ -182,7 +182,7 @@ def test_npm_risks():
     ebp_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "ebparser-metadata.json"
     )
-    with open(ebp_pkg) as fp:
+    with open(ebp_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, None)
         assert risk_metrics["pkg_node_version_risk"]
@@ -194,7 +194,7 @@ def test_npm_risks():
     fsevents_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "npm-fsevents-metadata.json"
     )
-    with open(fsevents_pkg) as fp:
+    with open(fsevents_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.2.10"})
         assert risk_metrics["pkg_includes_binary_risk"]
@@ -206,7 +206,7 @@ def test_npm_risks():
     sqlite_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "npm-sqlite3-metadata.json"
     )
-    with open(sqlite_pkg) as fp:
+    with open(sqlite_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "5.0.2"})
         assert risk_metrics["pkg_includes_binary_risk"]
@@ -243,7 +243,7 @@ def test_npm_risks():
     biome_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "npm-biome-metadata.json"
     )
-    with open(biome_pkg) as fp:
+    with open(biome_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.8.1"})
         assert risk_metrics["pkg_includes_binary_risk"]
@@ -257,7 +257,7 @@ def test_npm_risks():
     biomec_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "npm-biome-cli-metadata.json"
     )
-    with open(biomec_pkg) as fp:
+    with open(biomec_pkg, encoding="utf-8") as fp:
         pkg_metadata = json.load(fp)
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.8.1"})
         assert risk_metrics["pkg_includes_binary_risk"]
