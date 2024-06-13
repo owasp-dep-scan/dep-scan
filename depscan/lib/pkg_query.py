@@ -469,7 +469,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
             risk_metrics["pkg_version_missing_risk"] = True
             risk_metrics["pkg_version_missing_value"] = 1
             # Proceed with the rest of checks using the latest version
-            theversion = latest_version
+            theversion = versions.get(latest_version, {})
         # Get the version specific engines and scripts block
         if theversion.get("engines"):
             engines_block_dict = theversion.get("engines")
@@ -486,13 +486,13 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
                 )
             # For some packages,
             elif theversion["binary"].get("napi_versions"):
-                if theversion.get("homepage"):
-                    risk_metrics["pkg_includes_binary_info"] = (
-                        f'Homepage: {theversion.get("homepage")}'
-                    )
-                elif theversion.get("repository", {}).get("url"):
+                if theversion.get("repository", {}).get("url"):
                     risk_metrics["pkg_includes_binary_info"] = (
                         f'Repository: {theversion.get("repository").get("url")}'
+                    )
+                elif theversion.get("homepage"):
+                    risk_metrics["pkg_includes_binary_info"] = (
+                        f'Homepage: {theversion.get("homepage")}'
                     )
         # Look for slsa attestations
         if theversion.get("dist", {}).get("attestations") and theversion.get(
@@ -513,9 +513,10 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
                     [sig.get("keyid") for sig in signatures]
                 )
         # In some packages like biomejs, there would be no binary section
-        # case 1: the optional dependencies section might have a bunch of packages for each os
-        # case 2: there could be a libc attribute
-        # case 3: fileCount <= 2 and size > 20 MB
+        # case 1: optional dependencies section might have a bunch of packages for each os
+        # case 2: prebuild, prebuild-install, prebuildify in dependencies
+        # case 3: there could be a libc attribute
+        # case 4: fileCount <= 2 and size > 20 MB
         if not theversion.get("binary"):
             binary_count = 1
             if theversion.get("bin"):
@@ -531,6 +532,14 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
                     risk_metrics["pkg_includes_binary_risk"] = True
                     risk_metrics["pkg_includes_binary_value"] = binary_count
                     break
+            # Eg: pkg:npm/zeromq@6.0.0-beta.19
+            dev_deps = list(theversion.get("devDependencies", {}).keys())
+            direct_deps = list(theversion.get("dependencies", {}).keys())
+            if "prebuild" in " ".join(dev_deps) or "prebuild" in " ".join(
+                direct_deps
+            ):
+                risk_metrics["pkg_includes_binary_risk"] = True
+                risk_metrics["pkg_includes_binary_value"] = binary_count
             if not risk_metrics.get("pkg_includes_binary_risk"):
                 if theversion.get("libc"):
                     risk_metrics["pkg_includes_binary_risk"] = True
@@ -577,8 +586,9 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         ]
         # Detect the use of prebuild-install
         # https://github.com/prebuild/prebuild-install
+        # https://github.com/prebuild/prebuildify
         if not risk_metrics.get("pkg_includes_binary_risk"):
-            if scripts_block_dict.get("prebuild", "").startswith("prebuild "):
+            if scripts_block_dict.get("prebuild", "").startswith("prebuild"):
                 risk_metrics["pkg_includes_binary_risk"] = True
                 risk_metrics["pkg_includes_binary_value"] = 1
     # If the package has fewer than minimum number of versions
