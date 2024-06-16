@@ -36,3 +36,14 @@ jobs:
     - name: Test with pytest
       run: |
         pytest --cov=depscan test
+    - name: purl tests
+      run: |
+        python depscan/cli.py --purl "pkg:pypi/requests@2.32.1"
+        python depscan/cli.py --purl "pkg:pypi/requests@4.0.0"
+        python depscan/cli.py --purl "pkg:pypi/reqwestss@0.1.0"
+        python depscan/cli.py --purl "pkg:npm/%40appthreat/cdxgen@7.0.5"
+        python depscan/cli.py --purl "pkg:npm/%40appthreat/cdxgen@7.1.0"
+        python depscan/cli.py --purl "pkg:npm/fsevents@1.2.10"
+        python depscan/cli.py --purl "pkg:npm/@biomejs/biome@1.8.1"
+      env:
+        PYTHONIOENCODING: utf-8

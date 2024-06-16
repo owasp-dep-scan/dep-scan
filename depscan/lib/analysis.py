@@ -235,8 +235,7 @@ def is_lang_sw_edition(package_issue):
             return True
         if (
             config.LANG_PKG_TYPES.get(all_parts.group("sw_edition"))
-            or all_parts.group("sw_edition")
-            in config.LANG_PKG_TYPES.values()
+            or all_parts.group("sw_edition") in config.LANG_PKG_TYPES.values()
         ):
             return True
         return False
@@ -306,6 +305,7 @@ def prepare_vdr(options: PrepareVdrOptions):
     fp_count = 0
     pkg_attention_count = 0
     critical_count = 0
+    malicious_count = 0
     has_poc_count = 0
     has_reachable_poc_count = 0
     has_exploit_count = 0
@@ -376,6 +376,10 @@ def prepare_vdr(options: PrepareVdrOptions):
         package_type = None
         insights = []
         plain_insights = []
+        if vid.startswith("MAL-"):
+            insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
+            plain_insights.append("Malicious")
+            malicious_count += 1
         purl_obj = None
         vendor = package_issue["affected_location"].get("vendor")
         # If the match was based on name and version alone then the alias might legitimately lack a full purl
@@ -401,7 +405,13 @@ def prepare_vdr(options: PrepareVdrOptions):
                 package_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
                 # Filter application CVEs from distros
-                if (config.LANG_PKG_TYPES.get(package_type) or package_type in config.LANG_PKG_TYPES.values()) and ((vendor and vendor in config.OS_PKG_TYPES) or not is_lang_sw_edition(package_issue)):
+                if (
+                    config.LANG_PKG_TYPES.get(package_type)
+                    or package_type in config.LANG_PKG_TYPES.values()
+                ) and (
+                    (vendor and vendor in config.OS_PKG_TYPES)
+                    or not is_lang_sw_edition(package_issue)
+                ):
                     fp_count += 1
                     continue
                 if package_type in config.OS_PKG_TYPES:
@@ -760,7 +770,18 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
         console.print()
         console.print(utable)
         console.print()
-    if options.scoped_pkgs or has_exploit_count:
+    if malicious_count:
+        rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
+        if malicious_count > 1:
+            rmessage = f":stop_sign: {malicious_count} malicious packages found in this project! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove the packages from all affected applications."
+        console.print(
+            Panel(
+                rmessage,
+                title="Action Required",
+                expand=False,
+            )
+        )
+    elif options.scoped_pkgs or has_exploit_count:
         if not pkg_attention_count and has_exploit_count:
             if has_reachable_exploit_count:
                 rmessage = (
@@ -898,18 +919,19 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     this result."""
                 console.print(Panel(rmessage, title="Recommendation"))
             else:
-                rmessage = ":white_check_mark: No package requires immediate attention."
+                rmessage = None
                 if reached_purls:
                     rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are not reachable."
                 elif direct_purls:
                     rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies."
-                console.print(
-                    Panel(
-                        rmessage,
-                        title="Recommendation",
-                        expand=False,
+                if rmessage:
+                    console.print(
+                        Panel(
+                            rmessage,
+                            title="Recommendation",
+                            expand=False,
+                        )
                     )
-                )
     elif critical_count:
         console.print(
             Panel(
@@ -1129,10 +1151,15 @@ def analyse_pkg_risks(
             package_usage_simple = "No"
         if not risk_metrics:
             continue
+        # Some risks gets special treatment for display
         if risk_metrics.get("risk_score") and (
             risk_metrics.get("risk_score") > config.pkg_max_risk_score
             or risk_metrics.get("pkg_private_on_public_registry_risk")
             or risk_metrics.get("pkg_deprecated_risk")
+            or risk_metrics.get("pkg_version_deprecated_risk")
+            or risk_metrics.get("pkg_version_missing_risk")
+            or risk_metrics.get("pkg_includes_binary_risk")
+            or risk_metrics.get("pkg_attested_check")
         ):
             risk_score = f"""{round(risk_metrics.get("risk_score"), 2)}"""
             data = [
@@ -1148,21 +1175,32 @@ def analyse_pkg_risks(
             risk_categories = []
             risk_categories_simple = []
             for rk, rv in risk_metrics.items():
-                if rk.endswith("_risk") and rv is True:
-                    rcat = rk.replace("_risk", "")
+                if (
+                    rk.endswith("_risk") or rk.endswith("_check")
+                ) and rv is True:
+                    rcat = rk.removesuffix("_risk").removesuffix("_check")
                     help_text = config.risk_help_text.get(rcat)
+                    extra_info = risk_metrics.get(f"{rcat}_info")
+                    if extra_info:
+                        help_text = f"{help_text}\n{extra_info}"
                     # Only add texts that are available.
                     if help_text:
                         if rcat in (
                             "pkg_deprecated",
+                            "pkg_version_deprecated",
+                            "pkg_includes_binary",
                             "pkg_private_on_public_registry",
                         ):
                             risk_categories.append(f":cross_mark: {help_text}")
+                        elif rk.endswith("_check"):
+                            risk_categories.append(
+                                f":white_heavy_check_mark: {help_text}"
+                            )
                         else:
                             risk_categories.append(f":warning: {help_text}")
                         risk_categories_simple.append(help_text)
             data.append("\n".join(risk_categories))
-            edata.append(", ".join(risk_categories_simple))
+            edata.append("~~".join(risk_categories_simple))
             table.add_row(*data)
             report_data.append(dict(zip(headers, edata)))
     if report_data:

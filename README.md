@@ -219,7 +219,7 @@ In the above example, `/tmp` is mounted as `/db` into the container. This direct
 
 ## Reachability analysis
 
-Depscan can perform reachability analysis for Java, JavaScript, TypeScript and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
+Depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
 
 To receive a verbose output including the reachable flows, pass the argument `--explain`
 

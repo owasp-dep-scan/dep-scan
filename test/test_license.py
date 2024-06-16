@@ -46,7 +46,7 @@ def test_lookup(test_license_data):
         for lic in ll:
             if lic["condition_flag"]:
                 violations_list.append(lic)
-    assert len(violations_list) == 1
+    assert len(violations_list) == 2
 
 
 def test_dual_license(test_license_data):

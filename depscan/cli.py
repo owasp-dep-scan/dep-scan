@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3 -W ignore::DeprecationWarning
 # -*- coding: utf-8 -*-
 
 import argparse
@@ -77,7 +77,7 @@ def build_args():
         action="store_true",
         default=False,
         dest="no_banner",
-        help="Do not display banner",
+        help="Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.",
     )
     parser.add_argument(
         "--cache",
@@ -134,7 +134,7 @@ def build_args():
         "--cdxgen-args",
         default=os.getenv("CDXGEN_ARGS"),
         dest="cdxgen_args",
-        help="Additional arguments to pass to cdxgen"
+        help="Additional arguments to pass to cdxgen",
     )
     parser.add_argument(
         "--private-ns",
@@ -289,7 +289,7 @@ def build_args():
         default=False,
         dest="explain",
         help="Makes depscan to explain the various analysis. Useful for "
-             "creating detailed reports.",
+        "creating detailed reports.",
     )
     parser.add_argument(
         "--reachables-slices-file",
@@ -392,8 +392,13 @@ def process_suggestions(k, v):
             name = purl_obj.get("name")
             version = purl_obj.get("version")
             pkg_list.append(
-                {"vendor": vendor, "name": name, "version": version,
-                    "purl": k, })
+                {
+                    "vendor": vendor,
+                    "name": name,
+                    "version": version,
+                    "purl": k,
+                }
+            )
     else:
         tmp_a = k.split(":")
         if len(tmp_a) == 3:
@@ -514,9 +519,7 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
         json.dump(bom_data, vdrfp, indent=4)
-    LOG.debug(
-        "VDR file %s generated successfully", vdr_file
-    )
+    LOG.debug("VDR file %s generated successfully", vdr_file)
 
 
 def set_project_types(args, src_dir):
@@ -730,8 +733,7 @@ async def run_scan():
             return (
                 {
                     "error": "true",
-                    "message": "Unable to generate SBOM. Check your input "
-                               "path or url.",
+                    "message": "Unable to generate SBOM. Check your input path or url.",
                 },
                 400,
                 {"Content-Type": "application/json"},
@@ -756,8 +758,7 @@ async def run_scan():
     return (
         {
             "error": "true",
-            "message": "Unable to generate SBOM. Check your input path or "
-                       "url.",
+            "message": "Unable to generate SBOM. Check your input path or url.",
         },
         500,
         {"Content-Type": "application/json"},
@@ -790,6 +791,7 @@ def main():
     and generates reports based on the results.
     """
     args = build_args()
+    perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
         summary,
@@ -799,21 +801,20 @@ def main():
         pkg_vulnerabilities,
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
-    if os.getenv("GITHUB_ACTION", "").lower() == "__appthreat_dep-scan-action" \
-        and not os.getenv("INPUT_THANK_YOU", "") == ("I have sponsored "
-                                                     "OWASP-dep-scan."):
+    if (
+        os.getenv("CI")
+        and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
+        and not args.no_banner
+        and not os.getenv("INPUT_THANK_YOU", "")
+        == ("I have sponsored OWASP-dep-scan.")
+    ):
         console.print(
             Panel(
-                "OWASP relies on donations to fund our projects.\n\n"
-                "Donate at https://owasp.org/donate/?reponame=www-project-dep"
-                "-scan&title=OWASP+depscan. \n\nAfter you have done so, "
-                "make sure you have configured the action with thank_you: 'I "
-                "have sponsored OWASP-dep-scan.'",
-                title="Please make a donation",
+                "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
+                title="Donate to the OWASP Foundation",
                 expand=False,
             )
         )
-        sys.exit(1)
     # Should we turn on the debug mode
     if args.enable_debug:
         os.environ["AT_DEBUG_MODE"] = "debug"
@@ -821,7 +822,8 @@ def main():
     if args.server_mode:
         return run_server(args)
     if not args.no_banner:
-        print(LOGO)
+        with contextlib.suppress(UnicodeEncodeError):
+            print(LOGO)
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
         if src_dir == "." or args.search_purl:
@@ -854,11 +856,12 @@ def main():
             )
             sys.exit(0)
     pkg_list, project_types_list = set_project_types(args, src_dir)
+    if args.search_purl:
+        # Automatically enable risk audit for single purl searches
+        perform_risk_audit = True
     db = db_lib.get()
     run_cacher = args.cache
-    areport_file = (
-        args.report_file or os.path.join(reports_dir, "depscan.json")
-    )
+    areport_file = args.report_file or os.path.join(reports_dir, "depscan.json")
     html_file = areport_file.replace(".json", ".html")
     pdf_file = areport_file.replace(".json", ".pdf")
     # Create reports directory
@@ -903,7 +906,11 @@ def main():
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {"cdxgen_server": args.cdxgen_server, "profile": args.profile, "cdxgen_args": args.cdxgen_args},
+                {
+                    "cdxgen_server": args.cdxgen_server,
+                    "profile": args.profile,
+                    "cdxgen_args": args.cdxgen_args,
+                },
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -936,16 +943,17 @@ def main():
                 project_type, licenses_results, license_report_file
             )
         if project_type in risk_audit_map:
-            if args.risk_audit:
-                console.print(
-                    Panel(
-                        f"Performing OSS Risk Audit for packages from "
-                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
-                        f"[/bold]. This will take a while ...",
-                        title="OSS Risk Audit",
-                        expand=False,
+            if perform_risk_audit:
+                if len(pkg_list) > 1:
+                    console.print(
+                        Panel(
+                            f"Performing OSS Risk Audit for packages from "
+                            f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                            f"[/bold]. This will take a while ...",
+                            title="OSS Risk Audit",
+                            expand=False,
+                        )
                     )
-                )
                 try:
                     risk_results = risk_audit(
                         project_type,
@@ -1028,7 +1036,7 @@ def main():
                 github_client = github.GitHub(github_token)
 
                 if not github_client.can_authenticate():
-                    LOG.error(
+                    LOG.info(
                         "The GitHub personal access token supplied appears to "
                         "be invalid or expired. Please see: "
                         "https://github.com/owasp-dep-scan/dep-scan#github"
@@ -1064,11 +1072,12 @@ def main():
                 except NotImplementedError:
                     pass
                 run_cacher = False
-        LOG.info(
-            "Performing regular scan for %s using plugin %s",
-            src_dir,
-            project_type,
-        )
+        if len(pkg_list) > 1:
+            LOG.info(
+                "Performing regular scan for %s using plugin %s",
+                src_dir,
+                project_type,
+            )
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
             db, project_type, pkg_list, args.suggest
         )
@@ -1114,9 +1123,9 @@ def main():
             )
     console.save_html(
         html_file,
-        theme=MONOKAI
-        if os.getenv("USE_DARK_THEME")
-        else DEFAULT_TERMINAL_THEME,
+        theme=(
+            MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME
+        ),
     )
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished

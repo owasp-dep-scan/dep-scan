@@ -1,5 +1,6 @@
 import math
 from datetime import datetime
+from semver import Version
 
 import httpx
 from rich.progress import Progress
@@ -22,10 +23,10 @@ def get_lookup_url(registry_type, pkg):
         vendor = pkg.get("vendor")
         name = pkg.get("name")
     else:
-        tmpA = pkg.split("|")
-        name = tmpA[len(tmpA) - 2]
-        if len(tmpA) == 3:
-            vendor = tmpA[0]
+        tmp_a = pkg.split("|")
+        name = tmp_a[len(tmp_a) - 2]
+        if len(tmp_a) == 3:
+            vendor = tmp_a[0]
     key = name
     # Prefix vendor for npm
     if registry_type == "npm":
@@ -34,13 +35,15 @@ def get_lookup_url(registry_type, pkg):
             if not vendor.startswith("@"):
                 vendor = "@" + vendor
             key = f"{vendor}/{name}"
-        return key, f"{config.npm_server}/{key}"
-    elif registry_type == "pypi":
-        return key, f"{config.pypi_server}/{key}/json"
+        return key, f"{config.NPM_SERVER}/{key}"
+    if registry_type == "pypi":
+        return key, f"{config.PYPI_SERVER}/{key}/json"
     return None, None
 
 
-def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None):
+def metadata_from_registry(
+    registry_type, scoped_pkgs, pkg_list, private_ns=None
+):
     """
     Method to query registry for the package metadata
 
@@ -64,7 +67,9 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
         redirect_stdout=False,
         refresh_per_second=1,
     ) as progress:
-        task = progress.add_task("[green] Auditing packages", total=len(pkg_list))
+        task = progress.add_task(
+            "[green] Auditing packages", total=len(pkg_list)
+        )
         for pkg in pkg_list:
             if circuit_breaker:
                 LOG.info(
@@ -96,14 +101,16 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 if private_ns:
                     namespace_prefixes = private_ns.split(",")
                     for ns in namespace_prefixes:
-                        if key.lower().startswith(ns.lower()) or key.lower().startswith(
-                            "@" + ns.lower()
-                        ):
+                        if key.lower().startswith(
+                            ns.lower()
+                        ) or key.lower().startswith("@" + ns.lower()):
                             is_private_pkg = True
                             break
                 risk_metrics = {}
                 if registry_type == "npm":
-                    risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = npm_pkg_risk(
+                        json_data, is_private_pkg, scope, pkg
+                    )
                 elif registry_type == "pypi":
                     project_type_pkg = f"python:{key}".lower()
                     required_pkgs = scoped_pkgs.get("required", [])
@@ -124,7 +131,9 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                         or project_type_pkg in excluded_pkgs
                     ):
                         scope = "excluded"
-                    risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope)
+                    risk_metrics = pypi_pkg_risk(
+                        json_data, is_private_pkg, scope, pkg
+                    )
                 metadata_dict[key] = {
                     "scope": scope,
                     "pkg_metadata": json_data,
@@ -174,7 +183,7 @@ def pypi_metadata(scoped_pkgs, pkg_list, private_ns=None):
 
 
 def get_category_score(
-    param, max_value=config.default_max_value, weight=config.default_weight
+    param, max_value=config.DEFAULT_MAX_VALUE, weight=config.DEFAULT_WEIGHT
 ):
     """
     Return parameter score given its current value, max value and
@@ -192,12 +201,17 @@ def get_category_score(
     try:
         max_value = float(max_value)
     except ValueError:
-        max_value = config.default_max_value
+        max_value = config.DEFAULT_MAX_VALUE
     try:
         weight = float(weight)
     except ValueError:
-        weight = config.default_weight
-    return (math.log(1 + param) / math.log(1 + max(param, max_value))) * weight
+        weight = config.DEFAULT_WEIGHT
+    return (
+        0
+        if weight == 0 or math.log(1 + max(param, max_value)) == 0
+        else (math.log(1 + param) / math.log(1 + max(param, max_value)))
+        * weight
+    )
 
 
 def calculate_risk_score(risk_metrics):
@@ -220,10 +234,10 @@ def calculate_risk_score(risk_metrics):
             risk_category = k.replace("_risk", "")
             risk_category_value = risk_metrics.get(f"{risk_category}_value", 0)
             risk_category_max = getattr(
-                config, f"{risk_category}_max", config.default_max_value
+                config, f"{risk_category}_max", config.DEFAULT_MAX_VALUE
             )
             risk_category_weight = getattr(
-                config, f"{risk_category}_weight", config.default_weight
+                config, f"{risk_category}_weight", config.DEFAULT_WEIGHT
             )
             risk_category_base = getattr(config, f"{risk_category}", 0)
             value = risk_category_value
@@ -269,14 +283,16 @@ def compute_time_risks(
     # Check if the package is at least 1 year old. Quarantine period.
     if created_now_diff.total_seconds() < config.created_now_quarantine_seconds:
         risk_metrics["created_now_quarantine_seconds_risk"] = True
-        risk_metrics[
-            "created_now_quarantine_seconds_value"
-        ] = latest_now_diff.total_seconds()
+        risk_metrics["created_now_quarantine_seconds_value"] = (
+            latest_now_diff.total_seconds()
+        )
 
     # Check for the maximum seconds difference between latest version and now
     if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
         risk_metrics["latest_now_max_seconds_risk"] = True
-        risk_metrics["latest_now_max_seconds_value"] = latest_now_diff.total_seconds()
+        risk_metrics["latest_now_max_seconds_value"] = (
+            latest_now_diff.total_seconds()
+        )
         # Since the package is quite old we can relax the min versions risk
         risk_metrics["pkg_min_versions_risk"] = False
     else:
@@ -287,27 +303,33 @@ def compute_time_risks(
         # packages
         if mod_create_diff.total_seconds() < config.mod_create_min_seconds:
             risk_metrics["mod_create_min_seconds_risk"] = True
-            risk_metrics[
-                "mod_create_min_seconds_value"
-            ] = mod_create_diff.total_seconds()
+            risk_metrics["mod_create_min_seconds_value"] = (
+                mod_create_diff.total_seconds()
+            )
     # Check for the minimum seconds difference between latest version and now
     if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
         risk_metrics["latest_now_min_seconds_risk"] = True
-        risk_metrics["latest_now_min_seconds_value"] = latest_now_diff.total_seconds()
+        risk_metrics["latest_now_min_seconds_value"] = (
+            latest_now_diff.total_seconds()
+        )
     return risk_metrics
 
 
-def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
+def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
     Calculate various package risks based on the metadata from pypi.
 
     :param pkg_metadata: A dict containing the metadata of the package from PyPI
     :param is_private_pkg: Boolean to indicate if this package is private
     :param scope: Package scope
+    :param pkg: Package object
+
     :return: Dict of risk metrics and corresponding PyPI values.
     """
     risk_metrics = {
         "pkg_deprecated_risk": False,
+        "pkg_version_deprecated_risk": False,
+        "pkg_version_missing_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -319,14 +341,43 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     versions_dict = pkg_metadata.get("releases", {})
     versions = [ver[0] for k, ver in versions_dict.items() if ver]
     is_deprecated = info.get("yanked") and info.get("yanked_reason")
+    is_version_deprecated = False
+    if not is_deprecated and pkg and pkg.get("version"):
+        theversion = versions_dict.get(pkg.get("version"), [])
+        if isinstance(theversion, list) and len(theversion) > 0:
+            theversion = theversion[0]
+        elif theversion and theversion.get("yanked"):
+            is_version_deprecated = True
+        # Check if the version exists in the registry
+        if not theversion:
+            risk_metrics["pkg_version_missing_risk"] = True
+            risk_metrics["pkg_version_missing_value"] = 1
     # Some packages like pypi:azure only mention deprecated in the description
     # without yanking the package
     pkg_description = info.get("description", "").lower()
-    if not is_deprecated and ("is deprecated" in pkg_description or "no longer maintained" in pkg_description):
+    if not is_deprecated and (
+        "is deprecated" in pkg_description
+        or "no longer maintained" in pkg_description
+    ):
         is_deprecated = True
     latest_deprecated = False
-    first_version = None
-    latest_version = None
+    version_nums = list(versions_dict.keys())
+    # Ignore empty versions without metadata. Thanks pypi
+    version_nums = [ver for ver in version_nums if versions_dict.get(ver)]
+    try:
+        first_version_num = min(
+            version_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+        latest_version_num = max(
+            version_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+    except (ValueError, TypeError):
+        first_version_num = version_nums[0]
+        latest_version_num = version_nums[-1]
+    first_version = versions_dict.get(first_version_num)[0]
+    latest_version = versions_dict.get(latest_version_num)[0]
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
@@ -338,8 +389,6 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
         if len(versions) < config.pkg_min_versions:
             risk_metrics["pkg_min_versions_risk"] = True
             risk_metrics["pkg_min_versions_value"] = len(versions)
-        first_version = versions[0]
-        latest_version = versions[-1]
         # Check if the latest version is deprecated
         if latest_version and latest_version.get("yanked"):
             latest_deprecated = True
@@ -362,6 +411,9 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     if is_deprecated or latest_deprecated:
         risk_metrics["pkg_deprecated_risk"] = True
         risk_metrics["pkg_deprecated_value"] = 1
+    elif is_version_deprecated:
+        risk_metrics["pkg_version_deprecated_risk"] = True
+        risk_metrics["pkg_version_deprecated_value"] = 1
     # Add package scope related weight
     if scope:
         risk_metrics[f"pkg_{scope}_scope_risk"] = True
@@ -371,7 +423,7 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope):
     return risk_metrics
 
 
-def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
+def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
     Calculate various npm package risks based on the metadata from npm. The
     keys in the risk_metrics dict is based on the parameters specified in
@@ -381,11 +433,16 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     :param pkg_metadata: A dict containing the metadata of the npm package.
     :param is_private_pkg: Boolean to indicate if this package is private
     :param scope: Package scope
+    :param pkg: Package object
+
     :return: A dict containing the calculated risks and score.
     """
     # Some default values to ensure the structure is non-empty
     risk_metrics = {
         "pkg_deprecated_risk": False,
+        "pkg_version_deprecated_risk": False,
+        "pkg_version_missing_risk": False,
+        "pkg_includes_binary_risk": False,
         "pkg_min_versions_risk": False,
         "created_now_quarantine_seconds_risk": False,
         "latest_now_max_seconds_risk": False,
@@ -403,11 +460,121 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})
     # Check for scripts block
     scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
-    is_deprecated = versions.get(latest_version, {}).get("deprecated", None)
+    theversion = None
+    if pkg:
+        if pkg.get("version"):
+            theversion = versions.get(pkg.get("version"), {})
+            # Check if the version exists in the registry
+            if not theversion:
+                risk_metrics["pkg_version_missing_risk"] = True
+                risk_metrics["pkg_version_missing_value"] = 1
+        # Proceed with the rest of checks using the latest version
+        if not theversion:
+            theversion = versions.get(latest_version, {})
+        # Get the version specific engines and scripts block
+        if theversion.get("engines"):
+            engines_block_dict = theversion.get("engines")
+        if theversion.get("scripts"):
+            scripts_block_dict = theversion.get("scripts")
+        # Check if there is any binary downloaded and offered
+        if theversion.get("binary"):
+            risk_metrics["pkg_includes_binary_risk"] = True
+            risk_metrics["pkg_includes_binary_value"] = 1
+            # Capture the remote host
+            if theversion["binary"].get("host"):
+                risk_metrics["pkg_includes_binary_info"] = (
+                    f'Host: {theversion["binary"].get("host")}\nBinary: {theversion["binary"].get("module_name")}'
+                )
+            # For some packages,
+            elif theversion["binary"].get("napi_versions"):
+                if theversion.get("repository", {}).get("url"):
+                    risk_metrics["pkg_includes_binary_info"] = (
+                        f'Repository: {theversion.get("repository").get("url")}'
+                    )
+                elif theversion.get("homepage"):
+                    risk_metrics["pkg_includes_binary_info"] = (
+                        f'Homepage: {theversion.get("homepage")}'
+                    )
+        # Look for slsa attestations
+        if theversion.get("dist", {}).get("attestations") and theversion.get(
+            "dist", {}
+        ).get("signatures"):
+            attestations = theversion.get("dist").get("attestations")
+            signatures = theversion.get("dist").get("signatures")
+            if (
+                attestations.get("url").startswith(
+                    "https://registry.npmjs.org/"
+                )
+                and attestations.get("provenance", {}).get("predicateType", "")
+                == "https://slsa.dev/provenance/v1"
+            ):
+                risk_metrics["pkg_attested_check"] = True
+                risk_metrics["pkg_attested_value"] = len(signatures)
+                risk_metrics["pkg_attested_info"] = "\n".join(
+                    [sig.get("keyid") for sig in signatures]
+                )
+        # In some packages like biomejs, there would be no binary section
+        # case 1: optional dependencies section might have a bunch of packages for each os
+        # case 2: prebuild, prebuild-install, prebuildify in dependencies
+        # case 3: there could be a libc attribute
+        # case 4: fileCount <= 2 and size > 20 MB
+        if not theversion.get("binary"):
+            binary_count = 1
+            if theversion.get("bin"):
+                binary_count = max(len(theversion.get("bin", {}).keys()), 1)
+            for opkg in theversion.get("optionalDependencies", {}).keys():
+                if (
+                    "linux" in opkg
+                    or "darwin" in opkg
+                    or "win32" in opkg
+                    or "arm64" in opkg
+                    or "musl" in opkg
+                ):
+                    risk_metrics["pkg_includes_binary_risk"] = True
+                    risk_metrics["pkg_includes_binary_value"] = binary_count
+                    break
+            # Eg: pkg:npm/zeromq@6.0.0-beta.19
+            dev_deps = list(theversion.get("devDependencies", {}).keys())
+            direct_deps = list(theversion.get("dependencies", {}).keys())
+            if "prebuild" in " ".join(dev_deps) or "prebuild" in " ".join(
+                direct_deps
+            ):
+                risk_metrics["pkg_includes_binary_risk"] = True
+                risk_metrics["pkg_includes_binary_value"] = binary_count
+            if not risk_metrics.get("pkg_includes_binary_risk"):
+                if theversion.get("libc"):
+                    risk_metrics["pkg_includes_binary_risk"] = True
+                    risk_metrics["pkg_includes_binary_value"] = len(
+                        theversion.get("libc", [])
+                    )
+                elif (
+                    theversion.get("dist", {}).get("fileCount", 0) <= 2
+                    and theversion.get("dist", {}).get("unpackedSize")
+                    and (
+                        theversion.get("dist").get("unpackedSize", 0)
+                        / (1000 * 1000)
+                    )
+                    > 20
+                ):
+                    risk_metrics["pkg_includes_binary_risk"] = True
+                    risk_metrics["pkg_includes_binary_value"] = 1
+    is_deprecated = (
+        versions.get(latest_version, {}).get("deprecated", None) is not None
+    )
+    is_version_deprecated = (
+        True if theversion and theversion.get("deprecated") else False
+    )
     # Is the package deprecated
     if is_deprecated:
         risk_metrics["pkg_deprecated_risk"] = True
         risk_metrics["pkg_deprecated_value"] = 1
+    elif is_version_deprecated:
+        risk_metrics["pkg_version_deprecated_risk"] = True
+        risk_metrics["pkg_version_deprecated_value"] = 1
+        # The deprecation reason for a specific version are often useful
+        risk_metrics["pkg_version_deprecated_info"] = theversion.get(
+            "deprecated"
+        )
     scripts_block_list = []
     # There are some packages on npm with incorrectly configured scripts
     # block Good news is that the install portion would only for if the
@@ -416,9 +583,15 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope):
         scripts_block_list = [
             block
             for block in scripts_block_dict.keys()
-            if "preinstall" in block or "postinstall" in block
+            if block in ("preinstall", "postinstall", "prebuild")
         ]
-
+        # Detect the use of prebuild-install
+        # https://github.com/prebuild/prebuild-install
+        # https://github.com/prebuild/prebuildify
+        if not risk_metrics.get("pkg_includes_binary_risk"):
+            if scripts_block_dict.get("prebuild", "").startswith("prebuild"):
+                risk_metrics["pkg_includes_binary_risk"] = True
+                risk_metrics["pkg_includes_binary_value"] = 1
     # If the package has fewer than minimum number of versions
     if len(versions) < config.pkg_min_versions:
         risk_metrics["pkg_min_versions_risk"] = True

@@ -137,3 +137,4 @@ dmypy.json
 .coverage
 reports/
 .conda/
+.mise.toml
