@@ -1,4 +1,4 @@
 # These are supported funding model platforms
 
-custom: ["https://owasp.org/donate?reponame=www-project-dep-scan&title=OWASP+dep-scan", OWASP]
+custom: ["https://owasp.org/donate?reponame=www-project-dep-scan&title=OWASP+dep-scan"]
 github: [prabhu, cerrussell]
