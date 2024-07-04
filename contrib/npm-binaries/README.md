@@ -11,6 +11,9 @@ python -m pip install .
 cd contrib/npm-binaries
 pip install -r requirements.txt
 
+# Signup and get an api key for libraries.io
+export LIBRARIES_API_KEY=key
+
 # Search for packages by keywords
 python collect.py --keywords binary,prebuilt -o report.csv
 

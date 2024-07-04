@@ -15,9 +15,6 @@ for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
         log_obj.disabled = True
 
-PAGES = 21
-PER_PAGE = 100
-
 pkg_versions = {}
 pkg_rank = {}
 pkg_stars = {}
@@ -74,6 +71,20 @@ def build_args():
         default=False,
         help="Top popular packages.",
     )
+    parser.add_argument(
+        "--pages",
+        type=int,
+        dest="pages",
+        default=20,
+        help="Page count.",
+    )
+    parser.add_argument(
+        "--per-page",
+        type=int,
+        dest="per_page",
+        default=100,
+        help="Page count.",
+    )
     return parser.parse_args()
 
 
@@ -82,7 +93,11 @@ def collect_pkgs(search_result):
         return
     for res in search_result:
         pkg_name = res.get("name")
+        if pkg_name.startswith("@types"):
+            continue
         versions = [v.get("number") for v in res.get("versions")]
+        if not versions:
+            continue
         try:
             versions.sort(
                 key=lambda x: Version.parse(x, optional_minor_and_patch=True),
@@ -174,15 +189,15 @@ def main():
     search = Search()
     if args.popular_only:
         console.print(
-            "Searching for top", PER_PAGE * (PAGES - 1), "popular packages"
+            "Searching for top", args.per_page * (args.pages), "popular packages"
         )
-        for page in range(1, PAGES):
+        for page in range(0, args.pages):
             search_result = search.project_search(
                 keywords="",
                 sort=args.sort_option,
                 platforms=args.package_type,
-                page=page,
-                per_page=PER_PAGE,
+                page=page + 1,
+                per_page=args.per_page,
                 order="desc",
             )
             collect_pkgs(search_result)
@@ -197,20 +212,20 @@ def main():
         ) as progress:
             task = progress.add_task(
                 "[green] Searching for packages",
-                total=len(keywords) * PAGES - 1,
+                total=len(keywords) * args.pages,
             )
             for keyword in keywords:
                 progress.update(
                     task,
                     description=f"Search for packages with keyword `{keyword}`",
                 )
-                for page in range(1, PAGES):
+                for page in range(0, args.pages):
                     search_result = search.project_search(
                         keywords=keyword,
                         sort=args.sort_option,
                         platforms=args.package_type,
-                        page=page,
-                        per_page=PER_PAGE,
+                        page=page + 1,
+                        per_page=args.per_page,
                         order="desc",
                     )
                     collect_pkgs(search_result)

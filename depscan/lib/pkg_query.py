@@ -1,12 +1,30 @@
 import math
+import os
 from datetime import datetime
-from semver import Version
 
-import httpx
+from semver import Version
 from rich.progress import Progress
 
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
+
+try:
+    import hishel
+    import redis
+
+    storage = hishel.RedisStorage(
+        ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 3600),
+        client=redis.Redis(
+            host=os.getenv("DEPSCAN_CACHE_HOST", "127.0.0.1"),
+            port=config.get_int_from_env("DEPSCAN_CACHE_PORT", 6379),
+        ),
+    )
+    httpclient = hishel.CacheClient(storage=storage)
+    LOG.debug("valkey cache active")
+except ImportError:
+    import httpx
+
+    httpclient = httpx
 
 
 def maybe_binary_npm_package(name: str) -> bool:
@@ -100,7 +118,7 @@ def metadata_from_registry(
                 continue
             progress.update(task, description=f"Checking {key}")
             try:
-                r = httpx.get(
+                r = httpclient.get(
                     url=lookup_url,
                     follow_redirects=True,
                     timeout=config.request_timeout_sec,
@@ -517,12 +535,16 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         elif bin_block_dict and maybe_binary_npm_package(pkg.get("name")):
             # See #317
             risk_metrics["pkg_includes_binary_risk"] = True
-            risk_metrics["pkg_includes_binary_value"] = len(bin_block_dict.keys())
+            risk_metrics["pkg_includes_binary_value"] = len(
+                bin_block_dict.keys()
+            )
             bin_block_desc = ""
             for k, v in bin_block_dict.items():
                 bin_block_desc = f"{bin_block_desc}\n{k}: {v}"
             if bin_block_desc:
-                risk_metrics["pkg_includes_binary_info"] = f"Binary commands:{bin_block_desc}"
+                risk_metrics["pkg_includes_binary_info"] = (
+                    f"Binary commands:{bin_block_desc}"
+                )
         # Look for slsa attestations
         if theversion.get("dist", {}).get("attestations") and theversion.get(
             "dist", {}
