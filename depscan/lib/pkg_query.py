@@ -74,7 +74,7 @@ def get_lookup_url(registry_type, pkg):
     return None, None
 
 
-def search_npm(keywords, pages=1, popularity=1, size=250):
+def search_npm(keywords, pages=1, popularity=1.0, size=250):
     pkg_list = []
     for page in range(0, pages):
         from_value = page * 250

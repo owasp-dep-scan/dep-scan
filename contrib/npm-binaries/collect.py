@@ -31,7 +31,7 @@ def build_args():
     parser.add_argument(
         "--keywords",
         dest="keywords",
-        default="native,binary,prebuilt",
+        default="binary,prebuilt,mac,arm,native",
         help="Comma separated list of keywords to search.",
     )
     parser.add_argument(
