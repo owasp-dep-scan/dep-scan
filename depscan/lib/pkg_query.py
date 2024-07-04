@@ -9,6 +9,19 @@ from depscan.lib import config
 from depscan.lib.logger import LOG, console
 
 
+def maybe_binary_npm_package(name: str) -> bool:
+    """
+    Check if a package might be a binary by checking the naming conventions.
+
+    :param name: Packagename
+    :returns: boolean
+    """
+    for bin_suffix in config.NPM_BINARY_PACKAGES_SUFFIXES:
+        if name.endswith(bin_suffix):
+            return True
+    return False
+
+
 def get_lookup_url(registry_type, pkg):
     """
     Generating the lookup URL based on the registry type and package
@@ -460,6 +473,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     engines_block_dict = versions.get(latest_version, {}).get("engines", {})
     # Check for scripts block
     scripts_block_dict = versions.get(latest_version, {}).get("scripts", {})
+    bin_block_dict = versions.get(latest_version, {}).get("bin", {})
     theversion = None
     if pkg:
         if pkg.get("version"):
@@ -476,6 +490,8 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
             engines_block_dict = theversion.get("engines")
         if theversion.get("scripts"):
             scripts_block_dict = theversion.get("scripts")
+        if theversion.get("bin"):
+            bin_block_dict = theversion.get("bin")
         # Check if there is any binary downloaded and offered
         if theversion.get("binary"):
             risk_metrics["pkg_includes_binary_risk"] = True
@@ -495,6 +511,15 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
                     risk_metrics["pkg_includes_binary_info"] = (
                         f'Homepage: {theversion.get("homepage")}'
                     )
+        elif bin_block_dict and maybe_binary_npm_package(pkg.get("name")):
+            # See #317
+            risk_metrics["pkg_includes_binary_risk"] = True
+            risk_metrics["pkg_includes_binary_value"] = len(bin_block_dict.keys())
+            bin_block_desc = ""
+            for k, v in bin_block_dict.items():
+                bin_block_desc = f"{bin_block_desc}\n{k}: {v}"
+            if bin_block_desc:
+                risk_metrics["pkg_includes_binary_info"] = f"Binary commands:{bin_block_desc}"
         # Look for slsa attestations
         if theversion.get("dist", {}).get("attestations") and theversion.get(
             "dist", {}
