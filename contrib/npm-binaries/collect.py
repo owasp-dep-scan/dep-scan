@@ -96,8 +96,10 @@ def collect_pkgs(search_result):
         pkg_dependents_count[pkg_name] = res.get("dependents_count")
 
 
-def analyze_pkgs():
+def analyze_pkgs(output_file):
     pkg_list = []
+    if not pkg_versions:
+        return
     for name, versions in pkg_versions.items():
         version = versions[0]
         pkg_list.append(
@@ -109,24 +111,13 @@ def analyze_pkgs():
         )
     console.print("About to check", len(pkg_list), "packages for binaries.")
     metadata_dict = npm_metadata({}, pkg_list, None)
-    for name, value in metadata_dict.items():
-        risk_metrics = value.get("risk_metrics")
-        purl = value.get("purl")
-        if risk_metrics and risk_metrics.get("pkg_includes_binary_risk"):
-            risk_metrics["rank"] = pkg_rank.get(name)
-            risk_metrics["stars"] = pkg_stars.get(name)
-            risk_metrics["dependents_count"] = pkg_dependents_count.get(name)
-            risky_binary_pkgs[purl] = risk_metrics
-
-
-def export_risky_pkgs(output_file):
-    if risky_binary_pkgs:
+    if metadata_dict:
         with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
             rwriter = csv.writer(
                 csvfile,
                 delimiter=",",
                 quotechar="|",
-                quoting=csv.QUOTE_NONE,
+                quoting=csv.QUOTE_MINIMAL,
                 escapechar="\\",
             )
             rwriter.writerow(
@@ -144,23 +135,29 @@ def export_risky_pkgs(output_file):
                     "dependents_count",
                 ]
             )
-            for purl, metrics in risky_binary_pkgs.items():
-                rwriter.writerow(
-                    [
-                        purl,
-                        metrics.get("risk_score"),
-                        metrics.get("pkg_includes_binary_risk"),
-                        metrics.get("pkg_includes_binary_info"),
-                        metrics.get("pkg_attested_check"),
-                        metrics.get("pkg_deprecated_risk"),
-                        metrics.get("pkg_version_deprecated_risk"),
-                        metrics.get("pkg_version_missing_risk"),
-                        metrics.get("rank"),
-                        metrics.get("stars"),
-                        metrics.get("dependents_count"),
-                    ]
-                )
-        console.print("Report", output_file, "created successfully")
+            for name, value in metadata_dict.items():
+                risk_metrics = value.get("risk_metrics")
+                purl = value.get("purl")
+                if risk_metrics and risk_metrics.get("pkg_includes_binary_risk"):
+                    risk_metrics["rank"] = pkg_rank.get(name)
+                    risk_metrics["stars"] = pkg_stars.get(name)
+                    risk_metrics["dependents_count"] = pkg_dependents_count.get(name)
+                    rwriter.writerow(
+                        [
+                            purl,
+                            risk_metrics.get("risk_score"),
+                            risk_metrics.get("pkg_includes_binary_risk"),
+                            risk_metrics.get("pkg_includes_binary_info", "").replace("\n", "\\n"),
+                            risk_metrics.get("pkg_attested_check"),
+                            risk_metrics.get("pkg_deprecated_risk"),
+                            risk_metrics.get("pkg_version_deprecated_risk"),
+                            risk_metrics.get("pkg_version_missing_risk"),
+                            risk_metrics.get("rank"),
+                            risk_metrics.get("stars"),
+                            risk_metrics.get("dependents_count"),
+                        ]
+                    )
+            console.print("Report", output_file, "created successfully")
     else:
         console.print(
             "No risks identified. Try searching with a different keyword."
@@ -218,8 +215,7 @@ def main():
                     )
                     collect_pkgs(search_result)
                     progress.advance(task)
-    analyze_pkgs()
-    export_risky_pkgs(args.output_file)
+    analyze_pkgs(args.output_file)
 
 
 if __name__ == "__main__":
