@@ -2,14 +2,13 @@ import argparse
 import csv
 import logging
 import os
-import sys
 
 from pybraries.search import Search
 from rich.progress import Progress
 from semver import Version
 
-from depscan.lib.logger import console
-from depscan.lib.pkg_query import get_npm_download_stats, npm_metadata
+from depscan.lib.logger import LOG, console
+from depscan.lib.pkg_query import get_npm_download_stats, npm_metadata, search_npm
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
@@ -88,12 +87,21 @@ def build_args():
     return parser.parse_args()
 
 
+def analyze_with_npm(keywords, pages, output_file):
+    all_pkgs = []
+    for keyword in keywords:
+        pkg_list = search_npm(keyword, pages)
+        all_pkgs += pkg_list
+    if all_pkgs:
+        analyze_pkgs(output_file, all_pkgs)
+
+
 def collect_pkgs(search_result):
     if not search_result:
         return
     for res in search_result:
         pkg_name = res.get("name")
-        if pkg_name.startswith("@types"):
+        if pkg_name.startswith("@types") or pkg_versions.get(pkg_name):
             continue
         versions = [v.get("number") for v in res.get("versions")]
         if not versions:
@@ -109,22 +117,24 @@ def collect_pkgs(search_result):
         pkg_rank[pkg_name] = res.get("rank")
         pkg_stars[pkg_name] = res.get("stars")
         pkg_dependents_count[pkg_name] = res.get("dependents_count")
+    LOG.debug(len(search_result), "processed successfully.")
 
 
-def analyze_pkgs(output_file):
-    pkg_list = []
+def analyze_pkgs(output_file, pkg_list=None):
     risky_pkg_found = False
-    if not pkg_versions:
-        return
-    for name, versions in pkg_versions.items():
-        version = versions[0]
-        pkg_list.append(
-            {
-                "name": name,
-                "version": version,
-                "purl": f"pkg:npm/{name.replace('@', '%40')}@{version}",
-            }
-        )
+    if not pkg_list:
+        pkg_list = []
+        if not pkg_versions:
+            return
+        for name, versions in pkg_versions.items():
+            version = versions[0]
+            pkg_list.append(
+                {
+                    "name": name,
+                    "version": version,
+                    "purl": f"pkg:npm/{name.replace('@', '%40')}@{version}",
+                }
+            )
     console.print("About to check", len(pkg_list), "packages for binaries.")
     metadata_dict = npm_metadata({}, pkg_list, None)
     with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
@@ -194,31 +204,20 @@ def analyze_pkgs(output_file):
 
 
 def main():
+    popular_only = False
     if not os.getenv("LIBRARIES_API_KEY"):
         print(
             "Set the environment variable LIBRARIES_API_KEY with a valid libraries.io API key"
         )
-        sys.exit(1)
+        popular_only = True
     args = build_args()
-    search = Search()
-    if args.popular_only:
-        console.print(
-            "Searching for top",
-            args.per_page * (args.pages),
-            "popular packages",
-        )
-        for page in range(0, args.pages):
-            search_result = search.project_search(
-                keywords="",
-                sort=args.sort_option,
-                platforms=args.package_type,
-                page=page + 1,
-                per_page=args.per_page,
-                order="desc",
-            )
-            collect_pkgs(search_result)
+    keywords = args.keywords.split(",")
+    if not popular_only and args.popular_only:
+        popular_only = True
+    if popular_only:
+        analyze_with_npm(keywords, args.pages, args.output_file)
     else:
-        keywords = args.keywords.split(",")
+        search = Search()
         with Progress(
             console=console,
             transient=True,
@@ -242,7 +241,6 @@ def main():
                         platforms=args.package_type,
                         page=page + 1,
                         per_page=args.per_page,
-                        order="desc",
                     )
                     collect_pkgs(search_result)
                     progress.advance(task)

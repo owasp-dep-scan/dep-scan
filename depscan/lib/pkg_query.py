@@ -20,7 +20,7 @@ try:
         ),
     )
     httpclient = hishel.CacheClient(storage=storage)
-    LOG.debug("valkey cache active")
+    LOG.debug("valkey cache activated.")
 except ImportError:
     import httpx
 
@@ -72,6 +72,37 @@ def get_lookup_url(registry_type, pkg):
     if registry_type == "pypi":
         return key, f"{config.PYPI_SERVER}/{key}/json"
     return None, None
+
+
+def search_npm(keyword, pages=1, popularity=1, quality=1, size=250):
+    pkg_list = []
+    for page in range(0, pages):
+        from_value = page * 250
+        registry_search_url = f"{config.NPM_SERVER}/-/v1/search?popularity={popularity}&size={size}&from={from_value}&text=keywords:{keyword}&quality={quality}"
+        try:
+            r = httpclient.get(
+                url=registry_search_url,
+                follow_redirects=True,
+                timeout=config.request_timeout_sec,
+            )
+            result = r.json()
+            if result and result.get("objects"):
+                for aobj in result.get("objects"):
+                    if aobj and aobj.get("package"):
+                        package = aobj.get("package")
+                        name = package.get("name")
+                        if name.startswith("@types/"):
+                            continue
+                        pkg_list.append(
+                            {
+                                "name": name,
+                                "version": package.get("version"),
+                                "purl": f'pkg:npm/{package.get("name").replace("@", "%40")}@{package.get("version")}',
+                            }
+                        )
+        except Exception:
+            pass
+    return pkg_list
 
 
 def get_npm_download_stats(name, period="last-year"):
