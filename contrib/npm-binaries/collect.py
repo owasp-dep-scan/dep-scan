@@ -8,7 +8,7 @@ from rich.progress import Progress
 from semver import Version
 
 from depscan.lib.logger import LOG, console
-from depscan.lib.pkg_query import get_npm_download_stats, npm_metadata, search_npm
+from depscan.lib.pkg_query import get_npm_download_stats, metadata_from_registry, search_npm
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
@@ -88,12 +88,8 @@ def build_args():
 
 
 def analyze_with_npm(keywords, pages, output_file):
-    all_pkgs = []
-    for keyword in keywords:
-        pkg_list = search_npm(keyword, pages)
-        all_pkgs += pkg_list
-    if all_pkgs:
-        analyze_pkgs(output_file, all_pkgs)
+    pkg_list = search_npm(keywords, pages)
+    analyze_pkgs(output_file, pkg_list)
 
 
 def collect_pkgs(search_result):
@@ -136,7 +132,6 @@ def analyze_pkgs(output_file, pkg_list=None):
                 }
             )
     console.print("About to check", len(pkg_list), "packages for binaries.")
-    metadata_dict = npm_metadata({}, pkg_list, None)
     with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
         rwriter = csv.writer(
             csvfile,
@@ -161,40 +156,42 @@ def analyze_pkgs(output_file, pkg_list=None):
                 "yearly_downloads",
             ]
         )
-        for name, value in metadata_dict.items():
-            risk_metrics = value.get("risk_metrics")
-            purl = value.get("purl")
-            if (
-                risk_metrics
-                and risk_metrics.get("pkg_includes_binary_risk")
-                and risk_metrics.get("pkg_includes_binary_info")
-            ):
-                risk_metrics["rank"] = pkg_rank.get(name)
-                risk_metrics["stars"] = pkg_stars.get(name)
-                risk_metrics["dependents_count"] = pkg_dependents_count.get(
-                    name
-                )
-                download_stats = get_npm_download_stats(name)
-                rwriter.writerow(
-                    [
-                        purl,
-                        risk_metrics.get("risk_score"),
-                        risk_metrics.get("pkg_includes_binary_risk"),
-                        risk_metrics.get(
-                            "pkg_includes_binary_info", ""
-                        ).replace("\n", "\\n"),
-                        risk_metrics.get("pkg_attested_check"),
-                        risk_metrics.get("pkg_deprecated_risk"),
-                        risk_metrics.get("pkg_version_deprecated_risk"),
-                        risk_metrics.get("pkg_version_missing_risk"),
-                        risk_metrics.get("rank"),
-                        risk_metrics.get("stars"),
-                        risk_metrics.get("dependents_count"),
-                        download_stats.get("downloads"),
-                    ]
-                )
-                risky_pkg_found = True
-                console.print(name, "with", download_stats.get("downloads"), "downloads matched the critieria")
+        for pkg in pkg_list:
+            metadata_dict = metadata_from_registry("npm", {}, [pkg], None)
+            for name, value in metadata_dict.items():
+                risk_metrics = value.get("risk_metrics")
+                purl = value.get("purl")
+                if (
+                    risk_metrics
+                    and risk_metrics.get("pkg_includes_binary_risk")
+                    and risk_metrics.get("pkg_includes_binary_info")
+                ):
+                    risk_metrics["rank"] = pkg_rank.get(name)
+                    risk_metrics["stars"] = pkg_stars.get(name)
+                    risk_metrics["dependents_count"] = pkg_dependents_count.get(
+                        name
+                    )
+                    download_stats = get_npm_download_stats(name)
+                    rwriter.writerow(
+                        [
+                            purl,
+                            risk_metrics.get("risk_score"),
+                            risk_metrics.get("pkg_includes_binary_risk"),
+                            risk_metrics.get(
+                                "pkg_includes_binary_info", ""
+                            ).replace("\n", "\\n"),
+                            risk_metrics.get("pkg_attested_check"),
+                            risk_metrics.get("pkg_deprecated_risk"),
+                            risk_metrics.get("pkg_version_deprecated_risk"),
+                            risk_metrics.get("pkg_version_missing_risk"),
+                            risk_metrics.get("rank"),
+                            risk_metrics.get("stars"),
+                            risk_metrics.get("dependents_count"),
+                            download_stats.get("downloads"),
+                        ]
+                    )
+                    risky_pkg_found = True
+                    console.print(name, "with", download_stats.get("downloads"), "downloads matched the critieria")
     if risky_pkg_found:
         console.print("Report", output_file, "created successfully")
     else:

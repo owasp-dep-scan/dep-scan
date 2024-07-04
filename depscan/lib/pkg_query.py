@@ -74,11 +74,11 @@ def get_lookup_url(registry_type, pkg):
     return None, None
 
 
-def search_npm(keyword, pages=1, popularity=1, quality=1, size=250):
+def search_npm(keywords, pages=1, popularity=1, size=250):
     pkg_list = []
     for page in range(0, pages):
         from_value = page * 250
-        registry_search_url = f"{config.NPM_SERVER}/-/v1/search?popularity={popularity}&size={size}&from={from_value}&text=keywords:{keyword}&quality={quality}"
+        registry_search_url = f"{config.NPM_SERVER}/-/v1/search?popularity={popularity}&size={size}&from={from_value}&text=keywords:{','.join(keywords)}"
         try:
             r = httpclient.get(
                 url=registry_search_url,
@@ -149,6 +149,7 @@ def metadata_from_registry(
         redirect_stderr=False,
         redirect_stdout=False,
         refresh_per_second=1,
+        disable=len(pkg_list) < 10
     ) as progress:
         task = progress.add_task(
             "[green] Auditing packages", total=len(pkg_list)
