@@ -151,6 +151,7 @@ def metadata_from_registry(
                     )
                 metadata_dict[key] = {
                     "scope": scope,
+                    "purl": pkg.get("purl"),
                     "pkg_metadata": json_data,
                     "risk_metrics": risk_metrics,
                     "is_private_pkg": is_private_pkg,
