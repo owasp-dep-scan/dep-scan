@@ -5,6 +5,7 @@ import os
 import sys
 
 from pybraries.search import Search
+from rich.progress import Progress
 from semver import Version
 
 from depscan.lib.logger import console
@@ -77,6 +78,8 @@ def build_args():
 
 
 def collect_pkgs(search_result):
+    if not search_result:
+        return
     for res in search_result:
         pkg_name = res.get("name")
         versions = [v.get("number") for v in res.get("versions")]
@@ -181,18 +184,30 @@ def main():
             )
             collect_pkgs(search_result)
     else:
-        for keyword in args.keywords.split(","):
-            console.print("Search for packages with keyword", keyword)
-            for page in range(1, PAGES):
-                search_result = search.project_search(
-                    keywords=keyword,
-                    sort=args.sort_option,
-                    platforms=args.package_type,
-                    page=page,
-                    per_page=PER_PAGE,
-                    order="desc"
-                )
-                collect_pkgs(search_result)
+        keywords = args.keywords.split(",")
+        with Progress(
+            console=console,
+            transient=True,
+            redirect_stderr=False,
+            redirect_stdout=False,
+            refresh_per_second=1,
+        ) as progress:
+            task = progress.add_task(
+                "[green] Searching for packages", total=len(keywords) * PAGES - 1
+            )
+            for keyword in keywords:
+                progress.update(task, description=f"Search for packages with keyword `{keyword}`")
+                for page in range(1, PAGES):
+                    search_result = search.project_search(
+                        keywords=keyword,
+                        sort=args.sort_option,
+                        platforms=args.package_type,
+                        page=page,
+                        per_page=PER_PAGE,
+                        order="desc"
+                    )
+                    collect_pkgs(search_result)
+                    progress.advance(task)
     analyze_pkgs()
     export_risky_pkgs(args.output_file)
 
