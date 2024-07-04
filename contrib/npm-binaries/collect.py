@@ -57,7 +57,7 @@ def build_args():
         "--type",
         dest="package_type",
         default="npm",
-        choices=("npm"),
+        choices=("npm",),
         help="Package type.",
     )
     parser.add_argument(
@@ -123,7 +123,11 @@ def export_risky_pkgs(output_file):
     if risky_binary_pkgs:
         with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
             rwriter = csv.writer(
-                csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_NONE, escapechar='\\'
+                csvfile,
+                delimiter=",",
+                quotechar="|",
+                quoting=csv.QUOTE_NONE,
+                escapechar="\\",
             )
             rwriter.writerow(
                 [
@@ -137,7 +141,7 @@ def export_risky_pkgs(output_file):
                     "pkg_version_missing_risk",
                     "rank",
                     "stars",
-                    "dependents_count"
+                    "dependents_count",
                 ]
             )
             for purl, metrics in risky_binary_pkgs.items():
@@ -159,7 +163,7 @@ def export_risky_pkgs(output_file):
         console.print("Report", output_file, "created successfully")
     else:
         console.print(
-            "No risks identified. Try searching with a different keyword or increasing the page count"
+            "No risks identified. Try searching with a different keyword."
         )
 
 
@@ -172,7 +176,9 @@ def main():
     args = build_args()
     search = Search()
     if args.popular_only:
-        console.print("Searching for top", PER_PAGE * (PAGES - 1),"popular packages")
+        console.print(
+            "Searching for top", PER_PAGE * (PAGES - 1), "popular packages"
+        )
         for page in range(1, PAGES):
             search_result = search.project_search(
                 keywords="",
@@ -180,7 +186,7 @@ def main():
                 platforms=args.package_type,
                 page=page,
                 per_page=PER_PAGE,
-                order="desc"
+                order="desc",
             )
             collect_pkgs(search_result)
     else:
@@ -193,10 +199,14 @@ def main():
             refresh_per_second=1,
         ) as progress:
             task = progress.add_task(
-                "[green] Searching for packages", total=len(keywords) * PAGES - 1
+                "[green] Searching for packages",
+                total=len(keywords) * PAGES - 1,
             )
             for keyword in keywords:
-                progress.update(task, description=f"Search for packages with keyword `{keyword}`")
+                progress.update(
+                    task,
+                    description=f"Search for packages with keyword `{keyword}`",
+                )
                 for page in range(1, PAGES):
                     search_result = search.project_search(
                         keywords=keyword,
@@ -204,7 +214,7 @@ def main():
                         platforms=args.package_type,
                         page=page,
                         per_page=PER_PAGE,
-                        order="desc"
+                        order="desc",
                     )
                     collect_pkgs(search_result)
                     progress.advance(task)
