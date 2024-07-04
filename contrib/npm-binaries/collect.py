@@ -9,7 +9,7 @@ from rich.progress import Progress
 from semver import Version
 
 from depscan.lib.logger import console
-from depscan.lib.pkg_query import npm_metadata
+from depscan.lib.pkg_query import get_npm_download_stats, npm_metadata
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
@@ -32,7 +32,7 @@ def build_args():
     parser.add_argument(
         "--keywords",
         dest="keywords",
-        default="binary,prebuilt",
+        default="native,binary,prebuilt",
         help="Comma separated list of keywords to search.",
     )
     parser.add_argument(
@@ -113,6 +113,7 @@ def collect_pkgs(search_result):
 
 def analyze_pkgs(output_file):
     pkg_list = []
+    risky_pkg_found = False
     if not pkg_versions:
         return
     for name, versions in pkg_versions.items():
@@ -126,53 +127,66 @@ def analyze_pkgs(output_file):
         )
     console.print("About to check", len(pkg_list), "packages for binaries.")
     metadata_dict = npm_metadata({}, pkg_list, None)
-    if metadata_dict:
-        with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
-            rwriter = csv.writer(
-                csvfile,
-                delimiter=",",
-                quotechar="|",
-                quoting=csv.QUOTE_MINIMAL,
-                escapechar="\\",
-            )
-            rwriter.writerow(
-                [
-                    "purl",
-                    "risk_score",
-                    "pkg_includes_binary_risk",
-                    "pkg_includes_binary_info",
-                    "pkg_attested_check",
-                    "pkg_deprecated_risk",
-                    "pkg_version_deprecated_risk",
-                    "pkg_version_missing_risk",
-                    "rank",
-                    "stars",
-                    "dependents_count",
-                ]
-            )
-            for name, value in metadata_dict.items():
-                risk_metrics = value.get("risk_metrics")
-                purl = value.get("purl")
-                if risk_metrics and risk_metrics.get("pkg_includes_binary_risk"):
-                    risk_metrics["rank"] = pkg_rank.get(name)
-                    risk_metrics["stars"] = pkg_stars.get(name)
-                    risk_metrics["dependents_count"] = pkg_dependents_count.get(name)
-                    rwriter.writerow(
-                        [
-                            purl,
-                            risk_metrics.get("risk_score"),
-                            risk_metrics.get("pkg_includes_binary_risk"),
-                            risk_metrics.get("pkg_includes_binary_info", "").replace("\n", "\\n"),
-                            risk_metrics.get("pkg_attested_check"),
-                            risk_metrics.get("pkg_deprecated_risk"),
-                            risk_metrics.get("pkg_version_deprecated_risk"),
-                            risk_metrics.get("pkg_version_missing_risk"),
-                            risk_metrics.get("rank"),
-                            risk_metrics.get("stars"),
-                            risk_metrics.get("dependents_count"),
-                        ]
-                    )
-            console.print("Report", output_file, "created successfully")
+    with open(output_file, "w", encoding="utf-8", newline="") as csvfile:
+        rwriter = csv.writer(
+            csvfile,
+            delimiter=",",
+            quotechar="|",
+            quoting=csv.QUOTE_MINIMAL,
+            escapechar="\\",
+        )
+        rwriter.writerow(
+            [
+                "purl",
+                "risk_score",
+                "pkg_includes_binary_risk",
+                "pkg_includes_binary_info",
+                "pkg_attested_check",
+                "pkg_deprecated_risk",
+                "pkg_version_deprecated_risk",
+                "pkg_version_missing_risk",
+                "rank",
+                "stars",
+                "dependents_count",
+                "yearly_downloads",
+            ]
+        )
+        for name, value in metadata_dict.items():
+            risk_metrics = value.get("risk_metrics")
+            purl = value.get("purl")
+            if (
+                risk_metrics
+                and risk_metrics.get("pkg_includes_binary_risk")
+                and risk_metrics.get("pkg_includes_binary_info")
+            ):
+                risk_metrics["rank"] = pkg_rank.get(name)
+                risk_metrics["stars"] = pkg_stars.get(name)
+                risk_metrics["dependents_count"] = pkg_dependents_count.get(
+                    name
+                )
+                download_stats = get_npm_download_stats(name)
+                rwriter.writerow(
+                    [
+                        purl,
+                        risk_metrics.get("risk_score"),
+                        risk_metrics.get("pkg_includes_binary_risk"),
+                        risk_metrics.get(
+                            "pkg_includes_binary_info", ""
+                        ).replace("\n", "\\n"),
+                        risk_metrics.get("pkg_attested_check"),
+                        risk_metrics.get("pkg_deprecated_risk"),
+                        risk_metrics.get("pkg_version_deprecated_risk"),
+                        risk_metrics.get("pkg_version_missing_risk"),
+                        risk_metrics.get("rank"),
+                        risk_metrics.get("stars"),
+                        risk_metrics.get("dependents_count"),
+                        download_stats.get("downloads"),
+                    ]
+                )
+                risky_pkg_found = True
+                console.print(name, "with", download_stats.get("downloads"), "downloads matched the critieria")
+    if risky_pkg_found:
+        console.print("Report", output_file, "created successfully")
     else:
         console.print(
             "No risks identified. Try searching with a different keyword."
@@ -189,7 +203,9 @@ def main():
     search = Search()
     if args.popular_only:
         console.print(
-            "Searching for top", args.per_page * (args.pages), "popular packages"
+            "Searching for top",
+            args.per_page * (args.pages),
+            "popular packages",
         )
         for page in range(0, args.pages):
             search_result = search.project_search(

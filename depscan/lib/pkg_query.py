@@ -13,7 +13,7 @@ try:
     import redis
 
     storage = hishel.RedisStorage(
-        ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 3600),
+        ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 36000),
         client=redis.Redis(
             host=os.getenv("DEPSCAN_CACHE_HOST", "127.0.0.1"),
             port=config.get_int_from_env("DEPSCAN_CACHE_PORT", 6379),
@@ -72,6 +72,25 @@ def get_lookup_url(registry_type, pkg):
     if registry_type == "pypi":
         return key, f"{config.PYPI_SERVER}/{key}/json"
     return None, None
+
+
+def get_npm_download_stats(name, period="last-year"):
+    """
+    Method to download npm stats
+
+    :param name: Package name
+    :param period: Stats period
+    """
+    stats_url = f"https://api.npmjs.org/downloads/point/{period}/{name}"
+    try:
+        r = httpclient.get(
+            url=stats_url,
+            follow_redirects=True,
+            timeout=config.request_timeout_sec,
+        )
+        return r.json()
+    except Exception:
+        return {}
 
 
 def metadata_from_registry(
