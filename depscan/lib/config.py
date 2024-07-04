@@ -591,3 +591,7 @@ RUBY_PLATFORM_MARKERS = [
     "-java",
     "-truffle",
 ]
+
+# List of suffixes used by npm packages to indicate binary versions.
+# This could be replaced with a better heuristics or lookup database in the future.
+NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt", "-binary")
