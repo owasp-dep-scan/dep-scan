@@ -16,6 +16,8 @@ def maybe_binary_npm_package(name: str) -> bool:
     :param name: Packagename
     :returns: boolean
     """
+    if not name:
+        return False
     for bin_suffix in config.NPM_BINARY_PACKAGES_SUFFIXES:
         if name.endswith(bin_suffix):
             return True
