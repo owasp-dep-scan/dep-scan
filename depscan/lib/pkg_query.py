@@ -1,12 +1,30 @@
 import math
+import os
 from datetime import datetime
-from semver import Version
 
-import httpx
+from semver import Version
 from rich.progress import Progress
 
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
+
+try:
+    import hishel
+    import redis
+
+    storage = hishel.RedisStorage(
+        ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 36000),
+        client=redis.Redis(
+            host=os.getenv("DEPSCAN_CACHE_HOST", "127.0.0.1"),
+            port=config.get_int_from_env("DEPSCAN_CACHE_PORT", 6379),
+        ),
+    )
+    httpclient = hishel.CacheClient(storage=storage)
+    LOG.debug("valkey cache activated.")
+except ImportError:
+    import httpx
+
+    httpclient = httpx
 
 
 def maybe_binary_npm_package(name: str) -> bool:
@@ -56,6 +74,56 @@ def get_lookup_url(registry_type, pkg):
     return None, None
 
 
+def search_npm(keywords, pages=1, popularity=1.0, size=250):
+    pkg_list = []
+    for page in range(0, pages):
+        from_value = page * 250
+        registry_search_url = f"{config.NPM_SERVER}/-/v1/search?popularity={popularity}&size={size}&from={from_value}&text=keywords:{','.join(keywords)}"
+        try:
+            r = httpclient.get(
+                url=registry_search_url,
+                follow_redirects=True,
+                timeout=config.request_timeout_sec,
+            )
+            result = r.json()
+            if result and result.get("objects"):
+                for aobj in result.get("objects"):
+                    if aobj and aobj.get("package"):
+                        package = aobj.get("package")
+                        name = package.get("name")
+                        if name.startswith("@types/"):
+                            continue
+                        pkg_list.append(
+                            {
+                                "name": name,
+                                "version": package.get("version"),
+                                "purl": f'pkg:npm/{package.get("name").replace("@", "%40")}@{package.get("version")}',
+                            }
+                        )
+        except Exception:
+            pass
+    return pkg_list
+
+
+def get_npm_download_stats(name, period="last-year"):
+    """
+    Method to download npm stats
+
+    :param name: Package name
+    :param period: Stats period
+    """
+    stats_url = f"https://api.npmjs.org/downloads/point/{period}/{name}"
+    try:
+        r = httpclient.get(
+            url=stats_url,
+            follow_redirects=True,
+            timeout=config.request_timeout_sec,
+        )
+        return r.json()
+    except Exception:
+        return {}
+
+
 def metadata_from_registry(
     registry_type, scoped_pkgs, pkg_list, private_ns=None
 ):
@@ -81,6 +149,7 @@ def metadata_from_registry(
         redirect_stderr=False,
         redirect_stdout=False,
         refresh_per_second=1,
+        disable=len(pkg_list) < 10
     ) as progress:
         task = progress.add_task(
             "[green] Auditing packages", total=len(pkg_list)
@@ -100,7 +169,7 @@ def metadata_from_registry(
                 continue
             progress.update(task, description=f"Checking {key}")
             try:
-                r = httpx.get(
+                r = httpclient.get(
                     url=lookup_url,
                     follow_redirects=True,
                     timeout=config.request_timeout_sec,
@@ -151,6 +220,7 @@ def metadata_from_registry(
                     )
                 metadata_dict[key] = {
                     "scope": scope,
+                    "purl": pkg.get("purl"),
                     "pkg_metadata": json_data,
                     "risk_metrics": risk_metrics,
                     "is_private_pkg": is_private_pkg,
@@ -516,12 +586,16 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         elif bin_block_dict and maybe_binary_npm_package(pkg.get("name")):
             # See #317
             risk_metrics["pkg_includes_binary_risk"] = True
-            risk_metrics["pkg_includes_binary_value"] = len(bin_block_dict.keys())
+            risk_metrics["pkg_includes_binary_value"] = len(
+                bin_block_dict.keys()
+            )
             bin_block_desc = ""
             for k, v in bin_block_dict.items():
                 bin_block_desc = f"{bin_block_desc}\n{k}: {v}"
             if bin_block_desc:
-                risk_metrics["pkg_includes_binary_info"] = f"Binary commands:{bin_block_desc}"
+                risk_metrics["pkg_includes_binary_info"] = (
+                    f"Binary commands:{bin_block_desc}"
+                )
         # Look for slsa attestations
         if theversion.get("dist", {}).get("attestations") and theversion.get(
             "dist", {}

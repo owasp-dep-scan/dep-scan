@@ -47,11 +47,12 @@ scan = "depscan.cli:main"
 
 [project.optional-dependencies]
 dev = ["black",
-"flake8",
-"pytest",
-"pytest-cov",
-"httpretty"
+    "flake8",
+    "pytest",
+    "pytest-cov",
+    "httpretty"
 ]
+perf = ["hishel[redis]"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]

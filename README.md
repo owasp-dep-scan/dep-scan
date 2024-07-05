@@ -84,7 +84,11 @@ dep-scan is ideal for use during continuous integration (CI) and as a local deve
 
 ```bash
 sudo npm install -g @cyclonedx/cdxgen
+# Normal version recommended for most users (MIT)
 pip install owasp-depscan
+
+# For a performant version, that uses valkey cache during risk audit (BSD-3-Clause)
+pip install owasp-depscan[perf]
 ```
 
 This would install two commands called `cdxgen` and `depscan`.
