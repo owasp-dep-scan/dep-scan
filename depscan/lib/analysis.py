@@ -495,7 +495,6 @@ def prepare_vdr(options: PrepareVdrOptions):
                         has_ubuntu_packages = True
                     if "rhel" in qualifiers.get("distro", ""):
                         has_redhat_packages = True
-
         if ids_seen.get(vid + purl):
             fp_count += 1
             continue
