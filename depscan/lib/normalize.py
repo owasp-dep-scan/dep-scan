@@ -56,6 +56,9 @@ def create_pkg_variations(pkg_dict):
             if purl_obj:
                 pkg_type = purl_obj.get("type")
                 qualifiers = purl_obj.get("qualifiers", {})
+                # Issue #320. Mandate version number for generic packages to reduce FPs
+                if pkg_type in ("generic",) and not purl_obj.get("version"):
+                    return None
                 if pkg_type in ("npm",):
                     # vendorless package could have npm as the vendor name from sources such as osv
                     # So we need 1 more alias
