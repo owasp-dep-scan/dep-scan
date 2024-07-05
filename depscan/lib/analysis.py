@@ -398,8 +398,18 @@ def prepare_vdr(options: PrepareVdrOptions):
                 if not is_os_target_sw(package_issue):
                     fp_count += 1
                     continue
+            # Issue #320 - Malware matches without purl are false positives
+            if vid.startswith("MAL-"):
+                fp_count += 1
+                malicious_count -= 1
+                continue
         else:
             purl_obj = parse_purl(purl)
+            # Issue #320 - Malware matches without purl are false positives
+            if not purl_obj and vid.startswith("MAL-"):
+                fp_count += 1
+                malicious_count -= 1
+                continue
             if purl_obj:
                 version_used = purl_obj.get("version")
                 package_type = purl_obj.get("type")
@@ -485,6 +495,7 @@ def prepare_vdr(options: PrepareVdrOptions):
                         has_ubuntu_packages = True
                     if "rhel" in qualifiers.get("distro", ""):
                         has_redhat_packages = True
+
         if ids_seen.get(vid + purl):
             fp_count += 1
             continue
