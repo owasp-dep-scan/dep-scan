@@ -13,11 +13,11 @@ LABEL maintainer="AppThreat" \
 
 ARG TARGETPLATFORM
 ARG JAVA_VERSION=22.0.1-tem
-ARG SBT_VERSION=1.9.8
-ARG MAVEN_VERSION=3.9.7
+ARG SBT_VERSION=1.9.9
+ARG MAVEN_VERSION=3.9.8
 ARG GRADLE_VERSION=8.8
 ARG NYDUS_VERSION=2.2.5
-ARG CDXGEN_VERSION=10.6.2
+ARG CDXGEN_VERSION=10.7.1
 ARG PYTHON_VERSION=3.12
 
 ENV GOPATH=/opt/app-root/go \
@@ -60,7 +60,8 @@ RUN set -e; \
         python${PYTHON_VERSION} python${PYTHON_VERSION}-devel python${PYTHON_VERSION}-pip ruby ruby-devel \
         libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel \
         pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
-    && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 1 \
+    && alternatives --install /usr/bin/python python /usr/bin/python${PYTHON_VERSION} 10 \
+    && alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 10 \
     && python3 --version \
     && node --version \
     && python3 -m pip install --upgrade pip \
