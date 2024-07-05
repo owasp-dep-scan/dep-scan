@@ -3,7 +3,6 @@ import csv
 import logging
 import os
 
-from pybraries.search import Search
 from rich.progress import Progress
 from semver import Version
 
@@ -31,7 +30,7 @@ def build_args():
     parser.add_argument(
         "--keywords",
         dest="keywords",
-        default="binary,prebuilt,mac,arm,native",
+        default="binary,prebuilt",
         help="Comma separated list of keywords to search.",
     )
     parser.add_argument(
@@ -214,6 +213,7 @@ def main():
     if popular_only:
         analyze_with_npm(keywords, args.pages, args.output_file)
     else:
+        from pybraries.search import Search
         search = Search()
         with Progress(
             console=console,
