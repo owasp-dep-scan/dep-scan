@@ -34,6 +34,8 @@ ENV GOPATH=/opt/app-root/go \
     COMPOSER_ALLOW_SUPERUSER=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONIOENCODING="utf-8" \
+    PYTHON_VERSION=3.12 \
+    PYTHON_CMD=/usr/bin/python${PYTHON_VERSION} \
     CDXGEN_NO_BANNER=true \
     CDXGEN_CMD=cdxgen
 ENV PATH=${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${SBT_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:
@@ -60,6 +62,7 @@ RUN set -e; \
         libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel diffutils \
         pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
     && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 1 \
+    && alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 \
     && python3 --version \
     && node --version \
     && python3 -m pip install --upgrade pip \
