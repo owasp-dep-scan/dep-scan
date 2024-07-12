@@ -61,8 +61,8 @@ RUN set -e; \
         python${PYTHON_VERSION} python${PYTHON_VERSION}-devel python${PYTHON_VERSION}-pip ruby ruby-devel \
         libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel diffutils \
         pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
-    && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 1 \
-    && alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 1 \
+    && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 10 \
+    && alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 10 \
     && python3 --version \
     && node --version \
     && python3 -m pip install --upgrade pip \
