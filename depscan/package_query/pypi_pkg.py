@@ -1,20 +1,8 @@
 from datetime import datetime
 
 from depscan.lib import config
-from depscan.package_query.pkg_query import metadata_from_registry, compute_time_risks, calculate_risk_score
-
-
-def pypi_metadata(scoped_pkgs, pkg_list, private_ns=None):
-    """
-    Method to query pypi for the package metadata
-
-    :param scoped_pkgs: Dictionary of lists of packages per scope
-    :param pkg_list: List of package dictionaries
-    :param private_ns: Private namespace
-    :return: A dict of package metadata, risk metrics, and private package
-    flag for each package
-    """
-    return metadata_from_registry("pypi", scoped_pkgs, pkg_list, private_ns)
+from semver import Version
+from depscan.package_query.pkg_query import compute_time_risks, calculate_risk_score
 
 
 def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):

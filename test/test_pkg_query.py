@@ -7,10 +7,10 @@ from depscan.lib import config as config
 from depscan.lib.bom import get_pkg_list
 from depscan.package_query.pkg_query import (
     calculate_risk_score,
-    get_category_score,
-)
-from depscan.package_query.pypi_pkg import pypi_metadata, pypi_pkg_risk
-from depscan.package_query.npm_pkg import npm_metadata, npm_pkg_risk
+    get_category_score, )
+from depscan.package_query import npm_metadata, pypi_metadata
+from depscan.package_query.pypi_pkg import pypi_pkg_risk
+from depscan.package_query.npm_pkg import npm_pkg_risk
 
 
 def test_risk_scores():
