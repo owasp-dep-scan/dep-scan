@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from depscan.lib import config
-from depscan.pkg_query.pkg_query import metadata_from_registry, compute_time_risks, calculate_risk_score
+from depscan.package_query.pkg_query import metadata_from_registry, compute_time_risks, calculate_risk_score
 
 
 def pypi_metadata(scoped_pkgs, pkg_list, private_ns=None):

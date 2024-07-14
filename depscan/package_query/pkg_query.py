@@ -5,8 +5,8 @@ from rich.progress import Progress
 
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
-from depscan.pkg_query.npm_pkg import npm_pkg_risk
-from depscan.pkg_query.pypi_pkg import pypi_pkg_risk
+from depscan.package_query.npm_pkg import npm_pkg_risk
+from depscan.package_query.pypi_pkg import pypi_pkg_risk
 
 try:
     import hishel
@@ -25,21 +25,6 @@ except ImportError:
     import httpx
 
     httpclient = httpx
-
-
-def maybe_binary_npm_package(name: str) -> bool:
-    """
-    Check if a package might be a binary by checking the naming conventions.
-
-    :param name: Packagename
-    :returns: boolean
-    """
-    if not name:
-        return False
-    for bin_suffix in config.NPM_BINARY_PACKAGES_SUFFIXES:
-        if name.endswith(bin_suffix):
-            return True
-    return False
 
 
 def get_lookup_url(registry_type, pkg):
@@ -219,7 +204,7 @@ def get_category_score(
         0
         if weight == 0 or math.log(1 + max(param, max_value)) == 0
         else (math.log(1 + param) / math.log(1 + max(param, max_value)))
-        * weight
+             * weight
     )
 
 
@@ -253,9 +238,9 @@ def calculate_risk_score(risk_metrics):
             if (
                 risk_category_base
                 and (
-                    isinstance(risk_category_base, float)
-                    or isinstance(risk_category_base, int)
-                )
+                isinstance(risk_category_base, float)
+                or isinstance(risk_category_base, int)
+            )
                 and risk_category_base > risk_category_value
             ):
                 value = risk_category_base - risk_category_value
@@ -322,5 +307,3 @@ def compute_time_risks(
             latest_now_diff.total_seconds()
         )
     return risk_metrics
-
-

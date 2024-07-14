@@ -5,12 +5,12 @@ import pytest
 
 from depscan.lib import config as config
 from depscan.lib.bom import get_pkg_list
-from depscan.pkg_query.pkg_query import (
+from depscan.package_query.pkg_query import (
     calculate_risk_score,
     get_category_score,
 )
-from depscan.pkg_query.pypi_pkg import pypi_metadata, pypi_pkg_risk
-from depscan.pkg_query.npm_pkg import npm_metadata, npm_pkg_risk
+from depscan.package_query.pypi_pkg import pypi_metadata, pypi_pkg_risk
+from depscan.package_query.npm_pkg import npm_metadata, npm_pkg_risk
 
 
 def test_risk_scores():

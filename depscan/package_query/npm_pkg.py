@@ -1,8 +1,7 @@
 from datetime import datetime
 
 from depscan.lib import config
-from depscan.pkg_query.pkg_query import httpclient, metadata_from_registry, maybe_binary_npm_package, \
-    compute_time_risks, calculate_risk_score
+from depscan.package_query.pkg_query import httpclient, metadata_from_registry, compute_time_risks, calculate_risk_score
 
 
 def search_npm(keywords, pages=1, popularity=1.0, size=250):
@@ -330,3 +329,18 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
 
     risk_metrics["risk_score"] = calculate_risk_score(risk_metrics)
     return risk_metrics
+
+
+def maybe_binary_npm_package(name: str) -> bool:
+    """
+    Check if a package might be a binary by checking the naming conventions.
+
+    :param name: Packagename
+    :returns: boolean
+    """
+    if not name:
+        return False
+    for bin_suffix in config.NPM_BINARY_PACKAGES_SUFFIXES:
+        if name.endswith(bin_suffix):
+            return True
+    return False
