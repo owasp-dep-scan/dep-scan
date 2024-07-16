@@ -309,7 +309,7 @@ npm_app_info = {"name": "owasp-depscan", "version": "6.0.0"}
 
 PYPI_SERVER = "https://pypi.org/pypi"
 
-CARGO_SERVER = "https://cartes.io/api/v1/crates"
+CARGO_SERVER = "https://crates.io/api/v1/crates"
 
 vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v5")
 vdb_rafs_database_url = os.getenv(

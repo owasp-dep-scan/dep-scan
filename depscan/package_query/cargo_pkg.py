@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from depscan.lib import config
 from semver import Version
@@ -7,7 +7,7 @@ from depscan.package_query.pkg_query import compute_time_risks, calculate_risk_s
 def get_version_number_from_crate_versions(crate_version):
     dl_path = crate_version.get("dl_path", None)
     if dl_path:
-        version = dl_path.spit('/')[4]
+        version = dl_path.split('/')[5]
         return version
     # TODO: Log if no dl_path
 
@@ -43,7 +43,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     if not is_deprecated and pkg and pkg.get("version"):
         theversion = versions_dict.get(pkg.get("version"), {})
         if isinstance(theversion, dict) and len(theversion) > 0:
-            theversion = theversion[0]
+            theversion = get_version_number_from_crate_versions(theversion)
         elif theversion and theversion.get("yanked"):
             is_version_deprecated = True
         # Check if the version exists in the registry
@@ -70,8 +70,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         # First version number is latest, while last is the oldest release.
         first_version_num = version_nums[-1]
         latest_version_num = version_nums[0]
-    first_version = versions_dict.get(first_version_num)[0]
-    latest_version = versions_dict.get(latest_version_num)[0]
+    first_version = versions_dict.get(first_version_num)
+    latest_version = versions_dict.get(latest_version_num)
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
@@ -95,8 +95,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
             modified_dt = datetime.fromisoformat(modified)
             created_dt = datetime.fromisoformat(created)
             mod_create_diff = modified_dt - created_dt
-            latest_now_diff = datetime.now() - modified_dt
-            created_now_diff = datetime.now() - created_dt
+            latest_now_diff = datetime.now(timezone.utc) - modified_dt
+            created_now_diff = datetime.now(timezone.utc) - created_dt
             risk_metrics = compute_time_risks(
                 risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
             )
