@@ -1,7 +1,7 @@
 import json
 import httpx
 
-from depscan.package_query.npm_pkg import npm_pkg_risk
+from depscan.lib.package_query import npm_pkg_risk
 
 settings = {"interval": "1000", "count": "50", "include_docs": "true"}
 url = "https://replicate.npmjs.com/_changes"

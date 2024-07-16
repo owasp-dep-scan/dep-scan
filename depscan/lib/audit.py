@@ -1,7 +1,7 @@
 from vdb.lib.npm import NpmSource
 
 from depscan.lib import config
-from depscan.package_query.metadata import npm_metadata, pypi_metadata, cargo_metadata
+from depscan.lib.package_query.metadata import npm_metadata, pypi_metadata, cargo_metadata
 
 # Dict mapping project type to the audit source
 type_audit_map = {"nodejs": NpmSource(), "js": NpmSource(), "javascript": NpmSource(), "ts": NpmSource(),

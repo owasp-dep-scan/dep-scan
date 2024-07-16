@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from depscan.lib import config
-from depscan.package_query.pkg_query import httpclient, compute_time_risks, calculate_risk_score
+from depscan.lib.package_query.pkg_query import httpclient, compute_time_risks, calculate_risk_score
 
 
 def search_npm(keywords, pages=1, popularity=1.0, size=250):

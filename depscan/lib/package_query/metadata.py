@@ -2,10 +2,10 @@ from rich.progress import Progress
 
 from depscan.lib import config
 from depscan.lib.logger import console, LOG
-from depscan.package_query.npm_pkg import npm_pkg_risk
-from depscan.package_query.pkg_query import get_lookup_url, httpclient
-from depscan.package_query.pypi_pkg import pypi_pkg_risk
-from depscan.package_query.cargo_pkg import cargo_pkg_risk
+from depscan.lib.package_query.npm_pkg import npm_pkg_risk
+from depscan.lib.package_query.pkg_query import get_lookup_url, httpclient
+from depscan.lib.package_query.pypi_pkg import pypi_pkg_risk
+from depscan.lib.package_query.cargo_pkg import cargo_pkg_risk
 
 
 def metadata_from_registry(
