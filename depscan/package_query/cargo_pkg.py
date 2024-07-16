@@ -30,8 +30,12 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         "pkg_private_on_public_registry_risk": False,
     }
     versions_list = pkg_metadata.get("versions", [])
-    versions_dict = {get_version_number_from_crate_versions(crate_version): crate_version for crate_version in versions_list}
-    versions_nums = [get_version_number_from_crate_versions(crate_version) for crate_version in versions_list]
+    versions_dict = {
+        get_version_number_from_crate_versions(crate_version): crate_version 
+        for crate_version in versions_list}
+    versions_nums = [
+        get_version_number_from_crate_versions(crate_version) 
+        for crate_version in versions_list]
     versions = versions_list
     is_deprecated = versions_list[0].get("yanked")
     is_version_deprecated = False
@@ -55,20 +59,17 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         is_deprecated = True
     latest_deprecated = False
     version_nums = list(versions_dict.keys())
-    
-    version_nums = [ver for ver in version_nums if versions_dict.get(ver)]
     try:
         first_version_num = min(
-            version_nums,
-            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+            version_nums
         )
         latest_version_num = max(
-            version_nums,
-            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+            version_nums
         )
     except (ValueError, TypeError):
-        first_version_num = version_nums[0]
-        latest_version_num = version_nums[-1]
+        # First version number is latest, while last is the oldest release.
+        first_version_num = version_nums[-1]
+        latest_version_num = version_nums[0]
     first_version = versions_dict.get(first_version_num)[0]
     latest_version = versions_dict.get(latest_version_num)[0]
 
@@ -88,8 +89,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
 
     # Created and modified time related checks
     if first_version and latest_version:
-        created = first_version.get("upload_time")
-        modified = latest_version.get("upload_time")
+        created = first_version.get("created_at")
+        modified = latest_version.get("updated_at")
         if created and modified:
             modified_dt = datetime.fromisoformat(modified)
             created_dt = datetime.fromisoformat(created)
