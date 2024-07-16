@@ -8,7 +8,7 @@ from depscan.lib.bom import get_pkg_list
 from depscan.package_query.pkg_query import (
     calculate_risk_score,
     get_category_score, )
-from depscan.package_query import npm_metadata, pypi_metadata
+from depscan.package_query.metadata import npm_metadata, pypi_metadata
 from depscan.package_query.pypi_pkg import pypi_pkg_risk
 from depscan.package_query.npm_pkg import npm_pkg_risk
 
