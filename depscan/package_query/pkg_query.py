@@ -52,6 +52,8 @@ def get_lookup_url(registry_type, pkg):
         return key, f"{config.NPM_SERVER}/{key}"
     if registry_type == "pypi":
         return key, f"{config.PYPI_SERVER}/{key}/json"
+    if registry_type == "cargo":
+        return key, f"{config.CARGO_SERVER}/{key}"
     return None, None
 
 
