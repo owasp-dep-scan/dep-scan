@@ -60,7 +60,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["depscan", "depscan.lib", "vendor"]
+packages = ["depscan", "depscan.lib", "depscan.lib.package_query", "vendor"]
 
 [tool.pytest.ini_options]
 addopts = "--verbose --cov-append --cov-report term --cov depscan"
