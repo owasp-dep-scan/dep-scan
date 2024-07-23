@@ -18,7 +18,8 @@ risk_audit_map = {
     "python": pypi_metadata,
     "py": pypi_metadata,
     "pypi": pypi_metadata,
-    "cargo": cargo_metadata
+    "cargo": cargo_metadata,
+    "rust": cargo_metadata
 }
 
 

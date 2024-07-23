@@ -10,6 +10,14 @@ def get_version_number_from_crate_versions(crate_version):
         return version
     # TODO: Log if no dl_path
 
+def does_binary_exist(version_info):
+    if not version_info:
+        return False
+    bin_names = version_info.get('bin_names', [])
+    if len(bin_names)>0:
+        return True
+    return False
+
 
 def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     """
@@ -111,6 +119,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     if scope:
         risk_metrics[f"pkg_{scope}_scope_risk"] = True
         risk_metrics[f"pkg_{scope}_scope_value"] = 1
+
+    risk_metrics['pkg_includes_binary_risk'] = does_binary_exist(versions_dict.get(pkg.get("version"), {}))
 
     risk_metrics["risk_score"] = calculate_risk_score(risk_metrics)
     return risk_metrics
