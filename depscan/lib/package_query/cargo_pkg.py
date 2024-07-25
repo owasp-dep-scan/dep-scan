@@ -31,19 +31,19 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         "pkg_node_version_risk": False,
         "pkg_private_on_public_registry_risk": False,
     }
-    list_of_versions = pkg_metadata.get("versions", [])
-    dictionary_of_versions = {
+    versions_list = pkg_metadata.get("versions", [])
+    versions_dict = {
         crate_version.get('num'): crate_version
-        for crate_version in list_of_versions}
+        for crate_version in versions_list}
     versions_nums = [
         crate_version.get('num')
-        for crate_version in list_of_versions]
+        for crate_version in versions_list]
 
-    is_deprecated = list_of_versions[0].get("yanked")
+    is_deprecated = versions_list[0].get("yanked")
     is_version_deprecated = False
     info = pkg_metadata.get("crate", {})
     if not is_deprecated and pkg and pkg.get("version"):
-        theversion = dictionary_of_versions.get(pkg.get("version"), {})
+        theversion = versions_dict.get(pkg.get("version"), {})
         if isinstance(theversion, dict) and len(theversion) > 0:
             theversion = theversion.get('num')
         elif theversion and theversion.get("yanked"):
@@ -73,8 +73,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     #     # First version number is latest, while last is the oldest release.
     first_version_num = versions_nums[-1]
     latest_version_num = versions_nums[0]
-    first_version = list_of_versions[-1]
-    latest_version = list_of_versions[0]
+    first_version = versions_list[-1]
+    latest_version = versions_list[0]
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
@@ -82,10 +82,10 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics["pkg_private_on_public_registry_value"] = 1
 
     # If the package has fewer than minimum number of versions
-    if len(list_of_versions):
-        if len(list_of_versions) < config.pkg_min_versions:
+    if len(versions_list):
+        if len(versions_list) < config.pkg_min_versions:
             risk_metrics["pkg_min_versions_risk"] = True
-            risk_metrics["pkg_min_versions_value"] = len(list_of_versions)
+            risk_metrics["pkg_min_versions_value"] = len(versions_list)
         # Check if the latest version is deprecated
         if latest_version and latest_version.get("yanked"):
             latest_deprecated = True
@@ -116,7 +116,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics[f"pkg_{scope}_scope_risk"] = True
         risk_metrics[f"pkg_{scope}_scope_value"] = 1
 
-    set_binary_risks(risk_metrics, dictionary_of_versions.get(pkg.get("version"), {}), latest_version)
+    set_binary_risks(risk_metrics, versions_dict.get(pkg.get("version"), {}), latest_version)
 
     risk_metrics["risk_score"] = calculate_risk_score(risk_metrics)
     return risk_metrics
