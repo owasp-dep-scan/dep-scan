@@ -10,13 +10,15 @@ def get_version_number_from_crate_versions(crate_version):
         return version
     # TODO: Log if no dl_path
 
-def does_binary_exist(version_info):
-    if not version_info:
-        return False
-    bin_names = version_info.get('bin_names', [])
-    if len(bin_names)>0:
-        return True
-    return False
+def set_binary_risks(risk_metrics, current_version, latest_version):
+    """
+    If current version has bin_names. then we should set "pkg_includes_binary_risk" as True.
+    and add the number of bin_names to the "pkg_includes_binary_value" key.
+    """
+    version = current_version if current_version else latest_version
+    bin_names = version.get('bin_names', [])
+    risk_metrics["pkg_includes_binary_risk"] = True if len(bin_names)>0 else False
+    risk_metrics["pkg_includes_binary_value"] = len(bin_names)
 
 
 def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
@@ -65,20 +67,21 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     ):
         is_deprecated = True
     latest_deprecated = False
-    version_nums = list(versions_dict.keys())
-    try:
-        first_version_num = min(
-            version_nums
-        )
-        latest_version_num = max(
-            version_nums
-        )
-    except (ValueError, TypeError):
-        # First version number is latest, while last is the oldest release.
-        first_version_num = version_nums[-1]
-        latest_version_num = version_nums[0]
-    first_version = versions_dict.get(first_version_num)
-    latest_version = versions_dict.get(latest_version_num)
+
+    # Logic fails for version like 2.0.9 > 2.0.14 in python
+    # try:
+    #     first_version_num = min(
+    #         versions_nums
+    #     )
+    #     latest_version_num = max(
+    #         versions_nums
+    #     )
+    # except (ValueError, TypeError):
+    #     # First version number is latest, while last is the oldest release.
+    first_version_num = versions_nums[-1]
+    latest_version_num = versions_nums[0]
+    first_version = versions_list[-1]
+    latest_version = versions_list[0]
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
@@ -120,7 +123,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics[f"pkg_{scope}_scope_risk"] = True
         risk_metrics[f"pkg_{scope}_scope_value"] = 1
 
-    risk_metrics['pkg_includes_binary_risk'] = does_binary_exist(versions_dict.get(pkg.get("version"), {}))
+    set_binary_risks(risk_metrics, versions_dict.get(pkg.get("version"), {}), latest_version)
 
     risk_metrics["risk_score"] = calculate_risk_score(risk_metrics)
     return risk_metrics
