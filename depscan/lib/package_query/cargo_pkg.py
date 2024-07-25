@@ -3,13 +3,6 @@ from datetime import datetime, timezone
 from depscan.lib import config
 from depscan.lib.package_query.pkg_query import compute_time_risks, calculate_risk_score
 
-def get_version_number_from_crate_versions(crate_version):
-    dl_path = crate_version.get("dl_path", None)
-    if dl_path:
-        version = dl_path.split('/')[5]
-        return version
-    # TODO: Log if no dl_path
-
 def set_binary_risks(risk_metrics, current_version, latest_version):
     """
     If current version has bin_names. then we should set "pkg_includes_binary_risk" as True.
@@ -38,21 +31,21 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         "pkg_node_version_risk": False,
         "pkg_private_on_public_registry_risk": False,
     }
-    versions_list = pkg_metadata.get("versions", [])
-    versions_dict = {
-        get_version_number_from_crate_versions(crate_version): crate_version
-        for crate_version in versions_list}
+    list_of_versions = pkg_metadata.get("versions", [])
+    dictionary_of_versions = {
+        crate_version.get('num'): crate_version
+        for crate_version in list_of_versions}
     versions_nums = [
-        get_version_number_from_crate_versions(crate_version)
-        for crate_version in versions_list]
-    versions = versions_list
-    is_deprecated = versions_list[0].get("yanked")
+        crate_version.get('num')
+        for crate_version in list_of_versions]
+
+    is_deprecated = list_of_versions[0].get("yanked")
     is_version_deprecated = False
     info = pkg_metadata.get("crate", {})
     if not is_deprecated and pkg and pkg.get("version"):
-        theversion = versions_dict.get(pkg.get("version"), {})
+        theversion = dictionary_of_versions.get(pkg.get("version"), {})
         if isinstance(theversion, dict) and len(theversion) > 0:
-            theversion = get_version_number_from_crate_versions(theversion)
+            theversion = theversion.get('num')
         elif theversion and theversion.get("yanked"):
             is_version_deprecated = True
         # Check if the version exists in the registry
@@ -80,8 +73,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     #     # First version number is latest, while last is the oldest release.
     first_version_num = versions_nums[-1]
     latest_version_num = versions_nums[0]
-    first_version = versions_list[-1]
-    latest_version = versions_list[0]
+    first_version = list_of_versions[-1]
+    latest_version = list_of_versions[0]
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
@@ -89,10 +82,10 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics["pkg_private_on_public_registry_value"] = 1
 
     # If the package has fewer than minimum number of versions
-    if len(versions):
-        if len(versions) < config.pkg_min_versions:
+    if len(list_of_versions):
+        if len(list_of_versions) < config.pkg_min_versions:
             risk_metrics["pkg_min_versions_risk"] = True
-            risk_metrics["pkg_min_versions_value"] = len(versions)
+            risk_metrics["pkg_min_versions_value"] = len(list_of_versions)
         # Check if the latest version is deprecated
         if latest_version and latest_version.get("yanked"):
             latest_deprecated = True
@@ -123,7 +116,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics[f"pkg_{scope}_scope_risk"] = True
         risk_metrics[f"pkg_{scope}_scope_value"] = 1
 
-    set_binary_risks(risk_metrics, versions_dict.get(pkg.get("version"), {}), latest_version)
+    set_binary_risks(risk_metrics, dictionary_of_versions.get(pkg.get("version"), {}), latest_version)
 
     risk_metrics["risk_score"] = calculate_risk_score(risk_metrics)
     return risk_metrics
