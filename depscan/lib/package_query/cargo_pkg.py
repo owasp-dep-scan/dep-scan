@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from depscan.lib import config
 from depscan.lib.package_query.pkg_query import compute_time_risks, calculate_risk_score
+from semver import Version
 
 def set_binary_risks(risk_metrics, current_version, latest_version):
     """
@@ -61,20 +62,21 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         is_deprecated = True
     latest_deprecated = False
 
-    # Logic fails for version like 2.0.9 > 2.0.14 in python
-    # try:
-    #     first_version_num = min(
-    #         versions_nums
-    #     )
-    #     latest_version_num = max(
-    #         versions_nums
-    #     )
-    # except (ValueError, TypeError):
-    #     # First version number is latest, while last is the oldest release.
-    first_version_num = versions_nums[-1]
-    latest_version_num = versions_nums[0]
-    first_version = versions_list[-1]
-    latest_version = versions_list[0]
+    try:
+        first_version_num = min(
+            versions_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+        latest_version_num = max(
+            versions_nums,
+            key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+        )
+    except (ValueError, TypeError):
+        first_version_num = versions_nums[-1]
+        latest_version_num = versions_nums[0]
+    
+    first_version = versions_dict[first_version_num]
+    latest_version = versions_list[latest_version_num]
 
     # Is the private package available publicly? Dependency confusion.
     if is_private_pkg and pkg_metadata:
