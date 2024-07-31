@@ -1151,10 +1151,10 @@ def cve_to_vdr(cve: CVE):
     vendor = ""
     if cve.root.containers.cna.affected:
         vendor = cve.root.containers.cna.affected.root[0].vendor
-    rating = {}
+    ratings = []
     if vector:
-        rating = {"method": method, "severity": severity, "score": score, "vector": vector}
-    return source, references, advisories, cwes, description, detail, rating, bug_bounties, pocs, exploits, vendor
+        ratings = [{"method": method, "severity": severity, "score": score, "vector": vector}]
+    return source, references, advisories, cwes, description, detail, ratings, bug_bounties, pocs, exploits, vendor
 
 
 def parse_metrics(metrics):
