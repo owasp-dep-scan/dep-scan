@@ -1265,8 +1265,8 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     vdict |= {
         "affects": affects, "source": source, "references": references, "advisories": advisories,
         "cwes": cwes, "description": description, "detail": detail, "ratings": [rating],
-        "published": str(cve_record.root.cveMetadata.datePublished),
-        "updated": str(cve_record.root.cveMetadata.dateUpdated)
+        "published": cve_record.root.cveMetadata.datePublished.strftime("%Y-%m-%dT%H:%M:%S"),
+        "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S")
     }
     is_required = False
     package_usage = ""
@@ -1519,7 +1519,6 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
                         record["source"]["name"] = "NVD"
                     refs.append(record)
                 elif "Advisory" in value:
-                    advisories.append({"url": str(i)})
                     system_name = (
                         (match["org"].capitalize() + " Advisory")
                         .replace("Redhat", "Red Hat")
@@ -1532,6 +1531,7 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
                     if system_name in {"Jfrog", "Gentoo"}:
                         adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
                     refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
+                    advisories.append({"title": f"{system_name} {adv_id}", "url": i})
                 elif value in ("POC", "Bug Bounty", "Exploit"):
                     if value == "POC":
                         poc.append(i)
