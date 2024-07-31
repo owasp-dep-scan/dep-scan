@@ -1509,7 +1509,7 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
     """
     if not references:
         return [], [], [], [], []
-    ref = {str(i.url) for i in references.root}
+    ref = {str(i.url.root) for i in references.root}
     advisories = []
     refs = []
     bug_bounty = []
