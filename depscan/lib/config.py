@@ -311,17 +311,17 @@ PYPI_SERVER = "https://pypi.org/pypi"
 
 CARGO_SERVER = "https://crates.io/api/v1/crates"
 
-vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v5")
+vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v6")
 vdb_rafs_database_url = os.getenv(
-    "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v5-rafs"
+    "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v6-rafs"
 )
 
 # Larger 10 year database
 vdb_10y_database_url = os.getenv(
-    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbxz-10y:v5"
+    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbxz-10y:v6"
 )
 vdb_10y_rafs_database_url = os.getenv(
-    "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5-rafs"
+    "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v6-rafs"
 )
 
 if os.getenv("USE_VDB_10Y", "") in ("true", "1"):

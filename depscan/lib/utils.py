@@ -6,10 +6,11 @@ import shutil
 from collections import defaultdict
 from datetime import datetime
 from importlib.metadata import distribution
-from typing import Any, Dict, List
+from typing import List, Dict, Any, Tuple
 
 from jinja2 import Environment
-from vdb.lib import db as db_lib
+from vdb.lib.cve_model import Description
+from vdb.lib.search import search_by_purl_like
 from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
@@ -210,7 +211,7 @@ def get_pkg_vendor_name(pkg):
     return vendor, name
 
 
-def search_pkgs(db, project_type: str | None, pkg_list: List[Dict[str, Any]]):
+def search_pkgs(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     """
     Method to search packages in our vulnerability database
 
@@ -248,8 +249,11 @@ def search_pkgs(db, project_type: str | None, pkg_list: List[Dict[str, Any]]):
                 ].append(vari_full_pkg)
                 if pkg.get("purl"):
                     purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
-    quick_res = db_lib.bulk_index_search(expanded_list)
-    raw_results = db_lib.pkg_bulk_search(db, quick_res)
+    raw_results = []
+    for i in expanded_list:
+        search_term = i.get("purl") or i.get("name")
+        if res := search_by_purl_like(search_term, with_data=True):
+            raw_results.extend(res)
     raw_results = normalize.dedup(project_type, raw_results)
     pkg_aliases = normalize.dealias_packages(
         raw_results,
@@ -457,3 +461,17 @@ def render_template_report(
     )
     with open(result_file, "w", encoding="utf-8") as outfile:
         outfile.write(report_result)
+
+
+def get_description(data: Description) -> Tuple[str, str]:
+    if not data:
+        return "", ""
+    data = data.root[0]
+    description = ""
+    detail = data.value or ""
+    if detail and "\\n" in detail:
+        description = detail.split("\\n")[0]
+    elif "." in detail:
+        description = detail.split(".")[0]
+    description = description.lstrip("# ")
+    return description, detail

@@ -6,11 +6,13 @@ import tempfile
 
 import oras.client
 import oras.provider
+from oras import defaults
 from oras.logger import setup_logger
-from vdb.lib.config import data_dir
+from vdb.lib.config import DATA_DIR
 
 from depscan.lib.config import vdb_database_url, vdb_rafs_database_url
 from depscan.lib.logger import LOG
+
 
 setup_logger(quiet=True, debug=False)
 
@@ -30,6 +32,8 @@ class VdbDistributionRegistry(oras.provider.Registry):
         :type container: oras.container.Container or str
         :param allowed_media_type: one or more allowed media types
         :type allowed_media_type: str
+        :param refresh_headers
+        :type refresh_headers: bool
         """
         if not allowed_media_type:
             allowed_media_type = [oras.defaults.default_manifest_media_type]
@@ -38,8 +42,7 @@ class VdbDistributionRegistry(oras.provider.Registry):
         get_manifest = f"{self.prefix}://{container.manifest_url()}"  # type: ignore
         response = self.do_request(get_manifest, "GET", headers=headers)
         self._check_200_response(response)
-        manifest = response.json()
-        return manifest
+        return response.json()
 
 
 def download_rafs_based_image():
@@ -81,7 +84,7 @@ def download_rafs_based_image():
                     "--blob",
                     os.path.join(rafs_data_dir.name, "data.rafs"),
                     "--output",
-                    os.path.join(data_dir, "vdb.tar"),
+                    os.path.join(DATA_DIR, "vdb.tar"),
                     "--bootstrap",
                     os.path.join(rafs_data_dir.name, "meta.rafs"),
                 ]
@@ -91,13 +94,13 @@ def download_rafs_based_image():
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
-                if os.path.exists(os.path.join(data_dir, "vdb.tar")):
+                if os.path.exists(os.path.join(DATA_DIR, "vdb.tar")):
                     rafs_image_downloaded = True
                     with tarfile.open(
-                        os.path.join(data_dir, "vdb.tar"), "r"
+                        os.path.join(DATA_DIR, "vdb.tar"), "r"
                     ) as tarf:
-                        tarf.extractall(path=data_dir)
-                    os.remove(os.path.join(data_dir, "vdb.tar"))
+                        tarf.extractall(path=DATA_DIR)
+                    os.remove(os.path.join(DATA_DIR, "vdb.tar"))
                 else:
                     raise FileNotFoundError("vdb.tar not found")
             else:
@@ -110,7 +113,7 @@ def download_rafs_based_image():
             )
             rafs_image_downloaded = False
 
-    return rafs_image_downloaded, data_dir
+    return rafs_image_downloaded, DATA_DIR
 
 
 def download_image():
@@ -127,14 +130,14 @@ def download_image():
     oras_client = oras.client.OrasClient(registry=VdbDistributionRegistry())
     paths_list = oras_client.pull(
         target=vdb_database_url,
-        outdir=data_dir,
+        outdir=DATA_DIR,
         allowed_media_type=[],
         overwrite=True,
     )
     for apath in paths_list:
         if apath.endswith(".tar.gz") or apath.endswith(".tar.xz"):
             with tarfile.open(apath, "r") as tarf:
-                tarf.extractall(path=data_dir)
+                tarf.extractall(path=DATA_DIR)
             try:
                 os.remove(apath)
             except OSError:

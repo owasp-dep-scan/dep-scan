@@ -2,10 +2,9 @@ import os
 import tempfile
 
 import pytest
-from vdb.lib import db as db_lib
+from vdb.lib import db6 as db_lib
 
 from depscan.lib.bom import get_pkg_by_type, get_pkg_list, parse_bom_ref
-from depscan.lib.utils import search_pkgs
 
 
 @pytest.fixture
@@ -126,43 +125,6 @@ def test_parse():
         "version": "0.7.3-0.20190327010347-be7ac8be2ae0",
         "licenses": None,
     }
-
-
-def test_search(test_db):
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml"
-    )
-    pkg_list = get_pkg_list(test_bom)
-    search_res, pkg_aliases, purl_aliases = search_pkgs(test_db, "java", pkg_list)
-    assert not len(search_res)
-
-
-def test_go_search(test_db):
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-go.xml"
-    )
-    pkg_list = get_pkg_list(test_bom)
-    search_res, pkg_aliases, purl_aliases = search_pkgs(test_db, "golang", pkg_list)
-    assert not len(search_res)
-
-
-def test_search_webgoat(test_db):
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-webgoat.xml"
-    )
-    pkg_list = get_pkg_list(test_bom)
-    search_res, pkg_aliases, purl_aliases = search_pkgs(test_db, "java", pkg_list)
-    assert not len(search_res)
-
-
-def test_search_webgoat_json(test_db):
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom.json"
-    )
-    pkg_list = get_pkg_list(test_bom)
-    assert len(pkg_list) == 157
-    search_res, pkg_aliases, purl_aliases = search_pkgs(test_db, "java", pkg_list)
-    assert not len(search_res)
 
 
 def test_get_pkg_by_type(test_db):

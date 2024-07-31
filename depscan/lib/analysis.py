@@ -4,9 +4,9 @@ import contextlib
 import json
 import os.path
 import re
-from collections import OrderedDict, defaultdict
+from collections import defaultdict, OrderedDict
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import cvss
 from cvss import CVSSError
@@ -17,17 +17,21 @@ from rich.panel import Panel
 from rich.style import Style
 from rich.table import Table
 from rich.tree import Tree
-from vdb.lib import CPE_FULL_REGEX
-from vdb.lib.config import placeholder_exclude_version, placeholder_fix_version
-from vdb.lib.utils import parse_cpe, parse_purl
+from vdb.lib import CPE_FULL_REGEX, VulnerabilityOccurrence
+from vdb.lib.config import PLACEHOLDER_FIX_VERSION, PLACEHOLDER_EXCLUDE_VERSION
+from vdb.lib.cve_model import ProblemType, CVE, Reference
+from vdb.lib.utils import parse_purl, parse_cpe
 
 from depscan.lib import config
+from depscan.lib.csaf import COMPILED_REF_PATTERNS
 from depscan.lib.logger import LOG, console
-from depscan.lib.utils import max_version
+from depscan.lib.utils import max_version, get_description
 
 NEWLINE = "\\n"
 
 CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
+# VENDOR = re.compile(r"redhat.com|oracle.com|curl.haxx.se|nodejs.org|sec-consult.com|jenkins.io/security|support.f5.com|suricata-ids.org/|foxitsoftware.com/support/|success.trendmicro.com/|docs.jmf.com/|www.postgresql.org/about|apache.org|debian.org|gentoo.org|ubuntu.com|rubyonrails-security|support.apple.com|alpinelinux.org|bugs.busybox.net", re.IGNORECASE)
+JFROG_ADVISORY = re.compile(r"(?P<id>jfsa\S+)", re.IGNORECASE)
 
 
 def best_fixed_location(sug_version, orig_fixed_location):
@@ -43,34 +47,31 @@ def best_fixed_location(sug_version, orig_fixed_location):
     if (
         not orig_fixed_location
         and sug_version
-        and sug_version != placeholder_fix_version
+        and sug_version != PLACEHOLDER_FIX_VERSION
     ):
         return sug_version
     if sug_version and orig_fixed_location:
-        if sug_version == placeholder_fix_version:
+        if sug_version == PLACEHOLDER_FIX_VERSION:
             return ""
         tmp_a = sug_version.split(".")[0]
         tmp_b = orig_fixed_location.split(".")[0]
         if tmp_a == tmp_b:
             return sug_version
     # Handle the placeholder version used by OS distros
-    if orig_fixed_location == placeholder_fix_version:
+    if orig_fixed_location == PLACEHOLDER_FIX_VERSION:
         return ""
     return orig_fixed_location
 
 
-def distro_package(package_issue):
+def distro_package(cpe):
     """
     Determines if a given Common Platform Enumeration (CPE) belongs to an
     operating system (OS) distribution.
-    TODO: Clarify parameter
-    :param package_issue: An object
+    :param cpe: cpe string
     :return: bool
     """
-    if package_issue:
-        all_parts = CPE_FULL_REGEX.match(
-            package_issue["affected_location"].get("cpe_uri")
-        )
+    if cpe:
+        all_parts = CPE_FULL_REGEX.match(cpe)
         if (
             all_parts
             and all_parts.group("vendor")
@@ -297,25 +298,10 @@ def prepare_vdr(options: PrepareVdrOptions):
         show_lines=True,
         min_width=150,
     )
-    ids_seen = {}
     direct_purls = options.direct_purls or {}
     reached_purls = options.reached_purls or {}
     required_pkgs = options.scoped_pkgs.get("required", [])
     optional_pkgs = options.scoped_pkgs.get("optional", [])
-    fp_count = 0
-    pkg_attention_count = 0
-    critical_count = 0
-    malicious_count = 0
-    has_poc_count = 0
-    has_reachable_poc_count = 0
-    has_exploit_count = 0
-    has_reachable_exploit_count = 0
-    fix_version_count = 0
-    wont_fix_version_count = 0
-    has_os_packages = False
-    has_redhat_packages = False
-    has_ubuntu_packages = False
-    distro_packages_count = 0
     pkg_group_rows = defaultdict(list)
     pkg_vulnerabilities = []
     # Retrieve any dependency tree from the SBOM
@@ -335,412 +321,29 @@ def prepare_vdr(options: PrepareVdrOptions):
         if h == "Score":
             justify = "right"
         table.add_column(header=h, justify=justify, vertical="top")
+    counts = Counts()
     for vuln_occ_dict in options.results:
-        vid = vuln_occ_dict.get("id")
-        problem_type = vuln_occ_dict.get("problem_type")
-        cwes = []
-        if problem_type:
-            cwes = split_cwe(problem_type)
-        has_flagged_cwe = False
-        package_issue = vuln_occ_dict.get("package_issue")
-        matched_by = vuln_occ_dict.get("matched_by")
-        full_pkg = package_issue["affected_location"].get("package")
-        project_type_pkg = (
-            f"{options.project_type}:"
-            f"{package_issue['affected_location'].get('package')}"
-        )
-        if package_issue["affected_location"].get("vendor"):
-            full_pkg = (
-                f"{package_issue['affected_location'].get('vendor')}:"
-                f"{package_issue['affected_location'].get('package')}"
+        if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
+            counts, pkg_group_rows, pkg_vulnerabilities, tmp_insights, tmp_plain_insights = process_vuln_occ(
+                bom_dependency_tree, direct_purls, oci_product_types, optional_pkgs, options,
+                pkg_group_rows, pkg_vulnerabilities, reached_purls, required_pkgs, table,
+                vuln_occ_dict.to_dict(), counts
             )
-        elif package_issue["affected_location"].get("cpe_uri"):
-            vendor, _, _, _ = parse_cpe(
-                package_issue["affected_location"].get("cpe_uri")
-            )
-            if vendor:
-                full_pkg = (
-                    f"{vendor}:"
-                    f"{package_issue['affected_location'].get('package')}"
-                )
-        if matched_by:
-            version = matched_by.split("|")[-1]
-            full_pkg = full_pkg + ":" + version
-        # De-alias package names
-        if options.pkg_aliases.get(full_pkg):
-            full_pkg = options.pkg_aliases.get(full_pkg)
-        else:
-            full_pkg = options.pkg_aliases.get(full_pkg.lower(), full_pkg)
-        version_used = package_issue["affected_location"].get("version")
-        purl = options.purl_aliases.get(full_pkg, full_pkg)
-        package_type = None
-        insights = []
-        plain_insights = []
-        if vid.startswith("MAL-"):
-            insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
-            plain_insights.append("Malicious")
-            malicious_count += 1
-        purl_obj = None
-        vendor = package_issue["affected_location"].get("vendor")
-        # If the match was based on name and version alone then the alias might legitimately lack a full purl
-        # Such results are usually false positives but could yield good hits at times
-        # So, instead of suppressing fully we try our best to tune and reduce the FP
-        if not purl.startswith("pkg:"):
-            if options.project_type in config.OS_PKG_TYPES:
-                if vendor and (
-                    vendor in config.LANG_PKG_TYPES.values()
-                    or config.LANG_PKG_TYPES.get(vendor)
-                ):
-                    fp_count += 1
-                    continue
-                # Some nvd data might match application CVEs for
-                # OS vendors which can be filtered
-                if not is_os_target_sw(package_issue):
-                    fp_count += 1
-                    continue
-            # Issue #320 - Malware matches without purl are false positives
-            if vid.startswith("MAL-"):
-                fp_count += 1
-                malicious_count -= 1
-                continue
-        else:
-            purl_obj = parse_purl(purl)
-            # Issue #320 - Malware matches without purl are false positives
-            if not purl_obj and vid.startswith("MAL-"):
-                fp_count += 1
-                malicious_count -= 1
-                continue
-            if purl_obj:
-                version_used = purl_obj.get("version")
-                package_type = purl_obj.get("type")
-                qualifiers = purl_obj.get("qualifiers", {})
-                # Filter application CVEs from distros
-                if (
-                    config.LANG_PKG_TYPES.get(package_type)
-                    or package_type in config.LANG_PKG_TYPES.values()
-                ) and (
-                    (vendor and vendor in config.OS_PKG_TYPES)
-                    or not is_lang_sw_edition(package_issue)
-                ):
-                    fp_count += 1
-                    continue
-                if package_type in config.OS_PKG_TYPES:
-                    # Bug #208 - do not report application CVEs
-                    if vendor and (
-                        vendor in config.LANG_PKG_TYPES.values()
-                        or config.LANG_PKG_TYPES.get(vendor)
-                    ):
-                        fp_count += 1
-                        continue
-                    if package_type and (
-                        package_type in config.LANG_PKG_TYPES.values()
-                        or config.LANG_PKG_TYPES.get(package_type)
-                    ):
-                        fp_count += 1
-                        continue
-                    if (
-                        vendor
-                        and oci_product_types
-                        and vendor not in oci_product_types
-                    ):
-                        # Bug #170 - do not report CVEs belonging to other distros
-                        if vendor in config.OS_PKG_TYPES:
-                            fp_count += 1
-                            continue
-                        # Some nvd data might match application CVEs for
-                        # OS vendors which can be filtered
-                        if not is_os_target_sw(package_issue):
-                            fp_count += 1
-                            continue
-                        insights.append(
-                            f"[#7C8082]:telescope: Vendor {vendor}[/#7C8082]"
-                        )
-                        plain_insights.append(f"Vendor {vendor}")
-                    has_os_packages = True
-                    for acwe in cwes:
-                        if acwe in config.OS_VULN_KEY_CWES:
-                            has_flagged_cwe = True
-                            break
-                    # Don't flag the cwe for ignorable os packages
-                    if has_flagged_cwe and (
-                        purl_obj.get("name") in config.OS_PKG_UNINSTALLABLE
-                        or purl_obj.get("name") in config.OS_PKG_IGNORABLE
-                        or vendor in config.OS_PKG_IGNORABLE
-                    ):
-                        has_flagged_cwe = False
-                    else:
-                        if (
-                            purl_obj.get("name") in config.OS_PKG_IGNORABLE
-                            or vendor in config.OS_PKG_IGNORABLE
-                        ):
-                            insights.append(
-                                "[#7C8082]:mute: Suppress for containers[/#7C8082]"
-                            )
-                            plain_insights.append("Suppress for containers")
-                        elif (
-                            purl_obj.get("name") in config.OS_PKG_UNINSTALLABLE
-                        ):
-                            insights.append(
-                                "[#7C8082]:scissors: Uninstall candidate[/#7C8082]"
-                            )
-                            plain_insights.append("Uninstall candidate")
-                    # If the flag remains after all the suppressions then add it as an insight
-                    if has_flagged_cwe:
-                        insights.append(
-                            "[#7C8082]:triangular_flag: Flagged weakness[/#7C8082]"
-                        )
-                        plain_insights.append("Flagged weakness")
-                if qualifiers:
-                    if "ubuntu" in qualifiers.get("distro", ""):
-                        has_ubuntu_packages = True
-                    if "rhel" in qualifiers.get("distro", ""):
-                        has_redhat_packages = True
-        if ids_seen.get(vid + purl):
-            fp_count += 1
             continue
-        # Mark this CVE + pkg as seen to avoid duplicates
-        ids_seen[vid + purl] = True
-        # Find the best fix version
-        fixed_location = best_fixed_location(
-            options.sug_version_dict.get(purl), package_issue["fixed_location"]
-        )
-        if (
-            options.sug_version_dict.get(purl) == placeholder_fix_version
-            or package_issue["fixed_location"] == placeholder_fix_version
-        ):
-            wont_fix_version_count += 1
-        package_usage = "N/A"
-        plain_package_usage = "N/A"
-        pkg_severity = vuln_occ_dict.get("severity")
-        is_required = False
-        pkg_requires_attn = False
-        related_urls = vuln_occ_dict.get("related_urls")
-        clinks = classify_links(
-            related_urls,
-        )
-        if direct_purls.get(purl):
-            is_required = True
-        elif not direct_purls and (
-            purl in required_pkgs
-            or full_pkg in required_pkgs
-            or project_type_pkg in required_pkgs
-        ):
-            is_required = True
-        if pkg_severity in ("CRITICAL", "HIGH"):
-            if is_required:
-                pkg_attention_count += 1
-            if fixed_location:
-                fix_version_count += 1
-            if (
-                clinks.get("vendor") or package_type in config.OS_PKG_TYPES
-            ) and pkg_severity == "CRITICAL":
-                critical_count += 1
-        # Locate this package in the tree
-        pkg_tree_list, p_rich_tree = pkg_sub_tree(
-            purl,
-            full_pkg.replace(":", "/"),
-            bom_dependency_tree,
-            pkg_severity=pkg_severity,
-            as_tree=True,
-            extra_text=f":left_arrow: {vid}",
-        )
-        if is_required and package_type not in config.OS_PKG_TYPES:
-            if direct_purls.get(purl):
-                package_usage = (
-                    f":direct_hit: Used in [info]"
-                    f"{str(direct_purls.get(purl))}"
-                    f"[/info] locations"
-                )
-                plain_package_usage = (
-                    f"Used in {str(direct_purls.get(purl))} locations"
-                )
-            else:
-                package_usage = ":direct_hit: Direct dependency"
-                plain_package_usage = "Direct dependency"
-        elif (
-            not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
-        ) or (
-            purl in optional_pkgs
-            or full_pkg in optional_pkgs
-            or project_type_pkg in optional_pkgs
-        ):
-            if package_type in config.OS_PKG_TYPES:
-                package_usage = (
-                    "[spring_green4]:notebook: Local install[/spring_green4]"
-                )
-                plain_package_usage = "Local install"
-                has_os_packages = True
-            else:
-                package_usage = (
-                    "[spring_green4]:notebook: Indirect "
-                    "dependency[/spring_green4]"
-                )
-                plain_package_usage = "Indirect dependency"
-        if package_usage != "N/A":
-            insights.append(package_usage)
-            plain_insights.append(plain_package_usage)
-        if clinks.get("poc") or clinks.get("Bug Bounty"):
-            if reached_purls.get(purl):
-                insights.append(
-                    "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
-                )
-                plain_insights.append("Reachable Bounty target")
-                has_reachable_poc_count += 1
-                has_reachable_exploit_count += 1
-                pkg_requires_attn = True
-            elif direct_purls.get(purl):
-                insights.append(
-                    "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
-                )
-                plain_insights.append("Bug Bounty target")
-            else:
-                insights.append(
-                    "[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]"
-                )
-                plain_insights.append("Has PoC")
-            has_poc_count += 1
-            if pkg_severity in ("CRITICAL", "HIGH"):
-                pkg_requires_attn = True
-        if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
-            if reached_purls.get(purl):
-                # If it has a poc, an insight might have gotten added above
-                if not pkg_requires_attn:
-                    insights.append(":receipt: Reachable")
-                    plain_insights.append("Reachable")
-            else:
-                insights.append(":receipt: Vendor Confirmed")
-                plain_insights.append("Vendor Confirmed")
-        if clinks.get("exploit"):
-            if reached_purls.get(purl) or direct_purls.get(purl):
-                insights.append(
-                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
-                )
-                plain_insights.append("Reachable and Exploitable")
-                has_reachable_exploit_count += 1
-                # Fail safe. Packages with exploits and direct usage without
-                # a reachable flow are still considered reachable to reduce
-                # false negatives
-                if not reached_purls.get(purl):
-                    reached_purls[purl] = 1
-            elif has_flagged_cwe:
-                if (vendor and vendor in ("gnu",)) or (
-                    purl_obj and purl_obj.get("name") in ("glibc", "openssl")
-                ):
-                    insights.append(
-                        "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
-                    )
-                    plain_insights.append("Reachable and Exploitable")
-                    has_reachable_exploit_count += 1
-                else:
-                    insights.append(
-                        "[bright_red]:exclamation_mark: Exploitable[/bright_red]"
-                    )
-                    plain_insights.append("Exploitable")
-                    has_exploit_count += 1
-            else:
-                insights.append(
-                    "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
-                )
-                plain_insights.append("Known Exploits")
-            has_exploit_count += 1
-            pkg_requires_attn = True
-        if distro_package(package_issue):
-            insights.append(
-                "[spring_green4]:direct_hit: Distro specific[/spring_green4]"
-            )
-            plain_insights.append("Distro specific")
-            distro_packages_count += 1
-            has_os_packages = True
-        if pkg_requires_attn and fixed_location and purl:
-            pkg_group_rows[purl].append(
-                {
-                    "id": vid,
-                    "fixed_location": fixed_location,
-                    "p_rich_tree": p_rich_tree,
-                }
-            )
-        if not options.no_vuln_table:
-            table.add_row(
-                p_rich_tree,
-                "\n".join(insights),
-                fixed_location,
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
-                f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
-            )
-        if purl:
-            source = {}
-            if vid.startswith("CVE"):
-                source = {
-                    "name": "NVD",
-                    "url": f"https://nvd.nist.gov/vuln/detail/{vid}",
-                }
-            elif vid.startswith("GHSA") or vid.startswith("npm"):
-                source = {
-                    "name": "GitHub",
-                    "url": f"https://github.com/advisories/{vid}",
-                }
-            versions = [{"version": version_used, "status": "affected"}]
-            recommendation = ""
-            if fixed_location:
-                versions.append(
-                    {"version": fixed_location, "status": "unaffected"}
-                )
-                recommendation = f"Update to {fixed_location} or later"
-            affects = [{"ref": purl, "versions": versions}]
-            analysis = {}
-            if clinks.get("exploit"):
-                analysis = {
-                    "state": "exploitable",
-                    "detail": f'See {clinks.get("exploit")}',
-                }
-            elif clinks.get("poc"):
-                analysis = {
-                    "state": "in_triage",
-                    "detail": f'See {clinks.get("poc")}',
-                }
-            elif pkg_tree_list and len(pkg_tree_list) > 1:
-                analysis = {
-                    "state": "in_triage",
-                    "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
-                }
-            ratings = cvss_to_vdr_rating(vuln_occ_dict)
-            properties = [
-                {
-                    "name": "depscan:insights",
-                    "value": "\\n".join(plain_insights),
-                },
-                {
-                    "name": "depscan:prioritized",
-                    "value": "true" if pkg_group_rows.get(purl) else "false",
-                },
-            ]
-            affected_version_range = get_version_range(package_issue, purl)
-            if affected_version_range:
-                properties.append(affected_version_range)
-            advisories = []
-            for k, v in clinks.items():
-                advisories.append({"title": k, "url": v})
-            vuln = {
-                "bom-ref": f"{vid}/{purl}",
-                "id": vid,
-                "source": source,
-                "ratings": ratings,
-                "cwes": cwes,
-                "description": vuln_occ_dict.get("short_description"),
-                "recommendation": recommendation,
-                "advisories": advisories,
-                "analysis": analysis,
-                "affects": affects,
-                "properties": properties,
-            }
-            if source_orig_time := vuln_occ_dict.get("source_orig_time"):
-                vuln["published"] = source_orig_time
-            if source_update_time := vuln_occ_dict.get("source_update_time"):
-                vuln["updated"] = source_update_time
-            pkg_vulnerabilities.append(vuln)
-    # If the user doesn't want any table output return quickly
+        counts, vuln, table, pkg_group_rows = analyze_cve_vuln(
+            vuln_occ_dict, reached_purls, direct_purls, optional_pkgs, required_pkgs,
+            bom_dependency_tree, options, table, pkg_group_rows, counts)
+        pkg_vulnerabilities.append(vuln)
+        # If the user doesn't want any table output return quickly
     if options.no_vuln_table:
         return pkg_vulnerabilities, pkg_group_rows
+    output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table)
+    return pkg_vulnerabilities, pkg_group_rows
+
+
+def output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table):
+    with open("pkg_vulnerabilities.json", "w", encoding="utf-8") as fp:
+        json.dump(pkg_vulnerabilities, fp)
     if pkg_vulnerabilities:
         console.print()
         console.print(table)
@@ -780,10 +383,10 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
         console.print()
         console.print(utable)
         console.print()
-    if malicious_count:
+    if counts.malicious_count:
         rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
-        if malicious_count > 1:
-            rmessage = f":stop_sign: {malicious_count} malicious packages found in this project! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove the packages from all affected applications."
+        if counts.malicious_count > 1:
+            rmessage = f":stop_sign: {counts.malicious_count} malicious packages found in this project! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove the packages from all affected applications."
         console.print(
             Panel(
                 rmessage,
@@ -791,23 +394,23 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                 expand=False,
             )
         )
-    elif options.scoped_pkgs or has_exploit_count:
-        if not pkg_attention_count and has_exploit_count:
-            if has_reachable_exploit_count:
+    elif options.scoped_pkgs or counts.has_exploit_count:
+        if not counts.pkg_attention_count and counts.has_exploit_count:
+            if counts.has_reachable_exploit_count:
                 rmessage = (
-                    f":point_right: [magenta]{has_reachable_exploit_count}"
+                    f":point_right: [magenta]{counts.has_reachable_exploit_count}"
                     f"[/magenta] out of {len(pkg_vulnerabilities)} vulnerabilities "
                     f"have [dark magenta]reachable[/dark magenta] exploits and requires your ["
                     f"magenta]immediate[/magenta] attention."
                 )
             else:
                 rmessage = (
-                    f":point_right: [magenta]{has_exploit_count}"
+                    f":point_right: [magenta]{counts.has_exploit_count}"
                     f"[/magenta] out of {len(pkg_vulnerabilities)} vulnerabilities "
                     f"have known exploits and requires your ["
                     f"magenta]immediate[/magenta] attention."
                 )
-            if not has_os_packages:
+            if not counts.has_os_packages:
                 rmessage += (
                     "\nAdditional workarounds and configuration "
                     "changes might be required to remediate these "
@@ -824,7 +427,7 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     "unwanted packages. Alternatively, use a slim "
                     "base image."
                 )
-                if distro_packages_count and distro_packages_count < len(
+                if counts.distro_packages_count and counts.distro_packages_count < len(
                     pkg_vulnerabilities
                 ):
                     if (
@@ -834,14 +437,14 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                         rmessage += "\nNOTE: Check if the base image or the kernel version used is End-of-Life (EOL)."
                     else:
                         rmessage += (
-                            f"\nNOTE: [magenta]{distro_packages_count}"
+                            f"\nNOTE: [magenta]{counts.distro_packages_count}"
                             f"[/magenta] distro-specific vulnerabilities "
                             f"out of {len(pkg_vulnerabilities)} could be prioritized "
                             f"for updates."
                         )
-                if has_redhat_packages:
+                if counts.has_redhat_packages:
                     rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
-                if has_ubuntu_packages:
+                if counts.has_ubuntu_packages:
                     rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
             console.print(
                 Panel(
@@ -850,25 +453,25 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     expand=False,
                 )
             )
-        elif pkg_attention_count:
-            if has_reachable_exploit_count:
+        elif counts.pkg_attention_count:
+            if counts.has_reachable_exploit_count:
                 rmessage = (
-                    f":point_right: Prioritize the [magenta]{has_reachable_exploit_count}"
+                    f":point_right: Prioritize the [magenta]{counts.has_reachable_exploit_count}"
                     f"[/magenta] [bold magenta]reachable[/bold magenta] vulnerabilities with known exploits."
                 )
-            elif has_exploit_count:
+            elif counts.has_exploit_count:
                 rmessage = (
-                    f":point_right: Prioritize the [magenta]{has_exploit_count}"
+                    f":point_right: Prioritize the [magenta]{counts.has_exploit_count}"
                     f"[/magenta] vulnerabilities with known exploits."
                 )
             else:
                 rmessage = (
-                    f":point_right: [info]{pkg_attention_count}"
+                    f":point_right: [info]{counts.pkg_attention_count}"
                     f"[/info] out of {len(pkg_vulnerabilities)} vulnerabilities "
                     f"requires your attention."
                 )
-            if fix_version_count:
-                if fix_version_count == pkg_attention_count:
+            if counts.fix_version_count:
+                if counts.fix_version_count == counts.pkg_attention_count:
                     rmessage += (
                         "\n:white_heavy_check_mark: You can update ["
                         "bright_green]all[/bright_green] the "
@@ -878,12 +481,12 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                 else:
                     v_text = (
                         "vulnerability"
-                        if fix_version_count == 1
+                        if counts.fix_version_count == 1
                         else "vulnerabilities"
                     )
                     rmessage += (
                         f"\nYou can remediate [bright_green]"
-                        f"{fix_version_count}[/bright_green] "
+                        f"{counts.fix_version_count}[/bright_green] "
                         f"{v_text} "
                         f"by updating the packages using the fix "
                         f"version :thumbsup:"
@@ -895,10 +498,10 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     expand=False,
                 )
             )
-        elif critical_count:
+        elif counts.critical_count:
             console.print(
                 Panel(
-                    f":white_medium_small_square: Prioritize the [magenta]{critical_count}"
+                    f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
                     f"[/magenta] critical vulnerabilities confirmed by the "
                     f"vendor.",
                     title="Recommendation",
@@ -906,7 +509,7 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                 )
             )
         else:
-            if has_os_packages:
+            if counts.has_os_packages:
                 rmessage = (
                     ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
                     "as glibc, openssl, or libcurl.\nAdditionally, "
@@ -919,11 +522,11 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                     "doesn't lead to any 'container-escape' type "
                     "vulnerabilities."
                 )
-                if has_redhat_packages:
+                if counts.has_redhat_packages:
                     rmessage += """\nNOTE: Vulnerabilities in RedHat packages
                     with status "out of support" or "won't fix" are excluded
                     from this result."""
-                if has_ubuntu_packages:
+                if counts.has_ubuntu_packages:
                     rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages
                     with status "DNE" or "needs-triaging" are excluded from
                     this result."""
@@ -942,10 +545,10 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
                             expand=False,
                         )
                     )
-    elif critical_count:
+    elif counts.critical_count:
         console.print(
             Panel(
-                f":white_medium_small_square: Prioritize the [magenta]{critical_count}"
+                f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
                 f"[/magenta] critical vulnerabilities confirmed by the vendor.",
                 title="Recommendation",
                 expand=False,
@@ -960,38 +563,44 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
             )
         )
     if reached_purls:
-        sorted_reached_purls = sorted(
-            ((value, key) for (key, value) in reached_purls.items()),
-            reverse=True,
-        )[:3]
-        sorted_reached_dict = OrderedDict(
-            (k, v) for v, k in sorted_reached_purls
-        )
-        rsection = Markdown(
-            """
-Proactive Measures
-------------------
+        output_reached_purls(reached_purls)
 
-Below are the top reachable packages identified by depscan. Setup alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
-        """,
-            justify="left",
-        )
-        console.print(rsection)
-        rtable = Table(
-            title="Top Reachable Packages",
-            box=box.DOUBLE_EDGE,
-            header_style="bold magenta",
-            show_lines=True,
-            min_width=150,
-        )
-        for h in ("Package", "Reachable Flows"):
-            rtable.add_column(header=h, vertical="top")
-        for k, v in sorted_reached_dict.items():
-            rtable.add_row(k, str(v))
-        console.print()
-        console.print(rtable)
-        console.print()
-    return pkg_vulnerabilities, pkg_group_rows
+
+def consolidate(pkg_vulnerabilities: List[Dict]):
+    version_map = {}
+    suggested_version_map = {}
+    purl_to_cve_map = {}
+    cve_to_purl_map = {}
+    for v in pkg_vulnerabilities:
+        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+        if purl in purl_to_cve_map:
+            purl_to_cve_map[purl].append(v)
+        else:
+            purl_to_cve_map[purl] = [v]
+        if v.get("id") in cve_to_purl_map:
+            cve_to_purl_map[v.get("id")].add(purl)
+        else:
+            cve_to_purl_map[v.get("id")] = {purl}
+        if v.get("recommendation"):
+            for i in v.get("affects"):
+                for j in i.get("versions"):
+                    if j.get("status") == "unaffected":
+                        if purl in version_map:
+                            version_map[purl] = max_version([version_map[purl], j.get("version")])
+                        else:
+                            version_map[purl] = j.get("version")
+                        if "@" in purl:
+                            purl = purl.split("@")[0]
+                        if purl in suggested_version_map:
+                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
+                        else:
+                            suggested_version_map[purl] = j.get("version")
+    version_map = dict(sorted(version_map.items()))
+    for k, v in cve_to_purl_map.items():
+        cve_to_purl_map[k] = list(v)
+    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
+    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
+    return version_map, suggested_version_map, purl_to_cve_map, cve_to_purl_map
 
 
 def get_version_range(package_issue, purl):
@@ -1097,7 +706,7 @@ def summary_stats(results):
     """
     if not results:
         LOG.info("No oss vulnerabilities detected ✅")
-        return None
+        return {}
     summary = {
         "UNSPECIFIED": 0,
         "LOW": 0,
@@ -1105,8 +714,13 @@ def summary_stats(results):
         "HIGH": 0,
         "CRITICAL": 0,
     }
-    for res in results:
-        summary[res.get("severity")] += 1
+
+    for i in results:
+        ratings = i.get("ratings")
+        if ratings:
+            sev = ratings[0].get("severity", "").upper()
+            summary[sev] += 1
+
     return summary
 
 
@@ -1306,18 +920,20 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
         purl_aliases = {}
     for res in results:
         if isinstance(res, dict):
-            full_pkg = res.get("package")
-            fixed_location = res.get("fix_version")
-            matched_by = res.get("matched_by")
+            full_pkg = res.get("package") or ""
+            fixed_location = res.get("fix_version") or ""
+            matched_by = res.get("matched_by") or ""
         else:
-            package_issue = res.package_issue
-            full_pkg = package_issue.affected_location.package
-            fixed_location = package_issue.fixed_location
-            matched_by = res.matched_by
-            if package_issue.affected_location.vendor:
+            package_issue = res.get("package_issue") or {}
+            full_pkg = package_issue.get("affected_location") or {}
+            full_pkg = full_pkg.get("package") or ""
+            fixed_location = package_issue.get("fixed_location") or ""
+            affected_location = package_issue.get("affected_location") or {}
+            matched_by = res.get("matched_by") or ""
+            if affected_location.get("vendor"):
                 full_pkg = (
-                    f"{package_issue.affected_location.vendor}:"
-                    f"{package_issue.affected_location.package}"
+                    f"{affected_location.get('vendor')}:"
+                    f"{affected_location.get('package')}"
                 )
         if matched_by:
             version = matched_by.split("|")[-1]
@@ -1329,8 +945,8 @@ def suggest_version(results, pkg_aliases=None, purl_aliases=None):
             full_pkg = pkg_aliases.get(full_pkg, full_pkg)
         version_upgrades = pkg_fix_map.get(full_pkg, set())
         if fixed_location not in (
-            placeholder_fix_version,
-            placeholder_exclude_version,
+            PLACEHOLDER_FIX_VERSION,
+            PLACEHOLDER_EXCLUDE_VERSION,
         ):
             version_upgrades.add(fixed_location)
         pkg_fix_map[full_pkg] = version_upgrades
@@ -1353,6 +969,8 @@ def classify_links(related_urls):
     :return: Dictionary of classified links and URLs
     """
     clinks = {}
+    if not related_urls:
+        return clinks
     for rurl in related_urls:
         if "github.com" in rurl and "/pull" in rurl:
             clinks["GitHub PR"] = rurl
@@ -1506,3 +1124,876 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
             if c.get("evidence") and c["evidence"].get("occurrences"):
                 direct_purls[purl] += len(c["evidence"].get("occurrences"))
     return dict(direct_purls), dict(reached_purls)
+
+
+def get_cwe_list(data: ProblemType) -> List:
+    cwes = []
+    if not data:
+        return cwes
+    data = data.root
+    for i in data:
+        if record := i.descriptions:
+            for rec in record:
+                if rec.type == "CWE":
+                    cwes.append(rec.cweId.split("-")[1])
+    return cwes
+
+
+def cve_to_vdr(cve: CVE):
+    advisories, references, bug_bounties, pocs, exploits = refs_to_vdr(cve.root.containers.cna.references)
+    vector, method, severity, score = parse_metrics(cve.root.containers.cna.metrics)
+    description, detail = get_description(cve.root.containers.cna.descriptions)
+    source = {"name": cve.root.cveMetadata.assignerShortName.root}
+    cwes = get_cwe_list(cve.root.containers.cna.problemTypes)
+    vendor = ""
+    if cve.root.containers.cna.affected:
+        vendor = cve.root.containers.cna.affected.root[0].vendor
+    rating = {}
+    if vector:
+        rating = {"method": method, "severity": severity, "score": score, "vector": vector}
+    return source, references, advisories, cwes, description, detail, rating, bug_bounties, pocs, exploits, vendor
+
+
+def parse_metrics(metrics):
+    vector = None
+    method = None
+    severity = None
+    score = None
+    if not metrics:
+        return vector, method
+    m = None
+    if metrics.root and (m := (metrics.root[0].cvssV3_1 or metrics.root[0].cvssV3_0)):
+        # if metrics.root[0].cvssV3_1.version:
+        #     m = metrics.root[0].cvssV3_1
+        # elif metrics.root[0].cvssV3.version:
+        #     m = metrics.root[0].cvssV3
+    # if m:
+        vector = m.vectorString
+        severity = m.baseSeverity.value
+        method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
+        score = m.baseScore.root
+    if not severity:
+        severity = "UNKNOWN"
+    return vector, method, severity, score
+
+
+def process_affected(options, vuln_occ_dict):
+    # package_issue = vuln_occ_dict.get("package_issue") or {}
+    matched_by = vuln_occ_dict.get("matched_by") or ""
+    full_pkg = ""
+    if affected := vuln_occ_dict.get("affected"):
+        full_pkg = affected[0].get("ref")
+    project_type_pkg = f"{options.project_type}:{full_pkg}"
+    if matched_by:
+        version = matched_by.split("|")[-1]
+        full_pkg = f"{full_pkg}:{version}"
+    # De-alias package names
+    if options.pkg_aliases.get(full_pkg):
+        full_pkg = options.pkg_aliases.get(full_pkg)
+    else:
+        full_pkg = options.pkg_aliases.get(full_pkg.lower(), full_pkg)
+    version_used = vuln_occ_dict.get("matched_by")
+    purl = options.purl_aliases.get(full_pkg, full_pkg)
+    return full_pkg, {}, project_type_pkg, purl, version_used
+
+
+def process_package_issue(options, vuln_occ_dict):
+    package_issue = vuln_occ_dict.get("package_issue") or {}
+    matched_by = vuln_occ_dict.get("matched_by") or ""
+    full_pkg = vuln_occ_dict.get("affected") or package_issue.get("affected_location")
+    full_pkg = full_pkg.get("package") or ""
+    project_type_pkg = (
+        f"{options.project_type}:"
+        f"{package_issue.get('affected_location', {}).get('package')}"
+    )
+    if package_issue.get("affected_location", {}).get("vendor"):
+        full_pkg = (
+            f"{package_issue['affected_location'].get('vendor')}:"
+            f"{package_issue['affected_location'].get('package')}"
+        )
+    elif package_issue.get("affected_location", {}).get("cpe_uri"):
+        vendor, _, _, _ = parse_cpe(
+            package_issue.get("affected_location", {}).get("cpe_uri")
+        )
+        if vendor:
+            full_pkg = (
+                f"{vendor}:"
+                f"{package_issue['affected_location'].get('package')}"
+            )
+    if matched_by:
+        version = matched_by.split("|")[-1]
+        full_pkg = full_pkg + ":" + version
+    # De-alias package names
+    if options.pkg_aliases.get(full_pkg):
+        full_pkg = options.pkg_aliases.get(full_pkg)
+    else:
+        full_pkg = options.pkg_aliases.get(full_pkg.lower(), full_pkg)
+    version_used = package_issue.get("affected_location", {}).get("version") or ""
+    purl = options.purl_aliases.get(full_pkg, full_pkg)
+    return full_pkg, package_issue, project_type_pkg, purl, version_used
+
+
+def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_pkgs, bom_dependency_tree, options, table, pkg_group_rows, counts):
+    insights = []
+    plain_insights = []
+    purl = vuln.get("matched_by") or ""
+    purl_obj = PackageURL.from_string(purl) if purl else None
+    package_type = vuln.get("type") or ""
+    affects = [{
+        "ref": purl,
+        "versions": [{"range": vuln.get("matching_vers"), "status": "affected"}]
+    }]
+    recommendation = ""
+    vid = vuln.get("cve_id") or ""
+    fixed_location = ""
+    has_flagged_cwe = False
+    if unaffected := get_unaffected(vuln.get("matching_vers")):
+        affects[0]["versions"].append(unaffected)
+        recommendation = f"Update to version {unaffected.get('version')} or later."
+        fixed_location = unaffected.get("version")
+    vdict = {
+        "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
+        "affects": affects, "recommendation": recommendation
+    }
+
+    try:
+        cve_record = vuln.get("source_data")
+        if not isinstance(cve_record, CVE):
+            return vdict
+    except KeyError:
+        return vdict
+
+    if not cve_record:
+        return vdict
+
+    source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record)
+    vdict |= {
+        "affects": affects, "source": source, "references": references, "advisories": advisories,
+        "cwes": cwes, "description": description, "detail": detail, "rating": rating,
+        "published": str(cve_record.root.cveMetadata.datePublished),
+        "updated": str(cve_record.root.cveMetadata.dateUpdated)
+    }
+    is_required = False
+    package_usage = ""
+    plain_package_usage = ""
+    if direct_purls.get(purl) or purl in required_pkgs:
+        is_required = True
+    if pocs or bounties:
+        if reached_purls.get(purl):
+            insights.append("[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]")
+            plain_insights.append("Reachable Bounty target")
+            counts.has_reachable_poc_count += 1
+            counts.has_reachable_exploit_count += 1
+        elif direct_purls.get(purl):
+            insights.append("[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]")
+            plain_insights.append("Bug Bounty target")
+        else:
+            insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
+            plain_insights.append("Has PoC")
+        counts.has_poc_count += 1
+    # Locate this package in the tree
+    pkg_tree_list, p_rich_tree = pkg_sub_tree(
+        purl,
+        purl.replace(":", "/"),
+        bom_dependency_tree,
+        pkg_severity=rating.get("severity"),
+        as_tree=True,
+        extra_text=f":left_arrow: {vid}",
+    )
+    if is_required and package_type not in config.OS_PKG_TYPES:
+        if direct_purls.get(purl):
+            package_usage = (
+                f":direct_hit: Used in [info]"
+                f"{str(direct_purls.get(purl))}"
+                f"[/info] locations"
+            )
+            plain_package_usage = (
+                f"Used in {str(direct_purls.get(purl))} locations"
+            )
+        else:
+            package_usage = ":direct_hit: Direct dependency"
+            plain_package_usage = "Direct dependency"
+    elif (
+        not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
+    ) or (
+        purl in optional_pkgs
+        # or full_pkg in optional_pkgs
+        # or project_type_pkg in optional_pkgs
+    ):
+        if package_type in config.OS_PKG_TYPES:
+            package_usage = (
+                "[spring_green4]:notebook: Local install[/spring_green4]"
+            )
+            plain_package_usage = "Local install"
+            counts.has_os_packages = True
+        else:
+            package_usage = (
+                "[spring_green4]:notebook: Indirect "
+                "dependency[/spring_green4]"
+            )
+            plain_package_usage = "Indirect dependency"
+    pkg_requires_attn = False
+    if package_usage:
+        insights.append(package_usage)
+        plain_insights.append(plain_package_usage)
+    if pocs or bounties:
+        if reached_purls.get(purl):
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
+            )
+            plain_insights.append("Reachable Bounty target")
+            counts.has_reachable_poc_count += 1
+            counts.has_reachable_exploit_count += 1
+            pkg_requires_attn = True
+        elif direct_purls.get(purl):
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
+            )
+            plain_insights.append("Bug Bounty target")
+        else:
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]"
+            )
+            plain_insights.append("Has PoC")
+        counts.has_poc_count += 1
+        if rating and rating.get("severity", "") in ("CRITICAL", "HIGH"):
+            pkg_requires_attn = True
+    if package_type not in config.OS_PKG_TYPES and reached_purls.get(purl):
+        # If it has a poc, an insight might have gotten added above
+        if not pkg_requires_attn:
+            insights.append(":receipt: Reachable")
+            plain_insights.append("Reachable")
+        else:
+            insights.append(":receipt: Vendor Confirmed")
+            plain_insights.append("Vendor Confirmed")
+    if exploits:
+        if reached_purls.get(purl) or direct_purls.get(purl):
+            insights.append(
+                "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+            )
+            plain_insights.append("Reachable and Exploitable")
+            counts.has_reachable_exploit_count += 1
+            # Fail safe. Packages with exploits and direct usage without
+            # a reachable flow are still considered reachable to reduce
+            # false negatives
+            if not reached_purls.get(purl):
+                reached_purls[purl] = 1
+        elif has_flagged_cwe:
+            if (vendor and vendor in ("gnu",)) or (
+                purl_obj and purl_obj.get("name") in ("glibc", "openssl")
+            ):
+                insights.append(
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                )
+                plain_insights.append("Reachable and Exploitable")
+                counts.has_reachable_exploit_count += 1
+            else:
+                insights.append(
+                    "[bright_red]:exclamation_mark: Exploitable[/bright_red]"
+                )
+                plain_insights.append("Exploitable")
+                counts.has_exploit_count += 1
+        else:
+            insights.append(
+                "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
+            )
+            plain_insights.append("Known Exploits")
+        counts.has_exploit_count += 1
+        pkg_requires_attn = True
+    if cve_record.root.containers.cna.affected.root and (cpes := cve_record.root.containers.cna.affected.root[0].cpes):
+        if all((distro_package(i.root) for i in cpes)):
+            insights.append("[spring_green4]:direct_hit: Distro specific[/spring_green4]")
+            plain_insights.append("Distro specific")
+            counts.distro_packages_count += 1
+            counts.has_os_packages = True
+    if pkg_requires_attn and fixed_location and purl:
+        pkg_group_rows[purl].append(
+            {
+                "id": vid,
+                "fixed_location": fixed_location,
+                "p_rich_tree": p_rich_tree,
+            }
+        )
+    insights = list(set(insights))
+    plain_insights = list(set(plain_insights))
+    if not options.no_vuln_table:
+        table.add_row(
+            p_rich_tree,
+            "\n".join(insights),
+            fixed_location,
+            f"""{"[bright_red]" if rating.get("severity", "") == "CRITICAL" else ""}{rating.get("severity", "")}""",
+            f"""{"[bright_red]" if rating.get("severity", "") == "CRITICAL" else ""}{rating.get("score", "")}""",
+        )
+        analysis = {}
+        if exploits:
+            analysis = {
+                "state": "exploitable",
+                "detail": f'See {exploits[0]}',
+            }
+        elif pocs:
+            analysis = {
+                "state": "in_triage",
+                "detail": f'See {pocs[0].get("url")}',
+            }
+        elif pkg_tree_list and len(pkg_tree_list) > 1:
+            analysis = {
+                "state": "in_triage",
+                "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
+            }
+        properties = [
+            {
+                "name": "depscan:insights",
+                "value": "\\n".join(plain_insights),
+            },
+            {
+                "name": "depscan:prioritized",
+                "value": "true" if pkg_group_rows.get(purl) else "false",
+            },
+        ]
+        vuln |= {"properties": properties, "analysis": analysis}
+    # if is_required and package_type not in config.OS_PKG_TYPES:
+    #     if direct_purls.get(purl):
+    #         package_usage = (
+    #             f":direct_hit: Used in [info]"
+    #             f"{str(direct_purls.get(purl))}"
+    #             f"[/info] locations"
+    #         )
+    #         plain_package_usage = (
+    #             f"Used in {str(direct_purls.get(purl))} locations"
+    #         )
+    #     else:
+    #         package_usage = ":direct_hit: Direct dependency"
+    #         plain_package_usage = "Direct dependency"
+    # elif not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1 or purl in optional_pkgs:
+    #     if package_type in config.OS_PKG_TYPES:
+    #         package_usage = (
+    #             "[spring_green4]:notebook: Local install[/spring_green4]"
+    #         )
+    #         plain_package_usage = "Local install"
+    #         counts.has_os_packages = True
+    #     else:
+    #         package_usage = (
+    #             "[spring_green4]:notebook: Indirect "
+    #             "dependency[/spring_green4]"
+    #         )
+    #         plain_package_usage = "Indirect dependency"
+    # if rating.get("severity") in ("CRITICAL", "HIGH"):
+    #     pkg_requires_attn = True
+    #     if direct_purls.get(purl):
+    #         counts.pkg_attention_count += 1
+    #     if recommendation:
+    #         counts.fix_version_count += 1
+    #     if vendor in config.OS_PKG_TYPES and rating.get("severity", "") == "CRITICAL":
+    #         counts.critical_count += 1
+    return counts, vdict, table, pkg_group_rows
+
+
+def get_unaffected(vers):
+    if "|" in vers:
+        vers = vers.split("|")[-1]
+        if "<" in vers and "<=" not in vers:
+            unaffected_vers = vers.replace("<", "")
+            return {"version": unaffected_vers, "status": "unaffected"}
+    return None
+
+
+def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
+    """
+    Parses the reference list provided by VDB and converts to VDR objects
+
+    :param references: List of dictionaries of references
+    :type references: list
+
+    :return: Tuple of advisories, references for VDR
+    :rtype: tuple[list, list]
+    """
+    if not references:
+        return [], [], [], [], []
+    ref = {str(i.url) for i in references.root}
+    advisories = []
+    refs = []
+    bug_bounty = []
+    poc = []
+    exploit = []
+    for i in ref:
+        for key, value in COMPILED_REF_PATTERNS.items():
+            if match := key.search(i):
+                if value == "CVE Record":
+                    record = {"id": match[0], "source": {"url": i}}
+                    if "nvd.nist.gov" in i:
+                        record["source"]["name"] = "NVD"
+                    refs.append(record)
+                elif "Advisory" in value:
+                    advisories.append({"url": str(i)})
+                    system_name = (
+                        (match["org"].capitalize() + " Advisory")
+                        .replace("Redhat", "Red Hat")
+                        .replace("Zerodayinitiative", "Zero Day Initiative")
+                        .replace("Github", "GitHub")
+                        .replace("Netapp", "NetApp")
+                        .replace("Npmjs", "NPM")
+                        .replace("Alpinelinux", "Alpine Linux"))
+                    adv_id = match["id"]
+                    if system_name in {"Jfrog", "Gentoo"}:
+                        adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
+                    refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
+                elif value in ("POC", "Bug Bounty", "Exploit"):
+                    if value == "POC":
+                        poc.append(i)
+                    elif value == "Bug Bounty":
+                        bug_bounty.append(i)
+                    else:
+                        exploit.append(i)
+    return advisories, refs, bug_bounty, poc, exploit
+
+
+def adv_ref_parsing(adv_id, i, match, system_name):
+    if system_name == "Gentoo":
+        adv_id = f"glsa-{match['id']}"
+    if system_name == "Jfrog":
+        system_name = "JFrog"
+        if id_match := JFROG_ADVISORY.search(i):
+            adv_id = id_match["id"]
+    return adv_id, system_name
+
+
+class Counts:
+    fp_count = 0
+    pkg_attention_count = 0
+    critical_count = 0
+    malicious_count = 0
+    has_poc_count = 0
+    has_reachable_poc_count = 0
+    has_exploit_count = 0
+    has_reachable_exploit_count = 0
+    fix_version_count = 0
+    wont_fix_version_count = 0
+    distro_packages_count = 0
+    has_os_packages = False
+    has_redhat_packages = False
+    has_ubuntu_packages = False
+    ids_seen = {}
+
+
+def output_reached_purls(reached_purls):
+    sorted_reached_purls = sorted(
+        ((value, key) for (key, value) in reached_purls.items()),
+        reverse=True,
+    )[:3]
+    sorted_reached_dict = OrderedDict(
+        (k, v) for v, k in sorted_reached_purls
+    )
+    rsection = Markdown(
+        """
+Proactive Measures
+------------------
+
+Below are the top reachable packages identified by depscan. Setup alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
+    """,
+        justify="left",
+    )
+    console.print(rsection)
+    rtable = Table(
+        title="Top Reachable Packages",
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+        show_lines=True,
+        min_width=150,
+    )
+    for h in ("Package", "Reachable Flows"):
+        rtable.add_column(header=h, vertical="top")
+    for k, v in sorted_reached_dict.items():
+        rtable.add_row(k, str(v))
+    console.print()
+    console.print(rtable)
+    console.print()
+
+
+def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optional_pkgs,
+                options, pkg_group_rows, pkg_vulnerabilities, reached_purls, required_pkgs, table,
+                vuln_occ_dict, counts):
+    vid = vuln_occ_dict.get("id") or ""
+    package_issue = {}
+    purl = ""
+    full_pkg = ""
+    project_type_pkg = ""
+    cwes = []
+    version_used = ""
+    if problem_type := vuln_occ_dict.get("problem_type"):
+        cwes = split_cwe(problem_type)
+        full_pkg, package_issue, project_type_pkg, purl, version_used = process_package_issue(
+            options,
+            vuln_occ_dict
+        )
+    has_flagged_cwe = False
+    package_type = None
+    insights = []
+    plain_insights = []
+    if vid.startswith("MAL-"):
+        insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
+        plain_insights.append("Malicious")
+        counts.malicious_count += 1
+    purl_obj = None
+    vendor = package_issue.get("affected_location", {}).get("vendor")
+    # If the match was based on name and version alone then the alias might legitimately lack a full purl
+    # Such results are usually false positives but could yield good hits at times
+    # So, instead of suppressing fully we try our best to tune and reduce the FP
+    if not purl.startswith("pkg:"):
+        if options.project_type in config.OS_PKG_TYPES:
+            if vendor and (
+                vendor in config.LANG_PKG_TYPES.values()
+                or config.LANG_PKG_TYPES.get(vendor)
+            ):
+                counts.fp_count += 1
+                return counts, pkg_group_rows, pkg_vulnerabilities
+            # Some nvd data might match application CVEs for
+            # OS vendors which can be filtered
+            if not is_os_target_sw(package_issue):
+                counts.fp_count += 1
+                return counts, pkg_group_rows, pkg_vulnerabilities
+        # Issue #320 - Malware matches without purl are false positives
+        if vid.startswith("MAL-"):
+            counts.fp_count += 1
+            counts.malicious_count -= 1
+            return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+    else:
+        purl_obj = parse_purl(purl)
+        # Issue #320 - Malware matches without purl are false positives
+        if not purl_obj and vid.startswith("MAL-"):
+            counts.fp_count += 1
+            counts.malicious_count -= 1
+            return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+        if purl_obj:
+            version_used = purl_obj.get("version")
+            package_type = purl_obj.get("type")
+            qualifiers = purl_obj.get("qualifiers", {})
+            # Filter application CVEs from distros
+            if (
+                config.LANG_PKG_TYPES.get(package_type)
+                or package_type in config.LANG_PKG_TYPES.values()
+            ) and (
+                (vendor and vendor in config.OS_PKG_TYPES)
+                or not is_lang_sw_edition(package_issue)
+            ):
+                counts.fp_count += 1
+                return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+            if package_type in config.OS_PKG_TYPES:
+                # Bug #208 - do not report application CVEs
+                if vendor and (
+                    vendor in config.LANG_PKG_TYPES.values()
+                    or config.LANG_PKG_TYPES.get(vendor)
+                ):
+                    counts.fp_count += 1
+                    return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                if package_type and (
+                    package_type in config.LANG_PKG_TYPES.values()
+                    or config.LANG_PKG_TYPES.get(package_type)
+                ):
+                    counts.fp_count += 1
+                    return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                if (
+                    vendor
+                    and oci_product_types
+                    and vendor not in oci_product_types
+                ):
+                    # Bug #170 - do not report CVEs belonging to other distros
+                    if vendor in config.OS_PKG_TYPES:
+                        counts.fp_count += 1
+                        return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                    # Some nvd data might match application CVEs for
+                    # OS vendors which can be filtered
+                    if not is_os_target_sw(package_issue):
+                        counts.fp_count += 1
+                        return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                    insights.append(
+                        f"[#7C8082]:telescope: Vendor {vendor}[/#7C8082]"
+                    )
+                    plain_insights.append(f"Vendor {vendor}")
+                counts.has_os_packages = True
+                for acwe in cwes:
+                    if acwe in config.OS_VULN_KEY_CWES:
+                        has_flagged_cwe = True
+                        break
+                # Don't flag the cwe for ignorable os packages
+                if has_flagged_cwe and (
+                    purl_obj.get("name") in config.OS_PKG_UNINSTALLABLE
+                    or purl_obj.get("name") in config.OS_PKG_IGNORABLE
+                    or vendor in config.OS_PKG_IGNORABLE
+                ):
+                    has_flagged_cwe = False
+                else:
+                    if (
+                        purl_obj.get("name") in config.OS_PKG_IGNORABLE
+                        or vendor in config.OS_PKG_IGNORABLE
+                    ):
+                        insights.append(
+                            "[#7C8082]:mute: Suppress for containers[/#7C8082]"
+                        )
+                        plain_insights.append("Suppress for containers")
+                    elif (
+                        purl_obj.get("name") in config.OS_PKG_UNINSTALLABLE
+                    ):
+                        insights.append(
+                            "[#7C8082]:scissors: Uninstall candidate[/#7C8082]"
+                        )
+                        plain_insights.append("Uninstall candidate")
+                # If the flag remains after all the suppressions then add it as an insight
+                if has_flagged_cwe:
+                    insights.append(
+                        "[#7C8082]:triangular_flag: Flagged weakness[/#7C8082]"
+                    )
+                    plain_insights.append("Flagged weakness")
+            if qualifiers:
+                if "ubuntu" in qualifiers.get("distro", ""):
+                    counts.has_ubuntu_packages = True
+                if "rhel" in qualifiers.get("distro", ""):
+                    counts.has_redhat_packages = True
+    if counts.ids_seen.get(vid + purl):
+        counts.fp_count += 1
+        return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+    # Mark this CVE + pkg as seen to avoid duplicates
+    counts.ids_seen[vid + purl] = True
+    # Find the best fix version
+    fixed_location = best_fixed_location(
+        options.sug_version_dict.get(purl), package_issue.get("fixed_location")
+    )
+    if (
+        options.sug_version_dict.get(purl) == PLACEHOLDER_FIX_VERSION
+        or package_issue.get("fixed_location") == PLACEHOLDER_FIX_VERSION
+    ):
+        counts.wont_fix_version_count += 1
+    package_usage = "N/A"
+    plain_package_usage = "N/A"
+    pkg_severity = vuln_occ_dict.get("severity")
+    is_required = False
+    pkg_requires_attn = False
+    related_urls = vuln_occ_dict.get("related_urls")
+    clinks = classify_links(related_urls)
+    if direct_purls.get(purl):
+        is_required = True
+    elif not direct_purls and (
+        purl in required_pkgs
+        or full_pkg in required_pkgs
+        or project_type_pkg in required_pkgs
+    ):
+        is_required = True
+    if pkg_severity in ("CRITICAL", "HIGH"):
+        if is_required:
+            counts.pkg_attention_count += 1
+        if fixed_location:
+            counts.fix_version_count += 1
+        if (
+            clinks.get("vendor") or package_type in config.OS_PKG_TYPES
+        ) and pkg_severity == "CRITICAL":
+            counts.critical_count += 1
+    # Locate this package in the tree
+    pkg_tree_list, p_rich_tree = pkg_sub_tree(
+        purl,
+        full_pkg.replace(":", "/"),
+        bom_dependency_tree,
+        pkg_severity=pkg_severity,
+        as_tree=True,
+        extra_text=f":left_arrow: {vid}",
+    )
+    if is_required and package_type not in config.OS_PKG_TYPES:
+        if direct_purls.get(purl):
+            package_usage = (
+                f":direct_hit: Used in [info]"
+                f"{str(direct_purls.get(purl))}"
+                f"[/info] locations"
+            )
+            plain_package_usage = (
+                f"Used in {str(direct_purls.get(purl))} locations"
+            )
+        else:
+            package_usage = ":direct_hit: Direct dependency"
+            plain_package_usage = "Direct dependency"
+    elif (
+        not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
+    ) or (
+        purl in optional_pkgs
+        or full_pkg in optional_pkgs
+        or project_type_pkg in optional_pkgs
+    ):
+        if package_type in config.OS_PKG_TYPES:
+            package_usage = (
+                "[spring_green4]:notebook: Local install[/spring_green4]"
+            )
+            plain_package_usage = "Local install"
+            counts.has_os_packages = True
+        else:
+            package_usage = (
+                "[spring_green4]:notebook: Indirect "
+                "dependency[/spring_green4]"
+            )
+            plain_package_usage = "Indirect dependency"
+    if package_usage != "N/A":
+        insights.append(package_usage)
+        plain_insights.append(plain_package_usage)
+    if clinks.get("poc") or clinks.get("Bug Bounty"):
+        if reached_purls.get(purl):
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
+            )
+            plain_insights.append("Reachable Bounty target")
+            counts.has_reachable_poc_count += 1
+            counts.has_reachable_exploit_count += 1
+            pkg_requires_attn = True
+        elif direct_purls.get(purl):
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
+            )
+            plain_insights.append("Bug Bounty target")
+        else:
+            insights.append(
+                "[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]"
+            )
+            plain_insights.append("Has PoC")
+        counts.has_poc_count += 1
+        if pkg_severity in ("CRITICAL", "HIGH"):
+            pkg_requires_attn = True
+    if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
+        if reached_purls.get(purl):
+            # If it has a poc, an insight might have gotten added above
+            if not pkg_requires_attn:
+                insights.append(":receipt: Reachable")
+                plain_insights.append("Reachable")
+        else:
+            insights.append(":receipt: Vendor Confirmed")
+            plain_insights.append("Vendor Confirmed")
+    if clinks.get("exploit"):
+        if reached_purls.get(purl) or direct_purls.get(purl):
+            insights.append(
+                "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+            )
+            plain_insights.append("Reachable and Exploitable")
+            counts.has_reachable_exploit_count += 1
+            # Fail safe. Packages with exploits and direct usage without
+            # a reachable flow are still considered reachable to reduce
+            # false negatives
+            if not reached_purls.get(purl):
+                reached_purls[purl] = 1
+        elif has_flagged_cwe:
+            if (vendor and vendor in ("gnu",)) or (
+                purl_obj and purl_obj.get("name") in ("glibc", "openssl")
+            ):
+                insights.append(
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                )
+                plain_insights.append("Reachable and Exploitable")
+                counts.has_reachable_exploit_count += 1
+            else:
+                insights.append(
+                    "[bright_red]:exclamation_mark: Exploitable[/bright_red]"
+                )
+                plain_insights.append("Exploitable")
+                counts.has_exploit_count += 1
+        else:
+            insights.append(
+                "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
+            )
+            plain_insights.append("Known Exploits")
+        counts.has_exploit_count += 1
+        pkg_requires_attn = True
+    if distro_package(package_issue["affected_location"].get("cpe_uri")):
+        insights.append(
+            "[spring_green4]:direct_hit: Distro specific[/spring_green4]"
+        )
+        plain_insights.append("Distro specific")
+        counts.distro_packages_count += 1
+        counts.has_os_packages = True
+    if pkg_requires_attn and fixed_location and purl:
+        pkg_group_rows[purl].append(
+            {
+                "id": vid,
+                "fixed_location": fixed_location,
+                "p_rich_tree": p_rich_tree,
+            }
+        )
+    if not options.no_vuln_table:
+        table.add_row(
+            p_rich_tree,
+            "\n".join(insights),
+            fixed_location,
+            f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
+            f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
+        )
+    if purl:
+        source = {}
+        if vid.startswith("CVE"):
+            source = {
+                "name": "NVD",
+                "url": f"https://nvd.nist.gov/vuln/detail/{vid}",
+            }
+        elif vid.startswith("GHSA") or vid.startswith("npm"):
+            source = {
+                "name": "GitHub Advisory",
+                "url": f"https://github.com/advisories/{vid}",
+            }
+        versions = [{"version": version_used, "status": "affected"}]
+        recommendation = ""
+        if fixed_location:
+            versions.append(
+                {"version": fixed_location, "status": "unaffected"}
+            )
+            recommendation = f"Update to {fixed_location} or later"
+        affects = [{"ref": purl, "versions": versions}]
+        analysis = {}
+        if clinks.get("exploit"):
+            analysis = {
+                "state": "exploitable",
+                "detail": f'See {clinks.get("exploit")}',
+            }
+        elif clinks.get("poc"):
+            analysis = {
+                "state": "in_triage",
+                "detail": f'See {clinks.get("poc")}',
+            }
+        elif pkg_tree_list and len(pkg_tree_list) > 1:
+            analysis = {
+                "state": "in_triage",
+                "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
+            }
+        ratings = cvss_to_vdr_rating(vuln_occ_dict)
+        properties = [
+            {
+                "name": "depscan:insights",
+                "value": "\\n".join(plain_insights),
+            },
+            {
+                "name": "depscan:prioritized",
+                "value": "true" if pkg_group_rows.get(purl) else "false",
+            },
+        ]
+        affected_version_range = get_version_range(package_issue, purl)
+        if affected_version_range:
+            properties.append(affected_version_range)
+        advisories = []
+        for k, v in clinks.items():
+            advisories.append({"title": k, "url": v})
+        vuln = {
+            "bom-ref": f"{vid}/{purl}",
+            "id": vid,
+            "source": source,
+            "ratings": ratings,
+            "cwes": cwes,
+            "description": vuln_occ_dict.get("short_description"),
+            "recommendation": recommendation,
+            "advisories": advisories,
+            "analysis": analysis,
+            "affects": affects,
+            "properties": properties,
+        }
+        if source_orig_time := vuln_occ_dict.get("source_orig_time"):
+            vuln["published"] = source_orig_time
+        if source_update_time := vuln_occ_dict.get("source_update_time"):
+            vuln["updated"] = source_update_time
+        pkg_vulnerabilities.append(vuln)
+    return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+
+
+def get_version_used(purl):
+    if not purl:
+        return ""
+    purl_obj = PackageURL.from_string(purl)
+    return purl_obj.version

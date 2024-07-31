@@ -16,6 +16,15 @@ from vdb.lib import convert_time
 from depscan.lib.logger import LOG
 from depscan.lib.utils import get_version
 
+SEVERITY_REF = {
+    "CRITICAL": 1,
+    "HIGH": 2,
+    "MEDIUM": 3,
+    "LOW": 4,
+    "UNKNOWN": 5,
+    "NONE": 6,
+}
+
 TIME_FMT = "%Y-%m-%dT%H:%M:%S"
 
 CWE_MAP = {
@@ -1071,8 +1080,7 @@ TOML_TEMPLATE = {
 }
 
 REF_MAP = {
-    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>("
-    r"?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel)-?[\w\d\-:]+)": "Advisory",
+    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
     r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
     r"github.com/[\w\-.]+/[\w\-.]+/pull/\d+": "GitHub Pull Request",
@@ -1084,23 +1092,27 @@ REF_MAP = {
     r"github.com/[\w\-.]+/[\w\-.]+/?$": "GitHub Repository",
     "gist.github.com": "GitHub Gist",
     r"github.com/": "GitHub Other",
-    "npmjs.com/advisories/": "NPM Advisory",
+    "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
     r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
-    "oracle.com/security-alerts": "Oracle Security Alert",
-    "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability "
-    "Database Entry",
-    "security.gentoo.org/glsa": "Advisory",
-    r"usn.ubuntu.com/[\d\-]+|ubuntu.com/security/notices/USN\-[\d\-]+":
-        "Ubuntu Security Notice",
-    r"lists.[\w\-]+.org/[\S]+announce": "Mailing List Announcement",
-    r"lists.[\w\-]+.org/": "Mailing List Other",
+    "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability Database Entry",
+    r"lists.[\w\-]+.org/": "Mailing List",
     "blog": "Blog Post",
     r"bitbucket.org/[^\s/]+/[^\s/]+/?(?!.)": "Bitbucket Repository",
     r"bitbucket.org/[^\s/]+/[^\s/]+/commits": "Bitbucket Commit",
     r"bitbucket.org/[^\s/]+/[^\s/]+/issues/\d+(/)?": "Bitbucket Issue",
     r"bitbucket.org/[^\s/]+/[^\s/]+/wiki/": "Bitbucket Wiki Entry",
+    r"bitbucket.org": "Bitbucket Other",
     r"https://vuldb.com/\?id.\d+": "VulDB Entry",
+    "oss-fuzz": "OSS-Fuzz",
+    "cwe.mitre.org": "CWE Record",
+    "/(community|forum|discuss)": "Forum",
+    "bugs.|chat.": "Issue",
+    "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
+    "wordpress|wpvulndb": "WordPress",
+    "chrome.google.com/webstore": "Chrome Extension",
+    "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List"
 }
+
 SORTED_REF_MAP = dict(
     sorted(REF_MAP.items(), key=lambda x: len(x[0]), reverse=True)
 )
@@ -1358,6 +1370,8 @@ def format_references(advisories):
                     .replace("Zerodayinitiative", "Zero Day Initiative")
                     .replace("Github", "GitHub")
                     .replace("Netapp", "NetApp")
+                    .replace("Npmjs", "NPM")
+                    .replace("Alpinelinux", "Alpine Linux")
                 )
                 ids.append({"system_name": system_name, "text": adv["id"]})
                 summary = system_name
@@ -1835,22 +1849,14 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
     """
     new_results = deepcopy(template)
     agg_score = set()
-    severity_ref = {
-        "CRITICAL": 1,
-        "HIGH": 2,
-        "MEDIUM": 3,
-        "LOW": 4,
-        "UNKNOWN": 5,
-        "NONE": 6,
-    }
     for r in pkg_vulnerabilities:
         new_vuln = vdr_to_csaf(r)
         if sev := new_vuln["scores"][0]["cvss_v3"].get("baseSeverity"):
-            agg_score.add(severity_ref.get(sev))
+            agg_score.add(SEVERITY_REF.get(sev))
         new_results["vulnerabilities"].append(new_vuln)
     if agg_score := list(agg_score):
         agg_score.sort()
-        severity_ref = {v: k for k, v in severity_ref.items()}
+        severity_ref = {v: k for k, v in SEVERITY_REF.items()}
         agg_severity = (
             severity_ref[agg_score[0]][0]
             + severity_ref[agg_score[0]][1:].lower()

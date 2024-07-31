@@ -13,11 +13,12 @@ from quart import Quart, request
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
-from vdb.lib import db as db_lib
+from vdb.lib import db6 as db_lib
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
+from vdb.lib.search import search_by_cdx_bom
 
 from depscan.lib import explainer, github, utils
 from depscan.lib.analysis import (
@@ -311,7 +312,7 @@ def build_args():
     return parser.parse_args()
 
 
-def scan(db, project_type, pkg_list, suggest_mode):
+def scan(project_type, pkg_list, suggest_mode, bom_file=None):
     """
     Method to search packages in our vulnerability database
 
@@ -329,13 +330,13 @@ def scan(db, project_type, pkg_list, suggest_mode):
         LOG.debug("Empty package search attempted!")
     else:
         LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-    results, pkg_aliases, purl_aliases = utils.search_pkgs(
-        db, project_type, pkg_list
-    )
+    if not suggest_mode and bom_file:
+        return search_by_cdx_bom(bom_file)
     # pkg_aliases is a dict that can be used to find the original vendor and
     # package name This way we consistently use the same names used by the
     # caller irrespective of how the result was obtained
     sug_version_dict = {}
+    results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
     if suggest_mode:
         # From the results identify optimal max version
         sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
@@ -358,9 +359,7 @@ def scan(db, project_type, pkg_list, suggest_mode):
                 "Re-checking our suggestion to ensure there are no further "
                 "vulnerabilities"
             )
-            override_results, _, _ = utils.search_pkgs(
-                db, project_type, sug_pkg_list
-            )
+            override_results, _, _ = utils.search_pkgs(project_type, sug_pkg_list)
             if override_results:
                 new_sug_dict = suggest_version(override_results)
                 LOG.debug("Received override results: %s", new_sug_dict)
@@ -468,7 +467,7 @@ def summarise(
                     export_bom(bom_data, pkg_vulnerabilities, vdr_file)
         except json.JSONDecodeError:
             LOG.warning("Unable to generate VDR file for this scan")
-    summary = summary_stats(results)
+    summary = summary_stats(pkg_vulnerabilities)
     return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
 
 
@@ -567,7 +566,7 @@ async def cache():
     :return: a JSON response indicating the status of the caching operation.
     """
     db = db_lib.get()
-    if not db_lib.index_count(db["index_file"]):
+    if 0 in db_lib.stats():
         if download_image():
             return {
                 "error": "false",
@@ -640,8 +639,7 @@ async def run_scan():
         }, 400
     if not project_type:
         return {"error": "true", "message": "project type is required"}, 400
-
-    if not db_lib.index_count(db["index_file"]):
+    if 0 in db_lib.stats():
         return (
             {
                 "error": "true",
@@ -722,11 +720,17 @@ async def run_scan():
             if audit_results:
                 results = results + audit_results
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
-            db, project_type, pkg_list, True
+            project_type,
+            pkg_list,
+            True
         )
         if vdb_results:
+            vdb_ids = [i.get("cve_id") for i in vdb_results]
+            results = [r for r in results if r.id not in vdb_ids]
+            # for i, j in enumerate(vdb_results):
+            #     vdb_results[i]["source_data"] = json.loads(j.get("source_data").json()) if j.get("source_data") else {}
             results += vdb_results
-        results = [r.to_dict() for r in results]
+        # results = [r.to_dict() for r in results]
         with open(bom_file_path, encoding="utf-8") as fp:
             bom_data = json.load(fp)
         if not bom_data:
@@ -1022,11 +1026,11 @@ def main():
                 except Exception as e:
                     LOG.error("Remote audit was not successful")
                     LOG.error(e)
-        if not db_lib.index_count(db["index_file"]):
+        if 0 in db_lib.stats():
             run_cacher = True
         else:
             LOG.debug(
-                "Vulnerability database loaded from %s", config.vdb_bin_file
+                "Vulnerability database loaded from %s", config.VDB_BIN_FILE
             )
 
         sources_list = [OSVSource(), NvdSource()]
@@ -1079,11 +1083,11 @@ def main():
                 project_type,
             )
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
-            db, project_type, pkg_list, args.suggest
+            project_type,
+            pkg_list,
+            args.suggest,
         )
-        if vdb_results:
-            results += vdb_results
-        results = [r.to_dict() for r in results]
+        results.extend(vdb_results)
         direct_purls, reached_purls = find_purl_usages(
             bom_file, src_dir, args.reachables_slices_file
         )
