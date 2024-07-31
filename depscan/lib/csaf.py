@@ -1081,6 +1081,8 @@ TOML_TEMPLATE = {
 
 REF_MAP = {
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
+    r"lists.[\w\-]+.org/": "Mailing List",
+    "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
     r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
     r"github.com/[\w\-.]+/[\w\-.]+/pull/\d+": "GitHub Pull Request",
     r"github.com/[\w\-.]+/[\w\-.]+/release": "GitHub Repository Release",
@@ -1100,8 +1102,6 @@ REF_MAP = {
     "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
     r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
     "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability Database Entry",
-    r"lists.[\w\-]+.org/": "Mailing List",
-    "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
     "blog": "Blog Post",
     r"https://vuldb.com/\?id.\d+": "VulDB Entry",
     "oss-fuzz": "OSS-Fuzz",
