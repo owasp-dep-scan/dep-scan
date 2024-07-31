@@ -1091,6 +1091,11 @@ REF_MAP = {
     r"github.com/[\w\-.]+/[\w\-.]+/?$": "GitHub Repository",
     "gist.github.com": "GitHub Gist",
     r"github.com/": "GitHub Other",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/?(?!.)": "Bitbucket Repository",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/commits": "Bitbucket Commit",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/issues/\d+(/)?": "Bitbucket Issue",
+    r"bitbucket.org/[^\s/]+/[^\s/]+/wiki/": "Bitbucket Wiki Entry",
+    r"bitbucket.org": "Bitbucket Other",
     r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
     "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
     r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
@@ -1098,11 +1103,6 @@ REF_MAP = {
     r"lists.[\w\-]+.org/": "Mailing List",
     "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
     "blog": "Blog Post",
-    r"bitbucket.org/[^\s/]+/[^\s/]+/?(?!.)": "Bitbucket Repository",
-    r"bitbucket.org/[^\s/]+/[^\s/]+/commits": "Bitbucket Commit",
-    r"bitbucket.org/[^\s/]+/[^\s/]+/issues/\d+(/)?": "Bitbucket Issue",
-    r"bitbucket.org/[^\s/]+/[^\s/]+/wiki/": "Bitbucket Wiki Entry",
-    r"bitbucket.org": "Bitbucket Other",
     r"https://vuldb.com/\?id.\d+": "VulDB Entry",
     "oss-fuzz": "OSS-Fuzz",
     "cwe.mitre.org": "CWE Record",
@@ -1113,13 +1113,13 @@ REF_MAP = {
     "chrome.google.com/webstore": "Chrome Extension",
 }
 
-SORTED_REF_MAP = dict(
-    sorted(REF_MAP.items(), key=lambda x: len(x[0]), reverse=True)
-)
+# SORTED_REF_MAP = dict(
+#     sorted(REF_MAP.items(), key=lambda x: len(x[0]), reverse=True)
+# )
 
 COMPILED_REF_PATTERNS = {
     re.compile(pattern, re.IGNORECASE): value
-    for pattern, value in SORTED_REF_MAP.items()
+    for pattern, value in REF_MAP.items()
 }
 
 ISSUES_REGEX = re.compile(
