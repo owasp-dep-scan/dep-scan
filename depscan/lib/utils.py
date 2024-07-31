@@ -15,6 +15,7 @@ from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
 
+
 lic_symbol_regex = re.compile(r"[(),]")
 
 
