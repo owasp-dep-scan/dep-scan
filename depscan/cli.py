@@ -724,13 +724,10 @@ async def run_scan():
             pkg_list,
             True
         )
-        if vdb_results:
-            vdb_ids = [i.get("cve_id") for i in vdb_results]
-            results = [r for r in results if r.id not in vdb_ids]
-            # for i, j in enumerate(vdb_results):
-            #     vdb_results[i]["source_data"] = json.loads(j.get("source_data").json()) if j.get("source_data") else {}
+        if results and vdb_results:
+            results_ids = [i.get("id") for i in results]
+            vdb_results = [r for r in results if r.id not in results_ids]
             results += vdb_results
-        # results = [r.to_dict() for r in results]
         with open(bom_file_path, encoding="utf-8") as fp:
             bom_data = json.load(fp)
         if not bom_data:

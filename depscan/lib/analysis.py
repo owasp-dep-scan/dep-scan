@@ -571,8 +571,11 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
     suggested_version_map = {}
     purl_to_cve_map = {}
     cve_to_purl_map = {}
-    for v in pkg_vulnerabilities:
+    for i, v in enumerate(pkg_vulnerabilities):
         purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+        if "@" in purl:
+            purl = purl.split("@", 1)[0]
+        pkg_vulnerabilities[i]["partial_purl"] = purl
         if purl in purl_to_cve_map:
             purl_to_cve_map[purl].append(v)
         else:
@@ -582,8 +585,8 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
         else:
             cve_to_purl_map[v.get("id")] = {purl}
         if v.get("recommendation"):
-            for i in v.get("affects"):
-                for j in i.get("versions"):
+            for a in v.get("affects"):
+                for j in a.get("versions"):
                     if j.get("status") == "unaffected":
                         if purl in version_map:
                             version_map[purl] = max_version([version_map[purl], j.get("version")])
@@ -1148,10 +1151,10 @@ def cve_to_vdr(cve: CVE):
     vendor = ""
     if cve.root.containers.cna.affected:
         vendor = cve.root.containers.cna.affected.root[0].vendor
-    rating = {}
+    ratings = {}
     if vector:
-        rating = {"method": method, "severity": severity, "score": score, "vector": vector}
-    return source, references, advisories, cwes, description, detail, rating, bug_bounties, pocs, exploits, vendor
+        ratings = {"method": method, "severity": severity, "score": score, "vector": vector}
+    return source, references, advisories, cwes, description, detail, ratings, bug_bounties, pocs, exploits, vendor
 
 
 def parse_metrics(metrics):
@@ -1269,7 +1272,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record)
     vdict |= {
         "affects": affects, "source": source, "references": references, "advisories": advisories,
-        "cwes": cwes, "description": description, "detail": detail, "rating": rating,
+        "cwes": cwes, "description": description, "detail": detail, "ratings": [rating],
         "published": str(cve_record.root.cveMetadata.datePublished),
         "updated": str(cve_record.root.cveMetadata.dateUpdated)
     }

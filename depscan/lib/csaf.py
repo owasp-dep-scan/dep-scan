@@ -1080,7 +1080,6 @@ TOML_TEMPLATE = {
 }
 
 REF_MAP = {
-    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
     r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
     r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
     r"github.com/[\w\-.]+/[\w\-.]+/pull/\d+": "GitHub Pull Request",
@@ -1092,10 +1091,12 @@ REF_MAP = {
     r"github.com/[\w\-.]+/[\w\-.]+/?$": "GitHub Repository",
     "gist.github.com": "GitHub Gist",
     r"github.com/": "GitHub Other",
+    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
     "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
     r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
     "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability Database Entry",
     r"lists.[\w\-]+.org/": "Mailing List",
+    "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
     "blog": "Blog Post",
     r"bitbucket.org/[^\s/]+/[^\s/]+/?(?!.)": "Bitbucket Repository",
     r"bitbucket.org/[^\s/]+/[^\s/]+/commits": "Bitbucket Commit",
@@ -1110,7 +1111,6 @@ REF_MAP = {
     "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
     "wordpress|wpvulndb": "WordPress",
     "chrome.google.com/webstore": "Chrome Extension",
-    "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List"
 }
 
 SORTED_REF_MAP = dict(
