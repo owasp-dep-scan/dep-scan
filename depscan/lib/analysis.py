@@ -1135,7 +1135,7 @@ def get_cwe_list(data: ProblemType) -> List:
         if record := i.descriptions:
             for rec in record:
                 if rec.type == "CWE":
-                    cwes.append(rec.cweId.split("-")[1])
+                    cwes.append(int(rec.cweId.split("-")[1]))
     return cwes
 
 
