@@ -661,7 +661,7 @@ def cvss_to_vdr_rating(vuln_occ_dict):
     ratings = [
         {
             "score": cvss_score,
-            "severity": pkg_severity,
+            "severity": pkg_severity.lower(),
         }
     ]
     method = "31"
@@ -1153,30 +1153,22 @@ def cve_to_vdr(cve: CVE):
         vendor = cve.root.containers.cna.affected.root[0].vendor
     ratings = {}
     if vector:
-        ratings = {"method": method, "severity": severity, "score": score, "vector": vector}
+        ratings = {"method": method, "severity": severity.lower(), "score": score, "vector": vector}
     return source, references, advisories, cwes, description, detail, ratings, bug_bounties, pocs, exploits, vendor
 
 
 def parse_metrics(metrics):
-    vector = None
-    method = None
-    severity = None
-    score = None
+    vector = ""
+    method = ""
+    severity = "unknown"
+    score = ""
     if not metrics:
         return vector, method
-    m = None
     if metrics.root and (m := (metrics.root[0].cvssV3_1 or metrics.root[0].cvssV3_0)):
-        # if metrics.root[0].cvssV3_1.version:
-        #     m = metrics.root[0].cvssV3_1
-        # elif metrics.root[0].cvssV3.version:
-        #     m = metrics.root[0].cvssV3
-    # if m:
         vector = m.vectorString
         severity = m.baseSeverity.value
         method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
         score = m.baseScore.root
-    if not severity:
-        severity = "UNKNOWN"
     return vector, method, severity, score
 
 

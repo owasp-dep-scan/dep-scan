@@ -491,8 +491,7 @@ def summarise_tools(tools, metadata, bom_data):
             "bom-ref": ds_purl,
         }
     )
-    bom_data["tools"] = {"components": components}
-    bom_data["metadata"] = metadata
+    bom_data["metadata"]["tools"] = {"components": components}
     return bom_data
 
 
