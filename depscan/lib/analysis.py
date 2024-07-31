@@ -23,7 +23,7 @@ from vdb.lib.cve_model import ProblemType, CVE, Reference
 from vdb.lib.utils import parse_purl, parse_cpe
 
 from depscan.lib import config
-from depscan.lib.csaf import COMPILED_REF_PATTERNS
+from depscan.lib.csaf import REF_MAP, get_ref_summary_helper
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version, get_description
 
@@ -1511,34 +1511,63 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
     poc = []
     exploit = []
     for i in ref:
-        for key, value in COMPILED_REF_PATTERNS.items():
-            if match := key.search(i):
-                if value == "CVE Record":
-                    record = {"id": match[0], "source": {"url": i}}
-                    if "nvd.nist.gov" in i:
-                        record["source"]["name"] = "NVD"
-                    refs.append(record)
-                elif "Advisory" in value:
-                    system_name = (
-                        (match["org"].capitalize() + " Advisory")
-                        .replace("Redhat", "Red Hat")
-                        .replace("Zerodayinitiative", "Zero Day Initiative")
-                        .replace("Github", "GitHub")
-                        .replace("Netapp", "NetApp")
-                        .replace("Npmjs", "NPM")
-                        .replace("Alpinelinux", "Alpine Linux"))
-                    adv_id = match["id"]
-                    if system_name in {"Jfrog", "Gentoo"}:
-                        adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
-                    refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
-                    advisories.append({"title": f"{system_name} {adv_id}", "url": i})
-                elif value in ("POC", "Bug Bounty", "Exploit"):
-                    if value == "POC":
-                        poc.append(i)
-                    elif value == "Bug Bounty":
-                        bug_bounty.append(i)
-                    else:
-                        exploit.append(i)
+        category, match = get_ref_summary_helper(i, REF_MAP)
+        if not match:
+            continue
+        if category == "CVE Record":
+            record = {"id": match[0], "source": {"url": i}}
+            if "nvd.nist.gov" in i:
+                record["source"]["name"] = "NVD"
+            refs.append(record)
+        elif "Advisory" in category:
+            system_name = (
+                (match["org"].capitalize() + " Advisory")
+                .replace("Redhat", "Red Hat")
+                .replace("Zerodayinitiative", "Zero Day Initiative")
+                .replace("Github", "GitHub")
+                .replace("Netapp", "NetApp")
+                .replace("Npmjs", "NPM")
+                .replace("Alpinelinux", "Alpine Linux"))
+            adv_id = match["id"]
+            if system_name in {"Jfrog", "Gentoo"}:
+                adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
+            refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
+            advisories.append({"title": f"{system_name} {adv_id}", "url": i})
+        elif category in ("POC", "Bug Bounty", "Exploit"):
+            if category == "POC":
+                poc.append(i)
+            elif category == "Bug Bounty":
+                bug_bounty.append(i)
+            else:
+                exploit.append(i)
+        # for key, value in REF_MAP.items():
+        #     if match := key.search(i):
+        #         if value == "CVE Record":
+        #             record = {"id": match[0], "source": {"url": i}}
+        #             if "nvd.nist.gov" in i:
+        #                 record["source"]["name"] = "NVD"
+        #             refs.append(record)
+        #         elif "Advisory" in value:
+        #             system_name = (
+        #                 (match["org"].capitalize() + " Advisory")
+        #                 .replace("Redhat", "Red Hat")
+        #                 .replace("Zerodayinitiative", "Zero Day Initiative")
+        #                 .replace("Github", "GitHub")
+        #                 .replace("Netapp", "NetApp")
+        #                 .replace("Npmjs", "NPM")
+        #                 .replace("Alpinelinux", "Alpine Linux"))
+        #             adv_id = match["id"]
+        #             if system_name in {"Jfrog", "Gentoo"}:
+        #                 adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
+        #             refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
+        #             advisories.append({"title": f"{system_name} {adv_id}", "url": i})
+        #         elif value in ("POC", "Bug Bounty", "Exploit"):
+        #             if value == "POC":
+        #                 poc.append(i)
+        #             elif value == "Bug Bounty":
+        #                 bug_bounty.append(i)
+        #             else:
+        #                 exploit.append(i)
     return advisories, refs, bug_bounty, poc, exploit
 
 

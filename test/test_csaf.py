@@ -1,12 +1,14 @@
 import os.path
 
-
-from depscan.lib.csaf import (add_vulnerabilities, cleanup_dict, cleanup_list,
-                              format_references, get_acknowledgements,
-                              get_products, get_ref_summary, import_csaf_toml,
-                              import_root_component, parse_cvss, parse_cwe,
-                              parse_revision_history, parse_toml,
-                              verify_components_present, )
+from depscan.lib.config import REF_MAP
+from depscan.lib.csaf import (
+    add_vulnerabilities, cleanup_dict, cleanup_list,
+    format_references, get_acknowledgements,
+    get_products, import_csaf_toml,
+    import_root_component, parse_cvss, parse_cwe,
+    parse_revision_history, parse_toml,
+    verify_components_present, get_ref_summary_helper,
+)
 
 
 def test_parse_revision_history():
@@ -214,27 +216,27 @@ def test_cleanup_dict():
 
 def test_get_ref_summary():
     url = "https://nvd.nist.gov/vuln/detail/cve-2021-1234"
-    assert get_ref_summary(url) == "CVE Record"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "CVE Record"
     url = "https://github.com/user/repo/security/advisories/GHSA-1234-1234-1234"
-    assert get_ref_summary(url) == "Advisory"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Advisory"
     url = "https://github.com/user/repo/pull/123"
-    assert get_ref_summary(url) == "GitHub Pull Request"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "GitHub Pull Request"
     url = "https://github.com/user/repo/commit/123"
-    assert get_ref_summary(url) == "GitHub Commit"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "GitHub Commit"
     url = ""
-    assert get_ref_summary(url) == "Other"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Other"
     url = "https://example.com"
-    assert get_ref_summary(url) == "Other"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Other"
     url = "https://github.com/user/repo/release"
-    assert get_ref_summary(url) == "GitHub Repository Release"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "GitHub Repository Release"
     url = "https://github.com/user/repo"
-    assert get_ref_summary(url) == "GitHub Repository"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "GitHub Repository"
     url = "https://access.redhat.com/security/cve/CVE-2023-26136"
-    assert get_ref_summary(url) == "CVE Record"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Advisory"
     url = "https://access.redhat.com/errata/RHSA-2023:5484"
-    assert get_ref_summary(url) == "Advisory"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Advisory"
     url = "https://bugzilla.redhat.com/show_bug.cgi?id=2224245"
-    assert get_ref_summary(url) == "Bugzilla"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Bugzilla"
 
 
 def test_format_references():
@@ -841,202 +843,153 @@ def test_add_vulnerabilities():
     new_results = add_vulnerabilities(template, pkg_vulnerabilities)
     assert new_results.get("vulnerabilities") == [
         {
-            "acknowledgements": {
-                "organization": "NVD",
-                "urls": ["https://nvd.nist.gov/vuln/detail/CVE-2020-10673"],
+            'acknowledgements': {
+                'organization': 'NVD',
+                'urls': ['https://nvd.nist.gov/vuln/detail/CVE-2020-10673']
             },
-            "cve": "CVE-2020-10673",
-            "cwe": {
-                "id": "668",
-                "name": "Exposure of Resource to Wrong Sphere",
+            'cve': 'CVE-2020-10673',
+            'cwe': {'id': '668', 'name': 'Exposure of Resource to Wrong Sphere'},
+            'discovery_date': '2020-03-18T22:15:00',
+            'ids': [{
+                        'system_name': 'GitHub Issue [FasterXML/jackson-databind]',
+                        'text': '2660'
+                    },
+                    {'system_name': 'Oracle Advisory', 'text': 'cpuoct2021'}],
+            'notes': [{
+                          'audience': 'developers',
+                          'category': 'other',
+                          'text': '.NET Misconfiguration: Use of Impersonation',
+                          'title': 'Additional CWE: 520'
+                      },
+                      {
+                          'audience': 'developers',
+                          'category': 'other',
+                          'text': 'Weak Password Requirements',
+                          'title': 'Additional CWE: 521'
+                      },
+                      {
+                          'category': 'general',
+                          'details': 'Vulnerability Description',
+                          'text': 'FasterXML jackson-databind 2.x before 2.9.10.4 '
+                                  'mishandles the interaction between serialization gadgets '
+                                  'and typing, related to '
+                                  'com.caucho.config.types.ResourceRef (aka '
+                                  'caucho-quercus).'
+                      }],
+            'product_status': {
+                'fixed': ['com.fasterxml.jackson.core/jackson-databind@2.12.7.1'],
+                'known_affected': ['com.fasterxml.jackson.core/jackson-databind@2.9.6']
             },
-            "discovery_date": "2020-03-18T22:15:00",
-            "ids": [
-                {
-                    "system_name": "GitHub Issue [FasterXML/jackson-databind]",
-                    "text": "2660",
-                }
-            ],
-            "notes": [
-                {
-                    "audience": "developers",
-                    "category": "other",
-                    "text": ".NET Misconfiguration: Use of Impersonation",
-                    "title": "Additional CWE: 520",
-                },
-                {
-                    "audience": "developers",
-                    "category": "other",
-                    "text": "Weak Password Requirements",
-                    "title": "Additional CWE: 521",
-                },
-                {
-                    "category": "general",
-                    "details": "Vulnerability Description",
-                    "text": (
-                        "FasterXML jackson-databind 2.x before 2.9.10.4"
-                        " mishandles the interaction between serialization"
-                        " gadgets and typing, related to"
-                        " com.caucho.config.types.ResourceRef (aka"
-                        " caucho-quercus)."
-                    ),
-                },
-            ],
-            "product_status": {
-                "fixed": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
-                ],
-                "known_affected": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                ],
-            },
-            "references": [
-                {
-                    "summary": "Mailing List Announcement",
-                    "url": "https://lists.debian.org/debian-lts-announce/2020"
-                           "/03/msg00027.html",
-                },
-                {
-                    "summary": "Oracle Security Alert",
-                    "url": (
-                        "https://www.oracle.com/security-alerts/cpuoct2021.html"
-                    ),
-                },
-                {
-                    "summary": "GitHub Issue",
-                    "url": "https://github.com/FasterXML/jackson-databind"
-                           "/issues/2660",
-                },
-            ],
-            "scores": [
-                {'cvss_v3': {
-                    'attackComplexity': 'LOW',
-                    'attackVector': 'NETWORK',
-                    'availabilityImpact': 'HIGH',
-                    'baseScore': 8.8,
-                    'baseSeverity': 'HIGH',
-                    'confidentialityImpact': 'HIGH',
-                    'environmentalScore': 8.8,
-                    'environmentalSeverity': 'HIGH',
-                    'integrityImpact': 'HIGH',
-                    'modifiedAttackComplexity': 'LOW',
-                    'modifiedAttackVector': 'NETWORK',
-                    'modifiedAvailabilityImpact': 'HIGH',
-                    'modifiedConfidentialityImpact': 'HIGH',
-                    'modifiedIntegrityImpact': 'HIGH',
-                    'modifiedPrivilegesRequired': 'NONE',
-                    'modifiedScope': 'UNCHANGED',
-                    'modifiedUserInteraction': 'REQUIRED',
-                    'privilegesRequired': 'NONE',
-                    'scope': 'UNCHANGED',
-                    'temporalScore': 8.8,
-                    'temporalSeverity': 'HIGH',
-                    'userInteraction': 'REQUIRED',
-                    'vectorString': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H'
-                                    '/A:H',
-                    'version': '3.1'
-                },
-                    "products": [
-                        "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                    ],
-                }
-            ],
+            'references': [{
+                               'summary': 'Mailing List',
+                               'url': 'https://lists.debian.org/debian-lts-announce/2020/03/msg00027.html'
+                           },
+                           {
+                               'summary': 'GitHub Issue',
+                               'url': 'https://github.com/FasterXML/jackson-databind/issues/2660'
+                           },
+                           {
+                               'summary': 'Oracle Advisory',
+                               'url': 'https://www.oracle.com/security-alerts/cpuoct2021.html'
+                           }],
+            'scores': [{
+                           'cvss_v3': {
+                               'attackComplexity': 'LOW',
+                               'attackVector': 'NETWORK',
+                               'availabilityImpact': 'HIGH',
+                               'baseScore': 8.8,
+                               'baseSeverity': 'HIGH',
+                               'confidentialityImpact': 'HIGH',
+                               'environmentalScore': 8.8,
+                               'environmentalSeverity': 'HIGH',
+                               'integrityImpact': 'HIGH',
+                               'modifiedAttackComplexity': 'LOW',
+                               'modifiedAttackVector': 'NETWORK',
+                               'modifiedAvailabilityImpact': 'HIGH',
+                               'modifiedConfidentialityImpact': 'HIGH',
+                               'modifiedIntegrityImpact': 'HIGH',
+                               'modifiedPrivilegesRequired': 'NONE',
+                               'modifiedScope': 'UNCHANGED',
+                               'modifiedUserInteraction': 'REQUIRED',
+                               'privilegesRequired': 'NONE',
+                               'scope': 'UNCHANGED',
+                               'temporalScore': 8.8,
+                               'temporalSeverity': 'HIGH',
+                               'userInteraction': 'REQUIRED',
+                               'vectorString': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H',
+                               'version': '3.1'
+                           },
+                           'products': ['com.fasterxml.jackson.core/jackson-databind@2.9.6']
+                       }]
         },
         {
-            "acknowledgements": {
-                "organization": "NVD",
-                "urls": ["https://nvd.nist.gov/vuln/detail/CVE-2021-20190"],
+            'acknowledgements': {
+                'organization': 'NVD',
+                'urls': ['https://nvd.nist.gov/vuln/detail/CVE-2021-20190']
             },
-            "cve": "CVE-2021-20190",
-            "cwe": {"id": "502", "name": "Deserialization of Untrusted Data"},
-            "discovery_date": "2021-01-19T17:15:00",
-            "ids": [
-                {
-                    "system_name": "GitHub Issue [FasterXML/jackson-databind]",
-                    "text": "2854",
-                }
-            ],
-            "notes": [
-                {
-                    "category": "general",
-                    "details": "Vulnerability Description",
-                    "text": (
-                        "A flaw was found in jackson-databind before "
-                        "2.9.10.7. FasterXML mishandles the interaction "
-                        "between serialization gadgets and typing. The "
-                        "highest threat from this vulnerability is to "
-                        "data confidentiality and integrity as well as "
-                        "system availability."
-                    ),
-                }
-            ],
-            "product_status": {
-                "fixed": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
-                ],
-                "known_affected": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                ],
-            },
-            "references": [
-                {
-                    "summary": "Other",
-                    "url": (
-                        "https://www.oracle.com//security-alerts"
-                        "/cpujul2021.html"
-                    ),
-                },
-                {
-                    "summary": "Mailing List Announcement",
-                    "url": (
-                        "https://lists.debian.org/debian-lts-announce/2021"
-                        "/04/msg00025.html"
-                    ),
-                },
-                {
-                    "summary": "GitHub Issue",
-                    "url": (
-                        "https://github.com/FasterXML/jackson-databind"
-                        "/issues/2854"
-                    ),
-                },
-            ],
-            "scores": [
-                {
-                    'cvss_v3': {
-                        'attackComplexity': 'HIGH',
-                        'attackVector': 'NETWORK',
-                        'availabilityImpact': 'HIGH',
-                        'baseScore': 8.1,
-                        'baseSeverity': 'HIGH',
-                        'confidentialityImpact': 'HIGH',
-                        'environmentalScore': 8.1,
-                        'environmentalSeverity': 'HIGH',
-                        'integrityImpact': 'HIGH',
-                        'modifiedAttackComplexity': 'HIGH',
-                        'modifiedAttackVector': 'NETWORK',
-                        'modifiedAvailabilityImpact': 'HIGH',
-                        'modifiedConfidentialityImpact': 'HIGH',
-                        'modifiedIntegrityImpact': 'HIGH',
-                        'modifiedPrivilegesRequired': 'NONE',
-                        'modifiedScope': 'UNCHANGED',
-                        'modifiedUserInteraction': 'NONE',
-                        'privilegesRequired': 'NONE',
-                        'scope': 'UNCHANGED',
-                        'temporalScore': 8.1,
-                        'temporalSeverity': 'HIGH',
-                        'userInteraction': 'NONE',
-                        'vectorString': 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H'
-                                        '/I:H/A:H',
-                        'version': '3.1'
+            'cve': 'CVE-2021-20190',
+            'cwe': {'id': '502', 'name': 'Deserialization of Untrusted Data'},
+            'discovery_date': '2021-01-19T17:15:00',
+            'ids': [{
+                        'system_name': 'GitHub Issue [FasterXML/jackson-databind]',
+                        'text': '2854'
                     },
-                    "products": [
-                        "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                    ],
-                }
-            ],
-        },
-    ]
+                    {'system_name': 'Oracle Advisory', 'text': 'cpujul2021'}],
+            'notes': [{
+                          'category': 'general',
+                          'details': 'Vulnerability Description',
+                          'text': 'A flaw was found in jackson-databind before 2.9.10.7. '
+                                  'FasterXML mishandles the interaction between '
+                                  'serialization gadgets and typing. The highest threat '
+                                  'from this vulnerability is to data confidentiality and '
+                                  'integrity as well as system availability.'
+                      }],
+            'product_status': {
+                'fixed': ['com.fasterxml.jackson.core/jackson-databind@2.12.7.1'],
+                'known_affected': ['com.fasterxml.jackson.core/jackson-databind@2.9.6']
+            },
+            'references': [{
+                               'summary': 'Mailing List',
+                               'url': 'https://lists.debian.org/debian-lts-announce/2021/04/msg00025.html'
+                           },
+                           {
+                               'summary': 'GitHub Issue',
+                               'url': 'https://github.com/FasterXML/jackson-databind/issues/2854'
+                           },
+                           {
+                               'summary': 'Oracle Advisory',
+                               'url': 'https://www.oracle.com//security-alerts/cpujul2021.html'
+                           }],
+            'scores': [{
+                           'cvss_v3': {
+                               'attackComplexity': 'HIGH',
+                               'attackVector': 'NETWORK',
+                               'availabilityImpact': 'HIGH',
+                               'baseScore': 8.1,
+                               'baseSeverity': 'HIGH',
+                               'confidentialityImpact': 'HIGH',
+                               'environmentalScore': 8.1,
+                               'environmentalSeverity': 'HIGH',
+                               'integrityImpact': 'HIGH',
+                               'modifiedAttackComplexity': 'HIGH',
+                               'modifiedAttackVector': 'NETWORK',
+                               'modifiedAvailabilityImpact': 'HIGH',
+                               'modifiedConfidentialityImpact': 'HIGH',
+                               'modifiedIntegrityImpact': 'HIGH',
+                               'modifiedPrivilegesRequired': 'NONE',
+                               'modifiedScope': 'UNCHANGED',
+                               'modifiedUserInteraction': 'NONE',
+                               'privilegesRequired': 'NONE',
+                               'scope': 'UNCHANGED',
+                               'temporalScore': 8.1,
+                               'temporalSeverity': 'HIGH',
+                               'userInteraction': 'NONE',
+                               'vectorString': 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H',
+                               'version': '3.1'
+                           },
+                           'products': ['com.fasterxml.jackson.core/jackson-databind@2.9.6']
+                       }]
+        }]
     new_results = add_vulnerabilities(template, [])
     assert new_results.get("vulnerabilities") == []
 
