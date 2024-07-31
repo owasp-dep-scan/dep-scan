@@ -1151,9 +1151,9 @@ def cve_to_vdr(cve: CVE):
     vendor = ""
     if cve.root.containers.cna.affected:
         vendor = cve.root.containers.cna.affected.root[0].vendor
-    ratings = []
+    ratings = {}
     if vector:
-        ratings = [{"method": method, "severity": severity, "score": score, "vector": vector}]
+        ratings = {"method": method, "severity": severity, "score": score, "vector": vector}
     return source, references, advisories, cwes, description, detail, ratings, bug_bounties, pocs, exploits, vendor
 
 
@@ -1272,7 +1272,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record)
     vdict |= {
         "affects": affects, "source": source, "references": references, "advisories": advisories,
-        "cwes": cwes, "description": description, "detail": detail, "ratings": rating,
+        "cwes": cwes, "description": description, "detail": detail, "ratings": [rating],
         "published": str(cve_record.root.cveMetadata.datePublished),
         "updated": str(cve_record.root.cveMetadata.dateUpdated)
     }
