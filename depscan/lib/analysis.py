@@ -1143,10 +1143,11 @@ def get_cwe_list(data: ProblemType) -> List:
 
 
 def cve_to_vdr(cve: CVE):
-    advisories, references, bug_bounties, pocs, exploits = refs_to_vdr(cve.root.containers.cna.references)
+    advisories, references, bug_bounties, pocs, exploits, source = refs_to_vdr(cve.root.containers.cna.references, cve.root.cveMetadata.cveId)
     vector, method, severity, score = parse_metrics(cve.root.containers.cna.metrics)
     description, detail = get_description(cve.root.containers.cna.descriptions)
-    source = {"name": cve.root.cveMetadata.assignerShortName.root}
+    if not source:
+        source = {"name": cve.root.cveMetadata.assignerShortName.root.replace("github_m", "GitHub Advisories").replace("mitre", "Mitre")}
     cwes = get_cwe_list(cve.root.containers.cna.problemTypes)
     vendor = ""
     if cve.root.containers.cna.affected:
@@ -1492,7 +1493,7 @@ def get_unaffected(vers):
     return None
 
 
-def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
+def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, List, Dict]:
     """
     Parses the reference list provided by VDB and converts to VDR objects
 
@@ -1503,13 +1504,14 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
     :rtype: tuple[list, list]
     """
     if not references:
-        return [], [], [], [], []
+        return [], [], [], [], [], {}
     ref = {str(i.url.root) for i in references.root}
     advisories = []
     refs = []
     bug_bounty = []
     poc = []
     exploit = []
+    source = {}
     for i in ref:
         category, match = get_ref_summary_helper(i, REF_MAP)
         if not match:
@@ -1519,6 +1521,8 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
             if "nvd.nist.gov" in i:
                 record["source"]["name"] = "NVD"
             refs.append(record)
+            if id == vid and not source:
+                source = record["source"]
         elif "Advisory" in category:
             system_name = (
                 (match["org"].capitalize() + " Advisory")
@@ -1531,6 +1535,8 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
             adv_id = match["id"]
             if system_name in {"Jfrog", "Gentoo"}:
                 adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
+            if adv_id == vid and not source:
+                source = {"name": system_name, "url": i}
             refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
             advisories.append({"title": f"{system_name} {adv_id}", "url": i})
         elif category in ("POC", "Bug Bounty", "Exploit"):
@@ -1568,7 +1574,7 @@ def refs_to_vdr(references: Reference) -> Tuple[List, List, List, List, List]:
         #                 bug_bounty.append(i)
         #             else:
         #                 exploit.append(i)
-    return advisories, refs, bug_bounty, poc, exploit
+    return advisories, refs, bug_bounty, poc, exploit, source
 
 
 def adv_ref_parsing(adv_id, i, match, system_name):
