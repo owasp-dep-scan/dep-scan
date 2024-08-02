@@ -27,9 +27,9 @@ from depscan.lib.analysis import (
     analyse_pkg_risks,
     find_purl_usages,
     prepare_vdr,
-    suggest_version,
     summary_stats,
 )
+from depscan.lib.utils import consolidate
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
     create_bom,
@@ -338,33 +338,34 @@ def scan(project_type, pkg_list, suggest_mode, bom_file=None):
     sug_version_dict = {}
     results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
     if suggest_mode:
-        # From the results identify optimal max version
-        sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
-        if sug_version_dict:
-            LOG.debug(
-                "Adjusting fix version based on the initial suggestion %s",
-                sug_version_dict,
-            )
-            # Recheck packages
-            sug_pkg_list = []
-            for k, v in sug_version_dict.items():
-                if not v:
-                    continue
-                sug, aliases = process_suggestions(k, v)
-                if sug:
-                    sug_pkg_list.extend(sug)
-                if aliases:
-                    pkg_aliases |= aliases
-            LOG.debug(
-                "Re-checking our suggestion to ensure there are no further "
-                "vulnerabilities"
-            )
-            override_results, _, _ = utils.search_pkgs(project_type, sug_pkg_list)
-            if override_results:
-                new_sug_dict = suggest_version(override_results)
-                LOG.debug("Received override results: %s", new_sug_dict)
-                for nk, nv in new_sug_dict.items():
-                    sug_version_dict[nk] = nv
+        results = consolidate(results)
+        # # From the results identify optimal max version
+        # sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
+        # if sug_version_dict:
+        #     LOG.debug(
+        #         "Adjusting fix version based on the initial suggestion %s",
+        #         sug_version_dict,
+        #     )
+        #     # Recheck packages
+        #     sug_pkg_list = []
+        #     for k, v in sug_version_dict.items():
+        #         if not v:
+        #             continue
+        #         sug, aliases = process_suggestions(k, v)
+        #         if sug:
+        #             sug_pkg_list.extend(sug)
+        #         if aliases:
+        #             pkg_aliases |= aliases
+        #     LOG.debug(
+        #         "Re-checking our suggestion to ensure there are no further "
+        #         "vulnerabilities"
+        #     )
+        #     override_results, _, _ = utils.search_pkgs(project_type, sug_pkg_list)
+        #     if override_results:
+        #         new_sug_dict = suggest_version(override_results)
+        #         LOG.debug("Received override results: %s", new_sug_dict)
+        #         for nk, nv in new_sug_dict.items():
+        #             sug_version_dict[nk] = nv
     return results, pkg_aliases, sug_version_dict, purl_aliases
 
 
@@ -723,10 +724,7 @@ async def run_scan():
             pkg_list,
             True
         )
-        if results and vdb_results:
-            results_ids = [i.get("id") for i in results]
-            vdb_results = [r for r in results if r.id not in results_ids]
-            results += vdb_results
+        results += vdb_results
         with open(bom_file_path, encoding="utf-8") as fp:
             bom_data = json.load(fp)
         if not bom_data:

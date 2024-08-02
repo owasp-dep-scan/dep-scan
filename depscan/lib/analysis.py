@@ -23,9 +23,10 @@ from vdb.lib.cve_model import ProblemType, CVE, Reference
 from vdb.lib.utils import parse_purl, parse_cpe
 
 from depscan.lib import config
-from depscan.lib.csaf import REF_MAP, get_ref_summary_helper
+from depscan.lib.csaf import get_ref_summary_helper
 from depscan.lib.logger import LOG, console
-from depscan.lib.utils import max_version, get_description
+from depscan.lib.utils import max_version, get_description_detail, format_system_name
+
 
 NEWLINE = "\\n"
 
@@ -566,46 +567,6 @@ Below are the vulnerabilities prioritized by depscan. Follow your team's remedia
         output_reached_purls(reached_purls)
 
 
-def consolidate(pkg_vulnerabilities: List[Dict]):
-    version_map = {}
-    suggested_version_map = {}
-    purl_to_cve_map = {}
-    cve_to_purl_map = {}
-    for i, v in enumerate(pkg_vulnerabilities):
-        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
-        if "@" in purl:
-            purl = purl.split("@", 1)[0]
-        pkg_vulnerabilities[i]["partial_purl"] = purl
-        if purl in purl_to_cve_map:
-            purl_to_cve_map[purl].append(v)
-        else:
-            purl_to_cve_map[purl] = [v]
-        if v.get("id") in cve_to_purl_map:
-            cve_to_purl_map[v.get("id")].add(purl)
-        else:
-            cve_to_purl_map[v.get("id")] = {purl}
-        if v.get("recommendation"):
-            for a in v.get("affects"):
-                for j in a.get("versions"):
-                    if j.get("status") == "unaffected":
-                        if purl in version_map:
-                            version_map[purl] = max_version([version_map[purl], j.get("version")])
-                        else:
-                            version_map[purl] = j.get("version")
-                        if "@" in purl:
-                            purl = purl.split("@")[0]
-                        if purl in suggested_version_map:
-                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
-                        else:
-                            suggested_version_map[purl] = j.get("version")
-    version_map = dict(sorted(version_map.items()))
-    for k, v in cve_to_purl_map.items():
-        cve_to_purl_map[k] = list(v)
-    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
-    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
-    return version_map, suggested_version_map, purl_to_cve_map, cve_to_purl_map
-
-
 def get_version_range(package_issue, purl):
     """
     Generates a version range object for inclusion in the vdr file.
@@ -1142,12 +1103,15 @@ def get_cwe_list(data: ProblemType) -> List:
     return cwes
 
 
-def cve_to_vdr(cve: CVE):
-    advisories, references, bug_bounties, pocs, exploits, source = refs_to_vdr(cve.root.containers.cna.references, cve.root.cveMetadata.cveId)
+def cve_to_vdr(cve: CVE, vid):
+    advisories, references, bug_bounties, pocs, exploits, source = refs_to_vdr(cve.root.containers.cna.references, vid.lower())
     vector, method, severity, score = parse_metrics(cve.root.containers.cna.metrics)
-    description, detail = get_description(cve.root.containers.cna.descriptions)
+    description, detail = get_description_detail(cve.root.containers.cna.descriptions)
     if not source:
-        source = {"name": cve.root.cveMetadata.assignerShortName.root.replace("github_m", "GitHub Advisories").replace("mitre", "Mitre")}
+        source = {"name": cve.root.cveMetadata.assignerShortName.root.capitalize()}
+        if source.get("name") == "Github_m":
+            source = {"name": "GitHub", "url": f"https://github.com/advisories/{vid}"}
+            advisories.append({"title": f"GitHub Advisory {vid}", "url": f"https://github.com/advisories/{vid}"})
     cwes = get_cwe_list(cve.root.containers.cna.problemTypes)
     vendor = ""
     if cve.root.containers.cna.affected:
@@ -1262,7 +1226,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     if not cve_record:
         return vdict
 
-    source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record)
+    source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record, vid)
     vdict |= {
         "affects": affects, "source": source, "references": references, "advisories": advisories,
         "cwes": cwes, "description": description, "detail": detail, "ratings": [rating],
@@ -1506,6 +1470,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
     if not references:
         return [], [], [], [], [], {}
     ref = {str(i.url.root) for i in references.root}
+    # ref = {i.get("url") for i in references}
     advisories = []
     refs = []
     bug_bounty = []
@@ -1513,32 +1478,26 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
     exploit = []
     source = {}
     for i in ref:
-        category, match = get_ref_summary_helper(i, REF_MAP)
+        category, match, system_name = get_ref_summary_helper(i, config.REF_MAP)
         if not match:
             continue
         if category == "CVE Record":
             record = {"id": match[0], "source": {"url": i}}
             if "nvd.nist.gov" in i:
-                record["source"]["name"] = "NVD"
+                record["source"]["name"] = "NVD CVE Record"
             refs.append(record)
-            if id == vid and not source:
+            if match[0].lower() == vid and not source:
                 source = record["source"]
         elif "Advisory" in category:
-            system_name = (
-                (match["org"].capitalize() + " Advisory")
-                .replace("Redhat", "Red Hat")
-                .replace("Zerodayinitiative", "Zero Day Initiative")
-                .replace("Github", "GitHub")
-                .replace("Netapp", "NetApp")
-                .replace("Npmjs", "NPM")
-                .replace("Alpinelinux", "Alpine Linux"))
             adv_id = match["id"]
             if system_name in {"Jfrog", "Gentoo"}:
                 adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
-            if adv_id == vid and not source:
+            if adv_id.lower() == vid and not source:
                 source = {"name": system_name, "url": i}
-            refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
             advisories.append({"title": f"{system_name} {adv_id}", "url": i})
+            if system_name == "NPM Advisory":
+                adv_id = f"NPM-{adv_id}"
+            refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
         elif category in ("POC", "Bug Bounty", "Exploit"):
             if category == "POC":
                 poc.append(i)
@@ -1546,34 +1505,10 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
                 bug_bounty.append(i)
             else:
                 exploit.append(i)
-        # for key, value in REF_MAP.items():
-        #     if match := key.search(i):
-        #         if value == "CVE Record":
-        #             record = {"id": match[0], "source": {"url": i}}
-        #             if "nvd.nist.gov" in i:
-        #                 record["source"]["name"] = "NVD"
-        #             refs.append(record)
-        #         elif "Advisory" in value:
-        #             system_name = (
-        #                 (match["org"].capitalize() + " Advisory")
-        #                 .replace("Redhat", "Red Hat")
-        #                 .replace("Zerodayinitiative", "Zero Day Initiative")
-        #                 .replace("Github", "GitHub")
-        #                 .replace("Netapp", "NetApp")
-        #                 .replace("Npmjs", "NPM")
-        #                 .replace("Alpinelinux", "Alpine Linux"))
-        #             adv_id = match["id"]
-        #             if system_name in {"Jfrog", "Gentoo"}:
-        #                 adv_id, system_name = adv_ref_parsing(adv_id, i, match, system_name)
-        #             refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
-        #             advisories.append({"title": f"{system_name} {adv_id}", "url": i})
-        #         elif value in ("POC", "Bug Bounty", "Exploit"):
-        #             if value == "POC":
-        #                 poc.append(i)
-        #             elif value == "Bug Bounty":
-        #                 bug_bounty.append(i)
-        #             else:
-        #                 exploit.append(i)
+        elif category == "Bugzilla":
+            refs.append({"id": f"{match['org']}-bugzilla-{match['id']}", "source": {"name": f"{format_system_name(match['org'])} Bugzilla", "url": i}})
+        elif system_name:
+            refs.append({"id": category, "source": {"name": system_name, "url": i}})
     return advisories, refs, bug_bounty, poc, exploit, source
 
 

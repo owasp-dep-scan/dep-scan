@@ -12,15 +12,13 @@ from cvss import CVSSError
 from packageurl import PackageURL
 from vdb.lib import convert_time
 
-from depscan.lib.config import REF_MAP
 from depscan.lib.config import (
     SEVERITY_REF,
     TIME_FMT,
     CWE_MAP,
-    ISSUES_REGEX, ADVISORY_REGEX, BUGZILLA_REGEX, USN_REGEX
 )
 from depscan.lib.logger import LOG
-from depscan.lib.utils import get_version
+from depscan.lib.utils import get_version, format_system_name
 
 
 def vdr_to_csaf(res):
@@ -47,7 +45,7 @@ def vdr_to_csaf(res):
         .replace("\n", " ")
         .replace("\t", " ")
     )
-    ids, references = format_references(res.get("advisories", []))
+    ids, references = format_references(res.get("references", []))
     orig_date = res.get("published")
     update_date = res.get("updated")
     discovery_date = orig_date or update_date
@@ -221,7 +219,7 @@ def parse_cvss(ratings):
     return cleanup_dict(cvss_v3)
 
 
-def format_references(advisories):
+def format_references(references):
     """
     Formats the advisories as references.
 
@@ -229,67 +227,35 @@ def format_references(advisories):
     :type advisories: list
 
     :return: A list of dictionaries with the formatted references.
-    :rtype: list
+    :rtype: Tuple
     """
-    if not advisories:
+    if not references:
         return [], []
-    ref = [i["url"] for i in advisories]
+    # ref = [i["source"]["url"] for i in advisories]
     fmt_refs = []
-    # fmt_refs = [{"summary": get_ref_summary_helper(r, REF_MAP), "url": r} for r in ref]
-    for r in ref:
-        summary, _ = get_ref_summary_helper(r, REF_MAP)
-        fmt_refs.append({"summary": summary, "url": r})
     ids = []
-    id_types = ["Advisory", "Issue", "Bugzilla"]
-    parse = [i for i in fmt_refs if i.get("summary") in id_types]
-    refs = [i for i in fmt_refs if i.get("summary") not in id_types]
-    for reference in parse:
-        url = reference["url"]
-        summary = reference["summary"]
-        if summary == "Advisory":
-            url = url.replace("glsa/", "glsa-")
-            if adv := re.search(ADVISORY_REGEX, url):
-                system_name = (
-                    (adv["org"].capitalize() + " Advisory")
-                    .replace("Redhat", "Red Hat")
-                    .replace("Zerodayinitiative", "Zero Day Initiative")
-                    .replace("Github", "GitHub")
-                    .replace("Netapp", "NetApp")
-                    .replace("Npmjs", "NPM")
-                    .replace("Alpinelinux", "Alpine Linux")
-                )
-                ids.append({"system_name": system_name, "text": adv["id"]})
-                summary = system_name
-        elif issue := re.search(ISSUES_REGEX, url):
-            summary = (
-                issue["host"].capitalize().replace("Github", "GitHub")
-                + " Issue"
-            )
-            ids.append(
-                {
-                    "system_name": summary
-                    + (
-                        f" [{issue['owner']}/{issue['repo']}]"
-                        if issue["owner"] != "p"
-                        else f" [{issue['repo']}]"
-                    ),
-                    "text": issue["id"],
-                }
-            )
-        elif bugzilla := re.search(BUGZILLA_REGEX, url):
-            system_name = f"{bugzilla['owner'].capitalize()} Bugzilla"
-            system_name = system_name.replace("Redhat", "Red Hat")
-            ids.append(
-                {"system_name": f"{system_name} ID", "text": bugzilla["id"]}
-            )
-            summary = system_name
-        elif usn := re.search(USN_REGEX, url):
-            ids.append({"system_name": summary, "text": f"USN-{usn[0]}"})
-        refs.append({"summary": summary, "url": url})
+    # id_types = ["Advisory", "Issue", "Bugzilla"]
+    # parse = [i for i in advisories if i.get("summary")]
+    refs = [i for i in references if i.get("source")]
+    # for reference in parse:
+    id_types = {"issues", "pull", "commit", "release"}
+    for r in refs:
+        ref_id = r.get("id")
+        system_name = r["source"]["name"]
+        if "bugzilla" in ref_id or "gist" in ref_id:
+            ref_id = ref_id.split("bugzilla-")[-1]
+            ids.append({"system_name": system_name, "text": ref_id})
+        elif any((i in ref_id for i in id_types)):
+            ref_id = ref_id.split("-")[-1]
+            ids.append({"system_name": system_name, "text": ref_id})
+        elif "Advisory" in system_name:
+            ids.append({"system_name": system_name, "text": ref_id})
+            system_name += f" {ref_id}"
+        fmt_refs.append({"summary": system_name, "url": r["source"]["url"]})
     new_ids = {(idx["system_name"], idx["text"]) for idx in ids}
     ids = [{"system_name": idx[0], "text": idx[1]} for idx in new_ids]
     ids = sorted(ids, key=lambda x: x["text"])
-    return ids, refs
+    return ids, fmt_refs
 
 
 def get_ref_summary(url, patterns):
@@ -317,14 +283,26 @@ def get_ref_summary(url, patterns):
 def get_ref_summary_helper(url, patterns):
     lower_url = url.lower()
     if any(("github.com" in lower_url, "bitbucket.org" in lower_url, "chromium" in lower_url)) and "advisory" not in lower_url and "advisories" not in lower_url:
-        if "issues" in lower_url:
-            return get_ref_summary(url, patterns["generic"])
-        if "github" in lower_url:
-            return get_ref_summary(url, patterns["github"])
-        if "bitbucket" in lower_url:
-            return get_ref_summary(url, patterns["bitbucket"])
-    return get_ref_summary(url, patterns["other"])
-
+        value, match = get_ref_summary(url, patterns["repo_hosts"])
+        if match:
+            if value == "Generic":
+                return ((f"{match['host']}-{match['type']}-{match['user']}-{match['repo']}-"
+                        f"{match['id']}").replace("[p/", "["),
+                        match, f"{format_system_name(match['host'])} {match['type'].capitalize()} "
+                               f"[{match['user']}/{match['repo']}]".replace("[p/", "["))
+            if value == "GitHub Blob":
+                return f"github-blob-{match['user']}/{match['repo']}-{match['file']}@{match['ref']}", match, f"GitHub Blob [{match['user']}/{match['repo']}]"
+            if value == "GitHub Gist":
+                return f"github-gist-{match['user']}-{match['id']}", match, f"GitHub Gist [{match['user']}]"
+        return value, match, ""
+    value, match = get_ref_summary(url, patterns["other"])
+    if value == "Advisory":
+        return value, match, f"{format_system_name(match['org'])} Advisory"
+    elif "VulDB" in value:
+        return f"vuldb-{match['id']}", match, value
+    elif "Snyk" in value:
+        return f"{match['id']}", match, value
+    return value, match, value
 
 
 def parse_revision_history(tracking):

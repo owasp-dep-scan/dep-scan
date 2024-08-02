@@ -464,15 +464,182 @@ def render_template_report(
         outfile.write(report_result)
 
 
-def get_description(data: Description) -> Tuple[str, str]:
+def get_description_detail(data: Description | str) -> Tuple[str, str]:
     if not data:
         return "", ""
-    data = data.root[0]
+    if not isinstance(data, str) and data.root:
+        data = data.root[0].value
     description = ""
-    detail = data.value or ""
+    detail = data or ""
     if detail and "\\n" in detail:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
+    detail = detail.replace("\n", " ").replace("\t", " ")
     description = description.lstrip("# ")
     return description, detail
+
+
+def format_system_name(system_name):
+    system_name = (
+        system_name.capitalize()
+        .replace("Redhat", "Red Hat")
+        .replace("Zerodayinitiative", "Zero Day Initiative")
+        .replace("Github", "GitHub")
+        .replace("Netapp", "NetApp")
+        .replace("Npmjs", "NPM")
+        .replace("Alpinelinux", "Alpine Linux"))
+    return system_name
+
+
+def combine_vdrs(v1, v2):
+    v3 = {
+        "affects": combine_affects(v1.get("affects", []), v2.get("affects", [])),
+        "recommendation": v1.get("recommendation", "") or v2.get("recommendation", ""),
+        "cwes": list(set(v1["cwes"] + v2["cwes"])),
+        "references": combine_references(v1.get("references", []), v2.get("references", [])),
+    }
+    return v1
+
+
+def combine_affects(v1, v2):
+    affects = {}
+    seen_refs = set()
+    if not v1 or not v2:
+        return v1 or v2
+    for i in v1 + v2:
+        ref = i.get("ref", "")
+        for j in i.get("versions", []):
+            vers = j.get("version", "") or j.get("range", "")
+            status = j.get("status", "")
+            seen_id = f"{ref}/{vers}/{status}"
+            if seen_id not in seen_refs:
+                if ref not in seen_refs:
+                    affects[ref] = i
+                    seen_refs.add(ref)
+                else:
+                    affects[ref]["versions"].append(j)
+                seen_refs.add(seen_id)
+    affects = list(affects.values())
+    return affects
+
+
+def combine_references(v1, v2):
+    if not v1 or not v2:
+        return v1 or v2
+    seen_urls = set()
+    v3 = []
+    for i in v1 + v2:
+        url = i.get("url", "")
+        if url not in seen_urls:
+            v3.append(i)
+            seen_urls.add(url)
+    return v3
+
+
+def combine_advisories(v1, v2):
+    if not v1 or not v2:
+        return v1 or v2
+    seen_adv = set()
+    v3 = []
+    for i in v1 + v2:
+        url = i.get("url", "")
+        if url not in seen_adv:
+            v3.append(i)
+            seen_adv.add(url)
+    return v3
+
+
+def consolidate_vdrs(bom_data):
+    vdrs = bom_data.get("vulnerabilities", [])
+    consolidated = {}
+    suggested_version_map, purl_to_cve_map, cve_to_purl_map = consolidate(vdrs)
+    for i in vdrs:
+        if i["id"].startswith("CVE-") and int(i["id"][6:8]) in range(12, 19):
+            continue
+        new_bom_ref = f"{i['id']}/{i['partial_purl']}"
+        i["bom-ref"] = new_bom_ref
+        if i["partial_purl"] in suggested_version_map:
+            i["recommendation"] = f"Update to version {suggested_version_map[i['partial_purl']]}."
+        del i["partial_purl"]
+        if new_bom_ref in consolidated:
+            consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), i)
+        else:
+            consolidated[new_bom_ref] = i
+    result = []
+    for k, v in consolidated.items():
+        result.append(v)
+    bom_data["vulnerabilities"] = result
+    return bom_data
+
+
+def consolidate(pkg_vulnerabilities: List[Dict]):
+    # version_map = {}
+    suggested_version_map = {}
+    purl_to_cve_map = {}
+    cve_to_purl_map = {}
+    for i, v in enumerate(pkg_vulnerabilities):
+        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+        if "@" in purl:
+            purl = purl.split("@", 1)[0]
+        pkg_vulnerabilities[i]["partial_purl"] = purl
+        if purl in purl_to_cve_map:
+            purl_to_cve_map[purl].append(v)
+        else:
+            purl_to_cve_map[purl] = [v]
+        if v.get("id") in cve_to_purl_map:
+            cve_to_purl_map[v.get("id")].add(purl)
+        else:
+            cve_to_purl_map[v.get("id")] = {purl}
+        if v.get("recommendation"):
+            for a in v.get("affects"):
+                for j in a.get("versions"):
+                    if j.get("status") == "unaffected":
+                        # if purl in version_map:
+                        #     version_map[purl] = max_version([version_map[purl], j.get("version")])
+                        # else:
+                        #     version_map[purl] = j.get("version")
+                        if "@" in purl:
+                            purl = purl.split("@")[0]
+                        if purl in suggested_version_map:
+                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
+                        else:
+                            suggested_version_map[purl] = j.get("version")
+    # version_map = dict(sorted(version_map.items()))
+    for k, v in cve_to_purl_map.items():
+        cve_to_purl_map[k] = list(v)
+    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
+    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
+    return suggested_version_map, purl_to_cve_map, cve_to_purl_map
+
+
+def use_suggested_versions(pkg_vulnerabilities: List[Dict]):
+    version_map = {}
+    suggested_version_map = {}
+    purl_to_cve_map = {}
+    cve_to_purl_map = {}
+    for i, v in enumerate(pkg_vulnerabilities):
+        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+        if "@" in purl:
+            purl = purl.split("@", 1)[0]
+        pkg_vulnerabilities[i]["partial_purl"] = purl
+        if v.get("recommendation"):
+            for a in v.get("affects"):
+                for j in a.get("versions"):
+                    if j.get("status") == "unaffected":
+                        if purl in version_map:
+                            version_map[purl] = max_version([version_map[purl], j.get("version")])
+                        else:
+                            version_map[purl] = j.get("version")
+                        if "@" in purl:
+                            purl = purl.split("@")[0]
+                        if purl in suggested_version_map:
+                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
+                        else:
+                            suggested_version_map[purl] = j.get("version")
+    version_map = dict(sorted(version_map.items()))
+    for k, v in cve_to_purl_map.items():
+        cve_to_purl_map[k] = list(v)
+    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
+    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
+    return version_map, suggested_version_map, purl_to_cve_map, cve_to_purl_map
