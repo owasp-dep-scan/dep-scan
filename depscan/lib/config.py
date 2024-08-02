@@ -600,44 +600,29 @@ RUBY_PLATFORM_MARKERS = [
 NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
 
 REFERENCE_REGEXES = {
-    "github": {
-        r"github.com/[\w\-.]+/[\w\-.]+/pull/\d+": "GitHub Pull Request",
-        r"github.com/[\w\-.]+/[\w\-.]+/release": "GitHub Repository Release",
-        r"github.com/[\w\-.]+/[\w\-.]+/blob": "GitHub Blob Reference",
-        r"github.com/[\w\-.]+/[\w\-.]+/commit": "GitHub Commit",
-        r"github.com/[\w\-.]+/[\w\-.]+/?$": "GitHub Repository",
-        "gist.github.com": "GitHub Gist",
-        r"github.com/": "GitHub Other",
-    },
-    "bitbucket": {
-        r"bitbucket.org/[^\s/]+/[^\s/]+/?(?!.)$": "Bitbucket Repository",
-        r"bitbucket.org/[^\s/]+/[^\s/]+/commits": "Bitbucket Commit",
-        # r"bitbucket.org/[^\s/]+/[^\s/]+/issues/\d+(/)?": "Bitbucket Issue",
-        r"bitbucket.org/[^\s/]+/[^\s/]+/wiki/": "Bitbucket Wiki Entry",
-        r"bitbucket.org/": "Bitbucket Other",
-    },
-    "generic": {
-        r"(github|bitbucket|chromium)(?:.com|.org)/([\w\-.]+)/([\w\-.]+)/issues/("
-        r"?:detail\?id=)?(\d+)": "Issue"
+    "repo_hosts": {
+        r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<user>[\w\-.]+)/(?P<repo>[\w\-.]+)/(?P<type>pull|commit|commits|release|issues)(?:/detail\?id=)?(?:s/tag)?/?(?P<id>\S+)": "Generic",
+        r"github.com/(?P<user>[\w\-.]+)/(?P<repo>[\w\-.]+)/blob/(?P<ref>\S+)/(?P<file>\S+)": "GitHub Blob",
+        r"gist.github.com/(?P<user>[\w\-.]+)/(?P<id>\S+)": "GitHub Gist",
     },
     "other": {
-        r"lists.[\w\-]+.org/": "Mailing List",
-        "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
-        r"(?<=bugzilla.)\S+(?=.\w{3}/show_bug.cgi\?)": "Bugzilla",
+        # r"lists.[\w\-]+.org/": "Mailing List",
+        # "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
+        r"(?<=bugzilla.)(?P<org>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)": "Bugzilla",
         r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
         r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
         "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
-        r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
-        "security.snyk.io/vuln|https://snyk.io/vuln/": "Snyk Vulnerability Database Entry",
-        "blog": "Blog Post",
-        r"https://vuldb.com/\?id.\d+": "VulDB Entry",
-        "oss-fuzz": "OSS-Fuzz",
-        "cwe.mitre.org": "CWE Record",
-        "/(community|forum|discuss)": "Forum",
-        "bugs.|chat.": "Issue",
+        # r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
+        r"snyk.io/vuln/(?P<id>\S+)": "Snyk Vulnerability Database Entry",
+        # "blog": "Blog Post",
+        r"https://vuldb.com/\?id.(?P<id>\d+)": "VulDB Entry",
+        # "oss-fuzz": "OSS-Fuzz",
+        # "cwe.mitre.org/data/definitions/(?P<id>\d+).html": "CWE Definition",
+        # "/(community|forum|discuss)": "Forum",
+        # "bugs.|chat.": "Issue",
         "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
-        "wordpress|wpvulndb": "WordPress",
-        "chrome.google.com/webstore": "Chrome Extension",
+        # "wordpress|wpvulndb": "WordPress",
+        # "chrome.google.com/webstore": "Chrome Extension",
     }
 }
 
@@ -1684,24 +1669,4 @@ CWE_MAP = {
     1395: 'Dependency on Vulnerable Third-Party Component'
 }
 
-ISSUES_REGEX = re.compile(
-    r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<owner>["
-    r"\w\-.]+)/(?P<repo>[\w\-.]+)/issues/(?:detail\?id=)?(?P<id>\d+)",
-    re.IGNORECASE,
-)
 
-ADVISORY_REGEX = re.compile(
-    r"(?P<org>[^\s/.]+).(?:com|org)/(?:\S+/)*/?(?P<id>[\w\-:]+)",
-    re.IGNORECASE,
-)
-
-BUGZILLA_REGEX = re.compile(
-    r"(?<=bugzilla.)(?P<owner>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)",
-    re.IGNORECASE,
-)
-
-USN_REGEX = re.compile(
-    r"(?<=usn.ubuntu.com/)[\d\-]+|(?<=ubuntu.com/security/notices/USN-)"
-    r"[\d\-]+",
-    re.IGNORECASE,
-)
