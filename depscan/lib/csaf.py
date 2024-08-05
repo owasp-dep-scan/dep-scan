@@ -5,6 +5,8 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 from json import JSONDecodeError
+from re import Pattern
+from typing import List, Dict, Tuple
 
 import cvss
 import toml
@@ -54,7 +56,7 @@ def vdr_to_csaf(res):
         vuln["cve"] = cve
     vuln["cwe"] = cwe
     vuln["acknowledgements"] = acknowledgements
-    vuln["discovery_date"] = str(discovery_date) if discovery_date else None
+    vuln["discovery_date"] = discovery_date
     vuln["product_status"] = product_status
     vuln["references"] = references
     vuln["ids"] = ids
@@ -92,7 +94,6 @@ def get_products(affects, props):
     products = set()
     for i in affects:
         for v in i.get("versions", []):
-            purl = None
             try:
                 purl = PackageURL.from_string(i.get("ref", ""))
                 namespace = purl.namespace
@@ -110,12 +111,12 @@ def get_products(affects, props):
                 fixed.append(f'{namespace}/{pkg_name}@{v.get("version")}')
             elif not purl and v.get("status") == "affected":
                 known_affected.append(i.get("ref"))
-        product = ''
+        product = ""
         try:
             purl = PackageURL.from_string(i.get("ref", ""))
             if purl.namespace:
-                product += f'{purl.namespace}/'
-            product += f'{purl.name}@{purl.version}'
+                product += f"{purl.namespace}/"
+            product += f"{purl.name}@{purl.version}"
         except ValueError:
             product = i.get("ref", "")
         products.add(product)
@@ -192,7 +193,7 @@ def parse_cwe(cwe):
     return fmt_cwe, new_notes
 
 
-def parse_cvss(ratings):
+def parse_cvss(ratings: List[Dict]) -> Dict:
     """
     Parses the CVSS information from pkg_vulnerabilities
 
@@ -211,47 +212,39 @@ def parse_cvss(ratings):
         cvss_v3.check_mandatory()
     except (CVSSError, ValueError):
         return {}
-
     cvss_v3_dict = cvss_v3.as_json()
-
     cvss_v3 = {k: v for k, v in cvss_v3_dict.items() if v != "NOT_DEFINED"}
-
     return cleanup_dict(cvss_v3)
 
 
-def format_references(references):
+def format_references(references: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
     """
-    Formats the advisories as references.
+    Parses VDR references and outputs CSAF formatted objects.
 
-    :param advisories: List of dictionaries of advisories online
-    :type advisories: list
+    :param references: List of dictionaries of vulnerability references
+    :type references: list
 
-    :return: A list of dictionaries with the formatted references.
-    :rtype: Tuple
+    :return: lists of csaf ids and references
+    :rtype: tuple[list[dict], list[dict]]
     """
     if not references:
         return [], []
-    # ref = [i["source"]["url"] for i in advisories]
     fmt_refs = []
     ids = []
-    # id_types = ["Advisory", "Issue", "Bugzilla"]
-    # parse = [i for i in advisories if i.get("summary")]
     refs = [i for i in references if i.get("source")]
-    # for reference in parse:
     id_types = {"issues", "pull", "commit", "release"}
     for r in refs:
         ref_id = r.get("id")
         system_name = r["source"]["name"]
         if "bugzilla" in ref_id or "gist" in ref_id:
-            ref_id = ref_id.split("bugzilla-")[-1]
-            ids.append({"system_name": system_name, "text": ref_id})
+            ids.append({"system_name": system_name, "text": ref_id.split("bugzilla-")[-1]})
         elif any((i in ref_id for i in id_types)):
-            ref_id = ref_id.split("-")[-1]
-            ids.append({"system_name": system_name, "text": ref_id})
+            ids.append({"system_name": system_name, "text": ref_id.split("-")[-1]})
         elif "Advisory" in system_name:
             ids.append({"system_name": system_name, "text": ref_id})
             system_name += f" {ref_id}"
         fmt_refs.append({"summary": system_name, "url": r["source"]["url"]})
+    # remove duplicates
     new_ids = {(idx["system_name"], idx["text"]) for idx in ids}
     ids = [{"system_name": idx[0], "text": idx[1]} for idx in new_ids]
     ids = sorted(ids, key=lambda x: x["text"])
@@ -265,6 +258,9 @@ def get_ref_summary(url, patterns):
     :param url: The URL to match against the patterns in the REF_MAP.
     :type url: str
 
+    :param patterns: Regex patterns to match against the URL
+    :type patterns: dict
+
     :return: The summary string corresponding to the matched pattern in REF_MAP.
     :rtype: str
 
@@ -272,11 +268,9 @@ def get_ref_summary(url, patterns):
     """
     if not isinstance(url, str):
         raise TypeError("url must be a string")
-
     for pattern, value in patterns.items():
         if match := pattern.search(url):
             return value, match
-
     return "Other", None
 
 
@@ -725,7 +719,7 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
     for r in pkg_vulnerabilities:
         new_vuln = vdr_to_csaf(r)
         if sev := new_vuln["scores"][0]["cvss_v3"].get("baseSeverity"):
-            agg_score.add(SEVERITY_REF.get(sev))
+            agg_score.add(SEVERITY_REF.get(sev.lower()))
         new_results["vulnerabilities"].append(new_vuln)
     if agg_score := list(agg_score):
         agg_score.sort()

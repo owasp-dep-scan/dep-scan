@@ -635,12 +635,12 @@ REF_MAP = {
 }
 
 SEVERITY_REF = {
-    "CRITICAL": 1,
-    "HIGH": 2,
-    "MEDIUM": 3,
-    "LOW": 4,
-    "UNKNOWN": 5,
-    "NONE": 6,
+    "critical": 1,
+    "high": 2,
+    "medium": 3,
+    "low": 4,
+    "unknown": 5,
+    "none": 6,
 }
 
 TIME_FMT = "%Y-%m-%dT%H:%M:%S"
@@ -1668,5 +1668,7 @@ CWE_MAP = {
     1394: 'Use of Default Cryptographic Key',
     1395: 'Dependency on Vulnerable Third-Party Component'
 }
+
+VERSION_RANGE = re.compile(r"vers:\S+/(?P<lower_comparator>[><=]{1,2})(?P<lower_version>\S+)\|(?P<upper_comparator>[><=]{1,2})(?P<upper_version>\S+)")
 
 

@@ -47,6 +47,7 @@ scan = "depscan.cli:main"
 
 [project.optional-dependencies]
 dev = ["black",
+    "custom-json-diff~=1.5.6",
     "flake8",
     "pytest",
     "pytest-cov",
