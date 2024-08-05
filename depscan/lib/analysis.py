@@ -23,6 +23,7 @@ from vdb.lib.cve_model import ProblemType, CVE, Reference
 from vdb.lib.utils import parse_purl, parse_cpe
 
 from depscan.lib import config
+from depscan.lib.config import SEVERITY_REF
 from depscan.lib.csaf import get_ref_summary_helper
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import max_version, get_description_detail, format_system_name
@@ -610,14 +611,7 @@ def cvss_to_vdr_rating(vuln_occ_dict):
     cvss_score = vuln_occ_dict.get("cvss_score", 2.0)
     with contextlib.suppress(ValueError, TypeError):
         cvss_score = float(cvss_score)
-    if (pkg_severity := vuln_occ_dict.get("severity", "").lower()) not in (
-        "critical",
-        "high",
-        "medium",
-        "low",
-        "info",
-        "none",
-    ):
+    if (pkg_severity := vuln_occ_dict.get("severity", "").lower()) not in SEVERITY_REF:
         pkg_severity = "unknown"
     ratings = [
         {
@@ -1901,7 +1895,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
             versions.append(
                 {"version": fixed_location, "status": "unaffected"}
             )
-            recommendation = f"Update to {fixed_location} or later"
+            recommendation = f"Update to version {fixed_location}."
         affects = [{"ref": purl, "versions": versions}]
         analysis = {}
         if clinks.get("exploit"):
@@ -1936,23 +1930,23 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
         advisories = []
         for k, v in clinks.items():
             advisories.append({"title": k, "url": v})
+        description, detail = get_description_detail(vuln_occ_dict.get("short_description", ""))
         vuln = {
-            "bom-ref": f"{vid}/{purl}",
-            "id": vid,
-            "source": source,
-            "ratings": ratings,
-            "cwes": cwes,
-            "description": vuln_occ_dict.get("short_description"),
-            "recommendation": recommendation,
             "advisories": advisories,
-            "analysis": analysis,
             "affects": affects,
+            "analysis": analysis,
+            "bom-ref": f"{vid}/{purl}",
+            "cwes": cwes,
+            "description": description,
+            "detail": detail,
+            "id": vid,
             "properties": properties,
+            "published": vuln_occ_dict.get("source_orig_time", ""),
+            "ratings": ratings,
+            "recommendation": recommendation,
+            "source": source,
+            "updated": vuln_occ_dict.get("source_update_time", "")
         }
-        if source_orig_time := vuln_occ_dict.get("source_orig_time"):
-            vuln["published"] = source_orig_time
-        if source_update_time := vuln_occ_dict.get("source_update_time"):
-            vuln["updated"] = source_update_time
         pkg_vulnerabilities.append(vuln)
     return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
 

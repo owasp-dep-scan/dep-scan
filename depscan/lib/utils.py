@@ -14,7 +14,7 @@ from vdb.lib.search import search_by_purl_like
 from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
-
+from depscan.lib.config import TIME_FMT
 
 lic_symbol_regex = re.compile(r"[(),]")
 
@@ -464,6 +464,18 @@ def render_template_report(
         outfile.write(report_result)
 
 
+def format_system_name(system_name):
+    system_name = (
+        system_name.capitalize()
+        .replace("Redhat", "Red Hat")
+        .replace("Zerodayinitiative", "Zero Day Initiative")
+        .replace("Github", "GitHub")
+        .replace("Netapp", "NetApp")
+        .replace("Npmjs", "NPM")
+        .replace("Alpinelinux", "Alpine Linux"))
+    return system_name
+
+
 def get_description_detail(data: Description | str) -> Tuple[str, str]:
     if not data:
         return "", ""
@@ -480,61 +492,19 @@ def get_description_detail(data: Description | str) -> Tuple[str, str]:
     return description, detail
 
 
-def format_system_name(system_name):
-    system_name = (
-        system_name.capitalize()
-        .replace("Redhat", "Red Hat")
-        .replace("Zerodayinitiative", "Zero Day Initiative")
-        .replace("Github", "GitHub")
-        .replace("Netapp", "NetApp")
-        .replace("Npmjs", "NPM")
-        .replace("Alpinelinux", "Alpine Linux"))
-    return system_name
-
-
-def combine_vdrs(v1, v2):
-    v3 = {
-        "affects": combine_affects(v1.get("affects", []), v2.get("affects", [])),
-        "recommendation": v1.get("recommendation", "") or v2.get("recommendation", ""),
-        "cwes": list(set(v1["cwes"] + v2["cwes"])),
-        "references": combine_references(v1.get("references", []), v2.get("references", [])),
-    }
-    return v1
-
-
-def combine_affects(v1, v2):
-    affects = {}
-    seen_refs = set()
-    if not v1 or not v2:
-        return v1 or v2
-    for i in v1 + v2:
-        ref = i.get("ref", "")
-        for j in i.get("versions", []):
-            vers = j.get("version", "") or j.get("range", "")
-            status = j.get("status", "")
-            seen_id = f"{ref}/{vers}/{status}"
-            if seen_id not in seen_refs:
-                if ref not in seen_refs:
-                    affects[ref] = i
-                    seen_refs.add(ref)
-                else:
-                    affects[ref]["versions"].append(j)
-                seen_refs.add(seen_id)
-    affects = list(affects.values())
-    return affects
-
-
-def combine_references(v1, v2):
-    if not v1 or not v2:
-        return v1 or v2
-    seen_urls = set()
-    v3 = []
-    for i in v1 + v2:
-        url = i.get("url", "")
-        if url not in seen_urls:
-            v3.append(i)
-            seen_urls.add(url)
-    return v3
+def choose_date(d1, d2, choice):
+    if not d1 or not d2 or choice not in {"max", "min"}:
+        return d1 or d2
+    try:
+        d1 = datetime.fromisoformat(d1)
+        d2 = datetime.fromisoformat(d2)
+        d3 = max(d1, d2) if choice == "max" else min(d1, d2)
+        return d3.strftime(TIME_FMT)
+    except ValueError:
+        return d1 or d2
+    except TypeError:
+        d3 = max(d1.date(), d2.date()) if choice == "max" else min(d1.date(), d2.date())
+        return d3.strftime(TIME_FMT)
 
 
 def combine_advisories(v1, v2):
@@ -550,27 +520,72 @@ def combine_advisories(v1, v2):
     return v3
 
 
-def consolidate_vdrs(bom_data):
-    vdrs = bom_data.get("vulnerabilities", [])
-    consolidated = {}
-    suggested_version_map, purl_to_cve_map, cve_to_purl_map = consolidate(vdrs)
-    for i in vdrs:
-        if i["id"].startswith("CVE-") and int(i["id"][6:8]) in range(12, 19):
-            continue
-        new_bom_ref = f"{i['id']}/{i['partial_purl']}"
-        i["bom-ref"] = new_bom_ref
-        if i["partial_purl"] in suggested_version_map:
-            i["recommendation"] = f"Update to version {suggested_version_map[i['partial_purl']]}."
-        del i["partial_purl"]
-        if new_bom_ref in consolidated:
-            consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), i)
-        else:
-            consolidated[new_bom_ref] = i
-    result = []
-    for k, v in consolidated.items():
-        result.append(v)
-    bom_data["vulnerabilities"] = result
-    return bom_data
+def combine_affects(v1, v2):
+    affects = {}
+    seen_refs = set()
+    if not v1 or not v2:
+        return v1 or v2
+    v1.extend(v2)
+    for i in v1:
+        ref = i.get("ref", "")
+        for vers in i.get("versions", []):
+            version = vers.get("version", "") or vers.get("range", "")
+            status = vers.get("status", "")
+            vers_ref = f"{ref}/{version}/{status}"
+            if vers_ref not in seen_refs:
+                if ref in affects:
+                    affects[ref]["versions"].append(vers)
+                else:
+                    affects[ref] = {"ref": ref, "versions": [vers]}
+                seen_refs.add(vers_ref)
+    return list(affects.values())
+
+
+def combine_generic(v1, v2, keys):
+    """Combines two lists of flat dicts"""
+    if not v1 or not v2:
+        return v1 or v2
+    seen_keys = set()
+    v3 = []
+    for i in v1 + v2:
+        seen_id = "".join([str(i.get(k, '')) for k in keys])
+        if seen_id not in seen_keys:
+            v3.append(i)
+            seen_keys.add(seen_id)
+    return v3
+
+
+def combine_references(v1, v2):
+    if not v1 or not v2:
+        return v1 or v2
+    seen_urls = set()
+    v3 = []
+    for i in v1 + v2:
+        url = i.get("url", "")
+        if url not in seen_urls:
+            v3.append(i)
+            seen_urls.add(url)
+    return v3
+
+
+def combine_vdrs(v1, v2):
+    return {
+        "advisories": combine_advisories(v1.get("advisories", []), v2.get("advisories", [])),
+        "affects": combine_affects(v1.get("affects", []), v2.get("affects", [])),
+        "analysis": v1.get("analysis", "") or v2.get("analysis", ""),
+        "bom-ref": v1.get("bom-ref"),
+        "cwes": list(set(v1["cwes"] + v2["cwes"])),
+        "detail": v1.get("detail", "") or v2.get("detail", ""),
+        "description": v1.get("description", "") or v2.get("description", ""),
+        "id": v1.get("id"),
+        "properties": combine_generic(v1.get("properties", []), v2.get("properties", []), ["name", "value"]),
+        "published": choose_date(v1.get("published"), v2.get("published"), "min"),
+        "ratings": combine_generic(v1.get("ratings", []), v2.get("ratings", []), ["method", "score", "severity", "vector"]),
+        "recommendation": v1.get("recommendation", "") or v2.get("recommendation", ""),
+        "references": combine_references(v1.get("references", []), v2.get("references", [])),
+        "source": v1.get("source", "") or v2.get("source", ""),
+        "updated": choose_date(v1.get("updated"), v2.get("updated"), "max"),
+    }
 
 
 def consolidate(pkg_vulnerabilities: List[Dict]):
@@ -611,6 +626,29 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
     purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
     cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
     return suggested_version_map, purl_to_cve_map, cve_to_purl_map
+
+
+def consolidate_vdrs(bom_data):
+    vdrs = bom_data.get("vulnerabilities", [])
+    consolidated = {}
+    suggested_version_map, purl_to_cve_map, cve_to_purl_map = consolidate(vdrs)
+    for i in vdrs:
+        if i["id"].startswith("CVE-") and int(i["id"][6:8]) in range(12, 19):
+            continue
+        new_bom_ref = f"{i['id']}/{i['partial_purl']}"
+        i["bom-ref"] = new_bom_ref
+        if i["partial_purl"] in suggested_version_map:
+            i["recommendation"] = f"Update to version {suggested_version_map[i['partial_purl']]}."
+        del i["partial_purl"]
+        if new_bom_ref in consolidated:
+            consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), i)
+        else:
+            consolidated[new_bom_ref] = i
+    result = []
+    for k, v in consolidated.items():
+        result.append(v)
+    bom_data["vulnerabilities"] = result
+    return bom_data
 
 
 def use_suggested_versions(pkg_vulnerabilities: List[Dict]):
