@@ -18,7 +18,6 @@ from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
-from vdb.lib.search import search_by_cdx_bom
 
 from depscan.lib import explainer, github, utils
 from depscan.lib.analysis import (
@@ -27,7 +26,7 @@ from depscan.lib.analysis import (
     analyse_pkg_risks,
     find_purl_usages,
     prepare_vdr,
-    summary_stats,
+    summary_stats, suggest_version,
 )
 from depscan.lib.utils import consolidate
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
@@ -312,11 +311,10 @@ def build_args():
     return parser.parse_args()
 
 
-def scan(project_type, pkg_list, suggest_mode, bom_file=None):
+def scan(project_type, pkg_list, suggest_mode):
     """
     Method to search packages in our vulnerability database
 
-    :param db: Reference to db
     :param project_type: Project Type
     :param pkg_list: List of packages
     :param suggest_mode: True if package fix version should be normalized across
@@ -330,42 +328,42 @@ def scan(project_type, pkg_list, suggest_mode, bom_file=None):
         LOG.debug("Empty package search attempted!")
     else:
         LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-    if not suggest_mode and bom_file:
-        return search_by_cdx_bom(bom_file)
+    # if not suggest_mode and bom_file:
+    #     results = (search_by_cdx_bom(bom_file))
     # pkg_aliases is a dict that can be used to find the original vendor and
     # package name This way we consistently use the same names used by the
     # caller irrespective of how the result was obtained
     sug_version_dict = {}
     results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
     if suggest_mode:
-        results = consolidate(results)
-        # # From the results identify optimal max version
-        # sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
-        # if sug_version_dict:
-        #     LOG.debug(
-        #         "Adjusting fix version based on the initial suggestion %s",
-        #         sug_version_dict,
-        #     )
-        #     # Recheck packages
-        #     sug_pkg_list = []
-        #     for k, v in sug_version_dict.items():
-        #         if not v:
-        #             continue
-        #         sug, aliases = process_suggestions(k, v)
-        #         if sug:
-        #             sug_pkg_list.extend(sug)
-        #         if aliases:
-        #             pkg_aliases |= aliases
-        #     LOG.debug(
-        #         "Re-checking our suggestion to ensure there are no further "
-        #         "vulnerabilities"
-        #     )
-        #     override_results, _, _ = utils.search_pkgs(project_type, sug_pkg_list)
-        #     if override_results:
-        #         new_sug_dict = suggest_version(override_results)
-        #         LOG.debug("Received override results: %s", new_sug_dict)
-        #         for nk, nv in new_sug_dict.items():
-        #             sug_version_dict[nk] = nv
+        # From the results identify optimal max version
+        sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
+        if sug_version_dict:
+            LOG.debug(
+                "Adjusting fix version based on the initial suggestion %s",
+                sug_version_dict,
+            )
+            # Recheck packages
+            sug_pkg_list = []
+            for k, v in sug_version_dict.items():
+                if not v:
+                    continue
+                sug, aliases = process_suggestions(k, v)
+                if sug:
+                    sug_pkg_list.extend(sug)
+                if aliases:
+                    pkg_aliases |= aliases
+            LOG.debug(
+                "Re-checking our suggestion to ensure there are no further "
+                "vulnerabilities"
+            )
+            override_results, _, _ = utils.search_pkgs(project_type, sug_pkg_list)
+            if override_results:
+                new_sug_dict = suggest_version(override_results)
+                LOG.debug("Received override results: %s", new_sug_dict)
+                for nk, nv in new_sug_dict.items():
+                    sug_version_dict[nk] = nv
+    results = consolidate(results)
     return results, pkg_aliases, sug_version_dict, purl_aliases
 
 
@@ -469,7 +467,7 @@ def summarise(
         except json.JSONDecodeError:
             LOG.warning("Unable to generate VDR file for this scan")
     summary = summary_stats(pkg_vulnerabilities)
-    return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
+    return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows, options
 
 
 def summarise_tools(tools, metadata, bom_data):
@@ -1086,7 +1084,7 @@ def main():
             bom_file, src_dir, args.reachables_slices_file
         )
         # Summarise and print results
-        summary, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
+        summary, vdr_file, pkg_vulnerabilities, sug_version_dict, pkg_group_rows = summarise(
             project_type,
             results,
             pkg_aliases,
