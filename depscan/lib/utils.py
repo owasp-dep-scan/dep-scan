@@ -594,19 +594,19 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
     purl_to_cve_map = {}
     cve_to_purl_map = {}
     for i, v in enumerate(pkg_vulnerabilities):
-        if not (purl := v.get("purl_prefix")):
-            purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+        if not (purl_prefix := v.get("purl_prefix")):
             if "@" in purl:
-                purl = purl.split("@", 1)[0]
-            pkg_vulnerabilities[i]["purl_prefix"] = purl
+                purl_prefix = purl.split("@", 1)[0]
+            pkg_vulnerabilities[i]["purl_prefix"] = purl_prefix
         if purl in purl_to_cve_map:
-            purl_to_cve_map[purl].append(v)
+            purl_to_cve_map[purl_prefix].append(v)
         else:
-            purl_to_cve_map[purl] = [v]
+            purl_to_cve_map[purl_prefix] = [v]
         if v.get("id") in cve_to_purl_map:
-            cve_to_purl_map[v.get("id")].add(purl)
+            cve_to_purl_map[v.get("id")].add(purl_prefix)
         else:
-            cve_to_purl_map[v.get("id")] = {purl}
+            cve_to_purl_map[v.get("id")] = {purl_prefix}
         if v.get("recommendation"):
             for a in v.get("affects"):
                 for j in a.get("versions"):
@@ -615,41 +615,37 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
                         #     version_map[purl] = max_version([version_map[purl], j.get("version")])
                         # else:
                         #     version_map[purl] = j.get("version")
-                        if "@" in purl:
-                            purl = purl.split("@")[0]
-                        if purl in suggested_version_map:
-                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
+                        if purl_prefix in suggested_version_map:
+                            suggested_version_map[purl_prefix] = max_version([suggested_version_map[purl_prefix], j.get("version")])
                         else:
-                            suggested_version_map[purl] = j.get("version")
+                            suggested_version_map[purl_prefix] = j.get("version")
     # version_map = dict(sorted(version_map.items()))
     for k, v in cve_to_purl_map.items():
         cve_to_purl_map[k] = list(v)
     purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
     cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
-    return suggested_version_map, purl_to_cve_map, cve_to_purl_map
+    return suggested_version_map, purl_to_cve_map, cve_to_purl_map, pkg_vulnerabilities
 
 
-def consolidate_vdrs(bom_data):
-    vdrs = bom_data.get("vulnerabilities", [])
+def consolidate_vdrs(vdrs):
     consolidated = {}
-    suggested_version_map, purl_to_cve_map, cve_to_purl_map = consolidate(vdrs)
-    for i in vdrs:
-        if i["id"].startswith("CVE-") and int(i["id"][6:8]) in range(12, 19):
+    suggested_version_map, purl_to_cve_map, cve_to_purl_map, vdrs = consolidate(vdrs)
+    for v in vdrs:
+        if v["id"].startswith("CVE-") and int(v["id"][6:8]) in range(12, 19):
             continue
-        new_bom_ref = f"{i['id']}/{i['purl_prefix']}"
-        i["bom-ref"] = new_bom_ref
-        if i["purl_prefix"] in suggested_version_map:
-            i["recommendation"] = f"Update to version {suggested_version_map[i['purl_prefix']]}."
-        del i["purl_prefix"]
+        new_bom_ref = f"{v['id']}/{v['purl_prefix']}"
+        v["bom-ref"] = new_bom_ref
+        if v["purl_prefix"] in suggested_version_map:
+            v["recommendation"] = f"Update to version {suggested_version_map[v['purl_prefix']]}."
+        del v["purl_prefix"]
         if new_bom_ref in consolidated:
-            consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), i)
+            consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), v)
         else:
-            consolidated[new_bom_ref] = i
+            consolidated[new_bom_ref] = v
     result = []
     for k, v in consolidated.items():
         result.append(v)
-    bom_data["vulnerabilities"] = result
-    return bom_data
+    return result
 
 
 def use_suggested_versions(pkg_vulnerabilities: List[Dict]):
