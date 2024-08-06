@@ -28,7 +28,7 @@ from depscan.lib.analysis import (
     prepare_vdr,
     summary_stats, suggest_version,
 )
-from depscan.lib.utils import consolidate
+from depscan.lib.utils import consolidate_vdrs
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
     create_bom,
@@ -458,6 +458,7 @@ def summarise(
     )
     pkg_vulnerabilities, pkg_group_rows = prepare_vdr(options)
     vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
+    pkg_vulnerabilities = consolidate_vdrs(pkg_vulnerabilities)
     if pkg_vulnerabilities and bom_file:
         try:
             with open(bom_file, encoding="utf-8") as fp:
@@ -746,7 +747,6 @@ async def run_scan():
             reached_purls={},
         )
         pkg_vulnerabilities, _ = prepare_vdr(options)
-        pkg_vulnerabilities = consolidate(pkg_vulnerabilities)
         if pkg_vulnerabilities:
             bom_data["vulnerabilities"] = pkg_vulnerabilities
         return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
@@ -1069,11 +1069,18 @@ def main():
                     pass
                 run_cacher = False
         if len(pkg_list) > 1:
-            LOG.info(
-                "Performing regular scan for %s using plugin %s",
-                src_dir,
-                project_type,
-            )
+            if args.bom:
+                LOG.info(
+                    "Performing regular scan for %s using plugin %s",
+                    args.bom,
+                    project_type,
+                )
+            else:
+                LOG.info(
+                    "Performing regular scan for %s using plugin %s",
+                    src_dir,
+                    project_type,
+                )
         vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
             project_type,
             pkg_list,
@@ -1097,7 +1104,6 @@ def main():
             direct_purls=direct_purls,
             reached_purls=reached_purls,
         )
-        pkg_vulnerabilities = consolidate(pkg_vulnerabilities)
         # Explain the results
         if args.explain:
             explainer.explain(

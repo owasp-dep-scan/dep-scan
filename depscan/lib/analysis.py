@@ -1726,7 +1726,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         fixed_location = unaffected.get("version")
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
-        "affects": affects, "recommendation": recommendation, "purl_prefix": f"{vid}/{vuln['purl_prefix']}"
+        "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix']
     }
 
     try:
