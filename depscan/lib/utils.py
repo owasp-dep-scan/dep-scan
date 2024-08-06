@@ -479,7 +479,7 @@ def format_system_name(system_name):
 def get_description_detail(data: Description | str) -> Tuple[str, str]:
     if not data:
         return "", ""
-    if not isinstance(data, str) and data.root:
+    if isinstance(data, Description) and data.root:
         data = data.root[0].value
     description = ""
     detail = data or ""
