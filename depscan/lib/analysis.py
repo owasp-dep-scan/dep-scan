@@ -188,7 +188,7 @@ def pkg_sub_tree(
         return [purl], Tree(
             get_pkg_display(purl, purl, extra_text=extra_text),
             style=Style(
-                color="bright_red" if pkg_severity == "CRITICAL" else None
+                color="bright_red" if pkg_severity.upper() == "CRITICAL" else None
             ),
         )
     if len(bom_dependency_tree) > 1:
@@ -224,7 +224,7 @@ def pkg_sub_tree(
             return pkg_tree, tree
     return pkg_tree, Tree(
         get_pkg_display(purl, purl, extra_text=extra_text),
-        style=Style(color="bright_red" if pkg_severity == "CRITICAL" else None),
+        style=Style(color="bright_red" if pkg_severity.upper() == "CRITICAL" else None),
     )
 
 
@@ -325,6 +325,8 @@ def prepare_vdr(options: PrepareVdrOptions):
         table.add_column(header=h, justify=justify, vertical="top")
     counts = Counts()
     for vuln_occ_dict in options.results:
+        if not vuln_occ_dict:
+            continue
         if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
             counts, pkg_group_rows, pkg_vulnerabilities = process_vuln_occ(
                 bom_dependency_tree, direct_purls, oci_product_types, optional_pkgs, options,
@@ -1482,7 +1484,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
         or project_type_pkg in required_pkgs
     ):
         is_required = True
-    if pkg_severity in ("CRITICAL", "HIGH"):
+    if pkg_severity.upper() in ("CRITICAL", "HIGH"):
         if is_required:
             counts.pkg_attention_count += 1
         if fixed_location:
@@ -1724,7 +1726,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         fixed_location = unaffected.get("version")
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
-        "affects": affects, "recommendation": recommendation
+        "affects": affects, "recommendation": recommendation, "purl_prefix": f"{vid}/{vuln['purl_prefix']}"
     }
 
     try:
@@ -1805,7 +1807,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             plain_insights.append("Has PoC")
         counts.has_poc_count += 1
-        if rating.get("severity") in ("CRITICAL", "HIGH"):
+        if rating.get("severity", "").upper() in ("CRITICAL", "HIGH"):
             pkg_requires_attn = True
             if direct_purls.get(purl):
                 counts.pkg_attention_count += 1
@@ -1895,8 +1897,8 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
             p_rich_tree,
             "\n".join(insights),
             fixed_location,
-            f"""{"[bright_red]" if rating.get("severity", "") == "CRITICAL" else ""}{rating.get("severity", "")}""",
-            f"""{"[bright_red]" if rating.get("severity", "") == "CRITICAL" else ""}{rating.get("score", "")}""",
+            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "")}""",
+            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
         )
         analysis = {}
         if exploits:

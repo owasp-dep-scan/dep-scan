@@ -9,7 +9,7 @@ from importlib.metadata import distribution
 from typing import List, Dict, Any, Tuple
 
 from jinja2 import Environment
-from vdb.lib.cve_model import Description
+from vdb.lib.cve_model import Description, Descriptions
 from vdb.lib.search import search_by_purl_like
 from vdb.lib.utils import version_compare
 
@@ -479,7 +479,7 @@ def format_system_name(system_name):
 def get_description_detail(data: Description | str) -> Tuple[str, str]:
     if not data:
         return "", ""
-    if isinstance(data, Description) and data.root:
+    if isinstance(data, Descriptions) and data.root and isinstance(data.root[0], Description):
         data = data.root[0].value
     description = ""
     detail = data or ""
@@ -594,10 +594,11 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
     purl_to_cve_map = {}
     cve_to_purl_map = {}
     for i, v in enumerate(pkg_vulnerabilities):
-        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
-        if "@" in purl:
-            purl = purl.split("@", 1)[0]
-        pkg_vulnerabilities[i]["partial_purl"] = purl
+        if not (purl := v.get("purl_prefix")):
+            purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
+            if "@" in purl:
+                purl = purl.split("@", 1)[0]
+            pkg_vulnerabilities[i]["purl_prefix"] = purl
         if purl in purl_to_cve_map:
             purl_to_cve_map[purl].append(v)
         else:
@@ -635,11 +636,11 @@ def consolidate_vdrs(bom_data):
     for i in vdrs:
         if i["id"].startswith("CVE-") and int(i["id"][6:8]) in range(12, 19):
             continue
-        new_bom_ref = f"{i['id']}/{i['partial_purl']}"
+        new_bom_ref = f"{i['id']}/{i['purl_prefix']}"
         i["bom-ref"] = new_bom_ref
-        if i["partial_purl"] in suggested_version_map:
-            i["recommendation"] = f"Update to version {suggested_version_map[i['partial_purl']]}."
-        del i["partial_purl"]
+        if i["purl_prefix"] in suggested_version_map:
+            i["recommendation"] = f"Update to version {suggested_version_map[i['purl_prefix']]}."
+        del i["purl_prefix"]
         if new_bom_ref in consolidated:
             consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), i)
         else:

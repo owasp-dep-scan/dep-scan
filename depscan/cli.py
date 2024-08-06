@@ -363,7 +363,6 @@ def scan(project_type, pkg_list, suggest_mode):
                 LOG.debug("Received override results: %s", new_sug_dict)
                 for nk, nv in new_sug_dict.items():
                     sug_version_dict[nk] = nv
-    results = consolidate(results)
     return results, pkg_aliases, sug_version_dict, purl_aliases
 
 
@@ -747,6 +746,7 @@ async def run_scan():
             reached_purls={},
         )
         pkg_vulnerabilities, _ = prepare_vdr(options)
+        pkg_vulnerabilities = consolidate(pkg_vulnerabilities)
         if pkg_vulnerabilities:
             bom_data["vulnerabilities"] = pkg_vulnerabilities
         return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
@@ -1097,6 +1097,7 @@ def main():
             direct_purls=direct_purls,
             reached_purls=reached_purls,
         )
+        pkg_vulnerabilities = consolidate(pkg_vulnerabilities)
         # Explain the results
         if args.explain:
             explainer.explain(
