@@ -606,21 +606,21 @@ REFERENCE_REGEXES = {
         r"gist.github.com/(?P<user>[\w\-.]+)/(?P<id>\S+)": "GitHub Gist",
     },
     "other": {
-        # r"lists.[\w\-]+.org/": "Mailing List",
-        # "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
+        # r"(?<!sec)lists.[\w\-]+.org/": "Mailing List",
+        "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
+        "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
         r"(?<=bugzilla.)(?P<org>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)": "Bugzilla",
         r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
         r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
         "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
         # r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
-        r"snyk.io/vuln/(?P<id>\S+)": "Snyk Vulnerability Database Entry",
+        r"(?P<org>snyk).io/vuln/(?P<id>\S+)": "Advisory",
         # "blog": "Blog Post",
-        r"https://vuldb.com/\?id.(?P<id>\d+)": "VulDB Entry",
+        r"(?P<org>vuldb).com/\?id.(?P<id>\d+)": "Advisory",
         # "oss-fuzz": "OSS-Fuzz",
         # "cwe.mitre.org/data/definitions/(?P<id>\d+).html": "CWE Definition",
         # "/(community|forum|discuss)": "Forum",
         # "bugs.|chat.": "Issue",
-        "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
         # "wordpress|wpvulndb": "WordPress",
         # "chrome.google.com/webstore": "Chrome Extension",
     }
@@ -1670,5 +1670,3 @@ CWE_MAP = {
 }
 
 VERSION_RANGE = re.compile(r"vers:\S+/(?P<lower_comparator>[><=]{1,2})(?P<lower_version>\S+)\|(?P<upper_comparator>[><=]{1,2})(?P<upper_version>\S+)")
-
-
