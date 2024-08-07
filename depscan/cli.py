@@ -28,7 +28,6 @@ from depscan.lib.analysis import (
     prepare_vdr,
     summary_stats, suggest_version,
 )
-from depscan.lib.utils import consolidate_vdrs
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
     create_bom,
@@ -45,6 +44,7 @@ from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, console
 from depscan.lib.orasclient import download_image
+from depscan.lib.utils import make_version_suggestions
 
 with contextlib.suppress(Exception):
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -119,7 +119,7 @@ def build_args():
     parser.add_argument(
         "--no-suggest",
         action="store_false",
-        default="True",
+        default=True,
         dest="suggest",
         help="Disable suggest mode",
     )
@@ -420,7 +420,7 @@ def summarise(
     results,
     pkg_aliases,
     purl_aliases,
-    sug_version_dict,
+    suggest_mode,
     scoped_pkgs,
     report_file,
     bom_file,
@@ -444,12 +444,14 @@ def summarise(
     :param reached_purls: Dict of reached purls
     :return: A dict of vulnerability and severity summary statistics
     """
+    if suggest_mode:
+        results = make_version_suggestions(results)
     options = PrepareVdrOptions(
         project_type,
         results,
         pkg_aliases,
         purl_aliases,
-        sug_version_dict,
+        suggest_mode,
         scoped_pkgs=scoped_pkgs,
         no_vuln_table=no_vuln_table,
         bom_file=bom_file,
@@ -458,7 +460,8 @@ def summarise(
     )
     pkg_vulnerabilities, pkg_group_rows = prepare_vdr(options)
     vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
-    pkg_vulnerabilities = consolidate_vdrs(pkg_vulnerabilities)
+    # TODO: add option that consolidates, must move analysis items to properties, alter those and existing properties to include relevant bom-ref
+    # pkg_vulnerabilities = consolidate_vdrs(pkg_vulnerabilities)
     if pkg_vulnerabilities and bom_file:
         try:
             with open(bom_file, encoding="utf-8") as fp:
@@ -598,6 +601,7 @@ async def run_scan():
     db = db_lib.get()
     profile = "generic"
     deep = False
+    suggest_mode = q.get("suggest")
     if q.get("url"):
         url = q.get("url")
     if q.get("path"):
@@ -734,12 +738,14 @@ async def run_scan():
                 400,
                 {"Content-Type": "application/json"},
             )
+        if suggest_mode:
+            results = make_version_suggestions(results)
         options = PrepareVdrOptions(
             project_type,
             results,
             pkg_aliases,
             purl_aliases,
-            sug_version_dict,
+            suggest_mode,
             scoped_pkgs={},
             no_vuln_table=True,
             bom_file=bom_file_path,
@@ -1096,7 +1102,7 @@ def main():
             results,
             pkg_aliases,
             purl_aliases,
-            sug_version_dict,
+            args.suggest,
             scoped_pkgs=scoped_pkgs,
             report_file=report_file,
             bom_file=bom_file,

@@ -16,7 +16,7 @@ from vdb.lib.utils import version_compare
 from depscan.lib import config, normalize
 from depscan.lib.config import TIME_FMT
 
-lic_symbol_regex = re.compile(r"[(),]")
+LIC_SYMBOL_REGEX = re.compile(r"[(),]")
 
 
 def filter_ignored_dirs(dirs):
@@ -328,7 +328,7 @@ def cleanup_license_string(license_str):
         .replace(" & ", " OR ")
         .replace("&", " OR ")
     )
-    license_str = lic_symbol_regex.sub("", license_str)
+    license_str = LIC_SYMBOL_REGEX.sub("", license_str)
     return license_str.upper()
 
 
@@ -487,7 +487,7 @@ def get_description_detail(data: Description | str) -> Tuple[str, str]:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = detail.replace("\n", " ").replace("\t", " ")
+    detail = detail.replace("\\n", " ").replace("\\t", " ")
     description = description.lstrip("# ")
     return description, detail
 
@@ -591,22 +591,22 @@ def combine_vdrs(v1, v2):
 def consolidate(pkg_vulnerabilities: List[Dict]):
     # version_map = {}
     suggested_version_map = {}
-    purl_to_cve_map = {}
-    cve_to_purl_map = {}
+    # purl_to_cve_map = {}
+    # cve_to_purl_map = {}
     for i, v in enumerate(pkg_vulnerabilities):
         purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
         if not (purl_prefix := v.get("purl_prefix")):
             if "@" in purl:
                 purl_prefix = purl.split("@", 1)[0]
             pkg_vulnerabilities[i]["purl_prefix"] = purl_prefix
-        if purl in purl_to_cve_map:
-            purl_to_cve_map[purl_prefix].append(v)
-        else:
-            purl_to_cve_map[purl_prefix] = [v]
-        if v.get("id") in cve_to_purl_map:
-            cve_to_purl_map[v.get("id")].add(purl_prefix)
-        else:
-            cve_to_purl_map[v.get("id")] = {purl_prefix}
+        # if purl in purl_to_cve_map:
+        #     purl_to_cve_map[purl_prefix].append(v)
+        # else:
+        #     purl_to_cve_map[purl_prefix] = [v]
+        # if v.get("id") in cve_to_purl_map:
+        #     cve_to_purl_map[v.get("id")].add(purl_prefix)
+        # else:
+        #     cve_to_purl_map[v.get("id")] = {purl_prefix}
         if v.get("recommendation"):
             for a in v.get("affects"):
                 for j in a.get("versions"):
@@ -620,23 +620,26 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
                         else:
                             suggested_version_map[purl_prefix] = j.get("version")
     # version_map = dict(sorted(version_map.items()))
-    for k, v in cve_to_purl_map.items():
-        cve_to_purl_map[k] = list(v)
-    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
-    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
-    return suggested_version_map, purl_to_cve_map, cve_to_purl_map, pkg_vulnerabilities
+    # for k, v in cve_to_purl_map.items():
+    #     cve_to_purl_map[k] = list(v)
+    # purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
+    # cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
+    return suggested_version_map, pkg_vulnerabilities
 
 
 def consolidate_vdrs(vdrs):
     consolidated = {}
     suggested_version_map, purl_to_cve_map, cve_to_purl_map, vdrs = consolidate(vdrs)
     for v in vdrs:
-        if v["id"].startswith("CVE-") and int(v["id"][6:8]) in range(12, 19):
-            continue
         new_bom_ref = f"{v['id']}/{v['purl_prefix']}"
         v["bom-ref"] = new_bom_ref
-        if v["purl_prefix"] in suggested_version_map:
-            v["recommendation"] = f"Update to version {suggested_version_map[v['purl_prefix']]}."
+        if v["purl_prefix"] in suggested_version_map and v.get("recommendation"):
+            if v.get("recommendation"):
+                v["recommendation"] = f"Update to version {suggested_version_map[v['purl_prefix']]}."
+            else:
+                v["recommendation"] = (f"No recommendation found for {v['id']}. Update to version "
+                                       f"{suggested_version_map[v['purl_prefix']]} is recommended "
+                                       f"nonetheless due to other detected vulnerabilities.")
         del v["purl_prefix"]
         if new_bom_ref in consolidated:
             consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), v)
@@ -648,33 +651,31 @@ def consolidate_vdrs(vdrs):
     return result
 
 
-def use_suggested_versions(pkg_vulnerabilities: List[Dict]):
-    version_map = {}
-    suggested_version_map = {}
-    purl_to_cve_map = {}
-    cve_to_purl_map = {}
-    for i, v in enumerate(pkg_vulnerabilities):
-        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
-        if "@" in purl:
-            purl = purl.split("@", 1)[0]
-        pkg_vulnerabilities[i]["partial_purl"] = purl
-        if v.get("recommendation"):
-            for a in v.get("affects"):
-                for j in a.get("versions"):
-                    if j.get("status") == "unaffected":
-                        if purl in version_map:
-                            version_map[purl] = max_version([version_map[purl], j.get("version")])
-                        else:
-                            version_map[purl] = j.get("version")
-                        if "@" in purl:
-                            purl = purl.split("@")[0]
-                        if purl in suggested_version_map:
-                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
-                        else:
-                            suggested_version_map[purl] = j.get("version")
-    version_map = dict(sorted(version_map.items()))
-    for k, v in cve_to_purl_map.items():
-        cve_to_purl_map[k] = list(v)
-    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
-    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
-    return version_map, suggested_version_map, purl_to_cve_map, cve_to_purl_map
+def make_version_suggestions(vdrs):
+    vulnerabilities = {}
+    suggested_version_map, vdrs = consolidate(vdrs)
+    for i, v in enumerate(vdrs):
+        new_bom_ref = v['purl_prefix']
+        if v["purl_prefix"] in suggested_version_map:
+            if old_rec := v.get("recommendation"):
+                if old_rec != suggested_version_map.get(v["purl_prefix"]):
+                    old_rec = old_rec.replace("Update to version ", "").rstrip(".")
+                    vdrs[i]["recommendation"] = (f"Update to version {old_rec} to resolve this one"
+                                                 f" vulnerability. Update to version "
+                                                 f"{suggested_version_map[v['purl_prefix']]} is "
+                                                 f"recommended in order to address additional "
+                                                 f"vulnerabilities identified for this package.")
+            else:
+                vdrs[i]["recommendation"] = (f"No recommendation found for {v['id']}. Updating to "
+                                       f"version {suggested_version_map[v['purl_prefix']]} is "
+                                       f"nonetheless recommended in order to address additional "
+                                       f"vulnerabilities identified for this package.")
+        del v["purl_prefix"]
+        if new_bom_ref in vulnerabilities:
+            vulnerabilities[new_bom_ref] = combine_vdrs(vulnerabilities.get(new_bom_ref), v)
+        else:
+            vulnerabilities[new_bom_ref] = v
+    result = []
+    for k, v in vulnerabilities.items():
+        result.append(v)
+    return result

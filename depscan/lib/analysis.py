@@ -34,6 +34,7 @@ NEWLINE = "\\n"
 CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
 # VENDOR = re.compile(r"redhat.com|oracle.com|curl.haxx.se|nodejs.org|sec-consult.com|jenkins.io/security|support.f5.com|suricata-ids.org/|foxitsoftware.com/support/|success.trendmicro.com/|docs.jmf.com/|www.postgresql.org/about|apache.org|debian.org|gentoo.org|ubuntu.com|rubyonrails-security|support.apple.com|alpinelinux.org|bugs.busybox.net", re.IGNORECASE)
 JFROG_ADVISORY = re.compile(r"(?P<id>jfsa\S+)", re.IGNORECASE)
+ADVISORY = re.compile(r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)", re.IGNORECASE)
 
 
 def best_fixed_location(sug_version, orig_fixed_location):
@@ -167,7 +168,7 @@ def pkg_sub_tree(
     purl,
     full_pkg,
     bom_dependency_tree,
-    pkg_severity=None,
+    pkg_severity="unknown",
     as_tree=False,
     extra_text=None,
 ):
@@ -272,7 +273,7 @@ class PrepareVdrOptions:
     results: List
     pkg_aliases: Dict
     purl_aliases: Dict
-    sug_version_dict: Dict
+    suggest_mode: bool
     scoped_pkgs: Dict
     no_vuln_table: bool
     bom_file: Optional[str]
@@ -1226,7 +1227,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
         if category == "CVE Record":
             record = {"id": match[0], "source": {"url": i}}
             if "nvd.nist.gov" in i:
-                record["source"]["name"] = "NVD CVE Record"
+                record["source"]["name"] = "NVD"
             refs.append(record)
             if match[0].lower() == vid and not source:
                 source = record["source"]
@@ -1249,6 +1250,10 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
                 exploit.append(i)
         elif category == "Bugzilla":
             refs.append({"id": f"{match['org']}-bugzilla-{match['id']}", "source": {"name": f"{format_system_name(match['org'])} Bugzilla", "url": i}})
+        elif category == "Mailing List":
+            if match := ADVISORY.search(i):
+                system_name = f"{format_system_name(match['org'])} {category}"
+                refs.append({"id": match['id'], "source": {"name": system_name, "url": i}})
         elif system_name:
             refs.append({"id": category, "source": {"name": system_name, "url": i}})
     return advisories, refs, bug_bounty, poc, exploit, source
@@ -1471,7 +1476,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
         counts.wont_fix_version_count += 1
     package_usage = "N/A"
     plain_package_usage = "N/A"
-    pkg_severity = vuln_occ_dict.get("severity")
+    pkg_severity = vuln_occ_dict.get("severity") or "unknown"
     is_required = False
     pkg_requires_attn = False
     related_urls = vuln_occ_dict.get("related_urls")
@@ -1722,13 +1727,14 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     has_flagged_cwe = False
     if unaffected := get_unaffected(vuln.get("matching_vers", "")):
         affects[0]["versions"].append(unaffected)
-        recommendation = f"Update to version {unaffected.get('version')} or later."
+        recommendation = f"Update to version {unaffected.get('version')}."
         fixed_location = unaffected.get("version")
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
-        "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix']
+        "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix'],
+        "source": {}, "references": [], "advisories": [], "cwes": [], "description": "",
+        "detail": "", "ratings": [], "published": "", "updated": "", "analysis": {}
     }
-
     try:
         cve_record = vuln.get("source_data")
         if not isinstance(cve_record, CVE):
@@ -1741,8 +1747,8 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
 
     source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record, vid)
     vdict |= {
-        "affects": affects, "source": source, "references": references, "advisories": advisories,
-        "cwes": cwes, "description": description, "detail": detail, "ratings": [rating],
+        "source": source, "references": references, "advisories": advisories, "cwes": cwes,
+        "description": description, "detail": detail, "ratings": [rating],
         "published": cve_record.root.cveMetadata.datePublished.strftime("%Y-%m-%dT%H:%M:%S"),
         "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S")
     }
@@ -1767,7 +1773,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         purl,
         purl.replace(":", "/"),
         bom_dependency_tree,
-        pkg_severity=rating.get("severity"),
+        pkg_severity=rating.get("severity") or "unknown",
         as_tree=True,
         extra_text=f":left_arrow: {vid}",
     )
