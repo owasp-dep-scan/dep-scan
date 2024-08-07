@@ -1226,7 +1226,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
         if category == "CVE Record":
             record = {"id": match[0], "source": {"url": i}}
             if "nvd.nist.gov" in i:
-                record["source"]["name"] = "NVD CVE Record"
+                record["source"]["name"] = "NVD"
             refs.append(record)
             if match[0].lower() == vid and not source:
                 source = record["source"]
@@ -1726,9 +1726,10 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         fixed_location = unaffected.get("version")
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
-        "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix']
+        "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix'],
+        "source": {}, "references": [], "advisories": [], "cwes": [], "description": "",
+        "detail": "", "ratings": [], "published": "", "updated": "", "analysis": {}
     }
-
     try:
         cve_record = vuln.get("source_data")
         if not isinstance(cve_record, CVE):
@@ -1741,8 +1742,8 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
 
     source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record, vid)
     vdict |= {
-        "affects": affects, "source": source, "references": references, "advisories": advisories,
-        "cwes": cwes, "description": description, "detail": detail, "ratings": [rating],
+        "source": source, "references": references, "advisories": advisories, "cwes": cwes,
+        "description": description, "detail": detail, "ratings": [rating],
         "published": cve_record.root.cveMetadata.datePublished.strftime("%Y-%m-%dT%H:%M:%S"),
         "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S")
     }

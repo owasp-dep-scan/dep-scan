@@ -487,7 +487,7 @@ def get_description_detail(data: Description | str) -> Tuple[str, str]:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = detail.replace("\n", " ").replace("\t", " ")
+    detail = detail.replace("\\n", " ").replace("\\t", " ")
     description = description.lstrip("# ")
     return description, detail
 
@@ -631,11 +631,9 @@ def consolidate_vdrs(vdrs):
     consolidated = {}
     suggested_version_map, purl_to_cve_map, cve_to_purl_map, vdrs = consolidate(vdrs)
     for v in vdrs:
-        if v["id"].startswith("CVE-") and int(v["id"][6:8]) in range(12, 19):
-            continue
         new_bom_ref = f"{v['id']}/{v['purl_prefix']}"
         v["bom-ref"] = new_bom_ref
-        if v["purl_prefix"] in suggested_version_map:
+        if v["purl_prefix"] in suggested_version_map and v.get("recommendation"):
             v["recommendation"] = f"Update to version {suggested_version_map[v['purl_prefix']]}."
         del v["purl_prefix"]
         if new_bom_ref in consolidated:
@@ -646,35 +644,3 @@ def consolidate_vdrs(vdrs):
     for k, v in consolidated.items():
         result.append(v)
     return result
-
-
-def use_suggested_versions(pkg_vulnerabilities: List[Dict]):
-    version_map = {}
-    suggested_version_map = {}
-    purl_to_cve_map = {}
-    cve_to_purl_map = {}
-    for i, v in enumerate(pkg_vulnerabilities):
-        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
-        if "@" in purl:
-            purl = purl.split("@", 1)[0]
-        pkg_vulnerabilities[i]["partial_purl"] = purl
-        if v.get("recommendation"):
-            for a in v.get("affects"):
-                for j in a.get("versions"):
-                    if j.get("status") == "unaffected":
-                        if purl in version_map:
-                            version_map[purl] = max_version([version_map[purl], j.get("version")])
-                        else:
-                            version_map[purl] = j.get("version")
-                        if "@" in purl:
-                            purl = purl.split("@")[0]
-                        if purl in suggested_version_map:
-                            suggested_version_map[purl] = max_version([suggested_version_map[purl], j.get("version")])
-                        else:
-                            suggested_version_map[purl] = j.get("version")
-    version_map = dict(sorted(version_map.items()))
-    for k, v in cve_to_purl_map.items():
-        cve_to_purl_map[k] = list(v)
-    purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
-    cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
-    return version_map, suggested_version_map, purl_to_cve_map, cve_to_purl_map
