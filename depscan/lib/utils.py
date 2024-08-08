@@ -588,25 +588,15 @@ def combine_vdrs(v1, v2):
     }
 
 
-def consolidate(pkg_vulnerabilities: List[Dict]):
-    # version_map = {}
+def get_suggested_version_map(pkg_vulnerabilities: List[Dict]):
     suggested_version_map = {}
-    # purl_to_cve_map = {}
-    # cve_to_purl_map = {}
     for i, v in enumerate(pkg_vulnerabilities):
         purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
         if not (purl_prefix := v.get("purl_prefix")):
-            if "@" in purl:
-                purl_prefix = purl.split("@", 1)[0]
-            pkg_vulnerabilities[i]["purl_prefix"] = purl_prefix
-        # if purl in purl_to_cve_map:
-        #     purl_to_cve_map[purl_prefix].append(v)
-        # else:
-        #     purl_to_cve_map[purl_prefix] = [v]
-        # if v.get("id") in cve_to_purl_map:
-        #     cve_to_purl_map[v.get("id")].add(purl_prefix)
-        # else:
-        #     cve_to_purl_map[v.get("id")] = {purl_prefix}
+            purl_prefix = purl
+            if "@" in purl_prefix:
+                purl_prefix = purl_prefix.split("@", 1)[0]
+        pkg_vulnerabilities[i]["purl_prefix"] = purl_prefix
         if v.get("recommendation"):
             for a in v.get("affects"):
                 for j in a.get("versions"):
@@ -619,63 +609,24 @@ def consolidate(pkg_vulnerabilities: List[Dict]):
                             suggested_version_map[purl_prefix] = max_version([suggested_version_map[purl_prefix], j.get("version")])
                         else:
                             suggested_version_map[purl_prefix] = j.get("version")
-    # version_map = dict(sorted(version_map.items()))
-    # for k, v in cve_to_purl_map.items():
-    #     cve_to_purl_map[k] = list(v)
-    # purl_to_cve_map = dict(sorted(purl_to_cve_map.items()))
-    # cve_to_purl_map = dict(sorted(cve_to_purl_map.items()))
     return suggested_version_map, pkg_vulnerabilities
 
 
-def consolidate_vdrs(vdrs):
-    consolidated = {}
-    suggested_version_map, purl_to_cve_map, cve_to_purl_map, vdrs = consolidate(vdrs)
-    for v in vdrs:
-        new_bom_ref = f"{v['id']}/{v['purl_prefix']}"
-        v["bom-ref"] = new_bom_ref
-        if v["purl_prefix"] in suggested_version_map and v.get("recommendation"):
-            if v.get("recommendation"):
-                v["recommendation"] = f"Update to version {suggested_version_map[v['purl_prefix']]}."
-            else:
-                v["recommendation"] = (f"No recommendation found for {v['id']}. Update to version "
-                                       f"{suggested_version_map[v['purl_prefix']]} is recommended "
-                                       f"nonetheless due to other detected vulnerabilities.")
-        del v["purl_prefix"]
-        if new_bom_ref in consolidated:
-            consolidated[new_bom_ref] = combine_vdrs(consolidated.get(new_bom_ref), v)
-        else:
-            consolidated[new_bom_ref] = v
-    result = []
-    for k, v in consolidated.items():
-        result.append(v)
-    return result
-
-
 def make_version_suggestions(vdrs):
-    vulnerabilities = {}
-    suggested_version_map, vdrs = consolidate(vdrs)
+    suggested_version_map, vdrs = get_suggested_version_map(vdrs)
     for i, v in enumerate(vdrs):
-        new_bom_ref = v['purl_prefix']
-        if v["purl_prefix"] in suggested_version_map:
+        if suggested_version := suggested_version_map.get(v["purl_prefix"]):
             if old_rec := v.get("recommendation"):
-                if old_rec != suggested_version_map.get(v["purl_prefix"]):
+                vdrs[i]["fixed_location"] = suggested_version
+                if suggested_version not in old_rec:
                     old_rec = old_rec.replace("Update to version ", "").rstrip(".")
-                    vdrs[i]["recommendation"] = (f"Update to version {old_rec} to resolve this one"
-                                                 f" vulnerability. Update to version "
-                                                 f"{suggested_version_map[v['purl_prefix']]} is "
-                                                 f"recommended in order to address additional "
-                                                 f"vulnerabilities identified for this package.")
+                    vdrs[i]["recommendation"] = (f"Update to version {old_rec} to resolve v['id'] "
+                                                 f"or update to version {suggested_version} to "
+                                                 f"resolve additional vulnerabilities for this "
+                                                 f"package.")
             else:
                 vdrs[i]["recommendation"] = (f"No recommendation found for {v['id']}. Updating to "
-                                       f"version {suggested_version_map[v['purl_prefix']]} is "
-                                       f"nonetheless recommended in order to address additional "
-                                       f"vulnerabilities identified for this package.")
-        del v["purl_prefix"]
-        if new_bom_ref in vulnerabilities:
-            vulnerabilities[new_bom_ref] = combine_vdrs(vulnerabilities.get(new_bom_ref), v)
-        else:
-            vulnerabilities[new_bom_ref] = v
-    result = []
-    for k, v in vulnerabilities.items():
-        result.append(v)
-    return result
+                                             f"version {suggested_version} is recommended "
+                                             f"nonetheless in order to address additional "
+                                             f"vulnerabilities identified for this package.")
+    return vdrs

@@ -444,8 +444,6 @@ def summarise(
     :param reached_purls: Dict of reached purls
     :return: A dict of vulnerability and severity summary statistics
     """
-    if suggest_mode:
-        results = make_version_suggestions(results)
     options = PrepareVdrOptions(
         project_type,
         results,
@@ -738,8 +736,6 @@ async def run_scan():
                 400,
                 {"Content-Type": "application/json"},
             )
-        if suggest_mode:
-            results = make_version_suggestions(results)
         options = PrepareVdrOptions(
             project_type,
             results,

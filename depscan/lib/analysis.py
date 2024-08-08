@@ -26,8 +26,12 @@ from depscan.lib import config
 from depscan.lib.config import SEVERITY_REF
 from depscan.lib.csaf import get_ref_summary_helper
 from depscan.lib.logger import LOG, console
-from depscan.lib.utils import max_version, get_description_detail, format_system_name
-
+from depscan.lib.utils import (
+    max_version,
+    get_description_detail,
+    format_system_name,
+    make_version_suggestions, combine_vdrs
+)
 
 NEWLINE = "\\n"
 
@@ -293,16 +297,8 @@ def prepare_vdr(options: PrepareVdrOptions):
     :rtype: Tuple[List, Dict]
     """
     pkg_vulnerabilities = []
-    pkg_group_rows = defaultdict(list)
     if not options.results:
-        return pkg_vulnerabilities, pkg_group_rows
-    table = Table(
-        title=f"Dependency Scan Results ({options.project_type.upper()})",
-        box=box.DOUBLE_EDGE,
-        header_style="bold magenta",
-        show_lines=True,
-        min_width=150,
-    )
+        return pkg_vulnerabilities, defaultdict(list)
     direct_purls = options.direct_purls or {}
     reached_purls = options.reached_purls or {}
     required_pkgs = options.scoped_pkgs.get("required", [])
@@ -313,6 +309,65 @@ def prepare_vdr(options: PrepareVdrOptions):
     )
     oci_props = retrieve_oci_properties(bom_data)
     oci_product_types = oci_props.get("oci:image:componentTypes", "")
+    counts = Counts()
+    include_pkg_group_rows = set()
+    for vuln_occ_dict in options.results:
+        if not vuln_occ_dict:
+            continue
+        if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
+            counts, add_to_pkg_group_rows, vuln = process_vuln_occ(
+                bom_dependency_tree, direct_purls, oci_product_types, optional_pkgs, options, reached_purls, required_pkgs,
+                vuln_occ_dict.to_dict(), counts
+            )
+        else:
+            counts, vuln, add_to_pkg_group_rows = analyze_cve_vuln(
+                vuln_occ_dict, reached_purls, direct_purls, optional_pkgs, required_pkgs,
+                bom_dependency_tree, counts)
+        pkg_vulnerabilities.append(vuln)
+        if add_to_pkg_group_rows:
+            include_pkg_group_rows.add(vuln.get("bom-ref"))
+        # If the user doesn't want any table output return quickly
+    if options.suggest_mode:
+        pkg_vulnerabilities = make_version_suggestions(pkg_vulnerabilities)
+    pkg_vulnerabilities = dedupe_vdrs(pkg_vulnerabilities)
+    pkg_group_rows, table = render_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options)
+    pkg_vulnerabilities = remove_extra_metadata(pkg_vulnerabilities)
+    if options.no_vuln_table:
+        return pkg_vulnerabilities, pkg_group_rows
+    output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table)
+    return pkg_vulnerabilities, pkg_group_rows
+
+
+def remove_extra_metadata(vdrs):
+    new_vdrs = []
+    exclude = {"insights", "purl_prefix", "p_rich_tree", "fixed_location"}
+    for vdr in vdrs:
+        new_vdr = {}
+        for key, value in vdr.items():
+            if key not in exclude:
+                new_vdr |= {key: value}
+        new_vdrs.append(new_vdr)
+    return new_vdrs
+
+
+def dedupe_vdrs(vdrs):
+    new_vdrs = {}
+    for vdr in vdrs:
+        if vdr.get("bom-ref", "") in new_vdrs:
+            new_vdrs[vdr["bom-ref"]] = combine_vdrs(new_vdrs[vdr["bom-ref"]], vdr)
+        else:
+            new_vdrs[vdr["bom-ref"]] = vdr
+    return [i for i in new_vdrs.values()]
+
+
+def render_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options):
+    table = Table(
+        title=f"Dependency Scan Results ({options.project_type.upper()})",
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+        show_lines=True,
+        min_width=150,
+    )
     for h in [
         "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
         "Insights",
@@ -324,27 +379,26 @@ def prepare_vdr(options: PrepareVdrOptions):
         if h == "Score":
             justify = "right"
         table.add_column(header=h, justify=justify, vertical="top")
-    counts = Counts()
-    for vuln_occ_dict in options.results:
-        if not vuln_occ_dict:
-            continue
-        if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
-            counts, pkg_group_rows, pkg_vulnerabilities = process_vuln_occ(
-                bom_dependency_tree, direct_purls, oci_product_types, optional_pkgs, options,
-                pkg_group_rows, pkg_vulnerabilities, reached_purls, required_pkgs, table,
-                vuln_occ_dict.to_dict(), counts
+    pkg_group_rows = defaultdict(list)
+    for vdr in pkg_vulnerabilities:
+        if vdr["bom-ref"] in include_pkg_group_rows:
+            pkg_group_rows[vdr["bom-ref"]].append(
+                {
+                    "id": vdr["id"],
+                    "fixed_location": vdr["fixed_location"],
+                    "p_rich_tree": vdr["p_rich_tree"],
+                }
             )
-            # continue
-        else:
-            counts, vuln, table, pkg_group_rows = analyze_cve_vuln(
-                vuln_occ_dict, reached_purls, direct_purls, optional_pkgs, required_pkgs,
-                bom_dependency_tree, options, table, pkg_group_rows, counts)
-            pkg_vulnerabilities.append(vuln)
-        # If the user doesn't want any table output return quickly
-    if options.no_vuln_table:
-        return pkg_vulnerabilities, pkg_group_rows
-    output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table)
-    return pkg_vulnerabilities, pkg_group_rows
+        if rating := vdr.get("ratings", {}):
+            rating = rating[0]
+        table.add_row(
+            vdr["p_rich_tree"],
+            "\n".join(vdr["insights"]),
+            vdr["fixed_location"],
+            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "")}""",
+            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
+        )
+    return pkg_group_rows, table
 
 
 def output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table):
@@ -1322,8 +1376,7 @@ Below are the top reachable packages identified by depscan. Setup alerts and not
 
 
 def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optional_pkgs,
-                options, pkg_group_rows, pkg_vulnerabilities, reached_purls, required_pkgs, table,
-                vuln_occ_dict, counts):
+                options, reached_purls, required_pkgs, vuln_occ_dict, counts):
     vid = vuln_occ_dict.get("id") or ""
     package_issue = {}
     purl = ""
@@ -1341,15 +1394,81 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
     package_type = None
     insights = []
     plain_insights = []
+    pkg_severity = vuln_occ_dict.get("severity") or "unknown"
     if vid.startswith("MAL-"):
         insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
         plain_insights.append("Malicious")
         counts.malicious_count += 1
     purl_obj = None
     vendor = package_issue.get("affected_location", {}).get("vendor")
+    purl_prefix = ""
+    if purl and "@" in purl:
+        purl_prefix = purl.split("@")
+        if len(purl_prefix) > 2:
+            purl_prefix.pop()
+        purl_prefix = "".join(purl_prefix)
     # If the match was based on name and version alone then the alias might legitimately lack a full purl
     # Such results are usually false positives but could yield good hits at times
     # So, instead of suppressing fully we try our best to tune and reduce the FP
+    description, detail = get_description_detail(vuln_occ_dict.get("short_description", ""))
+    # Find the best fix version
+    recommendation = ""
+    fixed_location = package_issue.get("fixed_location", "")
+    versions = [{"version": version_used, "status": "affected"}]
+    if fixed_location:
+        versions.append(
+            {"version": fixed_location, "status": "unaffected"}
+        )
+        recommendation = f"Update to version {fixed_location}."
+    affects = [{"ref": purl, "versions": versions}]
+    if fixed_location == PLACEHOLDER_FIX_VERSION:
+        counts.wont_fix_version_count += 1
+    add_to_pkg_group_rows = False
+    pkg_tree_list, p_rich_tree = pkg_sub_tree(
+        purl,
+        "",
+        bom_dependency_tree,
+        pkg_severity=pkg_severity,
+        as_tree=True,
+        extra_text=f":left_arrow: {vid}",
+    )
+    source = {}
+    if purl:
+        if vid.startswith("CVE"):
+            source = {
+                "name": "NVD",
+                "url": f"https://nvd.nist.gov/vuln/detail/{vid}",
+            }
+        elif vid.startswith("GHSA") or vid.startswith("npm"):
+            source = {
+                "name": "GitHub Advisory",
+                "url": f"https://github.com/advisories/{vid}",
+            }
+    related_urls = vuln_occ_dict.get("related_urls")
+    clinks = classify_links(related_urls)
+    advisories = []
+    for k, v in clinks.items():
+        advisories.append({"title": k, "url": v})
+    vuln = {
+        "advisories": advisories,
+        "affects": affects,
+        "analysis": get_analysis(clinks, pkg_tree_list),
+        "bom-ref": f"{vid}/{purl}",
+        "cwes": cwes,
+        "description": description,
+        "detail": detail,
+        "id": vid,
+        "properties": [],
+        "published": vuln_occ_dict.get("source_orig_time", ""),
+        "purl_prefix": purl_prefix,
+        "ratings": cvss_to_vdr_rating(vuln_occ_dict),
+        "recommendation": recommendation,
+        "source": source,
+        "updated": vuln_occ_dict.get("source_update_time", ""),
+        "insights": [],
+        "p_rich_tree": p_rich_tree,
+        "fixed_location": fixed_location
+    }
     if not purl.startswith("pkg:"):
         if options.project_type in config.OS_PKG_TYPES:
             if vendor and (
@@ -1357,24 +1476,24 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
                 or config.LANG_PKG_TYPES.get(vendor)
             ):
                 counts.fp_count += 1
-                return counts, pkg_group_rows, pkg_vulnerabilities
+                return counts, add_to_pkg_group_rows, vuln
             # Some nvd data might match application CVEs for
             # OS vendors which can be filtered
             if not is_os_target_sw(package_issue):
                 counts.fp_count += 1
-                return counts, pkg_group_rows, pkg_vulnerabilities
+                return counts, add_to_pkg_group_rows, vuln
         # Issue #320 - Malware matches without purl are false positives
         if vid.startswith("MAL-"):
             counts.fp_count += 1
             counts.malicious_count -= 1
-            return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+            return counts, add_to_pkg_group_rows, vuln
     else:
         purl_obj = parse_purl(purl)
         # Issue #320 - Malware matches without purl are false positives
         if not purl_obj and vid.startswith("MAL-"):
             counts.fp_count += 1
             counts.malicious_count -= 1
-            return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+            return counts, add_to_pkg_group_rows, vuln
         if purl_obj:
             version_used = purl_obj.get("version")
             package_type = purl_obj.get("type")
@@ -1388,7 +1507,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
                 or not is_lang_sw_edition(package_issue)
             ):
                 counts.fp_count += 1
-                return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                return counts, add_to_pkg_group_rows, vuln
             if package_type in config.OS_PKG_TYPES:
                 # Bug #208 - do not report application CVEs
                 if vendor and (
@@ -1396,13 +1515,13 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
                     or config.LANG_PKG_TYPES.get(vendor)
                 ):
                     counts.fp_count += 1
-                    return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                    return counts, add_to_pkg_group_rows, vuln
                 if package_type and (
                     package_type in config.LANG_PKG_TYPES.values()
                     or config.LANG_PKG_TYPES.get(package_type)
                 ):
                     counts.fp_count += 1
-                    return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                    return counts, add_to_pkg_group_rows, vuln
                 if (
                     vendor
                     and oci_product_types
@@ -1411,12 +1530,12 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
                     # Bug #170 - do not report CVEs belonging to other distros
                     if vendor in config.OS_PKG_TYPES:
                         counts.fp_count += 1
-                        return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                        return counts, add_to_pkg_group_rows, vuln
                     # Some nvd data might match application CVEs for
                     # OS vendors which can be filtered
                     if not is_os_target_sw(package_issue):
                         counts.fp_count += 1
-                        return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+                        return counts, add_to_pkg_group_rows, vuln
                     insights.append(
                         f"[#7C8082]:telescope: Vendor {vendor}[/#7C8082]"
                     )
@@ -1460,27 +1579,15 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
                     counts.has_ubuntu_packages = True
                 if "rhel" in qualifiers.get("distro", ""):
                     counts.has_redhat_packages = True
-    if counts.ids_seen.get(vid + purl):
-        counts.fp_count += 1
-        return counts, pkg_group_rows, pkg_vulnerabilities, insights, plain_insights
+    # if counts.ids_seen.get(vid + purl):
+    #     counts.fp_count += 1
+    #     return counts, add_to_pkg_group_rows, vuln
     # Mark this CVE + pkg as seen to avoid duplicates
     counts.ids_seen[vid + purl] = True
-    # Find the best fix version
-    fixed_location = best_fixed_location(
-        options.sug_version_dict.get(purl), package_issue.get("fixed_location")
-    )
-    if (
-        options.sug_version_dict.get(purl) == PLACEHOLDER_FIX_VERSION
-        or package_issue.get("fixed_location") == PLACEHOLDER_FIX_VERSION
-    ):
-        counts.wont_fix_version_count += 1
     package_usage = "N/A"
     plain_package_usage = "N/A"
-    pkg_severity = vuln_occ_dict.get("severity") or "unknown"
     is_required = False
     pkg_requires_attn = False
-    related_urls = vuln_occ_dict.get("related_urls")
-    clinks = classify_links(related_urls)
     if direct_purls.get(purl):
         is_required = True
     elif not direct_purls and (
@@ -1498,15 +1605,6 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
             clinks.get("vendor") or package_type in config.OS_PKG_TYPES
         ) and pkg_severity == "CRITICAL":
             counts.critical_count += 1
-    # Locate this package in the tree
-    pkg_tree_list, p_rich_tree = pkg_sub_tree(
-        purl,
-        full_pkg.replace(":", "/"),
-        bom_dependency_tree,
-        pkg_severity=pkg_severity,
-        as_tree=True,
-        extra_text=f":left_arrow: {vid}",
-    )
     if is_required and package_type not in config.OS_PKG_TYPES:
         if direct_purls.get(purl):
             package_usage = (
@@ -1615,93 +1713,38 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
         counts.distro_packages_count += 1
         counts.has_os_packages = True
     if pkg_requires_attn and fixed_location and purl:
-        pkg_group_rows[purl].append(
-            {
-                "id": vid,
-                "fixed_location": fixed_location,
-                "p_rich_tree": p_rich_tree,
-            }
-        )
-    if not options.no_vuln_table:
-        table.add_row(
-            p_rich_tree,
-            "\n".join(insights),
-            fixed_location,
-            f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("severity")}""",
-            f"""{"[bright_red]" if pkg_severity == "CRITICAL" else ""}{vuln_occ_dict.get("cvss_score")}""",
-        )
-    if purl:
-        source = {}
-        if vid.startswith("CVE"):
-            source = {
-                "name": "NVD",
-                "url": f"https://nvd.nist.gov/vuln/detail/{vid}",
-            }
-        elif vid.startswith("GHSA") or vid.startswith("npm"):
-            source = {
-                "name": "GitHub Advisory",
-                "url": f"https://github.com/advisories/{vid}",
-            }
-        versions = [{"version": version_used, "status": "affected"}]
-        recommendation = ""
-        if fixed_location:
-            versions.append(
-                {"version": fixed_location, "status": "unaffected"}
-            )
-            recommendation = f"Update to version {fixed_location}."
-        affects = [{"ref": purl, "versions": versions}]
-        analysis = {}
-        if clinks.get("exploit"):
-            analysis = {
-                "state": "exploitable",
-                "detail": f'See {clinks.get("exploit")}',
-            }
-        elif clinks.get("poc"):
-            analysis = {
-                "state": "in_triage",
-                "detail": f'See {clinks.get("poc")}',
-            }
-        elif pkg_tree_list and len(pkg_tree_list) > 1:
-            analysis = {
-                "state": "in_triage",
-                "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
-            }
-        ratings = cvss_to_vdr_rating(vuln_occ_dict)
-        properties = [
-            {
-                "name": "depscan:insights",
-                "value": "\\n".join(plain_insights),
-            },
-            {
-                "name": "depscan:prioritized",
-                "value": "true" if pkg_group_rows.get(purl) else "false",
-            },
-        ]
-        affected_version_range = get_version_range(package_issue, purl)
-        if affected_version_range:
-            properties.append(affected_version_range)
-        advisories = []
-        for k, v in clinks.items():
-            advisories.append({"title": k, "url": v})
-        description, detail = get_description_detail(vuln_occ_dict.get("short_description", ""))
-        vuln = {
-            "advisories": advisories,
-            "affects": affects,
-            "analysis": analysis,
-            "bom-ref": f"{vid}/{purl}",
-            "cwes": cwes,
-            "description": description,
-            "detail": detail,
-            "id": vid,
-            "properties": properties,
-            "published": vuln_occ_dict.get("source_orig_time", ""),
-            "ratings": ratings,
-            "recommendation": recommendation,
-            "source": source,
-            "updated": vuln_occ_dict.get("source_update_time", "")
+        add_to_pkg_group_rows = True
+    properties = [
+        {
+            "name": "depscan:insights",
+            "value": "\\n".join(plain_insights),
+        },
+        {
+            "name": "depscan:prioritized",
+            "value": "true" if pkg_requires_attn and fixed_location and purl else "false",
+        },
+    ]
+    vuln |= {"insights": insights, "properties": properties}
+    return counts, add_to_pkg_group_rows, vuln
+
+
+def get_analysis(clinks, pkg_tree_list):
+    if clinks.get("exploit"):
+        return {
+            "state": "exploitable",
+            "detail": f'See {clinks.get("exploit")}',
         }
-        pkg_vulnerabilities.append(vuln)
-    return counts, pkg_group_rows, pkg_vulnerabilities
+    elif clinks.get("poc"):
+        return {
+            "state": "in_triage",
+            "detail": f'See {clinks.get("poc")}',
+        }
+    elif pkg_tree_list and len(pkg_tree_list) > 1:
+        return {
+            "state": "in_triage",
+            "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
+        }
+    return {}
 
 
 def get_version_used(purl):
@@ -1711,7 +1754,7 @@ def get_version_used(purl):
     return purl_obj.version
 
 
-def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_pkgs, bom_dependency_tree, options, table, pkg_group_rows, counts):
+def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_pkgs, bom_dependency_tree, counts):
     insights = []
     plain_insights = []
     purl = vuln.get("matched_by") or ""
@@ -1725,32 +1768,53 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     vid = vuln.get("cve_id") or ""
     fixed_location = ""
     has_flagged_cwe = False
+    add_to_pkg_group_rows = False
     if unaffected := get_unaffected(vuln.get("matching_vers", "")):
         affects[0]["versions"].append(unaffected)
         recommendation = f"Update to version {unaffected.get('version')}."
         fixed_location = unaffected.get("version")
+    # Locate this package in the tree
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
         "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix'],
         "source": {}, "references": [], "advisories": [], "cwes": [], "description": "",
-        "detail": "", "ratings": [], "published": "", "updated": "", "analysis": {}
+        "fixed_location": fixed_location, "detail": "", "ratings": [], "published": "",
+        "updated": "", "analysis": {}, "insights":[], "p_rich_tree": None
     }
     try:
         cve_record = vuln.get("source_data")
         if not isinstance(cve_record, CVE):
-            return counts, vdict, table, pkg_group_rows
+            # pkg_tree_list, p_rich_tree = pkg_sub_tree(
+            #     purl,
+            #     purl.replace(":", "/"),
+            #     bom_dependency_tree,
+            #     pkg_severity="unknown",
+            #     as_tree=True,
+            #     extra_text=f":left_arrow: {vid}",
+            # )
+            # vuln["p_rich_tree"] = p_rich_tree
+            return counts, vdict, add_to_pkg_group_rows
     except KeyError:
-        return counts, vdict, table, pkg_group_rows
+        return counts, vdict, add_to_pkg_group_rows
 
     if not cve_record:
-        return counts, vdict, table, pkg_group_rows
+        return counts, vdict, add_to_pkg_group_rows
 
     source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record, vid)
+    pkg_tree_list, p_rich_tree = pkg_sub_tree(
+        purl,
+        purl.replace(":", "/"),
+        bom_dependency_tree,
+        pkg_severity=rating.get("severity") or "unknown",
+        as_tree=True,
+        extra_text=f":left_arrow: {vid}",
+    )
     vdict |= {
         "source": source, "references": references, "advisories": advisories, "cwes": cwes,
         "description": description, "detail": detail, "ratings": [rating],
         "published": cve_record.root.cveMetadata.datePublished.strftime("%Y-%m-%dT%H:%M:%S"),
-        "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S")
+        "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S"),
+        "p_rich_tree": p_rich_tree
     }
     is_required = False
     if direct_purls.get(purl) or purl in required_pkgs:
@@ -1768,15 +1832,6 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             plain_insights.append("Has PoC")
         counts.has_poc_count += 1
-    # Locate this package in the tree
-    pkg_tree_list, p_rich_tree = pkg_sub_tree(
-        purl,
-        purl.replace(":", "/"),
-        bom_dependency_tree,
-        pkg_severity=rating.get("severity") or "unknown",
-        as_tree=True,
-        extra_text=f":left_arrow: {vid}",
-    )
     package_usage = ""
     plain_package_usage = ""
     if is_required and package_type not in config.OS_PKG_TYPES:
@@ -1893,31 +1948,33 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
-    if pkg_requires_attn and fixed_location and purl:
-        pkg_group_rows[purl].append(
-            {"id": vid, "fixed_location": fixed_location, "p_rich_tree": p_rich_tree})
+    add_to_pkg_group_rows = pkg_requires_attn and fixed_location and purl
+    # if pkg_requires_attn and fixed_location and purl:
+    #     pkg_group_rows[purl].append(
+    #         {"id": vid, "fixed_location": fixed_location, "p_rich_tree": p_rich_tree})
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
-    if not options.no_vuln_table:
-        table.add_row(
-            p_rich_tree,
-            "\n".join(insights),
-            fixed_location,
-            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "")}""",
-            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
-        )
-        analysis = {}
-        if exploits:
-            analysis = {"state": "exploitable", "detail": f'See {exploits[0]}'}
-        elif pocs:
-            analysis = {"state": "in_triage", "detail": f'See {pocs[0].get("url")}'}
-        elif pkg_tree_list and len(pkg_tree_list) > 1:
-            analysis = {
-                "state": "in_triage", "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
-            }
-        properties = [
-            {"name": "depscan:insights", "value": "\\n".join(plain_insights)},
-            {"name": "depscan:prioritized", "value": "true" if pkg_group_rows.get(purl) else "false"},
-        ]
-        vuln |= {"properties": properties, "analysis": analysis}
-    return counts, vdict, table, pkg_group_rows
+    # if not options.no_vuln_table:
+    #     table.add_row(
+    #         p_rich_tree,
+    #         "\n".join(insights),
+    #         fixed_location,
+    #         f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "")}""",
+    #         f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
+    #     )
+    vuln["insights"] = insights
+    analysis = {}
+    if exploits:
+        analysis = {"state": "exploitable", "detail": f'See {exploits[0]}'}
+    elif pocs:
+        analysis = {"state": "in_triage", "detail": f'See {pocs[0].get("url")}'}
+    elif pkg_tree_list and len(pkg_tree_list) > 1:
+        analysis = {
+            "state": "in_triage", "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
+        }
+    properties = [
+        {"name": "depscan:insights", "value": "\\n".join(plain_insights)},
+        {"name": "depscan:prioritized", "value": "true" if pkg_requires_attn and fixed_location and purl else "false"},
+    ]
+    vuln |= {"properties": properties, "analysis": analysis}
+    return counts, vdict, add_to_pkg_group_rows
