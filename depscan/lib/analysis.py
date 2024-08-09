@@ -23,7 +23,11 @@ from vdb.lib.cve_model import ProblemType, CVE, Reference
 from vdb.lib.utils import parse_purl, parse_cpe
 
 from depscan.lib import config
-from depscan.lib.config import SEVERITY_REF
+from depscan.lib.config import (
+    SEVERITY_REF,
+    UPPER_VERSION_FROM_DETAIL_A,
+    UPPER_VERSION_FROM_DETAIL_B
+)
 from depscan.lib.csaf import get_ref_summary_helper
 from depscan.lib.logger import LOG, console
 from depscan.lib.utils import (
@@ -1245,12 +1249,16 @@ def process_package_issue(options, vuln_occ_dict):
     return full_pkg, package_issue, project_type_pkg, purl, version_used
 
 
-def get_unaffected(vers):
-    if "|" in vers:
+def get_unaffected(vuln):
+    vers = vuln.get("matching_vers", "")
+    if "|" in vers and "<=" not in vers:
         vers = vers.split("|")[-1]
-        if "<" in vers and "<=" not in vers:
-            unaffected_vers = vers.replace("<", "")
-            return {"version": unaffected_vers, "status": "unaffected"}
+        return {"version": vers.replace("<", ""), "status": "unaffected"}
+    if vuln.get("detail"):
+        if match := UPPER_VERSION_FROM_DETAIL_A.search(vuln["detail"]):
+            return {"version": match["version"].rstrip("."), "status": "unaffected"}
+        if match := UPPER_VERSION_FROM_DETAIL_B.search(vuln["detail"]):
+            return {"version": match["version"].rstrip("."), "status": "unaffected"}
     return None
 
 
@@ -1273,6 +1281,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
     bug_bounty = []
     poc = []
     exploit = []
+    vendor = []
     source = {}
     for i in ref:
         category, match, system_name = get_ref_summary_helper(i, config.REF_MAP)
@@ -1304,6 +1313,11 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
                 exploit.append(i)
         elif category == "Bugzilla":
             refs.append({"id": f"{match['org']}-bugzilla-{match['id']}", "source": {"name": f"{format_system_name(match['org'])} Bugzilla", "url": i}})
+        elif category == "Vendor":
+            vendor.append(i)
+            if match := ADVISORY.search(i):
+                system_name = f"{format_system_name(match['org'])} Advisory"
+                advisories.append({"title": f"{system_name} {match['id']}", "url": i})
         elif category == "Mailing List":
             if match := ADVISORY.search(i):
                 system_name = f"{format_system_name(match['org'])} {category}"
@@ -1769,7 +1783,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     fixed_location = ""
     has_flagged_cwe = False
     add_to_pkg_group_rows = False
-    if unaffected := get_unaffected(vuln.get("matching_vers", "")):
+    if unaffected := get_unaffected(vuln):
         affects[0]["versions"].append(unaffected)
         recommendation = f"Update to version {unaffected.get('version')}."
         fixed_location = unaffected.get("version")

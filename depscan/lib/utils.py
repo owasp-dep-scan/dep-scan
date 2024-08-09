@@ -1,17 +1,16 @@
 import ast
+import encodings.utf_8
 import json
 import os
 import re
 import shutil
 from collections import defaultdict
 from datetime import datetime
-from importlib.metadata import distribution
 from typing import List, Dict, Any, Tuple
 
 from jinja2 import Environment
 from vdb.lib.cve_model import Description, Descriptions
 from vdb.lib.search import search_by_purl_like
-from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
 from depscan.lib.config import TIME_FMT
@@ -385,13 +384,6 @@ def get_all_imports(src_dir):
     return import_list
 
 
-def get_version():
-    """
-    Returns the version of depscan
-    """
-    return distribution("owasp-depscan").version
-
-
 def export_pdf(
     html_file,
     pdf_file,
@@ -472,7 +464,8 @@ def format_system_name(system_name):
         .replace("Github", "GitHub")
         .replace("Netapp", "NetApp")
         .replace("Npmjs", "NPM")
-        .replace("Alpinelinux", "Alpine Linux"))
+        .replace("Alpinelinux", "Alpine Linux")
+        .replace("Fedoraproject", "Fedora Project"))
     return system_name
 
 
@@ -487,7 +480,8 @@ def get_description_detail(data: Description | str) -> Tuple[str, str]:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = detail.replace("\\n", " ").replace("\\t", " ")
+    detail = detail.replace("\n", " ").replace("\t", " ")
+    detail = str(encodings.utf_8.encode(detail))
     description = description.lstrip("# ")
     return description, detail
 
@@ -585,6 +579,10 @@ def combine_vdrs(v1, v2):
         "references": combine_references(v1.get("references", []), v2.get("references", [])),
         "source": v1.get("source", "") or v2.get("source", ""),
         "updated": choose_date(v1.get("updated"), v2.get("updated"), "max"),
+        "p_rich_tree": v1.get("p_rich_tree") or v2.get("p_rich_tree"),
+        "insights": v1.get("insights") or v2.get("insights"),
+        "purl_prefix": v1.get("purl_prefix") or v2.get("purl_prefix"),
+        "fixed_location": v1.get("fixed_location") or v2.get("fixed_location")
     }
 
 
@@ -620,10 +618,10 @@ def make_version_suggestions(vdrs):
                 vdrs[i]["fixed_location"] = suggested_version
                 if suggested_version not in old_rec:
                     old_rec = old_rec.replace("Update to version ", "").rstrip(".")
-                    vdrs[i]["recommendation"] = (f"Update to version {old_rec} to resolve v['id'] "
-                                                 f"or update to version {suggested_version} to "
-                                                 f"resolve additional vulnerabilities for this "
-                                                 f"package.")
+                    vdrs[i]["recommendation"] = (f"Update to version {old_rec} to resolve "
+                                                 f"{v['id']} or update to version "
+                                                 f"{suggested_version} to resolve additional "
+                                                 f"vulnerabilities for this package.")
             else:
                 vdrs[i]["recommendation"] = (f"No recommendation found for {v['id']}. Updating to "
                                              f"version {suggested_version} is recommended "
