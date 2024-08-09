@@ -3,6 +3,8 @@ import re
 import sys
 from os.path import dirname, exists, join
 
+from depscan import get_version
+
 
 def resource_path(relative_path):
     """
@@ -606,17 +608,17 @@ REFERENCE_REGEXES = {
         r"gist.github.com/(?P<user>[\w\-.]+)/(?P<id>\S+)": "GitHub Gist",
     },
     "other": {
-        # r"(?<!sec)lists.[\w\-]+.org/": "Mailing List",
-        "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
-        "openwall.com|oss-security|www.mail-archive.com|lists.|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
+        r"lists.[\w\-]+.org/": "Vendor",
+        "openwall.com|oss-security|www.mail-archive.com|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
         r"(?<=bugzilla.)(?P<org>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)": "Bugzilla",
-        r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)": "Advisory",
+        r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn|pysec)-)?[\w\d\-:]+)": "Advisory",
         r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
         "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
         # r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
         r"(?P<org>snyk).io/vuln/(?P<id>\S+)": "Advisory",
         # "blog": "Blog Post",
         r"(?P<org>vuldb).com/\?id.(?P<id>\d+)": "Advisory",
+        "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
         # "oss-fuzz": "OSS-Fuzz",
         # "cwe.mitre.org/data/definitions/(?P<id>\d+).html": "CWE Definition",
         # "/(community|forum|discuss)": "Forum",
@@ -1669,4 +1671,36 @@ CWE_MAP = {
     1395: 'Dependency on Vulnerable Third-Party Component'
 }
 
+UPPER_VERSION_FROM_DETAIL_A = re.compile("(?:( prior to )|( before ))(?P<version>\S+)", re.IGNORECASE)
+
+UPPER_VERSION_FROM_DETAIL_B = re.compile("(?:( fix was released in version )|( issue has been addressed in version ))(?P<version>\S+)", re.IGNORECASE)
+
 VERSION_RANGE = re.compile(r"vers:\S+/(?P<lower_comparator>[><=]{1,2})(?P<lower_version>\S+)\|(?P<upper_comparator>[><=]{1,2})(?P<upper_version>\S+)")
+
+TOML_TEMPLATE = {
+    "depscan_version": get_version(),
+    "note": [
+        {"audience": "", "category": "", "text": "", "title": ""},
+    ],
+    "reference": [
+        {"category": "", "summary": "", "url": ""},
+        {"category": "", "summary": "", "url": ""},
+    ],
+    "distribution": {"label": "", "text": "", "url": ""},
+    "document": {"category": "csaf_vex", "title": "Your Title"},
+    "product_tree": {"easy_import": ""},
+    "publisher": {
+        "category": "vendor",
+        "contact_details": "vendor@mcvendorson.com",
+        "name": "Vendor McVendorson",
+        "namespace": "https://appthreat.com",
+    },
+    "tracking": {
+        "current_release_date": "",
+        "id": "",
+        "initial_release_date": "",
+        "status": "draft",
+        "version": "",
+        "revision_history": [{"date": "", "number": "", "summary": ""}],
+    },
+}

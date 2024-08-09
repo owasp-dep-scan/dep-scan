@@ -5,7 +5,6 @@ import sys
 from copy import deepcopy
 from datetime import datetime
 from json import JSONDecodeError
-from re import Pattern
 from typing import List, Dict, Tuple
 
 import cvss
@@ -17,10 +16,11 @@ from vdb.lib import convert_time
 from depscan.lib.config import (
     SEVERITY_REF,
     TIME_FMT,
-    CWE_MAP,
+    CWE_MAP, TOML_TEMPLATE,
 )
 from depscan.lib.logger import LOG
-from depscan.lib.utils import get_version, format_system_name
+from depscan.lib.utils import format_system_name
+from depscan import get_version
 
 
 def vdr_to_csaf(res):
@@ -731,32 +731,3 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
         new_results["document"]["aggregate_severity"] = {"text": agg_severity}
 
     return new_results
-
-
-TOML_TEMPLATE = {
-    "depscan_version": get_version(),
-    "note": [
-        {"audience": "", "category": "", "text": "", "title": ""},
-    ],
-    "reference": [
-        {"category": "", "summary": "", "url": ""},
-        {"category": "", "summary": "", "url": ""},
-    ],
-    "distribution": {"label": "", "text": "", "url": ""},
-    "document": {"category": "csaf_vex", "title": "Your Title"},
-    "product_tree": {"easy_import": ""},
-    "publisher": {
-        "category": "vendor",
-        "contact_details": "vendor@mcvendorson.com",
-        "name": "Vendor McVendorson",
-        "namespace": "https://appthreat.com",
-    },
-    "tracking": {
-        "current_release_date": "",
-        "id": "",
-        "initial_release_date": "",
-        "status": "draft",
-        "version": "",
-        "revision_history": [{"date": "", "number": "", "summary": ""}],
-    },
-}
