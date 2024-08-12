@@ -34,7 +34,7 @@ from depscan.lib.utils import (
     max_version,
     get_description_detail,
     format_system_name,
-    make_version_suggestions, combine_vdrs
+    make_version_suggestions, combine_vdrs, compare_versions, make_purl
 )
 
 NEWLINE = "\\n"
@@ -334,7 +334,7 @@ def prepare_vdr(options: PrepareVdrOptions):
     if options.suggest_mode:
         pkg_vulnerabilities = make_version_suggestions(pkg_vulnerabilities)
     pkg_vulnerabilities = dedupe_vdrs(pkg_vulnerabilities)
-    pkg_group_rows, table = render_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options)
+    pkg_group_rows, table = generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options)
     pkg_vulnerabilities = remove_extra_metadata(pkg_vulnerabilities)
     if options.no_vuln_table:
         return pkg_vulnerabilities, pkg_group_rows
@@ -364,7 +364,7 @@ def dedupe_vdrs(vdrs):
     return [i for i in new_vdrs.values()]
 
 
-def render_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options):
+def generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options):
     table = Table(
         title=f"Dependency Scan Results ({options.project_type.upper()})",
         box=box.DOUBLE_EDGE,
@@ -1160,7 +1160,7 @@ def get_cwe_list(data: ProblemType) -> List:
 
 
 def cve_to_vdr(cve: CVE, vid: str):
-    advisories, references, bug_bounties, pocs, exploits, source = refs_to_vdr(cve.root.containers.cna.references, vid.lower())
+    advisories, references, bug_bounties, pocs, exploits, vendors, source = refs_to_vdr(cve.root.containers.cna.references, vid.lower())
     vector, method, severity, score = parse_metrics(cve.root.containers.cna.metrics)
     description, detail = get_description_detail(cve.root.containers.cna.descriptions)
     if not source:
@@ -1175,7 +1175,7 @@ def cve_to_vdr(cve: CVE, vid: str):
     ratings = {}
     if vector:
         ratings = {"method": method, "severity": severity.lower(), "score": score, "vector": vector}
-    return source, references, advisories, cwes, description, detail, ratings, bug_bounties, pocs, exploits, vendor
+    return source, references, advisories, cwes, description, detail, ratings, bug_bounties, pocs, exploits, vendors, vendor
 
 
 def parse_metrics(metrics):
@@ -1253,13 +1253,19 @@ def get_unaffected(vuln):
     vers = vuln.get("matching_vers", "")
     if "|" in vers and "<=" not in vers:
         vers = vers.split("|")[-1]
-        return {"version": vers.replace("<", ""), "status": "unaffected"}
-    if vuln.get("detail"):
-        if match := UPPER_VERSION_FROM_DETAIL_A.search(vuln["detail"]):
-            return {"version": match["version"].rstrip("."), "status": "unaffected"}
-        if match := UPPER_VERSION_FROM_DETAIL_B.search(vuln["detail"]):
-            return {"version": match["version"].rstrip("."), "status": "unaffected"}
-    return None
+        return vers.replace("<", "")
+    return ""
+
+
+def get_version_from_detail(detail, affected_version):
+    version = ""
+    if match := UPPER_VERSION_FROM_DETAIL_A.search(detail):
+        version = match["version"].rstrip(".")
+    if match := UPPER_VERSION_FROM_DETAIL_B.search(detail):
+        version = match["version"].rstrip(".")
+    if version and compare_versions(affected_version, version, "<="):
+        return version
+    return ""
 
 
 def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, List, Dict]:
@@ -1304,6 +1310,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
             if system_name == "NPM Advisory":
                 adv_id = f"NPM-{adv_id}"
             refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
+            vendor.append(i)
         elif category in ("POC", "Bug Bounty", "Exploit"):
             if category == "POC":
                 poc.append(i)
@@ -1324,7 +1331,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
                 refs.append({"id": match['id'], "source": {"name": system_name, "url": i}})
         elif system_name:
             refs.append({"id": category, "source": {"name": system_name, "url": i}})
-    return advisories, refs, bug_bounty, poc, exploit, source
+    return advisories, refs, bug_bounty, poc, exploit, vendor, source
 
 
 def adv_ref_parsing(adv_id, i, match, system_name):
@@ -1427,7 +1434,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
     description, detail = get_description_detail(vuln_occ_dict.get("short_description", ""))
     # Find the best fix version
     recommendation = ""
-    fixed_location = package_issue.get("fixed_location", "")
+    fixed_location = package_issue.get("fixed_location", "") or get_version_from_detail(detail, version_used)
     versions = [{"version": version_used, "status": "affected"}]
     if fixed_location:
         versions.append(
@@ -1764,8 +1771,12 @@ def get_analysis(clinks, pkg_tree_list):
 def get_version_used(purl):
     if not purl:
         return ""
-    purl_obj = PackageURL.from_string(purl)
-    return purl_obj.version
+    version = make_purl(purl)
+    if version:
+        version = version.version
+    elif "@" in purl:
+        version = purl.split("@")[-1]
+    return version
 
 
 def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_pkgs, bom_dependency_tree, counts):
@@ -1773,6 +1784,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     plain_insights = []
     purl = vuln.get("matched_by") or ""
     purl_obj = PackageURL.from_string(purl) if purl else None
+    version_used = get_version_used(purl)
     package_type = vuln.get("type") or ""
     affects = [{
         "ref": purl,
@@ -1780,14 +1792,13 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     }]
     recommendation = ""
     vid = vuln.get("cve_id") or ""
-    fixed_location = ""
     has_flagged_cwe = False
     add_to_pkg_group_rows = False
-    if unaffected := get_unaffected(vuln):
-        affects[0]["versions"].append(unaffected)
-        recommendation = f"Update to version {unaffected.get('version')}."
-        fixed_location = unaffected.get("version")
-    # Locate this package in the tree
+    if fixed_location := get_unaffected(vuln):
+        affects[0]["versions"].append({"version": fixed_location, "status": "unaffected"})
+        recommendation = f"Update to version {fixed_location}."
+        if fixed_location == PLACEHOLDER_FIX_VERSION:
+            counts.wont_fix_version_count += 1
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
         "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix'],
@@ -1814,7 +1825,10 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     if not cve_record:
         return counts, vdict, add_to_pkg_group_rows
 
-    source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendor = cve_to_vdr(cve_record, vid)
+    source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendors, vendor = cve_to_vdr(cve_record, vid)
+    if detail and not fixed_location and (fixed_location := get_version_from_detail(detail, version_used)):
+        vdict["affects"][0]["versions"].append({"version": fixed_location, "status": "unaffected"})
+        vdict["recommendation"] = f"Update to version {fixed_location}."
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
         purl,
         purl.replace(":", "/"),
@@ -1890,7 +1904,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
                 counts.fix_version_count += 1
             if vendor in config.OS_PKG_TYPES and rating.get("severity", "") == "CRITICAL":
                 counts.critical_count += 1
-    if package_type not in config.OS_PKG_TYPES and reached_purls.get(purl):
+    if vendors and package_type not in config.OS_PKG_TYPES and reached_purls.get(purl):
         # If it has a poc, an insight might have gotten added above
         if not pkg_requires_attn:
             insights.append(":receipt: Reachable")
@@ -1963,9 +1977,6 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
     add_to_pkg_group_rows = pkg_requires_attn and fixed_location and purl
-    # if pkg_requires_attn and fixed_location and purl:
-    #     pkg_group_rows[purl].append(
-    #         {"id": vid, "fixed_location": fixed_location, "p_rich_tree": p_rich_tree})
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
     # if not options.no_vuln_table:

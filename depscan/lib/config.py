@@ -1671,9 +1671,9 @@ CWE_MAP = {
     1395: 'Dependency on Vulnerable Third-Party Component'
 }
 
-UPPER_VERSION_FROM_DETAIL_A = re.compile("(?:( prior to )|( before ))(?P<version>\S+)", re.IGNORECASE)
+UPPER_VERSION_FROM_DETAIL_A = re.compile(r"(?:(( prior to)|( before)|( upgrading to)|( update to [a-z\s-]+)|( update [a-z\s-]+ to))( version)? )(?P<version>[^\s,]+)", re.IGNORECASE)
 
-UPPER_VERSION_FROM_DETAIL_B = re.compile("(?:( fix was released in version )|( issue has been addressed in version ))(?P<version>\S+)", re.IGNORECASE)
+UPPER_VERSION_FROM_DETAIL_B = re.compile(r"(?:( fix was released in version )|( issue has been addressed in version ))(?P<version>[^\s,]+)", re.IGNORECASE)
 
 VERSION_RANGE = re.compile(r"vers:\S+/(?P<lower_comparator>[><=]{1,2})(?P<lower_version>\S+)\|(?P<upper_comparator>[><=]{1,2})(?P<upper_version>\S+)")
 

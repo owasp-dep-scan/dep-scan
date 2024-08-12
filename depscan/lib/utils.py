@@ -1,4 +1,5 @@
 import ast
+import contextlib
 import encodings.utf_8
 import json
 import os
@@ -8,12 +9,16 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
+import semver
 from jinja2 import Environment
+from packageurl import PackageURL
 from vdb.lib.cve_model import Description, Descriptions
 from vdb.lib.search import search_by_purl_like
+from vdb.lib.utils import version_compare
 
 from depscan.lib import config, normalize
 from depscan.lib.config import TIME_FMT
+
 
 LIC_SYMBOL_REGEX = re.compile(r"[(),]")
 
@@ -480,8 +485,8 @@ def get_description_detail(data: Description | str) -> Tuple[str, str]:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = detail.replace("\n", " ").replace("\t", " ")
-    detail = str(encodings.utf_8.encode(detail))
+    detail = detail.replace("\\n", " ").replace("\\t", " ").replace("\\r", " ").replace("\n", " ").replace("\t", " ").replace("\r", " ")
+    detail = bytes.decode(encodings.utf_8.encode(detail)[0], errors="replace")
     description = description.lstrip("# ")
     return description, detail
 
@@ -628,3 +633,27 @@ def make_version_suggestions(vdrs):
                                              f"nonetheless in order to address additional "
                                              f"vulnerabilities identified for this package.")
     return vdrs
+
+
+def compare_versions(v1, v2, comparator):
+    with contextlib.suppress(ValueError, TypeError):
+        v1 = semver.parse_version_info(v1)
+        v2 = semver.parse_version_info(v2)
+    match comparator:
+        case "<":
+            return v1 < v2
+        case ">":
+            return v1 > v2
+        case "<=":
+            return v1 <= v2
+        case ">=":
+            return v1 >= v2
+        case _:
+            return v1 == v2
+
+
+def make_purl(purl):
+    try:
+        return PackageURL.from_string(purl).version
+    except ValueError:
+        return ""
