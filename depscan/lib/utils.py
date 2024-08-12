@@ -470,7 +470,10 @@ def format_system_name(system_name):
         .replace("Netapp", "NetApp")
         .replace("Npmjs", "NPM")
         .replace("Alpinelinux", "Alpine Linux")
-        .replace("Fedoraproject", "Fedora Project"))
+        .replace("Fedoraproject", "Fedora Project")
+        .replace("Djangoproject", "Django Project")
+        .replace("Opensuse", "Open Suse")
+        .replace("Securityfocus", "Security Focus"))
     return system_name
 
 
@@ -635,25 +638,38 @@ def make_version_suggestions(vdrs):
     return vdrs
 
 
-def compare_versions(v1, v2, comparator):
-    with contextlib.suppress(ValueError, TypeError):
-        v1 = semver.parse_version_info(v1)
-        v2 = semver.parse_version_info(v2)
+def compare_versions(v1: str, v2: str, comparator: str) -> bool:
+    try:
+        version_1 = semver.Version.parse(v1)
+        version_2 = semver.Version.parse(v2)
+        # match comparator:
+        #     case "<":
+        #         return version_1.compare(version_2) == -1
+        #     case ">":
+        #         return version_1.compare(version_2) == 1
+        #     case "<=":
+        #         return version_1.compare(version_2) in [-1, 0]
+        #     case ">=":
+        #         return version_1.compare(version_2) in [1, 0]
+        #     case _:
+        #         return version_1 == version_2 == 0
+    except ValueError:
+        version_1, version_2 = v1, v2
     match comparator:
         case "<":
-            return v1 < v2
+            return version_1 < version_2
         case ">":
-            return v1 > v2
+            return version_1 > version_2
         case "<=":
-            return v1 <= v2
+            return version_1 <= version_2
         case ">=":
-            return v1 >= v2
+            return version_1 >= version_2
         case _:
-            return v1 == v2
+            return version_1 == version_2
 
 
 def make_purl(purl):
     try:
-        return PackageURL.from_string(purl).version
+        return PackageURL.from_string(purl)
     except ValueError:
         return ""

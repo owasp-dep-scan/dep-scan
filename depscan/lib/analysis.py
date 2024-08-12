@@ -1263,12 +1263,12 @@ def get_version_from_detail(detail, affected_version):
         version = match["version"].rstrip(".")
     if match := UPPER_VERSION_FROM_DETAIL_B.search(detail):
         version = match["version"].rstrip(".")
-    if version and compare_versions(affected_version, version, "<="):
+    if affected_version and version and compare_versions(affected_version, version, "<="):
         return version
     return ""
 
 
-def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, List, Dict]:
+def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, List, List, Dict]:
     """
     Parses the reference list provided by VDB and converts to VDR objects
 
@@ -1279,7 +1279,7 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
     :rtype: tuple[list, list]
     """
     if not references:
-        return [], [], [], [], [], {}
+        return [], [], [], [], [], [], {}
     ref = {str(i.url.root) for i in references.root}
     # ref = {i.get("url") for i in references}
     advisories = []
@@ -1328,9 +1328,10 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
         elif category == "Mailing List":
             if match := ADVISORY.search(i):
                 system_name = f"{format_system_name(match['org'])} {category}"
-                refs.append({"id": match['id'], "source": {"name": system_name, "url": i}})
-        elif system_name:
-            refs.append({"id": category, "source": {"name": system_name, "url": i}})
+                refs.append({"id": f"{match['org']}-{match['id']}", "source": {"name": system_name, "url": i}})
+                vendor.append(i)
+        # elif system_name:
+        #     refs.append({"id": category, "source": {"name": system_name, "url": i}})
     return advisories, refs, bug_bounty, poc, exploit, vendor, source
 
 
