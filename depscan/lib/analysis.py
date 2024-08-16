@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import cvss
+from custom_json_diff.utils import compare_versions
 from cvss import CVSSError
 from packageurl import PackageURL
 from rich import box
@@ -34,7 +35,7 @@ from depscan.lib.utils import (
     max_version,
     get_description_detail,
     format_system_name,
-    make_version_suggestions, combine_vdrs, compare_versions, make_purl
+    make_version_suggestions, combine_vdrs, make_purl
 )
 
 NEWLINE = "\\n"

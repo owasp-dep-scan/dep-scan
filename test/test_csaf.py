@@ -1,6 +1,7 @@
 import os.path
 
-from custom_json_diff.custom_diff import sort_dict_lists, sort_list
+from custom_json_diff.custom_diff import sort_dict_lists
+from custom_json_diff.utils import sort_list
 
 from depscan.lib.config import REF_MAP
 from depscan.lib.csaf import (

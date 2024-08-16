@@ -1,5 +1,4 @@
 import ast
-import contextlib
 import encodings.utf_8
 import json
 import os
@@ -9,7 +8,6 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
-import semver
 from jinja2 import Environment
 from packageurl import PackageURL
 from vdb.lib.cve_model import Description, Descriptions
