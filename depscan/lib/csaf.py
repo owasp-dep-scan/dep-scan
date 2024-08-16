@@ -231,7 +231,7 @@ def format_references(references: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
         return [], []
     fmt_refs = []
     ids = []
-    refs = [i for i in references if i.get("source")]
+    refs = [i for i in references if i.get("source", {}).get("name")]
     id_types = {"issues", "pull", "commit", "release"}
     for r in refs:
         ref_id = r.get("id")

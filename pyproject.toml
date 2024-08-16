@@ -7,6 +7,7 @@ authors = [
 ]
 dependencies = [
     "appthreat-vulnerability-db>=6.0.0",
+    "custom-json-diff~=1.7.0",
     "defusedxml",
     "oras~=0.1.30",
     "PyYAML",
@@ -47,7 +48,6 @@ scan = "depscan.cli:main"
 
 [project.optional-dependencies]
 dev = ["black",
-    "custom-json-diff~=1.7.0",
     "flake8",
     "pytest",
     "pytest-cov",

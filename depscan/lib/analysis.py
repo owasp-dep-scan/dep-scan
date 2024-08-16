@@ -1838,11 +1838,13 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         as_tree=True,
         extra_text=f":left_arrow: {vid}",
     )
+    published = cve_record.root.cveMetadata.datePublished
+    updated = cve_record.root.cveMetadata.dateUpdated
     vdict |= {
         "source": source, "references": references, "advisories": advisories, "cwes": cwes,
         "description": description, "detail": detail, "ratings": [rating],
-        "published": cve_record.root.cveMetadata.datePublished.strftime("%Y-%m-%dT%H:%M:%S"),
-        "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S"),
+        "published": published.strftime("%Y-%m-%dT%H:%M:%S") if published else "",
+        "updated": updated.strftime("%Y-%m-%dT%H:%M:%S") if updated else "",
     }
     is_required = False
     if direct_purls.get(purl) or purl in required_pkgs:
@@ -1981,7 +1983,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     plain_insights = list(set(plain_insights))
     vdict["insights"] = insights
     if exploits or pocs:
-        vdict["analysis"] = get_analysis({"exploits": exploits[0] if exploits else [], "pocs": pocs[0] if pocs else []})
+        vdict["analysis"] = get_analysis({"exploits": exploits[0] if exploits else [], "pocs": pocs[0] if pocs else []}, pkg_tree_list)
     vdict |= {"properties": [
         {"name": "depscan:insights", "value": "\\n".join(plain_insights)},
         {"name": "depscan:prioritized", "value": "true" if pkg_requires_attn and fixed_location and purl else "false"},

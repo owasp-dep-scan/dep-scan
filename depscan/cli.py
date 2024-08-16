@@ -19,7 +19,7 @@ from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
 
-import depscan
+from depscan import get_version
 from depscan.lib import explainer, github, utils
 from depscan.lib.analysis import (
     PrepareVdrOptions,
@@ -306,7 +306,7 @@ def build_args():
         "--version",
         help="Display the version",
         action="version",
-        version="%(prog)s " + depscan.get_version(),
+        version="%(prog)s " + get_version(),
     )
     return parser.parse_args()
 
@@ -480,7 +480,7 @@ def summarise_tools(tools, metadata, bom_data):
     :return: None
     """
     components = tools.get("components", [])
-    ds_version = depscan.get_version()
+    ds_version = get_version()
     ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
     components.append(
         {
