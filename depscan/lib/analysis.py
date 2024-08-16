@@ -1800,25 +1800,24 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         recommendation = f"Update to version {fixed_location}."
         if fixed_location == PLACEHOLDER_FIX_VERSION:
             counts.wont_fix_version_count += 1
+    pkg_tree_list, p_rich_tree = pkg_sub_tree(
+        purl,
+        purl.replace(":", "/"),
+        bom_dependency_tree,
+        pkg_severity="unknown",
+        as_tree=True,
+        extra_text=f":left_arrow: {vid}",
+    )
     vdict = {
         "id": vuln.get("cve_id"), "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
         "affects": affects, "recommendation": recommendation, "purl_prefix": vuln['purl_prefix'],
         "source": {}, "references": [], "advisories": [], "cwes": [], "description": "",
         "fixed_location": fixed_location, "detail": "", "ratings": [], "published": "",
-        "updated": "", "analysis": {}, "insights":[], "p_rich_tree": None
+        "updated": "", "analysis": get_analysis({}, pkg_tree_list), "insights":[], "p_rich_tree": p_rich_tree
     }
     try:
         cve_record = vuln.get("source_data")
         if not isinstance(cve_record, CVE):
-            # pkg_tree_list, p_rich_tree = pkg_sub_tree(
-            #     purl,
-            #     purl.replace(":", "/"),
-            #     bom_dependency_tree,
-            #     pkg_severity="unknown",
-            #     as_tree=True,
-            #     extra_text=f":left_arrow: {vid}",
-            # )
-            # vuln["p_rich_tree"] = p_rich_tree
             return counts, vdict, add_to_pkg_group_rows
     except KeyError:
         return counts, vdict, add_to_pkg_group_rows
@@ -1843,7 +1842,6 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
         "description": description, "detail": detail, "ratings": [rating],
         "published": cve_record.root.cveMetadata.datePublished.strftime("%Y-%m-%dT%H:%M:%S"),
         "updated": cve_record.root.cveMetadata.dateUpdated.strftime("%Y-%m-%dT%H:%M:%S"),
-        "p_rich_tree": p_rich_tree
     }
     is_required = False
     if direct_purls.get(purl) or purl in required_pkgs:
@@ -1980,27 +1978,11 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     add_to_pkg_group_rows = pkg_requires_attn and fixed_location and purl
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
-    # if not options.no_vuln_table:
-    #     table.add_row(
-    #         p_rich_tree,
-    #         "\n".join(insights),
-    #         fixed_location,
-    #         f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "")}""",
-    #         f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
-    #     )
-    vuln["insights"] = insights
-    analysis = {}
-    if exploits:
-        analysis = {"state": "exploitable", "detail": f'See {exploits[0]}'}
-    elif pocs:
-        analysis = {"state": "in_triage", "detail": f'See {pocs[0].get("url")}'}
-    elif pkg_tree_list and len(pkg_tree_list) > 1:
-        analysis = {
-            "state": "in_triage", "detail": f"Dependency Tree: {json.dumps(pkg_tree_list)}",
-        }
-    properties = [
+    vdict["insights"] = insights
+    if exploits or pocs:
+        vdict["analysis"] = get_analysis({"exploits": exploits[0] if exploits else [], "pocs": pocs[0] if pocs else []})
+    vdict |= {"properties": [
         {"name": "depscan:insights", "value": "\\n".join(plain_insights)},
         {"name": "depscan:prioritized", "value": "true" if pkg_requires_attn and fixed_location and purl else "false"},
-    ]
-    vuln |= {"properties": properties, "analysis": analysis}
+    ]}
     return counts, vdict, add_to_pkg_group_rows
