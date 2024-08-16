@@ -638,36 +638,6 @@ def make_version_suggestions(vdrs):
     return vdrs
 
 
-def compare_versions(v1: str, v2: str, comparator: str) -> bool:
-    try:
-        version_1 = semver.Version.parse(v1)
-        version_2 = semver.Version.parse(v2)
-        # match comparator:
-        #     case "<":
-        #         return version_1.compare(version_2) == -1
-        #     case ">":
-        #         return version_1.compare(version_2) == 1
-        #     case "<=":
-        #         return version_1.compare(version_2) in [-1, 0]
-        #     case ">=":
-        #         return version_1.compare(version_2) in [1, 0]
-        #     case _:
-        #         return version_1 == version_2 == 0
-    except ValueError:
-        version_1, version_2 = v1, v2
-    match comparator:
-        case "<":
-            return version_1 < version_2
-        case ">":
-            return version_1 > version_2
-        case "<=":
-            return version_1 <= version_2
-        case ">=":
-            return version_1 >= version_2
-        case _:
-            return version_1 == version_2
-
-
 def make_purl(purl):
     try:
         return PackageURL.from_string(purl)
