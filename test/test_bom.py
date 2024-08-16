@@ -1,17 +1,6 @@
 import os
-import tempfile
-
-import pytest
-from vdb.lib import db6 as db_lib
 
 from depscan.lib.bom import get_pkg_by_type, get_pkg_list, parse_bom_ref
-
-
-@pytest.fixture
-def test_db():
-    with tempfile.NamedTemporaryFile(delete=False) as fp:
-        with tempfile.NamedTemporaryFile(delete=False) as indexfp:
-            return db_lib.get(db_file=fp.name, index_file=indexfp.name)
 
 
 def test_get_pkg():
@@ -127,7 +116,7 @@ def test_parse():
     }
 
 
-def test_get_pkg_by_type(test_db):
+def test_get_pkg_by_type():
     test_bom = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-docker.json"
     )
