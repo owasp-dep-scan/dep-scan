@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import cvss
-from custom_json_diff.utils import compare_versions
+from custom_json_diff.lib.utils import compare_versions
 from cvss import CVSSError
 from packageurl import PackageURL
 from rich import box
@@ -41,11 +41,11 @@ from depscan.lib.utils import (
 NEWLINE = "\\n"
 
 CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
-# VENDOR = re.compile(r"redhat.com|oracle.com|curl.haxx.se|nodejs.org|sec-consult.com|jenkins.io/security|support.f5.com|suricata-ids.org/|foxitsoftware.com/support/|success.trendmicro.com/|docs.jmf.com/|www.postgresql.org/about|apache.org|debian.org|gentoo.org|ubuntu.com|rubyonrails-security|support.apple.com|alpinelinux.org|bugs.busybox.net", re.IGNORECASE)
 JFROG_ADVISORY = re.compile(r"(?P<id>jfsa\S+)", re.IGNORECASE)
 ADVISORY = re.compile(r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)", re.IGNORECASE)
 
 
+# Deprecated
 def best_fixed_location(sug_version, orig_fixed_location):
     """
     Compares the suggested version with the version from the original fixed
@@ -333,7 +333,7 @@ def prepare_vdr(options: PrepareVdrOptions):
             include_pkg_group_rows.add(vuln.get("bom-ref"))
         # If the user doesn't want any table output return quickly
     if options.suggest_mode:
-        pkg_vulnerabilities = make_version_suggestions(pkg_vulnerabilities)
+        pkg_vulnerabilities = make_version_suggestions(pkg_vulnerabilities, options.project_type)
     pkg_vulnerabilities = dedupe_vdrs(pkg_vulnerabilities)
     pkg_group_rows, table = generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options)
     pkg_vulnerabilities = remove_extra_metadata(pkg_vulnerabilities)
@@ -924,6 +924,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         LOG.info("No license violation detected ✅")
 
 
+# Deprecated
 def suggest_version(results, pkg_aliases=None, purl_aliases=None):
     """
     Provide version suggestions
@@ -1794,6 +1795,10 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     }]
     recommendation = ""
     vid = vuln.get("cve_id") or ""
+    if vid.startswith("MAL-"):
+        insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
+        plain_insights.append("Malicious")
+        counts.malicious_count += 1
     has_flagged_cwe = False
     add_to_pkg_group_rows = False
     if fixed_location := get_unaffected(vuln):

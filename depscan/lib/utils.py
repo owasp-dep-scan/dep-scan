@@ -1,4 +1,5 @@
 import ast
+import contextlib
 import encodings.utf_8
 import json
 import os
@@ -10,12 +11,14 @@ from typing import List, Dict, Any, Tuple
 
 from jinja2 import Environment
 from packageurl import PackageURL
+from vdb.lib.config import PLACEHOLDER_FIX_VERSION, PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.cve_model import Description, Descriptions
 from vdb.lib.search import search_by_purl_like
-from vdb.lib.utils import version_compare
+from vdb.lib.utils import version_compare, parse_purl
 
-from depscan.lib import config, normalize
-from depscan.lib.config import TIME_FMT
+from depscan.lib.config import TIME_FMT, ignore_directories
+from depscan.lib.logger import LOG
+from depscan.lib.normalize import dealias_packages, dedup, create_pkg_variations
 
 
 LIC_SYMBOL_REGEX = re.compile(r"[(),]")
@@ -31,7 +34,7 @@ def filter_ignored_dirs(dirs):
     [
         dirs.remove(d)
         for d in list(dirs)
-        if d.lower() in config.ignore_directories or d.startswith(".")
+        if d.lower() in ignore_directories or d.startswith(".")
     ]
     return dirs
 
@@ -231,7 +234,7 @@ def search_pkgs(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     pkg_aliases = defaultdict(list)
     purl_aliases = {}
     for pkg in pkg_list:
-        variations = normalize.create_pkg_variations(pkg)
+        variations = create_pkg_variations(pkg)
         if variations:
             expanded_list += variations
         vendor, name = get_pkg_vendor_name(pkg)
@@ -257,8 +260,8 @@ def search_pkgs(project_type: str | None, pkg_list: List[Dict[str, Any]]):
         search_term = i.get("purl") or i.get("name")
         if res := search_by_purl_like(search_term, with_data=True):
             raw_results.extend(res)
-    raw_results = normalize.dedup(project_type, raw_results)
-    pkg_aliases = normalize.dealias_packages(
+    raw_results = dedup(project_type, raw_results)
+    pkg_aliases = dealias_packages(
         raw_results,
         pkg_aliases=pkg_aliases,
         purl_aliases=purl_aliases,
@@ -592,32 +595,56 @@ def combine_vdrs(v1, v2):
     }
 
 
-def get_suggested_version_map(pkg_vulnerabilities: List[Dict]):
+def get_suggested_version_map(pkg_vulnerabilities: List[Dict]) -> Dict[str, str]:
     suggested_version_map = {}
     for i, v in enumerate(pkg_vulnerabilities):
-        purl = v.get("bom-ref", "").replace(f"{v.get('id')}/", "")
-        if not (purl_prefix := v.get("purl_prefix")):
-            purl_prefix = purl
-            if "@" in purl_prefix:
-                purl_prefix = purl_prefix.split("@", 1)[0]
-        pkg_vulnerabilities[i]["purl_prefix"] = purl_prefix
-        if v.get("recommendation"):
-            for a in v.get("affects"):
-                for j in a.get("versions"):
-                    if j.get("status") == "unaffected":
-                        # if purl in version_map:
-                        #     version_map[purl] = max_version([version_map[purl], j.get("version")])
-                        # else:
-                        #     version_map[purl] = j.get("version")
-                        if purl_prefix in suggested_version_map:
-                            suggested_version_map[purl_prefix] = max_version([suggested_version_map[purl_prefix], j.get("version")])
-                        else:
-                            suggested_version_map[purl_prefix] = j.get("version")
-    return suggested_version_map, pkg_vulnerabilities
+        fixed_location = v.get("fixed_location")
+        if not fixed_location or fixed_location in (PLACEHOLDER_FIX_VERSION, PLACEHOLDER_EXCLUDE_VERSION):
+            continue
+        purl_prefix = v.get("purl_prefix") or ""
+        # Don't go near certain packages
+        if "kernel" in purl_prefix or "openssl" in purl_prefix or "openssh" in purl_prefix:
+            continue
+        if purl_prefix in suggested_version_map:
+            suggested_version_map[purl_prefix] = max_version([suggested_version_map[purl_prefix], fixed_location])
+        else:
+            suggested_version_map[purl_prefix] = fixed_location
+    return suggested_version_map
 
 
-def make_version_suggestions(vdrs):
-    suggested_version_map, vdrs = get_suggested_version_map(vdrs)
+def get_suggested_versions(pkg_list, project_type):
+    sug_version_dict = get_suggested_version_map(pkg_list)
+    pkg_aliases = {}
+    if sug_version_dict:
+        LOG.debug(
+            "Adjusting fix version based on the initial suggestion %s",
+            sug_version_dict,
+        )
+        # Recheck packages
+        sug_pkg_list = []
+        for k, v in sug_version_dict.items():
+            if not v:
+                continue
+            sug, aliases = process_suggestions(k, v)
+            if sug:
+                sug_pkg_list.extend(sug)
+            if aliases:
+                pkg_aliases |= aliases
+        LOG.debug(
+            "Re-checking our suggestion to ensure there are no further "
+            "vulnerabilities"
+        )
+        override_results, _, _ = search_pkgs(project_type, sug_pkg_list)
+        if override_results:
+            new_sug_dict = get_suggested_version_map(override_results)
+            LOG.debug("Received override results: %s", new_sug_dict)
+            for nk, nv in new_sug_dict.items():
+                sug_version_dict[nk] = nv
+    return sug_version_dict, pkg_aliases
+
+
+def make_version_suggestions(vdrs, project_type):
+    suggested_version_map, aliases = get_suggested_versions(vdrs, project_type)
     for i, v in enumerate(vdrs):
         if suggested_version := suggested_version_map.get(v["purl_prefix"]):
             if old_rec := v.get("recommendation"):
@@ -641,3 +668,52 @@ def make_purl(purl):
         return PackageURL.from_string(purl)
     except ValueError:
         return ""
+
+
+def process_suggestions(k, v):
+    """
+    Processes suggestions for package information and returns a list of packages
+    along with their aliases.
+
+    :param k: Package URL
+    :param v: Suggested version
+
+    :returns: A list of packages and a dict of aliases
+    :rtype: tuple[list, dict]
+    """
+    vendor = ""
+    version = v
+    pkg_list = []
+    aliases = {}
+    # Key is already a purl
+    if k.startswith("pkg:"):
+        with contextlib.suppress(Exception):
+            purl_obj = parse_purl(k)
+            vendor = purl_obj.get("namespace", purl_obj.get("type"))
+            name = purl_obj.get("name")
+            version = purl_obj.get("version")
+            pkg_list.append(
+                {
+                    "vendor": vendor,
+                    "name": name,
+                    "version": version,
+                    "purl": k,
+                }
+            )
+    else:
+        tmp_a = k.split(":")
+        if len(tmp_a) == 3:
+            vendor = tmp_a[0]
+            name = tmp_a[1]
+        else:
+            name = tmp_a[0]
+        # De-alias the vendor and package name
+        full_pkg = f"{vendor}:{name}:{version}"
+        full_pkg = aliases.get(full_pkg, full_pkg)
+        split_pkg = full_pkg.split(":")
+        if len(split_pkg) == 3:
+            vendor, name, version = split_pkg
+        elif split_pkg:
+            name = split_pkg[0]
+        pkg_list.append({"vendor": vendor, "name": name, "version": version})
+    return pkg_list, aliases
