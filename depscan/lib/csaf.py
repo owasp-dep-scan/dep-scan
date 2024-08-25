@@ -35,45 +35,41 @@ def vdr_to_csaf(res):
     """
     cve = res.get("id", "")
     acknowledgements = get_acknowledgements(res.get("source", {}))
-    [products, product_status] = get_products(
-        res.get("affects", []), res.get("properties", [])
-    )
+    products, product_status = get_products(res.get("affects", []))
     cwe, notes = parse_cwe(res.get("cwes", []))
     cvss_v3 = parse_cvss(res.get("ratings", [{}]))
-    description = (
-        res.get("description", "")
-        .replace("\n", " ")
-        .replace("\t", " ")
-        .replace("\n", " ")
-        .replace("\t", " ")
-    )
+    description = res.get("description", "").replace("\n", " ").replace("\t", " ")
+    details = res.get("detail", "").replace("\n", " ").replace("\t", " ")
     ids, references = format_references(res.get("references", []))
-    orig_date = res.get("published")
-    update_date = res.get("updated")
-    discovery_date = orig_date or update_date
-    vuln = {}
-    if cve.startswith("CVE"):
-        vuln["cve"] = cve
-    vuln["cwe"] = cwe
-    vuln["acknowledgements"] = acknowledgements
-    vuln["discovery_date"] = discovery_date
-    vuln["product_status"] = product_status
-    vuln["references"] = references
-    vuln["ids"] = ids
-    vuln["scores"] = [{"cvss_v3": cvss_v3, "products": products}]
-    notes.append(
+    discovery_date = res.get("published") or res.get("updated")
+    notes.extend([
         {
-            "category": "general",
+            "category": "description",
             "text": description,
             "details": "Vulnerability Description",
+        },
+        {
+            "category": "details",
+            "text": details,
+            "details": "Vulnerability Details",
         }
-    )
-    vuln["notes"] = notes
-
+    ])
+    vuln = {
+        "cwe": cwe,
+        "acknowledgements": acknowledgements,
+        "discovery_date": discovery_date,
+        "product_status": product_status,
+        "references": references,
+        "ids": ids,
+        "scores": [{"cvss_v3": cvss_v3, "products": products}],
+        "notes": notes,
+    }
+    if cve.startswith("CVE"):
+        vuln["cve"] = cve
     return vuln
 
 
-def get_products(affects, props):
+def get_products(affects):
     """
     Generates a list of unique products and a dictionary of version statuses for
     the vulnerability.
@@ -86,59 +82,32 @@ def get_products(affects, props):
     :return: Packages affected by the vulnerability and their statuses
     :rtype: tuple[list[str], dict[str, str]]
     """
-    if not affects and not props:
+    if not affects:
         return [], {}
-
-    known_affected = []
-    fixed = []
+    known_affected = set()
+    not_affected = set()
     products = set()
     for i in affects:
-        for v in i.get("versions", []):
-            try:
-                purl = PackageURL.from_string(i.get("ref", ""))
-                namespace = purl.namespace
-                pkg_name = purl.name
-                version = purl.version
-            except ValueError:
-                purl = i.get("ref", "")
-                namespace = None
-                pkg_name = i.get("ref", "")
-                version = None
-            if purl and v.get("status") == "affected":
-                known_affected.append(
-                    f'{namespace}/{pkg_name}@{version}')
-            elif purl and v.get("status") == "unaffected":
-                fixed.append(f'{namespace}/{pkg_name}@{v.get("version")}')
-            elif not purl and v.get("status") == "affected":
-                known_affected.append(i.get("ref"))
         product = ""
         try:
             purl = PackageURL.from_string(i.get("ref", ""))
-            if purl.namespace:
-                product += f"{purl.namespace}/"
-            product += f"{purl.name}@{purl.version}"
+            namespace = purl.namespace or ""
+            pkg_name = purl.name
+            if namespace:
+                product += f"{namespace}/"
         except ValueError:
-            product = i.get("ref", "")
-        products.add(product)
-
-    if version_range := [
-        {i["name"]: i["value"]}
-        for i in props
-        if i["name"] == "affectedVersionRange"
-    ]:
-        for v in version_range:
-            products.add(v["affectedVersionRange"])
-            known_affected.append(v["affectedVersionRange"])
-
-    known_affected = [
-        i.replace("None/", "").replace("@None", "")
-        for i in known_affected
-    ]
-    fixed = [
-        i.replace("None/", "").replace("@None", "") for i in fixed
-    ]
-
-    return list(products), {"known_affected": known_affected, "fixed": fixed}
+            purl = None
+            namespace = ""
+            pkg_name = i.get("ref", "").split("@")
+            products.add(i.get("ref", ""))
+        for v in i.get("versions", []):
+            entry = f'{product}{pkg_name}@{v.get("version") or v.get("range")}'
+            if v.get("status") == "affected":
+                known_affected.add(entry)
+                products.add(entry)
+            elif v.get("status") == "unaffected":
+                not_affected.add(entry)
+    return list(products), {"known_affected": list(known_affected), "known_not_affected": list(not_affected)}
 
 
 def get_acknowledgements(source):
@@ -148,15 +117,18 @@ def get_acknowledgements(source):
     :type source: dict
 
     :return: A dictionary containing the acknowledgements
-    :rtype: dict
+    :rtype: list[dict]
     """
     if not source.get("name"):
-        return {}
+        return []
 
-    return {
-        "organization": source["name"],
+    if not source.get("url"):
+        return [{"organization": source["name"].replace(" Advisory", "")}]
+
+    return [{
+        "organization": source["name"].replace(" Advisory", ""),
         "urls": [source.get("url")]
-    }
+    }]
 
 
 def parse_cwe(cwe):
