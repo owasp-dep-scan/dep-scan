@@ -1322,10 +1322,10 @@ def refs_to_vdr(references: Reference, vid) -> Tuple[List, List, List, List, Lis
                 exploit.append(i)
         elif category == "Bugzilla":
             refs.append({"id": f"{match['org']}-bugzilla-{match['id']}", "source": {"name": f"{format_system_name(match['org'])} Bugzilla", "url": i}})
-        elif category == "Vendor":
+        elif category == "Vendor" and "announce" in i:
             vendor.append(i)
             if match := ADVISORY.search(i):
-                system_name = f"{format_system_name(match['org'])} Advisory"
+                system_name = f"{format_system_name(match['org'])} Mailing List Announcement"
                 advisories.append({"title": f"{system_name} {match['id']}", "url": i})
         elif category == "Mailing List":
             if match := ADVISORY.search(i):
@@ -1437,7 +1437,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
     description, detail = get_description_detail(vuln_occ_dict.get("short_description", ""))
     # Find the best fix version
     recommendation = ""
-    fixed_location = package_issue.get("fixed_location", "") or get_version_from_detail(detail, version_used)
+    fixed_location = package_issue.get("fixed_location") or get_version_from_detail(detail, version_used)
     versions = [{"version": version_used, "status": "affected"}]
     if fixed_location:
         versions.append(
@@ -1835,6 +1835,7 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     if detail and not fixed_location and (fixed_location := get_version_from_detail(detail, version_used)):
         vdict["affects"][0]["versions"].append({"version": fixed_location, "status": "unaffected"})
         vdict["recommendation"] = f"Update to version {fixed_location}."
+        vdict["fixed_location"] = fixed_location
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
         purl,
         purl.replace(":", "/"),

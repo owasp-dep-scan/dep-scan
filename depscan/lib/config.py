@@ -608,6 +608,7 @@ REFERENCE_REGEXES = {
         r"gist.github.com/(?P<user>[\w\-.]+)/(?P<id>\S+)": "GitHub Gist",
     },
     "other": {
+        "blog": "Blog Post",
         r"lists.[\w\-]+.org/": "Vendor",
         "openwall.com|oss-security|www.mail-archive.com|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
         r"(?<=bugzilla.)(?P<org>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)": "Bugzilla",
@@ -615,9 +616,7 @@ REFERENCE_REGEXES = {
         r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn|pysec)-)?[\w\d\-:]+)": "Advisory",
         r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
         "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
-        # r"npmjs.com/package/@?\w+/?\w+": "NPM Package Page",
         r"(?P<org>snyk).io/vuln/(?P<id>\S+)": "Advisory",
-        # "blog": "Blog Post",
         r"(?P<org>vuldb).com/\?id.(?P<id>\d+)": "Advisory",
         # "oss-fuzz": "OSS-Fuzz",
         # "cwe.mitre.org/data/definitions/(?P<id>\d+).html": "CWE Definition",
@@ -1673,7 +1672,7 @@ CWE_MAP = {
 
 UPPER_VERSION_FROM_DETAIL_A = re.compile(r"(?:(( prior to)|( before)|( upgrading to)|( update to [a-z\s-]+)|( update [a-z\s-]+ to))( version)? )(?P<version>\d[^\s,]+)", re.IGNORECASE)
 
-UPPER_VERSION_FROM_DETAIL_B = re.compile(r"(?:( fix was released in version )|( issue has been addressed in version ))(?P<version>\d[^\s,]+)", re.IGNORECASE)
+UPPER_VERSION_FROM_DETAIL_B = re.compile(r"(?:(( fix was released in)|( been addressed in)|( until)|( migrate to))( version)? )(?P<version>\d[^\s,]+)", re.IGNORECASE)
 
 VERSION_RANGE = re.compile(r"vers:\S+/(?P<lower_comparator>[><=]{1,2})(?P<lower_version>\S+)\|(?P<upper_comparator>[><=]{1,2})(?P<upper_version>\S+)")
 
