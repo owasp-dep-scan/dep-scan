@@ -601,38 +601,39 @@ RUBY_PLATFORM_MARKERS = [
 # This could be replaced with a better heuristics or lookup database in the future.
 NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
 
-REFERENCE_REGEXES = {
+CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
+JFROG_ADVISORY = re.compile(r"(?P<id>jfsa\S+)", re.IGNORECASE)
+ADVISORY = re.compile(r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)", re.IGNORECASE)
+
+REF_MAP = {
     "repo_hosts": {
-        r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<user>[\w\-.]+)/(?P<repo>[\w\-.]+)/(?P<type>pull|commit|commits|release|issues)(?:/detail\?id=)?(?:s/tag)?/?(?P<id>\S+)": "Generic",
-        r"github.com/(?P<user>[\w\-.]+)/(?P<repo>[\w\-.]+)/blob/(?P<ref>\S+)/(?P<file>\S+)": "GitHub Blob",
-        r"gist.github.com/(?P<user>[\w\-.]+)/(?P<id>\S+)": "GitHub Gist",
+        re.compile(r"(?P<host>github|bitbucket|chromium)(?:.com|.org)/(?P<user>[\w\-.]+)/(?P<repo>[\w\-.]+)/(?P<type>pull|commit|commits|release|issues)(?:/detail\?id=)?(?:s/tag)?/?(?P<id>\S+)", re.IGNORECASE): "Generic",
+        re.compile(r"github.com/(?P<user>[\w\-.]+)/(?P<repo>[\w\-.]+)/blob/(?P<ref>\S+)/(?P<file>\S+)", re.IGNORECASE): "GitHub Blob",
+        re.compile(r"gist.github.com/(?P<user>[\w\-.]+)/(?P<id>\S+)", re.IGNORECASE): "GitHub Gist",
     },
     "other": {
-        "blog": "Blog Post",
-        r"lists.[\w\-]+.org/": "Vendor",
-        "openwall.com|oss-security|www.mail-archive.com|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.": "Mailing List",
-        r"(?<=bugzilla.)(?P<org>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)": "Bugzilla",
-        "exploit-db|exploit-database|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|snyk.io/research/|chromium.googlesource.com/infra|synacktiv.com|bishopfox.com|zerodayinitiative.com|www.samba.org/samba/security/|www.synology.com/support/security/|us-cert.gov/advisories": "Exploit",
-        r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn|pysec)-)?[\w\d\-:]+)": "Advisory",
-        r"cve-[0-9]{4,}-[0-9]{4,}$": "CVE Record",
-        "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties": "Bug Bounty",
-        r"(?P<org>snyk).io/vuln/(?P<id>\S+)": "Advisory",
-        r"(?P<org>vuldb).com/\?id.(?P<id>\d+)": "Advisory",
+        # "blog": "Blog Post",
+        re.compile(r"lists.[\w\-]+.org/", re.IGNORECASE): "Vendor",
+        re.compile("openwall.com|oss-security|www.mail-archive.com|portal.msrc.microsoft.com|mail.|securityfocus.|securitytracker.|/discussion/|/archives/|groups.", re.IGNORECASE): "Mailing List",
+        re.compile(r"(?<=bugzilla.)(?P<org>\S+)\.\w{3}/show_bug.cgi\?id=(?P<id>\S+)", re.IGNORECASE): "Bugzilla",
+        re.compile("exploit-db|seebug.org|seclists.org|nu11secur1ty|packetstormsecurity.com|coresecurity.com|project-zero|0dd.zone|synacktiv.com|bishopfox.com|zerodayinitiative.com|samba.org/samba/security/|synology.com/support/security/|us-cert.gov/advisories", re.IGNORECASE): "Exploit",
+        ADVISORY: "Advisory",
+        re.compile(r"cve-[0-9]{4,}-[0-9]{4,}$", re.IGNORECASE): "CVE Record",
+        re.compile("hackerone|bugcrowd|bug-bounty|huntr.dev|bounties", re.IGNORECASE): "BugBounty",
+        re.compile(r"(?P<org>snyk).io/vuln/(?P<id>\S+)", re.IGNORECASE): "Advisory",
+        re.compile(r"(?P<org>vuldb).com/\?id.(?P<id>\d+)", re.IGNORECASE): "Advisory",
+        re.compile("poc", re.IGNORECASE): "POC",
         # "oss-fuzz": "OSS-Fuzz",
         # "cwe.mitre.org/data/definitions/(?P<id>\d+).html": "CWE Definition",
         # "/(community|forum|discuss)": "Forum",
         # "bugs.|chat.": "Issue",
         # "wordpress|wpvulndb": "WordPress",
         # "chrome.google.com/webstore": "Chrome Extension",
+    },
+    "exploits": {
+        "seclists": re.compile(r"(?P<org>seclists).org/(?P<id>\S+/\d{4}/\w{3}/\d{1,2})"),
+        "generic": re.compile(r"(?P<org>[^/\s.]+)(?:.blogspot)?.(?:com|org|zone|gov)/(?:[\w-]+/){1,5}(?P<id>[^/\s)]+)", re.IGNORECASE)
     }
-}
-
-REF_MAP = {
-    key: {
-        re.compile(pattern, re.IGNORECASE): value
-        for pattern, value in value.items()
-    }
-    for key, value in REFERENCE_REGEXES.items()
 }
 
 SEVERITY_REF = {

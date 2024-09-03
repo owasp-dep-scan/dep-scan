@@ -478,7 +478,7 @@ def format_system_name(system_name):
     return system_name
 
 
-def get_description_detail(data: Description | str) -> Tuple[str, str]:
+def get_description_detail(data: Descriptions | str) -> Tuple[str, str]:
     if not data:
         return "", ""
     if isinstance(data, Descriptions) and data.root and isinstance(data.root[0], Description):
