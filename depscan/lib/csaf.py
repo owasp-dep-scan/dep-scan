@@ -40,7 +40,9 @@ def vdr_to_csaf(res):
     cvss_v3 = parse_cvss(res.get("ratings", [{}]))
     description = res.get("description", "").replace("\n", " ").replace("\t", " ")
     details = res.get("detail", "").replace("\n", " ").replace("\t", " ")
-    ids, references = format_references(res.get("references", []))
+    refs_to_add = res.get("references", [])
+    refs_to_add.extend(res.get("advisories", []))
+    ids, references = format_references(refs_to_add)
     discovery_date = res.get("published") or res.get("updated")
     notes.extend([
         {
@@ -63,6 +65,7 @@ def vdr_to_csaf(res):
         "ids": ids,
         "scores": [{"cvss_v3": cvss_v3, "products": products}],
         "notes": notes,
+        "title": res.get("bom-ref", ""),
     }
     if cve.startswith("CVE"):
         vuln["cve"] = cve
@@ -189,7 +192,7 @@ def parse_cvss(ratings: List[Dict]) -> Dict:
     return cleanup_dict(cvss_v3)
 
 
-def format_references(references: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+def format_references(references: List) -> Tuple[List[Dict], List[Dict]]:
     """
     Parses VDR references and outputs CSAF formatted objects.
 
@@ -203,24 +206,47 @@ def format_references(references: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
         return [], []
     fmt_refs = []
     ids = []
-    refs = [i for i in references if i.get("source", {}).get("name")]
+    refs = [i for i in references if i.get("source", {}).get("name") or i.get("title")]
     id_types = {"issues", "pull", "commit", "release"}
     for r in refs:
-        ref_id = r.get("id")
-        system_name = r["source"]["name"]
-        if "bugzilla" in ref_id or "gist" in ref_id:
-            ids.append({"system_name": system_name, "text": ref_id.split("bugzilla-")[-1]})
+        if r.get("source", {}).get("name"):
+            ref_id = r.get("id")
+            system_name = r["source"]["name"]
+            url = r["source"]["url"]
+        else:
+            ref_id, system_name = extract_ids(r.get("title", ""))
+            url = r.get("url", "")
+        if "Bugzilla" in system_name:
+            ids.append({"system_name": system_name, "text": ref_id})
+        elif "CVE" in ref_id:
+            system_name = "CVE Record"
+            ids.append({"system_name": system_name, "text": ref_id})
         elif any((i in ref_id for i in id_types)):
-            ids.append({"system_name": system_name, "text": ref_id.split("-")[-1]})
+            ids.append({"system_name": system_name, "text": ref_id})
         elif "Advisory" in system_name:
             ids.append({"system_name": system_name, "text": ref_id})
             system_name += f" {ref_id}"
-        fmt_refs.append({"summary": system_name, "url": r["source"]["url"]})
+        fmt_refs.append({"summary": system_name, "url": url})
     # remove duplicates
     new_ids = {(idx["system_name"], idx["text"]) for idx in ids}
     ids = [{"system_name": idx[0], "text": idx[1]} for idx in new_ids]
     ids = sorted(ids, key=lambda x: x["text"])
+    new_refs = {(idx["summary"], idx["url"]) for idx in fmt_refs}
+    fmt_refs = [{"summary": idx[0], "url": idx[1]} for idx in new_refs]
+    fmt_refs = sorted(fmt_refs, key=lambda x: x["url"])
     return ids, fmt_refs
+
+
+def extract_ids(ref):
+    if " " in ref:
+        refs = ref.split(" ")
+        if len(refs) > 1:
+            return refs.pop(), " ".join(refs)
+    elif "-" in ref:
+        refs = ref.split("-")
+        if len(refs) > 1:
+            return refs.pop(), " ".join(refs).capitalize().replace("Pr", "PR")
+    return None, ref
 
 
 def get_ref_summary(url, patterns):
@@ -247,7 +273,7 @@ def get_ref_summary(url, patterns):
 
 
 def get_ref_summary_helper(url, patterns):
-    lower_url = url.lower()
+    lower_url = url.lower().rstrip("/")
     if any(("github.com" in lower_url, "bitbucket.org" in lower_url, "chromium" in lower_url)) and "advisory" not in lower_url and "advisories" not in lower_url:
         value, match = get_ref_summary(url, patterns["repo_hosts"])
         if match:
@@ -264,10 +290,13 @@ def get_ref_summary_helper(url, patterns):
     value, match = get_ref_summary(url, patterns["other"])
     if value == "Advisory":
         return value, match, f"{format_system_name(match['org'])} Advisory"
-    elif "VulDB" in value:
-        return f"vuldb-{match['id']}", match, value
-    elif "Snyk" in value:
-        return f"{match['id']}", match, value
+    elif value == "Exploit":
+        if "seclists" in lower_url:
+            _, match = get_ref_summary(url, {patterns["exploits"]["seclists"]: "seclists"})
+            value = value.replace("/", "-")
+        else:
+            _, match = get_ref_summary(url, {patterns["exploits"]["generic"]: "generic"})
+        return value, match, f"{format_system_name(match['org'])} Exploit"
     return value, match, value
 
 
@@ -465,7 +494,7 @@ def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
     template = parse_toml(metadata)
     new_results = add_vulnerabilities(template, pkg_vulnerabilities)
     new_results = cleanup_dict(new_results)
-    [new_results, metadata] = verify_components_present(
+    new_results, metadata = verify_components_present(
         new_results, metadata, bom_file
     )
 
@@ -700,6 +729,6 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
             severity_ref[agg_score[0]][0]
             + severity_ref[agg_score[0]][1:].lower()
         )
-        new_results["document"]["aggregate_severity"] = {"text": agg_severity}
+        new_results["document"]["aggregate_severity"] = {"text": agg_severity.capitalize()}
 
     return new_results
