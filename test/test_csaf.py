@@ -1,12 +1,17 @@
 import os.path
 
+from custom_json_diff.lib.custom_diff import sort_dict_lists
+from custom_json_diff.lib.utils import sort_list
 
-from depscan.lib.csaf import (add_vulnerabilities, cleanup_dict, cleanup_list,
-                              format_references, get_acknowledgements,
-                              get_products, get_ref_summary, import_csaf_toml,
-                              import_root_component, parse_cvss, parse_cwe,
-                              parse_revision_history, parse_toml,
-                              verify_components_present, )
+from depscan.lib.config import REF_MAP
+from depscan.lib.csaf import (
+    add_vulnerabilities, cleanup_dict, cleanup_list,
+    format_references, get_acknowledgements,
+    get_products, import_csaf_toml,
+    import_root_component, parse_cvss, parse_cwe,
+    parse_revision_history, parse_toml,
+    verify_components_present, get_ref_summary_helper,
+)
 
 
 def test_parse_revision_history():
@@ -214,168 +219,67 @@ def test_cleanup_dict():
 
 def test_get_ref_summary():
     url = "https://nvd.nist.gov/vuln/detail/cve-2021-1234"
-    assert get_ref_summary(url) == "CVE Record"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "CVE Record"
     url = "https://github.com/user/repo/security/advisories/GHSA-1234-1234-1234"
-    assert get_ref_summary(url) == "Advisory"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Advisory"
     url = "https://github.com/user/repo/pull/123"
-    assert get_ref_summary(url) == "GitHub Pull Request"
-    url = "https://github.com/user/repo/commit/123"
-    assert get_ref_summary(url) == "GitHub Commit"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "github-pull-user-repo-123"
+    url = "https://github.com/user/repo/commit/123456789abcdef"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "github-commit-user-repo-123456789abcdef"
     url = ""
-    assert get_ref_summary(url) == "Other"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Other"
     url = "https://example.com"
-    assert get_ref_summary(url) == "Other"
-    url = "https://github.com/user/repo/release"
-    assert get_ref_summary(url) == "GitHub Repository Release"
-    url = "https://github.com/user/repo"
-    assert get_ref_summary(url) == "GitHub Repository"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Other"
+    url = "https://github.com/user/repo/releases/tag/v1.0.0"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "github-release-user-repo-v1.0.0"
     url = "https://access.redhat.com/security/cve/CVE-2023-26136"
-    assert get_ref_summary(url) == "CVE Record"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Advisory"
     url = "https://access.redhat.com/errata/RHSA-2023:5484"
-    assert get_ref_summary(url) == "Advisory"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Advisory"
     url = "https://bugzilla.redhat.com/show_bug.cgi?id=2224245"
-    assert get_ref_summary(url) == "Bugzilla"
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "Bugzilla"
 
 
 def test_format_references():
-    advisories = [
-        {
-            "title": "testing",
-            "url": "https://access.redhat.com/errata/RHSA-2023:5484",
-        },
-        {
-            "title": "testing",
-            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2224245",
-        },
-        {
-            "title": "testing",
-            "url": "https://nvd.nist.gov/vuln/detail/cve-2021-1234",
-        },
-        {
-            "title": "testing",
-            "url": "https://github.com/advisories/GHSA-1234-1234-1234",
-        },
-        {
-            "title": "testing",
-            "url": (
-                "https://github.com/user/repo/security/advisories/GHSA"
-                "-5432-5432-5432"
-            ),
-        },
-        {"title": "testing", "url": "https://github.com/user/repo/pull/123"},
-        {"title": "testing", "url": "https://github.com/user/repo/commit/123"},
-        {"title": "testing", "url": "https://example.com"},
-        {"title": "testing", "url": "https://github.com/user/repo/release"},
-        {"title": "testing", "url": "https://github.com/user/repo"},
-        {
-            "title": "testing",
-            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234",
-        },
-        {
-            "title": "testing",
-            "url": "https://github.com/FasterXML/jackson-databind/issues/2816",
-        },
-        {
-            "title": "testing",
-            "url": (
-                "https://sec.cloudapps.cisco.com/security/center/content"
-                "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd"
-            ),
-        },
-        {
-            "title": "testing",
-            "url": "https://bitbucket.org/snakeyaml/snakeyaml/issues/525",
-        },
-        {
-            "title": "testing",
-            "url": (
-                "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4707"
-            ),
-        },
-    ]
-
-    [ids, refs] = format_references(advisories)
+    references = [{'id': 'RHSA-2023:5484', 'source': {'name': 'Red Hat Advisory', 'url': 'https://access.redhat.com/errata/RHSA-2023:5484'}}, {'id': 'github-commit-user-repo-123456789abcdef', 'source': {'name': 'GitHub Commit [user/repo]', 'url': 'https://github.com/user/repo/commit/123456789abcdef'}}, {'id': 'cisco-sa-apache-log4j-qRuKNEbd', 'source': {'name': 'Cisco Advisory', 'url': 'https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd'}}, {'id': 'chromium-issues-p-oss-fuzz-4707', 'source': {'name': 'Chromium Issues [oss-fuzz]', 'url': 'https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4707'}}, {'id': 'redhat-bugzilla-2224245', 'source': {'name': 'Red Hat Bugzilla', 'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=2224245'}}, {'id': 'GHSA-1234-1234-1234', 'source': {'name': 'GitHub Advisory', 'url': 'https://github.com/advisories/GHSA-1234-1234-1234'}}, {'id': 'GHSA-5432-5432-5432', 'source': {'name': 'GitHub Advisory', 'url': 'https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432'}}, {'id': 'USN-6943-1', 'source': {'name': 'Ubuntu Advisory', 'url': 'https://ubuntu.com/security/notices/USN-6943-1'}}, {'id': 'github-blob-user/repo-pyproject.toml@v0.5.5', 'source': {'name': 'GitHub Blob [user/repo]', 'url': 'https://github.com/user/repo/blob/v0.5.5/pyproject.toml'}}, {'id': 'github-release-user-repo-v1.0.0', 'source': {'name': 'GitHub Release [user/repo]', 'url': 'https://github.com/user/repo/releases/tag/v1.0.0'}}, {'id': 'github-pull-user-repo-123', 'source': {'name': 'GitHub Pull [user/repo]', 'url': 'https://github.com/user/repo/pull/123'}}, {'id': 'github-issues-FasterXML-jackson-databind-2816', 'source': {'name': 'GitHub Issues [FasterXML/jackson-databind]', 'url': 'https://github.com/FasterXML/jackson-databind/issues/2816'}}, {'id': 'cve-2021-1234', 'source': {'url': 'https://nvd.nist.gov/vuln/detail/cve-2021-1234', 'name': 'NVD CVE Record'}}, {'id': 'bitbucket-issues-snakeyaml-snakeyaml-525', 'source': {'name': 'Bitbucket Issues [snakeyaml/snakeyaml]', 'url': 'https://bitbucket.org/snakeyaml/snakeyaml/issues/525'}}, {'id': 'redhat-bugzilla-cve-2021-1234', 'source': {'name': 'Red Hat Bugzilla', 'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234'}}]
+    ids, refs = format_references(references)
     # For consistency in tests
-    ids = sorted(ids, key=lambda x: x["text"])
-    refs = sorted(refs, key=lambda x: x["url"])
+    ids = sort_list(ids, ["text"])
+    refs = sort_list(refs, ["url"])
     assert ids == [
-        {"system_name": "Red Hat Bugzilla ID", "text": "2224245"},
-        {
-            "system_name": "GitHub Issue [FasterXML/jackson-databind]",
-            "text": "2816",
-        },
-        {"system_name": "Chromium Issue [oss-fuzz]", "text": "4707"},
-        {"system_name": "Bitbucket Issue [snakeyaml/snakeyaml]", "text": "525"},
-        {"system_name": "GitHub Advisory", "text": "GHSA-1234-1234-1234"},
-        {"system_name": "GitHub Advisory", "text": "GHSA-5432-5432-5432"},
-        {"system_name": "Red Hat Advisory", "text": "RHSA-2023:5484"},
-        {
-            "system_name": "Cisco Advisory",
-            "text": "cisco-sa-apache-log4j-qRuKNEbd",
-        },
-        {"system_name": "Red Hat Bugzilla ID", "text": "cve-2021-1234"},
+        {'system_name': 'GitHub Advisory', 'text': 'GHSA-1234-1234-1234'},
+        {'system_name': 'GitHub Advisory', 'text': 'GHSA-5432-5432-5432'},
+        {'system_name': 'Red Hat Advisory', 'text': 'RHSA-2023:5484'},
+        {'system_name': 'Ubuntu Advisory', 'text': 'USN-6943-1'},
+        {'system_name': 'Bitbucket Issues [snakeyaml/snakeyaml]',
+        'text': 'bitbucket-issues-snakeyaml-snakeyaml-525'},
+        {'system_name': 'Chromium Issues [oss-fuzz]', 'text': 'chromium-issues-p-oss-fuzz-4707'},
+        {'system_name': 'Cisco Advisory', 'text': 'cisco-sa-apache-log4j-qRuKNEbd'},
+        {'system_name': 'GitHub Commit [user/repo]',
+        'text': 'github-commit-user-repo-123456789abcdef'},
+        {'system_name': 'GitHub Issues [FasterXML/jackson-databind]',
+        'text': 'github-issues-FasterXML-jackson-databind-2816'},
+        {'system_name': 'GitHub Pull [user/repo]', 'text': 'github-pull-user-repo-123'},
+        {'system_name': 'GitHub Release [user/repo]', 'text': 'github-release-user-repo-v1.0.0'},
+        {'system_name': 'Red Hat Bugzilla', 'text': 'redhat-bugzilla-2224245'},
+        {'system_name': 'Red Hat Bugzilla', 'text': 'redhat-bugzilla-cve-2021-1234'}
     ]
     assert refs == [
-        {
-            "summary": "Red Hat Advisory",
-            "url": "https://access.redhat.com/errata/RHSA-2023:5484",
-        },
-        {
-            "summary": "Bitbucket Issue",
-            "url": "https://bitbucket.org/snakeyaml/snakeyaml/issues/525",
-        },
-        {
-            "summary": "Chromium Issue",
-            "url": "https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4707",
-        },
-        {
-            "summary": "Red Hat Bugzilla",
-            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=2224245",
-        },
-        {
-            "summary": "Red Hat Bugzilla",
-            "url": "https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234",
-        },
-        {"summary": "Other", "url": "https://example.com"},
-        {
-            "summary": "GitHub Issue",
-            "url": "https://github.com/FasterXML/jackson-databind/issues/2816",
-        },
-        {
-            "summary": "GitHub Advisory",
-            "url": "https://github.com/advisories/GHSA-1234-1234-1234",
-        },
-        {"summary": "GitHub Repository", "url": "https://github.com/user/repo"},
-        {
-            "summary": "GitHub Commit",
-            "url": "https://github.com/user/repo/commit/123",
-        },
-        {
-            "summary": "GitHub Pull Request",
-            "url": "https://github.com/user/repo/pull/123",
-        },
-        {
-            "summary": "GitHub Repository Release",
-            "url": "https://github.com/user/repo/release",
-        },
-        {
-            "summary": "GitHub Advisory",
-            "url": (
-                "https://github.com/user/repo/security/advisories/GHSA"
-                "-5432-5432-5432"
-            ),
-        },
-        {
-            "summary": "CVE Record",
-            "url": "https://nvd.nist.gov/vuln/detail/cve-2021-1234",
-        },
-        {
-            "summary": "Cisco Advisory",
-            "url": (
-                "https://sec.cloudapps.cisco.com/security/center/content"
-                "/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd"
-            ),
-        },
+        {'summary': 'Red Hat Advisory RHSA-2023:5484', 'url': 'https://access.redhat.com/errata/RHSA-2023:5484'},
+        {'summary': 'Bitbucket Issues [snakeyaml/snakeyaml]', 'url': 'https://bitbucket.org/snakeyaml/snakeyaml/issues/525'},
+        {'summary': 'Chromium Issues [oss-fuzz]', 'url': 'https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4707'},
+        {'summary': 'Red Hat Bugzilla', 'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=2224245'},
+        {'summary': 'Red Hat Bugzilla', 'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234'},
+        {'summary': 'GitHub Issues [FasterXML/jackson-databind]', 'url': 'https://github.com/FasterXML/jackson-databind/issues/2816'},
+        {'summary': 'GitHub Advisory GHSA-1234-1234-1234', 'url': 'https://github.com/advisories/GHSA-1234-1234-1234'},
+        {'summary': 'GitHub Blob [user/repo]', 'url': 'https://github.com/user/repo/blob/v0.5.5/pyproject.toml'},
+        {'summary': 'GitHub Commit [user/repo]', 'url': 'https://github.com/user/repo/commit/123456789abcdef'},
+        {'summary': 'GitHub Pull [user/repo]', 'url': 'https://github.com/user/repo/pull/123'},
+        {'summary': 'GitHub Release [user/repo]', 'url': 'https://github.com/user/repo/releases/tag/v1.0.0'},
+        {'summary': 'GitHub Advisory GHSA-5432-5432-5432', 'url': 'https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432'},
+        {'summary': 'NVD CVE Record', 'url': 'https://nvd.nist.gov/vuln/detail/cve-2021-1234'},
+        {'summary': 'Cisco Advisory cisco-sa-apache-log4j-qRuKNEbd', 'url': 'https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd'},
+        {'summary': 'Ubuntu Advisory USN-6943-1', 'url': 'https://ubuntu.com/security/notices/USN-6943-1'}
     ]
 
 
@@ -460,19 +364,17 @@ def test_parse_cvss():
 
 
 def test_get_products():
-    assert get_products([], []) == ([], {})
+    assert get_products([]) == ([], {})
     affects = [
         {
-            "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9"
-                   ".6?type=jar",
+            "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.6?type=jar",
             "versions": [
-                {"version": "2.9.6", "status": "affected"},
-                {"version": "2.9.8", "status": "unaffected"},
+                {"range": "vers:maven/>=2.9.0-<2.9.8", "status": "affected"},
+                {"version": "3.0.0", "status": "unaffected"},
             ]
         },
         {
-            "ref": "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type"
-                   "=jar",
+            "ref": "pkg:maven/org.apache.httpcomponents/httpclient@4.5.5?type=jar",
             "versions": [
                 {"version": "4.5.5", "status": "affected"},
                 {"version": "4.5.13", "status": "unaffected"},
@@ -489,36 +391,19 @@ def test_get_products():
             "versions": [{"version": "0.15.0", "status": "affected"}, ],
         },
             ]
-    props = [
-        {"name": "affectedVersionRange",
-         "value": "com.fasterxml.jackson.core/jackson-databind@>=2.9.0-<2.9.8"},
-        {"name": "affectedVersionRange",
-         "value": "org.apache.httpcomponents/httpclient@>=4.5.0-<4.5.13"},
-        {"name": "affectedVersionRange", "value": "setuptools@>=65.5.0"},
-    ]
-    [products, product_status] = get_products(affects, props)
+    products, product_status = get_products(affects)
     products.sort()
-    assert products == [
-        'com.fasterxml.jackson.core/jackson-databind@2.9.6',
-        'com.fasterxml.jackson.core/jackson-databind@>=2.9.0-<2.9.8',
-        'golang.org/x/net@v0.15.0',
-        'org.apache.httpcomponents/httpclient@4.5.5',
-        'org.apache.httpcomponents/httpclient@>=4.5.0-<4.5.13',
-        'setuptools@65.5.0',
-        'setuptools@>=65.5.0'
-    ]
-    assert product_status == {
-        'fixed': ['com.fasterxml.jackson.core/jackson-databind@2.9.8',
-           'org.apache.httpcomponents/httpclient@4.5.13'],
-        'known_affected': [
-            'com.fasterxml.jackson.core/jackson-databind@2.9.6',
-            'org.apache.httpcomponents/httpclient@4.5.5',
-            'setuptools@65.5.0',
-            'golang.org/x/net@v0.15.0',
-            'com.fasterxml.jackson.core/jackson-databind@>=2.9.0-<2.9.8',
-            'org.apache.httpcomponents/httpclient@>=4.5.0-<4.5.13',
-            'setuptools@>=65.5.0'
-        ]}
+    assert products == ['com.fasterxml.jackson.core/jackson-databind@vers:maven/>=2.9.0-<2.9.8',
+                        'golang.org/x/net@0.15.0',
+                        'org.apache.httpcomponents/httpclient@4.5.5',
+                        'setuptools@65.5.0']
+    product_status = sort_dict_lists(product_status, [])
+    assert product_status == {'known_affected': ['com.fasterxml.jackson.core/jackson-databind@vers:maven/>=2.9.0-<2.9.8',
+                    'golang.org/x/net@0.15.0',
+                    'org.apache.httpcomponents/httpclient@4.5.5',
+                    'setuptools@65.5.0'],
+ 'known_not_affected': ['com.fasterxml.jackson.core/jackson-databind@3.0.0',
+                        'org.apache.httpcomponents/httpclient@4.5.13']}
 
 
 def test_import_root_component():
@@ -733,22 +618,83 @@ def test_add_vulnerabilities():
             "recommendation": "Update to 2.12.7.1 or later",
             "advisories": [
                 {
-                    "title": "GitHub Issue",
-                    "url": "https://github.com/FasterXML/jackson-databind"
-                           "/issues/2660",
-                },
+                               'title': 'GitHub Advisory GHSA-1234-1234-1234',
+                               'url': 'https://github.com/advisories/GHSA-1234-1234-1234'
+                           }, {
+                               'title': 'Ubuntu Advisory USN-6943-1',
+                               'url': 'https://ubuntu.com/security/notices/USN-6943-1'
+                           }, {
+                               'title': 'Cisco Advisory cisco-sa-apache-log4j-qRuKNEbd',
+                               'url': 'https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd'
+                           }, {
+                               'title': 'GitHub Advisory GHSA-5432-5432-5432',
+                               'url': 'https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432'
+                           }, {
+                               'title': 'Red Hat Advisory RHSA-2023:5484',
+                               'url': 'https://access.redhat.com/errata/RHSA-2023:5484'
+                           }],
+            "references": [
                 {
-                    "title": "Mailing List",
-                    "url": "https://lists.debian.org/debian-lts-announce/2020"
-                           "/03/msg00027.html",
-                },
-                {
-                    "title": "vendor",
-                    "url": (
-                        "https://www.oracle.com/security-alerts/cpuoct2021.html"
-                    ),
-                },
-            ],
+                               'id': 'github-commit-user-repo-123456789abcdef',
+                               'source': {
+                                   'name': 'GitHub Commit [user/repo]',
+                                   'url': 'https://github.com/user/repo/commit/123456789abcdef'
+                               }
+                           }, {
+                               'id': 'github-blob-user/repo-pyproject.toml@v0.5.5',
+                               'source': {
+                                   'name': 'GitHub Blob [user/repo]',
+                                   'url': 'https://github.com/user/repo/blob/v0.5.5/pyproject.toml'
+                               }
+                           }, {
+                               'id': 'bitbucket-issues-snakeyaml-snakeyaml-525',
+                               'source': {
+                                   'name': 'Bitbucket Issues [snakeyaml/snakeyaml]',
+                                   'url': 'https://bitbucket.org/snakeyaml/snakeyaml/issues/525'
+                               }
+                           }, {
+                               'id': 'GHSA-1234-1234-1234',
+                               'source': {
+                                   'name': 'GitHub Advisory',
+                                   'url': 'https://github.com/advisories/GHSA-1234-1234-1234'
+                               }
+                           }, {
+                               'id': 'github-release-user-repo-v1.0.0',
+                               'source': {
+                                   'name': 'GitHub Release [user/repo]',
+                                   'url': 'https://github.com/user/repo/releases/tag/v1.0.0'
+                               }
+                           }, {
+                               'id': 'USN-6943-1',
+                               'source': {
+                                   'name': 'Ubuntu Advisory',
+                                   'url': 'https://ubuntu.com/security/notices/USN-6943-1'
+                               }
+                           }, {
+                               'id': 'cisco-sa-apache-log4j-qRuKNEbd',
+                               'source': {
+                                   'name': 'Cisco Advisory',
+                                   'url': 'https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd'
+                               }
+                           }, {
+                               'id': 'GHSA-5432-5432-5432',
+                               'source': {
+                                   'name': 'GitHub Advisory',
+                                   'url': 'https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432'
+                               }
+                           }, {
+                               'id': 'github-issues-FasterXML-jackson-databind-2816',
+                               'source': {
+                                   'name': 'GitHub Issues [FasterXML/jackson-databind]',
+                                   'url': 'https://github.com/FasterXML/jackson-databind/issues/2816'
+                               }
+                           }, {
+                               'id': 'RHSA-2023:5484',
+                               'source': {
+                                   'name': 'Red Hat Advisory',
+                                   'url': 'https://access.redhat.com/errata/RHSA-2023:5484'
+                               }
+                           }],
             "affects": [
                 {
                     "ref": "pkg:maven/com.fasterxml.jackson.core/jackson"
@@ -798,22 +744,39 @@ def test_add_vulnerabilities():
                 " well as system availability."
             ),
             "recommendation": "Update to 2.12.7.1 or later",
-            "advisories": [
+            "advisories": [],
+            "references": [
                 {
-                    "title": "GitHub Issue",
-                    "url": "https://github.com/FasterXML/jackson-databind"
-                           "/issues/2854",
-                },
-                {
-                    "title": "vendor",
-                    "url": "https://www.oracle.com//security-alerts"
-                           "/cpujul2021.html",
-                },
-                {
-                    "title": "Mailing List",
-                    "url": "https://lists.debian.org/debian-lts-announce/2021"
-                           "/04/msg00025.html",
-                },
+                    'id': 'redhat-bugzilla-cve-2021-1234',
+                    'source': {
+                        'name': 'Red Hat Bugzilla',
+                        'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234'
+                    }
+                }, {
+                    'id': 'chromium-issues-p-oss-fuzz-4707',
+                    'source': {
+                        'name': 'Chromium Issues [oss-fuzz]',
+                        'url': 'https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4707'
+                    }
+                }, {
+                    'id': 'redhat-bugzilla-2224245',
+                    'source': {
+                        'name': 'Red Hat Bugzilla',
+                        'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=2224245'
+                    }
+                }, {
+                    'id': 'github-pull-user-repo-123',
+                    'source': {
+                        'name': 'GitHub Pull [user/repo]',
+                        'url': 'https://github.com/user/repo/pull/123'
+                    }
+                }, {
+                    'id': 'cve-2021-1234',
+                    'source': {
+                        'url': 'https://nvd.nist.gov/vuln/detail/cve-2021-1234',
+                        'name': 'NVD CVE Record'
+                    }
+                }
             ],
             "affects": [
                 {
@@ -838,205 +801,171 @@ def test_add_vulnerabilities():
             ],
         },
     ]
-    new_results = add_vulnerabilities(template, pkg_vulnerabilities)
-    assert new_results.get("vulnerabilities") == [
-        {
-            "acknowledgements": {
-                "organization": "NVD",
-                "urls": ["https://nvd.nist.gov/vuln/detail/CVE-2020-10673"],
-            },
-            "cve": "CVE-2020-10673",
-            "cwe": {
-                "id": "668",
-                "name": "Exposure of Resource to Wrong Sphere",
-            },
-            "discovery_date": "2020-03-18T22:15:00",
-            "ids": [
-                {
-                    "system_name": "GitHub Issue [FasterXML/jackson-databind]",
-                    "text": "2660",
-                }
-            ],
-            "notes": [
-                {
-                    "audience": "developers",
-                    "category": "other",
-                    "text": ".NET Misconfiguration: Use of Impersonation",
-                    "title": "Additional CWE: 520",
-                },
-                {
-                    "audience": "developers",
-                    "category": "other",
-                    "text": "Weak Password Requirements",
-                    "title": "Additional CWE: 521",
-                },
-                {
-                    "category": "general",
-                    "details": "Vulnerability Description",
-                    "text": (
-                        "FasterXML jackson-databind 2.x before 2.9.10.4"
-                        " mishandles the interaction between serialization"
-                        " gadgets and typing, related to"
-                        " com.caucho.config.types.ResourceRef (aka"
-                        " caucho-quercus)."
-                    ),
-                },
-            ],
-            "product_status": {
-                "fixed": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
-                ],
-                "known_affected": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                ],
-            },
-            "references": [
-                {
-                    "summary": "Mailing List Announcement",
-                    "url": "https://lists.debian.org/debian-lts-announce/2020"
-                           "/03/msg00027.html",
-                },
-                {
-                    "summary": "Oracle Security Alert",
-                    "url": (
-                        "https://www.oracle.com/security-alerts/cpuoct2021.html"
-                    ),
-                },
-                {
-                    "summary": "GitHub Issue",
-                    "url": "https://github.com/FasterXML/jackson-databind"
-                           "/issues/2660",
-                },
-            ],
-            "scores": [
-                {'cvss_v3': {
-                    'attackComplexity': 'LOW',
-                    'attackVector': 'NETWORK',
-                    'availabilityImpact': 'HIGH',
-                    'baseScore': 8.8,
-                    'baseSeverity': 'HIGH',
-                    'confidentialityImpact': 'HIGH',
-                    'environmentalScore': 8.8,
-                    'environmentalSeverity': 'HIGH',
-                    'integrityImpact': 'HIGH',
-                    'modifiedAttackComplexity': 'LOW',
-                    'modifiedAttackVector': 'NETWORK',
-                    'modifiedAvailabilityImpact': 'HIGH',
-                    'modifiedConfidentialityImpact': 'HIGH',
-                    'modifiedIntegrityImpact': 'HIGH',
-                    'modifiedPrivilegesRequired': 'NONE',
-                    'modifiedScope': 'UNCHANGED',
-                    'modifiedUserInteraction': 'REQUIRED',
-                    'privilegesRequired': 'NONE',
-                    'scope': 'UNCHANGED',
-                    'temporalScore': 8.8,
-                    'temporalSeverity': 'HIGH',
-                    'userInteraction': 'REQUIRED',
-                    'vectorString': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H'
-                                    '/A:H',
-                    'version': '3.1'
-                },
-                    "products": [
-                        "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                    ],
-                }
-            ],
-        },
-        {
-            "acknowledgements": {
-                "organization": "NVD",
-                "urls": ["https://nvd.nist.gov/vuln/detail/CVE-2021-20190"],
-            },
-            "cve": "CVE-2021-20190",
-            "cwe": {"id": "502", "name": "Deserialization of Untrusted Data"},
-            "discovery_date": "2021-01-19T17:15:00",
-            "ids": [
-                {
-                    "system_name": "GitHub Issue [FasterXML/jackson-databind]",
-                    "text": "2854",
-                }
-            ],
-            "notes": [
-                {
-                    "category": "general",
-                    "details": "Vulnerability Description",
-                    "text": (
-                        "A flaw was found in jackson-databind before "
-                        "2.9.10.7. FasterXML mishandles the interaction "
-                        "between serialization gadgets and typing. The "
-                        "highest threat from this vulnerability is to "
-                        "data confidentiality and integrity as well as "
-                        "system availability."
-                    ),
-                }
-            ],
-            "product_status": {
-                "fixed": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
-                ],
-                "known_affected": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                ],
-            },
-            "references": [
-                {
-                    "summary": "Other",
-                    "url": (
-                        "https://www.oracle.com//security-alerts"
-                        "/cpujul2021.html"
-                    ),
-                },
-                {
-                    "summary": "Mailing List Announcement",
-                    "url": (
-                        "https://lists.debian.org/debian-lts-announce/2021"
-                        "/04/msg00025.html"
-                    ),
-                },
-                {
-                    "summary": "GitHub Issue",
-                    "url": (
-                        "https://github.com/FasterXML/jackson-databind"
-                        "/issues/2854"
-                    ),
-                },
-            ],
-            "scores": [
-                {
-                    'cvss_v3': {
-                        'attackComplexity': 'HIGH',
-                        'attackVector': 'NETWORK',
-                        'availabilityImpact': 'HIGH',
-                        'baseScore': 8.1,
-                        'baseSeverity': 'HIGH',
-                        'confidentialityImpact': 'HIGH',
-                        'environmentalScore': 8.1,
-                        'environmentalSeverity': 'HIGH',
-                        'integrityImpact': 'HIGH',
-                        'modifiedAttackComplexity': 'HIGH',
-                        'modifiedAttackVector': 'NETWORK',
-                        'modifiedAvailabilityImpact': 'HIGH',
-                        'modifiedConfidentialityImpact': 'HIGH',
-                        'modifiedIntegrityImpact': 'HIGH',
-                        'modifiedPrivilegesRequired': 'NONE',
-                        'modifiedScope': 'UNCHANGED',
-                        'modifiedUserInteraction': 'NONE',
-                        'privilegesRequired': 'NONE',
-                        'scope': 'UNCHANGED',
-                        'temporalScore': 8.1,
-                        'temporalSeverity': 'HIGH',
-                        'userInteraction': 'NONE',
-                        'vectorString': 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H'
-                                        '/I:H/A:H',
-                        'version': '3.1'
-                    },
-                    "products": [
-                        "com.fasterxml.jackson.core/jackson-databind@2.9.6"
-                    ],
-                }
-            ],
-        },
-    ]
+    new_results = sort_dict_lists(add_vulnerabilities(template, pkg_vulnerabilities), ["cve", "text", "url"])
+    assert sort_list(new_results.get("vulnerabilities"), ["cve", "url", "text"]) == [
+        {'acknowledgements': [{'organization': 'NVD',
+                        'urls': ['https://nvd.nist.gov/vuln/detail/CVE-2020-10673']}],
+  'cve': 'CVE-2020-10673',
+  'cwe': {'id': '668', 'name': 'Exposure of Resource to Wrong Sphere'},
+  'discovery_date': '2020-03-18T22:15:00',
+  'ids': [{'system_name': 'GitHub Advisory', 'text': 'GHSA-1234-1234-1234'},
+          {'system_name': 'GitHub Advisory', 'text': 'GHSA-5432-5432-5432'},
+          {'system_name': 'Red Hat Advisory', 'text': 'RHSA-2023:5484'},
+          {'system_name': 'Ubuntu Advisory', 'text': 'USN-6943-1'},
+          {'system_name': 'Bitbucket Issues [snakeyaml/snakeyaml]',
+           'text': 'bitbucket-issues-snakeyaml-snakeyaml-525'},
+          {'system_name': 'Cisco Advisory',
+           'text': 'cisco-sa-apache-log4j-qRuKNEbd'},
+          {'system_name': 'GitHub Commit [user/repo]',
+           'text': 'github-commit-user-repo-123456789abcdef'},
+          {'system_name': 'GitHub Issues [FasterXML/jackson-databind]',
+           'text': 'github-issues-FasterXML-jackson-databind-2816'},
+          {'system_name': 'GitHub Release [user/repo]',
+           'text': 'github-release-user-repo-v1.0.0'}],
+  'notes': [{'audience': 'developers',
+             'category': 'other',
+             'text': '.NET Misconfiguration: Use of Impersonation',
+             'title': 'Additional CWE: 520'},
+            {'audience': 'developers',
+             'category': 'other',
+             'text': 'Weak Password Requirements',
+             'title': 'Additional CWE: 521'},
+            {'category': 'description',
+             'details': 'Vulnerability Description',
+             'text': 'FasterXML jackson-databind 2.x before 2.9.10.4 '
+                     'mishandles the interaction between serialization gadgets '
+                     'and typing, related to '
+                     'com.caucho.config.types.ResourceRef (aka '
+                     'caucho-quercus).'},
+            {'category': 'details',
+             'details': 'Vulnerability Details',
+             'text': ''}],
+  'product_status': {'known_affected': ['com.fasterxml.jackson.core/jackson-databind@2.9.6'],
+                     'known_not_affected': ['com.fasterxml.jackson.core/jackson-databind@2.12.7.1']},
+         'references': [{
+                            'summary': 'Red Hat Advisory RHSA-2023:5484',
+                            'url': 'https://access.redhat.com/errata/RHSA-2023:5484'
+                        }, {
+                            'summary': 'Bitbucket Issues [snakeyaml/snakeyaml]',
+                            'url': 'https://bitbucket.org/snakeyaml/snakeyaml/issues/525'
+                        }, {
+                            'summary': 'GitHub Issues [FasterXML/jackson-databind]',
+                            'url': 'https://github.com/FasterXML/jackson-databind/issues/2816'
+                        }, {
+                            'summary': 'GitHub Advisory GHSA-1234-1234-1234',
+                            'url': 'https://github.com/advisories/GHSA-1234-1234-1234'
+                        }, {
+                            'summary': 'GitHub Blob [user/repo]',
+                            'url': 'https://github.com/user/repo/blob/v0.5.5/pyproject.toml'
+                        }, {
+                            'summary': 'GitHub Commit [user/repo]',
+                            'url': 'https://github.com/user/repo/commit/123456789abcdef'
+                        }, {
+                            'summary': 'GitHub Release [user/repo]',
+                            'url': 'https://github.com/user/repo/releases/tag/v1.0.0'
+                        }, {
+                            'summary': 'GitHub Advisory GHSA-5432-5432-5432',
+                            'url': 'https://github.com/user/repo/security/advisories/GHSA-5432-5432-5432'
+                        }, {
+                            'summary': 'Cisco Advisory cisco-sa-apache-log4j-qRuKNEbd',
+                            'url': 'https://sec.cloudapps.cisco.com/security/center/content/CiscoSecurityAdvisory/cisco-sa-apache-log4j-qRuKNEbd'
+                        }, {
+                            'summary': 'Ubuntu Advisory USN-6943-1',
+                            'url': 'https://ubuntu.com/security/notices/USN-6943-1'
+                        }],
+  'scores': [{'cvss_v3': {'attackComplexity': 'LOW',
+                          'attackVector': 'NETWORK',
+                          'availabilityImpact': 'HIGH',
+                          'baseScore': 8.8,
+                          'baseSeverity': 'HIGH',
+                          'confidentialityImpact': 'HIGH',
+                          'environmentalScore': 8.8,
+                          'environmentalSeverity': 'HIGH',
+                          'integrityImpact': 'HIGH',
+                          'modifiedAttackComplexity': 'LOW',
+                          'modifiedAttackVector': 'NETWORK',
+                          'modifiedAvailabilityImpact': 'HIGH',
+                          'modifiedConfidentialityImpact': 'HIGH',
+                          'modifiedIntegrityImpact': 'HIGH',
+                          'modifiedPrivilegesRequired': 'NONE',
+                          'modifiedScope': 'UNCHANGED',
+                          'modifiedUserInteraction': 'REQUIRED',
+                          'privilegesRequired': 'NONE',
+                          'scope': 'UNCHANGED',
+                          'temporalScore': 8.8,
+                          'temporalSeverity': 'HIGH',
+                          'userInteraction': 'REQUIRED',
+                          'vectorString': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H',
+                          'version': '3.1'},
+              'products': ['com.fasterxml.jackson.core/jackson-databind@2.9.6']}],
+        'title': 'CVE-2020-10673/pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.6?type=jar'},
+ {'acknowledgements': [{'organization': 'NVD',
+                        'urls': ['https://nvd.nist.gov/vuln/detail/CVE-2021-20190']}],
+  'cve': 'CVE-2021-20190',
+  'cwe': {'id': '502', 'name': 'Deserialization of Untrusted Data'},
+  'discovery_date': '2021-01-19T17:15:00',
+  'ids': [{'system_name': 'Chromium Issues [oss-fuzz]',
+           'text': 'chromium-issues-p-oss-fuzz-4707'},
+          {'system_name': 'GitHub Pull [user/repo]',
+           'text': 'github-pull-user-repo-123'},
+          {'system_name': 'Red Hat Bugzilla',
+           'text': 'redhat-bugzilla-2224245'},
+          {'system_name': 'Red Hat Bugzilla',
+           'text': 'redhat-bugzilla-cve-2021-1234'}],
+  'notes': [{'category': 'description',
+             'details': 'Vulnerability Description',
+             'text': 'A flaw was found in jackson-databind before 2.9.10.7. '
+                     'FasterXML mishandles the interaction between '
+                     'serialization gadgets and typing. The highest threat '
+                     'from this vulnerability is to data confidentiality and '
+                     'integrity as well as system availability.'},
+            {'category': 'details',
+             'details': 'Vulnerability Details',
+             'text': ''}],
+  'product_status': {'known_affected': ['com.fasterxml.jackson.core/jackson-databind@2.9.6'],
+                     'known_not_affected': ['com.fasterxml.jackson.core/jackson-databind@2.12.7.1']},
+  'references': [{
+                     'summary': 'Chromium Issues [oss-fuzz]',
+                     'url': 'https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=4707'
+                 }, {
+                     'summary': 'Red Hat Bugzilla',
+                     'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=2224245'
+                 }, {
+                     'summary': 'Red Hat Bugzilla',
+                     'url': 'https://bugzilla.redhat.com/show_bug.cgi?id=cve-2021-1234'
+                 }, {
+                     'summary': 'GitHub Pull [user/repo]',
+                     'url': 'https://github.com/user/repo/pull/123'
+                 }, {
+                     'summary': 'NVD CVE Record',
+                     'url': 'https://nvd.nist.gov/vuln/detail/cve-2021-1234'
+                 }],
+  'scores': [{'cvss_v3': {'attackComplexity': 'HIGH',
+                          'attackVector': 'NETWORK',
+                          'availabilityImpact': 'HIGH',
+                          'baseScore': 8.1,
+                          'baseSeverity': 'HIGH',
+                          'confidentialityImpact': 'HIGH',
+                          'environmentalScore': 8.1,
+                          'environmentalSeverity': 'HIGH',
+                          'integrityImpact': 'HIGH',
+                          'modifiedAttackComplexity': 'HIGH',
+                          'modifiedAttackVector': 'NETWORK',
+                          'modifiedAvailabilityImpact': 'HIGH',
+                          'modifiedConfidentialityImpact': 'HIGH',
+                          'modifiedIntegrityImpact': 'HIGH',
+                          'modifiedPrivilegesRequired': 'NONE',
+                          'modifiedScope': 'UNCHANGED',
+                          'modifiedUserInteraction': 'NONE',
+                          'privilegesRequired': 'NONE',
+                          'scope': 'UNCHANGED',
+                          'temporalScore': 8.1,
+                          'temporalSeverity': 'HIGH',
+                          'userInteraction': 'NONE',
+                          'vectorString': 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H',
+                          'version': '3.1'},
+              'products': ['com.fasterxml.jackson.core/jackson-databind@2.9.6']}],
+ 'title': 'CVE-2021-20190/pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.6?type=jar'}]
     new_results = add_vulnerabilities(template, [])
     assert new_results.get("vulnerabilities") == []
 
@@ -1046,10 +975,10 @@ def test_get_acknowledgements():
         "name": "NVD",
         "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-20190",
     }
-    assert get_acknowledgements(source) == {
+    assert get_acknowledgements(source) == [{
         "organization": "NVD",
         "urls": ["https://nvd.nist.gov/vuln/detail/CVE-2021-20190"],
-    }
+    }]
     source = {"url": "https://nvd.nist.gov/vuln/detail/CVE-2021-20190"}
-    assert get_acknowledgements(source) == {}
+    assert get_acknowledgements(source) == []
 

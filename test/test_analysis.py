@@ -4,7 +4,8 @@ import os
 import pytest
 
 from depscan.lib import analysis
-from depscan.lib.analysis import cvss_to_vdr_rating, get_version_range, split_cwe
+from depscan.lib.analysis import cvss_to_vdr_rating, get_version_range, split_cwe, pkg_sub_tree
+from depscan.lib.utils import get_suggested_version_map
 
 
 @pytest.fixture
@@ -593,12 +594,13 @@ def test_bom_dependency_tree():
 
 
 def test_suggestion(test_data):
-    sug = analysis.suggest_version(test_data)
+    sug = get_suggested_version_map(test_data)
     assert sug == {
         "com.fasterxml.jackson.core:jackson-databind": "2.9.10.4",
     }
 
 
+# best_fixed_location is deprecated
 def test_best_fixed_location():
     assert analysis.best_fixed_location("1.0.3", "1.0.2") == "1.0.3"
     assert analysis.best_fixed_location("3.0.3", "1.0.2") == "1.0.2"
@@ -607,7 +609,7 @@ def test_best_fixed_location():
 
 
 def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "pkg:maven/org.yaml/snakeyaml@1.25?type=jar",
         "",
         test_bom_dependency_tree,
@@ -616,12 +618,12 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/org.springframework.boot/spring-boot-starter@2.2.6.RELEASE?type=jar",
         "pkg:maven/org.yaml/snakeyaml@1.25?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "pkg:maven/org.keycloak/keycloak-core@11.0.3?type=jar",
         "",
         test_bom_dependency_tree,
     )[0] == ["pkg:maven/org.keycloak/keycloak-core@11.0.3?type=jar"]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "",
         "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.33?type=jar",
         test_bom_dependency_tree,
@@ -630,7 +632,7 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/org.springframework.boot/spring-boot-starter-tomcat@2.2.6.RELEASE?type=jar",
         "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.33?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar",
         "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar",
         test_bom_dependency_tree,
@@ -639,7 +641,7 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/org.springframework.boot/spring-boot-starter@2.2.6.RELEASE?type=jar",
         "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "",
         "org.yaml/snakeyaml",
         test_bom_dependency_tree,
@@ -647,7 +649,7 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/org.springframework.boot/spring-boot-starter@2.2.6.RELEASE?type=jar",
         "pkg:maven/org.yaml/snakeyaml@1.25?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "pkg:maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar",
         None,
         test_bom_dependency_tree,
@@ -656,7 +658,7 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/org.apache.logging.log4j/log4j-to-slf4j@2.12.1?type=jar",
         "pkg:maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "pkg:maven/net.minidev/json-smart@2.3?type=jar",
         "pkg:maven/net.minidev/json-smart@2.3?type=jar",
         test_bom_dependency_tree,
@@ -665,7 +667,7 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:maven/com.jayway.jsonpath/json-path@2.4.0?type=jar",
         "pkg:maven/net.minidev/json-smart@2.3?type=jar",
     ]
-    assert analysis.pkg_sub_tree(
+    assert pkg_sub_tree(
         "pkg:npm/engine.io@6.2.1",
         "",
         test_js_deps_data,

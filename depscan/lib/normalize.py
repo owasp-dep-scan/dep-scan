@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from vdb.lib import KNOWN_PKG_TYPES
-from vdb.lib.config import placeholder_exclude_version
+from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.utils import parse_purl
 
 from depscan.lib import config
@@ -45,7 +45,7 @@ def create_pkg_variations(pkg_dict):
     vendor = pkg_dict.get("vendor") or ""
     name = pkg_dict.get("name") or ""
     purl = pkg_dict.get("purl") or ""
-    pkg_type = ""
+    pkg_type = pkg_dict.get("type") or ""
     name_aliases.add(name)
     name_aliases.add(name.lower())
     name_aliases.add(name.replace("-", "_"))
@@ -268,11 +268,14 @@ def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
     dealias_dict = {}
     for res in pkg_list:
         version = None
-        if res.matched_by:
-            version = res.matched_by.split("|")[-1]
-        package_issue = res.package_issue
-        full_pkg = package_issue.affected_location.package
-        if package_issue.affected_location.vendor:
+        if v := res.get("matched_by"):
+            if "|" in v:
+                version = v.split("|")[-1]
+            else:
+                version = v.split("@")[-1]
+        package_issue = res.get("package_issue") or {}
+        full_pkg = package_issue.get("affected_location", {}).get("package", "")
+        if package_issue.get("affected_location", {}).get("vendor", ""):
             full_pkg = (
                 f"{package_issue.affected_location.vendor}:"
                 f"{package_issue.affected_location.package}"
@@ -287,7 +290,7 @@ def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
             for k, v in pkg_aliases.items():
                 if (
                     full_pkg in v
-                    or (":" + package_issue.affected_location.package) in v
+                    or (":" + package_issue.get("affected_location", {}).get("package", "")) in v
                 ) and full_pkg != k:
                     dealias_dict[full_pkg] = k
                     break
@@ -305,16 +308,19 @@ def dedup(project_type, pkg_list):
     dedup_dict = {}
     ret_list = []
     for res in pkg_list:
-        vid = res.id
-        vuln_occ_dict = res.to_dict()
-        package_type = vuln_occ_dict.get("type")
-        package_issue = res.package_issue
-        fixed_location = package_issue.fixed_location
+        vid = res.get("cve_id") or res.get("id") or ""
+        package_type = res.get("type") or ""
+        package_issue = res.get("package_issue") or {}
+        fixed_location = package_issue.get("fixed_issue") or {}
         version = None
-        if res.matched_by:
-            version = res.matched_by.split("|")[-1]
-        full_pkg = package_issue.affected_location.package
-        if package_issue.affected_location.vendor:
+        if res.get("matched_by"):
+            version = res.get("matched_by")
+            if "|" in version:
+                version = version.split("|")[-1]
+            else:
+                version = version.split("@")[-1]
+        full_pkg = package_issue.get("affected_location", {}).get("package", "")
+        if package_issue.get("affected_location", {}).get("vendor", ""):
             full_pkg = (
                 f"{package_issue.affected_location.vendor}:"
                 f"{package_issue.affected_location.package}"
@@ -324,7 +330,7 @@ def dedup(project_type, pkg_list):
         full_pkg = vid + ":" + full_pkg
         # Ignore any result with the exclude fix location
         # Required for debian
-        if fixed_location == placeholder_exclude_version:
+        if fixed_location == PLACEHOLDER_EXCLUDE_VERSION:
             dedup_dict[full_pkg] = True
             continue
         allowed_type = config.LANG_PKG_TYPES.get(project_type)

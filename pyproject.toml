@@ -6,9 +6,10 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db==5.7.1",
+    "appthreat-vulnerability-db>=6.0.0",
+    "custom-json-diff==2.0.0-beta.1",
     "defusedxml",
-    "oras~=0.1.26",
+    "oras~=0.1.30",
     "PyYAML",
     "rich",
     "quart",
@@ -67,9 +68,9 @@ addopts = "--verbose --cov-append --cov-report term --cov depscan"
 
 [tool.flake8]
 ignore = "E203, E266, E501, W503, W605"
-max-line-length = 80
+max-line-length = 99
 max-complexity = 18
 select = "B,C,E,F,W,T4,B9"
 
 [tool.black]
-line-length = 80
+line-length = 99

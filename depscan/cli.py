@@ -13,12 +13,13 @@ from quart import Quart, request
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
-from vdb.lib import db as db_lib
+from vdb.lib import db6 as db_lib
 from vdb.lib.gha import GitHubSource
 from vdb.lib.nvd import NvdSource
 from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
 
+from depscan import get_version
 from depscan.lib import explainer, github, utils
 from depscan.lib.analysis import (
     PrepareVdrOptions,
@@ -26,7 +27,6 @@ from depscan.lib.analysis import (
     analyse_pkg_risks,
     find_purl_usages,
     prepare_vdr,
-    suggest_version,
     summary_stats,
 )
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
@@ -119,7 +119,7 @@ def build_args():
     parser.add_argument(
         "--no-suggest",
         action="store_false",
-        default="True",
+        default=True,
         dest="suggest",
         help="Disable suggest mode",
     )
@@ -306,16 +306,16 @@ def build_args():
         "--version",
         help="Display the version",
         action="version",
-        version="%(prog)s " + utils.get_version(),
+        version="%(prog)s " + get_version(),
     )
     return parser.parse_args()
 
 
-def scan(db, project_type, pkg_list, suggest_mode):
+# Deprecated
+def scan(project_type, pkg_list):
     """
     Method to search packages in our vulnerability database
 
-    :param db: Reference to db
     :param project_type: Project Type
     :param pkg_list: List of packages
     :param suggest_mode: True if package fix version should be normalized across
@@ -329,93 +329,8 @@ def scan(db, project_type, pkg_list, suggest_mode):
         LOG.debug("Empty package search attempted!")
     else:
         LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-    results, pkg_aliases, purl_aliases = utils.search_pkgs(
-        db, project_type, pkg_list
-    )
-    # pkg_aliases is a dict that can be used to find the original vendor and
-    # package name This way we consistently use the same names used by the
-    # caller irrespective of how the result was obtained
-    sug_version_dict = {}
-    if suggest_mode:
-        # From the results identify optimal max version
-        sug_version_dict = suggest_version(results, pkg_aliases, purl_aliases)
-        if sug_version_dict:
-            LOG.debug(
-                "Adjusting fix version based on the initial suggestion %s",
-                sug_version_dict,
-            )
-            # Recheck packages
-            sug_pkg_list = []
-            for k, v in sug_version_dict.items():
-                if not v:
-                    continue
-                sug, aliases = process_suggestions(k, v)
-                if sug:
-                    sug_pkg_list.extend(sug)
-                if aliases:
-                    pkg_aliases |= aliases
-            LOG.debug(
-                "Re-checking our suggestion to ensure there are no further "
-                "vulnerabilities"
-            )
-            override_results, _, _ = utils.search_pkgs(
-                db, project_type, sug_pkg_list
-            )
-            if override_results:
-                new_sug_dict = suggest_version(override_results)
-                LOG.debug("Received override results: %s", new_sug_dict)
-                for nk, nv in new_sug_dict.items():
-                    sug_version_dict[nk] = nv
-    return results, pkg_aliases, sug_version_dict, purl_aliases
-
-
-def process_suggestions(k, v):
-    """
-    Processes suggestions for package information and returns a list of packages
-    along with their aliases.
-
-    :param k: Package URL
-    :param v: Suggested version
-
-    :returns: A list of packages and a dict of aliases
-    :rtype: tuple[list, dict]
-    """
-    vendor = ""
-    version = v
-    pkg_list = []
-    aliases = {}
-    # Key is already a purl
-    if k.startswith("pkg:"):
-        with contextlib.suppress(Exception):
-            purl_obj = parse_purl(k)
-            vendor = purl_obj.get("namespace", purl_obj.get("type"))
-            name = purl_obj.get("name")
-            version = purl_obj.get("version")
-            pkg_list.append(
-                {
-                    "vendor": vendor,
-                    "name": name,
-                    "version": version,
-                    "purl": k,
-                }
-            )
-    else:
-        tmp_a = k.split(":")
-        if len(tmp_a) == 3:
-            vendor = tmp_a[0]
-            name = tmp_a[1]
-        else:
-            name = tmp_a[0]
-        # De-alias the vendor and package name
-        full_pkg = f"{vendor}:{name}:{version}"
-        full_pkg = aliases.get(full_pkg, full_pkg)
-        split_pkg = full_pkg.split(":")
-        if len(split_pkg) == 3:
-            vendor, name, version = split_pkg
-        elif split_pkg:
-            name = split_pkg[0]
-        pkg_list.append({"vendor": vendor, "name": name, "version": version})
-    return pkg_list, aliases
+    results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
+    return results, pkg_aliases, purl_aliases
 
 
 def summarise(
@@ -423,7 +338,7 @@ def summarise(
     results,
     pkg_aliases,
     purl_aliases,
-    sug_version_dict,
+    suggest_mode,
     scoped_pkgs,
     report_file,
     bom_file,
@@ -452,7 +367,7 @@ def summarise(
         results,
         pkg_aliases,
         purl_aliases,
-        sug_version_dict,
+        suggest_mode,
         scoped_pkgs=scoped_pkgs,
         no_vuln_table=no_vuln_table,
         bom_file=bom_file,
@@ -468,8 +383,8 @@ def summarise(
                     export_bom(bom_data, pkg_vulnerabilities, vdr_file)
         except json.JSONDecodeError:
             LOG.warning("Unable to generate VDR file for this scan")
-    summary = summary_stats(results)
-    return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows
+    summary = summary_stats(pkg_vulnerabilities)
+    return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows, options
 
 
 def summarise_tools(tools, metadata, bom_data):
@@ -481,7 +396,7 @@ def summarise_tools(tools, metadata, bom_data):
     :return: None
     """
     components = tools.get("components", [])
-    ds_version = utils.get_version()
+    ds_version = get_version()
     ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
     components.append(
         {
@@ -492,8 +407,7 @@ def summarise_tools(tools, metadata, bom_data):
             "bom-ref": ds_purl,
         }
     )
-    bom_data["tools"] = {"components": components}
-    bom_data["metadata"] = metadata
+    bom_data["metadata"]["tools"] = {"components": components}
     return bom_data
 
 
@@ -567,7 +481,7 @@ async def cache():
     :return: a JSON response indicating the status of the caching operation.
     """
     db = db_lib.get()
-    if not db_lib.index_count(db["index_file"]):
+    if 0 in db_lib.stats():
         if download_image():
             return {
                 "error": "false",
@@ -601,6 +515,7 @@ async def run_scan():
     db = db_lib.get()
     profile = "generic"
     deep = False
+    suggest_mode = q.get("suggest") or True
     if q.get("url"):
         url = q.get("url")
     if q.get("path"):
@@ -640,8 +555,7 @@ async def run_scan():
         }, 400
     if not project_type:
         return {"error": "true", "message": "project type is required"}, 400
-
-    if not db_lib.index_count(db["index_file"]):
+    if 0 in db_lib.stats():
         return (
             {
                 "error": "true",
@@ -721,12 +635,12 @@ async def run_scan():
             audit_results = audit(project_type, pkg_list)
             if audit_results:
                 results = results + audit_results
-        vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
-            db, project_type, pkg_list, True
-        )
-        if vdb_results:
-            results += vdb_results
-        results = [r.to_dict() for r in results]
+        if not pkg_list:
+            LOG.debug("Empty package search attempted!")
+        else:
+            LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
+        vdb_results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
+        results.extend(vdb_results)
         with open(bom_file_path, encoding="utf-8") as fp:
             bom_data = json.load(fp)
         if not bom_data:
@@ -743,7 +657,7 @@ async def run_scan():
             results,
             pkg_aliases,
             purl_aliases,
-            sug_version_dict,
+            suggest_mode,
             scoped_pkgs={},
             no_vuln_table=True,
             bom_file=bom_file_path,
@@ -1022,11 +936,11 @@ def main():
                 except Exception as e:
                     LOG.error("Remote audit was not successful")
                     LOG.error(e)
-        if not db_lib.index_count(db["index_file"]):
+        if 0 in db_lib.stats():
             run_cacher = True
         else:
             LOG.debug(
-                "Vulnerability database loaded from %s", config.vdb_bin_file
+                "Vulnerability database loaded from %s", config.VDB_BIN_FILE
             )
 
         sources_list = [OSVSource(), NvdSource()]
@@ -1073,27 +987,34 @@ def main():
                     pass
                 run_cacher = False
         if len(pkg_list) > 1:
-            LOG.info(
-                "Performing regular scan for %s using plugin %s",
-                src_dir,
-                project_type,
-            )
-        vdb_results, pkg_aliases, sug_version_dict, purl_aliases = scan(
-            db, project_type, pkg_list, args.suggest
-        )
-        if vdb_results:
-            results += vdb_results
-        results = [r.to_dict() for r in results]
+            if args.bom:
+                LOG.info(
+                    "Performing regular scan for %s using plugin %s",
+                    args.bom,
+                    project_type,
+                )
+            else:
+                LOG.info(
+                    "Performing regular scan for %s using plugin %s",
+                    src_dir,
+                    project_type,
+                )
+        if not pkg_list:
+            LOG.debug("Empty package search attempted!")
+        else:
+            LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
+        vdb_results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
+        results.extend(vdb_results)
         direct_purls, reached_purls = find_purl_usages(
             bom_file, src_dir, args.reachables_slices_file
         )
         # Summarise and print results
-        summary, vdr_file, pkg_vulnerabilities, pkg_group_rows = summarise(
+        summary, vdr_file, pkg_vulnerabilities, sug_version_dict, pkg_group_rows = summarise(
             project_type,
             results,
             pkg_aliases,
             purl_aliases,
-            sug_version_dict,
+            args.suggest,
             scoped_pkgs=scoped_pkgs,
             report_file=report_file,
             bom_file=bom_file,
