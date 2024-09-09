@@ -12,16 +12,16 @@ LABEL maintainer="AppThreat" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=22.0.1-tem
-ARG SBT_VERSION=1.9.9
-ARG MAVEN_VERSION=3.9.8
-ARG GRADLE_VERSION=8.8
+ARG JAVA_VERSION=22.0.2-tem
+ARG SBT_VERSION=1.10.1
+ARG MAVEN_VERSION=3.9.9
+ARG GRADLE_VERSION=8.10
 ARG NYDUS_VERSION=2.2.5
 ARG CDXGEN_VERSION=10.7.1
 ARG PYTHON_VERSION=3.12
 
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.22.3 \
+    GO_VERSION=1.22.7 \
     JAVA_VERSION=$JAVA_VERSION \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
