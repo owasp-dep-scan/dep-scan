@@ -161,7 +161,6 @@ def create_pkg_variations(pkg_dict):
         vendor_aliases.add("pypi")
         vendor_aliases.add("python")
         vendor_aliases.add("python-" + name)
-        vendor_aliases.add(name + "project")
     elif purl.startswith("pkg:npm"):
         # pg-promise CVE is filed as pg
         if name.endswith("-promise"):
