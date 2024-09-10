@@ -1697,7 +1697,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
         counts.has_poc_count += 1
         if pkg_severity in ("CRITICAL", "HIGH"):
             pkg_requires_attn = True
-    if clinks.get("vendor") and package_type not in config.OS_PKG_TYPES:
+    if (clinks.get("vendor") and package_type not in config.OS_PKG_TYPES) or reached_purls.get(purl):
         if reached_purls.get(purl):
             # If it has a poc, an insight might have gotten added above
             if not pkg_requires_attn:
