@@ -155,7 +155,8 @@ def create_pkg_variations(pkg_dict):
             # Issue #262
             # Eg: cpe:2.3:a:microsoft:azure_storage_blobs:*:*:*:*:*:python:*:*
             # pypi name is pkg:pypi/azure-storage-blob@12.8.0
-            if not name.endswith("s"):
+            # Issue #341 - do not change colorama to coloramas
+            if not name.endswith("s") and "-" in name:
                 name_aliases.add(name.replace("-", "_") + "s")
         vendor_aliases.add("pip")
         vendor_aliases.add("pypi")
