@@ -1,0 +1,90 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "{{ metadata.tools.components[1].name }}",
+          "semanticVersion": "{{ metadata.tools.components[1].version }}",
+          "informationUri": "https://github.com/owasp-dep-scan/dep-scan",
+          "properties": {
+            "protocol_version": "v1.0.0",
+            "scanner_name": "{{ metadata.tools.components[1].name }}",
+            "scanner_version": "{{ metadata.tools.components[1].version }}",
+            "db": "https://github.com/AppThreat/vulnerability-db",
+            "scan_mode": "source"
+          },
+          "rules": [ {% for vuln in vulnerabilities %}{% set package = vuln['bom-ref'].split(':')[1] %}
+            {
+              "id": "{{ vuln['bom-ref'] }}",
+              "shortDescription": {
+                "text": "Vulnerable pkg: {{ package }}\nCVE: {{ vuln.id }}\nFix: {{ vuln.recommendation }}\n\n{% for prop in vuln.properties %}{{ prop.name }}: {{ prop.value }}\n{% endfor %}"
+              },
+              "fullDescription": {
+                "text": {{ vuln.description | tojson }}
+              },
+              "help": {
+                "text": "{{ vuln.recommendation }}"
+              },
+              "helpUri": "{% if vuln.source -%}{{ vuln.source.url }}{% endif -%}",
+              "properties": {
+                "tags": [
+                    {% for prop in vuln.properties %}{% if 'Used' in prop.value -%}
+                    "{{ 'Used' }}",
+                    {% endif -%}{% if 'Reachable' in prop.value -%}
+                    "{{ 'Reachable' }}",
+                    {% endif -%}{% if 'Confirmed' in prop.value -%}
+                    "{{ 'Confirmed' }}",
+                    {% endif -%}{% if 'Exploits' in prop.value -%}
+                    "{{ 'Exploits' }}",
+                    {% endif -%}{% if 'PoC' in prop.value -%}
+                    "{{ 'PoC' }}",                   
+                    {% endif -%}{% if 'true' in prop.value and 'prioritized' in prop.name -%}
+                    "{{ 'Prioritized' }}",
+                    {% endif -%}{% endfor %}{% if 'MAL-' in vuln.id -%}
+                    "{{ 'Malware' }}",
+                    {% endif -%}"{{ vuln['id'] }}"
+                ]
+              }
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+          ]
+        }
+      },
+      "results": [ {% for vuln in vulnerabilities %}{% set package = vuln['bom-ref'].split(':')[1] %}
+        {
+          "ruleId": "{{ vuln['bom-ref'] }}",
+          "level": {% if vuln.ratings[0].severity in ['critical','high'] -%}
+                    "{{ 'error' }}",
+                    {% endif -%}{% if vuln.ratings[0].severity in ['medium'] -%}
+                    "{{ 'warning' }}",
+                    {% endif -%}{% if vuln.ratings[0].severity in ['low'] -%}
+                    "{{ 'note' }}",
+                    {% endif -%}
+          "message": {
+            "text": "Vulnerability {{ vuln.id }} in pkg {{ package }}"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "lockfile",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "message": {
+                "text": "Vulnerability {{ vuln.id }} in pkg {{ package }}"
+              }
+            }
+          ]
+        }
+        {% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  ]
+}
