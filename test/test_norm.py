@@ -21,7 +21,7 @@ def test_pkg_variations():
     pkg_list = create_pkg_variations(
         {"vendor": "org.eclipse.foo", "name": "bar", "version": "1.0.0"}
     )
-    assert len(pkg_list) > 1
+    assert len(pkg_list) == 1
     pkg_list = create_pkg_variations(
         {
             "vendor": "com.fasterxml.jackson.core",
