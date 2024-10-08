@@ -1,9 +1,0 @@
-project,link,language,pre_build_cmd,build_cmd,commit
-"node-goat","","javascript","","","",""
-"netty","https://github.com/netty/netty.git","java","sdk use java 8.0.392-zulu","","ffee1746f85cb3e0d74801abe77ab30f49221185"
-"django-goat","https://github.com/red-and-black/DjangoGoat.git","python","","python -m venv venv; source venv/bin/activate && pip install -r requirements_app.txt","5e6aaa6d0497bf24abd179304e6ca51295a8091d"
-"java-sec-code","https://github.com/JoyChou93/java-sec-code.git","java","sdk use java 8.0.392-zulu","mvn -B clean compile -DskipTests=true","457d703e8f89bff657c6c51151ada71ebd09a1c6"
-"rasa","https://github.com/RasaHQ/rasa.git","python","pipx install poetry","","7807b19ad5fffab73ca1a04dc710f812115a9288"
-"restic","https://github.com/restic/restic.git","go","","go run build.go","3786536dc18ef27aedcfa8e4c6953b48353eee79"
-"syncthing","https://github.com/syncthing/syncthing.git","go","","go run build.go","ba6ac2f604eb1cd27764460b687537c5e40aaaf8"
-"tinydb","https://github.com/msiemens/tinydb.git","python","","python -m venv venv; source venv/bin/activate && pip install .","3dc6a952ef8700706909bf60a1b15cf21af47608"

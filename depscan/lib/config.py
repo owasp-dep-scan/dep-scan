@@ -633,7 +633,8 @@ REF_MAP = {
     "exploits": {
         "seclists": re.compile(r"(?P<org>seclists).org/(?P<id>\S+/\d{4}/\w{3}/\d{1,2})"),
         "generic": re.compile(r"(?P<org>[^/\s.]+)(?:.blogspot)?.(?:com|org|zone|gov)/(?:[\w-]+/){1,5}(?P<id>[^/\s)]+)", re.IGNORECASE)
-    }
+    },
+    "openwall": re.compile(r"(?P<org>openwall).com/lists/(?P<list_type>[^/]+)/(?P<id>\S+)", re.IGNORECASE),
 }
 
 SEVERITY_REF = {

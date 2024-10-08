@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 
+from custom_json_diff.lib.utils import json_load, json_dump, file_write
 from defusedxml.ElementTree import parse
 from quart import Quart, request
 from rich.panel import Panel
@@ -66,6 +67,11 @@ def build_args():
     """
     Constructs command line arguments for the depscan tool
     """
+    parser = build_parser()
+    return parser.parse_args()
+
+
+def build_parser():
     parser = argparse.ArgumentParser(
         description="Fully open-source security and license audit for "
         "application dependencies and container images based on "
@@ -308,7 +314,7 @@ def build_args():
         action="version",
         version="%(prog)s " + get_version(),
     )
-    return parser.parse_args()
+    return parser
 
 
 # Deprecated
@@ -318,8 +324,6 @@ def scan(project_type, pkg_list):
 
     :param project_type: Project Type
     :param pkg_list: List of packages
-    :param suggest_mode: True if package fix version should be normalized across
-            findings
     :returns: A list of package issue objects or dictionaries.
               A dictionary mapping package names to their aliases.
               A dictionary mapping packages to their suggested fix versions.
@@ -352,7 +356,6 @@ def summarise(
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
     :param purl_aliases: Package URL to package name aliases
-    :param sug_version_dict: Dictionary containing version suggestions
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
     :param bom_file: SBOM file
@@ -377,12 +380,10 @@ def summarise(
     pkg_vulnerabilities, pkg_group_rows = prepare_vdr(options)
     vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
     if pkg_vulnerabilities and bom_file:
-        try:
-            with open(bom_file, encoding="utf-8") as fp:
-                if bom_data := json.load(fp):
-                    export_bom(bom_data, pkg_vulnerabilities, vdr_file)
-        except json.JSONDecodeError:
-            LOG.warning("Unable to generate VDR file for this scan")
+        if bom_data := json_load(bom_file, log=LOG):
+            export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+        else:
+            LOG.warning("Unable to generate VDR file for this scan.")
     summary = summary_stats(pkg_vulnerabilities)
     return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows, options
 
@@ -431,9 +432,7 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     if isinstance(tools, dict):
         bom_data = summarise_tools(tools, metadata, bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
-    with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
-        json.dump(bom_data, vdrfp, indent=4)
-    LOG.debug("VDR file %s generated successfully", vdr_file)
+    json_dump(vdr_file, bom_data, error_msg=f"Unable to generate VDR file at {vdr_file}", log=LOG)
 
 
 def set_project_types(args, src_dir):
@@ -594,9 +593,8 @@ async def run_scan():
         tmp_bom_file = tempfile.NamedTemporaryFile(
             delete=False, suffix=f".bom.{bom_file_suffix}"
         )
-        with open(tmp_bom_file.name, "w", encoding="utf-8") as f:
-            f.write(bom_file_content)
         path = tmp_bom_file.name
+        file_write(path, bom_file_content)
 
     # Path points to a project directory
     # Bug# 233. Path could be a url
@@ -641,8 +639,7 @@ async def run_scan():
             LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
         vdb_results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
         results.extend(vdb_results)
-        with open(bom_file_path, encoding="utf-8") as fp:
-            bom_data = json.load(fp)
+        bom_data = json_load(bom_file_path)
         if not bom_data:
             return (
                 {
@@ -699,12 +696,11 @@ def run_server(args):
     )
 
 
-def main():
+def main(args):
     """
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
     """
-    args = build_args()
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
@@ -1079,4 +1075,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli_args = build_args()
+    main(cli_args)
