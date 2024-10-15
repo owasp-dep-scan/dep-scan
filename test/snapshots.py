@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import argparse
 import logging
@@ -124,17 +125,17 @@ def generate_snapshot_diffs(dir1: str, dir2: str, projects: List, v5: bool):
         bom_diff_options.file_2 = f"{dir2}/{p}-bom.vdr.json"
         bom_diff_options.output = f"{dir2}/{p}-bom-diff.json"
         bom_result, bom_summary = compare_snapshots(bom_diff_options, v5, p)
-        if bom_result:
-            print(bom_result)
+        print(bom_result)
+        if bom_result.endswith("failed."):
             failed_diffs["bom"] |= {p: bom_summary}
         csaf_diff_options.file_1 = f"{dir1}/{p}.csaf_v1.json"
         csaf_diff_options.file_2 = f"{dir2}/{p}.csaf_v1.json"
         csaf_diff_options.output = f"{dir2}/{p}.csaf-diff.json"
         csaf_result, csaf_summary = compare_snapshots(csaf_diff_options, v5, p)
-        if csaf_result:
-            print(csaf_result)
+        print(csaf_result)
+        if csaf_result.endswith("failed."):
             failed_diffs["csaf"] |= {p: csaf_summary}
-    return failed_diffs
+    return {k: v for k, v in failed_diffs.items() if v}
 
 
 def handle_legacy_output(data: Dict, options: Options, filename: str) -> Dict:
