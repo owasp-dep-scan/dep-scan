@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import argparse
 import logging
@@ -134,7 +135,7 @@ def generate_snapshot_diffs(dir1: str, dir2: str, projects: List, v5: bool):
         if csaf_result:
             print(csaf_result)
             failed_diffs["csaf"] |= {p: csaf_summary}
-    return failed_diffs
+    return {k: v for k, v in failed_diffs.items() if v}
 
 
 def handle_legacy_output(data: Dict, options: Options, filename: str) -> Dict:
