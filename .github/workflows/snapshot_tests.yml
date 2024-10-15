@@ -51,7 +51,7 @@ jobs:
         run: |
           git clone https://github.com/AppThreat/dep-scan-snapshots.git /home/runner/work/original_snapshots
           cd /home/runner/work/original_snapshots
-          git checkout 5d483128f70c0c693e204d7c0156f4a4447e34e1
+          git checkout 51fd3f3f63e8aad258b9b10b38d7222000cc36e7
 
       - name: Generate snapshots and test
         env:
@@ -59,6 +59,7 @@ jobs:
           INPUT_THANK_YOU: "I have sponsored OWASP-dep-scan."
         run: |
           source venv/bin/activate
+          chmod +x /home/runner/work/dep-scan/dep-scan/test/snapshots.py
           /home/runner/work/dep-scan/dep-scan/test/snapshots.py
           if test -f /home/runner/work/new_snapshots/diffs.json; then
             echo "status=FAILED" >> "$GITHUB_ENV"
