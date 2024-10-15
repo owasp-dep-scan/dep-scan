@@ -51,7 +51,7 @@ jobs:
         run: |
           git clone https://github.com/AppThreat/dep-scan-snapshots.git /home/runner/work/original_snapshots
           cd /home/runner/work/original_snapshots
-          git checkout 51fd3f3f63e8aad258b9b10b38d7222000cc36e7
+          git checkout ff036a22eedeeacfb38bf1260b9925758861b290
 
       - name: Generate snapshots and test
         env:
