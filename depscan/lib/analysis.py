@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import cvss
-from custom_json_diff.lib.utils import compare_versions
+from custom_json_diff.lib.utils import compare_versions, json_load, json_dump, file_write
 from cvss import CVSSError
 from packageurl import PackageURL
 from rich import box
@@ -34,7 +34,7 @@ from depscan.lib.utils import (
     max_version,
     get_description_detail,
     format_system_name,
-    make_version_suggestions, combine_vdrs, make_purl
+    make_version_suggestions, combine_vdrs, make_purl, combine_references
 )
 
 NEWLINE = "\\n"
@@ -99,13 +99,8 @@ def retrieve_bom_dependency_tree(bom_file):
     """
     if not bom_file:
         return [], None
-    try:
-        with open(bom_file, encoding="utf-8") as bfp:
-            bom_data = json.load(bfp)
-            if bom_data:
-                return bom_data.get("dependencies", []), bom_data
-    except json.JSONDecodeError:
-        pass
+    if bom_data:= json_load(bom_file):
+        return bom_data.get("dependencies", []), bom_data
     return [], None
 
 
@@ -357,7 +352,7 @@ def dedupe_vdrs(vdrs):
             new_vdrs[vdr["bom-ref"]] = combine_vdrs(new_vdrs[vdr["bom-ref"]], vdr)
         else:
             new_vdrs[vdr["bom-ref"]] = vdr
-    return [i for i in new_vdrs.values()]
+    return list(new_vdrs.values())
 
 
 def generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pkg_group_rows, options):
@@ -402,8 +397,7 @@ def generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pk
 
 
 def output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table):
-    with open("pkg_vulnerabilities.json", "w", encoding="utf-8") as fp:
-        json.dump(pkg_vulnerabilities, fp)
+    json_dump("pkg_vulnerabilities.json", pkg_vulnerabilities, True, log=LOG)
     if pkg_vulnerabilities:
         console.print()
         console.print(table)
@@ -847,10 +841,7 @@ def analyse_pkg_risks(
         console.print(table)
         # Store the risk audit findings in jsonl format
         if risk_report_file:
-            with open(risk_report_file, "w", encoding="utf-8") as outfile:
-                for row in report_data:
-                    json.dump(row, outfile)
-                    outfile.write("\n")
+            file_write(risk_report_file, "\n".join([json.dumps(row) for row in report_data]), log=LOG)
     else:
         LOG.info("No package risks detected ✅")
 
@@ -911,10 +902,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         console.print(table)
         # Store the license scan findings in jsonl format
         if license_report_file:
-            with open(license_report_file, "w", encoding="utf-8") as outfile:
-                for row in report_data:
-                    json.dump(row, outfile)
-                    outfile.write("\n")
+            file_write(license_report_file, "\n".join([json.dumps(row) for row in report_data]))
     else:
         LOG.info("No license violation detected ✅")
 
@@ -1125,17 +1113,14 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
     ):
         reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
     if reachables_slices_file:
-        with open(reachables_slices_file, "r", encoding="utf-8") as f:
-            reachables = json.load(f).get("reachables")
+        reachables = json_load(reachables_slices_file).get("reachables")
         for flow in reachables:
             if len(flow.get("purls", [])) > 0:
                 for apurl in flow.get("purls"):
                     reached_purls[apurl] += 1
     if bom_file and os.path.exists(bom_file):
+        data = json_load(bom_file)
         # For now we will also include usability slice as well
-        with open(bom_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
         for c in data["components"]:
             purl = c.get("purl", "")
             if c.get("evidence") and c["evidence"].get("occurrences"):
@@ -1273,7 +1258,7 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
     Parses the reference list provided by VDB and converts to VDR objects
 
     :param references: List of dictionaries of references
-    :type references: list
+    :param vid: str of vulnerability id
 
     :return: Tuple of advisories, references for VDR
     :rtype: tuple[list, list]
@@ -1303,9 +1288,11 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
             advisories.append({"title": rmatch[0], "url": i})
         elif "Advisory" in category:
             adv_id = rmatch["id"]
+            if (tmp := adv_id.replace("-", "")) and tmp.isalpha() and len(tmp) < 20:
+                continue
             if "vuldb" in i.lower():
                 adv_id = f"vuldb-{adv_id}"
-            if system_name in {"Jfrog", "Gentoo"}:
+            if system_name in {"Jfrog Advisory", "Gentoo Advisory"}:
                 adv_id, system_name = adv_ref_parsing(adv_id, i, rmatch, system_name)
             if adv_id.lower() == vid and not source:
                 source = {"name": system_name, "url": i}
@@ -1320,7 +1307,7 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
             elif category == "BugBounty":
                 bug_bounty.append(i)
             else:
-                adv_id = f"{system_name.lower().replace(' ', '')}-{rmatch['id']}"
+                adv_id = f"{system_name.lower().replace(' ', '-')}-{rmatch['id']}"
                 refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
                 if system_name in {"Synology", "Samba", "CISA", "Zero Day Initiative"}:
                     advisories.append({"title": f"{system_name} Advisory {rmatch['id']}", "url": i})
@@ -1328,31 +1315,46 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
                         vendor.append(i)
                 exploit.append(i)
         elif category == "Bugzilla":
-            refs.append({"id": f"{rmatch['org']}-bugzilla-{rmatch['id']}", "source": {"name": f"{format_system_name(rmatch['org'])} Bugzilla", "url": i}})
+            refs.append({
+                "id": f"{rmatch['org']}-bugzilla-{rmatch['id']}",
+                "source": {"name": f"{format_system_name(rmatch['org'])} Bugzilla", "url": i}
+            })
             vendor.append(i)
         elif category == "Vendor":
             if "announce" in i:
                 vendor.append(i)
             if rmatch := ADVISORY.search(i):
-                system_name = f"{format_system_name(rmatch['org'])} Mailing List Announcement"
-                advisories.append({"title": f"{system_name} {rmatch['id']}", "url": i})
-                if "announce" in i:
-                    refs.append({"id": f"{rmatch['org']}-msg-{rmatch['id']}", "source": {"name": system_name, "url": i}})
+                system_name = f"{format_system_name(rmatch['org'])} Mailing List"
+                refs.append({
+                    "id": f"{rmatch['org']}-msg-{rmatch['id']}",
+                    "source": {"name": system_name, "url": i}
+                })
         elif category == "Mailing List":
-            if rmatch := ADVISORY.search(i):
+            if "openwall" in i:
+                rmatch = config.REF_MAP["openwall"].search(i)
+                adv_id = f"openwall-{rmatch['list_type']}-msg-{rmatch['id'].replace('/', '-')}"
+            else:
+                rmatch = ADVISORY.search(i)
+                adv_id = f"{rmatch['org']}-msg-{rmatch['id']}"
+            if rmatch:
                 system_name = f"{format_system_name(rmatch['org'])} {category}"
-                refs.append({"id": f"{rmatch['org']}-{rmatch['id']}", "source": {"name": system_name, "url": i}})
+                refs.append({"id": adv_id, "source": {"name": system_name, "url": i}})
                 vendor.append(i)
         elif category == "Generic":
-            refs.append({"id": f"{rmatch['user']}-{rmatch['repo']}-{rmatch['type']}-{rmatch['id']}", "source": {"name": f"{format_system_name(rmatch['host'])} {rmatch['type'].capitalize()}", "url": i}})
-    return advisories, refs, bug_bounty, poc, exploit, vendor, source
+            refs.append({
+                "id": f"{rmatch['user']}-{rmatch['repo']}-{rmatch['type']}-{rmatch['id']}",
+                "source": {
+                    "name": f"{format_system_name(rmatch['host'])} {rmatch['type'].capitalize()}",
+                    "url": i}
+            })
+    return combine_references(advisories, []), combine_references(refs, []), bug_bounty, poc, exploit, vendor, source
 
 
 def adv_ref_parsing(adv_id, i, match, system_name):
-    if system_name == "Gentoo":
-        adv_id = f"glsa-{match['id']}"
-    if system_name == "Jfrog":
-        system_name = "JFrog"
+    if system_name == "Gentoo Advisory":
+        adv_id = f"glsa-{adv_id}"
+    if system_name == "Jfrog Advisory":
+        system_name = "JFrog Advisory"
         if id_match := JFROG_ADVISORY.search(i):
             adv_id = id_match["id"]
     return adv_id, system_name
@@ -1476,7 +1478,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
             }
         elif vid.startswith("GHSA") or vid.startswith("npm"):
             source = {
-                "name": "GitHub Advisory",
+                "name": "GitHub",
                 "url": f"https://github.com/advisories/{vid}",
             }
     related_urls = vuln_occ_dict.get("related_urls")
@@ -1749,17 +1751,9 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
         counts.has_os_packages = True
     if pkg_requires_attn and fixed_location and purl:
         add_to_pkg_group_rows = True
-    properties = [
-        {
-            "name": "depscan:insights",
-            "value": "\\n".join(plain_insights),
-        },
-        {
-            "name": "depscan:prioritized",
-            "value": "true" if pkg_requires_attn and fixed_location and purl else "false",
-        },
-    ]
-    vuln |= {"insights": insights, "properties": properties}
+    vuln |= {
+        "insights": insights,
+        "properties": get_vuln_properties(fixed_location, pkg_requires_attn, plain_insights, purl)}
     return counts, add_to_pkg_group_rows, vuln
 
 
@@ -1998,11 +1992,23 @@ def analyze_cve_vuln(vuln, reached_purls, direct_purls, optional_pkgs, required_
     add_to_pkg_group_rows = pkg_requires_attn and fixed_location and purl
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
-    vdict["insights"] = insights
     if exploits or pocs:
-        vdict["analysis"] = get_analysis({"exploits": exploits[0] if exploits else [], "pocs": pocs[0] if pocs else []}, pkg_tree_list)
-    vdict |= {"properties": [
-        {"name": "depscan:insights", "value": "\\n".join(plain_insights)},
-        {"name": "depscan:prioritized", "value": "true" if pkg_requires_attn and fixed_location and purl else "false"},
-    ]}
+        vdict["analysis"] = get_analysis(
+            {"exploits": exploits[0] if exploits else [], "pocs": pocs[0] if pocs else []},
+            pkg_tree_list
+            )
+    vdict |= {
+        "insights": insights,
+        "properties": get_vuln_properties(fixed_location, pkg_requires_attn, plain_insights, purl)}
     return counts, vdict, add_to_pkg_group_rows
+
+
+def get_vuln_properties(fixed_location, pkg_requires_attn, plain_insights, purl):
+    properties = [{
+        "name": "depscan:prioritized",
+        "value": "true" if pkg_requires_attn and fixed_location and purl else "false",
+    }]
+    if plain_insights:
+        plain_insights.sort()
+        properties.append({"name": "depscan:insights", "value": "\\n".join(plain_insights)})
+    return properties

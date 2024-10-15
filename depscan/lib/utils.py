@@ -1,7 +1,6 @@
 import ast
 import contextlib
 import encodings.utf_8
-import json
 import os
 import re
 import shutil
@@ -9,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
+from custom_json_diff.lib.utils import file_read, json_load, file_write
 from jinja2 import Environment
 from packageurl import PackageURL
 from vdb.lib.config import PLACEHOLDER_FIX_VERSION, PLACEHOLDER_EXCLUDE_VERSION
@@ -57,9 +57,7 @@ def find_python_reqfiles(path):
     ]
     for root, dirs, files in os.walk(path):
         filter_ignored_dirs(dirs)
-        for name in req_files:
-            if name in files:
-                result.append(os.path.join(root, name))
+        result.extend(os.path.join(root, name) for name in req_files if name in files)
     return result
 
 
@@ -221,7 +219,6 @@ def search_pkgs(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     """
     Method to search packages in our vulnerability database
 
-    :param db: DB instance
     :param project_type: Project type
     :param pkg_list: List of packages to search
     :returns: raw_results, pkg_aliases, purl_aliases
@@ -370,9 +367,7 @@ def get_all_imports(src_dir):
     if not py_files:
         return import_list
     for afile in py_files:
-        with open(os.path.join(afile), "rb", encoding="utf-8") as f:
-            content = f.read()
-        parsed = ast.parse(content)
+        parsed = ast.parse(file_read(os.path.join(afile), True, log=LOG))
         for node in ast.walk(parsed):
             if isinstance(node, ast.Import):
                 for name in node.names:
@@ -438,28 +433,31 @@ def render_template_report(
     and summary dict using the template_file with Jinja, rendered output is written
     to named result_file in reports directory.
     """
-    if vdr_file and os.path.isfile(vdr_file):
-        with open(vdr_file, "r", encoding="utf-8") as f:
-            bom = json.load(f)
-    else:
-        with open(bom_file, "r", encoding="utf-8") as f:
-            bom = json.load(f)
-    with open(template_file, "r", encoding="utf-8") as tmpl_file:
-        template = tmpl_file.read()
-    jinja_env = Environment(autoescape=False)
+    bom = {}
+    if vdr_file:
+        bom = json_load(vdr_file, log=LOG)
+    if not bom:
+        bom = json_load(bom_file, log=LOG)
+    template = file_read(template_file, log=LOG)
+    jinja_env = Environment(autoescape=True)
     jinja_tmpl = jinja_env.from_string(template)
     report_result = jinja_tmpl.render(
-        metadata=bom.get("metadata", None),
-        vulnerabilities=bom.get("vulnerabilities", None),
-        components=bom.get("components", None),
-        dependencies=bom.get("dependencies", None),
-        services=bom.get("services", None),
+        metadata=bom.get("metadata"),
+        vulnerabilities=bom.get("vulnerabilities"),
+        components=bom.get("components"),
+        dependencies=bom.get("dependencies"),
+        services=bom.get("services"),
         summary=summary,
         pkg_vulnerabilities=pkg_vulnerabilities,
         pkg_group_rows=pkg_group_rows,
     )
-    with open(result_file, "w", encoding="utf-8") as outfile:
-        outfile.write(report_result)
+    file_write(
+        result_file,
+        report_result,
+        error_msg=f"Failed to export report: {result_file}",
+        success_msg=f"Report written to {result_file}.",
+        log=LOG
+        )
 
 
 def format_system_name(system_name):
@@ -489,7 +487,7 @@ def get_description_detail(data: Descriptions | str) -> Tuple[str, str]:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = detail.replace("\\n", " ").replace("\\t", " ").replace("\\r", " ").replace("\n", " ").replace("\t", " ").replace("\r", " ")
+    detail = detail.replace("\\n", " ").replace("\\t", " ").replace("\\r", " ").replace("\n", " ").replace("\t", " ").replace("\r", " ").replace("\\`", "")
     detail = bytes.decode(encodings.utf_8.encode(detail)[0], errors="replace")
     description = description.lstrip("# ")
     return description, detail
@@ -508,19 +506,6 @@ def choose_date(d1, d2, choice):
     except TypeError:
         d3 = max(d1.date(), d2.date()) if choice == "max" else min(d1.date(), d2.date())
         return d3.strftime(TIME_FMT)
-
-
-def combine_advisories(v1, v2):
-    if not v1 or not v2:
-        return v1 or v2
-    seen_adv = set()
-    v3 = []
-    for i in v1 + v2:
-        url = i.get("url", "")
-        if url not in seen_adv:
-            v3.append(i)
-            seen_adv.add(url)
-    return v3
 
 
 def combine_affects(v1, v2):
@@ -559,13 +544,13 @@ def combine_generic(v1, v2, keys):
 
 
 def combine_references(v1, v2):
-    if not v1 or not v2:
+    if not v1 and not v2:
         return v1 or v2
     seen_urls = set()
     v3 = []
     for i in v1 + v2:
-        url = i.get("url", "")
-        if url not in seen_urls:
+        url = i.get("url") or f"{i.get('id', '')}.{i.get('source', {}).get('url', '')}"
+        if url and url not in seen_urls:
             v3.append(i)
             seen_urls.add(url)
     return v3
@@ -573,7 +558,7 @@ def combine_references(v1, v2):
 
 def combine_vdrs(v1, v2):
     return {
-        "advisories": combine_advisories(v1.get("advisories", []), v2.get("advisories", [])),
+        "advisories": combine_references(v1.get("advisories", []), v2.get("advisories", [])),
         "affects": combine_affects(v1.get("affects", []), v2.get("affects", [])),
         "analysis": v1.get("analysis", "") or v2.get("analysis", ""),
         "bom-ref": v1.get("bom-ref"),
@@ -593,6 +578,12 @@ def combine_vdrs(v1, v2):
         "purl_prefix": v1.get("purl_prefix") or v2.get("purl_prefix"),
         "fixed_location": v1.get("fixed_location") or v2.get("fixed_location")
     }
+
+
+def choose_source(v1, v2):
+    if v1.get("name", "") >= v2.get("name", ""):
+        return v1
+    return v2
 
 
 def get_suggested_version_map(pkg_vulnerabilities: List[Dict]) -> Dict[str, str]:

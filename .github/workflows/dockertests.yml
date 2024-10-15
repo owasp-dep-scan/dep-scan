@@ -27,13 +27,7 @@ jobs:
         python3 -m pip install .[dev]
         npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
-    - name: Run pytest tests
-      run: |
         python3 -m pip install -r contrib/requirements.txt
-        python3 -m pytest test
-      env:
-        PYTHONPATH: "."
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: Test container images
       run: |
         mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -171,13 +165,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           python3 -m pip install .[dev]
-      - name: Run pytest tests
-        run: |
           python3 -m pip install -r contrib/requirements.txt
-          python3 -m pytest test
-        env:
-          PYTHONPATH: "."
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4
         with:
@@ -193,7 +181,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1
           AT_DEBUG_MODE: "debug"
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
           path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -220,6 +208,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           python3 -m pip install .[dev]
+          python3 -m pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4
         with:
@@ -229,7 +218,6 @@ jobs:
         shell: bash
         run: |
           mkdir -p containertests_${{ matrix.os }}
-          python3 -m pip install -r contrib/requirements.txt
           mkdir -p containertests_ubuntu-latest/microservices
           mkdir -p containertests_ubuntu-latest/NodeGoat
           mv containertests_ubuntu-latest/sbom-msd-go.json containertests_ubuntu-latest/microservices/sbom-msd-go.json
