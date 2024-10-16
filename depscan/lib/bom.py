@@ -186,8 +186,13 @@ def get_pkg_list_json(jsonfile):
                                         license_obj.get("name")
                                     )
                                 )
+                    url = None
+                    for aref in comp.get("externalReferences", []):
+                        if aref.get("type") == "vcs":
+                            url = aref.get("url")
+                            break
                     pkgs.append(
-                        {**comp, "vendor": vendor, "licenses": licenses}
+                        {**comp, "vendor": vendor, "licenses": licenses, "url": url}
                     )
         except Exception:
             # Ignore json errors

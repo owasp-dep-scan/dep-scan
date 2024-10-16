@@ -822,14 +822,13 @@ def test_add_vulnerabilities():
            'text': 'github-issues-FasterXML-jackson-databind-2816'},
           {'system_name': 'GitHub Release [user/repo]',
            'text': 'github-release-user-repo-v1.0.0'}],
-  'notes': [{'audience': 'developers',
+  'notes': [{'category': 'details',
+             'details': 'Vulnerability Details',
+             'text': ''},
+            {'audience': 'developers',
              'category': 'other',
              'text': '.NET Misconfiguration: Use of Impersonation',
              'title': 'Additional CWE: 520'},
-            {'audience': 'developers',
-             'category': 'other',
-             'text': 'Weak Password Requirements',
-             'title': 'Additional CWE: 521'},
             {'category': 'description',
              'details': 'Vulnerability Description',
              'text': 'FasterXML jackson-databind 2.x before 2.9.10.4 '
@@ -837,9 +836,10 @@ def test_add_vulnerabilities():
                      'and typing, related to '
                      'com.caucho.config.types.ResourceRef (aka '
                      'caucho-quercus).'},
-            {'category': 'details',
-             'details': 'Vulnerability Details',
-             'text': ''}],
+            {'audience': 'developers',
+             'category': 'other',
+             'text': 'Weak Password Requirements',
+             'title': 'Additional CWE: 521'}],
   'product_status': {'known_affected': ['com.fasterxml.jackson.core/jackson-databind@2.9.6'],
                      'known_not_affected': ['com.fasterxml.jackson.core/jackson-databind@2.12.7.1']},
          'references': [{
@@ -912,16 +912,16 @@ def test_add_vulnerabilities():
            'text': 'redhat-bugzilla-2224245'},
           {'system_name': 'Red Hat Bugzilla',
            'text': 'redhat-bugzilla-cve-2021-1234'}],
-  'notes': [{'category': 'description',
+  'notes': [{'category': 'details',
+             'details': 'Vulnerability Details',
+             'text': ''},
+            {'category': 'description',
              'details': 'Vulnerability Description',
              'text': 'A flaw was found in jackson-databind before 2.9.10.7. '
                      'FasterXML mishandles the interaction between '
                      'serialization gadgets and typing. The highest threat '
                      'from this vulnerability is to data confidentiality and '
-                     'integrity as well as system availability.'},
-            {'category': 'details',
-             'details': 'Vulnerability Details',
-             'text': ''}],
+                     'integrity as well as system availability.'}],
   'product_status': {'known_affected': ['com.fasterxml.jackson.core/jackson-databind@2.9.6'],
                      'known_not_affected': ['com.fasterxml.jackson.core/jackson-databind@2.12.7.1']},
   'references': [{
