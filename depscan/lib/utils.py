@@ -13,7 +13,7 @@ from jinja2 import Environment
 from packageurl import PackageURL
 from vdb.lib.config import PLACEHOLDER_FIX_VERSION, PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.cve_model import Description, Descriptions
-from vdb.lib.search import search_by_purl_like, search_by_cpe_like, search_by_url
+from vdb.lib.search import search_by_purl_like, search_by_cpe_like, search_by_url, search_by_any
 from vdb.lib.utils import version_compare, parse_purl
 
 from depscan.lib.config import TIME_FMT, ignore_directories
@@ -233,52 +233,60 @@ def search_pkgs(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     # package urls.
     pkg_aliases = defaultdict(list)
     purl_aliases = {}
+    expanded_list = []
     for pkg in pkg_list:
-        variations = create_pkg_variations(pkg)
-        if variations:
-            expanded_list += variations
-        vendor, name = get_pkg_vendor_name(pkg)
-        version = pkg.get("version")
-        if pkg.get("purl"):
-            ppurl = pkg.get("purl")
-            purl_aliases[pkg.get("purl")] = pkg.get("purl")
-            purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = ppurl
-            if ppurl.startswith("pkg:npm"):
-                purl_aliases[f"npm:{vendor.lower()}/{name.lower()}:{version}"] = ppurl
-            if not purl_aliases.get(f"{vendor.lower()}:{name.lower()}"):
-                purl_aliases[f"{vendor.lower()}:{name.lower()}"] = ppurl
-        if variations:
-            for vari in variations:
-                vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
-                pkg_aliases[
-                    f"{vendor.lower()}:{name.lower()}:{version}"
-                ].append(vari_full_pkg)
-                if pkg.get("purl"):
-                    purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
+        tmp_expanded, tmp_pkg_aliases, tmp_purl_aliases = generate_variations(pkg)
+        expanded_list.extend(tmp_expanded)
+        pkg_aliases |= tmp_pkg_aliases
+        purl_aliases |= tmp_purl_aliases
     raw_results = []
-    for i in expanded_list:
-        if i.get("purl"):
-            if res := search_by_purl_like(i.get("purl"), with_data=True):
-                raw_results.extend(res)
-        elif i.get("cpe"):
-            if res := search_by_cpe_like(i.get("cpe"), with_data=True):
-                raw_results.extend(res)
-        elif i.get("url"):
-            if res := search_by_url(i.get("url"), with_data=True):
-                raw_results.extend(res)
-        else:
-            alt_search_term = f"pkg:generic/{i.get('vendor')}/{i.get('name')}" if i.get("vendor") else i.get("name")
-            if i.get("version"):
-                alt_search_term = f"{alt_search_term}@{i.get('version')}"
-            if res := search_by_purl_like(alt_search_term, with_data=True):
-                raw_results.extend(res)
+    for pkg in expanded_list:
+        if res := search_expanded(pkg):
+            raw_results.extend(res)
     raw_results = dedup(project_type, raw_results)
-    pkg_aliases = dealias_packages(
-        raw_results,
-        pkg_aliases=pkg_aliases,
-        purl_aliases=purl_aliases,
-    )
+    pkg_aliases = dealias_packages(raw_results, pkg_aliases=pkg_aliases, purl_aliases=purl_aliases)
     return raw_results, pkg_aliases, purl_aliases
+
+
+def search_expanded(pkg: Dict) -> List:
+    """Searches packages and variations"""
+    raw_results = []
+    search_term = pkg.get("purl") or pkg.get("cpe") or pkg.get("url")
+    if search_term and (res := search_by_any(search_term, with_data=True)):
+        raw_results.extend(res)
+    else:
+        alt_search_term = f"pkg:generic/{pkg.get('vendor')}/{pkg.get('name')}" if pkg.get(
+            "vendor") else pkg.get("name")
+        if pkg.get("version"):
+            alt_search_term = f"{alt_search_term}@{pkg.get('version')}"
+        if res := search_by_purl_like(alt_search_term, with_data=True):
+            raw_results.extend(res)
+    return raw_results
+
+
+def generate_variations(pkg: Dict) -> Tuple[List, Dict, Dict]:
+    """Generates a variation of the package and aliases for it."""
+    expanded_list, pkg_aliases, purl_aliases = [], {}, {}
+    variations = create_pkg_variations(pkg)
+    if variations:
+        expanded_list += variations
+    vendor, name = get_pkg_vendor_name(pkg)
+    version = pkg.get("version")
+    if pkg.get("purl"):
+        ppurl = pkg.get("purl")
+        purl_aliases[pkg.get("purl")] = pkg.get("purl")
+        purl_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = ppurl
+        if ppurl.startswith("pkg:npm"):
+            purl_aliases[f"npm:{vendor.lower()}/{name.lower()}:{version}"] = ppurl
+        if not purl_aliases.get(f"{vendor.lower()}:{name.lower()}"):
+            purl_aliases[f"{vendor.lower()}:{name.lower()}"] = ppurl
+    if variations:
+        for vari in variations:
+            vari_full_pkg = f"""{vari.get("vendor")}:{vari.get("name")}"""
+            pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"].append(vari_full_pkg)
+            if pkg.get("purl"):
+                purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg.get("purl")
+    return expanded_list, pkg_aliases, purl_aliases
 
 
 def get_pkgs_by_scope(pkg_list):
