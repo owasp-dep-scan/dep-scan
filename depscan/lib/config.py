@@ -85,7 +85,8 @@ vendor_alias = {
     "io.springfox": "smartbear",
     "log4net": "apache",
     "github": "github actions",
-    "microsoft": "azure"
+    "microsoft": "azure",
+    "phenx": "dompdf",
 }
 
 # Package aliases

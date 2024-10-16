@@ -10,6 +10,7 @@ jobs:
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - uses: actions/checkout@v4
+    - uses: oras-project/setup-oras@v1
     - name: Install dependencies
       env:
         VDB_HOME: "/home/runner/work/vdb_data"
