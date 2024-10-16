@@ -23,6 +23,7 @@ jobs:
       run: |
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
+    - uses: oras-project/setup-oras@v1
     - name: setup nydus
       run: |
         curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
