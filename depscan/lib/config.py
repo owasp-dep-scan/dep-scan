@@ -90,6 +90,7 @@ vendor_alias = {
     "log4net": "apache",
     "github": "github actions",
     "microsoft": "azure",
+    "phenx": "dompdf",
 }
 
 # Package aliases

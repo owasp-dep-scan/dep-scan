@@ -395,7 +395,7 @@ def generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pk
             vdr["p_rich_tree"],
             "\n".join(vdr["insights"]),
             vdr["fixed_location"],
-            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "")}""",
+            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}""",
             f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
         )
     return pkg_group_rows, table
