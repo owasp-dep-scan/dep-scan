@@ -350,6 +350,29 @@ The following environment variables can be used to customize the behavior.
 -   USE_VDB_10Y - Set to true to use the larger 10-year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5
 -   VDB_APP_ONLY - Set to true to use a special app-only vulnerability database. Default download url: ghcr.io/appthreat/vdbgz-app:v5
 
+Example 1 - Run depscan with app-only vdb.
+
+```shell
+docker run --rm \
+    -e VDB_HOME=/db \
+    -e VDB_APP_ONLY=true \
+    -e SCAN_DEBUG_MODE=debug \
+    -v /tmp:/db \
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+```
+
+Example 2 - Run depscan with a larger 10 year app-only vdb.
+
+```shell
+docker run --rm \
+    -e VDB_HOME=/db \
+    -e VDB_APP_ONLY=true \
+    -e USE_VDB_10Y=true \
+    -e SCAN_DEBUG_MODE=debug \
+    -v /tmp:/db \
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+```
+
 ## GitHub Security Advisory
 
 To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
