@@ -14,7 +14,6 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     -   [Linux distros](#linux-distros)
 -   [Usage](#usage)
     -   [OCI Artifacts via ORAS cli](#oci-artifacts-via-oras-cli)
-    -   [Single binary executables](#single-binary-executables)
     -   [Server mode](#server-mode)
     -   [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
     -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
@@ -278,25 +277,35 @@ dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally t
 
 The following projects and package-dependency format is supported by cdxgen.
 
-| Language                 | Package format                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js              |
-| java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel                    |
-| php                      | composer.lock                                                                           |
-| python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl, .egg-info |
-| go                       | binary, go.mod, go.sum, Gopkg.lock                                                      |
-| ruby                     | Gemfile.lock, gemspec                                                                   |
-| rust                     | binary, Cargo.toml, Cargo.lock                                                          |
-| .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg           |
-| dart                     | pubspec.lock, pubspec.yaml                                                              |
-| haskell                  | cabal.project.freeze                                                                    |
-| elixir                   | mix.lock                                                                                |
-| c/c++                    | conan.lock, conanfile.txt                                                               |
-| clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                                         |
-| docker / oci image       | All supported languages and Linux OS packages                                           |
-| GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
-| Jenkins Plugins          | .hpi files                                                                              |
-| YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
+| Language/Platform     | Project Types                                                                                                                                                    | Package Formats                                                                                                                       | Supported Evidence                                                                                    | Supports Transitives |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------- |
+| Node.js               | `npm`, `pnpm`, `nodejs`, `js`, `javascript`, `typescript`, `ts`, `tsx`                                                                                           | `npm-shrinkwrap.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `rush.js`, `bower.json`, `.min.js`                         | Yes, except for `.min.`                                                                               | ✅                   |
+| Java                  | `java`, `groovy`, `kotlin`, `scala`, `jvm`, `gradle`, `mvn`, `maven`, `sbt`                                                                                      | `pom.xml` [1], `build.gradle`, `.kts`, `sbt`, `bazel`                                                                                 | Yes, unless `pom.xml` is manually parsed due to unavailability of maven or errors)                    | ✅                   |
+| Android               | `android`, `apk`, `aab`                                                                                                                                          | `apk`, `aab`                                                                                                                          | -                                                                                                     | -                    |
+| JAR                   | `jar`                                                                                                                                                            | `.jar`                                                                                                                                | -                                                                                                     | -                    |
+| JAR (Gradle Cache)    | `gradle-index`, `gradle-cache`                                                                                                                                   | `$HOME/caches/modules-2/files-2.1/\*\*/\*.jar`                                                                                        | -                                                                                                     | -                    |
+| JAR (SBT Cache)       | `sbt-index`, `sbt-cache`                                                                                                                                         | `$HOME/.ivy2/cache/\*\*/\*.jar `                                                                                                      | -                                                                                                     | -                    |
+| JAR (Maven Cache)     | `maven-index`, `maven-cache`, `maven-repo`                                                                                                                       | `$HOME/.m2/repository/\*\*/\*.jar`                                                                                                    | -                                                                                                     | -                    |
+| Python                | `python`, `py`, `pypi`                                                                                                                                           | `pyproject.toml`, `setup.py`, `requirements.txt` [2], `Pipfile.lock`, `poetry.lock`, `pdm.lock`, `bdist_wheel`, `.whl`, `.egg-info`   | Yes using the automatic pip install/freeze. When disabled, only with `Pipfile.lock` and `poetry.lock` | ✅                   |
+| Golang                | `go`, `golang`                                                                                                                                                   | `binary`, `go.mod`, `go.sum`, `Gopkg.lock`                                                                                            | Yes except binary                                                                                     | ✅                   |
+| Rust                  | `rust`, `rust-lang`, `cargo`                                                                                                                                     | `binary`, `Cargo.toml`, `Cargo.lock`                                                                                                  | Only for `Cargo.lock`                                                                                 | -                    |
+| Ruby                  | `ruby`, `gems`                                                                                                                                                   | `Gemfile.lock`, `gemspec`                                                                                                             | Only for `Gemfile.lock`                                                                               | -                    |
+| .NET (#C)             | `csharp`, `netcore`, `dotnet`, `vb`, `dotnet-framework`                                                                                                          | `.csproj`, `.vbproj`, `.fsproj`, `packages.config`, `project.assets.json` [3], `packages.lock.json`, `.nupkg`, `paket.lock`, `binary` | Only for `project.assets.json`, `packages.lock.json`, `paket.lock`                                    | -                    |
+| Dart                  | `dart`, `flutter`, `pub`                                                                                                                                         | `pubspec.lock`, `pubspec.yaml`                                                                                                        | Only for `pubspec.lock`                                                                               | -                    |
+| Haskell               | `haskell`, `hackage`, `cabal`                                                                                                                                    | `cabal.project.freeze`                                                                                                                | Yes                                                                                                   |                      |
+| Elixir                | `elixir`, `hex`, `mix`                                                                                                                                           | `mix.lock`                                                                                                                            | Yes                                                                                                   | -                    |
+| C++                   | `c`, `cpp`, `c++`, `conan`                                                                                                                                       | `conan.lock`, `conanfile.txt`, `\*.cmake`, `CMakeLists.txt`, `meson.build`, codebase without package managers!                        | Yes only for `conan.lock`. Best effort basis for `cmake` without version numbers.                     | ✅                   |
+| Clojure               | `clojure`, `edn`, `clj`, `leiningen`                                                                                                                             | `deps.edn`, `project.clj`                                                                                                             | Yes unless the files are parsed manually due to lack of clojure cli or leiningen command              | -                    |
+| GitHub Actions        | `github`, `actions`                                                                                                                                              | `.github/workflows/\*.yml`                                                                                                            | n/a                                                                                                   | ✅                   |
+| Operation System (OS) | `os`, `osquery`, `windows`, `linux`, `mac`, `macos`, `darwin`                                                                                                    |
+| Jenkins Plugins       | `jenkins`                                                                                                                                                        | `.hpi files`                                                                                                                          | -                                                                                                     | ✅                   |
+| Helm                  | `helm`, `charts`                                                                                                                                                 | `.yaml`                                                                                                                               | n/a                                                                                                   |                      |
+| Helm (Cache)          | `helm-index`, `helm-repo`                                                                                                                                        | `$HOME/.cache/helm/repository/\*\*/\*.yaml`                                                                                           | -                                                                                                     | -                    |
+| Container             | `universal`, `containerfile`, `docker-compose`, `dockerfile`, `swarm`, `tekton`, `kustomize`, `operator`, `skaffold`, `kubernetes`, `openshift`, `yaml-manifest` | `.yaml`, `docker-compose\*.yml`, `*Dockerfile*`, `*Containerfile*`, `bitbucket-pipelines.yml`                                         | n/a                                                                                                   | -                    |
+| Google Cloud Build    | `cloudbuild`                                                                                                                                                     | `cloudbuild.yaml`                                                                                                                     | n/a                                                                                                   | -                    |
+| Swift (iOS)           | `swift`                                                                                                                                                          | `Package.resolved`, `Package.swift` (swiftpm)                                                                                         | Yes                                                                                                   | -                    |
+| Binary                | `binary`, `blint`                                                                                                                                                |
+| Open API              | Open API Specification, Swagger                                                                                                                                  | `openapi\*.json`, `openapi\*.yaml`                                                                                                    | n/a                                                                                                   | -                    |
 
 ## Reachability analysis
 
@@ -339,6 +348,30 @@ The following environment variables can be used to customize the behavior.
 -   VDB_HOME - Directory to use for caching database. For docker-based execution, this directory should get mounted as a volume from the host
 -   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdbgz:v5
 -   USE_VDB_10Y - Set to true to use the larger 10-year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5
+-   VDB_APP_ONLY - Set to true to use a special app-only vulnerability database. Default download url: ghcr.io/appthreat/vdbgz-app:v5
+
+Example 1 - Run depscan with app-only vdb.
+
+```shell
+docker run --rm \
+    -e VDB_HOME=/db \
+    -e VDB_APP_ONLY=true \
+    -e SCAN_DEBUG_MODE=debug \
+    -v /tmp:/db \
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+```
+
+Example 2 - Run depscan with a larger 10 year app-only vdb.
+
+```shell
+docker run --rm \
+    -e VDB_HOME=/db \
+    -e VDB_APP_ONLY=true \
+    -e USE_VDB_10Y=true \
+    -e SCAN_DEBUG_MODE=debug \
+    -v /tmp:/db \
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+```
 
 ## GitHub Security Advisory
 
@@ -480,7 +513,7 @@ The objects available are taken from the CycloneDX \*.vdr.json BOM file generate
 `pkg_group_rows` - List of vulnerability id and the dependency tree prioritized by depscan.
 
 Furthermore, insights are imaginable to be made available to the template, please reach out or contribute on demand.
-We appreciate it if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
+We appreciate it if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates).
 
 ## Performance tuning
 

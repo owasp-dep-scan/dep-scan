@@ -314,17 +314,21 @@ vdb_rafs_database_url = os.getenv(
     "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v5-rafs"
 )
 
-# Larger 10 year database
-vdb_10y_database_url = os.getenv(
-    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbgz-10y:v5"
-)
-vdb_10y_rafs_database_url = os.getenv(
-    "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5-rafs"
-)
+# App only data
+if os.getenv("VDB_APP_ONLY", "") in ("true", "1"):
+    vdb_database_url = os.getenv("VDB_APP_DATABASE_URL", "ghcr.io/appthreat/vdbgz-app:v5")
+    vdb_rafs_database_url = os.getenv("VDB_APP_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-app:v5-rafs")
 
-if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
-    vdb_database_url = vdb_10y_database_url
-    vdb_rafs_database_url = vdb_10y_rafs_database_url
+# Larger 10 year database
+if os.getenv("USE_VDB_10Y", "") in ("true", "1") or os.getenv("NVD_START_YEAR", "") in ("2014",):
+    if os.getenv("VDB_APP_ONLY", "") in ("true", "1"):
+        # 10 year app-only database
+        vdb_database_url = os.getenv("VDB_APP_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbgz-app-10y:v5")
+        vdb_rafs_database_url = os.getenv("VDB_APP_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-app-10y:v5-rafs")
+    else:
+        # 10 year database
+        vdb_database_url = os.getenv("VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbgz-10y:v5")
+        vdb_rafs_database_url = os.getenv("VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v5-rafs")
 
 # Package risk scoring using a simple weighted formula with no backing
 # research All parameters and their max value and weight can be overridden
