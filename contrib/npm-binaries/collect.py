@@ -7,8 +7,8 @@ from rich.progress import Progress
 from semver import Version
 
 from depscan.lib.logger import LOG, console
-from depscan.lib.package_query import metadata_from_registry
-from depscan.lib.package_query import search_npm, get_npm_download_stats
+from depscan.lib.package_query.metadata import metadata_from_registry
+from depscan.lib.package_query.npm_pkg import search_npm, get_npm_download_stats
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:

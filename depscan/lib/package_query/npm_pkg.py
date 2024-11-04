@@ -3,12 +3,17 @@ from datetime import datetime
 from depscan.lib import config
 from depscan.lib.package_query.pkg_query import httpclient, compute_time_risks, calculate_risk_score
 
-
-def search_npm(keywords, pages=1, popularity=1.0, size=250):
+def search_npm(keywords=None, insecure_only=False, unstable_only=False, pages=1, popularity=1.0, size=250):
     pkg_list = []
     for page in range(0, pages):
         from_value = page * 250
-        registry_search_url = f"{config.NPM_SERVER}/-/v1/search?popularity={popularity}&size={size}&from={from_value}&text=keywords:{','.join(keywords)}"
+        registry_search_url = f"{config.NPM_SERVER}/-/v1/search?popularity={popularity}&size={size}&from={from_value}"
+        if insecure_only:
+            registry_search_url = f"{registry_search_url}&text=is:insecure"
+        elif unstable_only:
+            registry_search_url = f"{registry_search_url}&text=is:unstable"
+        elif keywords:
+            registry_search_url = f"{registry_search_url}&text=keywords:{','.join(keywords)}"
         try:
             r = httpclient.get(
                 url=registry_search_url,
@@ -16,21 +21,27 @@ def search_npm(keywords, pages=1, popularity=1.0, size=250):
                 timeout=config.request_timeout_sec,
             )
             result = r.json()
-            if result and result.get("objects"):
+            if result and not r.is_error and result.get("objects"):
                 for aobj in result.get("objects"):
                     if aobj and aobj.get("package"):
                         package = aobj.get("package")
+                        flags = aobj.get("flags", {})
                         name = package.get("name")
                         if name.startswith("@types/"):
                             continue
+                        is_pkg_insecure = True if flags.get("insecure", 0) == 1 else False
                         pkg_list.append(
                             {
                                 "name": name,
                                 "version": package.get("version"),
                                 "purl": f'pkg:npm/{package.get("name").replace("@", "%40")}@{package.get("version")}',
+                                "insecure": is_pkg_insecure,
+                                "has_insecure_dependencies": insecure_only,
+                                "unstable": flags.get("unstable", False)
                             }
                         )
-        except Exception:
+        except Exception as e:
+            print(e)
             pass
     return pkg_list
 
