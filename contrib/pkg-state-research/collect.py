@@ -154,13 +154,13 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                         modified = pkg_metadata.get("mtime").replace("Z", "")
                     if not created and pkg_metadata.get("ctime"):
                         created = pkg_metadata.get("ctime").replace("Z", "")
-                    latest_version_time = time_info.get(all_versions.get(latest_version), "").replace("Z", "")
                     all_versions = pkg_metadata.get("versions", {})
                     all_versions_str = list(all_versions.keys())
                     all_versions_str.sort(
                         key=lambda x: Version.parse(x, optional_minor_and_patch=True),
                         reverse=True,
                     )
+                    latest_version_time = time_info.get(all_versions.get(latest_version), "").replace("Z", "")
                     for the_version_str in all_versions_str:
                         the_version = all_versions.get(the_version_str)
                         # This is an edge case where there could be a version the registry doesn't know about
