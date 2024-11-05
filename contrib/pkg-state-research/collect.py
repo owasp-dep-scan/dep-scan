@@ -160,7 +160,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                         key=lambda x: Version.parse(x, optional_minor_and_patch=True),
                         reverse=True,
                     )
-                    latest_version_time = time_info.get(all_versions.get(latest_version), "").replace("Z", "")
+                    latest_version_time = time_info.get(latest_version, "").replace("Z", "")
                     for the_version_str in all_versions_str:
                         the_version = all_versions.get(the_version_str)
                         # This is an edge case where there could be a version the registry doesn't know about
