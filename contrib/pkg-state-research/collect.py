@@ -101,16 +101,16 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 "version",
                 "purl",
                 "url",
-                "yearly_downloads",
+                "yearly_downloads_latest",
                 "commit_sha",
                 "is_insecure",
                 "has_insecure_dependencies",
                 "is_unstable",
                 "git_head",
-                "total_critical_count",
-                "total_high_count",
-                "total_medium_count",
-                "total_low_count",
+                "historical_critical_count",
+                "historical_high_count",
+                "historical_medium_count",
+                "historical_low_count",
             ]
         )
         with Progress(
