@@ -2,14 +2,16 @@ import argparse
 import csv
 import logging
 import re
+from collections import defaultdict
 
 from rich.progress import Progress
-
+from vdb.lib.cve_model import CVE
 from vdb.lib.search import search_by_purl_like
 
+from depscan.lib.analysis import cve_to_vdr
 from depscan.lib.logger import LOG, console
 from depscan.lib.package_query.metadata import metadata_from_registry
-from depscan.lib.package_query.npm_pkg import search_npm
+from depscan.lib.package_query.npm_pkg import search_npm, get_npm_download_stats
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
@@ -65,6 +67,19 @@ def analyze_with_npm(keywords, insecure_only, unstable_only, pages, output_file)
     analyze_pkgs(output_file, pkg_list, insecure_only)
 
 
+def get_vuln_stats(search_results, vuln_stats):
+    added_row_keys = {}
+    for res in search_results:
+        row_key = f"""{res["matched_by"]}|{res.get("source_data_hash")}"""
+        # Filter duplicate rows from getting printed
+        if added_row_keys.get(row_key):
+            return
+        source_data: CVE = res.get("source_data")
+        source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendors, vendor = cve_to_vdr(source_data, res.get("cve_id"))
+        severity = rating.get("severity")
+        vuln_stats[severity] += 1
+
+
 def analyze_pkgs(output_file, pkg_list, insecure_only):
     if not pkg_list:
         LOG.info("No results found!")
@@ -82,13 +97,16 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
             [
                 "purl",
                 "url",
+                "yearly_downloads",
                 "commit_sha",
                 "is_insecure",
                 "has_insecure_dependencies",
                 "is_unstable",
                 "git_head",
-                "dependencies_vulnerabilities_count",
-                "dev_dependencies_vulnerabilities_count"
+                "total_critical_count",
+                "total_high_count",
+                "total_medium_count",
+                "total_low_count",
             ]
         )
         with Progress(
@@ -113,12 +131,12 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 is_insecure = pkg.get("insecure")
                 has_insecure_dependencies = pkg.get("has_insecure_dependencies")
                 is_unstable = pkg.get("unstable")
-                deps_vulnerabilities_count = 0
-                dev_deps_vulnerabilities_count = 0
+                vuln_stats = defaultdict(int)
                 if insecure_only and not has_insecure_dependencies:
                     progress.advance(task)
                     continue
                 for name, value in metadata_dict.items():
+                    download_stats = get_npm_download_stats(name)
                     pkg_metadata = value.get("pkg_metadata")
                     the_version = pkg_metadata.get("versions", {}).get(version)
                     # This is an edge case where there could be a version the registry doesn't know about
@@ -133,8 +151,8 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                             task,
                             description=f"Checking the dependency `{k}` for vulnerabilities",
                         )
-                        if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=False):
-                            deps_vulnerabilities_count += len(res)
+                        if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                            get_vuln_stats(res, vuln_stats)
                     for k, v in version_dev_deps.items():
                         if k.startswith("@types/"):
                             continue
@@ -142,19 +160,22 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                             task,
                             description=f"Checking the dev dependency `{k}` for vulnerabilities",
                         )
-                        if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=False):
-                            dev_deps_vulnerabilities_count += len(res)
+                        if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                            get_vuln_stats(res, vuln_stats)
                     rwriter.writerow(
                         [
                             purl,
                             version_repository.get("url", "") if isinstance(version_repository, dict) else str(version_repository).strip(),
+                            download_stats.get("downloads"),
                             the_version_git_head,
                             is_insecure,
                             has_insecure_dependencies,
                             is_unstable,
                             the_version_git_head,
-                            deps_vulnerabilities_count,
-                            dev_deps_vulnerabilities_count
+                            vuln_stats.get("critical", 0),
+                            vuln_stats.get("high", 0),
+                            vuln_stats.get("medium", 0),
+                            vuln_stats.get("low", 0),
                         ]
                     )
                 progress.advance(task)
