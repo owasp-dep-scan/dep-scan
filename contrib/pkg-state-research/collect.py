@@ -30,7 +30,7 @@ def build_args():
     parser.add_argument(
         "--keywords",
         dest="keywords",
-        default="framework,library,cloud,crypto,react",
+        default="framework",
         help="Comma separated list of keywords to search.",
     )
     parser.add_argument(
