@@ -111,6 +111,9 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 "historical_high_count",
                 "historical_medium_count",
                 "historical_low_count",
+                "created",
+                "modified",
+                "latest_version_time",
             ]
         )
         with Progress(
@@ -142,6 +145,16 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 for name, value in metadata_dict.items():
                     download_stats = get_npm_download_stats(name)
                     pkg_metadata = value.get("pkg_metadata")
+                    # Time related checks
+                    latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
+                    time_info = pkg_metadata.get("time", {})
+                    modified = time_info.get("modified", "").replace("Z", "")
+                    created = time_info.get("created", "").replace("Z", "")
+                    if not modified and pkg_metadata.get("mtime"):
+                        modified = pkg_metadata.get("mtime").replace("Z", "")
+                    if not created and pkg_metadata.get("ctime"):
+                        created = pkg_metadata.get("ctime").replace("Z", "")
+                    latest_version_time = time_info.get(all_versions.get(latest_version), "").replace("Z", "")
                     all_versions = pkg_metadata.get("versions", {})
                     all_versions_str = list(all_versions.keys())
                     all_versions_str.sort(
@@ -190,6 +203,9 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 vuln_stats.get("high", 0),
                                 vuln_stats.get("medium", 0),
                                 vuln_stats.get("low", 0),
+                                created,
+                                modified,
+                                latest_version_time
                             ]
                         )
                 progress.advance(task)
