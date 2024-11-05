@@ -163,7 +163,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 task,
                                 description=f"Checking the dependency `{k}` for vulnerabilities",
                             )
-                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}', with_data=True):
                                 get_vuln_stats(res, vuln_stats)
                         for k, v in version_dev_deps.items():
                             if k.startswith("@types/"):
@@ -172,7 +172,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 task,
                                 description=f"Checking the dev dependency `{k}` for vulnerabilities",
                             )
-                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}', with_data=True):
                                 get_vuln_stats(res, vuln_stats)
                         rwriter.writerow(
                             [
