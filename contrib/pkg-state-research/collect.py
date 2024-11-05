@@ -13,6 +13,8 @@ from depscan.lib.logger import LOG, console
 from depscan.lib.package_query.metadata import metadata_from_registry
 from depscan.lib.package_query.npm_pkg import search_npm, get_npm_download_stats
 
+from semver import Version
+
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
         log_obj.disabled = True
@@ -95,6 +97,8 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
         )
         rwriter.writerow(
             [
+                "name",
+                "version",
                 "purl",
                 "url",
                 "yearly_downloads",
@@ -127,7 +131,6 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                     description=f"Checking the package {purl}",
                 )
                 metadata_dict = metadata_from_registry("npm", {}, [pkg], None)
-                version = pkg.get("version")
                 is_insecure = pkg.get("insecure")
                 has_insecure_dependencies = pkg.get("has_insecure_dependencies")
                 is_unstable = pkg.get("unstable")
@@ -135,49 +138,60 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 if insecure_only and not has_insecure_dependencies:
                     progress.advance(task)
                     continue
+                ind_versions_count = 0
                 for name, value in metadata_dict.items():
                     download_stats = get_npm_download_stats(name)
                     pkg_metadata = value.get("pkg_metadata")
-                    the_version = pkg_metadata.get("versions", {}).get(version)
-                    # This is an edge case where there could be a version the registry doesn't know about
-                    if not the_version:
-                        continue
-                    version_deps = the_version.get("dependencies", {})
-                    version_dev_deps = the_version.get("devDependencies", {})
-                    the_version_git_head = the_version.get("gitHead")
-                    version_repository = the_version.get("repository", {})
-                    for k, v in version_deps.items():
-                        progress.update(
-                            task,
-                            description=f"Checking the dependency `{k}` for vulnerabilities",
-                        )
-                        if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
-                            get_vuln_stats(res, vuln_stats)
-                    for k, v in version_dev_deps.items():
-                        if k.startswith("@types/"):
-                            continue
-                        progress.update(
-                            task,
-                            description=f"Checking the dev dependency `{k}` for vulnerabilities",
-                        )
-                        if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
-                            get_vuln_stats(res, vuln_stats)
-                    rwriter.writerow(
-                        [
-                            purl,
-                            version_repository.get("url", "") if isinstance(version_repository, dict) else str(version_repository).strip(),
-                            download_stats.get("downloads"),
-                            the_version_git_head,
-                            is_insecure,
-                            has_insecure_dependencies,
-                            is_unstable,
-                            the_version_git_head,
-                            vuln_stats.get("critical", 0),
-                            vuln_stats.get("high", 0),
-                            vuln_stats.get("medium", 0),
-                            vuln_stats.get("low", 0),
-                        ]
+                    all_versions = pkg_metadata.get("versions", {})
+                    all_versions_str = list(all_versions.keys())
+                    all_versions_str.sort(
+                        key=lambda x: Version.parse(x, optional_minor_and_patch=True),
+                        reverse=True,
                     )
+                    for the_version_str in all_versions_str:
+                        the_version = all_versions.get(the_version_str)
+                        # This is an edge case where there could be a version the registry doesn't know about
+                        if not the_version or ind_versions_count > 3:
+                            continue
+                        ind_versions_count += 1
+                        version_deps = the_version.get("dependencies", {})
+                        version_dev_deps = the_version.get("devDependencies", {})
+                        the_version_git_head = the_version.get("gitHead")
+                        version_repository = the_version.get("repository", {})
+                        for k, v in version_deps.items():
+                            progress.update(
+                                task,
+                                description=f"Checking the dependency `{k}` for vulnerabilities",
+                            )
+                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                                get_vuln_stats(res, vuln_stats)
+                        for k, v in version_dev_deps.items():
+                            if k.startswith("@types/"):
+                                continue
+                            progress.update(
+                                task,
+                                description=f"Checking the dev dependency `{k}` for vulnerabilities",
+                            )
+                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                                get_vuln_stats(res, vuln_stats)
+                        rwriter.writerow(
+                            [
+                                name,
+                                the_version_str,
+                                purl,
+                                version_repository.get("url", "") if isinstance(version_repository, dict) else str(version_repository).strip(),
+                                download_stats.get("downloads"),
+                                the_version_git_head,
+                                is_insecure,
+                                has_insecure_dependencies,
+                                is_unstable,
+                                the_version_git_head,
+                                vuln_stats.get("critical", 0),
+                                vuln_stats.get("high", 0),
+                                vuln_stats.get("medium", 0),
+                                vuln_stats.get("low", 0),
+                            ]
+                        )
                 progress.advance(task)
 
 
