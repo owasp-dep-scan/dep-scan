@@ -3,8 +3,10 @@ import csv
 import logging
 import re
 from collections import defaultdict
+from datetime import datetime, timezone
 
 from rich.progress import Progress
+from semver import Version
 from vdb.lib.cve_model import CVE
 from vdb.lib.search import search_by_purl_like
 
@@ -12,8 +14,6 @@ from depscan.lib.analysis import cve_to_vdr
 from depscan.lib.logger import LOG, console
 from depscan.lib.package_query.metadata import metadata_from_registry
 from depscan.lib.package_query.npm_pkg import search_npm, get_npm_download_stats
-
-from semver import Version
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if log_name != __name__:
@@ -30,7 +30,6 @@ def build_args():
     parser.add_argument(
         "--keywords",
         dest="keywords",
-        default="framework",
         help="Comma separated list of keywords to search.",
     )
     parser.add_argument(
@@ -99,21 +98,11 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
             [
                 "name",
                 "version",
-                "purl",
-                "url",
                 "yearly_downloads_latest",
-                "commit_sha",
-                "is_insecure",
                 "has_insecure_dependencies",
-                "is_unstable",
-                "git_head",
-                "historical_critical_count",
-                "historical_high_count",
-                "historical_medium_count",
-                "historical_low_count",
                 "created",
-                "modified",
                 "latest_version_time",
+                "age_days"
             ]
         )
         with Progress(
@@ -135,48 +124,43 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 )
                 metadata_dict = metadata_from_registry("npm", {}, [pkg], None)
                 is_insecure = pkg.get("insecure")
-                has_insecure_dependencies = pkg.get("has_insecure_dependencies")
-                is_unstable = pkg.get("unstable")
+                has_insecure_dependencies = False
                 vuln_stats = defaultdict(int)
-                if insecure_only and not has_insecure_dependencies:
-                    progress.advance(task)
-                    continue
                 ind_versions_count = 0
                 for name, value in metadata_dict.items():
                     download_stats = get_npm_download_stats(name)
                     pkg_metadata = value.get("pkg_metadata")
+
                     # Time related checks
-                    latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
                     time_info = pkg_metadata.get("time", {})
-                    modified = time_info.get("modified", "").replace("Z", "")
                     created = time_info.get("created", "").replace("Z", "")
-                    if not modified and pkg_metadata.get("mtime"):
-                        modified = pkg_metadata.get("mtime").replace("Z", "")
                     if not created and pkg_metadata.get("ctime"):
                         created = pkg_metadata.get("ctime").replace("Z", "")
+                    latest_version = pkg_metadata.get("dist-tags", {}).get("latest")
+                    latest_version_time = time_info.get(latest_version, "").replace("Z", "")
+
                     all_versions = pkg_metadata.get("versions", {})
                     all_versions_str = list(all_versions.keys())
                     all_versions_str.sort(
                         key=lambda x: Version.parse(x, optional_minor_and_patch=True),
                         reverse=True,
                     )
-                    latest_version_time = time_info.get(latest_version, "").replace("Z", "")
                     for the_version_str in all_versions_str:
                         the_version = all_versions.get(the_version_str)
                         # This is an edge case where there could be a version the registry doesn't know about
-                        if not the_version or ind_versions_count > 3:
+                        if not the_version or ind_versions_count > 4:
                             continue
                         ind_versions_count += 1
                         version_deps = the_version.get("dependencies", {})
                         version_dev_deps = the_version.get("devDependencies", {})
-                        the_version_git_head = the_version.get("gitHead")
-                        version_repository = the_version.get("repository", {})
+                        if time_info.get(the_version_str):
+                            created = time_info.get(the_version_str)
                         for k, v in version_deps.items():
                             progress.update(
                                 task,
                                 description=f"Checking the dependency `{k}` for vulnerabilities",
                             )
-                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}', with_data=True):
+                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
                                 get_vuln_stats(res, vuln_stats)
                         for k, v in version_dev_deps.items():
                             if k.startswith("@types/"):
@@ -185,27 +169,26 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 task,
                                 description=f"Checking the dev dependency `{k}` for vulnerabilities",
                             )
-                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}', with_data=True):
+                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
                                 get_vuln_stats(res, vuln_stats)
+                        for k, v in vuln_stats.items():
+                            if v:
+                                has_insecure_dependencies = True
+                                break
+                        if insecure_only and not has_insecure_dependencies:
+                            progress.advance(task)
+                            continue
+                        created_dt = datetime.fromisoformat(created).replace(tzinfo=timezone.utc)
+                        created_now_diff = datetime.now().replace(tzinfo=timezone.utc) - created_dt
                         rwriter.writerow(
                             [
                                 name,
                                 the_version_str,
-                                purl,
-                                version_repository.get("url", "") if isinstance(version_repository, dict) else str(version_repository).strip(),
-                                download_stats.get("downloads"),
-                                the_version_git_head,
-                                is_insecure,
+                                download_stats.get("downloads") if the_version_str == latest_version else None,
                                 has_insecure_dependencies,
-                                is_unstable,
-                                the_version_git_head,
-                                vuln_stats.get("critical", 0),
-                                vuln_stats.get("high", 0),
-                                vuln_stats.get("medium", 0),
-                                vuln_stats.get("low", 0),
                                 created,
-                                modified,
-                                latest_version_time
+                                latest_version_time,
+                                created_now_diff.days
                             ]
                         )
                 progress.advance(task)
@@ -213,7 +196,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
 
 def main():
     args = build_args()
-    keywords = args.keywords.split(",")
+    keywords = args.keywords.split(",") if args.keywords else None
     analyze_with_npm(keywords, args.insecure_only, args.unstable_only, args.pages, args.output_file)
 
 

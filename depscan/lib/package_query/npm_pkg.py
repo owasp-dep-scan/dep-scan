@@ -14,6 +14,8 @@ def search_npm(keywords=None, insecure_only=False, unstable_only=False, pages=1,
             registry_search_url = f"{registry_search_url}&text=is:unstable"
         elif keywords:
             registry_search_url = f"{registry_search_url}&text=keywords:{','.join(keywords)}"
+        else:
+            registry_search_url = f"{registry_search_url}&text=not:insecure"
         try:
             r = httpclient.get(
                 url=registry_search_url,
@@ -36,7 +38,6 @@ def search_npm(keywords=None, insecure_only=False, unstable_only=False, pages=1,
                                 "version": package.get("version"),
                                 "purl": f'pkg:npm/{package.get("name").replace("@", "%40")}@{package.get("version")}',
                                 "insecure": is_pkg_insecure,
-                                "has_insecure_dependencies": insecure_only,
                                 "unstable": flags.get("unstable", False)
                             }
                         )
