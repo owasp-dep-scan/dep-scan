@@ -604,7 +604,7 @@ NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
 
 CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
 JFROG_ADVISORY = re.compile(r"(?P<id>jfsa\S+)", re.IGNORECASE)
-ADVISORY = re.compile(r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]+)", re.IGNORECASE)
+ADVISORY = re.compile(r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]{5,})", re.IGNORECASE)
 
 REF_MAP = {
     "repo_hosts": {
@@ -634,7 +634,8 @@ REF_MAP = {
     "exploits": {
         "seclists": re.compile(r"(?P<org>seclists).org/(?P<id>\S+/\d{4}/\w{3}/\d{1,2})"),
         "generic": re.compile(r"(?P<org>[^/\s.]+)(?:.blogspot)?.(?:com|org|zone|gov)/(?:[\w-]+/){1,5}(?P<id>[^/\s)]+)", re.IGNORECASE)
-    }
+    },
+    "openwall": re.compile(r"(?P<org>openwall).com/lists/(?P<list_type>[^/]+)/(?P<id>\S+)", re.IGNORECASE),
 }
 
 SEVERITY_REF = {

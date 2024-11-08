@@ -509,7 +509,7 @@ def get_description_detail(data: Descriptions | str) -> Tuple[str, str]:
         description = detail.split("\\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = detail.replace("\\n", " ").replace("\\t", " ").replace("\\r", " ").replace("\n", " ").replace("\t", " ").replace("\r", " ")
+    detail = detail.replace("\\n", " ").replace("\\t", " ").replace("\\r", " ").replace("\n", " ").replace("\t", " ").replace("\r", " ").replace("\\`", "")
     detail = bytes.decode(encodings.utf_8.encode(detail)[0], errors="replace")
     description = description.lstrip("# ")
     return description, detail
@@ -528,19 +528,6 @@ def choose_date(d1, d2, choice):
     except TypeError:
         d3 = max(d1.date(), d2.date()) if choice == "max" else min(d1.date(), d2.date())
         return d3.strftime(TIME_FMT)
-
-
-def combine_advisories(v1, v2):
-    if not v1 or not v2:
-        return v1 or v2
-    seen_adv = set()
-    v3 = []
-    for i in v1 + v2:
-        url = i.get("url", "")
-        if url not in seen_adv:
-            v3.append(i)
-            seen_adv.add(url)
-    return v3
 
 
 def combine_affects(v1, v2):
@@ -579,13 +566,13 @@ def combine_generic(v1, v2, keys):
 
 
 def combine_references(v1, v2):
-    if not v1 or not v2:
-        return v1 or v2
+    if not v1 and not v2:
+        return []
     seen_urls = set()
     v3 = []
     for i in v1 + v2:
-        url = i.get("url", "")
-        if url not in seen_urls:
+        url = i.get("url") or f"{i.get('id', '')}.{i.get('source', {}).get('url', '')}"
+        if url and url not in seen_urls:
             v3.append(i)
             seen_urls.add(url)
     return v3
@@ -593,7 +580,7 @@ def combine_references(v1, v2):
 
 def combine_vdrs(v1, v2):
     return {
-        "advisories": combine_advisories(v1.get("advisories", []), v2.get("advisories", [])),
+        "advisories": combine_references(v1.get("advisories", []), v2.get("advisories", [])),
         "affects": combine_affects(v1.get("affects", []), v2.get("affects", [])),
         "analysis": v1.get("analysis", "") or v2.get("analysis", ""),
         "bom-ref": v1.get("bom-ref"),
@@ -613,6 +600,12 @@ def combine_vdrs(v1, v2):
         "purl_prefix": v1.get("purl_prefix") or v2.get("purl_prefix"),
         "fixed_location": v1.get("fixed_location") or v2.get("fixed_location")
     }
+
+
+def choose_source(v1, v2):
+    if v1.get("name", "") >= v2.get("name", ""):
+        return v1
+    return v2
 
 
 def get_suggested_version_map(pkg_vulnerabilities: List[Dict]) -> Dict[str, str]:

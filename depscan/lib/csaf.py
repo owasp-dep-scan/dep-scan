@@ -1,10 +1,8 @@
-import json
 import os
 import re
 import sys
 from copy import deepcopy
 from datetime import datetime
-from json import JSONDecodeError
 from typing import List, Dict, Tuple
 
 import cvss
@@ -57,6 +55,8 @@ def vdr_to_csaf(res):
             "details": "Vulnerability Details",
         }
     ])
+    if res.get("recommendation"):
+        notes.append({"category": "other", "title": "Recommended Action", "text": res["recommendation"]})
     vuln = {
         "cwe": cwe,
         "acknowledgements": acknowledgements,
@@ -80,8 +80,6 @@ def get_products(affects):
 
     :param affects: Affected and fixed versions with associated purls
     :type affects: list[dict]
-    :param props: List of properties
-    :type props: list[dict]
 
     :return: Packages affected by the vulnerability and their statuses
     :rtype: tuple[list[str], dict[str, str]]
@@ -100,8 +98,6 @@ def get_products(affects):
             if namespace:
                 product += f"{namespace}/"
         except ValueError:
-            purl = None
-            namespace = ""
             pkg_name = i.get("ref", "").split("@")
             products.add(i.get("ref", ""))
         for v in i.get("versions", []):
@@ -217,22 +213,26 @@ def format_references(references: List) -> Tuple[List[Dict], List[Dict]]:
         else:
             ref_id, system_name = extract_ids(r.get("title", ""))
             url = r.get("url", "")
+        if (tmp := ref_id.replace("-", "")) and tmp.isalpha():
+            continue
         if "Bugzilla" in system_name:
             ids.append({"system_name": system_name, "text": ref_id})
-        elif "CVE" in ref_id:
-            system_name = "CVE Record"
-            ids.append({"system_name": system_name, "text": ref_id})
+        elif "cve-" in ref_id.lower() and len(ref_id) >= 5 and ref_id[4].isdigit():
+            ref_id = f"CVE-{ref_id.lower().split('cve-')[1]}"
+            ref_id = "-".join(ref_id.split("-")[:3])
+            if len(ref_id) in range(13, 15):
+                system_name = "CVE Record"
+                ids.append({"system_name": system_name, "text": ref_id})
         elif any((i in ref_id for i in id_types)):
             ids.append({"system_name": system_name, "text": ref_id})
-        elif "Advisory" in system_name:
+        if "Advisory" in system_name and "blog" not in system_name and (tmp := ref_id.replace("-", "")) and not tmp.isalpha():
             ids.append({"system_name": system_name, "text": ref_id})
-            system_name += f" {ref_id}"
         fmt_refs.append({"summary": system_name, "url": url})
     # remove duplicates
-    new_ids = {(idx["system_name"], idx["text"]) for idx in ids}
-    ids = [{"system_name": idx[0], "text": idx[1]} for idx in new_ids]
+    new_ids = {(idx["system_name"], idx["text"]) for idx in ids if not idx["text"].replace("-", "").isalpha()}
+    ids = [{"system_name": idx[0], "text": idx[1].upper()} for idx in new_ids]
     ids = sorted(ids, key=lambda x: x["text"])
-    new_refs = {(idx["summary"], idx["url"]) for idx in fmt_refs}
+    new_refs = {(idx["summary"], idx["url"]) for idx in fmt_refs if not idx["summary"].startswith("Cve ")}
     fmt_refs = [{"summary": idx[0], "url": idx[1]} for idx in new_refs]
     fmt_refs = sorted(fmt_refs, key=lambda x: x["url"])
     return ids, fmt_refs
@@ -275,7 +275,7 @@ def get_ref_summary(url, patterns):
 
 def get_ref_summary_helper(url, patterns):
     lower_url = url.lower().rstrip("/")
-    if any(("github.com" in lower_url, "bitbucket.org" in lower_url, "chromium" in lower_url)) and "advisory" not in lower_url and "advisories" not in lower_url:
+    if any(("github.com" in lower_url, "bitbucket.org" in lower_url, "chromium" in lower_url)) and "advisory" not in lower_url and "advisories" not in lower_url and "nvd.nist.gov/vuln/detail/CVE" not in lower_url:
         value, match = get_ref_summary(url, patterns["repo_hosts"])
         if match:
             if value == "Generic":
@@ -383,7 +383,7 @@ def parse_revision_history(tracking):
     else:
         tracking["version"] = "1"
     if not tracking.get("id") or len(tracking.get("id")) == 0:
-        LOG.info("No tracking id, generating one.")
+        LOG.debug("No tracking id, generating one.")
         tracking["id"] = f"{dt}_v{tracking['version']}"
     if (tracking["initial_release_date"]) > (tracking["current_release_date"]):
         LOG.warning(

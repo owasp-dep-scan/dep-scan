@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import argparse
-import csv
-import json
 import logging
 import os
 import re
+from typing import Set, List, Dict
 
 from custom_json_diff.lib.custom_diff import (
     compare_dicts,
@@ -11,34 +13,57 @@ from custom_json_diff.lib.custom_diff import (
     report_results, perform_csaf_diff,
 )
 from custom_json_diff.lib.custom_diff_classes import Options
+from custom_json_diff.lib.utils import json_load, json_dump
 
+from depscan.cli import build_parser, main as depscan
 from depscan.lib.utils import get_description_detail
-
 
 VERSION_REPLACE = re.compile(r"(?<=to version )\S+", re.IGNORECASE)
 
+logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.DEBUG)
 
 
-def build_args(dir1, dir2,):
+def build_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--directories',
+        "--legacy",
+        "-l",
+        action="store_true",
+        default=False,
+        help="Use if original snapshots were generated using depscan v5.",
+    )
+    parser.add_argument(
+        "--bom-dir",
+        "-b",
+        default="/home/runner/work/new_snapshots",
+        help="Directory containing the BOM files to analyze",
+    )
+    parser.add_argument(
+        '--snapshot-dirs',
         '-d',
-        default=[dir1, dir2],
+        # Preserving with the intention of allowing an output directory in the depscan cli
+        default=["/home/runner/work/original_snapshots", "/home/runner/work/new_snapshots"],
         help='Directories containing the snapshots to compare',
         nargs=2
+    )
+    parser.add_argument(
+        "--projects",
+        "-p",
+        default=["node-goat", "django-goat", "java-sec-code", "rasa", "restic", "tinydb"],
+        help="List of projects to compare",
+        nargs="+",
     )
     return parser.parse_args()
 
 
-def compare_snapshots(options, repo):
+def compare_snapshots(options: Options, v5: bool, repo: str):
     if not os.path.exists(options.file_1):
         return f"{options.file_1} not found.", f"{options.file_1} not found."
     if not os.path.exists(options.file_2):
         return f"{options.file_2} not found.", f"{options.file_2} not found."
-    filter_normalize_jsons(options.file_1, options)
-    filter_normalize_jsons(options.file_2, options)
+    filter_normalize_jsons(options.file_1, options, v5)
+    filter_normalize_jsons(options.file_2, options, v5)
     options.file_1 = options.file_1.replace(".json", ".parsed.json")
     options.file_2 = options.file_2.replace(".json", ".parsed.json")
     _, j1, j2 = compare_dicts(options)
@@ -47,26 +72,21 @@ def compare_snapshots(options, repo):
     else:
         result, result_summary = perform_csaf_diff(j1, j2)
     report_results(result, result_summary, options, j1, j2)
-    if result != 0:
-        return f"{repo['project']} {options.preconfig_type} diff failed.", result_summary
+    if result:
+        return f"{repo} {options.preconfig_type} diff failed.", result_summary
     else:
-        return f"{repo['project']} {options.preconfig_type} diff succeeded.", result_summary
+        return f"{repo} {options.preconfig_type} diff succeeded.", result_summary
 
 
-def filter_normalize_jsons(filename, options):
-    data = read_write_json(filename)
+def filter_normalize_jsons(filename: str, options: Options, v5: bool):
+    data = json_load(filename, log=logger)
     data["vulnerabilities"] = filter_years(data.get("vulnerabilities", []))
-    if options.preconfig_type == "bom":
-        if filename == options.file_1:
-            data = migrate_old_vdr_formatting(data)
-        else:
-            data = handle_new_recommendation_for_comparison(data)
-    elif options.preconfig_type == "csaf":
-        data = migrate_old_csaf_formatting(data)
-    read_write_json(f"{filename.replace('.json', '.parsed.json')}", data)
+    if v5:
+        data = handle_legacy_output(data, options, filename)
+    json_dump(f"{filename.replace('.json', '.parsed.json')}", data, True, log=logger)
 
 
-def filter_years(vdrs):
+def filter_years(vdrs: List) -> List:
     new_vdrs= []
     for i in vdrs:
         if vid := (i.get("id") or i.get("cve", "")):
@@ -78,95 +98,58 @@ def filter_years(vdrs):
     return new_vdrs
 
 
-def get_all_purls(bom):
-    bom_data = read_write_json(bom)
-    components = bom_data.get("components", [])
-    components.extend(bom_data.get("metadata", {}).get("tools", {}).get("components", []))
-    if comp := bom_data.get("metadata", {}).get("component"):
-        components.append(comp)
-    return [i["purl"] for i in components if i.get("purl")]
+def generate_new_snapshots(bom_dir: str, projects: Set):
+    for p in projects:
+        parser = build_parser()
+        bom_file = os.path.join(bom_dir, f"{p}-bom.json")
+        args = parser.parse_args(["--bom", bom_file, "--csaf", "--no-banner", "--no-vuln-table"])
+        depscan(args)
 
 
-def generate_snapshot_diffs(dir1, dir2, repo_data):
+def generate_snapshot_diffs(dir1: str, dir2: str, projects: List, v5: bool):
     bom_diff_options = Options(
         allow_new_versions=True,
         allow_new_data=True,
         preconfig_type="bom",
-        include=["properties", "evidence", "licenses"],
-        exclude=[
-            "tools.components", "components", "dependencies","services",
-                 # "vulnerabilities.[].ratings.[].vector",
-                 # "vulnerabilities.[].description",
-                 # "vulnerabilities.[].detail",
-                 # "vulnerabilities.[].advisories",
-                 # "vulnerabilities.[].affects",
-                 # "vulnerabilities.[].source",
-                 # "vulnerabilities.[].analysis",
-                 # "vulnerabilities.[].updated",
-                 # "vulnerabilities.[].properties",
-                 # "vulnerabilities.[].references",
-                 # "vulnerabilities.[].published",
-                 # "vulnerabilities.[].recommendation",
-                 # "vulnerabilities.[].ratings",
-                 # "vulnerabilities.[].cwes"
-                 ],
-        sort_keys=["cve", "text", "url"]
+        exclude=["tools", "components", "dependencies", "services", "metadata", "vulnerabilities.[].source"],
     )
     csaf_diff_options = Options(
         allow_new_versions=True,
         allow_new_data=True,
         preconfig_type="csaf",
-        include=[],
-        exclude=[
-            # "vulnerabilities.[].acknowledgements",
-            # "vulnerabilities.[].discovery_date",
-            # "vulnerabilities.[].ids",
-            # "vulnerabilities.[].notes",
-            # "vulnerabilities.[].product_status",
-            # "vulnerabilities.[].references",
-            # "vulnerabilities.[].scores.[].products",
-        ],
-        sort_keys=[]
+        exclude=["vulnerabilities.[].acknowledgements"],
     )
     failed_diffs = {"bom": {}, "csaf": {}}
-    for repo in repo_data:
-        bom_diff_options.file_1 = f"{dir1}/{repo['project']}-bom.vdr.json"
-        bom_diff_options.file_2 = f"{dir2}/{repo['project']}-bom.vdr.json"
-        bom_diff_options.output = f"{dir2}/{repo['project']}-bom-diff.json"
-        bom_result, bom_summary = compare_snapshots(bom_diff_options, repo)
-        if bom_result:
-            print(bom_result)
-            failed_diffs["bom"] |= {repo["project"]: bom_summary}
-        csaf_diff_options.file_1 = f"{dir1}/{repo['project']}/csaf_v1.json"
-        csaf_diff_options.file_2 = f"{dir2}/{repo['project']}/csaf_v1.json"
-        csaf_diff_options.output = f"{dir2}/{repo['project']}-csaf-diff.json"
-        csaf_result, csaf_summary = compare_snapshots(csaf_diff_options, repo)
-        if csaf_result:
-            print(csaf_result)
-            failed_diffs["csaf"] |= {repo["project"]: csaf_summary}
-    return failed_diffs
+    for p in projects:
+        bom_diff_options.file_1 = f"{dir1}/{p}-bom.vdr.json"
+        bom_diff_options.file_2 = f"{dir2}/{p}-bom.vdr.json"
+        bom_diff_options.output = f"{dir2}/{p}-bom-diff.json"
+        bom_result, bom_summary = compare_snapshots(bom_diff_options, v5, p)
+        print(bom_result)
+        if bom_result.endswith("failed."):
+            failed_diffs["bom"] |= {p: bom_summary}
+        csaf_diff_options.file_1 = f"{dir1}/{p}.csaf_v1.json"
+        csaf_diff_options.file_2 = f"{dir2}/{p}.csaf_v1.json"
+        csaf_diff_options.output = f"{dir2}/{p}.csaf-diff.json"
+        csaf_result, csaf_summary = compare_snapshots(csaf_diff_options, v5, p)
+        print(csaf_result)
+        if csaf_result.endswith("failed."):
+            failed_diffs["csaf"] |= {p: csaf_summary}
+    return {k: v for k, v in failed_diffs.items() if v}
 
 
-def get_descriptions(bom):
-    return [i.detail for i in bom.vdrs if not i.recommendation]
-
-
-def get_purl_names(purls):
-    package_names = set()
-    for p in purls:
-        if "@" in p:
-            package_names.add(p.split("@")[0])
+def handle_legacy_output(data: Dict, options: Options, filename: str) -> Dict:
+    if options.preconfig_type == "bom":
+        if filename == options.file_1:
+            data = migrate_old_vdr_formatting(data)
         else:
-            package_names.add(p.lower())
-        # purl = PackageURL.from_string(p)
-        # package_names.add(purl.name.lower())
-    package_names = sorted(package_names)
-    with open("purl_names.txt", 'w') as f:
-        for purl in package_names:
-            f.write(f"{purl}\n")
+            data = handle_new_recommendation_for_comparison(data)
+    elif options.preconfig_type == "csaf":
+        data = migrate_old_csaf_formatting(data)
+    return data
 
 
-def handle_new_recommendation_for_comparison(bom_data):
+def handle_new_recommendation_for_comparison(bom_data: Dict):
     for i, v in enumerate(bom_data.get("vulnerabilities", [])):
         if rec := v.get("recommendation"):
             if match := VERSION_REPLACE.findall(rec):
@@ -175,13 +158,13 @@ def handle_new_recommendation_for_comparison(bom_data):
     return bom_data
 
 
-def migrate_old_csaf_formatting(csaf_data):
+def migrate_old_csaf_formatting(csaf_data: Dict):
     for i, v in enumerate(csaf_data.get("vulnerabilities", [])):
         csaf_data["vulnerabilities"][i]["acknowledgements"] = [v.get("acknowledgements")] if v.get("acknowledgements") else []
     return csaf_data
 
 
-def migrate_old_vdr_formatting(bom_data):
+def migrate_old_vdr_formatting(bom_data: Dict):
     for i, v in enumerate(bom_data.get("vulnerabilities", [])):
         if v.get("description"):
             description, detail = get_description_detail(v["description"])
@@ -196,33 +179,19 @@ def migrate_old_vdr_formatting(bom_data):
     return bom_data
 
 
-def perform_snapshot_tests(dir1, dir2):
-    if failed_diffs := generate_snapshot_diffs(dir1, dir2, read_csv()):
+def perform_snapshot_tests(dir1: str, dir2: str, projects: List, v5: bool):
+    if failed_diffs := generate_snapshot_diffs(dir1, dir2, projects, v5):
         diff_file = os.path.join(dir2, 'diffs.json')
-        read_write_json(diff_file, failed_diffs)
-        print(f"Results of failed diffs saved to {diff_file}")
+        json_dump(diff_file, failed_diffs, success_msg=f"Results of failed diffs saved to {diff_file}", log=logger)
     else:
         print("Snapshot tests passed!")
 
 
-def read_csv():
-    csv_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "repos.csv")
-    with open(csv_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        repo_data = list(reader)
-    return repo_data
+def main():
+    args = build_args()
+    generate_new_snapshots(args.bom_dir, args.projects)
+    perform_snapshot_tests(args.snapshot_dirs[0], args.snapshot_dirs[1], args.projects, args.legacy)
 
 
-def read_write_json(filename, data = None):
-    if data:
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        return {}
-    else:
-        with open(filename, 'r', encoding='utf-8') as f:
-            return json.load(f)
-
-
-if __name__ == '__main__':
-    args = build_args(r'C:\Users\user\PycharmProjects\depscan-samples\v5', r'C:\Users\user\PycharmProjects\depscan-samples\v6')
-    perform_snapshot_tests(args.directories[0], args.directories[1])
+if __name__ == "__main__":
+    main()
