@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import cvss
-from custom_json_diff.lib.utils import compare_versions
+from custom_json_diff.lib.utils import compare_versions, json_load, json_dump, file_write
 from cvss import CVSSError
 from packageurl import PackageURL
 from rich import box
@@ -99,13 +99,8 @@ def retrieve_bom_dependency_tree(bom_file):
     """
     if not bom_file:
         return [], None
-    try:
-        with open(bom_file, encoding="utf-8") as bfp:
-            bom_data = json.load(bfp)
-            if bom_data:
-                return bom_data.get("dependencies", []), bom_data
-    except json.JSONDecodeError:
-        pass
+    if bom_data:= json_load(bom_file):
+        return bom_data.get("dependencies", []), bom_data
     return [], None
 
 
@@ -847,10 +842,7 @@ def analyse_pkg_risks(
         console.print(table)
         # Store the risk audit findings in jsonl format
         if risk_report_file:
-            with open(risk_report_file, "w", encoding="utf-8") as outfile:
-                for row in report_data:
-                    json.dump(row, outfile)
-                    outfile.write("\n")
+            file_write(risk_report_file, "\n".join([json.dumps(row) for row in report_data]), log=LOG)
     else:
         LOG.info("No package risks detected ✅")
 
@@ -911,10 +903,7 @@ def analyse_licenses(project_type, licenses_results, license_report_file=None):
         console.print(table)
         # Store the license scan findings in jsonl format
         if license_report_file:
-            with open(license_report_file, "w", encoding="utf-8") as outfile:
-                for row in report_data:
-                    json.dump(row, outfile)
-                    outfile.write("\n")
+            file_write(license_report_file, "\n".join([json.dumps(row) for row in report_data]))
     else:
         LOG.info("No license violation detected ✅")
 
@@ -1125,13 +1114,13 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
     ):
         reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
     if reachables_slices_file:
-        with open(reachables_slices_file, "r", encoding="utf-8") as f:
-            reachables = json.load(f).get("reachables")
+        reachables = json_load(reachables_slices_file).get("reachables")
         for flow in reachables:
             if len(flow.get("purls", [])) > 0:
                 for apurl in flow.get("purls"):
                     reached_purls[apurl] += 1
     if bom_file and os.path.exists(bom_file):
+        data = json_load(bom_file)
         # For now we will also include usability slice as well
         with open(bom_file, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -1273,7 +1262,7 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
     Parses the reference list provided by VDB and converts to VDR objects
 
     :param references: List of dictionaries of references
-    :type references: list
+    :param vid: str of vulnerability id
 
     :return: Tuple of advisories, references for VDR
     :rtype: tuple[list, list]

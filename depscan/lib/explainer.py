@@ -2,13 +2,14 @@ import json
 import os
 import re
 
+from custom_json_diff.lib.utils import json_load
 from rich import box
 from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 
 from depscan.lib.config import max_purl_per_flow, max_reachable_explanations
-from depscan.lib.logger import console
+from depscan.lib.logger import console, LOG
 
 
 def explain(
@@ -40,19 +41,17 @@ def explain(
     ):
         reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
     if reachables_slices_file:
-        with open(reachables_slices_file, "r", encoding="utf-8") as f:
-            reachables_data = json.load(f)
-            if reachables_data and reachables_data.get("reachables"):
-                rsection = Markdown(
-                    """## Reachable Flows
+        if (reachables_data := json_load(reachables_slices_file, error_msg=f"Could not load reachables from {reachables_slices_file}", log=LOG)) and reachables_data.get("reachables"):
+            rsection = Markdown(
+                """## Reachable Flows
 
 Below are some reachable flows identified by depscan. Use the provided tips to improve the securability of your application.
-                """
-                )
-                console.print(rsection)
-                explain_reachables(
-                    reachables_data, pkg_group_rows, project_type
-                )
+            """
+            )
+            console.print(rsection)
+            explain_reachables(
+                reachables_data, pkg_group_rows, project_type
+            )
 
 
 def explain_reachables(reachables, pkg_group_rows, project_type):

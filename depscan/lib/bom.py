@@ -7,6 +7,7 @@ import sys
 from urllib.parse import unquote_plus
 
 import httpx
+from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 
 from depscan.lib.logger import LOG
@@ -161,43 +162,39 @@ def get_pkg_list_json(jsonfile):
     return List of dicts representing extracted packages
     """
     pkgs = []
-    with open(jsonfile, encoding="utf-8") as fp:
-        try:
-            bom_data = json.load(fp)
-            if bom_data and bom_data.get("components"):
-                for comp in bom_data.get("components"):
-                    licenses = []
-                    vendor = comp.get("group")
-                    if not vendor:
-                        vendor = ""
-                    if comp.get("licenses"):
-                        for lic in comp.get("licenses"):
-                            license_obj = lic
-                            # licenses has list of dict with either license
-                            # or expression as key Only license is supported
-                            # for now
-                            if lic.get("license"):
-                                license_obj = lic.get("license")
-                            if license_obj.get("id"):
-                                licenses.append(license_obj.get("id"))
-                            elif license_obj.get("name"):
-                                licenses.append(
-                                    cleanup_license_string(
-                                        license_obj.get("name")
-                                    )
-                                )
-                    url = None
-                    for aref in comp.get("externalReferences", []):
-                        if aref.get("type") == "vcs":
-                            url = aref.get("url")
-                            break
-                    pkgs.append(
-                        {**comp, "vendor": vendor, "licenses": licenses, "url": url}
-                    )
-        except Exception:
-            # Ignore json errors
-            pass
+    if bom_data := json_load(jsonfile, log=LOG):
+        if bom_data.get("components"):
+            for comp in bom_data.get("components"):
+                licenses, vendor, url = get_license_vendor_url(comp)
+                pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
         return pkgs
+
+
+def get_license_vendor_url(comp):
+    licenses = []
+    vendor = comp.get("group") or ""
+    if comp.get("licenses"):
+        for lic in comp.get("licenses"):
+            license_obj = lic
+            # licenses has list of dict with either license
+            # or expression as key Only license is supported
+            # for now
+            if lic.get("license"):
+                license_obj = lic.get("license")
+            if license_obj.get("id"):
+                licenses.append(license_obj.get("id"))
+            elif license_obj.get("name"):
+                licenses.append(
+                    cleanup_license_string(
+                        license_obj.get("name")
+                    )
+                )
+    url = ""
+    for aref in comp.get("externalReferences", []):
+        if aref.get("type") == "vcs":
+            url = aref.get("url", "")
+            break
+    return licenses, vendor, url
 
 
 def get_pkg_list(xmlfile):
@@ -316,7 +313,7 @@ def exec_cdxgen(use_bin=True):
             return None
 
 
-def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
+def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
     """
     Method to create BOM file by executing cdxgen command
 
@@ -328,6 +325,8 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
     :returns: True if the command was executed. False if the executable was
     not found.
     """
+    if not options:
+        options = {}
     cdxgen_server = options.get("cdxgen_server")
     # Generate SBOM by calling cdxgen server
     if cdxgen_server:
@@ -356,10 +355,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options={}):
                     try:
                         json_response = r.json()
                         if json_response:
-                            with open(
-                                bom_file, mode="w", encoding="utf-8"
-                            ) as fp:
-                                json.dump(json_response, fp)
+                            json_dump(bom_file, json_response, log=LOG)
                             return os.path.exists(bom_file)
                     except Exception as je:
                         LOG.error(je)

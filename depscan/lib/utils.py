@@ -1,7 +1,6 @@
 import ast
 import contextlib
 import encodings.utf_8
-import json
 import os
 import re
 import shutil
@@ -9,6 +8,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import List, Dict, Any, Tuple
 
+from custom_json_diff.lib.utils import file_read, json_load, file_write
 from jinja2 import Environment
 from packageurl import PackageURL
 from vdb.lib.config import PLACEHOLDER_FIX_VERSION, PLACEHOLDER_EXCLUDE_VERSION
@@ -57,9 +57,7 @@ def find_python_reqfiles(path):
     ]
     for root, dirs, files in os.walk(path):
         filter_ignored_dirs(dirs)
-        for name in req_files:
-            if name in files:
-                result.append(os.path.join(root, name))
+        result.extend(os.path.join(root, name) for name in req_files if name in files)
     return result
 
 
@@ -221,7 +219,6 @@ def search_pkgs(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     """
     Method to search packages in our vulnerability database
 
-    :param db: DB instance
     :param project_type: Project type
     :param pkg_list: List of packages to search
     :returns: raw_results, pkg_aliases, purl_aliases
@@ -392,9 +389,7 @@ def get_all_imports(src_dir):
     if not py_files:
         return import_list
     for afile in py_files:
-        with open(os.path.join(afile), "rb", encoding="utf-8") as f:
-            content = f.read()
-        parsed = ast.parse(content)
+        parsed = ast.parse(file_read(os.path.join(afile), True, log=LOG))
         for node in ast.walk(parsed):
             if isinstance(node, ast.Import):
                 for name in node.names:
@@ -460,28 +455,31 @@ def render_template_report(
     and summary dict using the template_file with Jinja, rendered output is written
     to named result_file in reports directory.
     """
-    if vdr_file and os.path.isfile(vdr_file):
-        with open(vdr_file, "r", encoding="utf-8") as f:
-            bom = json.load(f)
-    else:
-        with open(bom_file, "r", encoding="utf-8") as f:
-            bom = json.load(f)
-    with open(template_file, "r", encoding="utf-8") as tmpl_file:
-        template = tmpl_file.read()
-    jinja_env = Environment(autoescape=False)
+    bom = {}
+    if vdr_file:
+        bom = json_load(vdr_file, log=LOG)
+    if not bom:
+        bom = json_load(bom_file, log=LOG)
+    template = file_read(template_file, log=LOG)
+    jinja_env = Environment(autoescape=True)
     jinja_tmpl = jinja_env.from_string(template)
     report_result = jinja_tmpl.render(
-        metadata=bom.get("metadata", None),
-        vulnerabilities=bom.get("vulnerabilities", None),
-        components=bom.get("components", None),
-        dependencies=bom.get("dependencies", None),
-        services=bom.get("services", None),
+        metadata=bom.get("metadata"),
+        vulnerabilities=bom.get("vulnerabilities"),
+        components=bom.get("components"),
+        dependencies=bom.get("dependencies"),
+        services=bom.get("services"),
         summary=summary,
         pkg_vulnerabilities=pkg_vulnerabilities,
         pkg_group_rows=pkg_group_rows,
     )
-    with open(result_file, "w", encoding="utf-8") as outfile:
-        outfile.write(report_result)
+    file_write(
+        result_file,
+        report_result,
+        error_msg=f"Failed to export report: {result_file}",
+        success_msg=f"Report written to {result_file}.",
+        log=LOG
+        )
 
 
 def format_system_name(system_name):
