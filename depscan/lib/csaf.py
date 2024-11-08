@@ -9,6 +9,7 @@ from typing import List, Dict, Tuple
 
 import cvss
 import toml
+from custom_json_diff.lib.utils import json_load, json_dump, file_write, file_read
 from cvss import CVSSError
 from packageurl import PackageURL
 from vdb.lib import convert_time
@@ -406,23 +407,12 @@ def import_product_tree(tree):
     :rtype: dict or None
     """
     product_tree = None
-    if len(tree["easy_import"]) > 0:
-        try:
-            with open(tree["easy_import"], "r", encoding="utf-8") as f:
-                product_tree = json.load(f)
-        except JSONDecodeError:
-            LOG.warning(
-                "Unable to load product tree file. Please verify that your "
-                "product tree is a valid json file. Visit "
-                "https://github.com/owasp-dep-scan/dep-scan/blob/master/test"
-                "/data/product_tree.json for an example."
-            )
-        except FileNotFoundError:
-            LOG.warning(
-                "Cannot locate product tree at %s. Please verify you "
-                "have entered the correct filepath in your csaf.toml.",
-                tree["easy_import"],
-            )
+    if len(tree.get("easy_import", "")) > 0:
+        product_tree = json_load(tree["easy_import"], (
+            "Unable to load product tree file. Please verify your filepath and that your product "
+            "tree is valid json. Visit "
+            "https://github.com/owasp-dep-scan/dep-scan/blob/master/test/data/product_tree.json "
+            "for an example."), log=LOG)
     return product_tree
 
 
@@ -486,26 +476,18 @@ def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
     :type bom_file: str
 
     """
-    toml_file_path = os.getenv(
-        "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
-    )
+    toml_file_path = os.getenv("DEPSCAN_CSAF_TEMPLATE")
+    if not toml_file_path:
+        toml_file_path = os.path.join(src_dir, "csaf.toml")
     metadata = import_csaf_toml(toml_file_path)
     metadata = toml_compatibility(metadata)
     template = parse_toml(metadata)
     new_results = add_vulnerabilities(template, pkg_vulnerabilities)
     new_results = cleanup_dict(new_results)
-    new_results, metadata = verify_components_present(
-        new_results, metadata, bom_file
-    )
-
-    outfile = os.path.join(
-        reports_dir,
-        f"csaf_v{new_results['document']['tracking']['version']}.json",
-    )
-
-    with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(new_results, f, indent=4, sort_keys=True)
-    LOG.info("CSAF report written to %s", outfile)
+    new_results, metadata = verify_components_present(new_results, metadata, bom_file)
+    fn = bom_file.replace("-bom.json", f".csaf_v{new_results['document']['tracking']['version']}.json")
+    outfile = os.path.join(reports_dir, fn)
+    json_dump(outfile, new_results, log=LOG, success_msg=f"CSAF report written to {outfile}", error_msg=f"CSAF report could not be written to {outfile}")
     write_toml(toml_file_path, metadata)
 
 
@@ -521,21 +503,19 @@ def import_csaf_toml(toml_file_path):
 
     :raises TOMLDecodeError: If the TOML is invalid.
     """
-    try:
-        with open(toml_file_path, "r", encoding="utf-8") as f:
-            try:
-                toml_data = toml.load(f)
-            except toml.TomlDecodeError:
-                LOG.error(
-                    "Invalid TOML. Please make sure you do not have any "
-                    "duplicate keys and that any filepaths are properly escaped"
-                    "if using Windows."
-                )
-                sys.exit(1)
-    except FileNotFoundError:
+
+    if not os.path.isfile(toml_file_path):
         write_toml(toml_file_path)
         return import_csaf_toml(toml_file_path)
-
+    try:
+        toml_data = toml.loads(file_read(toml_file_path, error_msg=f"Unable to read settings from {toml_file_path}.", log=LOG))
+    except toml.TomlDecodeError:
+        LOG.error(
+            "Invalid TOML. Please make sure you do not have any "
+            "duplicate keys and that any filepaths are properly escaped"
+            "if using Windows."
+        )
+        sys.exit(1)
     return toml_compatibility(toml_data)
 
 
@@ -553,9 +533,12 @@ def write_toml(toml_file_path, metadata=None):
     if not metadata:
         metadata = TOML_TEMPLATE
     metadata["depscan_version"] = get_version()
-    with open(toml_file_path, "w", encoding="utf-8") as f:
-        toml.dump(metadata, f)
-    LOG.debug("The csaf.toml has been updated at %s", toml_file_path)
+    try:
+        file_write(toml_file_path, toml.dumps(metadata), error_msg=f"Unable to write settings to {toml_file_path}.", log=LOG)
+    except toml.TomlDecodeError:
+        LOG.warning("Unable to write settings to file.")
+    else:
+        LOG.debug("The csaf.toml has been updated at %s", toml_file_path)
 
 
 def cleanup_list(d):
@@ -610,12 +593,9 @@ def import_root_component(bom_file):
     :returns: The product tree (dict) and additional references (list of dicts).
     :rtype: tuple
     """
-    with open(bom_file, "r", encoding="utf-8") as f:
-        bom = json.load(f)
-
+    bom = json_load(bom_file)
     refs = []
     product_tree = {}
-
     if component := bom["metadata"].get("component"):
         product_tree = {
             "full_product_names": [
@@ -644,7 +624,6 @@ def import_root_component(bom_file):
             "Unable to import root component for product tree, so product "
             "tree will not be included."
         )
-
     return product_tree, refs
 
 

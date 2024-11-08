@@ -8,6 +8,7 @@ import os
 import sys
 import tempfile
 
+from custom_json_diff.lib.utils import json_load, json_dump, file_write
 from defusedxml.ElementTree import parse
 from quart import Quart, request
 from rich.panel import Panel
@@ -377,12 +378,10 @@ def summarise(
     pkg_vulnerabilities, pkg_group_rows = prepare_vdr(options)
     vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
     if pkg_vulnerabilities and bom_file:
-        try:
-            with open(bom_file, encoding="utf-8") as fp:
-                if bom_data := json.load(fp):
-                    export_bom(bom_data, pkg_vulnerabilities, vdr_file)
-        except json.JSONDecodeError:
-            LOG.warning("Unable to generate VDR file for this scan")
+        if bom_data := json_load(bom_file, log=LOG):
+            export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+        else:
+            LOG.warning("Unable to generate VDR file for this scan.")
     summary = summary_stats(pkg_vulnerabilities)
     return summary, vdr_file, pkg_vulnerabilities, pkg_group_rows, options
 
@@ -431,9 +430,7 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     if isinstance(tools, dict):
         bom_data = summarise_tools(tools, metadata, bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
-    with open(vdr_file, mode="w", encoding="utf-8") as vdrfp:
-        json.dump(bom_data, vdrfp, indent=4)
-    LOG.debug("VDR file %s generated successfully", vdr_file)
+    json_dump(vdr_file, bom_data, error_msg=f"Unable to generate VDR file at {vdr_file}", log=LOG)
 
 
 def set_project_types(args, src_dir):
@@ -597,6 +594,7 @@ async def run_scan():
         with open(tmp_bom_file.name, "w", encoding="utf-8") as f:
             f.write(bom_file_content)
         path = tmp_bom_file.name
+        file_write(path, bom_file_content)
 
     # Path points to a project directory
     # Bug# 233. Path could be a url
@@ -641,8 +639,7 @@ async def run_scan():
             LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
         vdb_results, pkg_aliases, purl_aliases = utils.search_pkgs(project_type, pkg_list)
         results.extend(vdb_results)
-        with open(bom_file_path, encoding="utf-8") as fp:
-            bom_data = json.load(fp)
+        bom_data = json_load(bom_file_path)
         if not bom_data:
             return (
                 {
