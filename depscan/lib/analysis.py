@@ -1293,7 +1293,7 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
             if "vuldb" in i.lower():
                 adv_id = f"vuldb-{adv_id}"
             if system_name in {"Jfrog Advisory", "Gentoo Advisory"}:
-                adv_id, system_name = adv_ref_parsing(adv_id, i, rmatch, system_name)
+                adv_id, system_name = adv_ref_parsing(adv_id, i, system_name)
             if adv_id.lower() == vid and not source:
                 source = {"name": system_name, "url": i}
             advisories.append({"title": f"{system_name} {adv_id}", "url": i})
@@ -1331,10 +1331,13 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
                 })
         elif category == "Mailing List":
             if "openwall" in i:
-                rmatch = config.REF_MAP["openwall"].search(i)
+                if not (rmatch := config.REF_MAP["openwall"].search(i)):
+                    continue
                 adv_id = f"openwall-{rmatch['list_type']}-msg-{rmatch['id'].replace('/', '-')}"
             else:
                 rmatch = ADVISORY.search(i)
+                if not rmatch:
+                    continue
                 adv_id = f"{rmatch['org']}-msg-{rmatch['id']}"
             if rmatch:
                 system_name = f"{format_system_name(rmatch['org'])} {category}"
@@ -1350,7 +1353,7 @@ def refs_to_vdr(references: References | None, vid) -> Tuple[List, List, List, L
     return combine_references(advisories, []), combine_references(refs, []), bug_bounty, poc, exploit, vendor, source
 
 
-def adv_ref_parsing(adv_id, i, match, system_name):
+def adv_ref_parsing(adv_id, i, system_name):
     if system_name == "Gentoo Advisory":
         adv_id = f"glsa-{adv_id}"
     if system_name == "Jfrog Advisory":
