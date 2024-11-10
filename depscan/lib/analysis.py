@@ -19,7 +19,7 @@ from rich.table import Table
 from rich.tree import Tree
 from vdb.lib import CPE_FULL_REGEX
 from vdb.lib.config import placeholder_exclude_version, placeholder_fix_version
-from vdb.lib.utils import parse_cpe, parse_purl
+from vdb.lib.utils import get_cvss3_from_vector, get_cvss4_from_vector, parse_cpe, parse_purl
 
 from depscan.lib import config
 from depscan.lib.logger import LOG, console
@@ -336,6 +336,11 @@ def prepare_vdr(options: PrepareVdrOptions):
             justify = "right"
         table.add_column(header=h, justify=justify, vertical="top")
     for vuln_occ_dict in options.results:
+        # If CVSS v4 data is available, override the severity and cvss_score
+        if vuln_occ_dict.get("cvss4_vector_string"):
+            cvss4_obj = get_cvss4_from_vector(vuln_occ_dict.get("cvss4_vector_string"))
+            vuln_occ_dict["cvss_score"] = cvss4_obj.get("baseScore")
+            vuln_occ_dict["severity"] = cvss4_obj.get("baseSeverity").upper()
         vid = vuln_occ_dict.get("id")
         problem_type = vuln_occ_dict.get("problem_type")
         cwes = []
@@ -1026,34 +1031,33 @@ def cvss_to_vdr_rating(vuln_occ_dict):
 
     :return: A list containing a dictionary with CVSS score information.
     """
-    cvss_score = vuln_occ_dict.get("cvss_score", 2.0)
-    with contextlib.suppress(ValueError, TypeError):
-        cvss_score = float(cvss_score)
-    if (pkg_severity := vuln_occ_dict.get("severity", "").lower()) not in (
-        "critical",
-        "high",
-        "medium",
-        "low",
-        "info",
-        "none",
-    ):
-        pkg_severity = "unknown"
-    ratings = [
-        {
-            "score": cvss_score,
-            "severity": pkg_severity,
-        }
-    ]
-    method = "31"
+    ratings = []
+    # Support for cvss v4
+    if vuln_occ_dict.get("cvss4_vector_string") and (vector_string := vuln_occ_dict.get("cvss4_vector_string")):
+        cvss4_obj = get_cvss4_from_vector(vector_string)
+        ratings.append(
+            {
+                "method": "CVSSv4",
+                "score": cvss4_obj.get("baseScore"),
+                "severity": cvss4_obj.get("baseSeverity").lower(),
+                "vector": vector_string
+            }
+        )
     if vuln_occ_dict.get("cvss_v3") and (
         vector_string := vuln_occ_dict["cvss_v3"].get("vector_string")
     ):
-        ratings[0]["vector"] = vector_string
         with contextlib.suppress(CVSSError):
-            method = cvss.CVSS3(vector_string).as_json().get("version")
+            cvss3_obj = get_cvss3_from_vector(vector_string)
+            method = cvss3_obj.get("version")
             method = method.replace(".", "").replace("0", "")
-    ratings[0]["method"] = f"CVSSv{method}"
-
+            ratings.append(
+                {
+                    "method": f"CVSSv{method}",
+                    "score": cvss3_obj.get("baseScore"),
+                    "severity": cvss3_obj.get("baseSeverity").lower(),
+                    "vector": vector_string
+                }
+            )
     return ratings
 
 
