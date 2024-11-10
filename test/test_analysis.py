@@ -708,8 +708,7 @@ def test_cvss_to_vdr_rating():
         "severity": "HIGH",
     }
     # Test missing score and vector string
-    assert cvss_to_vdr_rating(res) == [
-        {'method': 'CVSSv31', 'score': 2.0, 'severity': 'high'}]
+    assert cvss_to_vdr_rating(res) == []
     # Test parsing
     res["cvss_v3"]["vector_string"] = ("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
                                        ":N/A:H")
@@ -729,6 +728,24 @@ def test_cvss_to_vdr_rating():
         'severity': 'high',
         'vector': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
     }]
+    assert cvss_to_vdr_rating({
+        "cvss_v3": {
+            "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:H/A:H"
+        },
+        "cvss4_vector_string": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:L/SI:H/SA:H"
+    }) == [{
+        'method': 'CVSSv4',
+        'score': 7.9,
+        'severity': 'high',
+        'vector': 'CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:L/SI:H/SA:H'
+    },
+    {
+        'method': 'CVSSv31',
+        'score': 10.0,
+        'severity': 'critical',
+        'vector': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:L/I:H/A:H'
+    }
+    ]
 
 
 def test_get_version_range():
