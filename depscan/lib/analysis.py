@@ -1151,7 +1151,7 @@ def cve_to_vdr(cve: CVE, vid: str):
     if not source:
         source = {"name": cve.root.cveMetadata.assignerShortName.root.capitalize()}
         if source.get("name") == "Github_m":
-            source = {"name": "GitHub", "url": f"https://github.com/advisories/{vid}"}
+            source = {"name": "GitHub Advisory Database", "url": f"https://github.com/advisories/{vid}"}
             advisories.append({"title": f"GitHub Advisory {vid}", "url": f"https://github.com/advisories/{vid}"})
     cwes = get_cwe_list(cve.root.containers.cna.problemTypes)
     vendor = ""
@@ -1481,7 +1481,7 @@ def process_vuln_occ(bom_dependency_tree, direct_purls, oci_product_types, optio
             }
         elif vid.startswith("GHSA") or vid.startswith("npm"):
             source = {
-                "name": "GitHub",
+                "name": "GitHub Advisory Database",
                 "url": f"https://github.com/advisories/{vid}",
             }
     related_urls = vuln_occ_dict.get("related_urls")
