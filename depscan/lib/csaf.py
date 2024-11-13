@@ -7,7 +7,6 @@ from datetime import datetime
 from json import JSONDecodeError
 
 import cvss
-from cvss import CVSSError
 from packageurl import PackageURL
 
 import toml
@@ -1142,11 +1141,11 @@ def vdr_to_csaf(res):
     """
     cve = res.get("id", "")
     acknowledgements = get_acknowledgements(res.get("source", {}))
-    [products, product_status] = get_products(
+    products, product_status = get_products(
         res.get("affects", []), res.get("properties", [])
     )
     cwe, notes = parse_cwe(res.get("cwes", []))
-    cvss_v3 = parse_cvss(res.get("ratings", [{}]))
+    scores = parse_cvss(res.get("ratings", []))
     description = (
         res.get("description", "")
         .replace("\n", " ")
@@ -1167,7 +1166,7 @@ def vdr_to_csaf(res):
     vuln["product_status"] = product_status
     vuln["references"] = references
     vuln["ids"] = ids
-    vuln["scores"] = [{"cvss_v3": cvss_v3, "products": products}]
+    vuln["scores"] = [{"cvss_v3": score, "products": products} for score in scores]
     notes.append(
         {
             "category": "general",
@@ -1311,21 +1310,23 @@ def parse_cvss(ratings):
     :return: The parsed CVSS information as a single dictionary
     :rtype: dict
     """
-    if not ratings or not (vector_string := ratings[0].get("vector")):
-        return {}
-    if not vector_string or vector_string == "None":
-        return {}
-    try:
-        cvss_v3 = cvss.CVSS3(vector_string)
-        cvss_v3.check_mandatory()
-    except Exception:
-        return {}
-
-    cvss_v3_dict = cvss_v3.as_json()
-
-    cvss_v3 = {k: v for k, v in cvss_v3_dict.items() if v != "NOT_DEFINED"}
-
-    return cleanup_dict(cvss_v3)
+    scores = []
+    if not ratings:
+        return scores
+    for rating in ratings:
+        if not (vector_string := rating.get("vector")):
+            continue
+        if not vector_string.startswith("CVSS:3") or vector_string == "None":
+            continue
+        try:
+            cvss_v3 = cvss.CVSS3(vector_string)
+            cvss_v3.check_mandatory()
+        except Exception:
+            continue
+        cvss_v3_dict = cvss_v3.as_json()
+        cvss_v3 = {k: v for k, v in cvss_v3_dict.items() if v != "NOT_DEFINED"}
+        scores.append(cvss_v3)
+    return scores
 
 
 def format_references(advisories):
