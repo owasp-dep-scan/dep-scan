@@ -430,7 +430,7 @@ def test_parse_toml():
 
 def test_parse_cvss():
     assert parse_cvss([{
-        "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]) == {
+        "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]) == [{
         'attackComplexity': 'LOW',
         'attackVector': 'NETWORK',
         'availabilityImpact': 'HIGH',
@@ -455,8 +455,90 @@ def test_parse_cvss():
         'userInteraction': 'NONE',
         'vectorString': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
         'version': '3.0'
-    }
-    assert parse_cvss([{}]) == {}
+    }]
+    assert parse_cvss([]) == []
+    assert parse_cvss(
+        [{
+            "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+        }, {
+        'attackComplexity': 'LOW',
+        'attackVector': 'NETWORK',
+        'availabilityImpact': 'HIGH',
+        'baseScore': 9.8,
+        'baseSeverity': 'CRITICAL',
+        'confidentialityImpact': 'HIGH',
+        'environmentalScore': 9.8,
+        'environmentalSeverity': 'CRITICAL',
+        'integrityImpact': 'HIGH',
+        'modifiedAttackComplexity': 'LOW',
+        'modifiedAttackVector': 'NETWORK',
+        'modifiedAvailabilityImpact': 'HIGH',
+        'modifiedConfidentialityImpact': 'HIGH',
+        'modifiedIntegrityImpact': 'HIGH',
+        'modifiedPrivilegesRequired': 'NONE',
+        'modifiedScope': 'UNCHANGED',
+        'modifiedUserInteraction': 'NONE',
+        'privilegesRequired': 'NONE',
+        'scope': 'UNCHANGED',
+        'temporalScore': 9.8,
+        'temporalSeverity': 'CRITICAL',
+        'userInteraction': 'NONE',
+        'vectorString': 'CVSS:4.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+        'version': '4.0'
+    }]) == [{
+        'attackComplexity': 'LOW',
+        'attackVector': 'NETWORK',
+        'availabilityImpact': 'HIGH',
+        'baseScore': 9.8,
+        'baseSeverity': 'CRITICAL',
+        'confidentialityImpact': 'HIGH',
+        'environmentalScore': 9.8,
+        'environmentalSeverity': 'CRITICAL',
+        'integrityImpact': 'HIGH',
+        'modifiedAttackComplexity': 'LOW',
+        'modifiedAttackVector': 'NETWORK',
+        'modifiedAvailabilityImpact': 'HIGH',
+        'modifiedConfidentialityImpact': 'HIGH',
+        'modifiedIntegrityImpact': 'HIGH',
+        'modifiedPrivilegesRequired': 'NONE',
+        'modifiedScope': 'UNCHANGED',
+        'modifiedUserInteraction': 'NONE',
+        'privilegesRequired': 'NONE',
+        'scope': 'UNCHANGED',
+        'temporalScore': 9.8,
+        'temporalSeverity': 'CRITICAL',
+        'userInteraction': 'NONE',
+        'vectorString': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+        'version': '3.0'
+    }]
+    assert parse_cvss(
+        [{
+            'attackComplexity': 'LOW',
+            'attackVector': 'NETWORK',
+            'availabilityImpact': 'HIGH',
+            'baseScore': 9.8,
+            'baseSeverity': 'CRITICAL',
+            'confidentialityImpact': 'HIGH',
+            'environmentalScore': 9.8,
+            'environmentalSeverity': 'CRITICAL',
+            'integrityImpact': 'HIGH',
+            'modifiedAttackComplexity': 'LOW',
+            'modifiedAttackVector': 'NETWORK',
+            'modifiedAvailabilityImpact': 'HIGH',
+            'modifiedConfidentialityImpact': 'HIGH',
+            'modifiedIntegrityImpact': 'HIGH',
+            'modifiedPrivilegesRequired': 'NONE',
+            'modifiedScope': 'UNCHANGED',
+            'modifiedUserInteraction': 'NONE',
+            'privilegesRequired': 'NONE',
+            'scope': 'UNCHANGED',
+            'temporalScore': 9.8,
+            'temporalSeverity': 'CRITICAL',
+            'userInteraction': 'NONE',
+            'vectorString': 'CVSS:4.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
+            'version': '4.0'
+        }]
+    ) == []
 
 
 def test_get_products():
