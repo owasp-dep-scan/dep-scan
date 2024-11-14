@@ -59,8 +59,9 @@ LOGO = """
 """
 
 
-app = Quart(__name__)
+app = Quart(__name__, static_folder=None)
 app.config.from_prefixed_env()
+app.config["PROVIDE_AUTOMATIC_OPTIONS"] = True
 
 
 def build_args():
