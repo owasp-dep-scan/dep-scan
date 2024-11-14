@@ -1,0 +1,46 @@
+---
+slug: /
+sidebar_position: 1
+---
+
+# Dep-Scan
+
+OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for integration with ASPM/VM platforms and in CI environments.
+
+## Features
+
+- Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
+- Perform advanced reachability analysis for multiple languages (See reachability analysis)
+- Package vulnerability scanning is performed locally and is quite fast. No server is used!
+- Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
+- Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the CSAF Readme)
+- Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
+
+## Vulnerability Data Sources
+
+- OSV
+- NVD
+- GitHub
+- NPM
+- Linux vuln-list
+
+## Linux Distros Supported
+
+- AlmaLinux
+- Debian
+- Alpine
+- Amazon Linux
+- Arch Linux
+- RHEL/CentOS
+- Rocky Linux
+- Ubuntu
+- OpenSUSE/SLES
+- Photon
+- Chainguard
+- Wolfi OS
+
+:::tip
+
+Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `` for the first time. dep-scan would also download the appropriate database based on project type automatically.
+
+:::
