@@ -99,10 +99,19 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 "name",
                 "version",
                 "yearly_downloads_latest",
+                "is_insecure",
                 "has_insecure_dependencies",
                 "created",
                 "latest_version_time",
-                "age_days"
+                "age_days",
+                "package_critical",
+                "package_high",
+                "package_medium",
+                "package_low",
+                "dependencies_critical",
+                "dependencies_high",
+                "dependencies_medium",
+                "dependencies_low"
             ]
         )
         with Progress(
@@ -123,9 +132,6 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                     description=f"Checking the package {purl}",
                 )
                 metadata_dict = metadata_from_registry("npm", {}, [pkg], None)
-                is_insecure = pkg.get("insecure")
-                has_insecure_dependencies = False
-                vuln_stats = defaultdict(int)
                 ind_versions_count = 0
                 for name, value in metadata_dict.items():
                     download_stats = get_npm_download_stats(name)
@@ -146,11 +152,28 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                         reverse=True,
                     )
                     for the_version_str in all_versions_str:
+                        is_insecure = False
+                        has_insecure_dependencies = False
+                        package_vuln_stats = defaultdict(int)
+                        deps_vuln_stats = defaultdict(int)
                         the_version = all_versions.get(the_version_str)
                         # This is an edge case where there could be a version the registry doesn't know about
                         if not the_version or ind_versions_count > 4:
                             continue
                         ind_versions_count += 1
+                        progress.update(
+                            task,
+                            description=f"Checking the version {the_version.get("name")}@{the_version_str}",
+                        )
+                        if res := search_by_purl_like(f'pkg:npm/{the_version.get("name").replace("@", "%40")}@{the_version_str}', with_data=True):
+                            get_vuln_stats(res, package_vuln_stats)
+                        for k, v in package_vuln_stats.items():
+                            if v:
+                                is_insecure = True
+                                break
+                        if not insecure_only and is_insecure:
+                            progress.advance(task)
+                            continue
                         version_deps = the_version.get("dependencies", {})
                         version_dev_deps = the_version.get("devDependencies", {})
                         if time_info.get(the_version_str):
@@ -161,7 +184,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 description=f"Checking the dependency `{k}` for vulnerabilities",
                             )
                             if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
-                                get_vuln_stats(res, vuln_stats)
+                                get_vuln_stats(res, deps_vuln_stats)
                         for k, v in version_dev_deps.items():
                             if k.startswith("@types/"):
                                 continue
@@ -170,8 +193,8 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 description=f"Checking the dev dependency `{k}` for vulnerabilities",
                             )
                             if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
-                                get_vuln_stats(res, vuln_stats)
-                        for k, v in vuln_stats.items():
+                                get_vuln_stats(res, deps_vuln_stats)
+                        for k, v in deps_vuln_stats.items():
                             if v:
                                 has_insecure_dependencies = True
                                 break
@@ -185,10 +208,19 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 name,
                                 the_version_str,
                                 download_stats.get("downloads") if the_version_str == latest_version else None,
+                                is_insecure,
                                 has_insecure_dependencies,
                                 created,
                                 latest_version_time,
-                                created_now_diff.days
+                                created_now_diff.days,
+                                package_vuln_stats.get("critical", 0),
+                                package_vuln_stats.get("high", 0),
+                                package_vuln_stats.get("medium", 0),
+                                package_vuln_stats.get("low", 0),
+                                deps_vuln_stats.get("critical", 0),
+                                deps_vuln_stats.get("high", 0),
+                                deps_vuln_stats.get("medium", 0),
+                                deps_vuln_stats.get("low", 0)
                             ]
                         )
                 progress.advance(task)
