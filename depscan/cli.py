@@ -432,7 +432,7 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     # Update the tools section
     if isinstance(tools, dict):
         bom_data = summarise_tools(tools, metadata, bom_data)
-    if bom_data["components"]:
+    if bom_data.get("components"):
         bom_data = remove_extra_properties(bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     json_dump(vdr_file, bom_data, error_msg=f"Unable to generate VDR file at {vdr_file}", log=LOG)
@@ -449,7 +449,7 @@ def remove_extra_properties(bom_data):
         for key, value in component.items():
             new_component |= {key: value}
 
-        if component["properties"]:      
+        if component.get("properties"):      
             for prop in component["properties"]:
                 new_property = {}
                 keep_property = True
