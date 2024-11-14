@@ -448,19 +448,21 @@ def remove_extra_properties(bom_data):
 
         for key, value in component.items():
             new_component |= {key: value}
-                
-        for prop in component["properties"]:
-            new_property = {}
-            keep_property = True
-            for key, value in prop.items():
-                if value not in exclude_properties:
-                    new_property |= {key: value}
-                else:
-                    keep_property = False
-            if keep_property == True:
-                new_properties.append(new_property)
 
-        new_component["properties"] = new_properties
+        if component["properties"]:      
+            for prop in component["properties"]:
+                new_property = {}
+                keep_property = True
+                for key, value in prop.items():
+                    if value not in exclude_properties:
+                        new_property |= {key: value}
+                    else:
+                        keep_property = False
+                if keep_property == True:
+                    new_properties.append(new_property)
+
+            new_component["properties"] = new_properties
+            
         new_components.append(new_component)
 
     bom_data["components"] = new_components
