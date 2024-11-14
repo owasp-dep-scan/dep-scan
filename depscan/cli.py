@@ -67,6 +67,11 @@ def build_args():
     """
     Constructs command line arguments for the depscan tool
     """
+    parser = build_parser()
+    return parser.parse_args()
+
+
+def build_parser():
     parser = argparse.ArgumentParser(
         description="Fully open-source security and license audit for "
         "application dependencies and container images based on "
@@ -309,7 +314,7 @@ def build_args():
         action="version",
         version="%(prog)s " + get_version(),
     )
-    return parser.parse_args()
+    return parser
 
 
 # Deprecated
@@ -319,8 +324,6 @@ def scan(project_type, pkg_list):
 
     :param project_type: Project Type
     :param pkg_list: List of packages
-    :param suggest_mode: True if package fix version should be normalized across
-            findings
     :returns: A list of package issue objects or dictionaries.
               A dictionary mapping package names to their aliases.
               A dictionary mapping packages to their suggested fix versions.
@@ -353,7 +356,6 @@ def summarise(
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
     :param purl_aliases: Package URL to package name aliases
-    :param sug_version_dict: Dictionary containing version suggestions
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
     :param bom_file: SBOM file
@@ -591,8 +593,6 @@ async def run_scan():
         tmp_bom_file = tempfile.NamedTemporaryFile(
             delete=False, suffix=f".bom.{bom_file_suffix}"
         )
-        with open(tmp_bom_file.name, "w", encoding="utf-8") as f:
-            f.write(bom_file_content)
         path = tmp_bom_file.name
         file_write(path, bom_file_content)
 
@@ -696,12 +696,11 @@ def run_server(args):
     )
 
 
-def main():
+def main(args):
     """
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
     """
-    args = build_args()
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
@@ -1076,4 +1075,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli_args = build_args()
+    main(cli_args)

@@ -1,7 +1,13 @@
-name: Snapshot Testing
+name: Generate Depscan Snapshots
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.head_ref || github.run_id }}"
@@ -23,10 +29,9 @@ jobs:
       -  name: Install depscan
          run: |
            python -m pip install --upgrade pip
-           python -m venv venv
-           source venv/bin/activate
+           python -m venv .venv
+           source .venv/bin/activate
            pip install .
-           vdb --download-image
 
       - name: Cache vdb
         id: cache-vdb
@@ -34,3 +39,38 @@ jobs:
         with:
           path: /home/runner/.local/share/vdb
           key: vdb-snapshot-cache
+
+      - name: Get boms
+        run: |
+           git clone https://github.com/appthreat/cdxgen-samples.git /home/runner/work/new_snapshots
+           cd /home/runner/work/new_snapshots
+           git checkout b5dc7d02548bc8f8983d981dc21de5612e37731c
+
+      - name: Get original snapshots
+        run: |
+          git clone https://github.com/AppThreat/dep-scan-snapshots.git /home/runner/work/original_snapshots
+
+      - name: Generate snapshots and test
+        env:
+          DEPSCAN_CSAF_TEMPLATE: "/home/runner/work/dep-scan/dep-scan/contrib/csaf.toml"
+          INPUT_THANK_YOU: "I have sponsored OWASP-dep-scan."
+        run: |
+          source .venv/bin/activate
+          chmod +x /home/runner/work/dep-scan/dep-scan/test/snapshots.py
+          /home/runner/work/dep-scan/dep-scan/test/snapshots.py
+          if test -f /home/runner/work/new_snapshots/diffs.json; then
+            echo "status=FAILED" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: |
+            /home/runner/work/new_snapshots/*.vdr.json
+            /home/runner/work/new_snapshots/*.csaf_v1.json
+            /home/runner/work/new_snapshots/diffs.json
+            /home/runner/work/new_snapshots/*.html
+
+      - name: Exit with error
+        if: ${{ env.status == 'FAILED' }}
+        run: exit 1
