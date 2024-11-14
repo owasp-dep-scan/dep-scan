@@ -432,8 +432,39 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     # Update the tools section
     if isinstance(tools, dict):
         bom_data = summarise_tools(tools, metadata, bom_data)
+    if bom_data["components"]:
+        bom_data = remove_extra_properties(bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     json_dump(vdr_file, bom_data, error_msg=f"Unable to generate VDR file at {vdr_file}", log=LOG)
+
+
+def remove_extra_properties(bom_data):
+    new_components = []
+    exclude_properties = {"Namespaces", "ImportedModules"}
+
+    for component in bom_data["components"]:
+        new_properties = []
+        new_component = {}
+
+        for key, value in component.items():
+            new_component |= {key: value}
+                
+        for prop in component["properties"]:
+            new_property = {}
+            keep_property = True
+            for key, value in prop.items():
+                if value not in exclude_properties:
+                    new_property |= {key: value}
+                else:
+                    keep_property = False
+            if keep_property == True:
+                new_properties.append(new_property)
+
+        new_component["properties"] = new_properties
+        new_components.append(new_component)
+
+    bom_data["components"] = new_components
+    return bom_data
 
 
 def set_project_types(args, src_dir):
