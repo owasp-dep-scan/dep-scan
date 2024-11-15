@@ -1,3 +1,6 @@
+> [!NOTE]
+> Consider upgrading to dep-scan v6 at your convenience.
+
 # Introduction
 
 OWASP dep-scan is a next-generation security and risk audit tool based on known vulnerabilities, advisories, and license limitations for project dependencies. Both local repositories and container images are supported as the input, and the tool is ideal for integration with ASPM/VM platforms and in CI environments.
@@ -256,13 +259,13 @@ Refer to the docker tests under the GitHub action workflow for this repo for mor
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+docker run --rm -it -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
 ```
 
 To scan with custom environment variables based configuration
 
 ```bash
-docker run --rm \
+docker run --rm -it \
     -e VDB_HOME=/db \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
@@ -353,7 +356,7 @@ The following environment variables can be used to customize the behavior.
 Example 1 - Run depscan with app-only vdb.
 
 ```shell
-docker run --rm \
+docker run --rm -it \
     -e VDB_HOME=/db \
     -e VDB_APP_ONLY=true \
     -e SCAN_DEBUG_MODE=debug \
@@ -364,7 +367,7 @@ docker run --rm \
 Example 2 - Run depscan with a larger 10 year app-only vdb.
 
 ```shell
-docker run --rm \
+docker run --rm -it \
     -e VDB_HOME=/db \
     -e VDB_APP_ONLY=true \
     -e USE_VDB_10Y=true \
