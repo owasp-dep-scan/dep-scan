@@ -697,11 +697,12 @@ def run_server(args):
     )
 
 
-def main(args):
+def main():
     """
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
     """
+    args = build_args()
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
@@ -1076,5 +1077,4 @@ def main(args):
 
 
 if __name__ == "__main__":
-    cli_args = build_args()
-    main(cli_args)
+    main()
