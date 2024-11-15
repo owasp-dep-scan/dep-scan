@@ -329,7 +329,7 @@ def test_parse_toml():
 
 def test_parse_cvss():
     assert parse_cvss([{
-        "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]) == {
+        "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]) == [{
         'attackComplexity': 'LOW',
         'attackVector': 'NETWORK',
         'availabilityImpact': 'HIGH',
@@ -354,8 +354,8 @@ def test_parse_cvss():
         'userInteraction': 'NONE',
         'vectorString': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H',
         'version': '3.0'
-    }
-    assert parse_cvss([{}]) == {}
+    }]
+    assert parse_cvss([]) == []
 
 
 def test_get_products():
