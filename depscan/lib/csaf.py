@@ -701,8 +701,8 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
     agg_score = set()
     for r in pkg_vulnerabilities:
         new_vuln = vdr_to_csaf(r)
-        if sev := new_vuln["scores"][0]["cvss_v3"].get("baseSeverity"):
-            agg_score.add(SEVERITY_REF.get(sev.lower()))
+        if sev := get_severity(new_vuln["scores"]):
+            agg_score.add(sev)
         new_results["vulnerabilities"].append(new_vuln)
     if agg_score := list(agg_score):
         agg_score.sort()
@@ -714,3 +714,15 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
         new_results["document"]["aggregate_severity"] = {"text": agg_severity.capitalize()}
 
     return new_results
+
+
+def get_severity(scores: List):
+    severities = []
+    for score in scores:
+        if s := score.get("cvss_v3", {}).get("baseSeverity"):
+            severities.append(s)
+    if not severities:
+        return None
+    severities.sort()
+    return SEVERITY_REF.get(severities[-1].lower())
+
