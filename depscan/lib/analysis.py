@@ -1169,12 +1169,20 @@ def parse_metrics(metrics):
     severity = "unknown"
     score = ""
     if not metrics:
-        return vector, method
-    if metrics.root and (m := (metrics.root[0].cvssV3_1 or metrics.root[0].cvssV3_0)):
-        vector = m.vectorString
-        severity = m.baseSeverity.value
-        method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
-        score = m.baseScore.root
+        return vector, method, severity, score
+    if metrics.root:
+        for metric in metrics.root:
+            if metric.cvssV4_0:
+                vector = metric.cvssV4_0.vectorString
+                method = "CVSSv4"
+                severity = metric.cvssV4_0.baseSeverity.value
+                score = metric.cvssV4_0.baseScore.root
+                break
+            elif method != "CVSSv31" and (m := (metric.cvssV3_1 or metric.cvssV3_0)):
+                vector = m.vectorString
+                method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
+                severity = m.baseSeverity.value
+                score = m.baseScore.root
     return vector, method, severity, score
 
 

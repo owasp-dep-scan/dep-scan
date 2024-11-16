@@ -3,7 +3,7 @@ import re
 import sys
 from copy import deepcopy
 from datetime import datetime
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 import cvss
 import toml
@@ -36,7 +36,7 @@ def vdr_to_csaf(res):
     acknowledgements = get_acknowledgements(res.get("source", {}))
     products, product_status = get_products(res.get("affects", []))
     cwe, notes = parse_cwe(res.get("cwes", []))
-    cvss_v3 = parse_cvss(res.get("ratings", [{}]))
+    scores = parse_cvss(res.get("ratings", []))
     description = res.get("description", "").replace("\n", " ").replace("\t", " ")
     details = res.get("detail", "").replace("\n", " ").replace("\t", " ")
     refs_to_add = res.get("references", [])
@@ -64,7 +64,7 @@ def vdr_to_csaf(res):
         "product_status": product_status,
         "references": references,
         "ids": ids,
-        "scores": [{"cvss_v3": cvss_v3, "products": products}],
+        "scores": [{"cvss_v3": score, "products": products} for score in scores],
         "notes": notes,
         "title": res.get("bom-ref", ""),
     }
@@ -165,7 +165,7 @@ def parse_cwe(cwe):
     return fmt_cwe, new_notes
 
 
-def parse_cvss(ratings: List[Dict]) -> Dict:
+def parse_cvss(ratings: List[Optional[Dict]]) -> List[Optional[Dict]]:
     """
     Parses the CVSS information from pkg_vulnerabilities
 
@@ -173,20 +173,23 @@ def parse_cvss(ratings: List[Dict]) -> Dict:
     :type ratings: list[dict]
 
     :return: The parsed CVSS information as a single dictionary
-    :rtype: dict
+    :rtype: list[dict]
     """
-    if not ratings or not (vector_string := ratings[0].get("vector")):
-        return {}
-    if vector_string == "None":
-        return {}
-    try:
-        cvss_v3 = cvss.CVSS3(vector_string)
-        cvss_v3.check_mandatory()
-    except (CVSSError, ValueError):
-        return {}
-    cvss_v3_dict = cvss_v3.as_json()
-    cvss_v3 = {k: v for k, v in cvss_v3_dict.items() if v != "NOT_DEFINED"}
-    return cleanup_dict(cvss_v3)
+    scores = []
+    if not ratings:
+        return scores
+    for rating in ratings:
+        if not (vector_string := rating.get("vector")) or not vector_string.startswith("CVSS:3"):
+            continue
+        try:
+            cvss_v3 = cvss.CVSS3(vector_string)
+            cvss_v3.check_mandatory()
+        except Exception:
+            continue
+        cvss_v3_dict = cvss_v3.as_json()
+        cvss_v3 = {k: v for k, v in cvss_v3_dict.items() if v != "NOT_DEFINED"}
+        scores.append(cvss_v3)
+    return scores
 
 
 def format_references(references: List) -> Tuple[List[Dict], List[Dict]]:
@@ -698,8 +701,8 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
     agg_score = set()
     for r in pkg_vulnerabilities:
         new_vuln = vdr_to_csaf(r)
-        if sev := new_vuln["scores"][0]["cvss_v3"].get("baseSeverity"):
-            agg_score.add(SEVERITY_REF.get(sev.lower()))
+        if sev := get_severity(new_vuln["scores"]):
+            agg_score.add(sev)
         new_results["vulnerabilities"].append(new_vuln)
     if agg_score := list(agg_score):
         agg_score.sort()
@@ -711,3 +714,15 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
         new_results["document"]["aggregate_severity"] = {"text": agg_severity.capitalize()}
 
     return new_results
+
+
+def get_severity(scores: List):
+    severities = []
+    for score in scores:
+        if s := score.get("cvss_v3", {}).get("baseSeverity"):
+            severities.append(s)
+    if not severities:
+        return None
+    severities.sort()
+    return SEVERITY_REF.get(severities[-1].lower())
+
