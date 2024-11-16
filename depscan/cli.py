@@ -697,7 +697,7 @@ def run_server(args):
     )
 
 
-def main(args):
+def run_depscan(args):
     """
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
@@ -1075,6 +1075,10 @@ def main(args):
         )
 
 
-if __name__ == "__main__":
+def main():
     cli_args = build_args()
-    main(cli_args)
+    run_depscan(cli_args)
+
+
+if __name__ == "__main__":
+    main()
