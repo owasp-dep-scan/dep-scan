@@ -15,7 +15,7 @@ from custom_json_diff.lib.custom_diff import (
 from custom_json_diff.lib.custom_diff_classes import Options
 from custom_json_diff.lib.utils import json_load, json_dump
 
-from depscan.cli import build_parser, main as depscan
+from depscan.cli import build_parser, run_depscan
 from depscan.lib.utils import get_description_detail
 
 VERSION_REPLACE = re.compile(r"(?<=to version )\S+", re.IGNORECASE)
@@ -103,7 +103,7 @@ def generate_new_snapshots(bom_dir: str, projects: Set):
         parser = build_parser()
         bom_file = os.path.join(bom_dir, f"{p}-bom.json")
         args = parser.parse_args(["--bom", bom_file, "--csaf", "--no-banner", "--no-vuln-table"])
-        depscan(args)
+        run_depscan(args)
 
 
 def generate_snapshot_diffs(dir1: str, dir2: str, projects: List, v5: bool):
