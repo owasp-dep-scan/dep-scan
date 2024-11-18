@@ -106,7 +106,7 @@ The full list of options is below:
 usage: cli.py [-h] [--no-banner] [] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM]
               [-i SRC_DIR_IMAGE] [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
               [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
-              [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
+              [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [--exclude-components-properties LIST_OF_PROPERTY_NAMES] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
@@ -160,6 +160,10 @@ options:
   --reachables-slices-file REACHABLES_SLICES_FILE
                         Path for the reachables slices file created by atom.
   --purl SEARCH_PURL    Scan a single package url.
+  --exclude-components-properties LIST_OF_PROPERTY_NAMES
+                        Comma separated list of properties to exclude from the output VDR BOM (sbom-universal.vdr.json) by the property name (i.e. ImportedModules).
+                        The property name is treated as a regular expression in searching.
+                        The properties appear in the JSON structure under components.properties.
   -v, --version         Display the version
 ```
 

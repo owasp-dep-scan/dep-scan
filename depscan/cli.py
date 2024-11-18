@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tempfile
+import re
 
 from custom_json_diff.lib.utils import json_load, json_dump, file_write
 from defusedxml.ElementTree import parse
@@ -315,6 +316,13 @@ def build_parser():
         action="version",
         version="%(prog)s " + get_version(),
     )
+    parser.add_argument(
+        "--exclude-components-properties",
+        dest="exclude_components_properties",
+        help="Comma separated list of properties to exclude from the output VDR BOM (sbom-universal.vdr.json) by the property name (i.e. ImportedModules)."
+        "The property name is treated as a regular expression in searching."
+        "The properties appear in the JSON structure under components.properties.",
+    )
     return parser
 
 
@@ -347,6 +355,7 @@ def summarise(
     scoped_pkgs,
     report_file,
     bom_file,
+    exclude_components_properties,
     no_vuln_table=False,
     direct_purls=None,
     reached_purls=None,
@@ -382,7 +391,7 @@ def summarise(
     vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
     if pkg_vulnerabilities and bom_file:
         if bom_data := json_load(bom_file, log=LOG):
-            export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+            export_bom(bom_data, pkg_vulnerabilities, vdr_file, exclude_components_properties)
         else:
             LOG.warning("Unable to generate VDR file for this scan.")
     summary = summary_stats(pkg_vulnerabilities)
@@ -413,7 +422,7 @@ def summarise_tools(tools, metadata, bom_data):
     return bom_data
 
 
-def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
+def export_bom(bom_data, pkg_vulnerabilities, vdr_file, exclude_components_properties):
     """
     Exports the Bill of Materials (BOM) data along with package vulnerabilities
     to a Vulnerability Data Report (VDR) file.
@@ -432,41 +441,25 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     # Update the tools section
     if isinstance(tools, dict):
         bom_data = summarise_tools(tools, metadata, bom_data)
-    if bom_data.get("components"):
-        bom_data = remove_extra_properties(bom_data)
+    if exclude_components_properties and bom_data.get("components"):
+        bom_data = remove_extra_properties(exclude_components_properties, bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     json_dump(vdr_file, bom_data, error_msg=f"Unable to generate VDR file at {vdr_file}", log=LOG)
 
 
-def remove_extra_properties(bom_data):
-    new_components = []
-    exclude_properties = {"Namespaces", "ImportedModules"}
-
-    for component in bom_data["components"]:
-        new_properties = []
-        new_component = {}
-
-        for key, value in component.items():
-            new_component |= {key: value}
-
-        if component.get("properties"):      
-            for prop in component["properties"]:
-                new_property = {}
-                keep_property = True
-                for key, value in prop.items():
-                    if value not in exclude_properties:
-                        new_property |= {key: value}
-                    else:
-                        keep_property = False
-                if keep_property == True:
-                    new_properties.append(new_property)
-
-            new_component["properties"] = new_properties
-            
-        new_components.append(new_component)
-
-    bom_data["components"] = new_components
+def remove_extra_properties(exclude_components_properties, bom_data):
+    exclude_properties = exclude_components_properties.split(",")
+    for i, component in enumerate(bom_data["components"]):
+        if properties := component.get("properties"):
+            bom_data["components"][i]["properties"] = [p for p in properties if not regex_matches_name(p.get("name"), exclude_properties)]
     return bom_data
+
+
+def regex_matches_name(name, list_of_regex):
+    for regex in list_of_regex:
+        if re.compile(regex).match(name):
+            return True
+    return False
 
 
 def set_project_types(args, src_dir):
@@ -1048,6 +1041,7 @@ def main(args):
             scoped_pkgs=scoped_pkgs,
             report_file=report_file,
             bom_file=bom_file,
+            exclude_components_properties = args.exclude_components_properties,
             no_vuln_table=args.no_vuln_table,
             direct_purls=direct_purls,
             reached_purls=reached_purls,
