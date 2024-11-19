@@ -1,3 +1,28 @@
 ---
 sidebar_position: 2
+title: Quick Start
 ---
+# Quick Start
+
+Dep-scan can be run as a server or using cli. 
+:::tip
+Recommended way to use dep-scan via is to use the docker container
+:::
+
+## Dep-scan cli (docker)
+
+```bash
+cd /path/to/your/project
+docker run --rm -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+```
+
+for more usage options view [Usages Section](cli-usage#scanning-projects-locally-docker-container)
+
+## Dep-scan server (docker)
+
+Running the following command in dep-scan repository should start dep-scan server on port 7070.
+```bash
+docker compose up
+```
+
+
