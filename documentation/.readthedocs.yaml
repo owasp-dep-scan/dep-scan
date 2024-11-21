@@ -4,9 +4,8 @@ build:
     os: ubuntu-22.04
     tools:
         nodejs: "20"
-    jobs:
-        post_install:
-            - cd ./documentation && npm i && cd ..
-            - cd ./documentation && npm run build && cd ..
-            - cd ./documentation && mv ./.docusaurus/* $READTHEDOCS_OUTPUT/html
+    commands:
+        - cd ./documentation && npm i && cd ..
+        - cd ./documentation && npm run build && cd ..
+        - cd ./documentation && mv ./.docusaurus/* $READTHEDOCS_OUTPUT/html
 
