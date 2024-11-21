@@ -3,7 +3,7 @@ version: 2
 build:
     os: ubuntu-22.04
     tools:
-        nodejs: "21"
+        nodejs: "20"
     jobs:
         post_install:
             - cd ./documentation && npm i && cd ..
