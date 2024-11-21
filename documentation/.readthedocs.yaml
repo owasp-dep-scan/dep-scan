@@ -7,5 +7,6 @@ build:
     commands:
         - cd ./documentation && npm i && cd ..
         - cd ./documentation && npm run build && cd ..
-        - cd ./documentation && mv ./.docusaurus/* $READTHEDOCS_OUTPUT/html
+        - mkdir -p $READTHEDOCS_OUTPUT/html/
+        - cd ./documentation && mv ./build/* $READTHEDOCS_OUTPUT/html
 
