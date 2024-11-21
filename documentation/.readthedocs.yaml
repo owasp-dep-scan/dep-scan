@@ -1,0 +1,12 @@
+version: 2
+
+build:
+    os: ubuntu-22.04
+    tools:
+        nodejs: "20"
+    commands:
+        - cd ./documentation && npm i && cd ..
+        - cd ./documentation && npm run build && cd ..
+        - mkdir -p $READTHEDOCS_OUTPUT/html/
+        - cd ./documentation && mv ./build/* $READTHEDOCS_OUTPUT/html
+

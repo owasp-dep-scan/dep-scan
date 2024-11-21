@@ -2,22 +2,16 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
   title: 'Dep-Scan',
   tagline: 'Next generation security audit',
   favicon: 'img/dep-scan-large.png',
 
-  // Set the production url of your site here
-  url: 'https://your-docusaurus-site.example.com',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
+  url: 'https://depscan.readthedocs.io/',
   baseUrl: '/',
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'AppThreat', // Usually your GitHub org/user name.
+  organizationName: 'owasp-dep-scan', // Usually your GitHub org/user name.
   projectName: 'dep-scan', // Usually your repo name.
 
   onBrokenLinks: 'warn',
@@ -37,9 +31,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          // Please change this to your repo.
+          
           routeBasePath: '/',
-          // Remove this to remove the "edit this page" links.
+          
           editUrl:
             'https://github.com/owasp-dep-scan/dep-scan/tree/master/docs',
         },
@@ -49,11 +43,9 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
+          
           editUrl:
             'https://github.com/owasp-dep-scan/dep-scan/tree/master/docs',
-          // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
@@ -66,7 +58,6 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
       title: 'OWASP Dep-Scan',
@@ -94,17 +85,13 @@ const config: Config = {
               href: 'https://stackoverflow.com/questions/tagged/docusaurus',
             },
             {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
-            },
-            {
-              label: 'X',
-              href: 'https://x.com/docusaurus',
+              label: 'Github',
+              href: 'https://github.com/owasp-dep-scan/dep-scan',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} OWASP Foundation. Built with Docusaurus and ❤️.`,
     },
     prism: {
       theme: prismThemes.github,
