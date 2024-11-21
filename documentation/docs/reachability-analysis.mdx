@@ -1,0 +1,37 @@
+---
+sidebar_position: 5
+---
+# Reachability Analysis
+
+Depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
+
+To receive a verbose output including the reachable flows, pass the argument `--explain`
+
+```shell
+--profile research -t language [--explain]
+```
+
+## Example analysis for a Java project
+
+```shell
+depscan --profile research -t java -i <source directory> --reports-dir <reports directory> --explain
+```
+
+## Example analysis for a JavaScript project
+
+```shell
+depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --explain
+```
+
+## Example analysis for a PHP project
+
+Ensure PHP > 7.4 is installed. However, we support scanning PHP 5.2 - 8.3. Alternatively, use the depscan container image.
+
+```shell
+depscan --profile research -t php -i <source directory> --reports-dir <reports directory> --explain
+```
+
+[//]: # (    <img src="docs/php-reach1.png" alt="PHP Reachability" width="256">)
+
+[//]: # ()
+[//]: # (    <img src="docs/not-reachable.png" alt="PHP NOT Reachability" width="256">)

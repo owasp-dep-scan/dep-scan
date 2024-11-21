@@ -1,0 +1,11 @@
+---
+title: Environment Variables
+sidebar_position: 7
+---
+# Customization through environment variables
+
+The following environment variables can be used to customize the behavior.
+
+-   VDB_HOME - Directory to use for caching database. For docker-based execution, this directory should get mounted as a volume from the host
+-   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdbgz:v5
+-   USE_VDB_10Y - Set to true to use the larger 10-year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5

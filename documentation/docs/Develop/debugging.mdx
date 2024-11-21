@@ -1,0 +1,38 @@
+---
+position: 3
+title: Debugging
+---
+
+# Debugging
+
+This page teachs users to setup python debugger for dep-scan project.
+
+## Debugging using Pycharm
+
+1. Open `dep-scan` using pycharm, when you open the project for the first time it will take some time initializing everything.
+![1](/img/develop/debug/1.png)
+2. Procede by updating your python environment set in Pycharm.  
+    a. Click on Python3.x on the bottom right corner of Pycharm  
+    b. Choose "Add New Interpreter" > "Add Local Interpreter".  
+    c. Choose `Virtualenv Environment` and existing and find the `venv` folder inside of dep-scan.(Can be different depending on your system)  
+![1](/img/develop/debug/2.png)
+3. You may add a debugger point to any part of dep-scan code. For example we are pointing it to `main()` function in `dep-scan/cli.py` as this is activated whenever we run dep-scan using the cli.  
+![1](/img/develop/debug/3.png)
+4. Go to Pycharms top bar and click on "Current File" > "Edit Configurations...".  
+![1](/img/develop/debug/4.png)
+5. Add a new configurations and choose "Python".  
+![1](/img/develop/debug/5.png)
+6. In the following dialog:  
+    a. add a name to your config  
+    b. then next to script button choose the `cli.py` file.  
+    c. add arguments that you want to test.  
+    d. finally click on save.
+![1](/img/develop/debug/6.png)  
+7. Press the debug button.  
+![1](/img/develop/debug/7.png)
+8. Success!! 🥳 
+![1](/img/develop/debug/8.png)
+
+{/* ## Debugging using VSCode
+
+## Debugging using PDB */}
