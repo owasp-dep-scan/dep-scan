@@ -6,7 +6,7 @@ build:
         nodejs: "22"
     jobs:
         post_install:
-            # - npm --prefix ./documentation i ./documentation
+            
             - npm i
             - npm run build
             - mv ./.docusaurus/* $READTHEDOCS_OUTPUT/html
