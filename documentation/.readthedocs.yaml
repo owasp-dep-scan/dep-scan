@@ -11,7 +11,3 @@ build:
             - npm run build
             - mv ./.docusaurus/* $READTHEDOCS_OUTPUT/html
 
-nodejs:
-    install:
-        - requirements: documentation/package.json
-
