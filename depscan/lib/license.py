@@ -2,7 +2,7 @@ import json
 
 import yaml
 
-from depscan.lib.utils import find_files
+from depscan.lib.utils.utils import find_files
 
 
 def build_license_data(license_dir, spdx_license_list):

@@ -10,13 +10,59 @@ from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 
 from depscan.lib.logger import LOG
-from depscan.lib.utils import cleanup_license_string, find_files
+from depscan.lib.utils.utils import cleanup_license_string, find_files
+from depscan.lib.utils.blint_utils import build_blint_args, rename_cdxgen_file
+from blint.cli import run_blint
 
 headers = {
     "Content-Type": "application/json",
     "Accept-Encoding": "gzip",
 }
 
+def set_bom_file_creation_status(args, type_report_file, project_type, src_dir):
+    """
+    If there is args.search_purl that would mean this we are only scanning single purl, so no need to run cdxgen.
+    Otherwise, we need BOM. In order to speed up the building process you may provide your own BOM.
+    preferred if the BOM is created by cdxgen.
+    When used with --binary-analysis argument we utilize both blint and cdxgen.
+    """
+    if args.search_purl:
+        bom_file = None
+        creation_status = True
+    # Are we scanning a bom file
+    elif args.bom and os.path.exists(args.bom):
+        bom_file = args.bom
+        creation_status = True
+    else:
+        if args.profile in ("appsec", "research"):
+            # The bom file has to be called bom.json for atom reachables :(
+            bom_file = os.path.join(src_dir, "bom.json")
+        else:
+            bom_file = type_report_file.replace("depscan-", "sbom-")
+        creation_status = create_bom(
+            project_type,
+            bom_file,
+            src_dir,
+            args.deep_scan,
+            {
+                "cdxgen_server": args.cdxgen_server,
+                "profile": args.profile,
+                "cdxgen_args": args.cdxgen_args,
+            },
+        )
+    if args.binary_analysis:
+        # if both --blint-args and os environment then we give precedence to passed argument
+        blint_args = args.blint_args
+        if not blint_args and os.getenv("BLINT_ARGS", ""):
+            blint_args = os.getenv("BLINT_ARGS", "")
+        creation_status = create_blint_bom(
+            bom_file,
+            creation_status,
+            src_dir,
+            args.deep_scan,
+            args.blint_args
+        )
+    return bom_file, creation_status
 
 def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
     """
@@ -409,6 +455,22 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
         LOG.warning("Unable to locate cdxgen command. ")
     return os.path.exists(bom_file)
 
+def create_blint_bom(bom_file, creation_status, src_dir, deep_scan, blint_args):
+    if not blint_args:
+        blint_args = ""
+    if deep_scan:
+        blint_args += " --deep"
+    if cdxgen_bom := rename_cdxgen_file(creation_status, bom_file):
+        blint_args += f" --bom-src {cdxgen_bom}"
+    
+    bom_dir = os.path.dirname(bom_file)
+    blint_args = f"sbom -i {src_dir} -o {bom_file} {blint_args}"
+
+    args = build_blint_args(blint_args)
+    # add sbom arguments
+    
+    run_blint(args, bom_dir, [src_dir])
+    return os.path.exists(bom_file)
 
 def submit_bom(reports_dir, threatdb_params):
     """

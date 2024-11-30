@@ -8,7 +8,6 @@ from typing import List, Dict, Tuple, Optional
 import cvss
 import toml
 from custom_json_diff.lib.utils import json_load, json_dump, file_write, file_read
-from cvss import CVSSError
 from packageurl import PackageURL
 from vdb.lib import convert_time
 
@@ -18,7 +17,7 @@ from depscan.lib.config import (
     CWE_MAP, TOML_TEMPLATE,
 )
 from depscan.lib.logger import LOG
-from depscan.lib.utils import format_system_name
+from depscan.lib.utils.utils import format_system_name
 from depscan import get_version
 
 

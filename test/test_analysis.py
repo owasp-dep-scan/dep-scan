@@ -5,7 +5,7 @@ import pytest
 
 from depscan.lib import analysis
 from depscan.lib.analysis import cvss_to_vdr_rating, get_version_range, split_cwe, pkg_sub_tree
-from depscan.lib.utils import get_suggested_version_map
+from depscan.lib.utils.utils import get_suggested_version_map
 
 
 @pytest.fixture

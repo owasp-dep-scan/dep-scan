@@ -30,7 +30,7 @@ from depscan.lib.config import (
 )
 from depscan.lib.csaf import get_ref_summary_helper
 from depscan.lib.logger import LOG, console
-from depscan.lib.utils import (
+from depscan.lib.utils.utils import (
     max_version,
     get_description_detail,
     format_system_name,

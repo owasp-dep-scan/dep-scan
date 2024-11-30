@@ -16,7 +16,7 @@ from custom_json_diff.lib.custom_diff_classes import Options
 from custom_json_diff.lib.utils import json_load, json_dump
 
 from depscan.cli import build_parser, run_depscan
-from depscan.lib.utils import get_description_detail
+from depscan.lib.utils.utils import get_description_detail
 
 VERSION_REPLACE = re.compile(r"(?<=to version )\S+", re.IGNORECASE)
 

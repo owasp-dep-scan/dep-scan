@@ -21,7 +21,8 @@ from vdb.lib.osv import OSVSource
 from vdb.lib.utils import parse_purl
 
 from depscan import get_version
-from depscan.lib import explainer, github, utils
+from depscan.lib import explainer, github
+from depscan.lib.utils import utils
 from depscan.lib.analysis import (
     PrepareVdrOptions,
     analyse_licenses,
@@ -35,7 +36,7 @@ from depscan.lib.bom import (
     create_bom,
     get_pkg_by_type,
     get_pkg_list,
-    submit_bom,
+    submit_bom, set_bom_file_creation_status,
 )
 from depscan.lib.config import (
     UNIVERSAL_SCAN_TYPE,
@@ -46,6 +47,8 @@ from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, console
 from depscan.lib.orasclient import download_image
+from depscan.lib.utils.environment_utils import setup_debug, get_src_dir, csaf_toml_check, setup_license
+from depscan.lib.utils.print_utils import sponsor_message, print_banner, caching_message, github_client_message
 
 with contextlib.suppress(Exception):
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -136,6 +139,18 @@ def build_parser():
         default=os.getenv("ENABLE_OSS_RISK", "") in ("true", "1"),
         dest="risk_audit",
         help="Perform package risk audit (slow operation). Npm only.",
+    )
+    parser.add_argument(
+        "--binary-analysis",
+        dest="binary_analysis",
+        action="store_true",
+        help="Enables binary SCA utilizing blint with default options"
+    )
+    parser.add_argument(
+        "--blint-args",
+        default=os.getenv("BLINT_ARGS"),
+        dest="blint_args",
+        help="Additional arguments to pass to blint"
     )
     parser.add_argument(
         "--cdxgen-args",
@@ -712,133 +727,63 @@ def run_depscan(args):
         pkg_vulnerabilities,
         pkg_group_rows,
     ) = (None, None, None, None, None, None)
-    if (
-        os.getenv("CI")
-        and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
-        and not args.no_banner
-        and not os.getenv("INPUT_THANK_YOU", "")
-        == ("I have sponsored OWASP-dep-scan.")
-    ):
-        console.print(
-            Panel(
-                "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
-                title="Donate to the OWASP Foundation",
-                expand=False,
-            )
-        )
+    sponsor_message(args)
     # Should we turn on the debug mode
-    if args.enable_debug:
-        os.environ["AT_DEBUG_MODE"] = "debug"
-        LOG.setLevel(DEBUG)
+    setup_debug(args)
     if args.server_mode:
         return run_server(args)
-    if not args.no_banner:
-        with contextlib.suppress(UnicodeEncodeError):
-            print(LOGO)
-    src_dir = args.src_dir_image
-    if not src_dir or src_dir == ".":
-        if src_dir == "." or args.search_purl:
-            src_dir = os.getcwd()
-        # Try to infer from the bom file
-        elif args.bom and os.path.exists(args.bom):
-            src_dir = os.path.dirname(os.path.realpath(args.bom))
-        else:
-            src_dir = os.getcwd()
+    print_banner(args)
+    src_dir = get_src_dir(args)
     reports_dir = args.reports_dir
-    if args.csaf:
-        toml_file_path = os.getenv(
-            "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
-        )
-        if not os.path.exists(toml_file_path):
-            LOG.info("CSAF toml not found, creating template in %s", src_dir)
-            write_toml(toml_file_path)
-            LOG.info(
-                "Please fill out the toml with your details and rerun depscan."
-            )
-            LOG.info(
-                "Check out our CSAF documentation for an explanation of "
-                "this feature. https://github.com/owasp-dep-scan/dep-scan"
-                "/blob/master/contrib/CSAF_README.md"
-            )
-            LOG.info(
-                "If you're just checking out how our generator works, "
-                "feel free to skip filling out the toml and just rerun "
-                "depscan."
-            )
-            sys.exit(0)
+    csaf_toml_check(args, src_dir)
+
     pkg_list, project_types_list = set_project_types(args, src_dir)
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         perform_risk_audit = True
     db = db_lib.get()
     run_cacher = args.cache
-    areport_file = args.report_file or os.path.join(reports_dir, "depscan.json")
-    html_file = areport_file.replace(".json", ".html")
-    pdf_file = areport_file.replace(".json", ".pdf")
+    report_filename = args.report_file or os.path.join(reports_dir, "depscan.json")
+    html_filename = report_filename.replace(".json", ".html")
+    pdf_filename = report_filename.replace(".json", ".pdf")
+
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
+
     if len(project_types_list) > 1:
         LOG.debug("Multiple project types found: %s", project_types_list)
+
     # Enable license scanning
-    if "license" in project_types_list or "license" in args.profile:
-        os.environ["FETCH_LICENSE"] = "true"
-        project_types_list.remove("license")
-        console.print(
-            Panel(
-                "License audit is enabled for this scan. This would increase "
-                "the time by up to 10 minutes.",
-                title="License Audit",
-                expand=False,
-            )
-        )
+    setup_license(args, project_types_list)
+
     for project_type in project_types_list:
         results = []
-        report_file = areport_file.replace(".json", f"-{project_type}.json")
-        risk_report_file = areport_file.replace(
+        type_report_file = report_filename.replace(".json", f"-{project_type}.json")
+        risk_report_file = report_filename.replace(
             ".json", f"-risk.{project_type}.json"
         )
-        # Are we scanning a single purl
-        if args.search_purl:
-            bom_file = None
-            creation_status = True
-        # Are we scanning a bom file
-        elif args.bom and os.path.exists(args.bom):
-            bom_file = args.bom
-            creation_status = True
-        else:
-            if args.profile in ("appsec", "research"):
-                # The bom file has to be called bom.json for atom reachables :(
-                bom_file = os.path.join(src_dir, "bom.json")
-            else:
-                bom_file = report_file.replace("depscan-", "sbom-")
-            creation_status = create_bom(
-                project_type,
-                bom_file,
-                src_dir,
-                args.deep_scan,
-                {
-                    "cdxgen_server": args.cdxgen_server,
-                    "profile": args.profile,
-                    "cdxgen_args": args.cdxgen_args,
-                },
-            )
+        
+        # bom_file set to None when scanning single_purl, in cases of error generating bom creation_status is None
+        # if binary analysis is enabled then we utilize blint with --bom-src command
+        bom_file, creation_status = set_bom_file_creation_status(args, type_report_file, project_type, src_dir)
+
+        # If bom creation failed then skip this project_type
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
             continue
         if bom_file:
-            LOG.debug("Scanning using the bom file %s", bom_file)
-            if not args.bom:
-                LOG.info(
-                    "To improve performance, cache the bom file and invoke "
-                    "depscan with --bom %s instead of -i",
-                    bom_file,
-                )
+            caching_message(args, bom_file)
             pkg_list = get_pkg_list(bom_file)
+
+        # if pkg_list does not contain any pkgs then skip project type
         if not pkg_list:
             LOG.debug("No packages found in the project!")
             continue
+
+        # Extract the scope of the packages required in risk audit
         scoped_pkgs = utils.get_pkgs_by_scope(pkg_list)
+
         if (
             os.getenv("FETCH_LICENSE", "") in (True, "1", "true")
             or "license" in args.profile
@@ -853,6 +798,9 @@ def run_depscan(args):
             analyse_licenses(
                 project_type, licenses_results, license_report_file
             )
+
+        # Risk audit requests data from registry and is prone to errors
+        # This usually includes Connection or Timeout Errors.
         if project_type in risk_audit_map:
             if perform_risk_audit:
                 if len(pkg_list) > 1:
@@ -891,6 +839,7 @@ def run_depscan(args):
                         expand=False,
                     )
                 )
+
         if project_type in type_audit_map:
             LOG.debug(
                 "Performing remote audit for %s of type %s",
@@ -909,6 +858,7 @@ def run_depscan(args):
                 LOG.error("Remote audit was not successful")
                 LOG.error(e)
                 results = []
+
         # In case of docker, bom, or universal type, check if there are any
         # npm packages that can be audited remotely
         if project_type in (
@@ -941,35 +891,7 @@ def run_depscan(args):
             )
 
         sources_list = [OSVSource(), NvdSource()]
-        github_token = os.environ.get("GITHUB_TOKEN")
-        if github_token and os.getenv("CI"):
-            try:
-                github_client = github.GitHub(github_token)
-
-                if not github_client.can_authenticate():
-                    LOG.info(
-                        "The GitHub personal access token supplied appears to "
-                        "be invalid or expired. Please see: "
-                        "https://github.com/owasp-dep-scan/dep-scan#github"
-                        "-security-advisory"
-                    )
-                else:
-                    sources_list.insert(0, GitHubSource())
-                    scopes = github_client.get_token_scopes()
-                    if scopes:
-                        LOG.warning(
-                            "The GitHub personal access token was granted "
-                            "more permissions than is necessary for depscan "
-                            "to operate, including the scopes of: %s. It is "
-                            "recommended to use a dedicated token with only "
-                            "the minimum scope necesary for depscan to "
-                            "operate. Please see: "
-                            "https://github.com/owasp-dep-scan/dep-scan"
-                            "#github-security-advisory",
-                            ", ".join(scopes),
-                        )
-            except Exception:
-                pass
+        github_client_message(sources_list)
         if run_cacher:
             paths_list = download_image()
             LOG.debug("VDB data is stored at: %s", paths_list)
@@ -1013,7 +935,7 @@ def run_depscan(args):
             purl_aliases,
             args.suggest,
             scoped_pkgs=scoped_pkgs,
-            report_file=report_file,
+            report_file=type_report_file,
             bom_file=bom_file,
             no_vuln_table=args.no_vuln_table,
             direct_purls=direct_purls,
@@ -1040,12 +962,12 @@ def run_depscan(args):
                 bom_file,
             )
     console.save_html(
-        html_file,
+        html_filename,
         theme=(
             MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME
         ),
     )
-    utils.export_pdf(html_file, pdf_file)
+    utils.export_pdf(html_filename, pdf_filename)
     # render report into template if wished
     if args.report_template and os.path.isfile(args.report_template):
         utils.render_template_report(
