@@ -16,7 +16,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
     -   [Server mode](#server-mode)
--   [Documentation](https://depscan.readthedocs.io)
+-   [Documentation (depscan.readthedocs.io)](https://depscan.readthedocs.io)
     -   [Supported languages and package format](https://depscan.readthedocs.io/supported-languages)
     -   [Reachability analysis](https://depscan.readthedocs.io/reachability-analysis)
         -   [Example analysis for a Java project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
