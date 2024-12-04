@@ -11,7 +11,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 -   [Features](#features)
     -   [Vulnerability Data sources](#vulnerability-data-sources)
     -   [Linux distros](#linux-distros)
--   [Usage](#usage)
+-   [Quick Start](#quick-start)
     -   [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
     -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
@@ -74,7 +74,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 
 Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 
-## Usage
+## Quick Start
 
 dep-scan is ideal for use during continuous integration (CI) and as a local development tool.
 
@@ -219,66 +219,6 @@ docker run --rm \
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
 
-## Reachability analysis
-
-Depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
-
-To receive a verbose output including the reachable flows, pass the argument `--explain`
-
-```shell
---profile research -t language [--explain]
-```
-
-### Example analysis for a Java project
-
-```shell
-depscan --profile research -t java -i <source directory> --reports-dir <reports directory> --explain
-```
-
-### Example analysis for a JavaScript project
-
-```shell
-depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --explain
-```
-
-### Example analysis for a PHP project
-
-Ensure PHP > 7.4 is installed. However, we support scanning PHP 5.2 - 8.3. Alternatively, use the depscan container image.
-
-```shell
-depscan --profile research -t php -i <source directory> --reports-dir <reports directory> --explain
-```
-
-<img src="documentation/static/img/php-reach1.png" alt="PHP Reachability" width="256">
-
-<img src="documentation/static/img/not-reachable.png" alt="PHP NOT Reachability" width="256">
-
-## Supported languages and package format
-
-dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) command internally to create a Software Bill-of-Materials (SBOM) file for the project. This is then used for performing the scans.
-
-The following projects and package-dependency format is supported by cdxgen.
-
-| Language                 | Package format                                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| node.js                  | package-lock.json, pnpm-lock.yaml, yarn.lock, rush.js, bower.json, .min.js              |
-| java                     | maven (pom.xml [1]), gradle (build.gradle, .kts), scala (sbt), bazel                    |
-| php                      | composer.lock                                                                           |
-| python                   | setup.py, requirements.txt [2], Pipfile.lock, poetry.lock, bdist_wheel, .whl, .egg-info |
-| go                       | binary, go.mod, go.sum, Gopkg.lock                                                      |
-| ruby                     | Gemfile.lock, gemspec                                                                   |
-| rust                     | binary, Cargo.toml, Cargo.lock                                                          |
-| .Net                     | .csproj, packages.config, project.assets.json [3], packages.lock.json, .nupkg           |
-| dart                     | pubspec.lock, pubspec.yaml                                                              |
-| haskell                  | cabal.project.freeze                                                                    |
-| elixir                   | mix.lock                                                                                |
-| c/c++                    | conan.lock, conanfile.txt                                                               |
-| clojure                  | Clojure CLI (deps.edn), Leiningen (project.clj)                                         |
-| docker / oci image       | All supported languages and Linux OS packages                                           |
-| GitHub Actions Workflows | .github/workflows/\*.yml                                                                |
-| Jenkins Plugins          | .hpi files                                                                              |
-| YAML manifests           | docker-compose, kubernetes, kustomization, skaffold, tekton etc                         |
-
 ### Server mode
 
 dep-scan and cdxgen could be run in server mode. Use the included docker-compose file to get started.
@@ -322,6 +262,7 @@ curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "typ
 ```bash
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
 ```
+
 
 
 ## License
