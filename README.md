@@ -16,24 +16,22 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
     -   [Server mode](#server-mode)
--   [Supported languages and package format](#supported-languages-and-package-format)
--   [Reachability analysis](#reachability-analysis)
-    -   [Example analysis for a Java project](#example-analysis-for-a-java-project)
-    -   [Example analysis for a JavaScript project](#example-analysis-for-a-javascript-project)
--   [Customization through environment variables](#customization-through-environment-variables)
--   [GitHub Security Advisory](#github-security-advisory)
--   [Suggest mode](#suggest-mode)
--   [Package Risk audit](#package-risk-audit)
-    -   [Automatic adjustment](#automatic-adjustment)
-    -   [Configuring weights](#configuring-weights)
--   [Live OS scan](#live-os-scan)
--   [License scan](#license-scan)
--   [Kubernetes and Cloud apps](#kubernetes-and-cloud-apps)
--   [PDF reports](#pdf-reports)
--   [Custom reports](#custom-reports)
--   [Performance tuning](#performance-tuning)
-    -   [Use nydus to speed up the initial vdb download](#use-nydus-to-speed-up-the-initial-vdb-download)
--   [Discord support](#discord-support)
+-   [Documentation](https://depscan.readthedocs.io)
+    -   [Supported languages and package format](https://depscan.readthedocs.io/supported-languages)
+    -   [Reachability analysis](https://depscan.readthedocs.io/reachability-analysis)
+        -   [Example analysis for a Java project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
+        -   [Example analysis for a JavaScript project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
+    -   [Customization through environment variables](https://depscan.readthedocs.io/env-var#customization-through-environment-variables)
+    -   [GitHub Security Advisory](https://depscan.readthedocs.io/adv-usage#github-security-advisory)
+    -   [Suggest mode](https://depscan.readthedocs.io/adv-usage#suggest-mode)
+    -   [Package Risk audit](https://depscan.readthedocs.io/adv-usage#package-risk-audit)
+        -   [Automatic adjustment](https://depscan.readthedocs.io/adv-usage#automatic-adjustment)
+        -   [Configuring weights](https://depscan.readthedocs.io/adv-usage#configuring-weights)
+    -   [Live OS scan](https://depscan.readthedocs.io/adv-usage#live-os-scan)
+    -   [License scan](https://depscan.readthedocs.io/adv-usage#license-scan)
+    -   [Kubernetes and Cloud apps](https://depscan.readthedocs.io/adv-usage#kubernetes-and-cloud-apps)
+    -   [PDF reports](https://depscan.readthedocs.io/adv-usage#pdf-reports)
+    -   [Custom reports](https://depscan.readthedocs.io/adv-usage#custom-reports)
 -   [License](#license)
 
 ## Features
@@ -325,155 +323,6 @@ curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "typ
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
 ```
 
-## Customization through environment variables
-
-The following environment variables can be used to customize the behavior.
-
--   VDB_HOME - Directory to use for caching database. For docker-based execution, this directory should get mounted as a volume from the host
--   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdbgz:v5
--   USE_VDB_10Y - Set to true to use the larger 10-year vulnerability database. Default download url: ghcr.io/appthreat/vdb-10y:v5
-
-## GitHub Security Advisory
-
-To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
-
--   Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
--   Token (classic): Grant no permissions
-
-```bash
-export GITHUB_TOKEN="<PAT token>"
-```
-
-## Suggest mode
-
-Depscan comes with a suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
-
-![Normal mode](documentation/static/img/depscan-normal.png)
-
-![Suggest mode](documentation/static/img/depscan-suggest.png)
-
-Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
-
-Pass `--no-suggest` to disable this behavior.
-
-## Package Risk audit
-
-`--risk-audit` argument enables package risk audit. Currently, only npm and PyPI packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
-
-Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on the public npm/pypi registry.
-
-For example, to check if private packages with namespaces @appthreat and @shiftleft are not accidentally made public, use the below argument.
-
-```
---private-ns appthreat,shiftleft
-```
-
-| Risk category                  | Default Weight | Reason                                                                                                                                                                                                     |
-| ------------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pkg_private_on_public_registry | 4              | Private package is available on a public registry                                                                                                                                                          |
-| pkg_min_versions               | 2              | Packages with less than 3 versions represent an extreme where they could be either super stable or quite recent. Special heuristics are applied to ignore older stable packages                            |
-| mod_create_min_seconds         | 1              | Less than 12 hours difference between modified and creation time. This indicates that the upload had a defect that had to be rectified immediately. Sometimes, such a rapid update could also be malicious |
-| latest_now_min_seconds         | 0.5            | Less than 12 hours difference between the latest version and the current time. Depending on the package such a latest version may or may not be desirable                                                  |
-| latest_now_max_seconds         | 0.5            | Package versions that are over 6 years old are in use. Such packages might have vulnerable dependencies that are known or yet to be found                                                                  |
-| pkg_min_maintainers            | 2              | Package has less than 2 maintainers. Many opensource projects have only 1 or 2 maintainers so special heuristics are used to ignore older stable packages                                                  |
-| pkg_min_users                  | 0.25           | Package has less than 2 npm users                                                                                                                                                                          |
-| pkg_install_scripts            | 2              | Package runs a custom pre or post installation scripts. This is often malicious and a downside of npm.                                                                                                     |
-| pkg_node_version               | 0.5            | Package supports outdated version of node such as 0.8, 0.10, 4 or 6.x. Such projects might have prototype pollution or closure related vulnerabilities                                                     |
-| pkg_scope                      | 4 or 0.5       | Packages that are used directly in the application (required scope) gets a score with a weight of 4. Optional packages get a score of 0.25                                                                 |
-| deprecated                     | 1              | Latest version is deprecated                                                                                                                                                                               |
-
-Refer to `pkg_query.py::get_category_score` method for the risk formula.
-
-### Automatic adjustment
-
-A parameter called `created_now_quarantine_seconds` is used to identify packages that are safely past the quarantine period (1 year). Certain risks such as `pkg_min_versions` and `pkg_min_maintainers` are suppressed for packages past the quarantine period. This adjustment helps reduce noise since it is unlikely that a malicious package can exist in a registry unnoticed for over a year.
-
-### Configuring weights
-
-All parameters can be customized by using environment variables. For eg:
-
-export PKG_MIN_VERSIONS=4 to increase and set the minimum versions category to 4.
-
-## Live OS scan
-
-By passing `-t os`, depscan can generate an SBOM for a live operating system or a VM with OS packages and kernel information. Optionally, pass the argument `--deep` to generate an SBOM with both OS and application packages and to check for application vulnerabilities.
-
-All OS packages.
-
-```bash
-depscan -t os -i . -o reports/depscan.json
-```
-
-All OS and application packages.
-
-```bash
-depscan -t os --deep -i . -o reports/depscan.json
-```
-
-## License scan
-
-dep-scan can scan the dependencies for any license limitations and report them directly on the console log. To enable license scanning set the environment variable `FETCH_LICENSE` to `true`.
-
-```
-export FETCH_LICENSE=true
-```
-
-The license data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behavior could change in the future once the detection logic gets improved.
-
-![License scan](documentation/static/img/license-scan.png)
-
-## Kubernetes and Cloud apps
-
-dep-scan could auto-detect most cloud applications and Kubernetes manifest files. Pass the argument `-t yaml-manifest` to manually specify the type.
-
-## PDF reports
-
-Ensure [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) is installed or use the official container image to generate pdf reports. Use with `--explain` for more detailed reports.
-
-## Custom reports
-
-dep-scan can be provided with a [Jinja](https://jinja.palletsprojects.com/en/3.1.x/) template using the `--report-template` parameter.
-Giving it will pass the vulnerability report into your template for rendering the report.
-
-Please find a basic example here:
-
-```jinja
-{% if metadata -%}
-Report for {{ metadata.component.group }}:{{ metadata.component.name }}:{{ metadata.component.version }}
-{% endif -%}
-
-{% if vulnerabilities -%}
-There were {{ vulnerabilities | length }} issues identified:
-
-{% for vuln in vulnerabilities -%}
-* {{ vuln['bom-ref'] }} - {{ vuln.recommendation }}
-{% endfor -%}
-{% else -%}
-🏆 _No vulnerabilities found_
-{% endif -%}
-
-Severity counts:
-* Low: {{ summary.LOW }}
-* Medium: {{ summary.MEDIUM }}
-* High: {{ summary.HIGH }}
-* Critical: {{ summary.CRITICAL }}
-* Unspecified: {{ summary.UNSPECIFIED }}
-```
-
-The objects available are taken from the CycloneDX \*.vdr.json BOM file generated, just have a look at the file for its full structure:
-
--   `metadata`
--   `vulnerabilities`
--   `components`
--   `dependencies`
--   `services`
-
-`summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
-`pkg_vulnerabilities` - Same as `vulnerabilities` from the VDR
-`pkg_group_rows` - List of vulnerability id and the dependency tree prioritized by depscan.
-
-Furthermore, insights are imaginable to be made available to the template, please reach out or contribute on demand.
-We appreciate it if you like to contribute your report templates as examples, please add/find them [here](contrib/report-templates/).
 
 ## License
 
