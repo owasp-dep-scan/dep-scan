@@ -45,11 +45,11 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 -   Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
 -   Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
-![Reachable Flows](documentation/static/readme/depscan-flows.png)
+![Reachable Flows](documentation/static/img/depscan-flows.png)
 
-![Dependency Tree with Insights](documentation/static/readme/tree1.jpg)
+![Dependency Tree with Insights](documentation/static/img/tree1.jpg)
 
-![Dependency Tree with Insights](documentation/static/readme/prioritization.jpg)
+![Dependency Tree with Insights](documentation/static/img/prioritization.jpg)
 
 ### Vulnerability Data sources
 
@@ -251,9 +251,9 @@ Ensure PHP > 7.4 is installed. However, we support scanning PHP 5.2 - 8.3. Alter
 depscan --profile research -t php -i <source directory> --reports-dir <reports directory> --explain
 ```
 
-<img src="documentation/static/readme/php-reach1.png" alt="PHP Reachability" width="256">
+<img src="documentation/static/img/php-reach1.png" alt="PHP Reachability" width="256">
 
-<img src="documentation/static/readme/not-reachable.png" alt="PHP NOT Reachability" width="256">
+<img src="documentation/static/img/not-reachable.png" alt="PHP NOT Reachability" width="256">
 
 ## Supported languages and package format
 
@@ -348,9 +348,9 @@ export GITHUB_TOKEN="<PAT token>"
 
 Depscan comes with a suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
 
-![Normal mode](documentation/static/readme/depscan-normal.png)
+![Normal mode](documentation/static/img/depscan-normal.png)
 
-![Suggest mode](documentation/static/readme/depscan-suggest.png)
+![Suggest mode](documentation/static/img/depscan-suggest.png)
 
 Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
 
@@ -420,7 +420,7 @@ export FETCH_LICENSE=true
 
 The license data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behavior could change in the future once the detection logic gets improved.
 
-![License scan](documentation/static/readme/license-scan.png)
+![License scan](documentation/static/img/license-scan.png)
 
 ## Kubernetes and Cloud apps
 
