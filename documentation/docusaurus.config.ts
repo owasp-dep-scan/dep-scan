@@ -35,7 +35,7 @@ const config: Config = {
           routeBasePath: '/',
           
           editUrl:
-            'https://github.com/owasp-dep-scan/dep-scan/tree/master/docs',
+            'https://github.com/owasp-dep-scan/dep-scan/tree/master/documentation',
         },
         blog: {
           showReadingTime: true,
