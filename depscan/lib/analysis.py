@@ -1176,13 +1176,13 @@ def parse_metrics(metrics):
                 vector = metric.cvssV4_0.vectorString
                 method = "CVSSv4"
                 severity = metric.cvssV4_0.baseSeverity.value
-                score = metric.cvssV4_0.baseScore.root
+                score = metric.cvssV4_0.baseScore.value
                 break
             elif method != "CVSSv31" and (m := (metric.cvssV3_1 or metric.cvssV3_0)):
                 vector = m.vectorString
                 method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
                 severity = m.baseSeverity.value
-                score = m.baseScore.root
+                score = m.baseScore.value
     return vector, method, severity, score
 
 
