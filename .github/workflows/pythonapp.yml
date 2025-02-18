@@ -43,10 +43,10 @@ jobs:
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 --exclude test,contrib --exit-zero
+        uv run flake8 --exclude test,contrib --exit-zero
     - name: Test with pytest
       run: |
-        pytest --cov=depscan test
+        uv run pytest --cov=depscan test
     - name: purl tests
       run: |
         uv run depscan --purl "pkg:pypi/requests@2.32.1"
