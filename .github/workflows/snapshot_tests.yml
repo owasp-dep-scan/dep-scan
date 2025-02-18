@@ -55,9 +55,8 @@ jobs:
           DEPSCAN_CSAF_TEMPLATE: "/home/runner/work/dep-scan/dep-scan/contrib/csaf.toml"
           INPUT_THANK_YOU: "I have sponsored OWASP-dep-scan."
         run: |
-          source .venv/bin/activate
           chmod +x /home/runner/work/dep-scan/dep-scan/test/snapshots.py
-          /home/runner/work/dep-scan/dep-scan/test/snapshots.py
+          uv run python /home/runner/work/dep-scan/dep-scan/test/snapshots.py
           if test -f /home/runner/work/new_snapshots/diffs.json; then
             echo "status=FAILED" >> "$GITHUB_ENV"
           fi
