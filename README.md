@@ -263,7 +263,15 @@ curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "typ
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
 ```
 
+## Local development
 
+Setup uv by following the official [documentation](https://docs.astral.sh/uv/).
+
+```shell
+uv sync --all-extras --dev
+uv run depscan --help
+uv run pytest
+```
 
 ## License
 

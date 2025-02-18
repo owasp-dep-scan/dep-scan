@@ -1176,7 +1176,7 @@ def parse_metrics(metrics):
                 vector = metric.cvssV4_0.vectorString
                 method = "CVSSv4"
                 severity = metric.cvssV4_0.baseSeverity.value
-                score = metric.cvssV4_0.baseScore.root
+                score = metric.cvssV4_0.baseScore.value
                 break
             elif method != "CVSSv31" and (m := (metric.cvssV3_1 or metric.cvssV3_0)):
                 vector = m.vectorString

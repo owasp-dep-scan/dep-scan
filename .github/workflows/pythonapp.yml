@@ -15,6 +15,8 @@ jobs:
       fail-fast: false
     steps:
     - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -37,22 +39,22 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip setuptools
-        python3 -m pip install ".[dev]"
+        uv sync --all-extras --dev
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
-        flake8 --exclude test,contrib --exit-zero
+        uv run flake8 --exclude test,contrib --exit-zero
     - name: Test with pytest
       run: |
-        pytest --cov=depscan test
+        uv run pytest --cov=depscan test
     - name: purl tests
       run: |
-        python depscan/cli.py --purl "pkg:pypi/requests@2.32.1"
-        python depscan/cli.py --purl "pkg:pypi/requests@4.0.0"
-        python depscan/cli.py --purl "pkg:pypi/reqwestss@0.1.0"
-        python depscan/cli.py --purl "pkg:npm/%40appthreat/cdxgen@7.0.5"
-        python depscan/cli.py --purl "pkg:npm/%40appthreat/cdxgen@7.1.0"
-        python depscan/cli.py --purl "pkg:npm/fsevents@1.2.10"
-        python depscan/cli.py --purl "pkg:npm/@biomejs/biome@1.8.1"
+        uv run depscan --purl "pkg:pypi/requests@2.32.1"
+        uv run depscan --purl "pkg:pypi/requests@4.0.0"
+        uv run depscan --purl "pkg:pypi/reqwestss@0.1.0"
+        uv run depscan --purl "pkg:npm/%40appthreat/cdxgen@7.0.5"
+        uv run depscan --purl "pkg:npm/%40appthreat/cdxgen@7.1.0"
+        uv run depscan --purl "pkg:npm/fsevents@1.2.10"
+        uv run depscan --purl "pkg:npm/@biomejs/biome@1.8.1"
       env:
         PYTHONIOENCODING: utf-8

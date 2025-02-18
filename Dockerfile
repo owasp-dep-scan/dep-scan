@@ -91,13 +91,13 @@ RUN set -e; \
     && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php \
     && mv composer.phar /usr/local/bin/composer \
     && python3 -m pip install pipenv certifi \
-    && curl -LO https://github.com/dragonflyoss/nydus/releases/download/v${NYDUS_VERSION}/nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz \
-    && tar -xvf nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz \
-    && chmod +x nydus-static/* \
-    && mv nydus-static/* /usr/local/bin/ \
-    && rm -rf nydus-static-v${NYDUS_VERSION}-linux-${GOBIN_VERSION}.tgz nydus-static \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && cd /opt/dep-scan \
-    && python3 -m pip install -e . \
+    && uv sync \
+    && uv cache clean \
+    && rm -r "$(uv python dir)" \
+    && rm -r "$(uv tool dir)" \
+    && rm ~/.local/bin/uv ~/.local/bin/uvx \
     && chmod a-w -R /opt \
     && rm -rf /var/cache/yum \
     && microdnf clean all

@@ -5,18 +5,23 @@ from depscan.lib import config
 from depscan.lib.logger import LOG
 
 try:
-    import hishel
-    import redis
+    if os.getenv("DEPSCAN_CACHE_HOST") or os.getenv("DEPSCAN_CACHE_PORT"):
+        import hishel
+        import redis
 
-    storage = hishel.RedisStorage(
-        ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 36000),
-        client=redis.Redis(
-            host=os.getenv("DEPSCAN_CACHE_HOST", "127.0.0.1"),
-            port=config.get_int_from_env("DEPSCAN_CACHE_PORT", 6379),
-        ),
-    )
-    httpclient = hishel.CacheClient(storage=storage)
-    LOG.debug("valkey cache activated.")
+        storage = hishel.RedisStorage(
+            ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 36000),
+            client=redis.Redis(
+                host=os.getenv("DEPSCAN_CACHE_HOST", "127.0.0.1"),
+                port=config.get_int_from_env("DEPSCAN_CACHE_PORT", 6379),
+            ),
+        )
+        httpclient = hishel.CacheClient(storage=storage)
+        LOG.debug("valkey cache activated.")
+    else:
+        import httpx
+
+        httpclient = httpx
 except ImportError:
     import httpx
 
