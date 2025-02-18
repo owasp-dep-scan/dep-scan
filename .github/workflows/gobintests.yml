@@ -52,7 +52,7 @@ jobs:
         VDB_HOME: vdb_data_nydus
     - name: Test with nydus
       run: |
-        python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+        uv run depscan --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
         rm -rf vdb_data_nydus
       env:
         PYTHONPATH: "."
@@ -60,7 +60,7 @@ jobs:
         VDB_HOME: vdb_data_nydus
     - name: Test without nydus
       run: |
-        python3 depscan/cli.py --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+        uv run depscan --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -77,9 +77,9 @@ jobs:
         rm *.zip
         cd ..
         oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-        python3 depscan/cli.py --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
-        python3 depscan/cli.py --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
-        python3 depscan/cli.py --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
+        uv run depscan --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
+        uv run depscan --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
+        uv run depscan --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
