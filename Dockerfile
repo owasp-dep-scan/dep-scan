@@ -95,8 +95,6 @@ RUN set -e; \
     && cd /opt/dep-scan \
     && uv sync \
     && uv cache clean \
-    && rm -r "$(uv python dir)" \
-    && rm -r "$(uv tool dir)" \
     && rm ~/.local/bin/uv ~/.local/bin/uvx \
     && chmod a-w -R /opt \
     && rm -rf /var/cache/yum \
