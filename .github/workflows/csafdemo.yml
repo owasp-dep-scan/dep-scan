@@ -10,6 +10,8 @@ jobs:
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - uses: actions/checkout@v4
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
     - uses: oras-project/setup-oras@v1
     - name: Install dependencies
       env:
@@ -19,7 +21,7 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools
-        pip install .[dev]
+        uv sync --all-extras --dev
         pip install check-jsonschema
         mkdir -p vuln_spring
         cd vuln_spring
