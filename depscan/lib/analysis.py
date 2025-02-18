@@ -1182,7 +1182,7 @@ def parse_metrics(metrics):
                 vector = m.vectorString
                 method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
                 severity = m.baseSeverity.value
-                score = m.baseScore.value
+                score = m.baseScore.root
     return vector, method, severity, score
 
 
