@@ -696,7 +696,7 @@ def run_depscan(args):
         if QUART_AVAILABLE:
             return run_server(args)
         else:
-            LOG.info("The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-dep-scan[all]`.")
+            LOG.info("The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`.")
             return False
     if not args.no_banner:
         with contextlib.suppress(UnicodeEncodeError):

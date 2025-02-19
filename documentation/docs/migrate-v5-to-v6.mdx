@@ -4,3 +4,11 @@
 
 - `-o` is now an alias for `--reports-dir`. This is the output directory to store the reports.
 - All `threatdb` related arguments and submit bom functionality are removed.
+
+## Server mode
+
+- `quart` package is an optional dependency in v6. To use the server mode, do `pip install owasp-depscan[all]`.
+
+## Build and packaging
+
+dep-scan repo uses `uv` for building and packaging.
