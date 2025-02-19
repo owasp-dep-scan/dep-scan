@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
     'supported-languages',
     'env-var',
     'adv-usage',
+    'migrate-v5-to-v6',
     {
       type: 'category',
       collapsible: true,

@@ -35,7 +35,6 @@ from depscan.lib.bom import (
     create_bom,
     get_pkg_by_type,
     get_pkg_list,
-    submit_bom,
 )
 from depscan.lib.config import (
     UNIVERSAL_SCAN_TYPE,
@@ -1028,17 +1027,6 @@ def run_depscan(args):
         LOG.warning(
             "Template file %s doesn't exist, custom report not created.",
             args.report_template,
-        )
-    # Submit vdr/vex files to threatdb server
-    if args.threatdb_server and (args.threatdb_username or args.threatdb_token):
-        submit_bom(
-            reports_dir,
-            {
-                "threatdb_server": args.threatdb_server,
-                "threatdb_username": args.threatdb_username,
-                "threatdb_password": args.threatdb_password,
-                "threatdb_token": args.threatdb_token,
-            },
         )
 
 
