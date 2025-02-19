@@ -33,7 +33,7 @@ jobs:
     - name: Test container images
       run: |
         mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
-        # uv run depscan --no-banner --cache --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}_python${{ matrix.python-version }} -t docker
+        # uv run depscan --no-banner --no-error --src ghcr.io/owasp-dep-scan/dep-scan -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}_python${{ matrix.python-version }} -t docker
         uv run depscan --no-banner --no-error --src shiftleft/scan-slim -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}_python${{ matrix.python-version }} -t docker,license --no-vuln-table
         uv run depscan --no-banner --no-error --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}_python${{ matrix.python-version }} -t docker --no-vuln-table
       env:
@@ -182,7 +182,7 @@ jobs:
       - name: Test container images
         run: |
           mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
-          uv run depscan --no-banner --cache --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/sbom-slim-docker.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
+          uv run depscan --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/sbom-slim-docker.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
           uv run depscan --no-banner --no-error --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/sbom-redmine-docker.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
         env:
           PYTHONPATH: "."
