@@ -46,7 +46,7 @@ wheels = [
 [[package]]
 name = "appthreat-vulnerability-db"
 version = "6.3.0"
-source = { git = "https://github.com/appthreat/vulnerability-db?rev=a1d8610ae10e2eea7b5492c84b33e628a4b62617#a1d8610ae10e2eea7b5492c84b33e628a4b62617" }
+source = { git = "https://github.com/appthreat/vulnerability-db?rev=f693bfb7e16e0dcf419cdf6cddc34ed5f3373b56#f693bfb7e16e0dcf419cdf6cddc34ed5f3373b56" }
 dependencies = [
     { name = "appdirs" },
     { name = "apsw" },
@@ -57,6 +57,11 @@ dependencies = [
     { name = "pydantic", extra = ["email"] },
     { name = "rich" },
     { name = "semver" },
+]
+
+[package.optional-dependencies]
+oras = [
+    { name = "oras" },
 ]
 
 [[package]]
@@ -894,12 +899,11 @@ name = "owasp-depscan"
 version = "6.0.0"
 source = { editable = "." }
 dependencies = [
-    { name = "appthreat-vulnerability-db" },
+    { name = "appthreat-vulnerability-db", extra = ["oras"] },
     { name = "custom-json-diff" },
     { name = "cvss" },
     { name = "defusedxml" },
     { name = "jinja2" },
-    { name = "oras" },
     { name = "packageurl-python" },
     { name = "pdfkit" },
     { name = "pygithub" },
@@ -929,7 +933,7 @@ server = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", git = "https://github.com/appthreat/vulnerability-db?rev=a1d8610ae10e2eea7b5492c84b33e628a4b62617" },
+    { name = "appthreat-vulnerability-db", extras = ["oras"], git = "https://github.com/appthreat/vulnerability-db?rev=f693bfb7e16e0dcf419cdf6cddc34ed5f3373b56" },
     { name = "black", marker = "extra == 'dev'" },
     { name = "custom-json-diff" },
     { name = "cvss" },
@@ -939,7 +943,6 @@ requires-dist = [
     { name = "hishel", extras = ["redis"], marker = "extra == 'perf'" },
     { name = "httpretty", marker = "extra == 'dev'" },
     { name = "jinja2" },
-    { name = "oras", specifier = "==0.1.30" },
     { name = "packageurl-python" },
     { name = "pdfkit" },
     { name = "pygithub" },

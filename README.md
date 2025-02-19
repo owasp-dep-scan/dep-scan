@@ -221,11 +221,11 @@ docker compose up
 depscan --server --server-host 0.0.0.0 --server-port 7070
 ```
 
-In server mode, use `/cache` endpoint to cache the vulnerability database.
+In server mode, use the `/download-vdb` endpoint to cache the vulnerability database.
 
 ```bash
-# This would take over 5 minutes
-curl http://0.0.0.0:7070/cache
+# This would take over 2 minutes
+curl http://0.0.0.0:7070/download-vdb
 ```
 
 Use the `/scan` endpoint to perform scans.

@@ -13,13 +13,8 @@ from defusedxml.ElementTree import parse
 
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
-from vdb.lib import config
-from vdb.lib import db6 as db_lib
-from vdb.lib.gha import GitHubSource
-from vdb.lib.nvd import NvdSource
-from vdb.lib.osv import OSVSource
+from vdb.lib import config, db6 as db_lib
 from vdb.lib.utils import parse_purl
-
 from depscan import get_version
 from depscan.lib import explainer, github, utils
 from depscan.lib.analysis import (
@@ -38,13 +33,14 @@ from depscan.lib.bom import (
 )
 from depscan.lib.config import (
     UNIVERSAL_SCAN_TYPE,
+    VDB_AGE_HOURS,
+    vdb_database_url,
     license_data_dir,
     spdx_license_list,
 )
 from depscan.lib.csaf import export_csaf, write_toml
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, console
-from depscan.lib.orasclient import download_image
 
 if sys.platform == "win32" and os.environ.get('PYTHONIOENCODING') is None:
     sys.stdin.reconfigure(encoding="utf-8")
@@ -68,6 +64,14 @@ try:
     app.config.from_prefixed_env()
     app.config["PROVIDE_AUTOMATIC_OPTIONS"] = True
     QUART_AVAILABLE = True
+except ImportError:
+    pass
+
+ORAS_AVAILABLE = False
+try:
+    from vdb.lib.orasclient import download_image
+
+    ORAS_AVAILABLE = True
 except ImportError:
     pass
 
@@ -436,22 +440,26 @@ if QUART_AVAILABLE:
         return {}
 
 
-    @app.get("/cache")
-    async def cache():
+    @app.get("/download-vdb")
+    async def download_vdb():
         """
 
         :return: a JSON response indicating the status of the caching operation.
         """
-        db = db_lib.get()
-        if 0 in db_lib.stats():
-            if download_image():
+        if db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False):
+            if not ORAS_AVAILABLE:
+                return {
+                    "error": "true",
+                    "message": "The oras package must be installed to automatically download the vulnerability database. Install depscan using `pip install owasp-depscan[all]` or use the official container image.",
+                }
+            if download_image(vdb_database_url, config.DATA_DIR):
                 return {
                     "error": "false",
-                    "message": "vulnerability database cached successfully",
+                    "message": "vulnerability database downloaded successfully",
                 }
             return {
                 "error": "true",
-                "message": "vulnerability database was not cached",
+                "message": "vulnerability database did not get downloaded correctly. Check the server logs.",
             }
         return {
             "error": "false",
@@ -522,7 +530,7 @@ if QUART_AVAILABLE:
                 {
                     "error": "true",
                     "message": "Vulnerability database is empty. Prepare the "
-                    "vulnerability database by invoking /cache endpoint "
+                    "vulnerability database by invoking /download-vdb endpoint "
                     "before running scans.",
                 },
                 500,
@@ -711,6 +719,13 @@ def run_depscan(args):
         else:
             src_dir = os.getcwd()
     reports_dir = args.reports_dir
+    # Should we download the latest vdb.
+    if db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=db_lib.get_db_file_metadata is not None):
+        if ORAS_AVAILABLE:
+            LOG.debug(f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...")
+            download_image(vdb_database_url, config.DATA_DIR)
+        else:
+            LOG.warning("The latest vulnerability database is not found. Follow the documentation to manually download it.")
     if args.csaf:
         toml_file_path = os.getenv(
             "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
@@ -736,8 +751,6 @@ def run_depscan(args):
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         perform_risk_audit = True
-    db = db_lib.get()
-    run_cacher = args.cache
     areport_file = os.path.join(reports_dir, "depscan.json")
     html_file = areport_file.replace(".json", ".html")
     pdf_file = areport_file.replace(".json", ".pdf")
@@ -899,56 +912,10 @@ def run_depscan(args):
                 except Exception as e:
                     LOG.error("Remote audit was not successful")
                     LOG.error(e)
-        if 0 in db_lib.stats():
-            run_cacher = True
         else:
             LOG.debug(
                 "Vulnerability database loaded from %s", config.VDB_BIN_FILE
             )
-
-        sources_list = [OSVSource(), NvdSource()]
-        github_token = os.environ.get("GITHUB_TOKEN")
-        if github_token and os.getenv("CI"):
-            try:
-                github_client = github.GitHub(github_token)
-
-                if not github_client.can_authenticate():
-                    LOG.info(
-                        "The GitHub personal access token supplied appears to "
-                        "be invalid or expired. Please see: "
-                        "https://github.com/owasp-dep-scan/dep-scan#github"
-                        "-security-advisory"
-                    )
-                else:
-                    sources_list.insert(0, GitHubSource())
-                    scopes = github_client.get_token_scopes()
-                    if scopes:
-                        LOG.warning(
-                            "The GitHub personal access token was granted "
-                            "more permissions than is necessary for depscan "
-                            "to operate, including the scopes of: %s. It is "
-                            "recommended to use a dedicated token with only "
-                            "the minimum scope necesary for depscan to "
-                            "operate. Please see: "
-                            "https://github.com/owasp-dep-scan/dep-scan"
-                            "#github-security-advisory",
-                            ", ".join(scopes),
-                        )
-            except Exception:
-                pass
-        if run_cacher:
-            paths_list = download_image()
-            LOG.debug("VDB data is stored at: %s", paths_list)
-            run_cacher = False
-            db = db_lib.get()
-        elif args.sync:
-            for s in sources_list:
-                LOG.debug("Syncing %s", s.__class__.__name__)
-                try:
-                    s.download_recent()
-                except NotImplementedError:
-                    pass
-                run_cacher = False
         if len(pkg_list) > 1:
             if args.bom:
                 LOG.info(

@@ -6,10 +6,9 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db",
+    "appthreat-vulnerability-db[oras]",
     "custom-json-diff",
     "defusedxml",
-    "oras==0.1.30",
     "PyYAML",
     "rich",
     "PyGithub",
@@ -78,4 +77,4 @@ select = "B,C,E,F,W,T4,B9"
 line-length = 99
 
 [tool.uv.sources]
-appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "a1d8610ae10e2eea7b5492c84b33e628a4b62617" }
+appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "f693bfb7e16e0dcf419cdf6cddc34ed5f3373b56" }
