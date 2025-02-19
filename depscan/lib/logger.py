@@ -1,5 +1,3 @@
-# This file is part of Scan.
-
 import logging
 import os
 
