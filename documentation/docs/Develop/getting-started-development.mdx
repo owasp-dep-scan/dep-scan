@@ -30,22 +30,13 @@ git clone https://github.com/owasp-dep-scan/dep-scan
 cd dep-scan
 ```
 
-2. Setup and activate a python environment of your choice. We use `venv` to manager our environemnts as an example here.
+2. Setup uv by following the official [documentation](https://docs.astral.sh/uv/).
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
+```shell
+uv sync --all-extras --dev
+uv run depscan --help
+uv run pytest
 ```
-
-3. Install dependencies and building dep-scan.
-
-```bash
-pip install -e .
-```
-
-:::tip
-`-e` flag in pip creates a local install which is means that changes made to the project can be used instantly without having to install the project again.
-:::
 
 {/* ## Code Style Guide
 

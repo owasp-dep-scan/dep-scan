@@ -12,7 +12,6 @@ dependencies = [
     "oras==0.1.30",
     "PyYAML",
     "rich",
-    "quart",
     "PyGithub",
     "toml",
     "pdfkit",
@@ -33,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
     "Topic :: Utilities",
 ]
@@ -53,7 +53,9 @@ dev = ["black",
     "pytest-cov",
     "httpretty"
 ]
+server = ["quart"]
 perf = ["hishel[redis]"]
+all = ["quart", "hishel[redis]"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
