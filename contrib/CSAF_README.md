@@ -102,4 +102,4 @@ path_to_your_csaf_file`
 Feel free to reach out to us on [discord](https://discord.gg/DCNxzaeUpd) or
 start a discussion tagging
 [@cerrussell](https://github.com/cerrussell) on
-the [OWASP Dep-Scan Repo](https://github.com/owasp-dep-scan/dep-scan).
+the [OWASP dep-scan Repo](https://github.com/owasp-dep-scan/dep-scan).

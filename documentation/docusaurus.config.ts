@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 
 const config: Config = {
-  title: 'Dep-Scan',
+  title: 'OWASP dep-scan',
   tagline: 'Next generation security audit',
   favicon: 'img/dep-scan-large.png',
 
@@ -31,9 +31,9 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          
+
           routeBasePath: '/',
-          
+
           editUrl:
             'https://github.com/owasp-dep-scan/dep-scan/tree/master/documentation',
         },
@@ -43,9 +43,9 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          
+
           editUrl:
-            'https://github.com/owasp-dep-scan/dep-scan/tree/master/docs',
+            'https://github.com/owasp-dep-scan/dep-scan/tree/master/documentation',
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
@@ -58,11 +58,10 @@ const config: Config = {
   ],
 
   themeConfig: {
-    image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'OWASP Dep-Scan',
+      title: 'OWASP dep-scan',
       logo: {
-        alt: 'Dep-Scan Logo',
+        alt: 'dep-scan Logo',
         src: 'img/dep-scan-large.png',
       },
       items: [
@@ -81,17 +80,13 @@ const config: Config = {
           title: 'Community',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            },
-            {
               label: 'Github',
               href: 'https://github.com/owasp-dep-scan/dep-scan',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} OWASP Foundation. Built with Docusaurus and ❤️.`,
+      copyright: `Copyright © ${new Date().getFullYear()} OWASP Foundation.`,
     },
     prism: {
       theme: prismThemes.github,

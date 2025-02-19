@@ -1,6 +1,6 @@
-## Enabling GUI mode for Dep-Scan
+## Enabling GUI mode for dep-scan
 
-Dep-Scan can be run in GUI mode by passing the `--gui` or `-g` flag to the command line. This will open a new window with the GUI and show the available input options.
+dep-scan can be run in GUI mode by passing the `--gui` or `-g` flag to the command line. This will open a new window with the GUI and show the available input options.
 
 
 The code to enable the GUI is present at: https://github.com/saketjajoo/dep-scan/commit/27c397bb551ada79bfc344d39399a896ecd38cef.
@@ -17,4 +17,4 @@ The GUI mode is introduced via the [Gooey Python library](https://pypi.org/proje
 wxPython uses the underlying host OS's architecture to build the GUI. Thus, this feature may require additional steps than just simply installing Gooey via pip as the installation is host OS architecture dependent. This means that if this change is introduced in dep-scan, the builds will need to be OS architecture based. Hence, this feature can be a breaking change and it is yet to figured out how to introduce this in the dep-scan environment.
 
 ### Example GUI
-![Dep-Scan GUI](dep-scan-gui.png)
+![dep-scan GUI](dep-scan-gui.png)
