@@ -1,0 +1,18 @@
+# Migrate from depscan v5 to v6
+
+Use this document as a reference to migrate your depscan v5 workflows to v6.
+
+## CLI arguments
+
+- `-o` is now an alias for `--reports-dir`. This is the output directory to store the reports.
+- All `threatdb` related arguments and submit bom functionality are removed.
+- `--cache`, `--sync` arguments removed.
+
+## Packages/Dependencies changes
+
+- `quart` package is an optional dependency in v6. To use the server mode, do `pip install owasp-depscan[all]`.
+- `oras` is an indirect dependency via `appthreat-vulnerability-db`.
+
+## Build and packaging
+
+dep-scan repo uses `uv` for building and packaging.

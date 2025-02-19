@@ -86,7 +86,7 @@ sudo npm install -g @cyclonedx/cdxgen
 pip install owasp-depscan
 
 # For a performant version, that uses valkey cache during risk audit (BSD-3-Clause)
-pip install owasp-depscan[perf]
+pip install owasp-depscan[all]
 ```
 
 This would install two commands called `cdxgen` and `depscan`.
@@ -100,34 +100,31 @@ depscan --src $PWD --reports-dir $PWD/reports
 
 The full list of options is below:
 
-```bash
-usage: cli.py [-h] [--no-banner] [] [--csaf] [--sync] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE] [--bom BOM]
-              [-i SRC_DIR_IMAGE] [-o REPORT_FILE] [--reports-dir REPORTS_DIR] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
-              [--threatdb-server THREATDB_SERVER] [--threatdb-username THREATDB_USERNAME] [--threatdb-password THREATDB_PASSWORD] [--threatdb-token THREATDB_TOKEN] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
-              [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
+```text
+usage: depscan [-h] [--no-banner] [--csaf] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS]
+               [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORTS_DIR] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
+               [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [--purl SEARCH_PURL] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
 options:
   -h, --help            show this help message and exit
-  --no-banner           Do not display banner
-                 Cache vulnerability information in platform specific user_data_dir
+  --no-banner           Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.
   --csaf                Generate a OASIS CSAF VEX document
-  --sync                Sync to receive the latest vulnerability data. Should have invoked cache first.
   --profile {appsec,research,operational,threat-modeling,license-compliance,generic}
                         Profile to use while generating the BOM.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
+  --cdxgen-args CDXGEN_ARGS
+                        Additional arguments to pass to cdxgen
   --private-ns PRIVATE_NS
                         Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
-  -t PROJECT_TYPE, --type PROJECT_TYPE
+  -t, --type PROJECT_TYPE
                         Override project type if auto-detection is incorrect
   --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
-  -i SRC_DIR_IMAGE, --src SRC_DIR_IMAGE
+  -i, --src SRC_DIR_IMAGE
                         Source directory or container image or binary file
-  -o REPORT_FILE, --report_file REPORT_FILE
-                        DEPRECATED. Use reports directory since multiple files are created. Report filename with directory
-  --reports-dir REPORTS_DIR
+  -o, --reports-dir REPORTS_DIR
                         Reports directory
   --report-template REPORT_TEMPLATE
                         Jinja template file used for rendering a custom report
@@ -138,14 +135,6 @@ options:
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
-  --threatdb-server THREATDB_SERVER
-                        ThreatDB server url. Eg: https://api.sbom.cx
-  --threatdb-username THREATDB_USERNAME
-                        ThreatDB username
-  --threatdb-password THREATDB_PASSWORD
-                        ThreatDB password
-  --threatdb-token THREATDB_TOKEN
-                        ThreatDB token for token based submission
   --server              Run depscan as a server
   --server-host SERVER_HOST
                         depscan server host
@@ -166,25 +155,25 @@ options:
 Scan a Java project.
 
 ```bash
-depscan --src <path> -o containertests/depscan-scan.json -t java
+depscan --src <path> -o containertests -t java
 ```
 
 Scan `latest` tag of the container `shiftleft/scan-slim`
 
 ```bash
-depscan --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker
+depscan --src shiftleft/scan-slim -o containertests -t docker
 ```
 
 Include `license` to the type to perform the license audit.
 
 ```bash
-depscan --src shiftleft/scan-slim -o containertests/depscan-scan.json -t docker,license
+depscan --src shiftleft/scan-slim -o containertests -t docker,license
 ```
 
 You can also specify the image using the sha256 digest
 
 ```bash
-depscan --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests/depscan-redmine.json -t docker
+depscan --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o containertests -t docker
 ```
 
 You can also save container images using docker or podman save command and pass the archive to depscan for scanning.
@@ -192,7 +181,7 @@ You can also save container images using docker or podman save command and pass 
 ```bash
 docker save -o /tmp/scanslim.tar shiftleft/scan-slim:latest
 # podman save --format oci-archive -o /tmp/scanslim.tar shiftleft/scan-slim:latest
-depscan --src /tmp/scanslim.tar -o reports/depscan-scan.json -t docker
+depscan --src /tmp/scanslim.tar -o reports -t docker
 ```
 
 Refer to the docker tests under the GitHub action workflow for this repo for more examples.
@@ -232,11 +221,11 @@ docker compose up
 depscan --server --server-host 0.0.0.0 --server-port 7070
 ```
 
-In server mode, use `/cache` endpoint to cache the vulnerability database.
+In server mode, use the `/download-vdb` endpoint to cache the vulnerability database.
 
 ```bash
-# This would take over 5 minutes
-curl http://0.0.0.0:7070/cache
+# This would take over 2 minutes
+curl http://0.0.0.0:7070/download-vdb
 ```
 
 Use the `/scan` endpoint to perform scans.

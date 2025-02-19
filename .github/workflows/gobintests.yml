@@ -77,9 +77,9 @@ jobs:
         rm *.zip
         cd ..
         oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-        uv run depscan --no-error --src gobintests/terraform -o gobintests/depscan-terraform.json -t go
-        uv run depscan --no-error --src gobintests/consul -o gobintests/depscan-consul.json -t go
-        uv run depscan --no-error --src gobintests/minikube-linux-amd64 -o gobintests/depscan-minikube.json -t go
+        uv run depscan --no-error --src gobintests/terraform -o gobintests-tf -t go
+        uv run depscan --no-error --src gobintests/consul -o gobintests-consul -t go
+        uv run depscan --no-error --src gobintests/minikube-linux-amd64 -o gobintests-mini -t go
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

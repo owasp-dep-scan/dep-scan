@@ -6,13 +6,11 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db",
+    "appthreat-vulnerability-db[oras]",
     "custom-json-diff",
     "defusedxml",
-    "oras==0.1.30",
     "PyYAML",
     "rich",
-    "quart",
     "PyGithub",
     "toml",
     "pdfkit",
@@ -33,6 +31,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
     "Topic :: Utilities",
 ]
@@ -53,7 +52,9 @@ dev = ["black",
     "pytest-cov",
     "httpretty"
 ]
+server = ["quart"]
 perf = ["hishel[redis]"]
+all = ["quart", "hishel[redis]"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -76,4 +77,4 @@ select = "B,C,E,F,W,T4,B9"
 line-length = 99
 
 [tool.uv.sources]
-appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "a1d8610ae10e2eea7b5492c84b33e628a4b62617" }
+appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "f693bfb7e16e0dcf419cdf6cddc34ed5f3373b56" }
