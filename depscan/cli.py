@@ -723,6 +723,8 @@ def run_depscan(args):
     if db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=db_lib.get_db_file_metadata is not None):
         if ORAS_AVAILABLE:
             LOG.debug(f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...")
+            # This line may exit with an exception if the database cannot be downloaded.
+            # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
             download_image(vdb_database_url, config.DATA_DIR)
         else:
             LOG.warning("The latest vulnerability database is not found. Follow the documentation to manually download it.")

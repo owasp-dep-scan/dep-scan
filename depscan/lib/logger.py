@@ -65,5 +65,5 @@ if (
 DEBUG = logging.DEBUG
 
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
-    if log_name != __name__:
+    if not log_name.startswith("depscan"):
         log_obj.disabled = True
