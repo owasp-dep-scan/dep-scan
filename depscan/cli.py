@@ -16,7 +16,7 @@ from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config, db6 as db_lib
 from vdb.lib.utils import parse_purl
 from depscan import get_version
-from depscan.lib import explainer, github, utils
+from depscan.lib import explainer, utils
 from depscan.lib.analysis import (
     PrepareVdrOptions,
     analyse_licenses,

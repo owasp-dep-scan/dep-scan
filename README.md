@@ -85,7 +85,7 @@ sudo npm install -g @cyclonedx/cdxgen
 # Normal version recommended for most users (MIT)
 pip install owasp-depscan
 
-# For a performant version, that uses valkey cache during risk audit (BSD-3-Clause)
+# For a full version with all extensions and server mode (Multiple Licenses)
 pip install owasp-depscan[all]
 ```
 
