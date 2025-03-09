@@ -397,7 +397,6 @@ def generate_console_output(pkg_vulnerabilities, bom_dependency_tree, include_pk
 
 
 def output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabilities, reached_purls, table):
-    json_dump("pkg_vulnerabilities.json", pkg_vulnerabilities, True, log=LOG)
     if pkg_vulnerabilities:
         console.print()
         console.print(table)
