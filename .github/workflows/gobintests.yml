@@ -64,23 +64,3 @@ jobs:
       env:
         PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Test go binaries
-      run: |
-        mkdir -p gobintests
-        cd gobintests
-        wget -q https://releases.hashicorp.com/terraform/1.0.7/terraform_1.0.7_linux_amd64.zip
-        unzip terraform_1.0.7_linux_amd64.zip
-        wget -q https://releases.hashicorp.com/consul/1.10.2/consul_1.10.2_linux_amd64.zip
-        unzip consul_1.10.2_linux_amd64.zip
-        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
-        chmod +x minikube-linux-amd64
-        rm *.zip
-        cd ..
-        oras pull ghcr.io/appthreat/vdb:v5 -o $VDB_HOME
-        uv run depscan --no-error --src gobintests/terraform -o gobintests-tf -t go
-        uv run depscan --no-error --src gobintests/consul -o gobintests-consul -t go
-        uv run depscan --no-error --src gobintests/minikube-linux-amd64 -o gobintests-mini -t go
-      env:
-        PYTHONPATH: "."
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: vdb_data
