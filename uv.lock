@@ -495,7 +495,7 @@ wheels = [
 
 [[package]]
 name = "custom-json-diff"
-version = "2.1.5"
+version = "2.1.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jinja2" },
@@ -504,9 +504,9 @@ dependencies = [
     { name = "semver" },
     { name = "toml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8b/58/fabc5bf942035dc83dcb720460eee2ac5d62f3e9111da2a15bbe742240cc/custom_json_diff-2.1.5.tar.gz", hash = "sha256:16433d786e0da694a744023736cd82946c2e039d55ed8d3d43bd0798f50bfbec", size = 40643 }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/f9/670514efaceb028f739106231acfae1813638387742e130cd5561949c10e/custom_json_diff-2.1.6.tar.gz", hash = "sha256:26d62a7f2fc61327c3bcda00b65d820f503682f242afcb1d2305186f8745e10e", size = 40672 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/47/c6/3e21dfb707f4057a24bb6bf899d9501ca5eb3d3b5a9d91c134a15cc7c049/custom_json_diff-2.1.5-py3-none-any.whl", hash = "sha256:d5d7ea31777e577c8606ea4e885d95f9b94c77a7e94f96d2a83c52eea4cdfb93", size = 34032 },
+    { url = "https://files.pythonhosted.org/packages/71/8a/7ec7e9d24c5fbc9238490cffa0f7dc0ac243ff16464be315c42e8a81c928/custom_json_diff-2.1.6-py3-none-any.whl", hash = "sha256:67278ea7eda6190fce7c6016c47ee19ffc9d70bf2cf73dcdf9ae9724413028a6", size = 34044 },
 ]
 
 [[package]]
@@ -1067,7 +1067,7 @@ requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
     { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=4a0d17355cf95e9f61cad9021dd9c7983602e430" },
     { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=4a0d17355cf95e9f61cad9021dd9c7983602e430" },
-    { name = "custom-json-diff", specifier = ">=2.1.5" },
+    { name = "custom-json-diff", specifier = ">=2.1.6" },
     { name = "cvss", specifier = ">=3.4" },
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.2" },

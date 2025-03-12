@@ -7,7 +7,7 @@ authors = [
 ]
 dependencies = [
     "appthreat-vulnerability-db[oras]",
-    "custom-json-diff>=2.1.5",
+    "custom-json-diff>=2.1.6",
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
     "rich>=13.9.4",
