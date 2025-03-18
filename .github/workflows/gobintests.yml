@@ -28,11 +28,11 @@ jobs:
     - uses: oras-project/setup-oras@v1
     - name: setup nydus
       run: |
-        curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.2.4/nydus-static-v2.2.4-linux-amd64.tgz
-        tar -xvf nydus-static-v2.2.4-linux-amd64.tgz
+        curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.0/nydus-static-v2.3.0-linux-amd64.tgz
+        tar -xvf nydus-static-v2.3.0-linux-amd64.tgz
         chmod +x nydus-static/*
         mv nydus-static/* /usr/local/bin/
-        rm -rf nydus-static-v2.2.4-linux-amd64.tgz nydus-static
+        rm -rf nydus-static-v2.3.0-linux-amd64.tgz nydus-static
     - name: Display Python version
       run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
@@ -40,6 +40,22 @@ jobs:
         python3 -m pip install --upgrade pip setuptools
         uv sync --all-extras --dev
         sudo npm install -g @cyclonedx/cdxgen
+    - name: Test binaries
+      run: |
+        mkdir -p ${RUNNER_TEMP}/bintests ${RUNNER_TEMP}/blintdb
+        curl -LO https://github.com/pkgforge/soar/releases/download/v0.5.13/soar-x86_64-linux
+        chmod +x soar-x86_64-linux
+        mv soar-x86_64-linux /usr/local/bin/soar
+        soar install abseil
+        soar install ag
+        soar install alacritty
+        soar install rclone
+        soar install rustscan
+        uv run depscan --no-banner --no-error --src $HOME/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
+        ls -lh ${GITHUB_WORKSPACE}/bintests
+      env:
+        BLINTDB_IMAGE_URL: "ghcr.io/appthreat/blintdb-meson:v1"
+        BLINTDB_HOME: ${{ runner.temp }}/blintdb
     - name: setup nydus
       run: |
         mkdir -p $VDB_HOME
@@ -55,12 +71,10 @@ jobs:
         uv run depscan --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
         rm -rf vdb_data_nydus
       env:
-        PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VDB_HOME: vdb_data_nydus
     - name: Test without nydus
       run: |
         uv run depscan --no-banner --no-error --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
       env:
-        PYTHONPATH: "."
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

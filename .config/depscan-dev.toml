@@ -1,0 +1,5 @@
+# depscan configuration file
+
+project_type = ["python"]
+reports-dir = "reports"
+profile = "generic"

@@ -38,6 +38,23 @@ uv run depscan --help
 uv run pytest
 ```
 
+## Local VDB setup
+
+```shell
+vdb --clean
+vdb --download-image
+# To scan containers and OS images
+# vdb --download-full-image
+```
+
+## Scan local depscan
+
+```shell
+uv run depscan --config .config/depscan-dev.toml
+```
+
+This would automatically use the configuration specified in the local config file.
+
 {/* ## Code Style Guide
 
 ## Contribution Workflow */}

@@ -201,7 +201,7 @@ wheels = [
 [[package]]
 name = "blint"
 version = "2.4.0"
-source = { git = "https://github.com/owasp-dep-scan/blint?rev=4a0d17355cf95e9f61cad9021dd9c7983602e430#4a0d17355cf95e9f61cad9021dd9c7983602e430" }
+source = { git = "https://github.com/owasp-dep-scan/blint?rev=cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e#cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e" }
 dependencies = [
     { name = "appdirs" },
     { name = "apsw" },
@@ -1031,6 +1031,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "toml" },
+    { name = "tomli" },
 ]
 
 [package.optional-dependencies]
@@ -1065,8 +1066,8 @@ requires-dist = [
     { name = "atom-tools", marker = "extra == 'all'", specifier = ">=0.7.1" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = ">=0.7.1" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=4a0d17355cf95e9f61cad9021dd9c7983602e430" },
-    { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=4a0d17355cf95e9f61cad9021dd9c7983602e430" },
+    { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e" },
+    { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e" },
     { name = "custom-json-diff", specifier = ">=2.1.6" },
     { name = "cvss", specifier = ">=3.4" },
     { name = "defusedxml", specifier = ">=0.7.1" },
@@ -1085,6 +1086,7 @@ requires-dist = [
     { name = "quart", marker = "extra == 'server'", specifier = ">=0.20.0" },
     { name = "rich", specifier = ">=13.9.4" },
     { name = "toml", specifier = ">=0.10.2" },
+    { name = "tomli", specifier = ">=2.2.1" },
 ]
 provides-extras = ["dev", "server", "ext", "perf", "all"]
 

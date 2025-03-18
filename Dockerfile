@@ -1,4 +1,4 @@
-FROM almalinux:9.4-minimal
+FROM almalinux:9.5-minimal
 
 LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
@@ -12,11 +12,10 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=22.0.1-tem
-ARG SBT_VERSION=1.9.8
-ARG MAVEN_VERSION=3.9.7
-ARG GRADLE_VERSION=8.8
-ARG NYDUS_VERSION=2.2.5
+ARG JAVA_VERSION=23.0.2-tem
+ARG SBT_VERSION=1.10.11
+ARG MAVEN_VERSION=3.9.9
+ARG GRADLE_VERSION=8.13
 ARG PYTHON_VERSION=3.12
 
 ENV GOPATH=/opt/app-root/go \
@@ -25,7 +24,6 @@ ENV GOPATH=/opt/app-root/go \
     SBT_VERSION=$SBT_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
     GRADLE_VERSION=$GRADLE_VERSION \
-    NYDUS_VERSION=$NYDUS_VERSION \
     GRADLE_OPTS="-Dorg.gradle.daemon=false" \
     JAVA_HOME="/opt/java/${JAVA_VERSION}" \
     MAVEN_HOME="/opt/maven/${MAVEN_VERSION}" \
@@ -100,4 +98,5 @@ RUN set -e; \
     && rm -rf /var/cache/yum \
     && microdnf clean all
 
+WORKDIR /app
 CMD [ "depscan" ]
