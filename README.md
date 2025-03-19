@@ -101,27 +101,36 @@ depscan --src $PWD --reports-dir $PWD/reports
 The full list of options is below:
 
 ```text
-usage: depscan [-h] [--no-banner] [--csaf] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic}] [--no-suggest] [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS]
-               [-t PROJECT_TYPE] [--bom BOM] [-i SRC_DIR_IMAGE] [-o REPORTS_DIR] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--no-error] [--no-license-scan] [--deep] [--no-universal] [--no-vuln-table]
-               [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [--purl SEARCH_PURL] [-v]
+usage: depscan [-h] [--config CONFIG] [--no-banner] [--csaf] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}]
+               [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
+               [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
+               [--no-suggest] [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM] [--bom-dir BOM_DIR] [-i SRC_DIR_IMAGE] [-o REPORTS_DIR]
+               [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--no-universal] [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
+               [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [--purl SEARCH_PURL] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
 options:
   -h, --help            show this help message and exit
+  --config CONFIG       Path to the configuration file. Default: $PWD/.config/depscan.toml
   --no-banner           Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.
   --csaf                Generate a OASIS CSAF VEX document
-  --profile {appsec,research,operational,threat-modeling,license-compliance,generic}
+  --profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}
                         Profile to use while generating the BOM.
+  --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
+                        Product lifecycle for the generated BOM. Multiple values allowed.
+  --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
+                        Analysis technique to use for BOM generation. Multiple values allowed.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --cdxgen-args CDXGEN_ARGS
                         Additional arguments to pass to cdxgen
   --private-ns PRIVATE_NS
                         Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
-  -t, --type PROJECT_TYPE
-                        Override project type if auto-detection is incorrect
+  -t, --type PROJECT_TYPE [PROJECT_TYPE ...]
+                        Override project types if auto-detection is incorrect. Multiple values supported.
   --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
+  --bom-dir BOM_DIR     Examine all the Bill-of-Materials (BOM) files in the given directory.
   -i, --src SRC_DIR_IMAGE
                         Source directory or container image or binary file
   -o, --reports-dir REPORTS_DIR
@@ -130,8 +139,6 @@ options:
                         Jinja template file used for rendering a custom report
   --report-name REPORT_NAME
                         Filename of the custom report written to the --reports-dir
-  --no-error            UNUSED: Continue on error to prevent build from breaking
-  --no-license-scan     UNUSED: dep-scan doesn't perform license scanning by default
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
@@ -261,6 +268,23 @@ uv sync --all-extras --dev
 uv run depscan --help
 uv run pytest
 ```
+
+### Local VDB setup
+
+```shell
+vdb --clean
+vdb --download-image
+# To scan containers and OS images
+# vdb --download-full-image
+```
+
+### Scan local depscan
+
+```shell
+uv run depscan --config .config/depscan-dev.toml
+```
+
+This would automatically use the configuration specified in the local config [file](./.config/depscan.toml).
 
 ## License
 

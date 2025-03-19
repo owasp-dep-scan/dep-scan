@@ -3,6 +3,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from urllib.parse import unquote_plus
 
 import httpx
@@ -10,7 +11,17 @@ from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 
 from depscan.lib.logger import LOG
-from depscan.lib.utils import cleanup_license_string, find_files
+from depscan.lib.utils import cleanup_license_string
+
+BLINT_AVAILABLE = False
+try:
+    from blint.lib.runners import run_sbom_mode
+    from blint.config import BlintOptions, BLINTDB_IMAGE_URL
+    from blint.lib.utils import blintdb_setup
+
+    BLINT_AVAILABLE = True
+except ImportError:
+    pass
 
 headers = {
     "Content-Type": "application/json",
@@ -27,7 +38,8 @@ def exec_tool(args, cwd=None, stdout=subprocess.PIPE):
     :param stdout: Specifies stdout of command
     """
     try:
-        LOG.debug('⚡︎ Executing "%s"', " ".join(args))
+        LOG.info("⚡︎ Generting BOM with cdxgen")
+        LOG.debug('Executing "%s"', " ".join(args))
         cp = subprocess.run(
             args,
             stdout=stdout,
@@ -253,7 +265,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def exec_cdxgen(use_bin=True):
+def find_cdxgen_cmd(use_bin=True):
     if use_bin:
         cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
         if not shutil.which(cdxgen_cmd):
@@ -312,7 +324,7 @@ def exec_cdxgen(use_bin=True):
             return None
 
 
-def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
+def create_bom(project_type: str | list, bom_file, src_dir=".", deep=False, options=None):
     """
     Method to create BOM file by executing cdxgen command
 
@@ -326,12 +338,21 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
     """
     if not options:
         options = {}
+    # Make project_type a list
+    if isinstance(project_type, str):
+        project_type = [project_type]
+    # For binaries, generate an sbom with blint directly
+    techniques = options.get("techniques") or []
+    lifecycles = options.get("lifecycles") or []
+    if (project_type[0] in ("binary", "apk") or (techniques and "binary-analysis" in techniques)
+            or (lifecycles and "post-build" in lifecycles)):
+        return create_blint_bom(bom_file, src_dir, options=options)
     cdxgen_server = options.get("cdxgen_server")
     # Generate SBOM by calling cdxgen server
     if cdxgen_server:
         # Fallback to universal if no project type was provided
         if not project_type:
-            project_type = "universal"
+            project_type = ["universal"]
         if not src_dir and options.get("path"):
             src_dir = options.get("path")
         with httpx.Client(
@@ -345,7 +366,7 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
                     json={
                         "url": options.get("url", ""),
                         "path": options.get("path", src_dir),
-                        "type": options.get("type", project_type),
+                        "type": options.get("type", ",".join(project_type)),
                         "multiProject": options.get("multiProject", ""),
                     },
                     headers=headers,
@@ -373,17 +394,23 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
                     "Unable to generate SBOM with cdxgen server. Trying to "
                     "generate one locally."
                 )
-    cdxgen_cmd = exec_cdxgen()
+    cdxgen_cmd = find_cdxgen_cmd()
     if not cdxgen_cmd:
-        cdxgen_cmd = exec_cdxgen(False)
-    if project_type in ("docker",):
+        cdxgen_cmd = find_cdxgen_cmd(False)
+    if any(t in project_type for t in ("docker", "oci", "container")):
         LOG.info(
-            "Generating Software Bill-of-Materials for container image %s. "
+            "Generating Software Bill-of-Materials for the container image %s. "
             "This might take a few mins ...",
             src_dir,
         )
-    args = [cdxgen_cmd, "-r", "-t", project_type, "-o", bom_file]
-    if deep or project_type in ("jar", "jenkins") or options.get("reachables"):
+    project_type_args = [f"-t {item}" for item in project_type]
+    technique_args = [f"--technique {item}" for item in techniques]
+    args = [cdxgen_cmd, "-r"]
+    args = args + project_type_args
+    args = args + ["-o", bom_file]
+    if technique_args:
+        args = args + technique_args
+    if deep:
         args.append("--deep")
         LOG.info("About to perform deep scan. This could take a while ...")
     if options.get("profile"):
@@ -400,11 +427,45 @@ def create_bom(project_type, bom_file, src_dir=".", deep=False, options=None):
         exec_tool(
             args,
             src_dir
-            if project_type not in ("docker", "oci", "container")
-            and src_dir
-            and os.path.isdir(src_dir)
+            if any(t in project_type for t in ("docker", "oci", "container"))
+               and src_dir
+               and os.path.isdir(src_dir)
             else None,
         )
     else:
-        LOG.warning("Unable to locate cdxgen command. ")
+        LOG.warning("Unable to locate cdxgen command.")
+    return os.path.exists(bom_file)
+
+
+def create_blint_bom(bom_file, src_dir=".", options=None):
+    """
+    Method to create BOM file by using blint
+
+    :param bom_file: BOM file
+    :param src_dir: Source directory
+    :param options: Additional options for generating the BOM file.
+    :returns: True if the bom was generated successfully. False otherwise.
+    """
+    if options is None:
+        options = {}
+    if not BLINT_AVAILABLE:
+        LOG.warning(
+            "The required packages for binary SBOM generation are not available. Reinstall depscan using `pip install owasp-depscan[all]`.")
+        return False
+    temp_reports_dir = tempfile.mkdtemp(prefix="blint-reports-")
+    blint_options = BlintOptions(deep_mode=True, sbom_mode=True, db_mode=True,
+                                 no_reviews=True, no_error=True, quiet_mode=True,
+                                 src_dir_image=src_dir.split(","), stdout_mode=False, reports_dir=temp_reports_dir,
+                                 use_blintdb=True, image_url=options.get("blintdb_image_url", BLINTDB_IMAGE_URL),
+                                 sbom_output=bom_file)
+    LOG.debug("Getting ready to prepare blintdb")
+    blintdb_setup(blint_options)
+    LOG.info(f"About to scan the directory {src_dir} with blint. This might take a while ...")
+    sbom = run_sbom_mode(blint_options)
+    if sbom and len(sbom.components):
+        LOG.debug(
+            f"SBOM from blint includes {len(sbom.components)} components and {len(sbom.dependencies)} dependencies.")
+    else:
+        LOG.debug("Received an empty BOM from blint.")
+    shutil.rmtree(temp_reports_dir, ignore_errors=True)
     return os.path.exists(bom_file)

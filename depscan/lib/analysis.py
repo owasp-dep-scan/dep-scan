@@ -406,7 +406,7 @@ def output_results(counts, direct_purls, options, pkg_group_rows, pkg_vulnerabil
 Next Steps
 ----------
 
-Below are the vulnerabilities prioritized by depscan. Follow your team's remediation workflow to mitigate these findings.
+The vulnerabilities below are prioritized by depscan. Follow your team's remediation workflow to address these findings.
         """,
             justify="left",
         )

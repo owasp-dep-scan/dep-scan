@@ -35,7 +35,7 @@ jobs:
       run: |
         source venv/bin/activate
         cd vuln_spring
-        depscan --no-error --bom ./bom.json --csaf
+        depscan --bom ./bom.json --csaf
     - name: Validate
       run: |
         source venv/bin/activate

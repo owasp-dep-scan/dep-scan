@@ -1,7 +1,6 @@
 #!/usr/bin/env python3 -W ignore::DeprecationWarning
 # -*- coding: utf-8 -*-
 
-import argparse
 import contextlib
 import json
 import os
@@ -16,7 +15,7 @@ from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config, db6 as db_lib
 from vdb.lib.utils import parse_purl
 from depscan import get_version
-from depscan.lib import explainer, utils
+from depscan.lib import explainer, utils, tomlparse
 from depscan.lib.analysis import (
     PrepareVdrOptions,
     analyse_licenses,
@@ -75,6 +74,7 @@ try:
 except ImportError:
     pass
 
+
 def build_args():
     """
     Constructs command line arguments for the depscan tool
@@ -84,10 +84,10 @@ def build_args():
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(
+    parser = tomlparse.ArgumentParser(
         description="Fully open-source security and license audit for "
-        "application dependencies and container images based on "
-        "known vulnerabilities and advisories.",
+                    "application dependencies and container images based on "
+                    "known vulnerabilities and advisories.",
         epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more",
     )
     parser.add_argument(
@@ -114,9 +114,40 @@ def build_parser():
             "threat-modeling",
             "license-compliance",
             "generic",
+            "machine-learning",
+            "ml",
+            "deep-learning",
+            "ml-deep",
+            "ml-tiny",
         ),
         dest="profile",
         help="Profile to use while generating the BOM.",
+    )
+    parser.add_argument(
+        "--lifecycle",
+        choices=(
+            "pre-build", "build", "post-build"
+        ),
+        nargs="+",
+        type=str,
+        dest="lifecycles",
+        help="Product lifecycle for the generated BOM. Multiple values allowed.",
+    )
+    parser.add_argument(
+        "--technique",
+        choices=(
+            "auto",
+            "source-code-analysis",
+            "binary-analysis",
+            "manifest-analysis",
+            "hash-comparison",
+            "instrumentation",
+            "filename"
+        ),
+        nargs="+",
+        type=str,
+        dest="techniques",
+        help="Analysis technique to use for BOM generation. Multiple values allowed.",
     )
     parser.add_argument(
         "--no-suggest",
@@ -143,21 +174,28 @@ def build_parser():
         dest="private_ns",
         default=os.getenv("PKG_PRIVATE_NAMESPACE"),
         help="Private namespace to use while performing oss risk audit. "
-        "Private packages should not be available in public registries "
-        "by default. Comma separated values accepted.",
+             "Private packages should not be available in public registries "
+             "by default. Comma separated values accepted.",
     )
     parser.add_argument(
         "-t",
         "--type",
+        nargs="+",
+        type=str,
         dest="project_type",
-        default=os.getenv("DEPSCAN_PROJECT_TYPE"),
-        help="Override project type if auto-detection is incorrect",
+        default=os.getenv("DEPSCAN_PROJECT_TYPE", "").split(","),
+        help="Override project types if auto-detection is incorrect. Multiple values supported.",
     )
     parser.add_argument(
         "--bom",
         dest="bom",
         help="Examine using the given Software Bill-of-Materials (SBOM) file "
-        "in CycloneDX format. Use cdxgen command to produce one.",
+             "in CycloneDX format. Use cdxgen command to produce one.",
+    )
+    parser.add_argument(
+        "--bom-dir",
+        dest="bom_dir",
+        help="Examine all the Bill-of-Materials (BOM) files in the given directory.",
     )
     parser.add_argument(
         "-i",
@@ -186,26 +224,12 @@ def build_parser():
         help="Filename of the custom report written to the --reports-dir",
     )
     parser.add_argument(
-        "--no-error",
-        action="store_true",
-        default=False,
-        dest="noerror",
-        help="UNUSED: Continue on error to prevent build from breaking",
-    )
-    parser.add_argument(
-        "--no-license-scan",
-        action="store_true",
-        default=False,
-        dest="no_license_scan",
-        help="UNUSED: dep-scan doesn't perform license scanning by default",
-    )
-    parser.add_argument(
         "--deep",
         action="store_true",
         default=False,
         dest="deep_scan",
         help="Perform deep scan by passing this --deep argument to cdxgen. "
-        "Useful while scanning docker images and OS packages.",
+             "Useful while scanning docker images and OS packages.",
     )
     parser.add_argument(
         "--no-universal",
@@ -213,7 +237,7 @@ def build_parser():
         default=False,
         dest="non_universal_scan",
         help="Depscan would attempt to perform a single universal scan "
-        "instead of individual scans per language type.",
+             "instead of individual scans per language type.",
     )
     parser.add_argument(
         "--no-vuln-table",
@@ -221,7 +245,7 @@ def build_parser():
         default=False,
         dest="no_vuln_table",
         help="Do not print the table with the full list of vulnerabilities. "
-        "This can help reduce console output.",
+             "This can help reduce console output.",
     )
     parser.add_argument(
         "--server",
@@ -261,7 +285,7 @@ def build_parser():
         default=False,
         dest="explain",
         help="Makes depscan to explain the various analysis. Useful for "
-        "creating detailed reports.",
+             "creating detailed reports.",
     )
     parser.add_argument(
         "--reachables-slices-file",
@@ -322,6 +346,7 @@ def summarise(
     :param results: Scan or audit results
     :param pkg_aliases: Package aliases used
     :param purl_aliases: Package URL to package name aliases
+    :param suggest_mode: Normalize fix versions automatically
     :param scoped_pkgs: Dict containing package scopes
     :param report_file: Output report file
     :param bom_file: SBOM file
@@ -414,7 +439,7 @@ def set_project_types(args, src_dir):
     pkg_list, purl_obj = [], {}
 
     if args.project_type:
-        project_types_list = args.project_type.split(",")
+        project_types_list = args.project_type if isinstance(args.project_type, list) else args.project_type.split(",")
     elif args.search_purl:
         purl_obj = parse_purl(args.search_purl)
         purl_obj["purl"] = args.search_purl
@@ -482,7 +507,6 @@ if QUART_AVAILABLE:
         multi_project = None
         project_type = None
         results = []
-        db = db_lib.get()
         profile = "generic"
         deep = False
         suggest_mode = q.get("suggest") or True
@@ -525,13 +549,13 @@ if QUART_AVAILABLE:
             }, 400
         if not project_type:
             return {"error": "true", "message": "project type is required"}, 400
-        if 0 in db_lib.stats():
+        if db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False):
             return (
                 {
                     "error": "true",
                     "message": "Vulnerability database is empty. Prepare the "
-                    "vulnerability database by invoking /download-vdb endpoint "
-                    "before running scans.",
+                               "vulnerability database by invoking /download-vdb endpoint "
+                               "before running scans.",
                 },
                 500,
                 {"Content-Type": "application/json"},
@@ -573,15 +597,16 @@ if QUART_AVAILABLE:
             with tempfile.NamedTemporaryFile(
                 delete=False, suffix=".bom.json"
             ) as bfp:
+                project_type_list = project_type.split(",")
                 bom_status = create_bom(
-                    project_type,
+                    project_type_list,
                     bfp.name,
                     path,
                     deep,
                     {
                         "url": url,
                         "path": path,
-                        "type": project_type,
+                        "type": project_type_list,
                         "multiProject": multi_project,
                         "cdxgen_server": cdxgen_server,
                         "profile": profile,
@@ -600,6 +625,7 @@ if QUART_AVAILABLE:
             pkg_list = get_pkg_list(bom_file_path)
             if not pkg_list:
                 return {}
+            # Here we are assuming there will be only one type
             if project_type in type_audit_map:
                 audit_results = audit(project_type, pkg_list)
                 if audit_results:
@@ -661,8 +687,7 @@ if QUART_AVAILABLE:
         app.run(
             host=args.server_host,
             port=args.server_port,
-            debug=os.getenv("SCAN_DEBUG_MODE") == "debug"
-            or os.getenv("AT_DEBUG_MODE") == "debug",
+            debug=os.getenv("SCAN_DEBUG_MODE") == "debug",
             use_reloader=False,
         )
 
@@ -672,6 +697,7 @@ def run_depscan(args):
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
     """
+    depscan_options = {**vars(args)}
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
@@ -686,8 +712,7 @@ def run_depscan(args):
         os.getenv("CI")
         and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
         and not args.no_banner
-        and not os.getenv("INPUT_THANK_YOU", "")
-        == ("I have sponsored OWASP-dep-scan.")
+        and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan."
     ):
         console.print(
             Panel(
@@ -698,13 +723,15 @@ def run_depscan(args):
         )
     # Should we turn on the debug mode
     if args.enable_debug:
-        os.environ["AT_DEBUG_MODE"] = "debug"
+        os.environ["SCAN_DEBUG_MODE"] = "debug"
+        os.environ["CDXGEN_DEBUG_MODE"] = "debug"
         LOG.setLevel(DEBUG)
     if args.server_mode:
         if QUART_AVAILABLE:
             return run_server(args)
         else:
-            LOG.info("The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`.")
+            LOG.info(
+                "The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`.")
             return False
     if not args.no_banner:
         with contextlib.suppress(UnicodeEncodeError):
@@ -727,7 +754,8 @@ def run_depscan(args):
             # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
             download_image(vdb_database_url, config.DATA_DIR)
         else:
-            LOG.warning("The latest vulnerability database is not found. Follow the documentation to manually download it.")
+            LOG.warning(
+                "The latest vulnerability database is not found. Follow the documentation to manually download it.")
     if args.csaf:
         toml_file_path = os.getenv(
             "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
@@ -794,15 +822,11 @@ def run_depscan(args):
             else:
                 bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(
-                project_type,
+                [project_type],
                 bom_file,
                 src_dir,
                 args.deep_scan,
-                {
-                    "cdxgen_server": args.cdxgen_server,
-                    "profile": args.profile,
-                    "cdxgen_args": args.cdxgen_args,
-                },
+                depscan_options,
             )
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
@@ -893,12 +917,12 @@ def run_depscan(args):
         # In case of docker, bom, or universal type, check if there are any
         # npm packages that can be audited remotely
         if project_type in (
-            "podman",
-            "docker",
-            "oci",
-            "container",
-            "bom",
-            "universal",
+                "podman",
+                "docker",
+                "oci",
+                "container",
+                "bom",
+                "universal",
         ):
             npm_pkg_list = get_pkg_by_type(pkg_list, "npm")
             if npm_pkg_list:
@@ -921,13 +945,13 @@ def run_depscan(args):
         if len(pkg_list) > 1:
             if args.bom:
                 LOG.info(
-                    "Performing regular scan for %s using plugin %s",
+                    "Scanning %s with type %s",
                     args.bom,
                     project_type,
                 )
             else:
                 LOG.info(
-                    "Performing regular scan for %s using plugin %s",
+                    "Scanning %s with type %s",
                     src_dir,
                     project_type,
                 )
