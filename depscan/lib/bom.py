@@ -342,8 +342,8 @@ def create_bom(project_type: str | list, bom_file, src_dir=".", deep=False, opti
     if isinstance(project_type, str):
         project_type = [project_type]
     # For binaries, generate an sbom with blint directly
-    techniques = options.get("techniques")
-    lifecycles = options.get("lifecycles")
+    techniques = options.get("techniques") or []
+    lifecycles = options.get("lifecycles") or []
     if (project_type[0] in ("binary", "apk") or (techniques and "binary-analysis" in techniques)
             or (lifecycles and "post-build" in lifecycles)):
         return create_blint_bom(bom_file, src_dir, options=options)
@@ -404,7 +404,7 @@ def create_bom(project_type: str | list, bom_file, src_dir=".", deep=False, opti
             src_dir,
         )
     project_type_args = [f"-t {item}" for item in project_type]
-    technique_args = [f"--technique {item}" for item in options.get("techniques", [])]
+    technique_args = [f"--technique {item}" for item in techniques]
     args = [cdxgen_cmd, "-r"]
     args = args + project_type_args
     args = args + ["-o", bom_file]
