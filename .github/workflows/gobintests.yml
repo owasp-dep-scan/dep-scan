@@ -46,9 +46,9 @@ jobs:
         curl -LO https://github.com/pkgforge/soar/releases/download/v0.5.13/soar-x86_64-linux
         chmod +x soar-x86_64-linux
         mv soar-x86_64-linux /usr/local/bin/soar
-        soar install abseil
-        soar install ag
-        soar install alacritty
+        soar install altair
+        soar install anydesk
+        soar install firetail
         soar install rclone
         soar install rustscan
         uv run depscan --no-banner --src ${HOME}/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
