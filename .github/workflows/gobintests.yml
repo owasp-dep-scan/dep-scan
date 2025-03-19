@@ -51,7 +51,7 @@ jobs:
         soar install alacritty
         soar install rclone
         soar install rustscan
-        uv run depscan --no-banner --no-error --src $HOME/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
+        uv run depscan --no-banner --no-error --src ${HOME}/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
         ls -lh ${GITHUB_WORKSPACE}/bintests
       env:
         BLINTDB_IMAGE_URL: "ghcr.io/appthreat/blintdb-meson:v1"
