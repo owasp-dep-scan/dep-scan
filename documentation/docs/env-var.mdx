@@ -10,3 +10,4 @@ The following environment variables can be used to customize the behavior.
 -   VDB_DATABASE_URL - Vulnerability DB URL. Defaults to: ghcr.io/appthreat/vdbxz:v6, which includes both app and OS vulnerabilities. For a smaller app-only database, use `ghcr.io/appthreat/vdbxz-app:v6`
 -   USE_VDB_10Y - Set to true to use the larger 10-year vulnerability database with both app and OS vulnerabilities. Default download url: ghcr.io/appthreat/vdbxz-10y:v6. For an app-only 10 year database use `ghcr.io/appthreat/vdbxz-app-10y:v6`
 -   VDB_AGE_HOURS - Set the age threshold for the vulnerability database before it is re-downloaded. The default is 24 hours.
+-   DEPSCAN_TEMP_DIR - Temporary directory to use.

@@ -2,11 +2,12 @@
 
 Use this document as a reference to migrate your depscan v5 workflows to v6.
 
-## CLI arguments
+## CLI arguments (BREAKING)
 
 - `-o` is now an alias for `--reports-dir`. This is the output directory to store the reports.
 - All `threatdb` related arguments and submit bom functionality are removed.
-- `--cache`, `--sync`, `--no-error`, `--no-license-scan` arguments removed.
+- `--cache`, `--sync`, `--no-error`, `--no-license-scan` arguments are removed.
+- `--bom-engine` defaults to `auto`. In environments where the `docker` command is available, depscan automatically chooses a container-image–based SBOM generation. Pass `--bom-engine CdxgenGenerator` to force depscan to use the local cdxgen CLI.
 
 ## Packages/Dependencies changes
 
