@@ -49,6 +49,8 @@ options:
                         Product lifecycle for the generated BOM. Multiple values allowed.
   --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
                         Analysis technique to use for BOM generation. Multiple values allowed.
+  --bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator}
+                        BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --cdxgen-args CDXGEN_ARGS
@@ -143,4 +145,15 @@ docker run --rm \
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.
 
+## Specify the BOM engine (Python version)
 
+Depscan allows you to customize the BOM generator engine. The supported values are: `auto`, `CdxgenGenerator`, `CdxgenServerGenerator`, `CdxgenImageBasedGenerator`, and `BlintGenerator`.
+
+- **auto**: Uses the container-image-based cdxgen generator (`CdxgenImageBasedGenerator`) if the Docker command is available and the project type specified is not an oci image type (such as docker, podman, and oci). Otherwise, it uses the local cdxgen CLI via `CdxgenGenerator` or the local cdxgen server `CdxgenServerGenerator` if you pass the `--cdxgen-server` argument.
+- **CdxgenGenerator**: Always uses the local cdxgen CLI. Install cdxgen using the npm command or download the standalone executable.
+- **CdxgenServerGenerator**: Uses the cdxgen server. Specify the URL using the `--cdxgen-server` argument.
+- **CdxgenImageBasedGenerator**: Generates a BOM using the official cdxgen container images. You can customize the image name using `CDXGEN_IMAGE_{project_type}` and `CDXGEN_IMAGE_VERSION`. Container image–based generation is more suitable for enterprise applications that require specific build tools and OS libraries for successful BOM generation. This approach is resource-intensive but typically has a higher success rate.
+- **BlintGenerator**: Uses the optional OWASP blint library. This requires installing depscan with all optional packages:
+  ```bash
+  pip install owasp-depscan[all]
+  ```

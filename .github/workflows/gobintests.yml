@@ -5,14 +5,14 @@ on:
   workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-      fail-fast: false
+      fail-fast: true
     steps:
     - uses: actions/checkout@v4
     - name: Install uv
@@ -38,8 +38,8 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip setuptools
-        uv sync --all-extras --dev
-        sudo npm install -g @cyclonedx/cdxgen
+        uv sync --all-extras --all-packages --dev
+        npm install -g @cyclonedx/cdxgen
     - name: Test binaries
       run: |
         mkdir -p ${RUNNER_TEMP}/bintests ${RUNNER_TEMP}/blintdb
@@ -47,15 +47,16 @@ jobs:
         chmod +x soar-x86_64-linux
         mv soar-x86_64-linux /usr/local/bin/soar
         soar install altair
-        soar install anydesk
-        soar install firetail
         soar install rclone
         soar install rustscan
         uv run depscan --no-banner --src ${HOME}/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
         ls -lh ${GITHUB_WORKSPACE}/bintests
+        rm -rf ${HOME}/.local/share/soar ${VDB_HOME} ${RUNNER_TEMP}/cdxgen-temp
       env:
         BLINTDB_IMAGE_URL: "ghcr.io/appthreat/blintdb-meson:v1"
         BLINTDB_HOME: ${{ runner.temp }}/blintdb
+        VDB_HOME: ${{ runner.temp }}/vdb_data_bin
+        CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
     - name: setup nydus
       run: |
         mkdir -p $VDB_HOME
@@ -63,18 +64,22 @@ jobs:
         oras pull ghcr.io/appthreat/vdb:v5-rafs -o $RAFS_OUT
         nydus-image unpack --blob $RAFS_OUT/data.rafs --output $VDB_HOME/vdb.tar --bootstrap $RAFS_OUT/meta.rafs
         tar -C $VDB_HOME -xf $VDB_HOME/vdb.tar
-        rm $VDB_HOME/vdb.tar
+        rm -rf $VDB_HOME/vdb.tar ${RUNNER_TEMP}/cdxgen-temp
       env:
-        VDB_HOME: vdb_data_nydus
+        VDB_HOME: ${{ runner.temp }}/vdb_data_nydus
     - name: Test with nydus
       run: |
         uv run depscan --no-banner --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
-        rm -rf vdb_data_nydus
+        rm -rf vdb_data_nydus ${RUNNER_TEMP}/cdxgen-temp
+        docker rmi ghcr.io/owasp-dep-scan/depscan:master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        VDB_HOME: vdb_data_nydus
+        VDB_HOME: ${{ runner.temp }}/vdb_data_nydus
+        CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
     - name: Test without nydus
       run: |
         uv run depscan --no-banner --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+        docker rmi ghcr.io/owasp-dep-scan/depscan:latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp

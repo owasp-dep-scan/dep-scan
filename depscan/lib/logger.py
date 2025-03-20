@@ -1,5 +1,7 @@
 import logging
 import os
+import random
+import re
 
 from rich.console import Console
 from rich.highlighter import RegexHighlighter
@@ -8,7 +10,7 @@ from rich.theme import Theme
 
 
 class CustomHighlighter(RegexHighlighter):
-    base_style = "atom."
+    base_style = "depscan."
     highlights = [
         r"(?P<method>([\w-]+\.)+[\w-]+[^<>:(),]?)",
         r"(?P<path>(\w+\/.*\.[\w:]+))",
@@ -19,23 +21,25 @@ class CustomHighlighter(RegexHighlighter):
 
 custom_theme = Theme(
     {
-        "atom.path": "#7c8082",
-        "atom.params": "#5a7c90",
-        "atom.opers": "#7c8082",
-        "atom.method": "#FF753D",
+        "depscan.path": "#7c8082",
+        "depscan.params": "#5a7c90",
+        "depscan.opers": "#7c8082",
+        "depscan.method": "#FF753D",
         "info": "#5A7C90",
         "warning": "#FF753D",
         "danger": "bold red",
     }
 )
 
+IS_CI = os.getenv("CI") or os.getenv("CONTINUOUS_INTEGRATION")
+
 console = Console(
     log_time=False,
     log_path=False,
     theme=custom_theme,
     color_system="256",
-    force_terminal=True,
-    highlight=True,
+    force_terminal=not IS_CI,
+    highlight=not IS_CI,
     highlighter=CustomHighlighter(),
     record=True,
 )
@@ -63,3 +67,34 @@ DEBUG = logging.DEBUG
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if not log_name.startswith("depscan"):
         log_obj.disabled = True
+
+SPINNER = os.getenv("DEPSCAN_SPINNER", random.choice(
+    ["pong", "arrow3", "bouncingBall", "dots2", "material", "shark", "simpleDotsScrolling", "toggle9"]))
+
+# Support for thought logging
+tlogger = None
+
+
+def thought_log(s):
+    if s and tlogger and tlogger.isEnabledFor(DEBUG):
+        s = re.sub(r"([.!?])?$", ".", s)
+        tlogger.debug(s)
+
+
+def thought_begin():
+    thought_log("<think>")
+
+
+def thought_end():
+    thought_log("</think>")
+
+
+if os.getenv("DEPSCAN_THINK_MODE", "") in ("true", "1"):
+    tlogger = logging.getLogger("depscan_thoughts")
+    tlogger.setLevel(DEBUG)
+    file_handler = logging.FileHandler(
+        os.getenv("DEPSCAN_THOUGHT_LOG", os.path.join(os.getcwd(), "depscan-thoughts.log")))
+    file_handler.setLevel(DEBUG)
+    formatter = logging.Formatter("%(message)s")
+    file_handler.setFormatter(formatter)
+    tlogger.addHandler(file_handler)

@@ -332,8 +332,8 @@ if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
     vdb_database_url = vdb_10y_database_url
     vdb_rafs_database_url = vdb_10y_rafs_database_url
 
-# How old vdb can be before it gets re-downloaded
-VDB_AGE_HOURS = get_int_from_env("VDB_AGE_HOURS", 24)
+# How old vdb can be before it gets re-downloaded. 48 hours.
+VDB_AGE_HOURS = get_int_from_env("VDB_AGE_HOURS", 48)
 
 # Package risk scoring using a simple weighted formula with no backing
 # research All parameters and their max value and weight can be overridden
