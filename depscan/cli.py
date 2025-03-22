@@ -373,10 +373,9 @@ if QUART_AVAILABLE:
         if url or (path and os.path.isdir(path)):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
                 project_type_list = project_type.split(",")
-                bom_status = create_bom(project_type_list, bfp.name, path,
-                                        {"url": url, "path": path, "type": project_type_list,
-                                         "multiProject": multi_project, "cdxgen_server": cdxgen_server,
-                                         "profile": profile, "deep": deep, }, )
+                bom_status = create_bom(bfp.name, path, {"url": url, "path": path, "project_type": project_type_list,
+                                                         "multiProject": multi_project, "cdxgen_server": cdxgen_server,
+                                                         "profile": profile, "deep": deep, }, )
                 if bom_status:
                     LOG.debug("BOM file was generated successfully at %s", bfp.name)
                     bom_file_path = bfp.name
@@ -438,9 +437,8 @@ def run_depscan(args):
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (summary, vdr_file, bom_file, pkg_list, pkg_vulnerabilities, pkg_group_rows,) = (None, None, None, None, None, None)
-    if (os.getenv("CI")
-            and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
-            and not args.no_banner and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan."):
+    if (os.getenv("CI") and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith(
+        "owasp") and not args.no_banner and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan."):
         console.print(Panel(
             "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
             title="Donate to the OWASP Foundation", expand=False, ))
@@ -529,7 +527,7 @@ def run_depscan(args):
                 bom_file = os.path.join(src_dir, "bom.json")
             else:
                 bom_file = report_file.replace("depscan-", "sbom-")
-            creation_status = create_bom([project_type], bom_file, src_dir, depscan_options, )
+            creation_status = create_bom(bom_file, src_dir, {**depscan_options, "project_type": [project_type]})
         if not creation_status:
             LOG.debug("Bom file %s was not created successfully", bom_file)
             continue

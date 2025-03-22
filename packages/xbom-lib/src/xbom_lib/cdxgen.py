@@ -205,7 +205,7 @@ class CdxgenServerGenerator(CdxgenGenerator):
             try:
                 r = client.post(sbom_url,
                                 json={**options, "url": options.get("url", ""), "path": options.get("path", src_dir),
-                                      "type": options.get("type", ",".join(project_type)),
+                                      "type": options.get("project_type", ",".join(project_type)),
                                       "multiProject": options.get("multiProject", ""), }, headers=headers, )
                 if r.status_code == httpx.codes.OK:
                     try:

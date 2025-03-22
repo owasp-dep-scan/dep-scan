@@ -181,11 +181,10 @@ def get_pkg_by_type(pkg_list, pkg_type):
     return [pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)]
 
 
-def create_bom(project_type: str | list, bom_file, src_dir=".", options=None):
+def create_bom(bom_file, src_dir=".", options=None):
     """
     Method to create BOM file by executing cdxgen command
 
-    :param project_type: Project type
     :param bom_file: BOM file
     :param src_dir: Source directory
     :param options: Additional options for generating the BOM file.
