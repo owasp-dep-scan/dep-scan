@@ -170,6 +170,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip setuptools
           uv sync --all-extras --all-packages --dev
+          npm install -g @cyclonedx/cdxgen
           python3 -m pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4
@@ -214,6 +215,7 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           uv sync --all-extras --all-packages --dev
+          npm install -g @cyclonedx/cdxgen
           python3 -m pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4

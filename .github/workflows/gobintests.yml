@@ -39,7 +39,7 @@ jobs:
       run: |
         python3 -m pip install --upgrade pip setuptools
         uv sync --all-extras --all-packages --dev
-        sudo npm install -g @cyclonedx/cdxgen
+        npm install -g @cyclonedx/cdxgen
     - name: Test binaries
       run: |
         mkdir -p ${RUNNER_TEMP}/bintests ${RUNNER_TEMP}/blintdb

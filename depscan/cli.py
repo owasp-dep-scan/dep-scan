@@ -102,7 +102,7 @@ def build_parser():
                              "Private packages should not be available in public registries "
                              "by default. Comma separated values accepted.", )
     parser.add_argument("-t", "--type", nargs="+", type=str, dest="project_type",
-                        default=os.getenv("DEPSCAN_PROJECT_TYPE", "").split(","),
+                        default=os.getenv("DEPSCAN_PROJECT_TYPE", "universal").split(","),
                         help="Override project types if auto-detection is incorrect. Multiple values supported.", )
     parser.add_argument("--bom", dest="bom", help="Examine using the given Software Bill-of-Materials (SBOM) file "
                                                   "in CycloneDX format. Use cdxgen command to produce one.", )
@@ -529,7 +529,7 @@ def run_depscan(args):
                 bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(bom_file, src_dir, {**depscan_options, "project_type": [project_type]})
         if not creation_status:
-            LOG.debug("Bom file %s was not created successfully", bom_file)
+            LOG.warning("The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.", bom_file)
             continue
         if bom_file:
             LOG.debug("Scanning using the bom file %s", bom_file)
@@ -538,7 +538,7 @@ def run_depscan(args):
                          "depscan with --bom %s instead of -i", bom_file, )
             pkg_list = get_pkg_list(bom_file)
         if not pkg_list:
-            LOG.debug("No packages found in the project!")
+            LOG.info("No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine.")
             continue
         scoped_pkgs = utils.get_pkgs_by_scope(pkg_list)
         if os.getenv("FETCH_LICENSE", "") in (True, "1", "true") or "license" in args.profile:

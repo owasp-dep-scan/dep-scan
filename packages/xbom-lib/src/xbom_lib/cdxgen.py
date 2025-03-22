@@ -70,7 +70,7 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def exec_tool(args: List[str], cwd: str = None, env: Dict = None, stdout: int = subprocess.PIPE) -> BOMResult:
+def exec_tool(args: List[str], cwd: str = None, env: Dict = None, stdout: int = subprocess.PIPE, logger: Logger = None) -> BOMResult:
     """
     Convenience method to invoke cli tools
 
@@ -78,6 +78,7 @@ def exec_tool(args: List[str], cwd: str = None, env: Dict = None, stdout: int = 
     :param cwd: Working directory
     :param env: Environment variables
     :param stdout: Specifies stdout of command
+    :param logger: Logger object
     """
     if env is None:
         env = os.environ.copy()
@@ -86,6 +87,8 @@ def exec_tool(args: List[str], cwd: str = None, env: Dict = None, stdout: int = 
         cp = subprocess.run(args, stdout=stdout, stderr=subprocess.STDOUT, cwd=cwd, env=env,
                             shell=sys.platform == "win32", encoding="utf-8", check=False, )
         result.command_output = cp.stdout
+        if logger and stdout != subprocess.DEVNULL:
+            logger.debug(cp.stdout)
     except Exception as e:
         result.success = False
         result.command_output = f"Exception while running cdxgen: {e}"
@@ -114,8 +117,9 @@ def find_cdxgen_cmd(use_bin=True, logger: Logger = None):
         local_bin = resource_path(os.path.join(f"{lbin}\\npm\\" if sys.platform == "win32" else "local_bin",
                                                "cdxgen" if sys.platform != "win32" else "cdxgen.cmd", ))
         if not os.path.exists(local_bin):
-            logger.info("%s command not found. Please install using npm install "
-                        "@cyclonedx/cdxgen or set PATH variable", local_bin, )
+            if logger:
+                logger.info("%s command not found. Please install using npm install "
+                            "@cyclonedx/cdxgen or set PATH variable", local_bin, )
             return None
         cdxgen_cmd = local_bin
         # Set the plugins directory as an environment variable
@@ -139,9 +143,9 @@ class CdxgenGenerator(XBOMGenerator):
         techniques = self.options.get("techniques") or []
         lifecycles = self.options.get("lifecycles") or []
         # Implement the BOM generation logic using cdxgen.
-        cdxgen_cmd = find_cdxgen_cmd()
+        cdxgen_cmd = find_cdxgen_cmd(logger=self.logger)
         if not cdxgen_cmd:
-            cdxgen_cmd = find_cdxgen_cmd(False)
+            cdxgen_cmd = find_cdxgen_cmd(False, logger=self.logger)
         project_type_args = [f"-t {item}" for item in project_type]
         technique_args = [f"--technique {item}" for item in techniques]
         args = [cdxgen_cmd]
@@ -173,7 +177,7 @@ class CdxgenGenerator(XBOMGenerator):
         if cdxgen_cmd:
             bom_result = exec_tool(args, self.source_dir if not any(
                 t in project_type for t in ("docker", "oci", "container")) and self.source_dir and os.path.isdir(
-                self.source_dir) else None, env, )
+                self.source_dir) else None, env, logger=self.logger)
         else:
             bom_result = BOMResult(success=False, command_output="Unable to locate cdxgen command.")
         if cdxgen_temp_dir:
@@ -299,10 +303,10 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         image_name, run_command_args = self._container_run_cmd()
         if self.logger:
             self.logger.debug(f"Pulling the image {image_name}")
-        exec_tool([container_command, "pull", image_name])
+        exec_tool([container_command, "pull", image_name], logger=self.logger)
         if self.logger:
             self.logger.debug(f"Executing {' '.join(run_command_args)}")
-        bom_result = exec_tool(run_command_args, cwd=None, env=os.environ.copy())
+        bom_result = exec_tool(run_command_args, cwd=None, env=os.environ.copy(), logger=self.logger)
         if self.cdxgen_temp_dir:
             shutil.rmtree(self.cdxgen_temp_dir, ignore_errors=True)
         return bom_result
