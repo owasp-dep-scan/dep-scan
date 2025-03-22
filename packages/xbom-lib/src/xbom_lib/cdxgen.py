@@ -268,7 +268,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         run_command_args += ["-v", f"{self.cdxgen_temp_dir}:/tmp:rw"]
         run_command_args += ["-v", f"{output_dir}:/{image_output_dir}:rw"]
         # Mount the home directory as /root. Can be used for performance reasons.
-        if options.get("insecure_mount_home"):
+        if self.options.get("insecure_mount_home"):
             run_command_args += ["-v", f"""{os.path.expanduser("~")}:/root:r"""]
         run_command_args.append(image_name)
         # output file mapped to the inside the image
