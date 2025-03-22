@@ -266,7 +266,7 @@ curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file
 Setup uv by following the official [documentation](https://docs.astral.sh/uv/).
 
 ```shell
-uv sync --all-extras --dev
+uv sync --all-extras --all-packages
 uv run depscan --help
 uv run pytest
 ```

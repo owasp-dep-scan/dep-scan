@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip setuptools
-        uv sync --all-extras --dev
+        uv sync --all-extras --all-packages --dev
         npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
         python3 -m pip install -r contrib/requirements.txt
@@ -71,7 +71,7 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip
-        uv sync --all-extras --dev
+        uv sync --all-extras --all-packages --dev
         npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
     - uses: actions/checkout@v4
@@ -116,7 +116,7 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip
-        uv sync --all-extras --dev
+        uv sync --all-extras --all-packages --dev
         npm install -g @cyclonedx/cdxgen
         mkdir -p repotests
     - uses: actions/checkout@v4
@@ -169,7 +169,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip setuptools
-          uv sync --all-extras --dev
+          uv sync --all-extras --all-packages --dev
           python3 -m pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4
@@ -213,7 +213,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          uv sync --all-extras --dev
+          uv sync --all-extras --all-packages --dev
           python3 -m pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@v4

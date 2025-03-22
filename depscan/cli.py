@@ -438,8 +438,9 @@ def run_depscan(args):
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (summary, vdr_file, bom_file, pkg_list, pkg_vulnerabilities, pkg_group_rows,) = (None, None, None, None, None, None)
-    if os.getenv("CI") and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith(
-        "owasp") and not args.no_banner and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan.":
+    if (os.getenv("CI")
+            and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
+            and not args.no_banner and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan."):
         console.print(Panel(
             "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
             title="Donate to the OWASP Foundation", expand=False, ))

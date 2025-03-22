@@ -25,7 +25,7 @@ jobs:
       -  name: Install depscan
          run: |
            python -m pip install --upgrade pip
-           uv sync --all-extras --dev
+           uv sync --all-extras --all-packages --dev
 
       - name: Cache vdb
         id: cache-vdb
