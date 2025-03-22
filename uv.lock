@@ -2,6 +2,12 @@ version = 1
 revision = 1
 requires-python = ">=3.10"
 
+[manifest]
+members = [
+    "owasp-depscan",
+    "xbom-lib",
+]
+
 [[package]]
 name = "aiofiles"
 version = "24.1.0"
@@ -201,7 +207,7 @@ wheels = [
 [[package]]
 name = "blint"
 version = "2.4.0"
-source = { git = "https://github.com/owasp-dep-scan/blint?rev=cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e#cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e" }
+source = { git = "https://github.com/owasp-dep-scan/blint?rev=930681f15b736d9dff1a0ad064a702f7862f5721#930681f15b736d9dff1a0ad064a702f7862f5721" }
 dependencies = [
     { name = "appdirs" },
     { name = "apsw" },
@@ -1066,8 +1072,8 @@ requires-dist = [
     { name = "atom-tools", marker = "extra == 'all'", specifier = ">=0.7.1" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = ">=0.7.1" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e" },
-    { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=cb6321d2f1bfe790ecc8980349a3fbdaaed1b18e" },
+    { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=930681f15b736d9dff1a0ad064a702f7862f5721" },
+    { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=930681f15b736d9dff1a0ad064a702f7862f5721" },
     { name = "custom-json-diff", specifier = ">=2.1.6" },
     { name = "cvss", specifier = ">=3.4" },
     { name = "defusedxml", specifier = ">=0.7.1" },
@@ -1854,3 +1860,8 @@ sdist = { url = "https://files.pythonhosted.org/packages/c9/4a/44d3c295350d77642
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/58/e860788190eba3bcce367f74d29c4675466ce8dddfba85f7827588416f01/wsproto-1.2.0-py3-none-any.whl", hash = "sha256:b9acddd652b585d75b20477888c56642fdade28bdfd3579aa24a4d2c037dd736", size = 24226 },
 ]
+
+[[package]]
+name = "xbom-lib"
+version = "6.0.0"
+source = { editable = "packages/xbom-lib" }

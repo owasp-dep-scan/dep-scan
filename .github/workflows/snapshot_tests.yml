@@ -25,8 +25,8 @@ jobs:
       -  name: Install depscan
          run: |
            python -m pip install --upgrade pip
-           uv sync --all-extras --dev
-
+           uv sync --all-extras --all-packages --dev
+           npm install -g @cyclonedx/cdxgen
       - name: Cache vdb
         id: cache-vdb
         uses: actions/cache@v4

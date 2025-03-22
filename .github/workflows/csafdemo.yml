@@ -21,7 +21,8 @@ jobs:
         python3 -m venv venv
         source venv/bin/activate
         pip install --upgrade pip setuptools
-        uv sync --all-extras --dev
+        uv sync --all-extras --all-packages --dev
+        npm install -g @cyclonedx/cdxgen
         pip install check-jsonschema
         mkdir -p vuln_spring
         cd vuln_spring

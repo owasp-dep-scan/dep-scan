@@ -39,7 +39,8 @@ jobs:
     - name: Install dependencies
       run: |
         python3 -m pip install --upgrade pip setuptools
-        uv sync --all-extras --dev
+        uv sync --all-extras --all-packages --dev
+        npm install -g @cyclonedx/cdxgen
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names

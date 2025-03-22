@@ -121,6 +121,8 @@ options:
                         Product lifecycle for the generated BOM. Multiple values allowed.
   --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
                         Analysis technique to use for BOM generation. Multiple values allowed.
+  --bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator}
+                        BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --cdxgen-args CDXGEN_ARGS
@@ -264,7 +266,7 @@ curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file
 Setup uv by following the official [documentation](https://docs.astral.sh/uv/).
 
 ```shell
-uv sync --all-extras --dev
+uv sync --all-extras --all-packages
 uv run depscan --help
 uv run pytest
 ```

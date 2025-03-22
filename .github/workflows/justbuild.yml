@@ -20,7 +20,8 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
-          uv sync --all-extras --dev
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cyclonedx/cdxgen
       - name: Build
         run: |
           uv build
