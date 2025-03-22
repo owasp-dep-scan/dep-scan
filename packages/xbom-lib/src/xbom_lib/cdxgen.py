@@ -251,32 +251,35 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         project_type = self.options.get("project_type", [])
         techniques = self.options.get("techniques") or []
         lifecycles = self.options.get("lifecycles") or []
+        image_output_dir = "/reports"
+        app_input_dir = "/app"
         container_command = get_env_options_value(self.options, "DOCKER_CMD", "docker")
         image_name = get_image_for_type(self.options, project_type)
-        run_command_args = [container_command, "run", "--rm"]
+        run_command_args = [container_command, "run", "--rm", "--quiet", "--workdir", app_input_dir]
         output_file = os.path.basename(self.bom_file)
         output_dir = os.path.dirname(self.bom_file)
-        image_output_dir = "reports"
         # Setup environment variables
         for k, v in os.environ.items():
             if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
         run_command_args += ["-e", "CDXGEN_IN_CONTAINER=true"]
+        # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
+        run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
         if os.getenv("SCAN_DEBUG_MODE") == "debug":
             run_command_args += ["-e", "CDXGEN_DEBUG_MODE=debug"]
         # Extra args like --platform=linux/amd64
         if os.getenv("DEPSCAN_DOCKER_ARGS"):
             run_command_args += os.getenv("DEPSCAN_DOCKER_ARGS", "").split(" ")
         # Setup volume mounts
-        run_command_args += ["-v", f"{self.source_dir}:/app:rw"]
+        run_command_args += ["-v", f"{self.source_dir}:{app_input_dir}:rw"]
         run_command_args += ["-v", f"{self.cdxgen_temp_dir}:/tmp:rw"]
-        run_command_args += ["-v", f"{output_dir}:/{image_output_dir}:rw"]
+        run_command_args += ["-v", f"{output_dir}:{image_output_dir}:rw"]
         # Mount the home directory as /root. Can be used for performance reasons.
         if self.options.get("insecure_mount_home"):
             run_command_args += ["-v", f"""{os.path.expanduser("~")}:/root:r"""]
         run_command_args.append(image_name)
         # output file mapped to the inside the image
-        run_command_args += ["-o", f"/{image_output_dir}/{output_file}"]
+        run_command_args += ["-o", f"{image_output_dir}/{output_file}"]
         # cdxgen args
         technique_args = [f"--technique {item}" for item in techniques]
         if technique_args:
@@ -303,7 +306,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         image_name, run_command_args = self._container_run_cmd()
         if self.logger:
             self.logger.debug(f"Pulling the image {image_name}")
-        exec_tool([container_command, "pull", image_name], logger=self.logger)
+        exec_tool([container_command, "pull", "--quiet", image_name], logger=self.logger)
         if self.logger:
             self.logger.debug(f"Executing {' '.join(run_command_args)}")
         bom_result = exec_tool(run_command_args, cwd=None, env=os.environ.copy(), logger=self.logger)
