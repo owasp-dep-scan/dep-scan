@@ -69,17 +69,17 @@ jobs:
         VDB_HOME: ${{ runner.temp }}/vdb_data_nydus
     - name: Test with nydus
       run: |
-        uv run depscan --no-banner --src ghcr.io/owasp-dep-scan/depscan:master --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+        uv run depscan --no-banner --src ubuntu:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
         rm -rf vdb_data_nydus ${RUNNER_TEMP}/cdxgen-temp
-        docker rmi ghcr.io/owasp-dep-scan/depscan:master
+        docker rmi ubuntu:latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         VDB_HOME: ${{ runner.temp }}/vdb_data_nydus
         CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
     - name: Test without nydus
       run: |
-        uv run depscan --no-banner --src ghcr.io/owasp-dep-scan/depscan:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
-        docker rmi ghcr.io/owasp-dep-scan/depscan:latest
+        uv run depscan --no-banner --src ubuntu:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
+        docker rmi ubuntu:latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
