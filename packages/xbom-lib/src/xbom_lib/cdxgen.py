@@ -29,6 +29,7 @@ PROJECT_TYPE_IMAGE = {"default": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSIO
                       "python310": f"ghcr.io/cyclonedx/cdxgen-python310:{CDXGEN_IMAGE_VERSION}",
                       "python311": f"ghcr.io/cyclonedx/cdxgen-python311:{CDXGEN_IMAGE_VERSION}",
                       "python312": f"ghcr.io/cyclonedx/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
+                      "python": f"ghcr.io/cyclonedx/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
                       "swift": f"ghcr.io/cyclonedx/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
                       "swift6": f"ghcr.io/cyclonedx/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
                       "ruby26": f"ghcr.io/cyclonedx/cdxgen-debian-ruby26:{CDXGEN_IMAGE_VERSION}",
@@ -40,7 +41,8 @@ PROJECT_TYPE_IMAGE = {"default": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSIO
                       "dotnet6": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
                       "dotnet7": f"ghcr.io/cyclonedx/cdxgen-dotnet7:{CDXGEN_IMAGE_VERSION}",
                       "dotnet8": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
-                      "dotnet9": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}", }
+                      "dotnet9": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
+                      "dotnet": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}", }
 
 
 def get_env_options_value(options: Dict, k: str, default: str = None) -> str:
@@ -70,7 +72,8 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-def exec_tool(args: List[str], cwd: str = None, env: Dict = None, stdout: int = subprocess.PIPE, logger: Logger = None) -> BOMResult:
+def exec_tool(args: List[str], cwd: str = None, env: Dict = None, stdout: int = subprocess.PIPE,
+              logger: Logger = None) -> BOMResult:
     """
     Convenience method to invoke cli tools
 
