@@ -64,13 +64,13 @@ jobs:
         oras pull ghcr.io/appthreat/vdb:v5-rafs -o $RAFS_OUT
         nydus-image unpack --blob $RAFS_OUT/data.rafs --output $VDB_HOME/vdb.tar --bootstrap $RAFS_OUT/meta.rafs
         tar -C $VDB_HOME -xf $VDB_HOME/vdb.tar
-        rm -rf $VDB_HOME/vdb.tar ${RUNNER_TEMP}/cdxgen-temp
+        rm $VDB_HOME/vdb.tar
       env:
         VDB_HOME: ${{ runner.temp }}/vdb_data_nydus
     - name: Test with nydus
       run: |
         uv run depscan --no-banner --src ubuntu:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
-        rm -rf vdb_data_nydus ${RUNNER_TEMP}/cdxgen-temp
+        rm -rf ${RUNNER_TEMP}/vdb_data_nydus ${RUNNER_TEMP}/cdxgen-temp
         docker rmi ubuntu:latest
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
