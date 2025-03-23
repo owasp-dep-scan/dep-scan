@@ -91,7 +91,7 @@ RUN set -e; \
     && python3 -m pip install pipenv certifi \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && cd /opt/dep-scan \
-    && uv sync --all-extras --no-dev \
+    && uv sync --all-extras --all-packages --no-dev \
     && uv cache clean \
     && rm ~/.local/bin/uv ~/.local/bin/uvx \
     && chmod a-w -R /opt \
