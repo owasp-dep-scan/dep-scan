@@ -24,7 +24,7 @@ jobs:
           npm install -g @cyclonedx/cdxgen
       - name: Build
         run: |
-          uv build
+          uv build --all-packages
 
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.2

@@ -4,8 +4,8 @@ requires-python = ">=3.10"
 
 [manifest]
 members = [
+    "ds-xbom-lib",
     "owasp-depscan",
-    "xbom-lib",
 ]
 
 [[package]]
@@ -555,6 +555,11 @@ wheels = [
 ]
 
 [[package]]
+name = "ds-xbom-lib"
+version = "6.0.0"
+source = { editable = "packages/xbom-lib" }
+
+[[package]]
 name = "email-validator"
 version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1031,6 +1036,7 @@ dependencies = [
     { name = "custom-json-diff" },
     { name = "cvss" },
     { name = "defusedxml" },
+    { name = "ds-xbom-lib" },
     { name = "jinja2" },
     { name = "packageurl-python" },
     { name = "pdfkit" },
@@ -1077,6 +1083,7 @@ requires-dist = [
     { name = "custom-json-diff", specifier = ">=2.1.6" },
     { name = "cvss", specifier = ">=3.4" },
     { name = "defusedxml", specifier = ">=0.7.1" },
+    { name = "ds-xbom-lib", editable = "packages/xbom-lib" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=7.1.2" },
     { name = "hishel", extras = ["redis"], marker = "extra == 'all'", specifier = ">=0.1.1" },
     { name = "hishel", extras = ["redis"], marker = "extra == 'perf'", specifier = ">=0.1.1" },
@@ -1860,8 +1867,3 @@ sdist = { url = "https://files.pythonhosted.org/packages/c9/4a/44d3c295350d77642
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/58/e860788190eba3bcce367f74d29c4675466ce8dddfba85f7827588416f01/wsproto-1.2.0-py3-none-any.whl", hash = "sha256:b9acddd652b585d75b20477888c56642fdade28bdfd3579aa24a4d2c037dd736", size = 24226 },
 ]
-
-[[package]]
-name = "xbom-lib"
-version = "6.0.0"
-source = { editable = "packages/xbom-lib" }

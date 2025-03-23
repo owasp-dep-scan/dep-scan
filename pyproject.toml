@@ -17,16 +17,16 @@ dependencies = [
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
     "tomli>=2.2.1",
+    "ds-xbom-lib"
 ]
 
 requires-python = ">=3.10"
 readme = "README.md"
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -64,7 +64,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["depscan", "depscan.lib", "depscan.lib.package_query", "vendor", "packages"]
+packages = ["depscan", "depscan.lib", "depscan.lib.package_query", "vendor", "vendor.spdx.json"]
 
 [tool.pytest.ini_options]
 addopts = "--verbose --cov-append --cov-report term --cov depscan"
@@ -81,7 +81,7 @@ line-length = 99
 [tool.uv.sources]
 appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "ba88de9194bde83b23d31c2b48a72c60d0ca1944" }
 blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "930681f15b736d9dff1a0ad064a702f7862f5721" }
-xbom-lib = { workspace = true }
+ds-xbom-lib = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]
