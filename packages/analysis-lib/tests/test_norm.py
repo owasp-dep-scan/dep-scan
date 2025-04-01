@@ -1,4 +1,4 @@
-from depscan.lib.normalize import create_pkg_variations
+from analysis_lib.normalize import create_pkg_variations
 
 
 def test_pkg_variations():

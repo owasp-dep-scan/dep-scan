@@ -11,8 +11,6 @@ from depscan.lib.utils import cleanup_license_string
 from xbom_lib.blint import BlintGenerator
 from xbom_lib.cdxgen import CdxgenGenerator, CdxgenImageBasedGenerator, CdxgenServerGenerator
 
-headers = {"Content-Type": "application/json", "Accept-Encoding": "gzip", }
-
 
 def parse_bom_ref(bomstr, licenses=None):
     """

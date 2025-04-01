@@ -2,7 +2,6 @@ import os
 
 import pytest
 
-from depscan.lib import analysis
 from depscan.lib.bom import get_pkg_list
 from depscan.lib.license import build_license_data, bulk_lookup
 
@@ -102,7 +101,6 @@ def test_large_lookup(test_license_data):
     pkg_list = get_pkg_list(test_bom)
     pkg_lic_dict = bulk_lookup(test_license_data, pkg_list)
     assert pkg_lic_dict
-    analysis.analyse_licenses("nodejs", pkg_lic_dict)
 
 
 def test_unvendor_license(test_license_data):

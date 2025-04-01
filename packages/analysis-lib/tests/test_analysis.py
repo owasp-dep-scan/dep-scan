@@ -3,9 +3,7 @@ import os
 
 import pytest
 
-from depscan.lib import analysis
-from depscan.lib.analysis import cvss_to_vdr_rating, get_version_range, split_cwe, pkg_sub_tree
-from depscan.lib.utils import get_suggested_version_map
+from analysis_lib.utils import cvss_to_vdr_rating, find_purl_usages, get_version_range, split_cwe, pkg_sub_tree, get_suggested_version_map
 
 
 @pytest.fixture
@@ -600,14 +598,6 @@ def test_suggestion(test_data):
     }
 
 
-# best_fixed_location is deprecated
-def test_best_fixed_location():
-    assert analysis.best_fixed_location("1.0.3", "1.0.2") == "1.0.3"
-    assert analysis.best_fixed_location("3.0.3", "1.0.2") == "1.0.2"
-    assert analysis.best_fixed_location(None, "1.0.2") == "1.0.2"
-    assert analysis.best_fixed_location("4.0.0", None) == "4.0.0"
-
-
 def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
     assert pkg_sub_tree(
         "pkg:maven/org.yaml/snakeyaml@1.25?type=jar",
@@ -680,7 +670,7 @@ def test_purl_usages():
     test_evinse_file = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-evinse-java.json"
     )
-    direct_purls, reached_purls = analysis.find_purl_usages(
+    direct_purls, reached_purls = find_purl_usages(
         test_evinse_file, None, None
     )
     assert direct_purls == {
