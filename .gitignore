@@ -139,3 +139,4 @@ reports/
 .conda/
 .mise.toml
 *.slices.json
+.idx/

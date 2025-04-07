@@ -4,7 +4,7 @@ from vdb.lib import KNOWN_PKG_TYPES
 from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.utils import parse_purl
 
-from depscan.lib import config
+from analysis_lib import config
 
 # Common package suffixes
 COMMON_SUFFIXES = [

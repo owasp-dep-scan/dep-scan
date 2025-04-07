@@ -10,6 +10,7 @@ class BOMResult:
     """
     Data class representing the result of BOM generation.
     """
+
     success: bool = False
     command_output: Optional[str] = None
     bom_obj: Optional[Any] = None
@@ -22,11 +23,17 @@ class XBOMGenerator(ABC):
     Attributes:
         source_dir (str): Directory containing source files.
         bom_file (str): Output BOM file path.
+        logger (Optional[logger]): Logger object
         options (Optional[Dict[str, Any]]): Additional options for generation.
     """
 
-    def __init__(self, source_dir: str, bom_file: str, logger: Logger = None,
-                 options: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        source_dir: str,
+        bom_file: str,
+        logger: Optional[Logger] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> None:
         """
         Initialize the xBOMGenerator.
 

@@ -11,13 +11,13 @@ dependencies = [
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
     "rich>=13.9.4",
-    "toml>=0.10.2",
     "pdfkit>=1.0.0",
     "Jinja2>=3.1.5",
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
     "tomli>=2.2.1",
-    "ds-xbom-lib"
+    "ds-xbom-lib",
+    "ds-analysis-lib"
 ]
 
 requires-python = ">=3.10"
@@ -54,9 +54,9 @@ dev = [
     "httpretty>=1.1.4"
 ]
 server = ["quart>=0.20.0"]
-ext = ["atom-tools>=0.7.1", "blint"]
+ext = ["atom-tools>=0.7.1", "blint>=2.4.1"]
 perf = ["hishel[redis]>=0.1.1"]
-all = ["atom-tools>=0.7.1", "blint", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
+all = ["atom-tools>=0.7.1", "blint>=2.4.1", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -67,7 +67,12 @@ include-package-data = true
 packages = ["depscan", "depscan.lib", "depscan.lib.package_query", "vendor", "vendor.spdx.json"]
 
 [tool.pytest.ini_options]
-addopts = "--verbose --cov-append --cov-report term --cov depscan"
+minversion = "6.0"
+addopts = "-q -s --verbose --cov-append --cov-report term --cov depscan --cov packages/analysis-lib --cov packages/xbom-lib"
+testpaths = [
+    "test",
+    "packages/analysis-lib/tests"
+]
 
 [tool.flake8]
 ignore = "E203, E266, E501, W503, W605"
@@ -80,8 +85,8 @@ line-length = 99
 
 [tool.uv.sources]
 appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "ba88de9194bde83b23d31c2b48a72c60d0ca1944" }
-blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "f575550fa13c6ca718ee2416e4d85e061161d095" }
 ds-xbom-lib = { workspace = true }
+ds-analysis-lib = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]

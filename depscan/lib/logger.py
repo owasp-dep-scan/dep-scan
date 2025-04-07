@@ -68,8 +68,21 @@ for log_name, log_obj in logging.Logger.manager.loggerDict.items():
     if not log_name.startswith("depscan"):
         log_obj.disabled = True
 
-SPINNER = os.getenv("DEPSCAN_SPINNER", random.choice(
-    ["pong", "arrow3", "bouncingBall", "dots2", "material", "shark", "simpleDotsScrolling", "toggle9"]))
+SPINNER = os.getenv(
+    "DEPSCAN_SPINNER",
+    random.choice(
+        [
+            "pong",
+            "arrow3",
+            "bouncingBall",
+            "dots2",
+            "material",
+            "shark",
+            "simpleDotsScrolling",
+            "toggle9",
+        ]
+    ),
+)
 
 # Support for thought logging
 tlogger = None
@@ -93,7 +106,10 @@ if os.getenv("DEPSCAN_THINK_MODE", "") in ("true", "1"):
     tlogger = logging.getLogger("depscan_thoughts")
     tlogger.setLevel(DEBUG)
     file_handler = logging.FileHandler(
-        os.getenv("DEPSCAN_THOUGHT_LOG", os.path.join(os.getcwd(), "depscan-thoughts.log")))
+        os.getenv(
+            "DEPSCAN_THOUGHT_LOG", os.path.join(os.getcwd(), "depscan-thoughts.log")
+        )
+    )
     file_handler.setLevel(DEBUG)
     formatter = logging.Formatter("%(message)s")
     file_handler.setFormatter(formatter)

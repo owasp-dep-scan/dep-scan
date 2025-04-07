@@ -1,6 +1,5 @@
 import os
 import re
-import sys
 from copy import deepcopy
 from datetime import datetime
 from typing import List, Dict, Tuple, Optional
@@ -8,18 +7,16 @@ from typing import List, Dict, Tuple, Optional
 import cvss
 import toml
 from custom_json_diff.lib.utils import json_load, json_dump, file_write, file_read
-from cvss import CVSSError
 from packageurl import PackageURL
 from vdb.lib import convert_time
 
-from depscan.lib.config import (
+from analysis_lib.config import (
     SEVERITY_REF,
     TIME_FMT,
-    CWE_MAP, TOML_TEMPLATE,
+    CWE_MAP,
+    TOML_TEMPLATE,
 )
-from depscan.lib.logger import LOG
-from depscan.lib.utils import format_system_name
-from depscan import get_version
+from analysis_lib import get_version
 
 
 def vdr_to_csaf(res):
@@ -43,20 +40,28 @@ def vdr_to_csaf(res):
     refs_to_add.extend(res.get("advisories", []))
     ids, references = format_references(refs_to_add)
     discovery_date = res.get("published") or res.get("updated")
-    notes.extend([
-        {
-            "category": "description",
-            "text": description,
-            "details": "Vulnerability Description",
-        },
-        {
-            "category": "details",
-            "text": details,
-            "details": "Vulnerability Details",
-        }
-    ])
+    notes.extend(
+        [
+            {
+                "category": "description",
+                "text": description,
+                "details": "Vulnerability Description",
+            },
+            {
+                "category": "details",
+                "text": details,
+                "details": "Vulnerability Details",
+            },
+        ]
+    )
     if res.get("recommendation"):
-        notes.append({"category": "other", "title": "Recommended Action", "text": res["recommendation"]})
+        notes.append(
+            {
+                "category": "other",
+                "title": "Recommended Action",
+                "text": res["recommendation"],
+            }
+        )
     vuln = {
         "cwe": cwe,
         "acknowledgements": acknowledgements,
@@ -101,13 +106,16 @@ def get_products(affects):
             pkg_name = i.get("ref", "").split("@")
             products.add(i.get("ref", ""))
         for v in i.get("versions", []):
-            entry = f'{product}{pkg_name}@{v.get("version") or v.get("range")}'
+            entry = f"{product}{pkg_name}@{v.get('version') or v.get('range')}"
             if v.get("status") == "affected":
                 known_affected.add(entry)
                 products.add(entry)
             elif v.get("status") == "unaffected":
                 not_affected.add(entry)
-    return list(products), {"known_affected": list(known_affected), "known_not_affected": list(not_affected)}
+    return list(products), {
+        "known_affected": list(known_affected),
+        "known_not_affected": list(not_affected),
+    }
 
 
 def get_acknowledgements(source):
@@ -125,10 +133,12 @@ def get_acknowledgements(source):
     if not source.get("url"):
         return [{"organization": source["name"].replace(" Advisory", "")}]
 
-    return [{
-        "organization": source["name"].replace(" Advisory", ""),
-        "urls": [source.get("url")]
-    }]
+    return [
+        {
+            "organization": source["name"].replace(" Advisory", ""),
+            "urls": [source.get("url")],
+        }
+    ]
 
 
 def parse_cwe(cwe):
@@ -150,17 +160,20 @@ def parse_cwe(cwe):
 
     for i, cwe_id in enumerate(cwe):
         cwe_name = CWE_MAP.get(cwe_id, "UNABLE TO LOCATE CWE NAME")
-        if not cwe_name:
-            LOG.warning(
-                "We couldn't locate the name of the CWE with the following "
-                "id: %s. Help us out by reporting the id at "
-                "https://github.com/owasp-dep-scan/dep-scan/issues.", i, )
         if i == 0:
-            fmt_cwe = {"id": str(cwe_id), "name": cwe_name, }
+            fmt_cwe = {
+                "id": str(cwe_id),
+                "name": cwe_name,
+            }
         else:
             new_notes.append(
-                {"title": f"Additional CWE: {cwe_id}", "audience": "developers",
-                    "category": "other", "text": cwe_name, })
+                {
+                    "title": f"Additional CWE: {cwe_id}",
+                    "audience": "developers",
+                    "category": "other",
+                    "text": cwe_name,
+                }
+            )
 
     return fmt_cwe, new_notes
 
@@ -179,7 +192,9 @@ def parse_cvss(ratings: List[Optional[Dict]]) -> List[Optional[Dict]]:
     if not ratings:
         return scores
     for rating in ratings:
-        if not (vector_string := rating.get("vector")) or not vector_string.startswith("CVSS:3"):
+        if not (vector_string := rating.get("vector")) or not vector_string.startswith(
+            "CVSS:3"
+        ):
             continue
         try:
             cvss_v3 = cvss.CVSS3(vector_string)
@@ -228,14 +243,27 @@ def format_references(references: List) -> Tuple[List[Dict], List[Dict]]:
                 ids.append({"system_name": system_name, "text": ref_id})
         elif any((i in ref_id for i in id_types)):
             ids.append({"system_name": system_name, "text": ref_id})
-        if "Advisory" in system_name and "blog" not in system_name and (tmp := ref_id.replace("-", "")) and not tmp.isalpha():
+        if (
+            "Advisory" in system_name
+            and "blog" not in system_name
+            and (tmp := ref_id.replace("-", ""))
+            and not tmp.isalpha()
+        ):
             ids.append({"system_name": system_name, "text": ref_id})
         fmt_refs.append({"summary": system_name, "url": url})
     # remove duplicates
-    new_ids = {(idx["system_name"], idx["text"]) for idx in ids if not idx["text"].replace("-", "").isalpha()}
+    new_ids = {
+        (idx["system_name"], idx["text"])
+        for idx in ids
+        if not idx["text"].replace("-", "").isalpha()
+    }
     ids = [{"system_name": idx[0], "text": idx[1].upper()} for idx in new_ids]
     ids = sorted(ids, key=lambda x: x["text"])
-    new_refs = {(idx["summary"], idx["url"]) for idx in fmt_refs if not idx["summary"].startswith("Cve ")}
+    new_refs = {
+        (idx["summary"], idx["url"])
+        for idx in fmt_refs
+        if not idx["summary"].startswith("Cve ")
+    }
     fmt_refs = [{"summary": idx[0], "url": idx[1]} for idx in new_refs]
     fmt_refs = sorted(fmt_refs, key=lambda x: x["url"])
     return ids, fmt_refs
@@ -253,57 +281,6 @@ def extract_ids(ref):
     return None, ref
 
 
-def get_ref_summary(url, patterns):
-    """
-    Returns the summary string associated with a given URL.
-
-    :param url: The URL to match against the patterns in the REF_MAP.
-    :type url: str
-
-    :param patterns: Regex patterns to match against the URL
-    :type patterns: dict
-
-    :return: The summary string corresponding to the matched pattern in REF_MAP.
-    :rtype: str
-
-    :raises: TypeError if url is not a string
-    """
-    if not isinstance(url, str):
-        raise TypeError("url must be a string")
-    for pattern, value in patterns.items():
-        if match := pattern.search(url):
-            return value, match
-    return "Other", None
-
-
-def get_ref_summary_helper(url, patterns):
-    lower_url = url.lower().rstrip("/")
-    if any(("github.com" in lower_url, "bitbucket.org" in lower_url, "chromium" in lower_url)) and "advisory" not in lower_url and "advisories" not in lower_url and "nvd.nist.gov/vuln/detail/CVE" not in lower_url:
-        value, match = get_ref_summary(url, patterns["repo_hosts"])
-        if match:
-            if value == "Generic":
-                return ((f"{match['host']}-{match['type']}-{match['user']}-{match['repo']}-"
-                        f"{match['id']}").replace("[p/", "["),
-                        match, f"{format_system_name(match['host'])} {match['type'].capitalize()} "
-                               f"[{match['user']}/{match['repo']}]".replace("[p/", "["))
-            if value == "GitHub Blob":
-                return f"github-blob-{match['user']}/{match['repo']}-{match['file']}@{match['ref']}", match, f"GitHub Blob [{match['user']}/{match['repo']}]"
-            if value == "GitHub Gist":
-                return f"github-gist-{match['user']}-{match['id']}", match, f"GitHub Gist [{match['user']}]"
-        return value, match, ""
-    value, match = get_ref_summary(url, patterns["other"])
-    if value == "Advisory":
-        return value, match, f"{format_system_name(match['org'])} Advisory"
-    elif value == "Exploit":
-        if "seclists" in lower_url:
-            _, match = get_ref_summary(url, {patterns["exploits"]["seclists"]: "seclists"})
-            value = value.replace("/", "-")
-        else:
-            _, match = get_ref_summary(url, {patterns["exploits"]["generic"]: "generic"})
-        return value, match, f"{format_system_name(match['org'])} Exploit"
-    return value, match, value
-
-
 def parse_revision_history(tracking):
     """
     Parses the revision history from the tracking data.
@@ -316,18 +293,13 @@ def parse_revision_history(tracking):
     """
     hx = deepcopy(tracking.get("revision_history")) or []
     if not hx and (tracking.get("version")) != "1":
-        LOG.warning("Revision history is empty. Correcting the version number.")
         tracking["version"] = 1
 
     elif hx and (len(hx) > 0):
         hx = cleanup_list(hx)
-        if tracking.get("status") == "final" and int(
-            tracking.get("version", 1)
-        ) > (len(hx) + 1):
-            LOG.warning(
-                "Revision history is inconsistent with the version "
-                "number. Correcting the version number."
-            )
+        if tracking.get("status") == "final" and int(tracking.get("version", 1)) > (
+            len(hx) + 1
+        ):
             tracking["version"] = int(len(hx) + 1)
     status = tracking.get("status")
     if not status or len(status) == 0:
@@ -352,7 +324,7 @@ def parse_revision_history(tracking):
             )
         ).strftime(TIME_FMT)
     except AttributeError:
-        LOG.warning("Your dates don't appear to be in ISO format.")
+        pass
     if status == "final" and (not hx or len(hx) == 0):
         choose_date = max(
             tracking.get("initial_release_date"),
@@ -386,12 +358,7 @@ def parse_revision_history(tracking):
     else:
         tracking["version"] = "1"
     if not tracking.get("id") or len(tracking.get("id")) == 0:
-        LOG.debug("No tracking id, generating one.")
         tracking["id"] = f"{dt}_v{tracking['version']}"
-    if (tracking["initial_release_date"]) > (tracking["current_release_date"]):
-        LOG.warning(
-            "Your initial release date is later than the current release date."
-        )
     hx = sorted(hx, key=lambda x: x["number"])
 
     tracking["revision_history"] = hx
@@ -411,11 +378,15 @@ def import_product_tree(tree):
     """
     product_tree = None
     if len(tree.get("easy_import", "")) > 0:
-        product_tree = json_load(tree["easy_import"], (
-            "Unable to load product tree file. Please verify your filepath and that your product "
-            "tree is valid json. Visit "
-            "https://github.com/owasp-dep-scan/dep-scan/blob/master/test/data/product_tree.json "
-            "for an example."), log=LOG)
+        product_tree = json_load(
+            tree["easy_import"],
+            (
+                "Unable to load product tree file. Please verify your filepath and that your product "
+                "tree is valid json. Visit "
+                "https://github.com/owasp-dep-scan/dep-scan/blob/master/test/data/product_tree.json "
+                "for an example."
+            ),
+        )
     return product_tree
 
 
@@ -488,9 +459,16 @@ def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
     new_results = add_vulnerabilities(template, pkg_vulnerabilities)
     new_results = cleanup_dict(new_results)
     new_results, metadata = verify_components_present(new_results, metadata, bom_file)
-    fn = bom_file.replace("-bom.json", f".csaf_v{new_results['document']['tracking']['version']}.json")
+    fn = bom_file.replace(
+        "-bom.json", f".csaf_v{new_results['document']['tracking']['version']}.json"
+    )
     outfile = os.path.join(reports_dir, fn)
-    json_dump(outfile, new_results, log=LOG, success_msg=f"CSAF report written to {outfile}", error_msg=f"CSAF report could not be written to {outfile}")
+    json_dump(
+        outfile,
+        new_results,
+        success_msg=f"CSAF report written to {outfile}",
+        error_msg=f"CSAF report could not be written to {outfile}",
+    )
     write_toml(toml_file_path, metadata)
 
 
@@ -511,14 +489,18 @@ def import_csaf_toml(toml_file_path):
         write_toml(toml_file_path)
         return import_csaf_toml(toml_file_path)
     try:
-        toml_data = toml.loads(file_read(toml_file_path, error_msg=f"Unable to read settings from {toml_file_path}.", log=LOG))
+        toml_data = toml.loads(
+            file_read(
+                toml_file_path,
+                error_msg=f"Unable to read settings from {toml_file_path}.",
+            )
+        )
     except toml.TomlDecodeError:
-        LOG.error(
+        raise ValueError(
             "Invalid TOML. Please make sure you do not have any "
             "duplicate keys and that any filepaths are properly escaped"
             "if using Windows."
         )
-        sys.exit(1)
     return toml_compatibility(toml_data)
 
 
@@ -537,11 +519,13 @@ def write_toml(toml_file_path, metadata=None):
         metadata = TOML_TEMPLATE
     metadata["depscan_version"] = get_version()
     try:
-        file_write(toml_file_path, toml.dumps(metadata), error_msg=f"Unable to write settings to {toml_file_path}.", log=LOG)
+        file_write(
+            toml_file_path,
+            toml.dumps(metadata),
+            error_msg=f"Unable to write settings to {toml_file_path}.",
+        )
     except toml.TomlDecodeError:
-        LOG.warning("Unable to write settings to file.")
-    else:
-        LOG.debug("The csaf.toml has been updated at %s", toml_file_path)
+        raise ValueError("Unable to write settings to file.")
 
 
 def cleanup_list(d):
@@ -604,8 +588,7 @@ def import_root_component(bom_file):
             "full_product_names": [
                 {
                     "name": component.get("name"),
-                    "product_id": f"{component.get('name')}:"
-                    f"{component.get('version')}",
+                    "product_id": f"{component.get('name')}:{component.get('version')}",
                     "product_identification_helper": {
                         "purl": component.get("purl"),
                     },
@@ -620,13 +603,6 @@ def import_root_component(bom_file):
                 }
                 for r in external_references
             )
-    if product_tree:
-        LOG.debug("Successfully imported root component into the product tree.")
-    else:
-        LOG.debug(
-            "Unable to import root component for product tree, so product "
-            "tree will not be included."
-        )
     return product_tree, refs
 
 
@@ -708,10 +684,11 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
         agg_score.sort()
         severity_ref = {v: k for k, v in SEVERITY_REF.items()}
         agg_severity = (
-            severity_ref[agg_score[0]][0]
-            + severity_ref[agg_score[0]][1:].lower()
+            severity_ref[agg_score[0]][0] + severity_ref[agg_score[0]][1:].lower()
         )
-        new_results["document"]["aggregate_severity"] = {"text": agg_severity.capitalize()}
+        new_results["document"]["aggregate_severity"] = {
+            "text": agg_severity.capitalize()
+        }
 
     return new_results
 
@@ -725,4 +702,3 @@ def get_severity(scores: List):
         return None
     severities.sort()
     return SEVERITY_REF.get(severities[-1].lower())
-

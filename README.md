@@ -176,7 +176,7 @@ depscan --src shiftleft/scan-slim -o containertests -t docker
 Include `license` to the type to perform the license audit.
 
 ```bash
-depscan --src shiftleft/scan-slim -o containertests -t docker,license
+depscan --src shiftleft/scan-slim -o containertests -t docker license
 ```
 
 You can also specify the image using the sha256 digest
