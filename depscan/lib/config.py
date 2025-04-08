@@ -295,7 +295,6 @@ UNIVERSAL_SCAN_TYPE = "universal"
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 6)
-max_distro_vulnerabilities = get_int_from_env("max_distro_vulnerabilities", 200)
 
 RUBY_PLATFORM_MARKERS = [
     "-x86_64",
@@ -312,3 +311,5 @@ RUBY_PLATFORM_MARKERS = [
 # List of suffixes used by npm packages to indicate binary versions.
 # This could be replaced with a better heuristics or lookup database in the future.
 NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
+
+DEPSCAN_DEFAULT_VDR_FILE = os.getenv("DEPSCAN_DEFAULT_VDR_FILE", "depscan-universal.vdr.json")

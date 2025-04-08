@@ -1,12 +1,17 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from vdb.lib.search import (
+    search_by_any,
+    search_by_cpe_like,
+    search_by_url,
+    search_by_purl_like,
+)
 
 from analysis_lib.normalize import create_pkg_variations, dealias_packages, dedup
-from vdb.lib.search import search_by_any, search_by_purl_like
 
 
-def get_pkg_vendor_name(pkg):
+def get_pkg_vendor_name(pkg: Dict) -> Tuple[str, str]:
     """
     Method to extract vendor and name information from package. If vendor
     information is not available package url is used to extract the package
@@ -15,7 +20,7 @@ def get_pkg_vendor_name(pkg):
     :param pkg: a dictionary representing a package
     :return: vendor and name as a tuple
     """
-    vendor = pkg.get("vendor")
+    vendor = pkg.get("vendor", "")
     if not vendor:
         purl = pkg.get("purl")
         if purl:
@@ -24,7 +29,7 @@ def get_pkg_vendor_name(pkg):
                 vendor = purl_parts[0].replace("pkg:", "")
         else:
             vendor = ""
-    name = pkg.get("name")
+    name = pkg.get("name", "")
     return vendor, name
 
 
@@ -38,6 +43,8 @@ def get_pkgs_by_scope(pkg_list):
                 no scope information is available
     """
     scoped_pkgs = {}
+    if not pkg_list:
+        return scoped_pkgs
     for pkg in pkg_list:
         if pkg.get("scope"):
             vendor, name = get_pkg_vendor_name(pkg)
@@ -76,12 +83,19 @@ def get_scope_from_imports(project_type, pkg_list, all_imports):
     return scoped_pkgs
 
 
-def find_vulns(project_type: str | None, pkg_list: List[Dict[str, Any]]):
+def find_vulns(
+    project_type: str | None,
+    pkg_list: List[Dict[str, Any]],
+    fuzzy_search: bool = False,
+    search_order: Optional[str] = None,
+):
     """
     Method to search packages in our vulnerability database
 
-    :param project_type: Project type
-    :param pkg_list: List of packages to search
+    :param project_type: Project type.
+    :param pkg_list: List of packages to search.
+    :param fuzzy_search: Perform fuzzy search by creating variations. Disabled by default.
+
     :returns: raw_results, pkg_aliases, purl_aliases
     """
     expanded_list = []
@@ -92,15 +106,18 @@ def find_vulns(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     pkg_aliases = defaultdict(list)
     purl_aliases = {}
     expanded_list = []
-    for pkg in pkg_list:
-        tmp_expanded, pkg_aliases, tmp_purl_aliases = generate_variations(
-            pkg, pkg_aliases
-        )
-        expanded_list.extend(tmp_expanded)
-        purl_aliases |= tmp_purl_aliases
+    if fuzzy_search:
+        for pkg in pkg_list:
+            tmp_expanded, pkg_aliases, tmp_purl_aliases = generate_variations(
+                pkg, pkg_aliases
+            )
+            expanded_list.extend(tmp_expanded)
+            purl_aliases |= tmp_purl_aliases
+    else:
+        expanded_list = pkg_list
     raw_results = []
     for pkg in expanded_list:
-        if res := search_expanded(pkg):
+        if res := search_expanded(pkg, fuzzy_search, search_order):
             raw_results.extend(res)
     raw_results = dedup(project_type, raw_results)
     pkg_aliases = dealias_packages(
@@ -109,21 +126,38 @@ def find_vulns(project_type: str | None, pkg_list: List[Dict[str, Any]]):
     return raw_results, pkg_aliases, purl_aliases
 
 
-def search_expanded(pkg: Dict) -> List:
+def search_expanded(pkg: Dict, fuzzy_search, search_order) -> List:
     """Searches packages and variations"""
     raw_results = []
+    # Default search order is purl or cpe or url (pcu)
     search_term = pkg.get("purl") or pkg.get("cpe") or pkg.get("url")
-    if search_term and (res := search_by_any(search_term, with_data=True)):
+    # Make the search logic and order configurable
+    search_logic = search_by_any
+    if search_order == "purl":
+        search_logic = search_by_purl_like
+        search_term = pkg.get("purl")
+    elif search_order == "cpe":
+        search_logic = search_by_cpe_like
+        search_term = pkg.get("cpe")
+    elif search_order == "url":
+        search_logic = search_by_url
+        search_term = pkg.get("url")
+    elif search_order == "cpu":
+        search_logic = search_by_any
+        search_term = pkg.get("cpe") or pkg.get("purl") or pkg.get("url")
+    # Give preference to our search logic
+    if search_term and (res := search_logic(search_term, with_data=True)):
         raw_results.extend(res)
-    else:
+    elif fuzzy_search:
+        # Perform fuzzy search if requested retaining the search logic
         alt_search_term = (
             f"pkg:generic/{pkg.get('vendor')}/{pkg.get('name')}"
             if pkg.get("vendor")
-            else pkg.get("name")
+            else pkg["name"]
         )
         if pkg.get("version"):
             alt_search_term = f"{alt_search_term}@{pkg.get('version')}"
-        if res := search_by_purl_like(alt_search_term, with_data=True):
+        if res := search_logic(alt_search_term, with_data=True):
             raw_results.extend(res)
     return raw_results
 

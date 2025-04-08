@@ -8,40 +8,40 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 
 ## Contents
 
--   [Features](#features)
-    -   [Vulnerability Data sources](#vulnerability-data-sources)
-    -   [Linux distros](#linux-distros)
--   [Quick Start](#quick-start)
-    -   [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
-    -   [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
-    -   [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
-    -   [Server mode](#server-mode)
--   [Documentation (depscan.readthedocs.io)](https://depscan.readthedocs.io)
-    -   [Supported languages and package format](https://depscan.readthedocs.io/supported-languages)
-    -   [Reachability analysis](https://depscan.readthedocs.io/reachability-analysis)
-        -   [Example analysis for a Java project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
-        -   [Example analysis for a JavaScript project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
-    -   [Customization through environment variables](https://depscan.readthedocs.io/env-var#customization-through-environment-variables)
-    -   [GitHub Security Advisory](https://depscan.readthedocs.io/adv-usage#github-security-advisory)
-    -   [Suggest mode](https://depscan.readthedocs.io/adv-usage#suggest-mode)
-    -   [Package Risk audit](https://depscan.readthedocs.io/adv-usage#package-risk-audit)
-        -   [Automatic adjustment](https://depscan.readthedocs.io/adv-usage#automatic-adjustment)
-        -   [Configuring weights](https://depscan.readthedocs.io/adv-usage#configuring-weights)
-    -   [Live OS scan](https://depscan.readthedocs.io/adv-usage#live-os-scan)
-    -   [License scan](https://depscan.readthedocs.io/adv-usage#license-scan)
-    -   [Kubernetes and Cloud apps](https://depscan.readthedocs.io/adv-usage#kubernetes-and-cloud-apps)
-    -   [PDF reports](https://depscan.readthedocs.io/adv-usage#pdf-reports)
-    -   [Custom reports](https://depscan.readthedocs.io/adv-usage#custom-reports)
--   [License](#license)
+- [Features](#features)
+    - [Vulnerability Data sources](#vulnerability-data-sources)
+    - [Linux distros](#linux-distros)
+- [Quick Start](#quick-start)
+    - [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
+    - [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
+    - [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
+    - [Server mode](#server-mode)
+- [Documentation (depscan.readthedocs.io)](https://depscan.readthedocs.io)
+    - [Supported languages and package format](https://depscan.readthedocs.io/supported-languages)
+    - [Reachability analysis](https://depscan.readthedocs.io/reachability-analysis)
+        - [Example analysis for a Java project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
+        - [Example analysis for a JavaScript project](https://depscan.readthedocs.io/reachability-analysis#example-analysis-for-a-java-project)
+    - [Customization through environment variables](https://depscan.readthedocs.io/env-var#customization-through-environment-variables)
+    - [GitHub Security Advisory](https://depscan.readthedocs.io/adv-usage#github-security-advisory)
+    - [Suggest mode](https://depscan.readthedocs.io/adv-usage#suggest-mode)
+    - [Package Risk audit](https://depscan.readthedocs.io/adv-usage#package-risk-audit)
+        - [Automatic adjustment](https://depscan.readthedocs.io/adv-usage#automatic-adjustment)
+        - [Configuring weights](https://depscan.readthedocs.io/adv-usage#configuring-weights)
+    - [Live OS scan](https://depscan.readthedocs.io/adv-usage#live-os-scan)
+    - [License scan](https://depscan.readthedocs.io/adv-usage#license-scan)
+    - [Kubernetes and Cloud apps](https://depscan.readthedocs.io/adv-usage#kubernetes-and-cloud-apps)
+    - [PDF reports](https://depscan.readthedocs.io/adv-usage#pdf-reports)
+    - [Custom reports](https://depscan.readthedocs.io/adv-usage#custom-reports)
+- [License](#license)
 
 ## Features
 
--   Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
--   Perform advanced reachability analysis for multiple languages (See reachability analysis)
--   Package vulnerability scanning is performed locally and is quite fast. No server is used!
--   Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
--   Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
--   Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
+- Scan most application code - local repos, Linux container images, Kubernetes manifests, and OS - to identify known CVEs with prioritization
+- Perform advanced reachability analysis for multiple languages (See reachability analysis)
+- Package vulnerability scanning is performed locally and is quite fast. No server is used!
+- Generate Software Bill-of-Materials (SBOM) with Vulnerability Disclosure Report (VDR) information
+- Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
+- Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
 ![Reachable Flows](documentation/static/img/depscan-flows.png)
 
@@ -51,26 +51,26 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 
 ### Vulnerability Data sources
 
--   OSV
--   NVD
--   GitHub
--   NPM
--   Linux [vuln-list](https://github.com/appthreat/vuln-list)
+- OSV
+- NVD
+- GitHub
+- NPM
+- Linux [vuln-list](https://github.com/appthreat/vuln-list)
 
 ### Linux distros
 
--   AlmaLinux
--   Debian
--   Alpine
--   Amazon Linux
--   Arch Linux
--   RHEL/CentOS
--   Rocky Linux
--   Ubuntu
--   OpenSUSE/SLES
--   Photon
--   Chainguard
--   Wolfi OS
+- AlmaLinux
+- Debian
+- Alpine
+- Amazon Linux
+- Arch Linux
+- RHEL/CentOS
+- Rocky Linux
+- Ubuntu
+- OpenSUSE/SLES
+- Photon
+- Chainguard
+- Wolfi OS
 
 Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `` for the first time. dep-scan would also download the appropriate database based on project type automatically.
 
@@ -101,12 +101,14 @@ depscan --src $PWD --reports-dir $PWD/reports
 The full list of options is below:
 
 ```text
-usage: depscan [-h] [--config CONFIG] [--no-banner] [--csaf] [--profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}]
+usage: depscan [-h] [--config CONFIG] [--no-banner] [-i SRC_DIR_IMAGE] [-o REPORTS_DIR] [--csaf]
+               [--profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}]
                [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
                [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
-               [--no-suggest] [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM] [--bom-dir BOM_DIR] [-i SRC_DIR_IMAGE] [-o REPORTS_DIR]
-               [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--no-universal] [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
-               [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [--purl SEARCH_PURL] [-v]
+               [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}] [--no-suggest] [--risk-audit]
+               [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL] [--report-template REPORT_TEMPLATE]
+               [--report-name REPORT_NAME] [--deep] [--fuzzy-search] [--search-order {purlpcu,cpe,cpu,url}] [--no-universal] [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT]
+               [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [--reachables-slices-file REACHABLES_SLICES_FILE] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
@@ -114,6 +116,10 @@ options:
   -h, --help            show this help message and exit
   --config CONFIG       Path to the configuration file. Default: $PWD/.config/depscan.toml
   --no-banner           Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.
+  -i, --src SRC_DIR_IMAGE
+                        Source directory or container image or binary file
+  -o, --reports-dir REPORTS_DIR
+                        Reports directory
   --csaf                Generate a OASIS CSAF VEX document
   --profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}
                         Profile to use while generating the BOM.
@@ -123,6 +129,8 @@ options:
                         Analysis technique to use for BOM generation. Multiple values allowed.
   --bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator}
                         BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.
+  --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}
+                        Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --cdxgen-args CDXGEN_ARGS
@@ -133,15 +141,15 @@ options:
                         Override project types if auto-detection is incorrect. Multiple values supported.
   --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
   --bom-dir BOM_DIR     Examine all the Bill-of-Materials (BOM) files in the given directory.
-  -i, --src SRC_DIR_IMAGE
-                        Source directory or container image or binary file
-  -o, --reports-dir REPORTS_DIR
-                        Reports directory
+  --purl SEARCH_PURL    Scan a single package url.
   --report-template REPORT_TEMPLATE
                         Jinja template file used for rendering a custom report
   --report-name REPORT_NAME
                         Filename of the custom report written to the --reports-dir
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
+  --fuzzy-search        Perform fuzzy search by creating variations of package names. Use this when the input SBOM lacks a PURL.
+  --search-order {purlpcu,cpe,cpu,url}
+                        Attributes to use while searching for vulnerabilities. Default: PURL, CPE, URL (pcu).
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
   --server              Run depscan as a server
@@ -155,7 +163,6 @@ options:
   --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
   --reachables-slices-file REACHABLES_SLICES_FILE
                         Path for the reachables slices file created by atom.
-  --purl SEARCH_PURL    Scan a single package url.
   -v, --version         Display the version
 ```
 
@@ -242,20 +249,20 @@ Use the `/scan` endpoint to perform scans.
 > [!NOTE]
 > The `type` parameter is mandatory in server mode.
 
--   Scanning a local directory.
-    Scanning an SBOM file (present locally).
+- Scanning a local directory.
+  Scanning an SBOM file (present locally).
 
 ```bash
 curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
 ```
 
--   Scanning a GitHub repo.
+- Scanning a GitHub repo.
 
 ```bash
 curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
 ```
 
--   Uploading an SBOM file and generating results based on it.
+- Uploading an SBOM file and generating results based on it.
 
 ```bash
 curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js

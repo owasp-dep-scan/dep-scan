@@ -7,12 +7,14 @@ Use this document as a reference to migrate your depscan v5 workflows to v6.
 - `-o` is now an alias for `--reports-dir`. This is the output directory to store the reports.
 - All `threatdb` related arguments and submit bom functionality are removed.
 - `--cache`, `--sync`, `--no-error`, `--no-license-scan` arguments are removed.
-- `--bom-engine` defaults to `auto`. In environments where the `docker` command is available, depscan automatically chooses a container-image–based SBOM generation. Pass `--bom-engine CdxgenGenerator` to force depscan to use the local cdxgen CLI.
+- `--bom-engine` argument defaults to `auto`. In environments where the `docker` command is available, depscan automatically chooses a container-image–based SBOM generation. Pass `--bom-engine CdxgenGenerator` to force depscan to use the local cdxgen CLI.
+- `--vulnerability-analyzer` argument defaults to auto. Depending on the `--bom-dir` argument, depscan will either perform a lifecycle-based vulnerability analysis or the standard VDR analysis (similar to depscan v5).
+- By default, only PURL-based searches are performed. As a result, depscan v6 yields fewer but more accurate results compared to v5. To perform a fuzzy search by generating variations of package names, use the --fuzzy-search argument. This is recommended when the input SBOM lacks a PURL.
 
 ## Packages/Dependencies changes
 
 - `quart` package is an optional dependency in v6. To use the server mode, do `pip install owasp-depscan[all]`.
-- `oras` is an indirect dependency via `appthreat-vulnerability-db`.
+- `oras` is an required dependency via `appthreat-vulnerability-db[oras]` and `blint`.
 
 ## Build and packaging
 

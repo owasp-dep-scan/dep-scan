@@ -36,7 +36,7 @@ class BlintGenerator(XBOMGenerator):
         )
         os.environ["BLINT_TEMP_DIR"] = temp_reports_dir
         blint_options = BlintOptions(
-            deep_mode=True,
+            deep_mode=self.options.get("deep", True),
             sbom_mode=True,
             db_mode=True,
             no_reviews=True,
@@ -45,7 +45,7 @@ class BlintGenerator(XBOMGenerator):
             src_dir_image=src_dir.split(","),
             stdout_mode=False,
             reports_dir=temp_reports_dir,
-            use_blintdb=True,
+            use_blintdb=self.options.get("use_blintdb", True),
             image_url=self.options.get("blintdb_image_url", BLINTDB_IMAGE_URL),
             sbom_output=bom_file,
         )

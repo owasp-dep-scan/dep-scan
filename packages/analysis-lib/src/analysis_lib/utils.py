@@ -1,5 +1,6 @@
 import contextlib
 import encodings.utf_8
+import glob
 import os
 import re
 from collections import defaultdict
@@ -15,8 +16,8 @@ from vdb.lib.cve_model import CVE, Description, Descriptions, ProblemTypes, Refe
 from vdb.lib.utils import parse_cpe, parse_purl, version_compare
 
 from analysis_lib.config import *
-from analysis_lib.search import find_vulns
 from analysis_lib.output import *
+from analysis_lib.search import find_vulns
 
 
 def distro_package(cpe):
@@ -111,7 +112,7 @@ def is_os_target_sw(package_issue):
 
 def remove_extra_metadata(vdrs):
     new_vdrs = []
-    exclude = {"insights", "purl_prefix", "p_rich_tree", "fixed_location"}
+    exclude = {"insights", "matched_by", "purl_prefix", "p_rich_tree", "fixed_location"}
     for vdr in vdrs:
         new_vdr = {}
         for key, value in vdr.items():
@@ -343,7 +344,8 @@ def get_suggested_versions(pkg_list, project_type):
                 sug_pkg_list.extend(sug)
             if aliases:
                 pkg_aliases |= aliases
-        override_results, _, _ = find_vulns(project_type, sug_pkg_list)
+        # We need only direct purl-based hits
+        override_results, _, _ = find_vulns(project_type, sug_pkg_list, False, "purl")
         if override_results:
             new_sug_dict = get_suggested_version_map(override_results)
             for nk, nv in new_sug_dict.items():
@@ -488,7 +490,7 @@ def cvss_to_vdr_rating(vuln_occ_dict):
     ):
         ratings[0]["vector"] = vector_string
         with contextlib.suppress(CVSSError):
-            method = cvss.CVSS3(vector_string).as_json().get("version")
+            method = cvss.CVSS3(vector_string).as_json().get("version", "")
             method = method.replace(".", "").replace("0", "")
     ratings[0]["method"] = f"CVSSv{method}"
 
@@ -640,12 +642,12 @@ def classify_links(related_urls):
     return clinks
 
 
-def find_purl_usages(bom_file, src_dir, reachables_slices_file):
+def find_purl_usages(bom_files, src_dir, reachables_slices_file):
     """
     Generates a list of reachable elements based on the given BOM file.
 
-    :param bom_file: The path to the BOM file.
-    :type bom_file: str
+    :param bom_file: The path to the BOM file(s).
+    :type bom_file: List[str]
     :param src_dir: Source directory
     :type src_dir: str
     :param reachables_slices_file: Path to the reachables slices file
@@ -664,18 +666,19 @@ def find_purl_usages(bom_file, src_dir, reachables_slices_file):
     ):
         reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
     if reachables_slices_file:
-        reachables = json_load(reachables_slices_file).get("reachables")
+        reachables = json_load(reachables_slices_file).get("reachables") or []
         for flow in reachables:
             if len(flow.get("purls", [])) > 0:
                 for apurl in flow.get("purls"):
                     reached_purls[apurl] += 1
-    if bom_file and os.path.exists(bom_file):
-        data = json_load(bom_file)
-        # For now we will also include usability slice as well
-        for c in data["components"]:
-            purl = c.get("purl", "")
-            if c.get("evidence") and c["evidence"].get("occurrences"):
-                direct_purls[purl] += len(c["evidence"].get("occurrences"))
+    if bom_files:
+        for bom_file in bom_files:
+            data = json_load(bom_file)
+            # For now we will also include usability slice as well
+            for c in data.get("components", []):
+                purl = c.get("purl", "")
+                if c.get("evidence") and c["evidence"].get("occurrences"):
+                    direct_purls[purl] += len(c["evidence"].get("occurrences"))
     return dict(direct_purls), dict(reached_purls)
 
 
@@ -1423,17 +1426,28 @@ def get_version_used(purl):
     return version
 
 
+def is_purl_in_postbuild(purl, postbuild_purls):
+    if not purl or not postbuild_purls:
+        return False
+    purl_no_version = purl.split("@")[0]
+    return postbuild_purls.get(purl) or postbuild_purls.get(purl_no_version)
+
+
 def analyze_cve_vuln(
     vuln,
     reached_purls,
     direct_purls,
     optional_pkgs,
     required_pkgs,
+    prebuild_purls,
+    build_purls,
+    postbuild_purls,
     bom_dependency_tree,
     counts,
 ):
     insights = []
     plain_insights = []
+    pkg_requires_attn = False
     purl = vuln.get("matched_by") or ""
     purl_obj = parse_purl(purl)
     version_used = get_version_used(purl)
@@ -1469,6 +1483,7 @@ def analyze_cve_vuln(
     )
     vdict = {
         "id": vuln.get("cve_id"),
+        "matched_by": vuln.get("matched_by"),
         "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
         "affects": affects,
         "recommendation": recommendation,
@@ -1543,29 +1558,27 @@ def analyze_cve_vuln(
         "updated": updated.strftime("%Y-%m-%dT%H:%M:%S") if updated else "",
     }
     is_required = False
-    if direct_purls.get(purl) or purl in required_pkgs:
+    # The given purl is considered required if it exists in any of these 3 data structures.
+    if (
+        direct_purls.get(purl)
+        or purl in required_pkgs
+        or is_purl_in_postbuild(purl, postbuild_purls)
+    ):
         is_required = True
-    if pocs or bounties:
-        if reached_purls.get(purl):
-            insights.append(
-                "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
-            )
-            plain_insights.append("Reachable Bounty target")
-            counts.has_reachable_poc_count += 1
-            counts.has_reachable_exploit_count += 1
-        elif direct_purls.get(purl):
-            insights.append(
-                "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
-            )
-            plain_insights.append("Bug Bounty target")
-        else:
-            insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
-            plain_insights.append("Has PoC")
-        counts.has_poc_count += 1
     package_usage = ""
     plain_package_usage = ""
+    # We are dealing with a required non-os package
     if is_required and package_type not in OS_PKG_TYPES:
-        if direct_purls.get(purl):
+        # Is the package also present in post-build BOM
+        if is_purl_in_postbuild(purl, postbuild_purls):
+            package_usage = ":package: Deployed dependency"
+            plain_package_usage = "Deployed dependency"
+            # Does this require attention
+            if rating.get("severity", "").upper() in ("CRITICAL",):
+                pkg_requires_attn = True
+                counts.critical_count += 1
+                counts.pkg_attention_count += 1
+        elif direct_purls.get(purl):
             package_usage = (
                 f":direct_hit: Used in [info]{str(direct_purls.get(purl))}[/info] "
                 f"locations"
@@ -1586,7 +1599,7 @@ def analyze_cve_vuln(
                 "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
             )
             plain_package_usage = "Indirect dependency"
-    pkg_requires_attn = False
+    # There are pocs or bounties against this vulnerability
     if pocs or bounties:
         if reached_purls.get(purl):
             insights.append(
@@ -1596,7 +1609,7 @@ def analyze_cve_vuln(
             counts.has_reachable_poc_count += 1
             counts.has_reachable_exploit_count += 1
             pkg_requires_attn = True
-        elif direct_purls.get(purl):
+        elif direct_purls.get(purl) or is_purl_in_postbuild(purl, postbuild_purls):
             insights.append(
                 "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
             )
@@ -1605,14 +1618,15 @@ def analyze_cve_vuln(
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             plain_insights.append("Has PoC")
         counts.has_poc_count += 1
-        if rating.get("severity", "").upper() in ("CRITICAL", "HIGH"):
+        if rating.get("severity", "").upper() in ("CRITICAL",):
             pkg_requires_attn = True
-            if direct_purls.get(purl):
+            if direct_purls.get(purl) or is_purl_in_postbuild(purl, postbuild_purls):
                 counts.pkg_attention_count += 1
             if recommendation:
                 counts.fix_version_count += 1
-            if vendor in OS_PKG_TYPES and rating.get("severity", "") == "CRITICAL":
+            if vendor in OS_PKG_TYPES and rating.get("severity", "") in ("CRITICAL",):
                 counts.critical_count += 1
+    # Purl is reachable
     if vendors and package_type not in OS_PKG_TYPES and reached_purls.get(purl):
         # If it has a poc, an insight might have gotten added above
         if not pkg_requires_attn:
@@ -1621,8 +1635,14 @@ def analyze_cve_vuln(
         else:
             insights.append(":receipt: Vendor Confirmed")
             plain_insights.append("Vendor Confirmed")
+    # There are exploits
     if exploits:
-        if reached_purls.get(purl) or direct_purls.get(purl):
+        # Also reachable
+        if (
+            reached_purls.get(purl)
+            or direct_purls.get(purl)
+            or is_purl_in_postbuild(purl, postbuild_purls)
+        ):
             insights.append(
                 "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
             )
@@ -1633,6 +1653,7 @@ def analyze_cve_vuln(
             # false negatives
             if not reached_purls.get(purl):
                 reached_purls[purl] = 1
+        # A flagged CWE
         elif has_flagged_cwe:
             if (vendor and vendor in ("gnu",)) or (
                 purl_obj and purl_obj.get("name") in ("glibc", "openssl")
@@ -1648,6 +1669,7 @@ def analyze_cve_vuln(
                 )
                 plain_insights.append("Exploitable")
                 counts.has_exploit_count += 1
+        # Just known exploits
         else:
             insights.append(
                 "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
@@ -1658,6 +1680,7 @@ def analyze_cve_vuln(
     if cve_record.root.containers.cna.affected.root and (
         cpes := cve_record.root.containers.cna.affected.root[0].cpes
     ):
+        # Distro-specific package
         if all((distro_package(i.root) for i in cpes)):
             insights.append(
                 "[spring_green4]:direct_hit: Distro specific[/spring_green4]"
@@ -1665,32 +1688,6 @@ def analyze_cve_vuln(
             plain_insights.append("Distro specific")
             counts.distro_packages_count += 1
             counts.has_os_packages = True
-    if is_required and package_type not in OS_PKG_TYPES:
-        if direct_purls.get(purl):
-            package_usage = (
-                f":direct_hit: Used in [info]"
-                f"{str(direct_purls.get(purl))}"
-                f"[/info] locations"
-            )
-            plain_package_usage = f"Used in {str(direct_purls.get(purl))} locations"
-        else:
-            package_usage = ":direct_hit: Direct dependency"
-            plain_package_usage = "Direct dependency"
-    elif (
-        not optional_pkgs
-        and pkg_tree_list
-        and len(pkg_tree_list) > 1
-        or purl in optional_pkgs
-    ):
-        if package_type in OS_PKG_TYPES:
-            package_usage = "[spring_green4]:notebook: Local install[/spring_green4]"
-            plain_package_usage = "Local install"
-            counts.has_os_packages = True
-        else:
-            package_usage = (
-                "[spring_green4]:notebook: Indirect dependency[/spring_green4]"
-            )
-            plain_package_usage = "Indirect dependency"
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
@@ -1739,21 +1736,166 @@ def get_pkg_list(jsonfile):
     return List of dicts representing extracted packages
     """
     pkgs = []
+    lifecycles = []
     if bom_data := json_load(jsonfile):
-        if bom_data.get("components"):
-            for comp in bom_data.get("components", []):
-                vendor, url = get_vendor_url(comp)
+        # Start with parsing the metadata section
+        if bom_data.get("metadata", {}):
+            metadata = bom_data.get("metadata", {})
+            # Collect the lifecycles listed in the BOM
+            if metadata.get("lifecycles"):
+                lifecycles = bom_data["metadata"]["lifecycles"]
+            # Track from metadata.component.components
+            for mcomp in metadata.get("component", {}).get("components", []):
+                # Skip component types that do not require checking
+                if mcomp.get("type", "") in ("file", "application", "data"):
+                    continue
+                licenses, vendor, url = get_vendor_url(mcomp)
                 pkgs.append(
-                    {**comp, "vendor": vendor, "url": url}
+                    {**mcomp, "vendor": vendor, "licenses": licenses, "url": url}
                 )
-        return pkgs
+        for comp in bom_data.get("components", []):
+            licenses, vendor, url = get_vendor_url(comp)
+            pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
+            # nested components
+            for nc in comp.get("components", []):
+                # Skip component types that do not require checking
+                if nc.get("type", "") in ("file", "application", "data"):
+                    continue
+                licenses, vendor, url = get_vendor_url(nc)
+                pkgs.append({**nc, "vendor": vendor, "licenses": licenses, "url": url})
+    return pkgs, lifecycles
+
+
+def get_all_bom_files(from_dir):
+    """
+    Method to collect all BOM files from a given directory.
+    """
+    return glob.glob(f"{from_dir}/**/*bom.json", recursive=True) + glob.glob(
+        f"{from_dir}/**/*.cdx.json", recursive=True
+    )
+
+
+def get_all_pkg_list(from_dir):
+    """
+    Method to extract packages from a bom json file
+
+    :param jsonfile: Path to a bom json file.
+    return List of dicts representing extracted packages
+    """
+    bom_files = get_all_bom_files(from_dir)
+    unique_packages = []
+    seen_bom_refs = set()
+    for file_path in bom_files:
+        pkg_list, lifecycles = get_pkg_list(file_path)
+        lifecycle_mode = get_lifecycle(lifecycles)
+        for pkg in pkg_list:
+            purl = pkg.get("purl")
+            # Ignore unversioned components in post-build
+            if lifecycle_mode == "post-build" and purl and "@" not in purl:
+                continue
+            bom_ref = pkg.get("bom-ref") or purl
+            if bom_ref and bom_ref not in seen_bom_refs:
+                unique_packages.append(pkg)
+                seen_bom_refs.add(bom_ref)
+    return unique_packages
 
 
 def get_vendor_url(comp):
+    licenses = []
     vendor = comp.get("group") or ""
+    if comp.get("licenses"):
+        for lic in comp.get("licenses"):
+            license_obj = lic
+            if lic.get("license"):
+                license_obj = lic.get("license")
+            if license_obj.get("id"):
+                licenses.append(license_obj.get("id"))
     url = ""
     for aref in comp.get("externalReferences", []):
         if aref.get("type") == "vcs":
             url = aref.get("url", "")
             break
-    return vendor, url
+    return licenses, vendor, url
+
+
+def get_lifecycle(lifecycles):
+    lifecycle_mode = "pre-build"
+    if not lifecycles or not isinstance(lifecycles, list):
+        return "pre-build"
+    for l in lifecycles:
+        phase = l.get("phase", "")
+        if phase == "build":
+            lifecycle_mode = "build"
+        if phase == "post-build":
+            lifecycle_mode = "post-build"
+            break
+    return lifecycle_mode
+
+
+def versionify_postbuild_purls(prebuild_purls, build_purls, postbuild_purls):
+    matcher_purls = {}
+    mpostbuild_purls = {}
+    for p in prebuild_purls.keys():
+        matcher_purls[p.split("@")[0]] = p
+    for p in build_purls.keys():
+        matcher_purls[p.split("@")[0]] = p
+    for k, v in postbuild_purls.items():
+        if matcher_purls.get(k):
+            mpostbuild_purls[matcher_purls.get(k)] = v
+        else:
+            mpostbuild_purls[k] = v
+    return mpostbuild_purls
+
+
+def get_lifecycle_pkgs(file_path):
+    prebuild_purls = defaultdict(list)
+    build_purls = defaultdict(list)
+    postbuild_purls = defaultdict(list)
+    lifecycle_mode = "pre-build"
+    populate_dict = prebuild_purls
+    if file_path and os.path.exists(file_path):
+        pkg_list, lifecycles = get_pkg_list(file_path)
+        lifecycle_mode = get_lifecycle(lifecycles)
+        if lifecycle_mode == "pre-build":
+            populate_dict = prebuild_purls
+        elif lifecycle_mode == "build":
+            populate_dict = build_purls
+        elif lifecycle_mode == "post-build":
+            populate_dict = postbuild_purls
+        for pkg in pkg_list:
+            ref = pkg.get("purl") or pkg.get("bom-ref")
+            populate_dict[ref].append(file_path)
+    # Include version numbers to postbuild purls
+    postbuild_purls = versionify_postbuild_purls(
+        prebuild_purls, build_purls, postbuild_purls
+    )
+    return prebuild_purls, build_purls, postbuild_purls
+
+
+def get_all_lifecycle_pkgs(from_dir):
+    prebuild_purls = defaultdict(list)
+    build_purls = defaultdict(list)
+    postbuild_purls = defaultdict(list)
+    lifecycle_mode = "pre-build"
+    populate_dict = prebuild_purls
+    if from_dir and os.path.exists(from_dir):
+        bom_files = get_all_bom_files(from_dir)
+        for file_path in bom_files:
+            pkg_list, lifecycles = get_pkg_list(file_path)
+            if not pkg_list:
+                continue
+            lifecycle_mode = get_lifecycle(lifecycles)
+            if lifecycle_mode == "pre-build":
+                populate_dict = prebuild_purls
+            elif lifecycle_mode == "build":
+                populate_dict = build_purls
+            elif lifecycle_mode == "post-build":
+                populate_dict = postbuild_purls
+            for pkg in pkg_list:
+                ref = pkg.get("purl") or pkg.get("bom-ref")
+                populate_dict[ref].append(file_path)
+    # Include version numbers to postbuild purls
+    postbuild_purls = versionify_postbuild_purls(
+        prebuild_purls, build_purls, postbuild_purls
+    )
+    return prebuild_purls, build_purls, postbuild_purls

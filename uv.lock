@@ -207,8 +207,8 @@ wheels = [
 
 [[package]]
 name = "blint"
-version = "2.4.1"
-source = { registry = "https://pypi.org/simple" }
+version = "2.4.2"
+source = { git = "https://github.com/owasp-dep-scan/blint?rev=dda111299e23e45a0fc5297d1ea1b161dba84f79#dda111299e23e45a0fc5297d1ea1b161dba84f79" }
 dependencies = [
     { name = "appdirs" },
     { name = "apsw" },
@@ -223,10 +223,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "symbolic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/26/67/facbccc0b6081de9bad9b7dfc938f87beeeb69a55472a7a3432c54c24537/blint-2.4.1.tar.gz", hash = "sha256:98ea5e8b3c0d9d2a57df2b90809077eae8212edff8a97ec595a9728c036098ce", size = 147534 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/80/b7dc2cc3afe9f1bf0e805c26e3f54b02cc894643fc48b4f403e351471dba/blint-2.4.1-py3-none-any.whl", hash = "sha256:8f058a00868bdaa391e008981efc8ad7bf7c83f55c941997abe059ab47e387b8", size = 159171 },
 ]
 
 [[package]]
@@ -1124,8 +1120,8 @@ requires-dist = [
     { name = "atom-tools", marker = "extra == 'all'", specifier = ">=0.7.1" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = ">=0.7.1" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
-    { name = "blint", marker = "extra == 'all'", specifier = ">=2.4.1" },
-    { name = "blint", marker = "extra == 'ext'", specifier = ">=2.4.1" },
+    { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=dda111299e23e45a0fc5297d1ea1b161dba84f79" },
+    { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=dda111299e23e45a0fc5297d1ea1b161dba84f79" },
     { name = "custom-json-diff", specifier = ">=2.1.6" },
     { name = "cvss", specifier = ">=3.4" },
     { name = "defusedxml", specifier = ">=0.7.1" },
@@ -1135,7 +1131,7 @@ requires-dist = [
     { name = "hishel", extras = ["redis"], marker = "extra == 'all'", specifier = ">=0.1.1" },
     { name = "hishel", extras = ["redis"], marker = "extra == 'perf'", specifier = ">=0.1.1" },
     { name = "httpretty", marker = "extra == 'dev'", specifier = ">=1.1.4" },
-    { name = "jinja2", specifier = ">=3.1.5" },
+    { name = "jinja2", specifier = ">=3.1.6" },
     { name = "packageurl-python", specifier = ">=0.16.0" },
     { name = "pdfkit", specifier = ">=1.0.0" },
     { name = "pygithub", marker = "extra == 'all'", specifier = ">=2.6.1" },
@@ -1144,7 +1140,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "quart", marker = "extra == 'all'", specifier = ">=0.20.0" },
     { name = "quart", marker = "extra == 'server'", specifier = ">=0.20.0" },
-    { name = "rich", specifier = ">=13.9.4" },
+    { name = "rich", specifier = ">=14.0.0" },
     { name = "tomli", specifier = ">=2.2.1" },
 ]
 provides-extras = ["dev", "server", "ext", "perf", "all"]
@@ -1232,7 +1228,7 @@ wheels = [
 
 [[package]]
 name = "pydantic"
-version = "2.11.2"
+version = "2.11.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-types" },
@@ -1240,9 +1236,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/41/832125a41fe098b58d1fdd04ae819b4dc6b34d6b09ed78304fd93d4bc051/pydantic-2.11.2.tar.gz", hash = "sha256:2138628e050bd7a1e70b91d4bf4a91167f4ad76fdb83209b107c8d84b854917e", size = 784742 }
+sdist = { url = "https://files.pythonhosted.org/packages/10/2e/ca897f093ee6c5f3b0bee123ee4465c50e75431c3d5b6a3b44a47134e891/pydantic-2.11.3.tar.gz", hash = "sha256:7471657138c16adad9322fe3070c0116dd6c3ad8d649300e3cbdfe91f4db4ec3", size = 785513 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bf/c2/0f3baea344d0b15e35cb3e04ad5b953fa05106b76efbf4c782a3f47f22f5/pydantic-2.11.2-py3-none-any.whl", hash = "sha256:7f17d25846bcdf89b670a86cdfe7b29a9f1c9ca23dee154221c9aa81845cfca7", size = 443295 },
+    { url = "https://files.pythonhosted.org/packages/b0/1d/407b29780a289868ed696d1616f4aad49d6388e5a77f567dcd2629dcd7b8/pydantic-2.11.3-py3-none-any.whl", hash = "sha256:a082753436a07f9ba1289c6ffa01cd93db3548776088aa917cc43b63f68fa60f", size = 443591 },
 ]
 
 [package.optional-dependencies]
@@ -1840,11 +1836,11 @@ wheels = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.13.1"
+version = "4.13.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/76/ad/cd3e3465232ec2416ae9b983f27b9e94dc8171d56ac99b345319a9475967/typing_extensions-4.13.1.tar.gz", hash = "sha256:98795af00fb9640edec5b8e31fc647597b4691f099ad75f469a2616be1a76dff", size = 106633 }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/37/23083fcd6e35492953e8d2aaaa68b860eb422b34627b13f2ce3eb6106061/typing_extensions-4.13.2.tar.gz", hash = "sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef", size = 106967 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/c5/e7a0b0f5ed69f94c8ab7379c599e6036886bffcde609969a5325f47f1332/typing_extensions-4.13.1-py3-none-any.whl", hash = "sha256:4b6cf02909eb5495cfbc3f6e8fd49217e6cc7944e145cdda8caa3734777f9e69", size = 45739 },
+    { url = "https://files.pythonhosted.org/packages/8b/54/b1ae86c0973cc6f0210b53d508ca3641fb6d0c56823f288d108bc7ab3cc8/typing_extensions-4.13.2-py3-none-any.whl", hash = "sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c", size = 45806 },
 ]
 
 [[package]]
@@ -1861,11 +1857,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.3.0"
+version = "2.4.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/aa/63/e53da845320b757bf29ef6a9062f5c669fe997973f966045cb019c3f4b66/urllib3-2.3.0.tar.gz", hash = "sha256:f8c5449b3cf0861679ce7e0503c7b44b5ec981bec0d1d3795a07f1ba96f0204d", size = 307268 }
+sdist = { url = "https://files.pythonhosted.org/packages/8a/78/16493d9c386d8e60e442a35feac5e00f0913c0f4b7c217c11e8ec2ff53e0/urllib3-2.4.0.tar.gz", hash = "sha256:414bc6535b787febd7567804cc015fee39daab8ad86268f1310a9250697de466", size = 390672 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/19/4ec628951a74043532ca2cf5d97b7b14863931476d117c471e8e2b1eb39f/urllib3-2.3.0-py3-none-any.whl", hash = "sha256:1cee9ad369867bfdbbb48b7dd50374c0967a0bb7710050facf0dd6911440e3df", size = 128369 },
+    { url = "https://files.pythonhosted.org/packages/6b/11/cc635220681e93a0183390e26485430ca2c7b5f9d33b15c74c2861cb8091/urllib3-2.4.0-py3-none-any.whl", hash = "sha256:4e16665048960a0900c702d4a66415956a584919c03361cac9f1df5c5dd7e813", size = 128680 },
 ]
 
 [[package]]
