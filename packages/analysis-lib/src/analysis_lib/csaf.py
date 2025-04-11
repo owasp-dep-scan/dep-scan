@@ -2,21 +2,21 @@ import os
 import re
 from copy import deepcopy
 from datetime import datetime
-from typing import List, Dict, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 import cvss
 import toml
-from custom_json_diff.lib.utils import json_load, json_dump, file_write, file_read
+from custom_json_diff.lib.utils import file_read, file_write, json_dump, json_load
 from packageurl import PackageURL
 from vdb.lib import convert_time
 
+from analysis_lib import get_version
 from analysis_lib.config import (
+    CWE_MAP,
     SEVERITY_REF,
     TIME_FMT,
-    CWE_MAP,
     TOML_TEMPLATE,
 )
-from analysis_lib import get_version
 
 
 def vdr_to_csaf(res):

@@ -57,6 +57,7 @@ jobs:
         BLINTDB_HOME: ${{ runner.temp }}/blintdb
         VDB_HOME: ${{ runner.temp }}/vdb_data_bin
         CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
+        SCAN_DEBUG_MODE: debug
     - name: setup nydus
       run: |
         mkdir -p $VDB_HOME

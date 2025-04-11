@@ -2,16 +2,15 @@ import json
 import os
 import shlex
 import shutil
-import httpx
-
 import subprocess
 import sys
 import tempfile
 from logging import Logger
 from typing import Any, Dict, List, Optional, Tuple
 
-from xbom_lib import BOMResult, XBOMGenerator
+import httpx
 
+from xbom_lib import BOMResult, XBOMGenerator
 
 headers = {
     "Content-Type": "application/json",
@@ -31,7 +30,7 @@ PROJECT_TYPE_IMAGE = {
     "deno": f"ghcr.io/cyclonedx/cdxgen-deno:{CDXGEN_IMAGE_VERSION}",
     "bun": f"ghcr.io/cyclonedx/cdxgen-bun:{CDXGEN_IMAGE_VERSION}",
     "default-secure": f"ghcr.io/cyclonedx/cdxgen-secure:{CDXGEN_IMAGE_VERSION}",
-    "java": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    "java": f"ghcr.io/cyclonedx/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
     "java24": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
     "android": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
     "java8": f"ghcr.io/cyclonedx/cdxgen-temurin-java8:{CDXGEN_IMAGE_VERSION}",
@@ -62,14 +61,14 @@ PROJECT_TYPE_IMAGE = {
 }
 
 
-def get_env_options_value(options: Dict, k: str, default: str = None) -> str:
+def get_env_options_value(options: Dict, k: str, default: Optional[str] = None) -> str:
     return os.getenv(k.upper(), options.get(k.lower(), default))
 
 
 def get_image_for_type(options: Dict, project_type: str | list | None) -> str:
     # For multiple project types, prefer the default all-in-one image
     if not project_type or (isinstance(project_type, list) and len(project_type) > 1):
-        return PROJECT_TYPE_IMAGE.get(DEFAULT_IMAGE_NAME)
+        return PROJECT_TYPE_IMAGE[DEFAULT_IMAGE_NAME]
     ptype = project_type[0]
     return get_env_options_value(
         options,
@@ -94,10 +93,10 @@ def resource_path(relative_path):
 
 def exec_tool(
     args: List[str],
-    cwd: str = None,
-    env: Dict = None,
+    cwd: Optional[str] = None,
+    env: Optional[Dict] = None,
     stdout: int = subprocess.PIPE,
-    logger: Logger = None,
+    logger: Optional[Logger] = None,
 ) -> BOMResult:
     """
     Convenience method to invoke cli tools
@@ -131,7 +130,7 @@ def exec_tool(
     return result
 
 
-def find_cdxgen_cmd(use_bin=True, logger: Logger = None):
+def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
     if use_bin:
         cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
         if not shutil.which(cdxgen_cmd):
@@ -197,28 +196,30 @@ class CdxgenGenerator(XBOMGenerator):
         """
         options = self.options
         project_type = self.options.get("project_type", [])
-        techniques = self.options.get("techniques") or []
-        lifecycles = self.options.get("lifecycles") or []
+        techniques = self.options.get("techniques", []) or []
+        lifecycles = self.options.get("lifecycles", []) or []
         # Implement the BOM generation logic using cdxgen.
         cdxgen_cmd = find_cdxgen_cmd(logger=self.logger)
         if not cdxgen_cmd:
             cdxgen_cmd = find_cdxgen_cmd(False, logger=self.logger)
-        project_type_args = [f"-t {item}" for item in project_type]
-        technique_args = [f"--technique {item}" for item in techniques]
-        args = [cdxgen_cmd]
-        args = args + project_type_args
+        if not cdxgen_cmd:
+            cdxgen_cmd = "cdxgen"
+        project_type_args: list[str] = [f"-t {item}" for item in project_type]
+        technique_args: list[str] = [f"--technique {item}" for item in techniques]
+        args: list[str] = [cdxgen_cmd]
+        args = args + (" ".join(project_type_args).split())
         args = args + ["-o", self.bom_file]
         if technique_args:
-            args = args + technique_args
+            args = args + (" ".join(technique_args).split())
         if options.get("deep"):
             args.append("--deep")
         if options.get("profile"):
             args.append("--profile")
-            args.append(options.get("profile"))
+            args.append(options.get("profile", ""))
         if options.get("cdxgen_args"):
-            args += shlex.split(options.get("cdxgen_args"))
-        if len(lifecycles) == 1 and lifecycles[0] == "pre-build":
-            args += ["--lifecycle", "pre-build"]
+            args += shlex.split(options.get("cdxgen_args", ""))
+        if len(lifecycles) == 1:
+            args = args + ["--lifecycle", lifecycles[0]]
         # Bug #233 - Source directory could be None when working with url
         if self.source_dir:
             args.append(self.source_dir)
@@ -293,8 +294,9 @@ class CdxgenServerGenerator(CdxgenGenerator):
                     try:
                         json_response = r.json()
                         if json_response:
-                            json.dump(json_response, self.bom_file)
-                            return os.path.exists(self.bom_file)
+                            with open(self.bom_file, "w", encoding="utf-8") as fp:
+                                json.dump(json_response, fp)
+                            return BOMResult(success=os.path.exists(self.bom_file))
                     except Exception as je:
                         return BOMResult(
                             success=False,
@@ -308,10 +310,10 @@ class CdxgenServerGenerator(CdxgenGenerator):
             except Exception as e:
                 if self.logger:
                     self.logger.error(e)
-                return BOMResult(
-                    success=False,
-                    command_output="Unable to generate SBOM with cdxgen server. Trying to generate one locally.",
-                )
+        return BOMResult(
+            success=False,
+            command_output="Unable to generate SBOM with cdxgen server. Trying to generate one locally.",
+        )
 
 
 class CdxgenImageBasedGenerator(CdxgenGenerator):
@@ -323,12 +325,12 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         self,
         source_dir: str,
         bom_file: str,
-        logger: Logger = None,
+        logger: Optional[Logger] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__(source_dir, bom_file, logger, options)
-        cdxgen_temp_dir = None
-        if not os.getenv("CDXGEN_TEMP_DIR"):
+        cdxgen_temp_dir = os.getenv("CDXGEN_TEMP_DIR")
+        if not cdxgen_temp_dir:
             cdxgen_temp_dir = tempfile.mkdtemp(
                 prefix="cdxgen-temp-", dir=os.getenv("DEPSCAN_TEMP_DIR")
             )
@@ -357,7 +359,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         output_file = os.path.basename(self.bom_file)
         output_dir = os.path.dirname(self.bom_file)
         # Setup environment variables
-        for k, v in os.environ.items():
+        for k, _ in os.environ.items():
             if (
                 k.startswith("CDXGEN_")
                 or k.startswith("GIT")
@@ -367,7 +369,10 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         run_command_args += ["-e", "CDXGEN_IN_CONTAINER=true"]
         # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
         run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
-        if os.getenv("SCAN_DEBUG_MODE") == "debug":
+        # Do not repeat the CDXGEN_DEBUG_MODE environment variable
+        if os.getenv("SCAN_DEBUG_MODE") == "debug" and not os.getenv(
+            "CDXGEN_DEBUG_MODE"
+        ):
             run_command_args += ["-e", "CDXGEN_DEBUG_MODE=debug"]
         # Extra args like --platform=linux/amd64
         if os.getenv("DEPSCAN_DOCKER_ARGS"):
@@ -389,16 +394,19 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         # cdxgen args
         technique_args = [f"--technique {item}" for item in techniques]
         if technique_args:
-            run_command_args += technique_args
+            run_command_args += " ".join(technique_args).split()
+        project_type_args = [f"-t {item}" for item in project_type]
+        if project_type_args:
+            run_command_args += " ".join(project_type_args).split()
         if self.options.get("profile"):
             run_command_args.append("--profile")
-            run_command_args.append(self.options.get("profile"))
-        if len(lifecycles) == 1 and lifecycles[0] == "pre-build":
-            run_command_args += ["--lifecycle", "pre-build"]
-        if self.options.get("deep"):
+            run_command_args.append(self.options.get("profile", ""))
+        if len(lifecycles) == 1:
+            run_command_args += ["--lifecycle", lifecycles[0]]
+        if self.options.get("deep", "") in ("true", "1"):
             run_command_args.append("--deep")
         if self.options.get("cdxgen_args"):
-            run_command_args += shlex.split(self.options.get("cdxgen_args"))
+            run_command_args += shlex.split(self.options.get("cdxgen_args", ""))
         return image_name, run_command_args
 
     def generate(self) -> BOMResult:

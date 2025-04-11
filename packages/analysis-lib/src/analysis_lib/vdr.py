@@ -1,18 +1,27 @@
 from vdb.lib import VulnerabilityOccurrence
 
-from analysis_lib import Counts, VdrOptions, VDRResult, XBOMAnalyzer
+from analysis_lib import Counts, VdrAnalysisKV, VDRResult, XBOMAnalyzer
+from analysis_lib.output import generate_console_output, output_priority_suggestions
+from analysis_lib.search import find_vulns
 from analysis_lib.utils import (
+    analyze_cve_vuln,
+    dedupe_vdrs,
+    get_all_lifecycle_pkgs,
+    get_lifecycle_pkgs,
+    make_version_suggestions,
+    process_vuln_occ,
+    remove_extra_metadata,
     retrieve_bom_dependency_tree,
     retrieve_oci_properties,
-    process_vuln_occ,
-    analyze_cve_vuln,
-    make_version_suggestions,
-    dedupe_vdrs,
-    get_pkg_list,
-    remove_extra_metadata,
 )
-from analysis_lib.output import generate_console_output, output_results
-from analysis_lib.search import find_vulns
+
+
+def predict_optionals(prebuild_purls, build_purls, postbuild_purls, optional_pkgs):
+    for prepurl in prebuild_purls.keys():
+        if prepurl in optional_pkgs:
+            continue
+        if prepurl not in build_purls and prepurl not in postbuild_purls:
+            optional_pkgs.append(prepurl)
 
 
 class VDRAnalyzer(XBOMAnalyzer):
@@ -21,24 +30,45 @@ class VDRAnalyzer(XBOMAnalyzer):
     """
 
     def process(self) -> VDRResult:
-        options: VdrOptions = self.vdr_options
-        if not options.bom_file and not options.pkg_list:
+        options: VdrAnalysisKV = self.vdr_options
+        # Are we dealing with empty everything
+        if not options.bom_file and not options.pkg_list and not options.bom_dir:
             if options.logger:
                 options.logger.debug("The BOM file and package list were empty.")
             return VDRResult(success=False, pkg_vulnerabilities=None)
         pkg_list = options.pkg_list or []
-        if options.bom_file:
-            pkg_list = get_pkg_list(options.bom_file)
+        prebuild_purls, build_purls, postbuild_purls = {}, {}, {}
+        if options.bom_dir:
+            prebuild_purls, build_purls, postbuild_purls = get_all_lifecycle_pkgs(
+                options.bom_dir
+            )
+        elif options.bom_file:
+            prebuild_purls, build_purls, postbuild_purls = get_lifecycle_pkgs(
+                options.bom_file
+            )
+        options.prebuild_purls = prebuild_purls
+        options.build_purls = build_purls
+        options.postbuild_purls = postbuild_purls
         if not pkg_list:
             if options.logger:
                 options.logger.debug("The package list was empty.")
             return VDRResult(success=False, pkg_vulnerabilities=None)
         vdb_results, pkg_aliases, purl_aliases = find_vulns(
-            options.project_type, pkg_list
+            options.project_type, pkg_list, options.fuzzy_search, options.search_order
         )
         options.pkg_aliases = pkg_aliases
         options.purl_aliases = purl_aliases
         if not vdb_results:
+            if options.logger:
+                if options.search_order and options.search_order != "pcu":
+                    if not options.fuzzy_search:
+                        options.logger.info(
+                            "No vulnerabilities found. Try using a different search order and enabling fuzzy search. Example: pass the arguments `--fuzzy-search --search-order pcu`"
+                        )
+                    else:
+                        options.logger.info(
+                            "No vulnerabilities found. Try using a different search order. Example: pass the arguments `--search-order cpu`"
+                        )
             return VDRResult(success=False, pkg_vulnerabilities=None)
         pkg_vulnerabilities = []
         pkg_group_rows = {}
@@ -46,6 +76,11 @@ class VDRAnalyzer(XBOMAnalyzer):
         reached_purls = options.reached_purls or {}
         required_pkgs = options.scoped_pkgs.get("required", [])
         optional_pkgs = options.scoped_pkgs.get("optional", [])
+        # Can we identify more optional packages?
+        if prebuild_purls and build_purls:
+            predict_optionals(
+                prebuild_purls, build_purls, postbuild_purls, optional_pkgs
+            )
         # Retrieve any dependency tree from the SBOM
         bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(options.bom_file)
         oci_props = retrieve_oci_properties(bom_data)
@@ -57,6 +92,7 @@ class VDRAnalyzer(XBOMAnalyzer):
         for vuln_occ_dict in vdb_results:
             if not vuln_occ_dict:
                 continue
+            # VDB5 - Let's remove over time
             if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
                 counts, add_to_pkg_group_rows, vuln = process_vuln_occ(
                     bom_dependency_tree,
@@ -69,13 +105,16 @@ class VDRAnalyzer(XBOMAnalyzer):
                     vuln_occ_dict.to_dict(),
                     counts,
                 )
-            else:
+            else:  # VDB6
                 counts, vuln, add_to_pkg_group_rows = analyze_cve_vuln(
                     vuln_occ_dict,
                     reached_purls,
                     direct_purls,
                     optional_pkgs,
                     required_pkgs,
+                    prebuild_purls,
+                    build_purls,
+                    postbuild_purls,
                     bom_dependency_tree,
                     counts,
                 )
@@ -96,7 +135,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 include_pkg_group_rows,
                 options,
             )
-            output_results(
+            output_priority_suggestions(
                 counts,
                 direct_purls,
                 options,
@@ -108,5 +147,5 @@ class VDRAnalyzer(XBOMAnalyzer):
         return VDRResult(
             success=True,
             pkg_vulnerabilities=remove_extra_metadata(pkg_vulnerabilities),
-            pkg_group_rows=pkg_group_rows,
+            prioritized_pkg_vuln_trees=pkg_group_rows,
         )

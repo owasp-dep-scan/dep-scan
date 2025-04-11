@@ -10,7 +10,7 @@ from rich.table import Table
 from rich.tree import Tree
 from vdb.lib.utils import parse_purl
 
-from analysis_lib import VdrOptions
+from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import *
 
 NEWLINE = "\\n"
@@ -121,8 +121,9 @@ def generate_console_output(
     pkg_vulnerabilities,
     bom_dependency_tree,
     include_pkg_group_rows,
-    options: VdrOptions,
+    options: VdrAnalysisKV,
 ):
+    table_rows = []
     table = Table(
         title=f"Dependency Scan Results ({options.project_type.upper()})",
         box=box.DOUBLE_EDGE,
@@ -147,26 +148,134 @@ def generate_console_output(
             pkg_group_rows[vdr["bom-ref"]].append(
                 {
                     "id": vdr["id"],
+                    "matched_by": vdr["matched_by"],
                     "fixed_location": vdr["fixed_location"],
                     "p_rich_tree": vdr["p_rich_tree"],
+                    "cwes": vdr.get("cwes"),
+                    "insights": vdr.get("insights"),
+                    "description": vdr.get("description"),
                 }
             )
         if rating := vdr.get("ratings", {}):
             rating = rating[0]
-        table.add_row(
-            vdr["p_rich_tree"],
-            "\n".join(vdr["insights"]),
-            vdr["fixed_location"],
-            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}""",
-            f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
+        table_rows.append(
+            [
+                vdr["id"],
+                vdr["purl_prefix"],
+                vdr["p_rich_tree"],
+                "\n".join(vdr["insights"]),
+                vdr["fixed_location"],
+                f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}""",
+                f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
+            ]
         )
+    # Attempt to group the packages before output
+    grouped_purls = defaultdict(list)
+    cve_rows = {}
+    for arow in table_rows:
+        grouped_purls[arow[1]].append(arow[0])
+        cve_rows[arow[0]] = [arow[2], arow[3], arow[4], arow[5], arow[6]]
+    # sort based on cve in descending order
+    for purl in grouped_purls:
+        grouped_purls[purl].sort(reverse=True)
+    # sort the purls
+    sorted_purls = sorted(grouped_purls.keys())
+    for purl in sorted_purls:
+        for cve in grouped_purls[purl]:
+            arow = cve_rows[cve]
+            table.add_row(arow[0], arow[1], arow[2], arow[3], arow[4])
     return pkg_group_rows, table
 
 
-def output_results(
+def find_next_steps(matched_by, cve_list, insights, fix_version, reached_purls):
+    next_step_str = ""
+    is_exploitable = False
+    has_exploits = False
+    is_deployed = False
+    is_flagged_cwe = False
+    is_reachable = False
+    insights_str = "\n".join(insights) or ""
+    if "Exploitable" in insights_str:
+        is_exploitable = True
+    if "Exploits" in insights_str:
+        has_exploits = True
+    if "Deployed dependency" in insights_str:
+        is_deployed = True
+    if "Flagged weakness" in insights_str:
+        is_flagged_cwe = True
+    if reached_purls and reached_purls.get(matched_by):
+        is_reachable = True
+    # Package has a number of CVEs.
+    if len(cve_list) > 5:
+        if fix_version:
+            next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating the package to '{fix_version}'."
+        else:
+            next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating the package. Carefully implement any necessary workarounds and validations to mitigate the issues."
+        if has_exploits:
+            next_step_str = f"{next_step_str} Prioritize rewriting the module to replace the library with a suitable alternative."
+        elif is_exploitable:
+            next_step_str = f"{next_step_str} With potentially exploitable CVEs present, care must be taken to manage the risks."
+    elif is_exploitable:
+        if fix_version:
+            next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to '{fix_version}'."
+        elif is_reachable:
+            next_step_str = "Try to make the CVE non-reachable by adding the necessary workarounds and validations."
+        else:
+            next_step_str = "Check the package’s issue tracker for available patches and workarounds."
+    elif is_deployed:
+        if fix_version:
+            next_step_str = "Check if the package can be maintained as a runtime or provided dependency instead of bundling."
+        else:
+            next_step_str = (
+                "Consider replacing this package with a well-maintained alternative."
+            )
+    elif is_flagged_cwe:
+        if fix_version:
+            if is_reachable:
+                next_step_str = f"Update to {fix_version}."
+            else:
+                next_step_str = (
+                    "Ignore this vulnerability if this CWE category is not relevant."
+                )
+        else:
+            next_step_str = (
+                "Consider replacing this package with a well-maintained alternative."
+            )
+    elif fix_version:
+        next_step_str = (
+            f"Update to '{fix_version}' and test for any functional defects."
+        )
+    return next_step_str
+
+
+def summarize_priority_actions(
+    matched_by_cves, matched_by_fixes, matched_by_insights, project_type, reached_purls
+):
+    utable = Table(
+        title=f"Top Priority ({project_type.upper()})",
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+        show_lines=True,
+        min_width=150,
+    )
+    for h in ("Package", "CVEs", "Fix Version", "Next Steps"):
+        utable.add_column(header=h, vertical="top", max_width=100)
+    for k, v in matched_by_cves.items():
+        utable.add_row(
+            k,
+            "\n".join(sorted(v, reverse=True)),
+            matched_by_fixes.get(k),
+            find_next_steps(
+                k, v, matched_by_insights.get(k), matched_by_fixes.get(k), reached_purls
+            ),
+        )
+    return utable
+
+
+def output_priority_suggestions(
     counts,
     direct_purls,
-    options: VdrOptions,
+    options: VdrAnalysisKV,
     pkg_group_rows,
     pkg_vulnerabilities,
     reached_purls,
@@ -184,33 +293,30 @@ def output_results(
 Next Steps
 ----------
 
-The vulnerabilities below are prioritized by depscan. Follow your team's remediation workflow to address these findings.
+The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
         """,
             justify="left",
         )
         console.print(psection)
-        utable = Table(
-            title=f"Top Priority ({options.project_type.upper()})",
-            box=box.DOUBLE_EDGE,
-            header_style="bold magenta",
-            show_lines=True,
-            min_width=150,
+        matched_by_cves = defaultdict(list)
+        matched_by_fixes = defaultdict(str)
+        matched_by_insights = defaultdict(set)
+        for _, pkg_vuln_datas in pkg_group_rows.items():
+            for c in pkg_vuln_datas:
+                matched_by = c.get("matched_by")
+                matched_by_cves[matched_by].append(c.get("id"))
+                fv = c.get("fixed_location")
+                if fv and not matched_by_fixes.get(matched_by):
+                    matched_by_fixes[matched_by] = fv
+                    matched_by_insights[matched_by].update(c.get("insights", []))
+        # Try and summarize the actions table
+        utable = summarize_priority_actions(
+            matched_by_cves,
+            matched_by_fixes,
+            matched_by_insights,
+            options.project_type,
+            reached_purls,
         )
-        for h in ("Package", "CVEs", "Fix Version", "Reachable"):
-            utable.add_column(header=h, vertical="top")
-        for k, v in pkg_group_rows.items():
-            cve_list = []
-            fv = None
-            for c in v:
-                cve_list.append(c.get("id"))
-                if not fv:
-                    fv = c.get("fixed_location")
-            utable.add_row(
-                v[0].get("p_rich_tree"),
-                "\n".join(sorted(cve_list, reverse=True)),
-                f"[bright_green]{fv}[/bright_green]",
-                "[warning]Yes[/warning]" if reached_purls.get(k) else "",
-            )
         console.print()
         console.print(utable)
         console.print()
@@ -226,6 +332,7 @@ The vulnerabilities below are prioritized by depscan. Follow your team's remedia
             )
         )
     elif options.scoped_pkgs or counts.has_exploit_count:
+        rmessage = ""
         if not counts.pkg_attention_count and counts.has_exploit_count:
             if counts.has_reachable_exploit_count:
                 rmessage = (
@@ -234,19 +341,7 @@ The vulnerabilities below are prioritized by depscan. Follow your team's remedia
                     f"have [dark magenta]reachable[/dark magenta] exploits and requires your ["
                     f"magenta]immediate[/magenta] attention."
                 )
-            else:
-                rmessage = (
-                    f":point_right: [magenta]{counts.has_exploit_count}"
-                    f"[/magenta] out of {len(pkg_vulnerabilities)} vulnerabilities "
-                    f"have known exploits and requires your ["
-                    f"magenta]immediate[/magenta] attention."
-                )
             if not counts.has_os_packages:
-                rmessage += (
-                    "\nAdditional workarounds and configuration "
-                    "changes might be required to remediate these "
-                    "vulnerabilities."
-                )
                 if not options.scoped_pkgs:
                     rmessage += (
                         "\nNOTE: Package usage analysis was not "
@@ -274,13 +369,14 @@ The vulnerabilities below are prioritized by depscan. Follow your team's remedia
                     rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
                 if counts.has_ubuntu_packages:
                     rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
-            console.print(
-                Panel(
-                    rmessage,
-                    title="Recommendation",
-                    expand=False,
+            if rmessage:
+                console.print(
+                    Panel(
+                        rmessage,
+                        title="Recommendation",
+                        expand=False,
+                    )
                 )
-            )
         elif counts.pkg_attention_count:
             if counts.has_reachable_exploit_count:
                 rmessage = (
@@ -374,14 +470,15 @@ The vulnerabilities below are prioritized by depscan. Follow your team's remedia
                         )
                     )
     elif counts.critical_count:
-        console.print(
-            Panel(
-                f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
-                f"[/magenta] critical vulnerabilities confirmed by the vendor.",
-                title="Recommendation",
-                expand=False,
+        if not pkg_group_rows:
+            console.print(
+                Panel(
+                    f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
+                    f"[/magenta] critical vulnerabilities confirmed by the vendor.",
+                    title="Recommendation",
+                    expand=False,
+                )
             )
-        )
     else:
         console.print(
             Panel(
@@ -424,7 +521,13 @@ def summary_stats(results):
     return summary
 
 
-def pkg_risks_table(project_type, scoped_pkgs, risk_results, pkg_max_risk_score=0.5, risk_report_file=None):
+def pkg_risks_table(
+    project_type,
+    scoped_pkgs,
+    risk_results,
+    pkg_max_risk_score=0.5,
+    risk_report_file=None,
+):
     """
     Identify package risk and write to a json file
 
@@ -602,7 +705,7 @@ def reached_purls_table(reached_purls):
 Proactive Measures
 ------------------
 
-Below are the top reachable packages identified by depscan. Setup alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
+Below are the top reachable packages identified by depscan. Set up alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
     """,
         justify="left",
     )

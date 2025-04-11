@@ -44,7 +44,7 @@ def explain(
             rsection = Markdown(
                 """## Reachable Flows
 
-Below are some reachable flows identified by depscan. Use the provided tips to improve the securability of your application.
+Below are some reachable flows identified by depscan. Use the provided tips to improve your application’s securability.
             """
             )
             console.print(rsection)
@@ -100,12 +100,12 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
 
         if checked_flows:
             tips += """
-- Review the detected validation/sanitization methods in the application.
-- To improve the security posture, implement a common validation middleware.
+- Review the validation and sanitization methods detected in the application.
+- To enhance security posture, implement a common validation middleware.
 """
         else:
             tips += """
-- Consider implementing a common validation/sanitization library to reduce the exploitability risk.
+- Consider implementing a common validation and sanitization library to reduce exploitability risk.
 """
         rsection = Markdown(tips)
         console.print(rsection)

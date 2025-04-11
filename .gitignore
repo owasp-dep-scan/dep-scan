@@ -140,3 +140,4 @@ reports/
 .mise.toml
 *.slices.json
 .idx/
+.theia/

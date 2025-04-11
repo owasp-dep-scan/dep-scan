@@ -1,5 +1,26 @@
+import os
 import re
+
 from analysis_lib import get_version
+
+
+def get_int_from_env(name, default):
+    """
+    Retrieves a value from an environment variable and converts it to a
+    float. If the value cannot be converted to a float, it returns the
+    default value provided.
+
+    :param name:
+    :param default:
+    :return:
+    """
+    value = os.getenv(name.upper(), default)
+    try:
+        value = int(value)
+    except ValueError:
+        value = default
+    return value
+
 
 # CPE Full Regex including unused parameters
 CPE_FULL_REGEX = re.compile(
@@ -1403,3 +1424,5 @@ risk_help_text = {
     "pkg_attested": "Has attestation",
     "pkg_private_on_public_registry": "Private package is public",
 }
+
+max_distro_vulnerabilities = get_int_from_env("max_distro_vulnerabilities", 200)

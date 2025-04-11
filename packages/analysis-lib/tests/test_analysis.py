@@ -671,7 +671,7 @@ def test_purl_usages():
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-evinse-java.json"
     )
     direct_purls, reached_purls = find_purl_usages(
-        test_evinse_file, None, None
+        [test_evinse_file], None, None
     )
     assert direct_purls == {
         "pkg:maven/org.springframework/spring-jdbc@5.2.5.RELEASE?type=jar": 5,

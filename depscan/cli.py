@@ -7,11 +7,14 @@ import os
 import sys
 import tempfile
 
-from analysis_lib import VdrOptions
+from analysis_lib import VdrAnalysisKV
 from analysis_lib.csaf import export_csaf, write_toml
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.utils import (
     find_purl_usages,
+    get_all_bom_files,
+    get_all_pkg_list,
+    get_pkg_list,
     licenses_risk_table,
     pkg_risks_table,
     summary_stats,
@@ -31,9 +34,9 @@ from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
     create_bom,
     get_pkg_by_type,
-    get_pkg_list,
 )
 from depscan.lib.config import (
+    DEPSCAN_DEFAULT_VDR_FILE,
     UNIVERSAL_SCAN_TYPE,
     VDB_AGE_HOURS,
     license_data_dir,
@@ -101,6 +104,20 @@ def build_parser():
         help="Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.",
     )
     parser.add_argument(
+        "-i",
+        "--src",
+        default=os.getenv("DEPSCAN_SOURCE_DIR_IMAGE", os.getcwd()),
+        dest="src_dir_image",
+        help="Source directory or container image or binary file",
+    )
+    parser.add_argument(
+        "-o",
+        "--reports-dir",
+        default=os.getenv("DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")),
+        dest="reports_dir",
+        help="Reports directory",
+    )
+    parser.add_argument(
         "--csaf",
         action="store_true",
         default=False,
@@ -150,7 +167,8 @@ def build_parser():
         dest="techniques",
         help="Analysis technique to use for BOM generation. Multiple values allowed.",
     )
-    parser.add_argument(
+    engine_group = parser.add_mutually_exclusive_group(required=False)
+    engine_group.add_argument(
         "--bom-engine",
         choices=(
             "auto",
@@ -162,6 +180,17 @@ def build_parser():
         default="auto",
         dest="bom_engine",
         help="BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.",
+    )
+    engine_group.add_argument(
+        "--vulnerability-analyzer",
+        choices=(
+            "auto",
+            "VDRAnalyzer",
+            "LifecycleAnalyzer",
+        ),
+        default="auto",
+        dest="vuln_analyzer",
+        help="Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.",
     )
     parser.add_argument(
         "--no-suggest",
@@ -200,29 +229,22 @@ def build_parser():
         default=os.getenv("DEPSCAN_PROJECT_TYPE", "universal").split(","),
         help="Override project types if auto-detection is incorrect. Multiple values supported.",
     )
-    parser.add_argument(
+    bom_group = parser.add_mutually_exclusive_group(required=False)
+    bom_group.add_argument(
         "--bom",
         dest="bom",
         help="Examine using the given Software Bill-of-Materials (SBOM) file "
         "in CycloneDX format. Use cdxgen command to produce one.",
     )
-    parser.add_argument(
+    bom_group.add_argument(
         "--bom-dir",
         dest="bom_dir",
         help="Examine all the Bill-of-Materials (BOM) files in the given directory.",
     )
-    parser.add_argument(
-        "-i",
-        "--src",
-        dest="src_dir_image",
-        help="Source directory or container image or binary file",
-    )
-    parser.add_argument(
-        "-o",
-        "--reports-dir",
-        default=os.getenv("DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")),
-        dest="reports_dir",
-        help="Reports directory",
+    bom_group.add_argument(
+        "--purl",
+        dest="search_purl",
+        help="Scan a single package url.",
     )
     parser.add_argument(
         "--report-template",
@@ -242,6 +264,25 @@ def build_parser():
         dest="deep_scan",
         help="Perform deep scan by passing this --deep argument to cdxgen. "
         "Useful while scanning docker images and OS packages.",
+    )
+    parser.add_argument(
+        "--fuzzy-search",
+        action="store_true",
+        default=False,
+        dest="fuzzy_search",
+        help="Perform fuzzy search by creating variations of package names. Use this when the input SBOM lacks a PURL.",
+    )
+    parser.add_argument(
+        "--search-order",
+        choices=(
+            "purlpcu",
+            "cpe",
+            "cpu",
+            "url",
+        ),
+        default="pcu",
+        dest="search_order",
+        help="Attributes to use while searching for vulnerabilities. Default: PURL, CPE, URL (pcu).",
     )
     parser.add_argument(
         "--no-universal",
@@ -305,11 +346,6 @@ def build_parser():
         help="Path for the reachables slices file created by atom.",
     )
     parser.add_argument(
-        "--purl",
-        dest="search_purl",
-        help="Scan a single package url.",
-    )
-    parser.add_argument(
         "-v",
         "--version",
         help="Display the version",
@@ -325,26 +361,35 @@ def summarise(
     suggest_mode,
     scoped_pkgs,
     bom_file,
+    bom_dir,
     pkg_list,
     no_vuln_table=False,
     direct_purls=None,
     reached_purls=None,
+    fuzzy_search=False,
+    search_order=None,
 ):
     """
-    Method to summarise the results
-    :param project_type: Project type
-    :param results: Scan or audit results
-    :param suggest_mode: Normalize fix versions automatically
-    :param scoped_pkgs: Dict containing package scopes
-    :param bom_file: BOM file
-    :param pkg_list: Direct list of packages when the bom file is empty
+    Method to summarise the results.
+    :param project_type: Project type.
+    :param results: Scan or audit results.
+    :param suggest_mode: Normalize fix versions automatically.
+    :param scoped_pkgs: Dict containing package scopes.
+    :param bom_file: Single BOM file.
+    :param bom_dir: Directory containining bom files.
+    :param pkg_list: Direct list of packages when the bom file is empty.
     :param no_vuln_table: Boolean to indicate if the results should get printed
-            to the console
-    :param direct_purls: Dict of direct purls
-    :param reached_purls: Dict of reached purls
+            to the console.
+    :param direct_purls: Dict of direct purls.
+    :param reached_purls: Dict of reached purls.
+    :param fuzzy_search: Perform fuzzy search.
+    :param search_order: Search order.
+
     :return: A dict of vulnerability and severity summary statistics
     """
-    options = VdrOptions(
+    pkg_vulnerabilities = []
+    summary = {}
+    options = VdrAnalysisKV(
         project_type,
         results,
         pkg_aliases={},
@@ -353,35 +398,51 @@ def summarise(
         scoped_pkgs=scoped_pkgs,
         no_vuln_table=no_vuln_table,
         bom_file=bom_file,
+        bom_dir=bom_dir,
         pkg_list=pkg_list,
         direct_purls=direct_purls,
         reached_purls=reached_purls,
         console=console,
         logger=LOG,
+        fuzzy_search=fuzzy_search,
+        search_order=search_order,
     )
-    pkg_vulnerabilities = []
-    summary = {}
     vdr_result = VDRAnalyzer(vdr_options=options).process()
     vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
+    if not vdr_file and bom_dir:
+        vdr_file = os.path.join(bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
     if vdr_result.success:
         pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
-        if pkg_vulnerabilities and bom_file:
-            if bom_data := json_load(bom_file, log=LOG):
+        if pkg_vulnerabilities:
+            # Case 1: Single BOM file resulting in a single VDR file
+            if bom_file:
+                if bom_data := json_load(bom_file, log=LOG):
+                    export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+            # Case 2: Multiple BOM files in a bom directory
+            if bom_dir:
+                bom_data = create_empty_vdr(pkg_list)
                 export_bom(bom_data, pkg_vulnerabilities, vdr_file)
-            else:
-                LOG.warning("Unable to generate VDR file for this scan.")
+                LOG.debug(f"The VDR file '{vdr_file}' was created successfully.")
         summary = summary_stats(pkg_vulnerabilities)
     return summary, vdr_file, pkg_vulnerabilities
 
 
-def summarise_tools(tools, bom_data):
+def create_empty_vdr(pkg_list):
+    components = pkg_list or []
+    metadata = update_tools_metadata(None, None)
+    return {"metadata": metadata, "components": components}
+
+
+def update_tools_metadata(tools, bom_data):
     """
     Helper function to add depscan information as metadata
     :param tools: Tools section of the SBOM
     :param bom_data: SBOM data
     :return: None
     """
-    components = tools.get("components", [])
+    if not bom_data:
+        bom_data = {"metadata": {}}
+    components = tools.get("components", []) if tools else []
     ds_version = get_version()
     ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
     components.append(
@@ -415,13 +476,13 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
         bom_data["version"] = int(bom_version) + 1
     # Update the tools section
     if isinstance(tools, dict):
-        bom_data = summarise_tools(tools, bom_data)
+        bom_data = update_tools_metadata(tools, bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     json_dump(
         vdr_file,
         bom_data,
+        compact=True,
         error_msg=f"Unable to generate VDR file at {vdr_file}",
-        log=LOG,
     )
 
 
@@ -442,7 +503,7 @@ def set_project_types(args, src_dir):
         purl_obj["vendor"] = purl_obj.get("namespace")
         project_types_list = [purl_obj.get("type")]
         pkg_list = [purl_obj]
-    elif args.bom:
+    elif args.bom or args.bom_dir:
         project_types_list = ["bom"]
     elif args.project_type:
         project_types_list = (
@@ -513,6 +574,7 @@ if QUART_AVAILABLE:
         profile = "generic"
         deep = False
         suggest_mode = True if q.get("suggest") in ("true", "1") else False
+        fuzzy_search = True if q.get("fuzzy_search") in ("true", "1") else False
         if q.get("url"):
             url = q.get("url")
         if q.get("path"):
@@ -622,7 +684,7 @@ if QUART_AVAILABLE:
                 bom_file_path = path
         # Direct purl-based lookups are not supported yet.
         if bom_file_path is not None:
-            pkg_list = get_pkg_list(bom_file_path)
+            pkg_list, _ = get_pkg_list(bom_file_path)
             # Here we are assuming there will be only one type
             if project_type in type_audit_map:
                 audit_results = audit(project_type, pkg_list)
@@ -632,7 +694,6 @@ if QUART_AVAILABLE:
                 LOG.debug("Empty package search attempted!")
             else:
                 LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-            # TODO: invoke find_vuls from within VDRAnalyzer
             bom_data = json_load(bom_file_path)
             if not bom_data:
                 return (
@@ -643,7 +704,7 @@ if QUART_AVAILABLE:
                     400,
                     {"Content-Type": "application/json"},
                 )
-            options = VdrOptions(
+            options = VdrAnalysisKV(
                 project_type,
                 results,
                 pkg_aliases={},
@@ -657,6 +718,7 @@ if QUART_AVAILABLE:
                 reached_purls={},
                 console=console,
                 logger=LOG,
+                fuzzy_search=fuzzy_search,
             )
             vdr_result = VDRAnalyzer(vdr_options=options).process()
             if vdr_result.success:
@@ -704,10 +766,15 @@ def run_depscan(args):
         summary,
         vdr_file,
         bom_file,
+        prebuild_bom_file,
+        build_bom_file,
+        postbuild_bom_file,
+        container_bom_file,
+        operations_bom_file,
         pkg_list,
         pkg_vulnerabilities,
         pkg_group_rows,
-    ) = (None, None, None, None, None, None)
+    ) = (None, None, None, None, None, None, None, None, None, None, None)
     if (
         os.getenv("CI")
         and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
@@ -737,6 +804,24 @@ def run_depscan(args):
     if not args.no_banner:
         with contextlib.suppress(UnicodeEncodeError):
             print(LOGO)
+    # Break early if the user prefers CPE-based searches
+    search_order = depscan_options.get("search_order")
+    if search_order:
+        if search_order.startswith("c") and not args.bom and not args.bom_dir:
+            LOG.warning(
+                "To perform CPE-based searches, the SBOM must include a CPE identifier for each component. Generate the SBOM using a compatible tool such as Syft or Trivy, and invoke depscan with the --bom or --bom-dir argument."
+            )
+            LOG.info(
+                "Alternatively, run depscan without the `--search-order` argument to perform PURL-based searches. This method is more accurate and recommended."
+            )
+            sys.exit(1)
+        elif search_order.startswith("u") and not os.getenv("FETCH_LICENSE"):
+            LOG.warning(
+                "To perform URL-based searches, the SBOM must include externalReferences with a URL. Set the environment variable `FETCH_LICENSE=true` to force cdxgen to populate this attribute."
+            )
+            LOG.info(
+                "Alternatively, include the project type `-t license` to ensure this attribute is populated."
+            )
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
         if src_dir == "." or args.search_purl:
@@ -744,6 +829,8 @@ def run_depscan(args):
         # Try to infer from the bom file
         elif args.bom and os.path.exists(args.bom):
             src_dir = os.path.dirname(os.path.realpath(args.bom))
+        elif args.bom_dir and os.path.exists(args.bom_dir):
+            src_dir = os.path.realpath(args.bom_dir)
         else:
             src_dir = os.getcwd()
     reports_dir = args.reports_dir
@@ -808,8 +895,40 @@ def run_depscan(args):
                 expand=False,
             )
         )
+    bom_dir_mode = args.bom_dir and os.path.exists(args.bom_dir)
     for project_type in project_types_list:
         results = []
+        vuln_analyzer = args.vuln_analyzer
+        # Are we performing a lifecycle analysis
+        if not args.search_purl and (
+            vuln_analyzer == "LifecycleAnalyzer"
+            or (vuln_analyzer == "auto" and bom_dir_mode)
+        ):
+            LOG.info(
+                "Lifecycle-based vulnerability analyzer requested for project type '%s'. This might take a while ...",
+                project_type,
+            )
+            prebuild_bom_file = os.path.join(
+                reports_dir, f"sbom-prebuild-{project_type}.cdx.json"
+            )
+            build_bom_file = os.path.join(
+                reports_dir, f"sbom-build-{project_type}.cdx.json"
+            )
+            postbuild_bom_file = os.path.join(
+                reports_dir, f"sbom-postbuild-{project_type}.cdx.json"
+            )
+            container_bom_file = os.path.join(
+                reports_dir, f"sbom-container-{project_type}.cdx.json"
+            )
+            operations_bom_file = os.path.join(
+                reports_dir, f"sbom-operations-{project_type}.cdx.json"
+            )
+            if depscan_options["vuln_analyzer"] == "auto":
+                depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
+            # We need to set the following two values to make the rest of the code correctly use
+            # the generated BOM files after lifecycle analysis
+            depscan_options["lifecycle_analysis_mode"] = True
+            depscan_options["bom_dir"] = os.path.realpath(reports_dir)
         report_file = areport_file.replace(".json", f"-{project_type}.json")
         risk_report_file = areport_file.replace(".json", f"-risk.{project_type}.json")
         # Are we scanning a single purl
@@ -820,14 +939,29 @@ def run_depscan(args):
         elif args.bom and os.path.exists(args.bom):
             bom_file = args.bom
             creation_status = True
+        # Are we scanning a bom directory
+        elif bom_dir_mode:
+            bom_file = None
+            creation_status = True
         else:
             if args.profile in ("appsec", "research"):
                 # The bom file has to be called bom.json for atom reachables :(
                 bom_file = os.path.join(src_dir, "bom.json")
-            else:
+            elif not bom_dir_mode:
                 bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(
-                bom_file, src_dir, {**depscan_options, "project_type": [project_type]}
+                bom_file,
+                src_dir,
+                {
+                    **depscan_options,
+                    "project_type": [project_type],
+                    "bom_file": bom_file,
+                    "prebuild_bom_file": prebuild_bom_file,
+                    "build_bom_file": build_bom_file,
+                    "postbuild_bom_file": postbuild_bom_file,
+                    "container_bom_file": container_bom_file,
+                    "operations_bom_file": operations_bom_file,
+                },
             )
         if not creation_status:
             LOG.warning(
@@ -835,7 +969,13 @@ def run_depscan(args):
                 bom_file,
             )
             continue
-        if bom_file:
+        if depscan_options["bom_dir"]:
+            LOG.debug(
+                "Collecting components from all the BOM files at %s",
+                depscan_options["bom_dir"],
+            )
+            pkg_list = get_all_pkg_list(depscan_options["bom_dir"])
+        elif bom_file:
             LOG.debug("Scanning using the bom file %s", bom_file)
             if not args.bom:
                 LOG.info(
@@ -843,8 +983,8 @@ def run_depscan(args):
                     "depscan with --bom %s instead of -i",
                     bom_file,
                 )
-            pkg_list = get_pkg_list(bom_file)
-        if not pkg_list:
+            pkg_list, _ = get_pkg_list(bom_file)
+        if not pkg_list and not depscan_options["bom_dir"]:
             LOG.info(
                 "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
             )
@@ -962,12 +1102,22 @@ def run_depscan(args):
                     src_dir,
                     project_type,
                 )
-        if not pkg_list:
+        # We could be dealing with multiple bom files
+        bom_files = (
+            get_all_bom_files(depscan_options["bom_dir"])
+            if depscan_options["bom_dir"]
+            else [bom_file]
+            if bom_file
+            else []
+        )
+        if not pkg_list and not bom_files:
             LOG.debug("Empty package search attempted!")
+        elif bom_files:
+            LOG.debug("Scanning %d bom files for issues", len(bom_files))
         else:
             LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
         direct_purls, reached_purls = find_purl_usages(
-            bom_file, src_dir, args.reachables_slices_file
+            bom_files, src_dir, args.reachables_slices_file
         )
         # Summarise and print results
         summary, vdr_file, pkg_vulnerabilities = summarise(
@@ -975,11 +1125,14 @@ def run_depscan(args):
             results,
             suggest_mode=args.suggest,
             scoped_pkgs=scoped_pkgs,
-            bom_file=bom_file,
+            bom_file=bom_files[0] if len(bom_files) == 1 else None,
+            bom_dir=depscan_options["bom_dir"],
             pkg_list=pkg_list,
             no_vuln_table=args.no_vuln_table,
             direct_purls=direct_purls,
             reached_purls=reached_purls,
+            fuzzy_search=depscan_options.get("fuzzy_search", False),
+            search_order=depscan_options.get("search_order"),
         )
         # Explain the results
         if args.explain:

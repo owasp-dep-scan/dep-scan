@@ -10,9 +10,9 @@ dependencies = [
     "custom-json-diff>=2.1.6",
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
-    "rich>=13.9.4",
+    "rich>=14.0.0",
     "pdfkit>=1.0.0",
-    "Jinja2>=3.1.5",
+    "Jinja2>=3.1.6",
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
     "tomli>=2.2.1",
@@ -85,6 +85,7 @@ line-length = 99
 
 [tool.uv.sources]
 appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "ba88de9194bde83b23d31c2b48a72c60d0ca1944" }
+blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "dda111299e23e45a0fc5297d1ea1b161dba84f79" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 

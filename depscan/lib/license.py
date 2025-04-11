@@ -50,14 +50,15 @@ def bulk_lookup(license_dict, pkg_list):
         pkg_key = pkg["name"] + "@" + pkg["version"]
         if pkg.get("vendor"):
             pkg_key = pkg.get("vendor") + ":" + pkg["name"] + "@" + pkg["version"]
-        for lic in pkg.get("licenses"):
-            if lic == "X11":
-                lic = "MIT"
-            elif "MIT" in lic:
-                lic = "MIT"
-            curr_list = pkg_licenses.get(pkg_key, [])
-            match_lic = license_dict.get(lic)
-            if match_lic:
-                curr_list.append(match_lic)
-            pkg_licenses[pkg_key] = curr_list
+        if pkg.get("licenses"):
+            for lic in pkg.get("licenses"):
+                if lic == "X11":
+                    lic = "MIT"
+                elif "MIT" in lic:
+                    lic = "MIT"
+                curr_list = pkg_licenses.get(pkg_key, [])
+                match_lic = license_dict.get(lic)
+                if match_lic:
+                    curr_list.append(match_lic)
+                pkg_licenses[pkg_key] = curr_list
     return pkg_licenses
