@@ -1,7 +1,7 @@
 from vdb.lib import VulnerabilityOccurrence
 
 from analysis_lib import Counts, VdrAnalysisKV, VDRResult, XBOMAnalyzer
-from analysis_lib.output import generate_console_output, output_results
+from analysis_lib.output import generate_console_output, output_priority_suggestions
 from analysis_lib.search import find_vulns
 from analysis_lib.utils import (
     analyze_cve_vuln,
@@ -135,7 +135,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 include_pkg_group_rows,
                 options,
             )
-            output_results(
+            output_priority_suggestions(
                 counts,
                 direct_purls,
                 options,

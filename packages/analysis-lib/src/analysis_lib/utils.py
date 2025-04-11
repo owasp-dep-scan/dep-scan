@@ -19,6 +19,10 @@ from analysis_lib.config import *
 from analysis_lib.output import *
 from analysis_lib.search import find_vulns
 
+CRITICAL_OR_HIGH = ("CRITICAL", "HIGH")
+
+JUST_CRITICAL = ("CRITICAL",)
+
 
 def distro_package(cpe):
     """
@@ -1278,14 +1282,14 @@ def process_vuln_occ(
         or project_type_pkg in required_pkgs
     ):
         is_required = True
-    if pkg_severity.upper() in ("CRITICAL", "HIGH"):
+    if pkg_severity.upper() in CRITICAL_OR_HIGH:
         if is_required:
             counts.pkg_attention_count += 1
         if fixed_location:
             counts.fix_version_count += 1
         if (
             clinks.get("vendor") or package_type in OS_PKG_TYPES
-        ) and pkg_severity == "CRITICAL":
+        ) and pkg_severity.upper() == "CRITICAL":
             counts.critical_count += 1
     if is_required and package_type not in OS_PKG_TYPES:
         if direct_purls.get(purl):
@@ -1333,7 +1337,7 @@ def process_vuln_occ(
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             plain_insights.append("Has PoC")
         counts.has_poc_count += 1
-        if pkg_severity in ("CRITICAL", "HIGH"):
+        if pkg_severity.upper() in CRITICAL_OR_HIGH:
             pkg_requires_attn = True
     if (clinks.get("vendor") and package_type not in OS_PKG_TYPES) or reached_purls.get(
         purl
@@ -1470,9 +1474,11 @@ def analyze_cve_vuln(
         affects[0]["versions"].append(
             {"version": fixed_location, "status": "unaffected"}
         )
+        # This is a basic recommendation
         recommendation = f"Update to version {fixed_location}."
         if fixed_location == PLACEHOLDER_FIX_VERSION:
             counts.wont_fix_version_count += 1
+            recommendation = "Fix unavailable."
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
         purl,
         purl.replace(":", "/"),
@@ -1574,7 +1580,7 @@ def analyze_cve_vuln(
             package_usage = ":package: Deployed dependency"
             plain_package_usage = "Deployed dependency"
             # Does this require attention
-            if rating.get("severity", "").upper() in ("CRITICAL",):
+            if rating.get("severity", "").upper() in CRITICAL_OR_HIGH:
                 pkg_requires_attn = True
                 counts.critical_count += 1
                 counts.pkg_attention_count += 1
@@ -1618,14 +1624,13 @@ def analyze_cve_vuln(
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             plain_insights.append("Has PoC")
         counts.has_poc_count += 1
-        if rating.get("severity", "").upper() in ("CRITICAL",):
+        if rating.get("severity", "").upper() in JUST_CRITICAL:
             pkg_requires_attn = True
             if direct_purls.get(purl) or is_purl_in_postbuild(purl, postbuild_purls):
                 counts.pkg_attention_count += 1
             if recommendation:
                 counts.fix_version_count += 1
-            if vendor in OS_PKG_TYPES and rating.get("severity", "") in ("CRITICAL",):
-                counts.critical_count += 1
+            counts.critical_count += 1
     # Purl is reachable
     if vendors and package_type not in OS_PKG_TYPES and reached_purls.get(purl):
         # If it has a poc, an insight might have gotten added above
@@ -1777,7 +1782,7 @@ def get_all_bom_files(from_dir):
     """
     Method to collect all BOM files from a given directory.
     """
-    return glob.glob(f"{from_dir}/**/*bom.json", recursive=True) + glob.glob(
+    return glob.glob(f"{from_dir}/**/*bom*.json", recursive=True) + glob.glob(
         f"{from_dir}/**/*.cdx.json", recursive=True
     )
 
@@ -1855,9 +1860,9 @@ def versionify_postbuild_purls(prebuild_purls, build_purls, postbuild_purls):
 
 
 def get_lifecycle_pkgs(file_path):
-    prebuild_purls = defaultdict(list)
-    build_purls = defaultdict(list)
-    postbuild_purls = defaultdict(list)
+    prebuild_purls = {}
+    build_purls = {}
+    postbuild_purls = {}
     lifecycle_mode = "pre-build"
     populate_dict = prebuild_purls
     if file_path and os.path.exists(file_path):
@@ -1871,6 +1876,8 @@ def get_lifecycle_pkgs(file_path):
             populate_dict = postbuild_purls
         for pkg in pkg_list:
             ref = pkg.get("purl") or pkg.get("bom-ref")
+            if not populate_dict.get(ref):
+                populate_dict[ref] = []
             populate_dict[ref].append(file_path)
     # Include version numbers to postbuild purls
     postbuild_purls = versionify_postbuild_purls(
@@ -1880,9 +1887,9 @@ def get_lifecycle_pkgs(file_path):
 
 
 def get_all_lifecycle_pkgs(from_dir):
-    prebuild_purls = defaultdict(list)
-    build_purls = defaultdict(list)
-    postbuild_purls = defaultdict(list)
+    prebuild_purls = {}
+    build_purls = {}
+    postbuild_purls = {}
     lifecycle_mode = "pre-build"
     populate_dict = prebuild_purls
     if from_dir and os.path.exists(from_dir):
@@ -1900,6 +1907,8 @@ def get_all_lifecycle_pkgs(from_dir):
                 populate_dict = postbuild_purls
             for pkg in pkg_list:
                 ref = pkg.get("purl") or pkg.get("bom-ref")
+                if not populate_dict.get(ref):
+                    populate_dict[ref] = []
                 populate_dict[ref].append(file_path)
     # Include version numbers to postbuild purls
     postbuild_purls = versionify_postbuild_purls(

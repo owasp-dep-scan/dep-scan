@@ -241,6 +241,7 @@ def create_bom(bom_file, src_dir=".", options=None):
         bom_engine == "BlintGenerator"
         or "binary-analysis" in techniques
         or "post-build" in lifecycles
+        or any([t in ("binary", "apk") for t in project_type_list])
     ):
         return create_blint_bom(bom_file, src_dir, options=options)
     cdxgen_server = options.get("cdxgen_server")

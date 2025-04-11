@@ -30,7 +30,7 @@ PROJECT_TYPE_IMAGE = {
     "deno": f"ghcr.io/cyclonedx/cdxgen-deno:{CDXGEN_IMAGE_VERSION}",
     "bun": f"ghcr.io/cyclonedx/cdxgen-bun:{CDXGEN_IMAGE_VERSION}",
     "default-secure": f"ghcr.io/cyclonedx/cdxgen-secure:{CDXGEN_IMAGE_VERSION}",
-    "java": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    "java": f"ghcr.io/cyclonedx/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
     "java24": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
     "android": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
     "java8": f"ghcr.io/cyclonedx/cdxgen-temurin-java8:{CDXGEN_IMAGE_VERSION}",
@@ -369,7 +369,10 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         run_command_args += ["-e", "CDXGEN_IN_CONTAINER=true"]
         # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
         run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
-        if os.getenv("SCAN_DEBUG_MODE") == "debug":
+        # Do not repeat the CDXGEN_DEBUG_MODE environment variable
+        if os.getenv("SCAN_DEBUG_MODE") == "debug" and not os.getenv(
+            "CDXGEN_DEBUG_MODE"
+        ):
             run_command_args += ["-e", "CDXGEN_DEBUG_MODE=debug"]
         # Extra args like --platform=linux/amd64
         if os.getenv("DEPSCAN_DOCKER_ARGS"):

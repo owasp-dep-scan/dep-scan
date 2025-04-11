@@ -483,7 +483,6 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
         bom_data,
         compact=True,
         error_msg=f"Unable to generate VDR file at {vdr_file}",
-        log=LOG,
     )
 
 
