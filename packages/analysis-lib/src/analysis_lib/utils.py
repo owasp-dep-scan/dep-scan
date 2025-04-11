@@ -1647,7 +1647,12 @@ def analyze_cve_vuln(
                 "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
             )
             plain_insights.append("Reachable and Exploitable")
+            with contextlib.suppress(ValueError):
+                # Remove any simple reachable insights
+                insights.remove(":receipt: Reachable")
+                plain_insights.remove("Reachable")
             counts.has_reachable_exploit_count += 1
+            pkg_requires_attn = True
             # Fail safe. Packages with exploits and direct usage without
             # a reachable flow are still considered reachable to reduce
             # false negatives
@@ -1754,6 +1759,8 @@ def get_pkg_list(jsonfile):
                     {**mcomp, "vendor": vendor, "licenses": licenses, "url": url}
                 )
         for comp in bom_data.get("components", []):
+            if comp.get("type", "") in ("file", "data"):
+                continue
             licenses, vendor, url = get_vendor_url(comp)
             pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
             # nested components

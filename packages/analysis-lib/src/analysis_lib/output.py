@@ -692,7 +692,7 @@ def reached_purls_table(reached_purls):
 Proactive Measures
 ------------------
 
-Below are the top reachable packages identified by depscan. Setup alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
+Below are the top reachable packages identified by depscan. Set up alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
     """,
         justify="left",
     )

@@ -280,7 +280,7 @@ def create_bom(bom_file, src_dir=".", options=None):
         return create_lifecycle_boms(cdxgen_lib, src_dir, options)
     # Invoke the cdxgen library directly
     with console.status(
-        f"Generating BOM for the source {src_dir} with cdxgen.", spinner=SPINNER
+        f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
         bom_result = cdxgen_lib(
             src_dir, bom_file, logger=LOG, options=options
@@ -308,7 +308,7 @@ def create_blint_bom(
         options = {}
     blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=options)
     with console.status(
-        f"Generating BOM for the source {src_dir} with blint.", spinner=SPINNER
+        f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER
     ):
         bom_result = blint_lib.generate()
         if not bom_result.success:

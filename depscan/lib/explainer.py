@@ -44,7 +44,7 @@ def explain(
             rsection = Markdown(
                 """## Reachable Flows
 
-Below are some reachable flows identified by depscan. Use the provided tips to improve the securability of your application.
+Below are some reachable flows identified by depscan. Use the provided tips to improve your application’s securability.
             """
             )
             console.print(rsection)
