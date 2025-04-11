@@ -272,6 +272,42 @@ def summarize_priority_actions(
     return utable
 
 
+def output_priority_table(pkg_group_rows, options, reached_purls):
+    psection = Markdown(
+        """
+Next Steps
+----------
+
+The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
+    """,
+        justify="left",
+    )
+    console = options.console
+    console.print(psection)
+    matched_by_cves = defaultdict(list)
+    matched_by_fixes = defaultdict(str)
+    matched_by_insights = defaultdict(set)
+    for _, pkg_vuln_datas in pkg_group_rows.items():
+        for c in pkg_vuln_datas:
+            matched_by = c.get("matched_by")
+            matched_by_cves[matched_by].append(c.get("id"))
+            fv = c.get("fixed_location")
+            if fv and not matched_by_fixes.get(matched_by):
+                matched_by_fixes[matched_by] = fv
+                matched_by_insights[matched_by].update(c.get("insights", []))
+    # Try and summarize the actions table
+    utable = summarize_priority_actions(
+        matched_by_cves,
+        matched_by_fixes,
+        matched_by_insights,
+        options.project_type,
+        reached_purls,
+    )
+    console.print()
+    console.print(utable)
+    console.print()
+
+
 def output_priority_suggestions(
     counts,
     direct_purls,
@@ -287,39 +323,6 @@ def output_priority_suggestions(
     if pkg_vulnerabilities:
         console.print()
         console.print(table)
-    if pkg_group_rows:
-        psection = Markdown(
-            """
-Next Steps
-----------
-
-The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
-        """,
-            justify="left",
-        )
-        console.print(psection)
-        matched_by_cves = defaultdict(list)
-        matched_by_fixes = defaultdict(str)
-        matched_by_insights = defaultdict(set)
-        for _, pkg_vuln_datas in pkg_group_rows.items():
-            for c in pkg_vuln_datas:
-                matched_by = c.get("matched_by")
-                matched_by_cves[matched_by].append(c.get("id"))
-                fv = c.get("fixed_location")
-                if fv and not matched_by_fixes.get(matched_by):
-                    matched_by_fixes[matched_by] = fv
-                    matched_by_insights[matched_by].update(c.get("insights", []))
-        # Try and summarize the actions table
-        utable = summarize_priority_actions(
-            matched_by_cves,
-            matched_by_fixes,
-            matched_by_insights,
-            options.project_type,
-            reached_purls,
-        )
-        console.print()
-        console.print(utable)
-        console.print()
     if counts.malicious_count:
         rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
         if counts.malicious_count > 1:
@@ -331,7 +334,10 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
                 expand=False,
             )
         )
-    elif options.scoped_pkgs or counts.has_exploit_count:
+    # We have prioritized list. Summarize and return.
+    if pkg_group_rows:
+        return output_priority_table(pkg_group_rows, options, reached_purls)
+    if options.scoped_pkgs or counts.has_exploit_count:
         rmessage = ""
         if not counts.pkg_attention_count and counts.has_exploit_count:
             if counts.has_reachable_exploit_count:

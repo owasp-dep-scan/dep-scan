@@ -831,6 +831,12 @@ def run_depscan(args):
             src_dir = os.path.dirname(os.path.realpath(args.bom))
         elif args.bom_dir and os.path.exists(args.bom_dir):
             src_dir = os.path.realpath(args.bom_dir)
+            if not depscan_options.get("reachables_slices_file") and os.path.join(
+                args.bom_dir, "reachables.slices.json"
+            ):
+                depscan_options["reachables_slices_file"] = os.path.join(
+                    args.bom_dir, "reachables.slices.json"
+                )
         else:
             src_dir = os.getcwd()
     reports_dir = args.reports_dir
@@ -875,9 +881,8 @@ def run_depscan(args):
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         perform_risk_audit = True
-    areport_file = os.path.join(reports_dir, "depscan.json")
-    html_file = areport_file.replace(".json", ".html")
-    pdf_file = areport_file.replace(".json", ".pdf")
+    html_file = os.path.join(reports_dir, "depscan.html")
+    pdf_file = os.path.join(reports_dir, "depscan.pdf")
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
@@ -929,8 +934,10 @@ def run_depscan(args):
             # the generated BOM files after lifecycle analysis
             depscan_options["lifecycle_analysis_mode"] = True
             depscan_options["bom_dir"] = os.path.realpath(reports_dir)
-        report_file = areport_file.replace(".json", f"-{project_type}.json")
-        risk_report_file = areport_file.replace(".json", f"-risk.{project_type}.json")
+        bom_file = os.path.join(reports_dir, f"sbom-{project_type}.cdx.json")
+        risk_report_file = os.path.join(
+            reports_dir, f"depscan-risk-{project_type}.json"
+        )
         # Are we scanning a single purl
         if args.search_purl:
             bom_file = None
@@ -944,11 +951,6 @@ def run_depscan(args):
             bom_file = None
             creation_status = True
         else:
-            if args.profile in ("appsec", "research"):
-                # The bom file has to be called bom.json for atom reachables :(
-                bom_file = os.path.join(src_dir, "bom.json")
-            elif not bom_dir_mode:
-                bom_file = report_file.replace("depscan-", "sbom-")
             creation_status = create_bom(
                 bom_file,
                 src_dir,

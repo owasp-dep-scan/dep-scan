@@ -1580,7 +1580,7 @@ def analyze_cve_vuln(
             package_usage = ":package: Deployed dependency"
             plain_package_usage = "Deployed dependency"
             # Does this require attention
-            if rating.get("severity", "").upper() in CRITICAL_OR_HIGH:
+            if rating.get("severity", "").upper() in JUST_CRITICAL:
                 pkg_requires_attn = True
                 counts.critical_count += 1
                 counts.pkg_attention_count += 1
