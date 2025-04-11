@@ -385,7 +385,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             coptions = {**options}
             coptions["deep"] = "true"
             coptions["lifecycles"] = ["pre-build"]
-            coptions["project_type"] = ["containerfile"]
+            coptions["project_type"] = ["oci"]
             if container_image_name == src_dir:
                 LOG.info(
                     "Set the environment variable DEPSCAN_SOURCE_IMAGE to the name of the container image to include its components."

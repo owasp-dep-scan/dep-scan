@@ -187,13 +187,31 @@ def generate_console_output(
     return pkg_group_rows, table
 
 
-def find_next_steps(matched_by, cve_list, insights, fix_version, reached_purls):
+def find_next_steps(
+    matched_by,
+    cve_list,
+    insights,
+    fix_version,
+    reached_purls,
+    executable_purls,
+    setuid_executable_purls,
+    setgid_executable_purls,
+    oci_props,
+):
     next_step_str = ""
     is_exploitable = False
     has_exploits = False
     is_deployed = False
     is_flagged_cwe = False
     is_reachable = False
+    container_escape_possible = (
+        setuid_executable_purls and len(setuid_executable_purls.keys())
+    ) or (setgid_executable_purls and len(setgid_executable_purls.keys()))
+    # Check if there are any problematic environment variable that could lead to container escape
+    if not container_escape_possible and oci_props:
+        for k in oci_props.keys():
+            if k in ("oci:image:env:LD_LIBRARY_PATH", "oci:image:env:LD_PRELOAD"):
+                container_escape_possible = True
     insights_str = "\n".join(insights) or ""
     if "Exploitable" in insights_str:
         is_exploitable = True
@@ -208,18 +226,25 @@ def find_next_steps(matched_by, cve_list, insights, fix_version, reached_purls):
     # Package has a number of CVEs.
     if len(cve_list) > 5:
         if fix_version:
-            next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating the package to '{fix_version}'."
+            next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating this package to version '{fix_version}'."
         else:
-            next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating the package. Carefully implement any necessary workarounds and validations to mitigate the issues."
+            next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating this package. Carefully implement any necessary workarounds and validations to mitigate the issues."
         if has_exploits:
             next_step_str = f"{next_step_str} Prioritize rewriting the module to replace the library with a suitable alternative."
         elif is_exploitable:
             next_step_str = f"{next_step_str} With potentially exploitable CVEs present, care must be taken to manage the risks."
     elif is_exploitable:
-        if fix_version:
-            next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to '{fix_version}'."
+        if container_escape_possible and is_reachable:
+            if is_flagged_cwe:
+                next_step_str = "[magenta]WARNING[/magenta]: depscan predicts a true [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
+            else:
+                next_step_str = "[magenta]INFO[/magenta]: depscan predicts a potential [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
+            if fix_version:
+                next_step_str = f"{next_step_str} This is in addition to updating the package to version '{fix_version}'."
         elif is_reachable:
             next_step_str = "Try to make the CVE non-reachable by adding the necessary workarounds and validations."
+        elif fix_version:
+            next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to version '{fix_version}'."
         else:
             next_step_str = "Check the package’s issue tracker for available patches and workarounds."
     elif is_deployed:
@@ -232,7 +257,7 @@ def find_next_steps(matched_by, cve_list, insights, fix_version, reached_purls):
     elif is_flagged_cwe:
         if fix_version:
             if is_reachable:
-                next_step_str = f"Update to {fix_version}."
+                next_step_str = f"Update to version '{fix_version}'."
             else:
                 next_step_str = (
                     "Ignore this vulnerability if this CWE category is not relevant."
@@ -243,13 +268,28 @@ def find_next_steps(matched_by, cve_list, insights, fix_version, reached_purls):
             )
     elif fix_version:
         next_step_str = (
-            f"Update to '{fix_version}' and test for any functional defects."
+            f"Update to version '{fix_version}' and test for any functional defects."
         )
-    return next_step_str
+    return {
+        "next_step_str": next_step_str,
+        "is_exploitable": is_exploitable,
+        "has_exploits": has_exploits,
+        "is_deployed": is_deployed,
+        "is_flagged_cwe": is_flagged_cwe,
+        "is_reachable": is_reachable,
+    }
 
 
 def summarize_priority_actions(
-    matched_by_cves, matched_by_fixes, matched_by_insights, project_type, reached_purls
+    matched_by_cves,
+    matched_by_fixes,
+    matched_by_insights,
+    project_type,
+    reached_purls,
+    executable_purls,
+    setuid_executable_purls,
+    setgid_executable_purls,
+    oci_props,
 ):
     utable = Table(
         title=f"Top Priority ({project_type.upper()})",
@@ -258,18 +298,91 @@ def summarize_priority_actions(
         show_lines=True,
         min_width=150,
     )
+    is_any_exploitable = False
+    has_any_exploits = False
+    is_any_reachable = False
     for h in ("Package", "CVEs", "Fix Version", "Next Steps"):
         utable.add_column(header=h, vertical="top", max_width=100)
     for k, v in matched_by_cves.items():
+        next_step_analysis_obj = find_next_steps(
+            k,
+            v,
+            matched_by_insights.get(k),
+            matched_by_fixes.get(k),
+            reached_purls,
+            executable_purls,
+            setuid_executable_purls,
+            setgid_executable_purls,
+            oci_props,
+        )
+        if not is_any_exploitable and next_step_analysis_obj["is_exploitable"]:
+            is_any_exploitable = True
+        if not has_any_exploits and next_step_analysis_obj["has_exploits"]:
+            has_any_exploits = True
+        if not is_any_reachable and next_step_analysis_obj["is_reachable"]:
+            is_any_reachable = True
+        # Cut down the priorities further
+        if (is_any_exploitable or has_any_exploits or is_any_reachable) and (
+            not next_step_analysis_obj["is_exploitable"]
+            and not next_step_analysis_obj["has_exploits"]
+            and not next_step_analysis_obj["is_reachable"]
+        ):
+            continue
         utable.add_row(
             k,
             "\n".join(sorted(v, reverse=True)),
             matched_by_fixes.get(k),
-            find_next_steps(
-                k, v, matched_by_insights.get(k), matched_by_fixes.get(k), reached_purls
-            ),
+            next_step_analysis_obj["next_step_str"],
         )
     return utable
+
+
+def output_priority_table(
+    pkg_group_rows,
+    options,
+    reached_purls,
+    executable_purls,
+    setuid_executable_purls,
+    setgid_executable_purls,
+    oci_props,
+):
+    psection = Markdown(
+        """
+Next Steps
+----------
+
+The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
+    """,
+        justify="left",
+    )
+    console = options.console
+    console.print(psection)
+    matched_by_cves = defaultdict(list)
+    matched_by_fixes = defaultdict(str)
+    matched_by_insights = defaultdict(set)
+    for _, pkg_vuln_datas in pkg_group_rows.items():
+        for c in pkg_vuln_datas:
+            matched_by = c.get("matched_by")
+            matched_by_cves[matched_by].append(c.get("id"))
+            fv = c.get("fixed_location")
+            if fv and not matched_by_fixes.get(matched_by):
+                matched_by_fixes[matched_by] = fv
+                matched_by_insights[matched_by].update(c.get("insights", []))
+    # Try and summarize the actions table
+    utable = summarize_priority_actions(
+        matched_by_cves,
+        matched_by_fixes,
+        matched_by_insights,
+        options.project_type,
+        reached_purls,
+        executable_purls,
+        setuid_executable_purls,
+        setgid_executable_purls,
+        oci_props,
+    )
+    console.print()
+    console.print(utable)
+    console.print()
 
 
 def output_priority_suggestions(
@@ -279,6 +392,10 @@ def output_priority_suggestions(
     pkg_group_rows,
     pkg_vulnerabilities,
     reached_purls,
+    executable_purls,
+    setuid_executable_purls,
+    setgid_executable_purls,
+    oci_props,
     table,
 ):
     console = options.console
@@ -287,39 +404,6 @@ def output_priority_suggestions(
     if pkg_vulnerabilities:
         console.print()
         console.print(table)
-    if pkg_group_rows:
-        psection = Markdown(
-            """
-Next Steps
-----------
-
-The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
-        """,
-            justify="left",
-        )
-        console.print(psection)
-        matched_by_cves = defaultdict(list)
-        matched_by_fixes = defaultdict(str)
-        matched_by_insights = defaultdict(set)
-        for _, pkg_vuln_datas in pkg_group_rows.items():
-            for c in pkg_vuln_datas:
-                matched_by = c.get("matched_by")
-                matched_by_cves[matched_by].append(c.get("id"))
-                fv = c.get("fixed_location")
-                if fv and not matched_by_fixes.get(matched_by):
-                    matched_by_fixes[matched_by] = fv
-                    matched_by_insights[matched_by].update(c.get("insights", []))
-        # Try and summarize the actions table
-        utable = summarize_priority_actions(
-            matched_by_cves,
-            matched_by_fixes,
-            matched_by_insights,
-            options.project_type,
-            reached_purls,
-        )
-        console.print()
-        console.print(utable)
-        console.print()
     if counts.malicious_count:
         rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
         if counts.malicious_count > 1:
@@ -331,7 +415,18 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
                 expand=False,
             )
         )
-    elif options.scoped_pkgs or counts.has_exploit_count:
+    # We have prioritized list. Summarize and return.
+    if pkg_group_rows:
+        return output_priority_table(
+            pkg_group_rows,
+            options,
+            reached_purls,
+            executable_purls,
+            setuid_executable_purls,
+            setgid_executable_purls,
+            oci_props,
+        )
+    if options.scoped_pkgs or counts.has_exploit_count:
         rmessage = ""
         if not counts.pkg_attention_count and counts.has_exploit_count:
             if counts.has_reachable_exploit_count:
