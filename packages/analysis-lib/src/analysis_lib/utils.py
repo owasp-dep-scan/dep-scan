@@ -1984,10 +1984,18 @@ def trim_vdr_bom_data(bom_data):
         bom_data["metadata"] = metadata
     new_components = []
     for comp in components:
-        if comp.get("properties"):
-            del comp["properties"]
+        for p in (
+            "properties",
+            "signature",
+        ):
+            if comp.get(p):
+                del comp[p]
         new_components.append(comp)
     bom_data["components"] = new_components
-    if bom_data.get("annotations"):
-        del bom_data["annotations"]
+    for p in (
+        "annotations",
+        "signature",
+    ):
+        if bom_data.get(p):
+            del bom_data[p]
     return bom_data
