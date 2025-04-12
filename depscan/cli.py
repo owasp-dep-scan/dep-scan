@@ -18,6 +18,7 @@ from analysis_lib.utils import (
     licenses_risk_table,
     pkg_risks_table,
     summary_stats,
+    trim_vdr_bom_data,
 )
 from analysis_lib.vdr import VDRAnalyzer
 from custom_json_diff.lib.utils import file_write, json_dump, json_load
@@ -408,7 +409,7 @@ def summarise(
         search_order=search_order,
     )
     vdr_result = VDRAnalyzer(vdr_options=options).process()
-    vdr_file = bom_file.replace(".json", ".vdr.json") if bom_file else None
+    vdr_file = bom_file.replace(".cdx.json", ".vdr.json") if bom_file else None
     if not vdr_file and bom_dir:
         vdr_file = os.path.join(bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
     if vdr_result.success:
@@ -477,6 +478,7 @@ def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
     # Update the tools section
     if isinstance(tools, dict):
         bom_data = update_tools_metadata(tools, bom_data)
+    bom_data = trim_vdr_bom_data(bom_data)
     bom_data["vulnerabilities"] = pkg_vulnerabilities
     json_dump(
         vdr_file,

@@ -19,3 +19,10 @@ Use this document as a reference to migrate your depscan v5 workflows to v6.
 ## Build and packaging
 
 dep-scan repo uses `uv` for building and packaging.
+
+## Reports
+
+- `.vdr.json` file is now correctly created in the reports directory. In v5, depscan used to create bom.json directly in the input directory when using the `appsec` or `research` profile. This workaround has been completely removed in v6.
+- BOMs created by depscan now use the new `.cdx.json` extension with the sbom-project_type prefix. Example: sbom-java.cdx.json, sbom-docker.cdx.json.
+- When invoked with the --bom-dir argument containing multiple BOM files or when using the new lifecycle analyzer, a single VDR file named `depscan-universal.vdr.json` is created under the reports directory.
+- The JSON Lines file `depscan.json` is no longer created.
