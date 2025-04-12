@@ -44,36 +44,49 @@ def distro_package(cpe):
     return False
 
 
-def retrieve_bom_dependency_tree(bom_file):
+def retrieve_bom_dependency_tree(bom_file, bom_dir):
     """
-    Method to retrieve the dependency tree from a CycloneDX SBOM
+    Method to retrieve the dependency tree from CycloneDX SBOM files
 
-    :param bom_file: Sbom to be loaded
+    :param bom_file: BOM file
+    :param bom_dir: BOM directory
     :return: Dependency tree as a list
     """
-    if not bom_file:
-        return [], None
-    if bom_data := json_load(bom_file):
-        return bom_data.get("dependencies", []), bom_data
-    return [], None
+    if not bom_file and not bom_dir:
+        return []
+    dependencies = []
+    if bom_dir:
+        bom_files = get_all_bom_files(bom_dir)
+    else:
+        bom_files = [bom_file]
+    for file_path in bom_files:
+        if bom_data := json_load(file_path):
+            dependencies += bom_data.get("dependencies", [])
+    return dependencies
 
 
-def retrieve_oci_properties(bom_data):
+def retrieve_oci_properties(bom_file, bom_dir):
     """
-    Retrieves OCI properties from the given BOM data.
+    Retrieves OCI properties from from CycloneDX SBOM files
 
-    :param bom_data: The BOM data to retrieve OCI properties from.
-    :type bom_data: dict
+    :param bom_file: BOM file
+    :param bom_dir: BOM directory
 
     :return: A dictionary containing the retrieved OCI properties.
     :rtype: dict
     """
     props = {}
-    if not bom_data:
+    if not bom_file and not bom_dir:
         return props
-    for p in bom_data.get("metadata", {}).get("properties", []):
-        if p.get("name", "").startswith("oci:image:"):
-            props[p.get("name")] = p.get("value")
+    if bom_dir:
+        bom_files = get_all_bom_files(bom_dir)
+    else:
+        bom_files = [bom_file]
+    for file_path in bom_files:
+        if bom_data := json_load(file_path):
+            for p in bom_data.get("metadata", {}).get("properties", []):
+                if p.get("name", "").startswith("oci:image:"):
+                    props[p.get("name")] = p.get("value")
     return props
 
 
@@ -116,7 +129,13 @@ def is_os_target_sw(package_issue):
 
 def remove_extra_metadata(vdrs):
     new_vdrs = []
-    exclude = {"insights", "matched_by", "purl_prefix", "p_rich_tree", "fixed_location"}
+    exclude = {
+        "insights",
+        "matched_by",
+        "purl_prefix",
+        "p_rich_tree",
+        "fixed_location",
+    }
     for vdr in vdrs:
         new_vdr = {}
         for key, value in vdr.items():
@@ -1452,9 +1471,12 @@ def analyze_cve_vuln(
     insights = []
     plain_insights = []
     pkg_requires_attn = False
+    likely_false_positive = False
     purl = vuln.get("matched_by") or ""
     purl_obj = parse_purl(purl)
     version_used = get_version_used(purl)
+    if purl.startswith("pkg:generic/") and not version_used:
+        likely_false_positive = True
     package_type = vuln.get("type") or ""
     affects = [
         {
@@ -1574,13 +1596,13 @@ def analyze_cve_vuln(
     package_usage = ""
     plain_package_usage = ""
     # We are dealing with a required non-os package
-    if is_required and package_type not in OS_PKG_TYPES:
+    if is_required and package_type not in OS_PKG_TYPES and not likely_false_positive:
         # Is the package also present in post-build BOM
         if is_purl_in_postbuild(purl, postbuild_purls):
             package_usage = ":package: Deployed dependency"
             plain_package_usage = "Deployed dependency"
             # Does this require attention
-            if rating.get("severity", "").upper() in CRITICAL_OR_HIGH:
+            if rating.get("severity", "").upper() in JUST_CRITICAL:
                 pkg_requires_attn = True
                 counts.critical_count += 1
                 counts.pkg_attention_count += 1
@@ -1641,7 +1663,7 @@ def analyze_cve_vuln(
             insights.append(":receipt: Vendor Confirmed")
             plain_insights.append("Vendor Confirmed")
     # There are exploits
-    if exploits:
+    if exploits and not likely_false_positive:
         # Also reachable
         if (
             reached_purls.get(purl)
@@ -1701,7 +1723,9 @@ def analyze_cve_vuln(
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
-    add_to_pkg_group_rows = pkg_requires_attn and fixed_location and purl
+    add_to_pkg_group_rows = (
+        not likely_false_positive and pkg_requires_attn and fixed_location and purl
+    )
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
     if exploits or pocs:
@@ -1718,7 +1742,7 @@ def analyze_cve_vuln(
             fixed_location, pkg_requires_attn, plain_insights, purl
         ),
     }
-    return counts, vdict, add_to_pkg_group_rows
+    return counts, vdict, add_to_pkg_group_rows, likely_false_positive
 
 
 def get_vuln_properties(fixed_location, pkg_requires_attn, plain_insights, purl):
@@ -1757,21 +1781,21 @@ def get_pkg_list(jsonfile):
             # Track from metadata.component.components
             for mcomp in metadata.get("component", {}).get("components", []):
                 # Skip component types that do not require checking
-                if mcomp.get("type", "") in ("file", "application", "data"):
+                if mcomp.get("type", "") in ("application", "data"):
                     continue
                 licenses, vendor, url = get_vendor_url(mcomp)
                 pkgs.append(
                     {**mcomp, "vendor": vendor, "licenses": licenses, "url": url}
                 )
         for comp in bom_data.get("components", []):
-            if comp.get("type", "") in ("file", "data"):
+            if comp.get("type", "") in ("data",):
                 continue
             licenses, vendor, url = get_vendor_url(comp)
             pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
             # nested components
             for nc in comp.get("components", []):
                 # Skip component types that do not require checking
-                if nc.get("type", "") in ("file", "application", "data"):
+                if nc.get("type", "") in ("application", "data"):
                     continue
                 licenses, vendor, url = get_vendor_url(nc)
                 pkgs.append({**nc, "vendor": vendor, "licenses": licenses, "url": url})
@@ -1859,10 +1883,29 @@ def versionify_postbuild_purls(prebuild_purls, build_purls, postbuild_purls):
     return mpostbuild_purls
 
 
+def track_executables(
+    file_path, pkg, executable_purls, setuid_executable_purls, setgid_executable_purls
+):
+    if not pkg or not pkg.get("type", "") == "file" or not pkg.get("properties"):
+        return
+    props = pkg.get("properties")
+    ref = pkg.get("purl") or pkg.get("bom-ref")
+    for p in props:
+        if p.get("name", "") == "internal:is_executable" and p["value"] == "true":
+            executable_purls[ref].append(file_path)
+        if p.get("name", "") == "internal:has_setuid" and p["value"] == "true":
+            setuid_executable_purls[ref].append(file_path)
+        if p.get("name", "") == "internal:has_setgid" and p["value"] == "true":
+            setgid_executable_purls[ref].append(file_path)
+
+
 def get_lifecycle_pkgs(file_path):
     prebuild_purls = {}
     build_purls = {}
     postbuild_purls = {}
+    executable_purls = defaultdict(list)
+    setuid_executable_purls = defaultdict(list)
+    setgid_executable_purls = defaultdict(list)
     lifecycle_mode = "pre-build"
     populate_dict = prebuild_purls
     if file_path and os.path.exists(file_path):
@@ -1879,39 +1922,80 @@ def get_lifecycle_pkgs(file_path):
             if not populate_dict.get(ref):
                 populate_dict[ref] = []
             populate_dict[ref].append(file_path)
+            track_executables(
+                file_path,
+                pkg,
+                executable_purls,
+                setuid_executable_purls,
+                setgid_executable_purls,
+            )
     # Include version numbers to postbuild purls
     postbuild_purls = versionify_postbuild_purls(
         prebuild_purls, build_purls, postbuild_purls
     )
-    return prebuild_purls, build_purls, postbuild_purls
+    return (
+        prebuild_purls,
+        build_purls,
+        postbuild_purls,
+        executable_purls,
+        setuid_executable_purls,
+        setgid_executable_purls,
+    )
 
 
 def get_all_lifecycle_pkgs(from_dir):
     prebuild_purls = {}
     build_purls = {}
     postbuild_purls = {}
-    lifecycle_mode = "pre-build"
-    populate_dict = prebuild_purls
+    executable_purls = {}
+    setuid_executable_purls = {}
+    setgid_executable_purls = {}
     if from_dir and os.path.exists(from_dir):
         bom_files = get_all_bom_files(from_dir)
         for file_path in bom_files:
-            pkg_list, lifecycles = get_pkg_list(file_path)
-            if not pkg_list:
-                continue
-            lifecycle_mode = get_lifecycle(lifecycles)
-            if lifecycle_mode == "pre-build":
-                populate_dict = prebuild_purls
-            elif lifecycle_mode == "build":
-                populate_dict = build_purls
-            elif lifecycle_mode == "post-build":
-                populate_dict = postbuild_purls
-            for pkg in pkg_list:
-                ref = pkg.get("purl") or pkg.get("bom-ref")
-                if not populate_dict.get(ref):
-                    populate_dict[ref] = []
-                populate_dict[ref].append(file_path)
+            pre, build, post, exe, uid, gid = get_lifecycle_pkgs(file_path)
+            prebuild_purls |= pre
+            build_purls |= build
+            postbuild_purls |= post
+            executable_purls |= exe
+            setuid_executable_purls |= uid
+            setgid_executable_purls |= gid
     # Include version numbers to postbuild purls
     postbuild_purls = versionify_postbuild_purls(
         prebuild_purls, build_purls, postbuild_purls
     )
-    return prebuild_purls, build_purls, postbuild_purls
+    return (
+        prebuild_purls,
+        build_purls,
+        postbuild_purls,
+        executable_purls,
+        setuid_executable_purls,
+        setgid_executable_purls,
+    )
+
+
+def trim_vdr_bom_data(bom_data):
+    components = bom_data.get("components")
+    if not components:
+        return bom_data
+    metadata = bom_data.get("metadata")
+    if metadata and metadata.get("properties"):
+        del metadata["properties"]
+        bom_data["metadata"] = metadata
+    new_components = []
+    for comp in components:
+        for p in (
+            "properties",
+            "signature",
+        ):
+            if comp.get(p):
+                del comp[p]
+        new_components.append(comp)
+    bom_data["components"] = new_components
+    for p in (
+        "annotations",
+        "signature",
+    ):
+        if bom_data.get(p):
+            del bom_data[p]
+    return bom_data

@@ -37,15 +37,32 @@ class VDRAnalyzer(XBOMAnalyzer):
                 options.logger.debug("The BOM file and package list were empty.")
             return VDRResult(success=False, pkg_vulnerabilities=None)
         pkg_list = options.pkg_list or []
-        prebuild_purls, build_purls, postbuild_purls = {}, {}, {}
+        (
+            prebuild_purls,
+            build_purls,
+            postbuild_purls,
+            executable_purls,
+            setuid_executable_purls,
+            setgid_executable_purls,
+        ) = {}, {}, {}, {}, {}, {}
         if options.bom_dir:
-            prebuild_purls, build_purls, postbuild_purls = get_all_lifecycle_pkgs(
-                options.bom_dir
-            )
+            (
+                prebuild_purls,
+                build_purls,
+                postbuild_purls,
+                executable_purls,
+                setuid_executable_purls,
+                setgid_executable_purls,
+            ) = get_all_lifecycle_pkgs(options.bom_dir)
         elif options.bom_file:
-            prebuild_purls, build_purls, postbuild_purls = get_lifecycle_pkgs(
-                options.bom_file
-            )
+            (
+                prebuild_purls,
+                build_purls,
+                postbuild_purls,
+                executable_purls,
+                setuid_executable_purls,
+                setgid_executable_purls,
+            ) = get_lifecycle_pkgs(options.bom_file)
         options.prebuild_purls = prebuild_purls
         options.build_purls = build_purls
         options.postbuild_purls = postbuild_purls
@@ -82,17 +99,19 @@ class VDRAnalyzer(XBOMAnalyzer):
                 prebuild_purls, build_purls, postbuild_purls, optional_pkgs
             )
         # Retrieve any dependency tree from the SBOM
-        bom_dependency_tree, bom_data = retrieve_bom_dependency_tree(options.bom_file)
-        oci_props = retrieve_oci_properties(bom_data)
+        bom_dependency_tree = retrieve_bom_dependency_tree(
+            options.bom_file, options.bom_dir
+        )
+        oci_props = retrieve_oci_properties(options.bom_file, options.bom_dir)
         oci_product_types = oci_props.get("oci:image:componentTypes", "")
         counts = Counts()
         include_pkg_group_rows = set()
+        likely_false_positive = False
         if options.init_results:
             vdb_results = vdb_results + options.init_results
         for vuln_occ_dict in vdb_results:
             if not vuln_occ_dict:
                 continue
-            # VDB5 - Let's remove over time
             if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
                 counts, add_to_pkg_group_rows, vuln = process_vuln_occ(
                     bom_dependency_tree,
@@ -105,20 +124,24 @@ class VDRAnalyzer(XBOMAnalyzer):
                     vuln_occ_dict.to_dict(),
                     counts,
                 )
-            else:  # VDB6
-                counts, vuln, add_to_pkg_group_rows = analyze_cve_vuln(
-                    vuln_occ_dict,
-                    reached_purls,
-                    direct_purls,
-                    optional_pkgs,
-                    required_pkgs,
-                    prebuild_purls,
-                    build_purls,
-                    postbuild_purls,
-                    bom_dependency_tree,
-                    counts,
+            else:
+                counts, vuln, add_to_pkg_group_rows, likely_false_positive = (
+                    analyze_cve_vuln(
+                        vuln_occ_dict,
+                        reached_purls,
+                        direct_purls,
+                        optional_pkgs,
+                        required_pkgs,
+                        prebuild_purls,
+                        build_purls,
+                        postbuild_purls,
+                        bom_dependency_tree,
+                        counts,
+                    )
                 )
-            pkg_vulnerabilities.append(vuln)
+            # Surface false positive results only in fuzzy search mode
+            if not likely_false_positive or options.fuzzy_search:
+                pkg_vulnerabilities.append(vuln)
             if add_to_pkg_group_rows:
                 include_pkg_group_rows.add(vuln.get("bom-ref"))
             # If the user doesn't want any table output return quickly
@@ -142,6 +165,10 @@ class VDRAnalyzer(XBOMAnalyzer):
                 pkg_group_rows,
                 pkg_vulnerabilities,
                 reached_purls,
+                executable_purls,
+                setuid_executable_purls,
+                setgid_executable_purls,
+                oci_props,
                 table,
             )
         return VDRResult(
