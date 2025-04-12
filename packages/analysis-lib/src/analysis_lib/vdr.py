@@ -1,3 +1,5 @@
+from vdb.lib import VulnerabilityOccurrence
+
 from analysis_lib import Counts, VdrAnalysisKV, VDRResult, XBOMAnalyzer
 from analysis_lib.output import generate_console_output, output_priority_suggestions
 from analysis_lib.search import find_vulns
@@ -7,6 +9,7 @@ from analysis_lib.utils import (
     get_all_lifecycle_pkgs,
     get_lifecycle_pkgs,
     make_version_suggestions,
+    process_vuln_occ,
     remove_extra_metadata,
     retrieve_bom_dependency_tree,
     retrieve_oci_properties,
@@ -100,27 +103,42 @@ class VDRAnalyzer(XBOMAnalyzer):
             options.bom_file, options.bom_dir
         )
         oci_props = retrieve_oci_properties(options.bom_file, options.bom_dir)
+        oci_product_types = oci_props.get("oci:image:componentTypes", "")
         counts = Counts()
         include_pkg_group_rows = set()
+        likely_false_positive = False
         if options.init_results:
             vdb_results = vdb_results + options.init_results
         for vuln_occ_dict in vdb_results:
             if not vuln_occ_dict:
                 continue
-            counts, vuln, add_to_pkg_group_rows, likely_false_positive = (
-                analyze_cve_vuln(
-                    vuln_occ_dict,
-                    reached_purls,
-                    direct_purls,
-                    optional_pkgs,
-                    required_pkgs,
-                    prebuild_purls,
-                    build_purls,
-                    postbuild_purls,
+            if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
+                counts, add_to_pkg_group_rows, vuln = process_vuln_occ(
                     bom_dependency_tree,
+                    direct_purls,
+                    oci_product_types,
+                    optional_pkgs,
+                    options,
+                    reached_purls,
+                    required_pkgs,
+                    vuln_occ_dict.to_dict(),
                     counts,
                 )
-            )
+            else:
+                counts, vuln, add_to_pkg_group_rows, likely_false_positive = (
+                    analyze_cve_vuln(
+                        vuln_occ_dict,
+                        reached_purls,
+                        direct_purls,
+                        optional_pkgs,
+                        required_pkgs,
+                        prebuild_purls,
+                        build_purls,
+                        postbuild_purls,
+                        bom_dependency_tree,
+                        counts,
+                    )
+                )
             # Surface false positive results only in fuzzy search mode
             if not likely_false_positive or options.fuzzy_search:
                 pkg_vulnerabilities.append(vuln)
