@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -111,6 +112,8 @@ def exec_tool(
         env = os.environ.copy()
     result = BOMResult(success=True)
     try:
+        if logger and stdout != subprocess.DEVNULL:
+            logger.debug("Executing '%s'", " ".join(args))
         cp = subprocess.run(
             args,
             stdout=stdout,
@@ -185,6 +188,13 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
         return cdxgen_cmd
 
 
+def set_slices_args(project_type_list, args, dir):
+    if len(project_type_list) == 1:
+        for s in ("deps", "usages", "data-flow", "reachables", "semantics"):
+            args.append(f"--{s}-slices-file")
+            args.append(os.path.join(dir, f"{project_type_list[0]}-{s}.slices.json"))
+
+
 class CdxgenGenerator(XBOMGenerator):
     """
     Concrete implementation of XBOMGenerator using cdxgen.
@@ -195,16 +205,17 @@ class CdxgenGenerator(XBOMGenerator):
         Generate the BOM using the cdxgen tool.
         """
         options = self.options
-        project_type = self.options.get("project_type", [])
+        project_type_list = self.options.get("project_type", [])
         techniques = self.options.get("techniques", []) or []
         lifecycles = self.options.get("lifecycles", []) or []
+        env = os.environ.copy()
         # Implement the BOM generation logic using cdxgen.
         cdxgen_cmd = find_cdxgen_cmd(logger=self.logger)
         if not cdxgen_cmd:
             cdxgen_cmd = find_cdxgen_cmd(False, logger=self.logger)
         if not cdxgen_cmd:
             cdxgen_cmd = "cdxgen"
-        project_type_args: list[str] = [f"-t {item}" for item in project_type]
+        project_type_args: list[str] = [f"-t {item}" for item in project_type_list]
         technique_args: list[str] = [f"--technique {item}" for item in techniques]
         args: list[str] = [cdxgen_cmd]
         args = args + (" ".join(project_type_args).split())
@@ -216,6 +227,9 @@ class CdxgenGenerator(XBOMGenerator):
         if options.get("profile"):
             args.append("--profile")
             args.append(options.get("profile", ""))
+            set_slices_args(project_type_list, args, os.path.dirname(self.bom_file))
+            if options.get("profile") not in ("generic",):
+                env["FETCH_LICENSE"] = "true"
         if options.get("cdxgen_args"):
             args += shlex.split(options.get("cdxgen_args", ""))
         if len(lifecycles) == 1:
@@ -223,7 +237,6 @@ class CdxgenGenerator(XBOMGenerator):
         # Bug #233 - Source directory could be None when working with url
         if self.source_dir:
             args.append(self.source_dir)
-        env = os.environ.copy()
         # Setup cdxgen thought logging
         if self.options.get("explain"):
             env["CDXGEN_THINK_MODE"] = "true"
@@ -238,7 +251,9 @@ class CdxgenGenerator(XBOMGenerator):
             bom_result = exec_tool(
                 args,
                 self.source_dir
-                if not any(t in project_type for t in ("docker", "oci", "container"))
+                if not any(
+                    t in project_type_list for t in ("docker", "oci", "container")
+                )
                 and self.source_dir
                 and os.path.isdir(self.source_dir)
                 else None,
@@ -270,7 +285,7 @@ class CdxgenServerGenerator(CdxgenGenerator):
                 success=False,
                 command_output="Pass the `--cdxgen-server` argument to use the cdxgen server for BOM generation.",
             )
-        project_type = self.options.get("project_type", [])
+        project_type_list = self.options.get("project_type", [])
         src_dir = self.source_dir
         if not src_dir and self.options.get("path"):
             src_dir = self.options.get("path")
@@ -285,7 +300,7 @@ class CdxgenServerGenerator(CdxgenGenerator):
                         **options,
                         "url": options.get("url", ""),
                         "path": options.get("path", src_dir),
-                        "type": options.get("project_type", ",".join(project_type)),
+                        "type": ",".join(project_type_list),
                         "multiProject": options.get("multiProject", ""),
                     },
                     headers=headers,
@@ -341,13 +356,13 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         """
         Generate a container run command for the given project type, source directory, and output file
         """
-        project_type = self.options.get("project_type", [])
+        project_type_list = self.options.get("project_type", []) or []
         techniques = self.options.get("techniques") or []
         lifecycles = self.options.get("lifecycles") or []
         image_output_dir = "/reports"
         app_input_dir = "/app"
         container_command = get_env_options_value(self.options, "DOCKER_CMD", "docker")
-        image_name = get_image_for_type(self.options, project_type)
+        image_name = get_image_for_type(self.options, project_type_list)
         run_command_args = [
             container_command,
             "run",
@@ -366,6 +381,12 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
                 or k in ("FETCH_LICENSE",)
             ):
                 run_command_args += ["-e", k]
+        # Enabling license fetch will improve metadata such as tags and description
+        # These will help with semantic reachability analysis
+        if self.options.get("profile") not in ("generic",) and not os.getenv(
+            "FETCH_LICENSE"
+        ):
+            run_command_args += ["-e", "FETCH_LICENSE=true"]
         run_command_args += ["-e", "CDXGEN_IN_CONTAINER=true"]
         # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
         run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
@@ -395,12 +416,13 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         technique_args = [f"--technique {item}" for item in techniques]
         if technique_args:
             run_command_args += " ".join(technique_args).split()
-        project_type_args = [f"-t {item}" for item in project_type]
+        project_type_args = [f"-t {item}" for item in project_type_list]
         if project_type_args:
             run_command_args += " ".join(project_type_args).split()
         if self.options.get("profile"):
             run_command_args.append("--profile")
             run_command_args.append(self.options.get("profile", ""))
+            set_slices_args(project_type_list, run_command_args, image_output_dir)
         if len(lifecycles) == 1:
             run_command_args += ["--lifecycle", lifecycles[0]]
         if self.options.get("deep", "") in ("true", "1"):

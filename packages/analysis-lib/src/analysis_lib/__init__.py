@@ -1,10 +1,20 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+import glob
 from importlib.metadata import distribution
 from logging import Logger
 from typing import Dict, List, Optional
 
 from rich.console import Console
+
+
+def get_all_bom_files(from_dir):
+    """
+    Method to collect all BOM files from a given directory.
+    """
+    return glob.glob(f"{from_dir}/**/*bom*.json", recursive=True) + glob.glob(
+        f"{from_dir}/**/*.cdx.json", recursive=True
+    )
 
 
 @dataclass
@@ -73,7 +83,7 @@ class XBOMAnalyzer(ABC):
     Base class for analyzing xBOM
 
     Attributes:
-        vdr_options (VdrOptions): VDR options
+        vdr_options (VdrAnalysisKV): VDR options
     """
 
     def __init__(self, vdr_options: VdrAnalysisKV) -> None:
@@ -81,6 +91,72 @@ class XBOMAnalyzer(ABC):
 
     @abstractmethod
     def process(self) -> VDRResult:
+        """
+        Perform the analysis.
+        Must be implemented by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
+
+
+@dataclass
+class ReachabilityAnalysisKV:
+    project_types: List[str]
+    src_dir: str
+    bom_dir: Optional[str]
+    bom_files: Optional[List[str]] = None
+    slices_files: Optional[List[str]] = None
+    openapi_spec_files: Optional[List[str]] = None
+    clean_up: bool = False
+    export_graph_dir: Optional[str] = None
+    detect_endpoints: bool = True
+    detect_crypto_libs: bool = True
+    require_multi_usage: bool = False
+    source_tags: Optional[List[str]] = None
+    sink_tags: Optional[List[str]] = None
+
+    def __post_init__(self):
+        # Collect bom files
+        if not self.bom_files and self.bom_dir:
+            self.bom_files = get_all_bom_files(self.bom_dir)
+        # collect available slices files
+        if not self.slices_files and self.bom_dir:
+            self.slices_files = glob.glob(
+                f"{self.bom_dir}/**/*slices.json", recursive=True
+            )
+        # collect the openapi spec files
+        if not self.openapi_spec_files:
+            if self.src_dir:
+                self.openapi_spec_files = glob.glob(
+                    f"{self.src_dir}/*openapi*.json", recursive=False
+                )
+            elif self.bom_dir:
+                self.openapi_spec_files = glob.glob(
+                    f"{self.bom_dir}/*openapi*.json", recursive=False
+                )
+
+
+@dataclass
+class ReachabilityResult:
+    success: bool
+    direct_purls: Optional[Dict[str, int]] = None
+    reached_purls: Optional[Dict[str, int]] = None
+    reached_services: Optional[Dict[str, int]] = None
+    endpoint_reached_purls: Optional[Dict[str, int]] = None
+
+
+class ReachabilityAnalyzer(ABC):
+    """
+    Base class for performing reachability analysis
+
+    Attributes:
+        analysis_options (ReachabilityAnalysisKV): Analysis options
+    """
+
+    def __init__(self, analysis_options: Optional[ReachabilityAnalysisKV]) -> None:
+        self.analysis_options = analysis_options
+
+    @abstractmethod
+    def process(self) -> ReachabilityResult:
         """
         Perform the analysis.
         Must be implemented by subclasses.

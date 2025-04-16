@@ -1,6 +1,5 @@
 import contextlib
 import encodings.utf_8
-import glob
 import os
 import re
 from collections import defaultdict
@@ -15,6 +14,7 @@ from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION, PLACEHOLDER_FIX_VERSION
 from vdb.lib.cve_model import CVE, Description, Descriptions, ProblemTypes, References
 from vdb.lib.utils import parse_cpe, parse_purl, version_compare
 
+from analysis_lib import get_all_bom_files
 from analysis_lib.config import *
 from analysis_lib.output import *
 from analysis_lib.search import find_vulns
@@ -1460,6 +1460,8 @@ def analyze_cve_vuln(
     vuln,
     reached_purls,
     direct_purls,
+    reached_services,
+    endpoint_reached_purls,
     optional_pkgs,
     required_pkgs,
     prebuild_purls,
@@ -1629,11 +1631,17 @@ def analyze_cve_vuln(
             plain_package_usage = "Indirect dependency"
     # There are pocs or bounties against this vulnerability
     if pocs or bounties:
-        if reached_purls.get(purl):
-            insights.append(
-                "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
-            )
-            plain_insights.append("Reachable Bounty target")
+        if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
+            if endpoint_reached_purls.get(purl):
+                insights.append(
+                    "[yellow]:spider_web: Endpoint Reachable Bounty target[/yellow]"
+                )
+                plain_insights.append("Endpoint Reachable Bounty target")
+            elif reached_purls.get(purl):
+                insights.append(
+                    "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
+                )
+                plain_insights.append("Reachable Bounty target")
             counts.has_reachable_poc_count += 1
             counts.has_reachable_exploit_count += 1
             pkg_requires_attn = True
@@ -1654,11 +1662,19 @@ def analyze_cve_vuln(
                 counts.fix_version_count += 1
             counts.critical_count += 1
     # Purl is reachable
-    if vendors and package_type not in OS_PKG_TYPES and reached_purls.get(purl):
+    if (
+        vendors
+        and package_type not in OS_PKG_TYPES
+        and (reached_purls.get(purl) or endpoint_reached_purls.get(purl))
+    ):
         # If it has a poc, an insight might have gotten added above
         if not pkg_requires_attn:
-            insights.append(":receipt: Reachable")
-            plain_insights.append("Reachable")
+            if endpoint_reached_purls.get(purl):
+                insights.append(":spider_web: Endpoint Reachable")
+                plain_insights.append("Endpoint Reachable")
+            else:
+                insights.append(":receipt: Reachable")
+                plain_insights.append("Reachable")
         else:
             insights.append(":receipt: Vendor Confirmed")
             plain_insights.append("Vendor Confirmed")
@@ -1667,17 +1683,30 @@ def analyze_cve_vuln(
         # Also reachable
         if (
             reached_purls.get(purl)
+            or endpoint_reached_purls.get(purl)
             or direct_purls.get(purl)
             or is_purl_in_postbuild(purl, postbuild_purls)
         ):
-            insights.append(
-                "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
-            )
-            plain_insights.append("Reachable and Exploitable")
-            with contextlib.suppress(ValueError):
+            if endpoint_reached_purls.get(purl):
+                insights.append(
+                    "[bright_red]:spider_web: Endpoint Reachable and Exploitable[/bright_red]"
+                )
+                plain_insights.append("Endpoint Reachable and Exploitable")
+            else:
+                insights.append(
+                    "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
+                )
+            if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
+                plain_insights.append("Reachable and Exploitable")
                 # Remove any simple reachable insights
-                insights.remove(":receipt: Reachable")
-                plain_insights.remove("Reachable")
+                if ":receipt: Reachable" in insights:
+                    insights.remove(":receipt: Reachable")
+                if "Reachable" in plain_insights:
+                    plain_insights.remove("Reachable")
+                if ":spider_web: Endpoint Reachable" in insights:
+                    insights.remove(":spider_web: Endpoint Reachable")
+                if "Endpoint Reachable" in plain_insights:
+                    plain_insights.remove("Endpoint Reachable")
             counts.has_reachable_exploit_count += 1
             pkg_requires_attn = True
             # Fail safe. Packages with exploits and direct usage without
@@ -1688,7 +1717,8 @@ def analyze_cve_vuln(
         # A flagged CWE
         elif has_flagged_cwe:
             if (vendor and vendor in ("gnu",)) or (
-                purl_obj and purl_obj.get("name") in ("glibc", "openssl")
+                purl_obj
+                and purl_obj.get("name") in ("glibc", "openssl", "curl", "wget", "git")
             ):
                 insights.append(
                     "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
@@ -1723,9 +1753,7 @@ def analyze_cve_vuln(
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
-    add_to_pkg_group_rows = (
-        not likely_false_positive and pkg_requires_attn and fixed_location and purl
-    )
+    add_to_pkg_group_rows = not likely_false_positive and pkg_requires_attn and purl
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
     if exploits or pocs:
@@ -1749,9 +1777,7 @@ def get_vuln_properties(fixed_location, pkg_requires_attn, plain_insights, purl)
     properties = [
         {
             "name": "depscan:prioritized",
-            "value": "true"
-            if pkg_requires_attn and fixed_location and purl
-            else "false",
+            "value": "true" if pkg_requires_attn and purl else "false",
         }
     ]
     if plain_insights:
@@ -1800,15 +1826,6 @@ def get_pkg_list(jsonfile):
                 licenses, vendor, url = get_vendor_url(nc)
                 pkgs.append({**nc, "vendor": vendor, "licenses": licenses, "url": url})
     return pkgs, lifecycles
-
-
-def get_all_bom_files(from_dir):
-    """
-    Method to collect all BOM files from a given directory.
-    """
-    return glob.glob(f"{from_dir}/**/*bom*.json", recursive=True) + glob.glob(
-        f"{from_dir}/**/*.cdx.json", recursive=True
-    )
 
 
 def get_all_pkg_list(from_dir):

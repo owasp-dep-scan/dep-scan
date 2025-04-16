@@ -91,6 +91,8 @@ class VDRAnalyzer(XBOMAnalyzer):
         pkg_group_rows = {}
         direct_purls = options.direct_purls or {}
         reached_purls = options.reached_purls or {}
+        reached_services = options.reached_services or {}
+        endpoint_reached_purls = options.endpoint_reached_purls or {}
         required_pkgs = options.scoped_pkgs.get("required", [])
         optional_pkgs = options.scoped_pkgs.get("optional", [])
         # Can we identify more optional packages?
@@ -130,6 +132,8 @@ class VDRAnalyzer(XBOMAnalyzer):
                         vuln_occ_dict,
                         reached_purls,
                         direct_purls,
+                        reached_services,
+                        endpoint_reached_purls,
                         optional_pkgs,
                         required_pkgs,
                         prebuild_purls,
@@ -165,6 +169,8 @@ class VDRAnalyzer(XBOMAnalyzer):
                 pkg_group_rows,
                 pkg_vulnerabilities,
                 reached_purls,
+                reached_services,
+                endpoint_reached_purls,
                 executable_purls,
                 setuid_executable_purls,
                 setgid_executable_purls,

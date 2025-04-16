@@ -123,6 +123,7 @@ PYPI_SERVER = "https://pypi.org/pypi"
 
 CARGO_SERVER = "https://crates.io/api/v1/crates"
 
+# Use the env variable VDB_DATABASE_URL=ghcr.io/appthreat/vdbxz-app:v6 for app-only database
 vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v6")
 vdb_rafs_database_url = os.getenv(
     "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v6-rafs"
@@ -165,9 +166,7 @@ mod_create_min_seconds = get_float_from_env(
 mod_create_min_seconds_max = get_float_from_env(
     "mod_create_min_seconds_max", 1000 * SECONDS_IN_DAY
 )
-mod_create_min_seconds_weight = get_float_from_env(
-    "mod_create_min_seconds_weight", 1
-)
+mod_create_min_seconds_weight = get_float_from_env("mod_create_min_seconds_weight", 1)
 
 # At least 12 hours difference between the latest version and the current time
 latest_now_min_seconds = get_float_from_env(
@@ -176,9 +175,7 @@ latest_now_min_seconds = get_float_from_env(
 latest_now_min_seconds_max = get_float_from_env(
     "latest_now_min_seconds_max", 1000 * SECONDS_IN_DAY
 )
-latest_now_min_seconds_weight = get_float_from_env(
-    "latest_now_min_seconds_weight", 0.5
-)
+latest_now_min_seconds_weight = get_float_from_env("latest_now_min_seconds_weight", 0.5)
 
 # Time period after which certain risks can be considered safe. Quarantine
 # period For eg: Packages that are over 1 year old
@@ -199,9 +196,7 @@ latest_now_max_seconds = get_float_from_env(
 latest_now_max_seconds_max = get_float_from_env(
     "latest_now_max_seconds_max", 6 * 365 * SECONDS_IN_DAY
 )
-latest_now_max_seconds_weight = get_float_from_env(
-    "latest_now_max_seconds_weight", 0.5
-)
+latest_now_max_seconds_weight = get_float_from_env("latest_now_max_seconds_weight", 0.5)
 
 # Package should have at least 2 maintainers
 pkg_min_maintainers = get_float_from_env("pkg_min_maintainers", 2)
@@ -227,9 +222,7 @@ pkg_deprecated_weight = get_float_from_env("pkg_deprecated_weight", 2)
 pkg_deprecated_max = get_float_from_env("pkg_deprecated_max", 0)
 
 # Package version deprecated
-pkg_version_deprecated_weight = get_float_from_env(
-    "pkg_version_deprecated_weight", 2
-)
+pkg_version_deprecated_weight = get_float_from_env("pkg_version_deprecated_weight", 2)
 pkg_version_deprecated_max = get_float_from_env("pkg_version_deprecated_max", 0)
 
 # Package version missing
@@ -312,4 +305,6 @@ RUBY_PLATFORM_MARKERS = [
 # This could be replaced with a better heuristics or lookup database in the future.
 NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
 
-DEPSCAN_DEFAULT_VDR_FILE = os.getenv("DEPSCAN_DEFAULT_VDR_FILE", "depscan-universal.vdr.json")
+DEPSCAN_DEFAULT_VDR_FILE = os.getenv(
+    "DEPSCAN_DEFAULT_VDR_FILE", "depscan-universal.vdr.json"
+)

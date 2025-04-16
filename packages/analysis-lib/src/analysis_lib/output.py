@@ -193,6 +193,8 @@ def find_next_steps(
     insights,
     fix_version,
     reached_purls,
+    reached_services,
+    endpoint_reached_purls,
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
@@ -204,6 +206,8 @@ def find_next_steps(
     is_deployed = False
     is_flagged_cwe = False
     is_reachable = False
+    is_endpoint_reachable = False
+    possible_reachable_service = False
     container_escape_possible = (
         setuid_executable_purls and len(setuid_executable_purls.keys())
     ) or (setgid_executable_purls and len(setgid_executable_purls.keys()))
@@ -212,7 +216,9 @@ def find_next_steps(
         for k in oci_props.keys():
             if k in ("oci:image:env:LD_LIBRARY_PATH", "oci:image:env:LD_PRELOAD"):
                 container_escape_possible = True
-    insights_str = "\n".join(insights) or ""
+    insights_str = ""
+    if insights:
+        insights_str = "\n".join(insights) or ""
     if "Exploitable" in insights_str:
         is_exploitable = True
     if "Exploits" in insights_str:
@@ -223,6 +229,10 @@ def find_next_steps(
         is_flagged_cwe = True
     if reached_purls and reached_purls.get(matched_by):
         is_reachable = True
+    if endpoint_reached_purls and endpoint_reached_purls.get(matched_by):
+        is_endpoint_reachable = True
+    if reached_services and reached_services.get(matched_by):
+        possible_reachable_service = True
     # Package has a number of CVEs.
     if len(cve_list) > 5:
         if fix_version:
@@ -234,15 +244,21 @@ def find_next_steps(
         elif is_exploitable:
             next_step_str = f"{next_step_str} With potentially exploitable CVEs present, care must be taken to manage the risks."
     elif is_exploitable:
-        if container_escape_possible and is_reachable:
+        if container_escape_possible and (is_reachable or is_endpoint_reachable):
             if is_flagged_cwe:
                 next_step_str = "[magenta]WARNING[/magenta]: depscan predicts a true [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
             else:
                 next_step_str = "[magenta]INFO[/magenta]: depscan predicts a potential [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
             if fix_version:
                 next_step_str = f"{next_step_str} This is in addition to updating the package to version '{fix_version}'."
+        elif is_endpoint_reachable:
+            next_step_str = "Try to make the CVE unreachable by applying the necessary workarounds and validations. Check the framework documentation for any built-in support."
+            if not fix_version:
+                next_step_str = f"{next_step_str} Check alternative vulnerability databases for potential upgrade versions."
         elif is_reachable:
             next_step_str = "Try to make the CVE non-reachable by adding the necessary workarounds and validations."
+            if not fix_version:
+                next_step_str = f"{next_step_str} Check alternative vulnerability databases for potential upgrade versions."
         elif fix_version:
             next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to version '{fix_version}'."
         else:
@@ -256,20 +272,27 @@ def find_next_steps(
             )
     elif is_flagged_cwe:
         if fix_version:
-            if is_reachable:
+            if is_endpoint_reachable:
+                next_step_str = f"Update to version '{fix_version}'. Review the framework’s validation options used in the project to make the CVE unreachable."
+            elif is_reachable:
                 next_step_str = f"Update to version '{fix_version}'."
             else:
                 next_step_str = (
                     "Ignore this vulnerability if this CWE category is not relevant."
                 )
+        elif possible_reachable_service:
+            next_step_str = "Ignore this vulnerability if the package uses or interacts with an allow-listed service."
         else:
             next_step_str = (
                 "Consider replacing this package with a well-maintained alternative."
             )
     elif fix_version:
-        next_step_str = (
-            f"Update to version '{fix_version}' and test for any functional defects."
-        )
+        if possible_reachable_service:
+            next_step_str = f"Coordinate with the library’s publisher or community to plan an update to version ‘{fix_version}’ at your convenience."
+        else:
+            next_step_str = f"Update to version '{fix_version}' and test for any functional defects."
+    else:
+        next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
     return {
         "next_step_str": next_step_str,
         "is_exploitable": is_exploitable,
@@ -277,6 +300,8 @@ def find_next_steps(
         "is_deployed": is_deployed,
         "is_flagged_cwe": is_flagged_cwe,
         "is_reachable": is_reachable,
+        "is_endpoint_reachable": is_endpoint_reachable,
+        "possible_reachable_service": possible_reachable_service,
     }
 
 
@@ -286,6 +311,8 @@ def summarize_priority_actions(
     matched_by_insights,
     project_type,
     reached_purls,
+    reached_services,
+    endpoint_reached_purls,
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
@@ -310,6 +337,8 @@ def summarize_priority_actions(
             matched_by_insights.get(k),
             matched_by_fixes.get(k),
             reached_purls,
+            reached_services,
+            endpoint_reached_purls,
             executable_purls,
             setuid_executable_purls,
             setgid_executable_purls,
@@ -319,13 +348,17 @@ def summarize_priority_actions(
             is_any_exploitable = True
         if not has_any_exploits and next_step_analysis_obj["has_exploits"]:
             has_any_exploits = True
-        if not is_any_reachable and next_step_analysis_obj["is_reachable"]:
+        if not is_any_reachable and (
+            next_step_analysis_obj["is_reachable"]
+            or next_step_analysis_obj["is_endpoint_reachable"]
+        ):
             is_any_reachable = True
         # Cut down the priorities further
         if (is_any_exploitable or has_any_exploits or is_any_reachable) and (
             not next_step_analysis_obj["is_exploitable"]
             and not next_step_analysis_obj["has_exploits"]
             and not next_step_analysis_obj["is_reachable"]
+            and not next_step_analysis_obj["is_endpoint_reachable"]
         ):
             continue
         utable.add_row(
@@ -341,6 +374,8 @@ def output_priority_table(
     pkg_group_rows,
     options,
     reached_purls,
+    reached_services,
+    endpoint_reached_purls,
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
@@ -364,10 +399,10 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
         for c in pkg_vuln_datas:
             matched_by = c.get("matched_by")
             matched_by_cves[matched_by].append(c.get("id"))
+            matched_by_insights[matched_by].update(c.get("insights", []))
             fv = c.get("fixed_location")
             if fv and not matched_by_fixes.get(matched_by):
                 matched_by_fixes[matched_by] = fv
-                matched_by_insights[matched_by].update(c.get("insights", []))
     # Try and summarize the actions table
     utable = summarize_priority_actions(
         matched_by_cves,
@@ -375,6 +410,8 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
         matched_by_insights,
         options.project_type,
         reached_purls,
+        reached_services,
+        endpoint_reached_purls,
         executable_purls,
         setuid_executable_purls,
         setgid_executable_purls,
@@ -392,6 +429,8 @@ def output_priority_suggestions(
     pkg_group_rows,
     pkg_vulnerabilities,
     reached_purls,
+    reached_services,
+    endpoint_reached_purls,
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
@@ -421,6 +460,8 @@ def output_priority_suggestions(
             pkg_group_rows,
             options,
             reached_purls,
+            reached_services,
+            endpoint_reached_purls,
             executable_purls,
             setuid_executable_purls,
             setgid_executable_purls,

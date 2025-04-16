@@ -307,6 +307,10 @@ def create_blint_bom(
     """
     if options is None:
         options = {}
+    reachability_analyzer = options.get("reachability_analyzer")
+    # The side effect is that we will almost always run blint in deep mode
+    if reachability_analyzer != "off" and not options.get("deep"):
+        options["deep"] = True
     blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=options)
     with console.status(
         f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER
@@ -343,6 +347,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
     build_bom_file = options.get("build_bom_file")
     postbuild_bom_file = options.get("postbuild_bom_file")
     container_bom_file = options.get("container_bom_file")
+    reachability_analyzer = options.get("reachability_analyzer")
     with console.status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
     ) as status:
@@ -366,6 +371,10 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
         coptions = {**options}
         coptions["deep"] = "true"
         coptions["lifecycles"] = ["build"]
+        # We must also run it under research profile to help the reachability analyzer
+        # This logic could get refactored in the future
+        if reachability_analyzer != "off" and options.get("profile") != "research":
+            coptions["profile"] = "research"
         bom_result = cdxgen_lib(
             src_dir, build_bom_file, logger=LOG, options=coptions
         ).generate()
