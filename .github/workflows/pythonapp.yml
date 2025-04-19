@@ -49,6 +49,8 @@ jobs:
       run: |
         uv run pytest --cov=depscan test
         uv run depscan --config .config/depscan-dev.toml
+      env:
+        SCAN_DEBUG_MODE: debug
     - name: purl tests
       run: |
         uv run depscan --purl "pkg:pypi/requests@2.32.1"

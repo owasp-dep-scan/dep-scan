@@ -3,3 +3,4 @@
 project_type = ["python"]
 reports-dir = "reports"
 profile = "generic"
+bom-engine = "CdxgenGenerator"
