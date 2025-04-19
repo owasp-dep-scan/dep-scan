@@ -180,8 +180,8 @@ jobs:
       - name: Test container images
         run: |
           mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
-          uv run depscan --no-banner  --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/slim/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
-          uv run depscan --no-banner  --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/redmine/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
+          uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/slim/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
+          uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/redmine/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1
@@ -232,9 +232,9 @@ jobs:
           mv containertests_ubuntu-latest/ng-reports/sbom-js.cdx.json containertests_ubuntu-latest/nodegoat/sbom-js.cdx.json
           cp contrib/csaf.toml containertests_ubuntu-latest/microservices/csaf.toml
           cp contrib/csaf.toml containertests_ubuntu-latest/nodegoat/csaf.toml
-          uv run depscan --no-banner  --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-rocket-docker.cdx.json -o containertests_${{ matrix.os }}/reports --no-vuln-table
-          uv run depscan --csaf --no-banner  --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/microservices/sbom-msd-go.cdx.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/reports
-          uv run depscan --csaf --no-banner  --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/nodegoat/sbom-js.cdx.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
+          uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-rocket-docker.cdx.json -o containertests_${{ matrix.os }}/reports --no-vuln-table
+          uv run depscan --csaf --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/microservices/sbom-msd-go.cdx.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/reports
+          uv run depscan --csaf --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/nodegoat/sbom-js.cdx.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1

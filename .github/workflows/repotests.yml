@@ -1,0 +1,74 @@
+name: Repo tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+  os-repo-tests:
+    strategy:
+      fail-fast: true
+      os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-15', 'windows-latest']
+      python-version: ['3.10', '3.11', '3.12', '3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: 'hoolicorp/java-sec-code'
+          path: 'repotests/java-sec-code'
+      - uses: actions/checkout@v4
+        with:
+          repository: 'wix/greyhound'
+          path: 'repotests/greyhound'
+          ref: '385bb84a6f712ee18064a3b5ecb8d9dcbc1c75f3'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23.x'
+      - uses: sbt/setup-sbt@v1
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.3'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install depscan
+        run: |
+          python -m pip install --upgrade pip
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cyclonedx/cdxgen
+      - name: repotests java-sec-code
+        run: |
+          mkdir -p depscan_reports/java-sec-code depscan_reports/java-sec-code1 depscan_reports/java-sec-code2
+          uv run depscan --src repotests/java-sec-code --reports-dir depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
+          uv run depscan --src repotests/java-sec-code --reports-dir depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
+          uv run depscan --src repotests/java-sec-code --reports-dir depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+      - name: repotests greyhound
+        run: |
+          mkdir -p depscan_reports/greyhound
+          uv run depscan --src repotests/greyhound --reports-dir depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-24.04'
+        with:
+          name: depscan_reports
+          path: depscan_reports
