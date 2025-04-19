@@ -85,7 +85,7 @@ line-length = 99
 
 [tool.uv.sources]
 appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "ba88de9194bde83b23d31c2b48a72c60d0ca1944" }
-blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "dda111299e23e45a0fc5297d1ea1b161dba84f79" }
+blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "f03428d614baa4f90d01fa7737b32b93eeafbd07" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 
