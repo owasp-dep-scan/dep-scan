@@ -866,6 +866,7 @@ def run_depscan(args):
                 reports_dir,
                 bom_file,
             )
+    console.record = True
     console.save_html(
         html_file,
         clear=False,
