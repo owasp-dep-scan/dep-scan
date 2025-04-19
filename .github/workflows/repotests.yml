@@ -68,8 +68,3 @@ jobs:
         run: |
           mkdir -p depscan_reports/greyhound
           uv run depscan --src repotests/greyhound --reports-dir depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
-      - uses: actions/upload-artifact@v4
-        if: matrix.os == 'ubuntu-24.04'
-        with:
-          name: depscan_reports
-          path: depscan_reports
