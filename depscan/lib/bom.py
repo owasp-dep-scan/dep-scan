@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from urllib.parse import unquote_plus
 
 from blint.cyclonedx.spec import CycloneDX
@@ -273,7 +274,10 @@ def create_bom(bom_file, src_dir=".", options=None):
                         "Lifecycle analysis is not supported for oci and os project types."
                     )
                     lifecycle_analysis_mode = True
-            elif shutil.which(os.getenv("DOCKER_CMD", "docker")):
+            elif (
+                shutil.which(os.getenv("DOCKER_CMD", "docker"))
+                and sys.platform != "win32"
+            ):
                 cdxgen_lib = CdxgenImageBasedGenerator
     # We now have the cdxgen library to use.
     # For lifecycle analysis, we need to generate multiple BOM files
