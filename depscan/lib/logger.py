@@ -41,7 +41,7 @@ console = Console(
     force_terminal=not IS_CI and not os.getenv("GITHUB_ACTION"),
     highlight=not IS_CI,
     highlighter=CustomHighlighter(),
-    record=True,
+    record=False,
 )
 
 logging.basicConfig(

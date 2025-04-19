@@ -141,6 +141,7 @@ def vdr_analyze_summarize(
         reached_purls = reach_result.reached_purls
         reached_services = reach_result.reached_services
         endpoint_reached_purls = reach_result.endpoint_reached_purls
+    console.record = True
     # We might already have the needed slices files when we reach here.
     options = VdrAnalysisKV(
         project_type,
@@ -867,9 +868,10 @@ def run_depscan(args):
             )
     console.save_html(
         html_file,
+        clear=False,
         theme=(MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME),
     )
-    console.save_text(txt_file)
+    console.save_text(txt_file, clear=False)
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished
     if args.report_template and os.path.isfile(args.report_template):
