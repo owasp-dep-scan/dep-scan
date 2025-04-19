@@ -859,7 +859,7 @@ Below are the top reachable packages identified by depscan. Set up alerts and no
         justify="left",
     )
     rtable = Table(
-        title=":spider_web:  Top Endpoint Reachable Packages"
+        title=":spider_web:  Top Endpoint-Reachable Packages"
         if endpoint_reached_purls
         else "Top Reachable Packages",
         box=box.DOUBLE_EDGE,

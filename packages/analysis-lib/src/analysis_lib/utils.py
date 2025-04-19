@@ -1634,9 +1634,9 @@ def analyze_cve_vuln(
         if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
             if endpoint_reached_purls.get(purl):
                 insights.append(
-                    "[yellow]:spider_web:  Endpoint Reachable Bounty target[/yellow]"
+                    "[yellow]:spider_web:  Endpoint-Reachable Bounty target[/yellow]"
                 )
-                plain_insights.append("Endpoint Reachable Bounty target")
+                plain_insights.append("Endpoint-Reachable Bounty target")
             elif reached_purls.get(purl):
                 insights.append(
                     "[yellow]:notebook_with_decorative_cover: Reachable Bounty target[/yellow]"
@@ -1670,8 +1670,8 @@ def analyze_cve_vuln(
         # If it has a poc, an insight might have gotten added above
         if not pkg_requires_attn:
             if endpoint_reached_purls.get(purl):
-                insights.append(":spider_web:  Endpoint Reachable")
-                plain_insights.append("Endpoint Reachable")
+                insights.append(":spider_web:  Endpoint-Reachable")
+                plain_insights.append("Endpoint-Reachable")
             else:
                 insights.append(":receipt: Reachable")
                 plain_insights.append("Reachable")
@@ -1689,9 +1689,9 @@ def analyze_cve_vuln(
         ):
             if endpoint_reached_purls.get(purl):
                 insights.append(
-                    "[bright_red]:spider_web:  Endpoint Reachable and Exploitable[/bright_red]"
+                    "[bright_red]:spider_web:  Endpoint-Reachable and Exploitable[/bright_red]"
                 )
-                plain_insights.append("Endpoint Reachable and Exploitable")
+                plain_insights.append("Endpoint-Reachable and Exploitable")
             else:
                 insights.append(
                     "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
@@ -1703,10 +1703,10 @@ def analyze_cve_vuln(
                     insights.remove(":receipt: Reachable")
                 if "Reachable" in plain_insights:
                     plain_insights.remove("Reachable")
-                if ":spider_web:  Endpoint Reachable" in insights:
-                    insights.remove(":spider_web:  Endpoint Reachable")
-                if "Endpoint Reachable" in plain_insights:
-                    plain_insights.remove("Endpoint Reachable")
+                if ":spider_web:  Endpoint-Reachable" in insights:
+                    insights.remove(":spider_web:  Endpoint-Reachable")
+                if "Endpoint-Reachable" in plain_insights:
+                    plain_insights.remove("Endpoint-Reachable")
             counts.has_reachable_exploit_count += 1
             pkg_requires_attn = True
             # Fail safe. Packages with exploits and direct usage without

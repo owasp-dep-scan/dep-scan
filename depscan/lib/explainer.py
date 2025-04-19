@@ -24,7 +24,7 @@ def explain(project_type, src_dir, bom_dir, vdr_result):
     if openapi_spec_files:
         rsection = Markdown("""## Service Endpoints
 
-The following endpoints were identified by depscan. Ensure appropriate authentication and authorization mechanisms are in place to secure them.""")
+The following endpoints and code hotspots were identified by depscan. Ensure proper authentication and authorization mechanisms are implemented to secure them.""")
         console.print(rsection)
     for ospec in openapi_spec_files:
         pattern_methods = print_endpoints(ospec)
@@ -52,16 +52,30 @@ Below are some reachable flows identified by depscan. Use the provided tips to e
             explain_reachables(reachables_data, project_type, vdr_result)
 
 
+def _track_usage_targets(usage_targets, usages_object):
+    for k, v in usages_object.items():
+        for file, lines in v.items():
+            for l in lines:
+                usage_targets.add(f"{file}#{l}")
+
+
 def print_endpoints(ospec):
     if not ospec:
         return
     paths = json_load(ospec).get("paths") or {}
     pattern_methods = defaultdict(list)
+    pattern_usage_targets = defaultdict(set)
     for pattern, path_obj in paths.items():
-        for k, _ in path_obj.items():
-            if k.startswith("x-"):
+        usage_targets = set()
+        for k, v in path_obj.items():
+            # Java, JavaScript, Python etc
+            if k == "x-atom-usages":
+                _track_usage_targets(usage_targets, v)
                 continue
+            if v.get("x-atom-usages"):
+                _track_usage_targets(usage_targets, v.get("x-atom-usages"))
             pattern_methods[pattern].append(k)
+        pattern_usage_targets[pattern] = usage_targets
     caption = ""
     if pattern_methods:
         caption = f"Total Endpoints: {len(pattern_methods.keys())}"
@@ -71,11 +85,13 @@ def print_endpoints(ospec):
         title="Endpoints",
         caption=caption,
     )
-    for c in ("URL Pattern", "HTTP Methods"):
+    for c in ("URL Pattern", "HTTP Methods", "Code Hotspots"):
         rtable.add_column(header=c, vertical="top")
     for k, v in pattern_methods.items():
         v.sort()
-        rtable.add_row(k, ("\n".join(v)).upper())
+        sorted_areas = list(pattern_usage_targets[k])
+        sorted_areas.sort()
+        rtable.add_row(k, ("\n".join(v)).upper(), "\n".join(sorted_areas))
     console.print()
     console.print(rtable)
     return pattern_methods
