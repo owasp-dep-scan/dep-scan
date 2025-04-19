@@ -854,7 +854,9 @@ def run_depscan(args):
                 vdr_result,
             )
         else:
-            LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")
+            LOG.debug(
+                "Pass the `--explain` argument to get a detailed explanation of the analysis."
+            )
         # CSAF VEX export
         if args.csaf:
             export_csaf(

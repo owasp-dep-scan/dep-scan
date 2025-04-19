@@ -157,8 +157,11 @@ def explain_reachables(reachables, project_type, vdr_result):
 
 def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
     """ """
-    endpoint_reached_purls = vdr_result.endpoint_reached_purls
-    reached_services = vdr_result.reached_services
+    endpoint_reached_purls = {}
+    reached_services = {}
+    if vdr_result:
+        endpoint_reached_purls = vdr_result.endpoint_reached_purls
+        reached_services = vdr_result.reached_services
     is_endpoint_reachable = False
     possible_reachable_service = False
     method_in_emoji = ":right_arrow_curving_left:"
