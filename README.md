@@ -105,11 +105,9 @@ usage: depscan [-h] [--config CONFIG] [--no-banner] [-i SRC_DIR_IMAGE] [-o REPOR
                [--profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}]
                [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
                [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
-               [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} |
-               --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer} |
-               --reachability-analyzer {off,auto,FrameworkForwardReachability,NaiveSymbolMatcher,SemanticReachability,EndpointReachability}] [--no-suggest] [--risk-audit]
-               [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL]
-               [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--fuzzy-search] [--search-order {purlpcu,cpe,cpu,url}] [--no-universal]
+               [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer} |
+               --reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--no-suggest] [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]]
+               [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--fuzzy-search] [--search-order {purlpcu,cpe,cpu,url}] [--no-universal]
                [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
@@ -124,8 +122,7 @@ options:
                         Reports directory
   --csaf                Generate a OASIS CSAF VEX document
   --profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}
-                        Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-
-                        analyzer.
+                        Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-analyzer.
   --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
                         Product lifecycle for the generated BOM. Multiple values allowed.
   --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
@@ -134,15 +131,14 @@ options:
                         BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.
   --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}
                         Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.
-  --reachability-analyzer {off,auto,FrameworkForwardReachability,NaiveSymbolMatcher,SemanticReachability,EndpointReachability}
-                        Reachability analyzer to use. Default off.
+  --reachability-analyzer {off,FrameworkReachability,SemanticReachability}
+                        Reachability analyzer to use. Default FrameworkReachability.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
   --cdxgen-args CDXGEN_ARGS
                         Additional arguments to pass to cdxgen
   --private-ns PRIVATE_NS
-                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated
-                        values accepted.
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
   -t, --type PROJECT_TYPE [PROJECT_TYPE ...]
                         Override project types if auto-detection is incorrect. Multiple values supported.
   --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
