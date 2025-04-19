@@ -6,12 +6,15 @@ import json
 import os
 import sys
 import tempfile
+from typing import List
 
-from analysis_lib import VdrAnalysisKV
+from analysis_lib import (
+    ReachabilityAnalysisKV,
+    VdrAnalysisKV,
+)
 from analysis_lib.csaf import export_csaf, write_toml
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.utils import (
-    find_purl_usages,
     get_all_bom_files,
     get_all_pkg_list,
     get_pkg_list,
@@ -21,6 +24,7 @@ from analysis_lib.utils import (
     trim_vdr_bom_data,
 )
 from analysis_lib.vdr import VDRAnalyzer
+from analysis_lib.reachability import get_reachability_impl
 from custom_json_diff.lib.utils import file_write, json_dump, json_load
 from defusedxml.ElementTree import parse
 from rich.panel import Panel
@@ -142,7 +146,7 @@ def build_parser():
             "ml-tiny",
         ),
         dest="profile",
-        help="Profile to use while generating the BOM.",
+        help="Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-analyzer.",
     )
     parser.add_argument(
         "--lifecycle",
@@ -192,6 +196,17 @@ def build_parser():
         default="auto",
         dest="vuln_analyzer",
         help="Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.",
+    )
+    parser.add_argument(
+        "--reachability-analyzer",
+        choices=(
+            "off",
+            "FrameworkReachability",
+            "SemanticReachability",
+        ),
+        default="FrameworkReachability",
+        dest="reachability_analyzer",
+        help="Reachability analyzer to use. Default FrameworkReachability.",
     )
     parser.add_argument(
         "--no-suggest",
@@ -342,11 +357,6 @@ def build_parser():
         "creating detailed reports.",
     )
     parser.add_argument(
-        "--reachables-slices-file",
-        dest="reachables_slices_file",
-        help="Path for the reachables slices file created by atom.",
-    )
-    parser.add_argument(
         "-v",
         "--version",
         help="Display the version",
@@ -356,7 +366,7 @@ def build_parser():
     return parser
 
 
-def summarise(
+def vdr_analyze_summarize(
     project_type,
     results,
     suggest_mode,
@@ -364,14 +374,14 @@ def summarise(
     bom_file,
     bom_dir,
     pkg_list,
+    reachability_analyzer,
+    reachability_options,
     no_vuln_table=False,
-    direct_purls=None,
-    reached_purls=None,
     fuzzy_search=False,
     search_order=None,
 ):
     """
-    Method to summarise the results.
+    Method to perform VDR analysis followed by summarization.
     :param project_type: Project type.
     :param results: Scan or audit results.
     :param suggest_mode: Normalize fix versions automatically.
@@ -379,10 +389,10 @@ def summarise(
     :param bom_file: Single BOM file.
     :param bom_dir: Directory containining bom files.
     :param pkg_list: Direct list of packages when the bom file is empty.
+    :param reachability_analyzer: Reachability Analyzer specified.
+    :param reachability_options: Reachability Analyzer options.
     :param no_vuln_table: Boolean to indicate if the results should get printed
             to the console.
-    :param direct_purls: Dict of direct purls.
-    :param reached_purls: Dict of reached purls.
     :param fuzzy_search: Perform fuzzy search.
     :param search_order: Search order.
 
@@ -390,6 +400,19 @@ def summarise(
     """
     pkg_vulnerabilities = []
     summary = {}
+    direct_purls = {}
+    reached_purls = {}
+    reached_services = {}
+    endpoint_reached_purls = {}
+    reach_result = get_reachability_impl(
+        reachability_analyzer, reachability_options
+    ).process()
+    if reach_result and reach_result.success:
+        direct_purls = reach_result.direct_purls
+        reached_purls = reach_result.reached_purls
+        reached_services = reach_result.reached_services
+        endpoint_reached_purls = reach_result.endpoint_reached_purls
+    # We might already have the needed slices files when we reach here.
     options = VdrAnalysisKV(
         project_type,
         results,
@@ -403,6 +426,8 @@ def summarise(
         pkg_list=pkg_list,
         direct_purls=direct_purls,
         reached_purls=reached_purls,
+        reached_services=reached_services,
+        endpoint_reached_purls=endpoint_reached_purls,
         console=console,
         logger=LOG,
         fuzzy_search=fuzzy_search,
@@ -499,11 +524,13 @@ def set_project_types(args, src_dir):
     and the list of project types.
     """
     pkg_list, purl_obj = [], {}
+    project_types_list: List[str] = []
     if args.search_purl:
         purl_obj = parse_purl(args.search_purl)
         purl_obj["purl"] = args.search_purl
         purl_obj["vendor"] = purl_obj.get("namespace")
-        project_types_list = [purl_obj.get("type")]
+        if purl_obj.get("type"):
+            project_types_list = [purl_obj.get("type")]
         pkg_list = [purl_obj]
     elif args.bom or args.bom_dir:
         project_types_list = ["bom"]
@@ -833,15 +860,12 @@ def run_depscan(args):
             src_dir = os.path.dirname(os.path.realpath(args.bom))
         elif args.bom_dir and os.path.exists(args.bom_dir):
             src_dir = os.path.realpath(args.bom_dir)
-            if not depscan_options.get("reachables_slices_file") and os.path.join(
-                args.bom_dir, "reachables.slices.json"
-            ):
-                depscan_options["reachables_slices_file"] = os.path.join(
-                    args.bom_dir, "reachables.slices.json"
-                )
         else:
             src_dir = os.getcwd()
     reports_dir = args.reports_dir
+    # User has not provided an explicit reports_dir. Reuse the bom_dir
+    if not reports_dir and args.bom_dir:
+        reports_dir = args.bom_dir
     # Should we download the latest vdb.
     if db_lib.needs_update(
         days=0,
@@ -935,7 +959,8 @@ def run_depscan(args):
             # We need to set the following two values to make the rest of the code correctly use
             # the generated BOM files after lifecycle analysis
             depscan_options["lifecycle_analysis_mode"] = True
-            depscan_options["bom_dir"] = os.path.realpath(reports_dir)
+            if not args.bom_dir:
+                args.bom_dir = os.path.realpath(reports_dir)
         bom_file = os.path.join(reports_dir, f"sbom-{project_type}.cdx.json")
         risk_report_file = os.path.join(
             reports_dir, f"depscan-risk-{project_type}.json"
@@ -973,12 +998,12 @@ def run_depscan(args):
                 bom_file,
             )
             continue
-        if depscan_options["bom_dir"]:
+        if args.bom_dir:
             LOG.debug(
                 "Collecting components from all the BOM files at %s",
-                depscan_options["bom_dir"],
+                args.bom_dir,
             )
-            pkg_list = get_all_pkg_list(depscan_options["bom_dir"])
+            pkg_list = get_all_pkg_list(args.bom_dir)
         elif bom_file:
             LOG.debug("Scanning using the bom file %s", bom_file)
             if not args.bom:
@@ -988,7 +1013,7 @@ def run_depscan(args):
                     bom_file,
                 )
             pkg_list, _ = get_pkg_list(bom_file)
-        if not pkg_list and not depscan_options["bom_dir"]:
+        if not pkg_list and not args.bom_dir:
             LOG.info(
                 "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
             )
@@ -1108,8 +1133,8 @@ def run_depscan(args):
                 )
         # We could be dealing with multiple bom files
         bom_files = (
-            get_all_bom_files(depscan_options["bom_dir"])
-            if depscan_options["bom_dir"]
+            get_all_bom_files(args.bom_dir)
+            if args.bom_dir
             else [bom_file]
             if bom_file
             else []
@@ -1120,36 +1145,46 @@ def run_depscan(args):
             LOG.debug("Scanning %d bom files for issues", len(bom_files))
         else:
             LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-        direct_purls, reached_purls = find_purl_usages(
-            bom_files, src_dir, args.reachables_slices_file
-        )
+        #
+        reachability_analyzer = depscan_options.get("reachability_analyzer")
+        reachability_options = None
+        if (
+            reachability_analyzer and reachability_analyzer != "off"
+        ) or depscan_options.get("profile") != "generic":
+            reachability_options = ReachabilityAnalysisKV(
+                project_types=[project_type],
+                src_dir=src_dir,
+                bom_dir=args.bom_dir or reports_dir,
+                require_multi_usage=depscan_options.get("require_multi_usage", False),
+                source_tags=depscan_options.get("source_tags"),
+                sink_tags=depscan_options.get("sink_tags"),
+            )
         # Summarise and print results
-        summary, vdr_file, pkg_vulnerabilities = summarise(
+        summary, vdr_file, pkg_vulnerabilities = vdr_analyze_summarize(
             project_type,
             results,
             suggest_mode=args.suggest,
             scoped_pkgs=scoped_pkgs,
             bom_file=bom_files[0] if len(bom_files) == 1 else None,
-            bom_dir=depscan_options["bom_dir"],
+            bom_dir=args.bom_dir,
             pkg_list=pkg_list,
+            reachability_analyzer=reachability_analyzer,
+            reachability_options=reachability_options,
             no_vuln_table=args.no_vuln_table,
-            direct_purls=direct_purls,
-            reached_purls=reached_purls,
             fuzzy_search=depscan_options.get("fuzzy_search", False),
             search_order=depscan_options.get("search_order"),
         )
         # Explain the results
-        if args.explain:
-            explainer.explain(
-                project_type,
-                src_dir,
-                args.reachables_slices_file,
-                vdr_file,
-                pkg_vulnerabilities,
-                pkg_group_rows,
-                direct_purls,
-                reached_purls,
-            )
+        # if args.explain:
+        # Explainer needs work
+        # explainer.explain(
+        #     project_type,
+        #     src_dir,
+        #     vdr_file,
+        #     pkg_vulnerabilities,
+        #     pkg_group_rows,
+        #     depscan_options
+        # )
         # CSAF VEX export
         if args.csaf:
             export_csaf(

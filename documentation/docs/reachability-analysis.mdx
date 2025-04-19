@@ -1,9 +1,10 @@
 ---
 sidebar_position: 5
 ---
+
 # Reachability Analysis
 
-Depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slicing. Simply invoke depscan with the `research` profile and language type to enable this feature.
+depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slices. Simply invoke depscan with the `research` profile and language type to enable this feature.
 
 To receive a verbose output including the reachable flows, pass the argument `--explain`
 
@@ -31,7 +32,15 @@ Ensure PHP > 7.4 is installed. However, we support scanning PHP 5.2 - 8.3. Alter
 depscan --profile research -t php -i <source directory> --reports-dir <reports directory> --explain
 ```
 
-[//]: # (    <img src="docs/php-reach1.png" alt="PHP Reachability" width="256">)
+[//]: # '    <img src="docs/php-reach1.png" alt="PHP Reachability" width="256">'
+[//]: #
+[//]: # '    <img src="docs/not-reachable.png" alt="PHP NOT Reachability" width="256">'
 
-[//]: # ()
-[//]: # (    <img src="docs/not-reachable.png" alt="PHP NOT Reachability" width="256">)
+## Customize the Reachability Analyzer
+
+depscan supports two different reachability analyzers with `FrameworkReachability` being the default:
+
+- **FrameworkReachability**: The Framework-Forward Reachability (FFR) algorithm computes reachability by identifying sources or entry points originating from framework-provided inputs or routes that reach a library sink.
+- **SemanticReachability**: The Semantic Reachability algorithm builds on Framework-Forward Reachability by incorporating endpoint and service information to better prioritize vulnerabilities.
+
+Pass the argument `--reachability-analyzer SemanticReachability` to use the Semantic Reachability analyzer.
