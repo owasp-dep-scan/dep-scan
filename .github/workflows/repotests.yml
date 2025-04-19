@@ -60,15 +60,15 @@ jobs:
           npm install -g @cyclonedx/cdxgen
       - name: repotests java-sec-code
         run: |
-          mkdir -p depscan_reports/java-sec-code depscan_reports/java-sec-code1 depscan_reports/java-sec-code2
-          uv run depscan --src repotests/java-sec-code --reports-dir depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
-          uv run depscan --src repotests/java-sec-code --reports-dir depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
-          uv run depscan --src repotests/java-sec-code --reports-dir depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
         env:
           SCAN_DEBUG_MODE: debug
       - name: repotests greyhound
         run: |
-          mkdir -p depscan_reports/greyhound
-          uv run depscan --src repotests/greyhound --reports-dir depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/greyhound
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/greyhound --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
         env:
           SCAN_DEBUG_MODE: debug
