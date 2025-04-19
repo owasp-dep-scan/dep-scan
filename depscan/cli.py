@@ -197,7 +197,7 @@ def build_parser():
         dest="vuln_analyzer",
         help="Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.",
     )
-    engine_group.add_argument(
+    parser.add_argument(
         "--reachability-analyzer",
         choices=(
             "off",
@@ -1154,7 +1154,7 @@ def run_depscan(args):
             reachability_options = ReachabilityAnalysisKV(
                 project_types=[project_type],
                 src_dir=src_dir,
-                bom_dir=args.bom_dir,
+                bom_dir=args.bom_dir or reports_dir,
                 require_multi_usage=depscan_options.get("require_multi_usage", False),
                 source_tags=depscan_options.get("source_tags"),
                 sink_tags=depscan_options.get("sink_tags"),
