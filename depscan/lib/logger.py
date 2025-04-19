@@ -2,6 +2,7 @@ import logging
 import os
 import random
 import re
+import sys
 
 from rich.console import Console
 from rich.highlighter import RegexHighlighter
@@ -41,7 +42,7 @@ console = Console(
     force_terminal=not IS_CI and not os.getenv("GITHUB_ACTION"),
     highlight=not IS_CI,
     highlighter=CustomHighlighter(),
-    record=True,
+    record=sys.platform == "win32",
 )
 
 logging.basicConfig(

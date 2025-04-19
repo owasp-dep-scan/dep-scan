@@ -1,6 +1,6 @@
-import os
 import re
-
+import glob
+from collections import defaultdict
 from custom_json_diff.lib.utils import json_load
 from rich import box
 from rich.markdown import Markdown
@@ -11,49 +11,93 @@ from depscan.lib.config import max_purl_per_flow, max_reachable_explanations
 from depscan.lib.logger import console, LOG
 
 
-def explain(
-    project_type,
-    src_dir,
-    reachables_slices_file,
-    vdr_file,
-    pkg_vulnerabilities,
-    pkg_group_rows,
-    direct_purls,
-    reached_purls,
-):
+def explain(project_type, src_dir, bom_dir, vdr_result):
     """
     Explain the analysis and findings
 
     :param project_type: Project type
-    :param src_dir: Source directory
-    :param reachables_slices_file: Reachables slices file
-    :param vdr_file: VDR file from the summariser
-    :param pkg_vulnerabilities: Vulnerabilities from the analysis
-    :param pkg_group_rows: Prioritized list of purls
-    :param direct_purls: Dict containing packages used directly
-    :param reached_purls: Dict containing packages identified via reachables slicing
+    :param bom_dir: BOM directory
     """
-    if (
-        not reachables_slices_file
-        and src_dir
-        and os.path.exists(os.path.join(src_dir, "reachables.slices.json"))
-    ):
-        reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
-    if reachables_slices_file:
-        if (reachables_data := json_load(reachables_slices_file, error_msg=f"Could not load reachables from {reachables_slices_file}", log=LOG)) and reachables_data.get("reachables"):
-            rsection = Markdown(
-                """## Reachable Flows
+    pattern_methods = {}
+    slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices.json", recursive=True)
+    openapi_spec_files = glob.glob(f"{src_dir}/*openapi*.json", recursive=False)
+    if openapi_spec_files:
+        rsection = Markdown("""## Service Endpoints
 
-Below are some reachable flows identified by depscan. Use the provided tips to improve your application’s securability.
-            """
+The following endpoints and code hotspots were identified by depscan. Ensure proper authentication and authorization mechanisms are implemented to secure them.""")
+        console.print(rsection)
+    for ospec in openapi_spec_files:
+        pattern_methods = print_endpoints(ospec)
+    for sf in slices_files:
+        if (
+            reachables_data := json_load(
+                sf, error_msg=f"Could not load reachables from {sf}", log=LOG
             )
+        ) and reachables_data.get("reachables"):
+            if pattern_methods:
+                rsection = Markdown(
+                    """## Reachable Flows
+
+Below are some reachable flows, including endpoint-reachable ones, identified by depscan. Use the generated OpenAPI specification file to assess these endpoints for vulnerabilities and risk.
+                """
+                )
+            else:
+                rsection = Markdown(
+                    """## Reachable Flows
+
+Below are some reachable flows identified by depscan. Use the provided tips to enhance your application's security posture.
+                """
+                )
             console.print(rsection)
-            explain_reachables(
-                reachables_data, pkg_group_rows, project_type
-            )
+            explain_reachables(reachables_data, project_type, vdr_result)
 
 
-def explain_reachables(reachables, pkg_group_rows, project_type):
+def _track_usage_targets(usage_targets, usages_object):
+    for k, v in usages_object.items():
+        for file, lines in v.items():
+            for l in lines:
+                usage_targets.add(f"{file}#{l}")
+
+
+def print_endpoints(ospec):
+    if not ospec:
+        return
+    paths = json_load(ospec).get("paths") or {}
+    pattern_methods = defaultdict(list)
+    pattern_usage_targets = defaultdict(set)
+    for pattern, path_obj in paths.items():
+        usage_targets = set()
+        for k, v in path_obj.items():
+            # Java, JavaScript, Python etc
+            if k == "x-atom-usages":
+                _track_usage_targets(usage_targets, v)
+                continue
+            if v.get("x-atom-usages"):
+                _track_usage_targets(usage_targets, v.get("x-atom-usages"))
+            pattern_methods[pattern].append(k)
+        pattern_usage_targets[pattern] = usage_targets
+    caption = ""
+    if pattern_methods:
+        caption = f"Total Endpoints: {len(pattern_methods.keys())}"
+    rtable = Table(
+        box=box.DOUBLE_EDGE,
+        show_lines=True,
+        title="Endpoints",
+        caption=caption,
+    )
+    for c in ("URL Pattern", "HTTP Methods", "Code Hotspots"):
+        rtable.add_column(header=c, vertical="top")
+    for k, v in pattern_methods.items():
+        v.sort()
+        sorted_areas = list(pattern_usage_targets[k])
+        sorted_areas.sort()
+        rtable.add_row(k, ("\n".join(v)).upper(), "\n".join(sorted_areas))
+    console.print()
+    console.print(rtable)
+    return pattern_methods
+
+
+def explain_reachables(reachables, project_type, vdr_result):
     """"""
     reachable_explanations = 0
     checked_flows = 0
@@ -73,7 +117,7 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
         #     if not is_prioritized:
         #         continue
         flow_tree, comment, source_sink_desc, has_check_tag = explain_flows(
-            areach.get("flows"), areach.get("purls"), project_type
+            areach.get("flows"), areach.get("purls"), project_type, vdr_result
         )
         if not source_sink_desc or not flow_tree:
             continue
@@ -100,19 +144,33 @@ def explain_reachables(reachables, pkg_group_rows, project_type):
 
         if checked_flows:
             tips += """
-- Review the validation and sanitization methods detected in the application.
-- To enhance security posture, implement a common validation middleware.
+- Review the validation and sanitization methods used in the application.
+- To enhance the security posture, implement a common validation middleware.
 """
         else:
             tips += """
-- Consider implementing a common validation and sanitization library to reduce exploitability risk.
+- Consider implementing a common validation and sanitization library to reduce the risk of exploitability.
 """
         rsection = Markdown(tips)
         console.print(rsection)
 
 
-def flow_to_source_sink(idx, flow, purls, project_type):
+def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
     """ """
+    endpoint_reached_purls = {}
+    reached_services = {}
+    if vdr_result:
+        endpoint_reached_purls = vdr_result.endpoint_reached_purls
+        reached_services = vdr_result.reached_services
+    is_endpoint_reachable = False
+    possible_reachable_service = False
+    method_in_emoji = ":right_arrow_curving_left:"
+    for p in purls:
+        if endpoint_reached_purls and endpoint_reached_purls.get(p):
+            is_endpoint_reachable = True
+            method_in_emoji = ":spider_web: "
+        if reached_services and reached_services.get(p):
+            possible_reachable_service = True
     source_sink_desc = ""
     param_name = flow.get("name")
     method_str = "method"
@@ -133,9 +191,9 @@ def flow_to_source_sink(idx, flow, purls, project_type):
             method_str = f"magic {method_str}"
     if flow.get("label") == "METHOD_PARAMETER_IN":
         if param_name:
-            source_sink_desc = f"""{param_str} [red]{param_name}[/red] :right_arrow_curving_left: to the {method_str} [bold]{parent_method}[/bold]"""
+            source_sink_desc = f"""{param_str} [red]{param_name}[/red] {method_in_emoji} to the {method_str} [bold]{parent_method}[/bold]"""
         else:
-            source_sink_desc = f"""{method_str.capitalize()} [red]{parent_method}[/red] :right_arrow_curving_left:"""
+            source_sink_desc = f"""{method_str.capitalize()} [red]{parent_method}[/red] {method_in_emoji}"""
     elif flow.get("label") == "CALL" and flow.get("isExternal"):
         method_full_name = flow.get("fullName", "")
         if not method_full_name.startswith("<"):
@@ -146,7 +204,7 @@ def flow_to_source_sink(idx, flow, purls, project_type):
         source_sink_desc = flow.get("code").split("\n")[0]
     # Try to understand the source a bit more
     if source_sink_desc.startswith("require("):
-        source_sink_desc = "Flow starts from a module import"
+        source_sink_desc = "The flow originates from a module import."
     elif (
         ".use(" in source_sink_desc
         or ".subscribe(" in source_sink_desc
@@ -154,20 +212,23 @@ def flow_to_source_sink(idx, flow, purls, project_type):
         or ".emit(" in source_sink_desc
         or " => {" in source_sink_desc
     ):
-        source_sink_desc = "Flow starts from a callback function"
+        source_sink_desc = "The flow originates from a callback function."
     elif (
-        "middleware" in source_sink_desc.lower()
-        or "route" in source_sink_desc.lower()
+        "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower()
     ):
-        source_sink_desc = "Flow starts from a middlware"
+        source_sink_desc = "The flow originates from middleware."
     elif len(purls) == 1:
-        source_sink_desc = (
-            f"{source_sink_desc} can be used to reach this package."
-        )
+        if is_endpoint_reachable:
+            source_sink_desc = f"{source_sink_desc} can be used to reach this package from certain endpoints."
+        else:
+            source_sink_desc = f"{source_sink_desc} can be used to reach this package."
     else:
-        source_sink_desc = (
-            f"{source_sink_desc} can be used to reach {len(purls)} packages."
-        )
+        if is_endpoint_reachable:
+            source_sink_desc = f"{source_sink_desc} It can be used to reach {len(purls)} packages from certain endpoints."
+        else:
+            source_sink_desc = (
+                f"{source_sink_desc} It can be used to reach {len(purls)} packages."
+            )
     return source_sink_desc
 
 
@@ -176,8 +237,7 @@ def filter_tags(tags):
         tags = [
             atag
             for atag in tags.split(", ")
-            if atag
-            not in ("RESOLVED_MEMBER", "UNKNOWN_METHOD", "UNKNOWN_TYPE_DECL")
+            if atag not in ("RESOLVED_MEMBER", "UNKNOWN_METHOD", "UNKNOWN_TYPE_DECL")
         ]
         return ", ".join(tags)
     return tags
@@ -192,25 +252,21 @@ def flow_to_str(flow, project_type):
         and flow.get("lineNumber")
         and not flow.get("parentFileName").startswith("unknown")
     ):
-        file_loc = f'{flow.get("parentFileName").replace("src/main/java/", "").replace("src/main/scala/", "")}#{flow.get("lineNumber")}    '
+        file_loc = f"{flow.get('parentFileName').replace('src/main/java/', '').replace('src/main/scala/', '')}#{flow.get('lineNumber')}    "
     node_desc = flow.get("code").split("\n")[0]
     tags = filter_tags(flow.get("tags"))
     if flow.get("label") == "METHOD_PARAMETER_IN":
         param_name = flow.get("name")
         if param_name == "this":
             param_name = ""
-        node_desc = f'{flow.get("parentMethodName")}([red]{param_name}[/red]) :right_arrow_curving_left:'
+        node_desc = f"{flow.get('parentMethodName')}([red]{param_name}[/red]) :right_arrow_curving_left:"
         if tags:
-            node_desc = (
-                f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-            )
+            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     elif flow.get("label") == "IDENTIFIER":
         if node_desc.startswith("<"):
             node_desc = flow.get("name")
         if tags:
-            node_desc = (
-                f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-            )
+            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     if tags:
         for ctag in (
             "validation",
@@ -232,13 +288,13 @@ def flow_to_str(flow, project_type):
     )
 
 
-def explain_flows(flows, purls, project_type):
+def explain_flows(flows, purls, project_type, vdr_result):
     """"""
     tree = None
     comments = []
     if len(purls) > max_purl_per_flow:
         comments.append(
-            ":exclamation_mark: Refactor this flow to reduce the number of external libraries used."
+            ":exclamation_mark: Refactor this flow to minimize the use of external libraries."
         )
     purls_str = "\n".join(purls)
     comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
@@ -256,11 +312,9 @@ def explain_flows(flows, purls, project_type):
             continue
         if not source_sink_desc:
             source_sink_desc = flow_to_source_sink(
-                idx, aflow, purls, project_type
+                idx, aflow, purls, project_type, vdr_result
             )
-        file_loc, flow_str, has_check_tag_flow = flow_to_str(
-            aflow, project_type
-        )
+        file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow, project_type)
         if last_file_loc == file_loc:
             continue
         last_file_loc = file_loc
@@ -276,6 +330,6 @@ def explain_flows(flows, purls, project_type):
     if has_check_tag:
         comments.insert(
             0,
-            ":white_medium_small_square: Check if the mitigation(s) used in this flow is valid and appropriate for your security requirements.",
+            ":white_medium_small_square: Verify that the mitigation(s) used in this flow are valid and appropriate for your security requirements.",
         )
     return tree, "\n".join(comments), source_sink_desc, has_check_tag

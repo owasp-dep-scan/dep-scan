@@ -1,9 +1,10 @@
 import os
 import shutil
+import sys
 from urllib.parse import unquote_plus
 
 from blint.cyclonedx.spec import CycloneDX
-from custom_json_diff.lib.utils import json_load
+from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 from xbom_lib.blint import BlintGenerator
 from xbom_lib.cdxgen import (
@@ -273,7 +274,10 @@ def create_bom(bom_file, src_dir=".", options=None):
                         "Lifecycle analysis is not supported for oci and os project types."
                     )
                     lifecycle_analysis_mode = True
-            elif shutil.which(os.getenv("DOCKER_CMD", "docker")):
+            elif (
+                shutil.which(os.getenv("DOCKER_CMD", "docker"))
+                and sys.platform != "win32"
+            ):
                 cdxgen_lib = CdxgenImageBasedGenerator
     # We now have the cdxgen library to use.
     # For lifecycle analysis, we need to generate multiple BOM files
@@ -427,3 +431,91 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
     else:
         any_success = True
     return any_success
+
+
+def create_empty_vdr(pkg_list, ds_version):
+    components = pkg_list or []
+    metadata = update_tools_metadata(None, None, ds_version)
+    return {"metadata": metadata, "components": components}
+
+
+def update_tools_metadata(tools, bom_data, ds_version):
+    """
+    Helper function to add depscan information as metadata
+    :param tools: Tools section of the SBOM
+    :param bom_data: SBOM data
+    :param ds_version: depscan version
+    :return: None
+    """
+    if not bom_data:
+        bom_data = {"metadata": {}}
+    components = tools.get("components", []) if tools else []
+    ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
+    components.append(
+        {
+            "type": "application",
+            "name": "owasp-depscan",
+            "version": ds_version,
+            "purl": ds_purl,
+            "bom-ref": ds_purl,
+        }
+    )
+    bom_data["metadata"]["tools"] = {"components": components}
+    return bom_data
+
+
+def export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file):
+    """
+    Exports the Bill of Materials (BOM) data along with package vulnerabilities
+    to a Vulnerability Data Report (VDR) file.
+
+    :param bom_data: SBOM data
+    :param ds_version: depscan version
+    :param pkg_vulnerabilities: Package vulnerabilities
+    :param vdr_file: VDR file path
+    """
+    # Add depscan information as metadata
+    metadata = bom_data.get("metadata", {})
+    tools = metadata.get("tools", {})
+    bom_version = str(bom_data.get("version", 0))
+    # Update the version
+    if bom_version.isdigit():
+        bom_data["version"] = int(bom_version) + 1
+    # Update the tools section
+    if isinstance(tools, dict):
+        bom_data = update_tools_metadata(tools, bom_data, ds_version)
+    bom_data = trim_vdr_bom_data(bom_data)
+    bom_data["vulnerabilities"] = pkg_vulnerabilities
+    json_dump(
+        vdr_file,
+        bom_data,
+        compact=True,
+        error_msg=f"Unable to generate VDR file at {vdr_file}",
+    )
+
+
+def trim_vdr_bom_data(bom_data):
+    components = bom_data.get("components")
+    if not components:
+        return bom_data
+    metadata = bom_data.get("metadata")
+    if metadata and metadata.get("properties"):
+        del metadata["properties"]
+        bom_data["metadata"] = metadata
+    new_components = []
+    for comp in components:
+        for p in (
+            "properties",
+            "signature",
+        ):
+            if comp.get(p):
+                del comp[p]
+        new_components.append(comp)
+    bom_data["components"] = new_components
+    for p in (
+        "annotations",
+        "signature",
+    ):
+        if bom_data.get(p):
+            del bom_data[p]
+    return bom_data

@@ -181,4 +181,7 @@ class VDRAnalyzer(XBOMAnalyzer):
             success=True,
             pkg_vulnerabilities=remove_extra_metadata(pkg_vulnerabilities),
             prioritized_pkg_vuln_trees=pkg_group_rows,
+            reached_purls=reached_purls,
+            reached_services=reached_services,
+            endpoint_reached_purls=endpoint_reached_purls,
         )

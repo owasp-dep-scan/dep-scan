@@ -1,5 +1,6 @@
 # depscan configuration file
 
 project_type = ["python"]
-reports-dir = "reports"
+reports_dir = "reports"
 profile = "generic"
+bom_engine = "CdxgenGenerator"

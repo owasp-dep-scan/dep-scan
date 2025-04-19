@@ -436,12 +436,12 @@ def toml_compatibility(metadata):
     return metadata
 
 
-def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
+def export_csaf(vdr_result, src_dir, reports_dir, bom_file):
     """
     Generates a CSAF 2.0 JSON document from the results.
 
-    :param pkg_vulnerabilities: List of vulnerabilities
-    :type pkg_vulnerabilities: list
+    :param vdr_result: VDR Result
+    :type vdr_result: VDRResult
     :param src_dir: The source directory.
     :type src_dir: str
     :param reports_dir: The reports directory.
@@ -450,6 +450,7 @@ def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
     :type bom_file: str
 
     """
+    pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
     toml_file_path = os.getenv("DEPSCAN_CSAF_TEMPLATE")
     if not toml_file_path:
         toml_file_path = os.path.join(src_dir, "csaf.toml")
@@ -460,7 +461,7 @@ def export_csaf(pkg_vulnerabilities, src_dir, reports_dir, bom_file):
     new_results = cleanup_dict(new_results)
     new_results, metadata = verify_components_present(new_results, metadata, bom_file)
     fn = bom_file.replace(
-        "-bom.json", f".csaf_v{new_results['document']['tracking']['version']}.json"
+        ".cdx.json", f".csaf_v{new_results['document']['tracking']['version']}.json"
     )
     outfile = os.path.join(reports_dir, fn)
     json_dump(
