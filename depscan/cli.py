@@ -21,12 +21,10 @@ from analysis_lib.utils import (
     licenses_risk_table,
     pkg_risks_table,
     summary_stats,
-    trim_vdr_bom_data,
 )
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.reachability import get_reachability_impl
-from custom_json_diff.lib.utils import file_write, json_dump, json_load
-from defusedxml.ElementTree import parse
+from custom_json_diff.lib.utils import file_write, json_load
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
@@ -34,10 +32,13 @@ from vdb.lib import db6 as db_lib
 from vdb.lib.utils import parse_purl
 
 from depscan import get_version
-from depscan.lib import explainer, tomlparse, utils
+from depscan.cli_options import build_parser
+from depscan.lib import explainer, utils
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
+    create_empty_vdr,
     create_bom,
+    export_bom,
     get_pkg_by_type,
 )
 from depscan.lib.config import (
@@ -92,278 +93,6 @@ def build_args():
     """
     parser = build_parser()
     return parser.parse_args()
-
-
-def build_parser():
-    parser = tomlparse.ArgumentParser(
-        description="Fully open-source security and license audit for "
-        "application dependencies and container images based on "
-        "known vulnerabilities and advisories.",
-        epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more",
-    )
-    parser.add_argument(
-        "--no-banner",
-        action="store_true",
-        default=False,
-        dest="no_banner",
-        help="Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.",
-    )
-    parser.add_argument(
-        "-i",
-        "--src",
-        default=os.getenv("DEPSCAN_SOURCE_DIR_IMAGE", os.getcwd()),
-        dest="src_dir_image",
-        help="Source directory or container image or binary file",
-    )
-    parser.add_argument(
-        "-o",
-        "--reports-dir",
-        default=os.getenv("DEPSCAN_REPORTS_DIR", os.path.join(os.getcwd(), "reports")),
-        dest="reports_dir",
-        help="Reports directory",
-    )
-    parser.add_argument(
-        "--csaf",
-        action="store_true",
-        default=False,
-        dest="csaf",
-        help="Generate a OASIS CSAF VEX document",
-    )
-    parser.add_argument(
-        "--profile",
-        default="generic",
-        choices=(
-            "appsec",
-            "research",
-            "operational",
-            "threat-modeling",
-            "license-compliance",
-            "generic",
-            "machine-learning",
-            "ml",
-            "deep-learning",
-            "ml-deep",
-            "ml-tiny",
-        ),
-        dest="profile",
-        help="Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-analyzer.",
-    )
-    parser.add_argument(
-        "--lifecycle",
-        choices=("pre-build", "build", "post-build"),
-        nargs="+",
-        type=str,
-        dest="lifecycles",
-        help="Product lifecycle for the generated BOM. Multiple values allowed.",
-    )
-    parser.add_argument(
-        "--technique",
-        choices=(
-            "auto",
-            "source-code-analysis",
-            "binary-analysis",
-            "manifest-analysis",
-            "hash-comparison",
-            "instrumentation",
-            "filename",
-        ),
-        nargs="+",
-        type=str,
-        dest="techniques",
-        help="Analysis technique to use for BOM generation. Multiple values allowed.",
-    )
-    engine_group = parser.add_mutually_exclusive_group(required=False)
-    engine_group.add_argument(
-        "--bom-engine",
-        choices=(
-            "auto",
-            "CdxgenGenerator",
-            "CdxgenServerGenerator",
-            "CdxgenImageBasedGenerator",
-            "BlintGenerator",
-        ),
-        default="auto",
-        dest="bom_engine",
-        help="BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.",
-    )
-    engine_group.add_argument(
-        "--vulnerability-analyzer",
-        choices=(
-            "auto",
-            "VDRAnalyzer",
-            "LifecycleAnalyzer",
-        ),
-        default="auto",
-        dest="vuln_analyzer",
-        help="Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.",
-    )
-    parser.add_argument(
-        "--reachability-analyzer",
-        choices=(
-            "off",
-            "FrameworkReachability",
-            "SemanticReachability",
-        ),
-        default="FrameworkReachability",
-        dest="reachability_analyzer",
-        help="Reachability analyzer to use. Default FrameworkReachability.",
-    )
-    parser.add_argument(
-        "--no-suggest",
-        action="store_false",
-        default=True,
-        dest="suggest",
-        help="Disable suggest mode",
-    )
-    parser.add_argument(
-        "--risk-audit",
-        action="store_true",
-        default=os.getenv("ENABLE_OSS_RISK", "") in ("true", "1"),
-        dest="risk_audit",
-        help="Perform package risk audit (slow operation). Npm only.",
-    )
-    parser.add_argument(
-        "--cdxgen-args",
-        default=os.getenv("CDXGEN_ARGS"),
-        dest="cdxgen_args",
-        help="Additional arguments to pass to cdxgen",
-    )
-    parser.add_argument(
-        "--private-ns",
-        dest="private_ns",
-        default=os.getenv("PKG_PRIVATE_NAMESPACE"),
-        help="Private namespace to use while performing oss risk audit. "
-        "Private packages should not be available in public registries "
-        "by default. Comma separated values accepted.",
-    )
-    parser.add_argument(
-        "-t",
-        "--type",
-        nargs="+",
-        type=str,
-        dest="project_type",
-        default=os.getenv("DEPSCAN_PROJECT_TYPE", "universal").split(","),
-        help="Override project types if auto-detection is incorrect. Multiple values supported.",
-    )
-    bom_group = parser.add_mutually_exclusive_group(required=False)
-    bom_group.add_argument(
-        "--bom",
-        dest="bom",
-        help="Examine using the given Software Bill-of-Materials (SBOM) file "
-        "in CycloneDX format. Use cdxgen command to produce one.",
-    )
-    bom_group.add_argument(
-        "--bom-dir",
-        dest="bom_dir",
-        help="Examine all the Bill-of-Materials (BOM) files in the given directory.",
-    )
-    bom_group.add_argument(
-        "--purl",
-        dest="search_purl",
-        help="Scan a single package url.",
-    )
-    parser.add_argument(
-        "--report-template",
-        dest="report_template",
-        help="Jinja template file used for rendering a custom report",
-    )
-    parser.add_argument(
-        "--report-name",
-        default="rendered.report",
-        dest="report_name",
-        help="Filename of the custom report written to the --reports-dir",
-    )
-    parser.add_argument(
-        "--deep",
-        action="store_true",
-        default=False,
-        dest="deep_scan",
-        help="Perform deep scan by passing this --deep argument to cdxgen. "
-        "Useful while scanning docker images and OS packages.",
-    )
-    parser.add_argument(
-        "--fuzzy-search",
-        action="store_true",
-        default=False,
-        dest="fuzzy_search",
-        help="Perform fuzzy search by creating variations of package names. Use this when the input SBOM lacks a PURL.",
-    )
-    parser.add_argument(
-        "--search-order",
-        choices=(
-            "purlpcu",
-            "cpe",
-            "cpu",
-            "url",
-        ),
-        default="pcu",
-        dest="search_order",
-        help="Attributes to use while searching for vulnerabilities. Default: PURL, CPE, URL (pcu).",
-    )
-    parser.add_argument(
-        "--no-universal",
-        action="store_true",
-        default=False,
-        dest="non_universal_scan",
-        help="Depscan would attempt to perform a single universal scan "
-        "instead of individual scans per language type.",
-    )
-    parser.add_argument(
-        "--no-vuln-table",
-        action="store_true",
-        default=False,
-        dest="no_vuln_table",
-        help="Do not print the table with the full list of vulnerabilities. "
-        "This can help reduce console output.",
-    )
-    parser.add_argument(
-        "--server",
-        action="store_true",
-        default=False,
-        dest="server_mode",
-        help="Run depscan as a server",
-    )
-    parser.add_argument(
-        "--server-host",
-        default=os.getenv("DEPSCAN_HOST", "127.0.0.1"),
-        dest="server_host",
-        help="depscan server host",
-    )
-    parser.add_argument(
-        "--server-port",
-        default=os.getenv("DEPSCAN_PORT", "7070"),
-        dest="server_port",
-        help="depscan server port",
-    )
-    parser.add_argument(
-        "--cdxgen-server",
-        default=os.getenv("CDXGEN_SERVER_URL"),
-        dest="cdxgen_server",
-        help="cdxgen server url. Eg: http://cdxgen:9090",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        default=False,
-        dest="enable_debug",
-        help="Run depscan in debug mode.",
-    )
-    parser.add_argument(
-        "--explain",
-        action="store_true",
-        default=False,
-        dest="explain",
-        help="Makes depscan to explain the various analysis. Useful for "
-        "creating detailed reports.",
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="Display the version",
-        action="version",
-        version="%(prog)s " + get_version(),
-    )
-    return parser
 
 
 def vdr_analyze_summarize(
@@ -433,6 +162,7 @@ def vdr_analyze_summarize(
         fuzzy_search=fuzzy_search,
         search_order=search_order,
     )
+    ds_version = get_version()
     vdr_result = VDRAnalyzer(vdr_options=options).process()
     vdr_file = bom_file.replace(".cdx.json", ".vdr.json") if bom_file else None
     if not vdr_file and bom_dir:
@@ -443,74 +173,16 @@ def vdr_analyze_summarize(
             # Case 1: Single BOM file resulting in a single VDR file
             if bom_file:
                 if bom_data := json_load(bom_file, log=LOG):
-                    export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+                    export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file)
             # Case 2: Multiple BOM files in a bom directory
             if bom_dir:
-                bom_data = create_empty_vdr(pkg_list)
-                export_bom(bom_data, pkg_vulnerabilities, vdr_file)
+                bom_data = create_empty_vdr(pkg_list, ds_version)
+                export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file)
                 LOG.debug(f"The VDR file '{vdr_file}' was created successfully.")
         summary = summary_stats(pkg_vulnerabilities)
-    return summary, vdr_file, pkg_vulnerabilities
-
-
-def create_empty_vdr(pkg_list):
-    components = pkg_list or []
-    metadata = update_tools_metadata(None, None)
-    return {"metadata": metadata, "components": components}
-
-
-def update_tools_metadata(tools, bom_data):
-    """
-    Helper function to add depscan information as metadata
-    :param tools: Tools section of the SBOM
-    :param bom_data: SBOM data
-    :return: None
-    """
-    if not bom_data:
-        bom_data = {"metadata": {}}
-    components = tools.get("components", []) if tools else []
-    ds_version = get_version()
-    ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
-    components.append(
-        {
-            "type": "application",
-            "name": "owasp-depscan",
-            "version": ds_version,
-            "purl": ds_purl,
-            "bom-ref": ds_purl,
-        }
-    )
-    bom_data["metadata"]["tools"] = {"components": components}
-    return bom_data
-
-
-def export_bom(bom_data, pkg_vulnerabilities, vdr_file):
-    """
-    Exports the Bill of Materials (BOM) data along with package vulnerabilities
-    to a Vulnerability Data Report (VDR) file.
-
-    :param bom_data: SBOM data
-    :param pkg_vulnerabilities: Package vulnerabilities
-    :param vdr_file: VDR file path
-    """
-    # Add depscan information as metadata
-    metadata = bom_data.get("metadata", {})
-    tools = metadata.get("tools", {})
-    bom_version = str(bom_data.get("version", 0))
-    # Update the version
-    if bom_version.isdigit():
-        bom_data["version"] = int(bom_version) + 1
-    # Update the tools section
-    if isinstance(tools, dict):
-        bom_data = update_tools_metadata(tools, bom_data)
-    bom_data = trim_vdr_bom_data(bom_data)
-    bom_data["vulnerabilities"] = pkg_vulnerabilities
-    json_dump(
-        vdr_file,
-        bom_data,
-        compact=True,
-        error_msg=f"Unable to generate VDR file at {vdr_file}",
-    )
+    elif bom_dir or bom_file or pkg_list:
+        LOG.info("No vulnerabilities found for project type '%s'!", project_type)
+    return summary, vdr_file, vdr_result
 
 
 def set_project_types(args, src_dir):
@@ -530,7 +202,7 @@ def set_project_types(args, src_dir):
         purl_obj["purl"] = args.search_purl
         purl_obj["vendor"] = purl_obj.get("namespace")
         if purl_obj.get("type"):
-            project_types_list = [purl_obj.get("type")]
+            project_types_list = [purl_obj.get("type", "")]
         pkg_list = [purl_obj]
     elif args.bom or args.bom_dir:
         project_types_list = ["bom"]
@@ -662,10 +334,7 @@ if QUART_AVAILABLE:
             bom_file = uploaded_bom_file["file"]
             bom_file_content = bom_file.read().decode("utf-8")
             try:
-                if str(bom_file.filename).endswith(".json"):
-                    _ = json.loads(bom_file_content)
-                else:
-                    _ = parse(bom_file_content)
+                _ = json.loads(bom_file_content)
             except Exception as e:
                 LOG.info(e)
                 return (
@@ -862,7 +531,7 @@ def run_depscan(args):
             src_dir = os.path.realpath(args.bom_dir)
         else:
             src_dir = os.getcwd()
-    reports_dir = args.reports_dir
+    reports_dir = os.path.realpath(args.reports_dir)
     # User has not provided an explicit reports_dir. Reuse the bom_dir
     if not reports_dir and args.bom_dir:
         reports_dir = args.bom_dir
@@ -909,6 +578,7 @@ def run_depscan(args):
         perform_risk_audit = True
     html_file = os.path.join(reports_dir, "depscan.html")
     pdf_file = os.path.join(reports_dir, "depscan.pdf")
+    txt_file = os.path.join(reports_dir, "depscan.txt")
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
@@ -1160,7 +830,7 @@ def run_depscan(args):
                 sink_tags=depscan_options.get("sink_tags"),
             )
         # Summarise and print results
-        summary, vdr_file, pkg_vulnerabilities = vdr_analyze_summarize(
+        summary, vdr_file, vdr_result = vdr_analyze_summarize(
             project_type,
             results,
             suggest_mode=args.suggest,
@@ -1174,21 +844,21 @@ def run_depscan(args):
             fuzzy_search=depscan_options.get("fuzzy_search", False),
             search_order=depscan_options.get("search_order"),
         )
+        pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
         # Explain the results
-        # if args.explain:
-        # Explainer needs work
-        # explainer.explain(
-        #     project_type,
-        #     src_dir,
-        #     vdr_file,
-        #     pkg_vulnerabilities,
-        #     pkg_group_rows,
-        #     depscan_options
-        # )
+        if args.explain:
+            explainer.explain(
+                project_type,
+                src_dir,
+                args.bom_dir or reports_dir,
+                vdr_result,
+            )
+        else:
+            LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")
         # CSAF VEX export
         if args.csaf:
             export_csaf(
-                pkg_vulnerabilities,
+                vdr_result,
                 src_dir,
                 reports_dir,
                 bom_file,
@@ -1197,6 +867,7 @@ def run_depscan(args):
         html_file,
         theme=(MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME),
     )
+    console.save_text(txt_file)
     utils.export_pdf(html_file, pdf_file)
     # render report into template if wished
     if args.report_template and os.path.isfile(args.report_template):

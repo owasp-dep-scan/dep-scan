@@ -1989,30 +1989,3 @@ def get_all_lifecycle_pkgs(from_dir):
         setuid_executable_purls,
         setgid_executable_purls,
     )
-
-
-def trim_vdr_bom_data(bom_data):
-    components = bom_data.get("components")
-    if not components:
-        return bom_data
-    metadata = bom_data.get("metadata")
-    if metadata and metadata.get("properties"):
-        del metadata["properties"]
-        bom_data["metadata"] = metadata
-    new_components = []
-    for comp in components:
-        for p in (
-            "properties",
-            "signature",
-        ):
-            if comp.get(p):
-                del comp[p]
-        new_components.append(comp)
-    bom_data["components"] = new_components
-    for p in (
-        "annotations",
-        "signature",
-    ):
-        if bom_data.get(p):
-            del bom_data[p]
-    return bom_data

@@ -58,6 +58,9 @@ class VDRResult:
     prioritized_postbuild_vuln_trees: Optional[List[Dict]] = None
     prioritized_operations_vuln_trees: Optional[List[Dict]] = None
     prioritized_decommission_vuln_trees: Optional[List[Dict]] = None
+    reached_purls: Optional[Dict[str, int]] = None
+    reached_services: Optional[Dict[str, int]] = None
+    endpoint_reached_purls: Optional[Dict[str, int]] = None
 
 
 class Counts:

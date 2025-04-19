@@ -456,7 +456,7 @@ def output_priority_suggestions(
         )
     # We have prioritized list. Summarize and return.
     if pkg_group_rows:
-        return output_priority_table(
+        output_priority_table(
             pkg_group_rows,
             options,
             reached_purls,
@@ -467,6 +467,16 @@ def output_priority_suggestions(
             setgid_executable_purls,
             oci_props,
         )
+        if reached_purls or reached_services or endpoint_reached_purls:
+            rsection, rtable = reached_purls_table(
+                reached_purls, reached_services, endpoint_reached_purls
+            )
+            if rsection and rtable:
+                console.print(rsection)
+                console.print()
+                console.print(rtable)
+        return
+
     if options.scoped_pkgs or counts.has_exploit_count:
         rmessage = ""
         if not counts.pkg_attention_count and counts.has_exploit_count:
@@ -623,8 +633,10 @@ def output_priority_suggestions(
                 expand=False,
             )
         )
-    if reached_purls:
-        rsection, rtable = reached_purls_table(reached_purls)
+    if reached_purls or reached_services or endpoint_reached_purls:
+        rsection, rtable = reached_purls_table(
+            reached_purls, reached_services, endpoint_reached_purls
+        )
         if rsection and rtable:
             console.print(rsection)
             console.print(rtable)
@@ -830,9 +842,10 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
     return table
 
 
-def reached_purls_table(reached_purls):
+def reached_purls_table(reached_purls, reached_services, endpoint_reached_purls):
+    rpurls = endpoint_reached_purls or reached_purls
     sorted_reached_purls = sorted(
-        ((value, key) for (key, value) in reached_purls.items()),
+        ((value, key) for (key, value) in rpurls.items()),
         reverse=True,
     )[:3]
     sorted_reached_dict = OrderedDict((k, v) for v, k in sorted_reached_purls)
@@ -841,16 +854,17 @@ def reached_purls_table(reached_purls):
 Proactive Measures
 ------------------
 
-Below are the top reachable packages identified by depscan. Set up alerts and notifications to actively monitor these packages for new vulnerabilities and exploits.
+Below are the top reachable packages identified by depscan. Set up alerts and notifications to actively monitor them for new vulnerabilities and exploits.
     """,
         justify="left",
     )
     rtable = Table(
-        title="Top Reachable Packages",
+        title=":spider_web:  Top Endpoint Reachable Packages"
+        if endpoint_reached_purls
+        else "Top Reachable Packages",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
         show_lines=True,
-        min_width=150,
     )
     for h in ("Package", "Reachable Flows"):
         rtable.add_column(header=h, vertical="top")
