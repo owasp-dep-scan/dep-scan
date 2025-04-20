@@ -24,6 +24,18 @@ jobs:
           path: 'repotests/java-sec-code'
       - uses: actions/checkout@v4
         with:
+          repository: 'Nova-8/Damm-Vulnerable-dotNet-Application'
+          path: 'repotests/Damm-Vulnerable-dotNet-Application'
+      - uses: actions/checkout@v4
+        with:
+          repository: 'TheHackerDev/damn-vulnerable-golang'
+          path: 'repotests/damn-vulnerable-golang'
+      - uses: actions/checkout@v4
+        with:
+          repository: 'TheHackerDev/hardik05/Damn_Vulnerable_C_Program'
+          path: 'repotests/Damn_Vulnerable_C_Program'
+      - uses: actions/checkout@v4
+        with:
           repository: 'wix/greyhound'
           path: 'repotests/greyhound'
           ref: '385bb84a6f712ee18064a3b5ecb8d9dcbc1c75f3'
@@ -62,8 +74,26 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+      - name: repotests Damm-Vulnerable-dotNet-Application
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application1 ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application2
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application -t java --bom-engine CdxgenGenerator
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+      - name: repotests damn-vulnerable-golang
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang1 ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang2
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang -t java --bom-engine CdxgenGenerator
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+      - name: repotests Damn_Vulnerable_C_Program
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program1 ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program2
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program -t java --bom-engine CdxgenGenerator
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
         shell: bash
       - name: Set up JDK
         uses: actions/setup-java@v4
