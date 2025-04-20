@@ -1,7 +1,6 @@
-name: Repo tests
+name: Repo tests Beta
 
 on:
-  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -51,6 +50,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '23.x'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '3.1.x'
       - uses: sbt/setup-sbt@v1
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -76,24 +78,39 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+      # LifeCycleAnalyzer tests
+      - name: repotests java-sec-code
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code-lifecycle
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code\
+                          --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code-lifecycle\
+                          -t java\
+                          --vulnerability-analyzer LifecycleAnalyzer\
+                          --bom-engine auto
       - name: repotests Damm-Vulnerable-dotNet-Application
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application1 ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application2
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application -t dotnet --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application1 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application2 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application-lifecycle
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application\
+                          --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application\
+                          -t dotnet\
+                          --vulnerability-analyzer LifecycleAnalyzer\
+                          --bom-engine auto
       - name: repotests damn-vulnerable-golang
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang1 ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang2
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang -t go --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang1 --profile research -t go --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang2 --profile research -t go --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang-lifecycle
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang\
+                          --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang\
+                          -t go\
+                          --vulnerability-analyzer LifecycleAnalyzer\
+                          --bom-engine auto
       - name: repotests Damn_Vulnerable_C_Program
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program1 ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program2
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program -t c --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program1 --profile research -t c --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program2 --profile research -t c --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program-lifecycle
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damn_Vulnerable_C_Program\
+                          --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damn_Vulnerable_C_Program\
+                          -t c\
+                          --vulnerability-analyzer LifecycleAnalyzer\
+                          --bom-engine auto
         shell: bash
       - name: Set up JDK
         uses: actions/setup-java@v4
