@@ -95,11 +95,6 @@ class ArgumentParser(argparse.ArgumentParser):
         `argparse.ArgumentParser.parse_args` method."""
         default_args, sys_args = self.extract_args(args, namespace)
         config = sys_args.config
-
-        for key in ["config"]:
-            delattr(default_args, key)
-            delattr(sys_args, key)
-
         # These are the default arguments options updated by the command line
         if not config or not os.path.exists(config):
             return sys_args
@@ -115,5 +110,7 @@ class ArgumentParser(argparse.ArgumentParser):
         for key, value in toml_args.items():
             if key not in changed_args:
                 setattr(sys_args, key, value)
+                # Support both hyphen and underscore representations
+                setattr(sys_args, key.replace("-", "_"), value)
 
         return sys_args

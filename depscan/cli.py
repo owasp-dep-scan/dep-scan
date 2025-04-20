@@ -59,12 +59,9 @@ if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stderr.reconfigure(encoding="utf-8")
 
 LOGO = """
-██████╗ ███████╗██████╗ ███████╗ ██████╗ █████╗ ███╗   ██╗
-██╔══██╗██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗████╗  ██║
-██║  ██║█████╗  ██████╔╝███████╗██║     ███████║██╔██╗ ██║
-██║  ██║██╔══╝  ██╔═══╝ ╚════██║██║     ██╔══██║██║╚██╗██║
-██████╔╝███████╗██║     ███████║╚██████╗██║  ██║██║ ╚████║
-╚═════╝ ╚══════╝╚═╝     ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝
+  _|  _  ._   _  _  _. ._  
+ (_| (/_ |_) _> (_ (_| | | 
+         |
 """
 
 QUART_AVAILABLE = False
@@ -133,9 +130,11 @@ def vdr_analyze_summarize(
     reached_purls = {}
     reached_services = {}
     endpoint_reached_purls = {}
+    # Perform the reachability analysis first
     reach_result = get_reachability_impl(
         reachability_analyzer, reachability_options
     ).process()
+    # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
     if reach_result and reach_result.success:
         direct_purls = reach_result.direct_purls
         reached_purls = reach_result.reached_purls
@@ -458,7 +457,6 @@ def run_depscan(args):
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
     """
-    depscan_options = {**vars(args)}
     perform_risk_audit = args.risk_audit
     # declare variables that get initialized only conditionally
     (
@@ -471,9 +469,9 @@ def run_depscan(args):
         container_bom_file,
         operations_bom_file,
         pkg_list,
-        pkg_vulnerabilities,
-        pkg_group_rows,
-    ) = (None, None, None, None, None, None, None, None, None, None, None)
+        all_pkg_vulnerabilities,
+        all_pkg_group_rows,
+    ) = (None, None, None, None, None, None, None, None, None, [], {})
     if (
         os.getenv("CI")
         and not os.getenv("GITHUB_REPOSITORY", "").lower().startswith("owasp")
@@ -487,7 +485,16 @@ def run_depscan(args):
                 expand=False,
             )
         )
-    # Should we turn on the debug mode
+    # Should we be quiet
+    if args.quiet:
+        args.explain = False
+        LOG.disabled = True
+        args.enable_debug = False
+        os.environ["SCAN_DEBUG_MODE"] = "off"
+        os.environ["CDXGEN_DEBUG_MODE"] = "off"
+        console.quiet = True
+        args.no_vuln_table = True
+    # Should we enable debug
     if args.enable_debug:
         os.environ["SCAN_DEBUG_MODE"] = "debug"
         os.environ["CDXGEN_DEBUG_MODE"] = "debug"
@@ -504,7 +511,7 @@ def run_depscan(args):
         with contextlib.suppress(UnicodeEncodeError):
             print(LOGO)
     # Break early if the user prefers CPE-based searches
-    search_order = depscan_options.get("search_order")
+    search_order = args.search_order
     if search_order:
         if search_order.startswith("c") and not args.bom and not args.bom_dir:
             LOG.warning(
@@ -532,10 +539,29 @@ def run_depscan(args):
             src_dir = os.path.realpath(args.bom_dir)
         else:
             src_dir = os.getcwd()
-    reports_dir = os.path.realpath(args.reports_dir)
+    reports_dir = args.reports_dir
     # User has not provided an explicit reports_dir. Reuse the bom_dir
     if not reports_dir and args.bom_dir:
-        reports_dir = args.bom_dir
+        reports_dir = os.path.realpath(args.bom_dir)
+    # Are we running for a BOM directory
+    bom_dir_mode = args.bom_dir and os.path.exists(args.bom_dir)
+    # Are we running with a config file
+    config_file_mode = args.config and os.path.exists(args.config)
+    depscan_options = {**vars(args)}
+    depscan_options["src_dir"] = src_dir
+    depscan_options["reports_dir"] = reports_dir
+    # Is the user looking for semantic analysis?
+    # We can default to this when run against a BOM directory
+    if (
+        args.reachability_analyzer == "SemanticReachability" or bom_dir_mode
+    ) and args.vuln_analyzer != "LifecycleAnalyzer":
+        LOG.debug(
+            "Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis."
+        )
+        depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
+        args.vuln_analyzer = "LifecycleAnalyzer"
+        args.reachability_analyzer = "SemanticReachability"
+        depscan_options["reachability_analyzer"] = "SemanticReachability"
     # Should we download the latest vdb.
     if db_lib.needs_update(
         days=0,
@@ -577,9 +603,20 @@ def run_depscan(args):
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         perform_risk_audit = True
-    html_file = os.path.join(reports_dir, "depscan.html")
-    pdf_file = os.path.join(reports_dir, "depscan.pdf")
-    txt_file = os.path.join(reports_dir, "depscan.txt")
+    # Construct the various report files
+    html_report_file = depscan_options.get(
+        "html_report_file", os.path.join(reports_dir, "depscan.html")
+    )
+    pdf_report_file = depscan_options.get(
+        "pdf_report_file", os.path.join(reports_dir, "depscan.pdf")
+    )
+    txt_report_file = depscan_options.get(
+        "txt_report_file", os.path.join(reports_dir, "depscan.txt")
+    )
+    run_config_file = os.path.join(reports_dir, "depscan.toml.sample")
+    depscan_options["html_report_file"] = html_report_file
+    depscan_options["pdf_report_file"] = pdf_report_file
+    depscan_options["txt_report_file"] = txt_report_file
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
@@ -597,19 +634,34 @@ def run_depscan(args):
                 expand=False,
             )
         )
-    bom_dir_mode = args.bom_dir and os.path.exists(args.bom_dir)
+    # Let’s create a sample configuration file based on the CLI options used.
+    if not config_file_mode:
+        run_config = {**depscan_options}
+        del run_config["no_banner"]
+        write_toml(run_config_file, run_config, write_version=False)
+        LOG.debug(
+            f"Created a sample depscan config file at '{run_config_file}', based on this run."
+        )
+    # We have everything needed to start the composition analysis. There are many approaches to implementing an SCA tool.
+    # Our style of analysis is comparable to that of an intelligent Hubble telescope or a rover—examining the same subject through multiple optics, colors, and depths to gain a deeper understanding.
+    # We begin by iterating over the project types provided or assumed.
     for project_type in project_types_list:
         results = []
         vuln_analyzer = args.vuln_analyzer
         # Are we performing a lifecycle analysis
         if not args.search_purl and (
-            vuln_analyzer == "LifecycleAnalyzer"
-            or (vuln_analyzer == "auto" and bom_dir_mode)
+            vuln_analyzer == "LifecycleAnalyzer" or (vuln_analyzer == "auto")
         ):
-            LOG.info(
-                "Lifecycle-based vulnerability analyzer requested for project type '%s'. This might take a while ...",
-                project_type,
-            )
+            if args.reachability_analyzer == "SemanticReachability":
+                LOG.info(
+                    "Semantic Reachability analysis requested for project type '%s'. This might take a while ...",
+                    project_type,
+                )
+            else:
+                LOG.info(
+                    "Lifecycle-based vulnerability analysis requested for project type '%s'. This might take a while ...",
+                    project_type,
+                )
             prebuild_bom_file = os.path.join(
                 reports_dir, f"sbom-prebuild-{project_type}.cdx.json"
             )
@@ -625,13 +677,15 @@ def run_depscan(args):
             operations_bom_file = os.path.join(
                 reports_dir, f"sbom-operations-{project_type}.cdx.json"
             )
-            if depscan_options["vuln_analyzer"] == "auto":
+            if vuln_analyzer == "auto":
+                vuln_analyzer = "LifecycleAnalyzer"
                 depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
             # We need to set the following two values to make the rest of the code correctly use
             # the generated BOM files after lifecycle analysis
             depscan_options["lifecycle_analysis_mode"] = True
             if not args.bom_dir:
                 args.bom_dir = os.path.realpath(reports_dir)
+        # If the user opts out of lifecycle analysis, we need to maintain multiple SBOMs based on the project type.
         bom_file = os.path.join(reports_dir, f"sbom-{project_type}.cdx.json")
         risk_report_file = os.path.join(
             reports_dir, f"depscan-risk-{project_type}.json"
@@ -641,6 +695,18 @@ def run_depscan(args):
             bom_file = None
             creation_status = True
         # Are we scanning a bom file
+        ###################
+        # Note to students and researchers benchmarking depscan:
+        #   we’ve seen attempts to run depscan using SBOMs generated by tools like Syft, Trivy, etc.
+        # It’s important to understand that not all SBOMs contain the same level of detail.
+        # Component PURLs can differ slightly, especially in qualifiers.
+        #
+        # For container SBOMs, qualifiers like distro_name and distro_version are critical for accurate results.
+        # Tools like Syft and Trivy often include internal metadata—such as vendor IDs or fabricated CPE strings—to brute-force vulnerability matches.
+        # Because of these inconsistencies, it’s not possible to achieve identical results with depscan when using a non-cdxgen or non-blint SBOM.
+        # If in doubt, speak to us before benchmarking depscan. Don’t run depscan with default settings and expect magic.
+        # SCA and xBOM are complex domains that require understanding, configuration, and continuous learning.
+        ###################
         elif args.bom and os.path.exists(args.bom):
             bom_file = args.bom
             creation_status = True
@@ -649,6 +715,7 @@ def run_depscan(args):
             bom_file = None
             creation_status = True
         else:
+            # Create a bom for each project type
             creation_status = create_bom(
                 bom_file,
                 src_dir,
@@ -669,12 +736,14 @@ def run_depscan(args):
                 bom_file,
             )
             continue
+        # We have a BOM directory. Let’s aggregate all packages from every file within it.
         if args.bom_dir:
             LOG.debug(
                 "Collecting components from all the BOM files at %s",
                 args.bom_dir,
             )
             pkg_list = get_all_pkg_list(args.bom_dir)
+        # We are working with a single BOM file and will collect all packages from it accordingly.
         elif bom_file:
             LOG.debug("Scanning using the bom file %s", bom_file)
             if not args.bom:
@@ -689,7 +758,9 @@ def run_depscan(args):
                 "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
             )
             continue
+        # Depending on the SBOM tool used, there may be details about component usage and scopes. Let’s analyze and interpret that information.
         scoped_pkgs = get_pkgs_by_scope(pkg_list)
+        # Is the user interested in seeing license risks? Handle that first before any security-related analysis.
         if (
             os.getenv("FETCH_LICENSE", "") in (True, "1", "true")
             or "license" in args.profile
@@ -706,48 +777,44 @@ def run_depscan(args):
             )
             if ltable and not args.no_vuln_table:
                 console.print(ltable)
-        if project_type in risk_audit_map:
-            if perform_risk_audit:
-                if len(pkg_list) > 1:
-                    console.print(
-                        Panel(
-                            f"Performing OSS Risk Audit for packages from "
-                            f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
-                            f"[/bold]. This will take a while ...",
-                            title="OSS Risk Audit",
-                            expand=False,
-                        )
-                    )
-                try:
-                    risk_results = risk_audit(
-                        project_type,
-                        scoped_pkgs,
-                        args.private_ns,
-                        pkg_list,
-                    )
-                    rtable = pkg_risks_table(
-                        project_type,
-                        scoped_pkgs,
-                        risk_results,
-                        pkg_max_risk_score=pkg_max_risk_score,
-                        risk_report_file=risk_report_file,
-                    )
-                    if not args.no_vuln_table:
-                        console.print(rtable)
-                except Exception as e:
-                    LOG.error(e)
-                    LOG.error("Risk audit was not successful")
-            else:
+        # Do we support OSS risk audit for this type? If yes, proceed with the relevant checks.
+        if perform_risk_audit and project_type in risk_audit_map:
+            if len(pkg_list) > 1:
                 console.print(
                     Panel(
-                        "Depscan supports OSS Risk audit for this "
-                        "project.\nTo enable set the environment variable ["
-                        "bold]ENABLE_OSS_RISK=true[/bold]",
-                        title="Risk Audit Capability",
+                        f"Performing OSS Risk Audit for packages from "
+                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                        f"[/bold]. This will take a while ...",
+                        title="OSS Risk Audit",
                         expand=False,
                     )
                 )
-        if project_type in type_audit_map:
+            try:
+                risk_results = risk_audit(
+                    project_type,
+                    scoped_pkgs,
+                    args.private_ns,
+                    pkg_list,
+                )
+                rtable = pkg_risks_table(
+                    project_type,
+                    scoped_pkgs,
+                    risk_results,
+                    pkg_max_risk_score=pkg_max_risk_score,
+                    risk_report_file=risk_report_file,
+                )
+                if not args.no_vuln_table:
+                    console.print(rtable)
+            except Exception as e:
+                LOG.error(e)
+                LOG.error("Risk audit was not successful")
+        # Do we support remote audit for this type?
+        # Remote audits can improve results for some project types like npm by fetching vulnerabilities that might not yet be in our database.
+        # In v6, remote audit is disabled by default and gets enabled with risk audit
+        #
+        # NOTE: Enabling risk audit may lead to some precision loss in reachability results.
+        #   This is a known limitation with no immediate plan for resolution.
+        if perform_risk_audit and project_type in type_audit_map:
             LOG.debug(
                 "Performing remote audit for %s of type %s",
                 src_dir,
@@ -765,7 +832,7 @@ def run_depscan(args):
                 results = []
         # In case of docker, bom, or universal type, check if there are any
         # npm packages that can be audited remotely
-        if project_type in (
+        if perform_risk_audit and project_type in (
             "podman",
             "docker",
             "oci",
@@ -816,7 +883,15 @@ def run_depscan(args):
             LOG.debug("Scanning %d bom files for issues", len(bom_files))
         else:
             LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
+        # There are many ways to perform reachability analysis.
+        # Most tools—including commercial ones—rely on a vulnerability database with affected modules (sinks) to detect reachable flows.
+        # This has several downsides:
+        # 1. These databases are often incomplete and manually maintained.
+        # 2. If a CVE or ADP enhancement isn’t available yet, reachability won’t be detected.
         #
+        # In contrast, depscan computes reachable flows (via atom) without relying on vulnerability data upfront.
+        # It then identifies a smaller subset of those flows that are actually vulnerable.
+        # From there, we can further narrow it down to flows that are Endpoint-Reachable, Exploitable, Container-Escapable, etc.
         reachability_analyzer = depscan_options.get("reachability_analyzer")
         reachability_options = None
         if (
@@ -830,7 +905,7 @@ def run_depscan(args):
                 source_tags=depscan_options.get("source_tags"),
                 sink_tags=depscan_options.get("sink_tags"),
             )
-        # Summarise and print results
+        # Let’s proceed with the VDR analysis.
         summary, vdr_file, vdr_result = vdr_analyze_summarize(
             project_type,
             results,
@@ -845,7 +920,10 @@ def run_depscan(args):
             fuzzy_search=depscan_options.get("fuzzy_search", False),
             search_order=depscan_options.get("search_order"),
         )
-        pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
+        if vdr_result.pkg_vulnerabilities:
+            all_pkg_vulnerabilities += vdr_result.pkg_vulnerabilities
+        if vdr_result.prioritized_pkg_vuln_trees:
+            all_pkg_group_rows.update(vdr_result.prioritized_pkg_vuln_trees)
         # Explain the results
         if args.explain:
             explainer.explain(
@@ -867,23 +945,26 @@ def run_depscan(args):
                 bom_file,
             )
     console.record = True
+    # Export the console output
     console.save_html(
-        html_file,
+        html_report_file,
         clear=False,
         theme=(MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME),
     )
-    console.save_text(txt_file, clear=False)
-    utils.export_pdf(html_file, pdf_file)
+    console.save_text(txt_report_file, clear=False)
+    utils.export_pdf(html_report_file, pdf_report_file)
+    # This logic needs refactoring
     # render report into template if wished
     if args.report_template and os.path.isfile(args.report_template):
         utils.render_template_report(
             vdr_file=vdr_file,
             bom_file=bom_file,
-            pkg_vulnerabilities=pkg_vulnerabilities,
-            pkg_group_rows=pkg_group_rows,
+            pkg_vulnerabilities=all_pkg_vulnerabilities,
+            pkg_group_rows=all_pkg_group_rows,
             summary=summary,
             template_file=args.report_template,
             result_file=os.path.join(reports_dir, args.report_name),
+            depscan_options=depscan_options,
         )
     elif args.report_template:
         LOG.warning(

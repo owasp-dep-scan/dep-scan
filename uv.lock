@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "atom-tools"
-version = "0.7.5"
+version = "0.7.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cleo" },
@@ -148,9 +148,9 @@ dependencies = [
     { name = "json-flatten" },
     { name = "thefuzz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/4d/325f4e68589629402acd841a40ec0f074b3ee3d7354969fbc6f21568f733/atom_tools-0.7.5.tar.gz", hash = "sha256:6ba0f38e1113b889ce7905ef11ab1f19c8b714d6bcd6c794a3741adf78617a0e", size = 92895 }
+sdist = { url = "https://files.pythonhosted.org/packages/78/7c/a670eecc9bf2d1b16b78fc0847faf2d7bda55a983e3fe7ecb8174e5865aa/atom_tools-0.7.6.tar.gz", hash = "sha256:2b4fcab1cf71345bef77d281da9856d02f1c33c007a05e2080b3c037080229c9", size = 58146 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/49/9720ca371a1179f0026fb4b0fce393ff3690bbb610ebdef310bc3612f4bf/atom_tools-0.7.5-py3-none-any.whl", hash = "sha256:99ba04eecad292b83b117088662221b5939586166e3a1853d592f9046babf27f", size = 45650 },
+    { url = "https://files.pythonhosted.org/packages/6b/57/e7f0e47d14bc21baa7cecfe027d716f433aab1bb13e686c4631566ef0cc8/atom_tools-0.7.6-py3-none-any.whl", hash = "sha256:a7c54a617d513d4ab70f211511b38974cd0e3156aa54c1ba6a1525b69b2ff7b5", size = 45777 },
 ]
 
 [[package]]
@@ -1128,8 +1128,8 @@ server = [
 [package.metadata]
 requires-dist = [
     { name = "appthreat-vulnerability-db", extras = ["oras"], git = "https://github.com/appthreat/vulnerability-db?rev=ba88de9194bde83b23d31c2b48a72c60d0ca1944" },
-    { name = "atom-tools", marker = "extra == 'all'", specifier = ">=0.7.1" },
-    { name = "atom-tools", marker = "extra == 'ext'", specifier = ">=0.7.1" },
+    { name = "atom-tools", marker = "extra == 'all'", specifier = ">=0.7.6" },
+    { name = "atom-tools", marker = "extra == 'ext'", specifier = ">=0.7.6" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=25.1.0" },
     { name = "blint", marker = "extra == 'all'", git = "https://github.com/owasp-dep-scan/blint?rev=f03428d614baa4f90d01fa7737b32b93eeafbd07" },
     { name = "blint", marker = "extra == 'ext'", git = "https://github.com/owasp-dep-scan/blint?rev=f03428d614baa4f90d01fa7737b32b93eeafbd07" },

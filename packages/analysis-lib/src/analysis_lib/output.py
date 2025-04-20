@@ -328,7 +328,7 @@ def summarize_priority_actions(
     is_any_exploitable = False
     has_any_exploits = False
     is_any_reachable = False
-    for h in ("Package", "CVEs", "Fix Version", "Next Steps"):
+    for h in ("Package", "Prioritized CVEs", "Fix Version", "Next Steps"):
         utable.add_column(header=h, vertical="top", max_width=100)
     for k, v in matched_by_cves.items():
         next_step_analysis_obj = find_next_steps(
@@ -484,7 +484,7 @@ def output_priority_suggestions(
                 rmessage = (
                     f":point_right: [magenta]{counts.has_reachable_exploit_count}"
                     f"[/magenta] out of {len(pkg_vulnerabilities)} vulnerabilities "
-                    f"have [dark magenta]reachable[/dark magenta] exploits and requires your ["
+                    f"have [dark magenta]reachable[/dark magenta] exploits and require your ["
                     f"magenta]immediate[/magenta] attention."
                 )
             if not counts.has_os_packages:
@@ -494,11 +494,7 @@ def output_priority_suggestions(
                         "performed for this project."
                     )
             else:
-                rmessage += (
-                    "\n:scissors: Consider trimming this image by removing any "
-                    "unwanted packages. Alternatively, use a slim "
-                    "base image."
-                )
+                rmessage += "\n:scissors: Consider trimming this image by removing any unwanted packages, or use a slim base image instead."
                 if counts.distro_packages_count and counts.distro_packages_count < len(
                     pkg_vulnerabilities
                 ):
@@ -512,9 +508,9 @@ def output_priority_suggestions(
                             f"for updates."
                         )
                 if counts.has_redhat_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with status "out of support" or "won't fix" are excluded from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in RedHat packages with the status "out of support" or "won't fix" are excluded from the results."""
                 if counts.has_ubuntu_packages:
-                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with status "DNE" or "needs-triaging" are excluded from this result."""
+                    rmessage += """\nNOTE: Vulnerabilities in Ubuntu packages with the status "DNE" or "needs-triaging" are excluded from the results."""
             if rmessage:
                 console.print(
                     Panel(
@@ -604,9 +600,9 @@ def output_priority_suggestions(
             else:
                 rmessage = None
                 if reached_purls:
-                    rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are not reachable."
+                    rmessage = ":white_check_mark: No packages require immediate attention, as the major vulnerabilities are neither reachable nor exploitable."
                 elif direct_purls:
-                    rmessage = ":white_check_mark: No package requires immediate attention since the major vulnerabilities are found only in dev packages and indirect dependencies."
+                    rmessage = ":white_check_mark: No packages require immediate attention, as the major vulnerabilities are only present in dev packages and indirect dependencies."
                 if rmessage:
                     console.print(
                         Panel(

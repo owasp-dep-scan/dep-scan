@@ -162,6 +162,7 @@ options:
   --cdxgen-server CDXGEN_SERVER
                         cdxgen server url. Eg: http://cdxgen:9090
   --debug               Run depscan in debug mode.
+  -q, --quiet           Makes depscan quiet.
   --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
   -v, --version         Display the version
 ```

@@ -115,6 +115,8 @@ class VDRAnalyzer(XBOMAnalyzer):
             if not vuln_occ_dict:
                 continue
             if isinstance(vuln_occ_dict, VulnerabilityOccurrence):
+                # To reduce duplicates, this function is not enhanced to support the new analysis algorithms.
+                # This results in quality loss when working with VDB 5-style remote audit results.
                 counts, add_to_pkg_group_rows, vuln = process_vuln_occ(
                     bom_dependency_tree,
                     direct_purls,
@@ -127,6 +129,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                     counts,
                 )
             else:
+                # All our focus has gone into this particular method.
                 counts, vuln, add_to_pkg_group_rows, likely_false_positive = (
                     analyze_cve_vuln(
                         vuln_occ_dict,

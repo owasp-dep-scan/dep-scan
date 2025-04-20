@@ -54,9 +54,9 @@ dev = [
     "httpretty>=1.1.4"
 ]
 server = ["quart>=0.20.0"]
-ext = ["atom-tools>=0.7.1", "blint>=2.4.1"]
+ext = ["atom-tools>=0.7.6", "blint>=2.4.1"]
 perf = ["hishel[redis]>=0.1.1"]
-all = ["atom-tools>=0.7.1", "blint>=2.4.1", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
+all = ["atom-tools>=0.7.6", "blint>=2.4.1", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]

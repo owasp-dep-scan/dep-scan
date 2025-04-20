@@ -4,7 +4,22 @@ sidebar_position: 5
 
 # Reachability Analysis
 
-depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slices. Simply invoke depscan with the `research` profile and language type to enable this feature.
+depscan can perform reachability analysis for Java, JavaScript, TypeScript, and Python with built-in support for parsing [atom](https://github.com/AppThreat/atom) reachables slices.
+
+## Our approach
+
+There are many ways to perform reachability analysis. Most tools—including commercial ones—rely on a vulnerability database with affected modules (sinks) to detect reachable flows.
+
+This has several downsides:
+
+1. These databases are often incomplete and manually maintained.
+2. If a CVE or ADP enhancement isn’t available yet, reachability won’t be detected.
+
+In contrast, depscan computes reachable flows (via atom) without relying on vulnerability data upfront. It then identifies a smaller subset of those flows that are actually vulnerable. From there, we can further narrow it down to flows that are Endpoint-Reachable, Exploitable, Container-Escapable, etc.
+
+## Getting started
+
+Simply invoke depscan with the `research` profile and language type to enable this feature.
 
 To receive a verbose output including the reachable flows, pass the argument `--explain`
 
@@ -44,6 +59,24 @@ depscan supports two different reachability analyzers with `FrameworkReachabilit
 - **SemanticReachability**: The Semantic Reachability algorithm builds on Framework-Forward Reachability by incorporating endpoint and service information to better prioritize vulnerabilities.
 
 Pass the argument `--reachability-analyzer SemanticReachability` to use the Semantic Reachability analyzer.
+
+### Example semantic reachability analysis for a Java project
+
+```shell
+depscan --profile research -t java -i <source directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+```
+
+### Example semantic reachability analysis for a JavaScript project
+
+```shell
+depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+```
+
+### Example semantic reachability analysis for an existing BOM directory
+
+```shell
+depscan --profile research --bom-dir <bom directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+```
 
 ## Explainability
 
