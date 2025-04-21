@@ -1,4 +1,4 @@
-name: Repo tests Beta
+name: Repo tests CPP
 
 on:
   workflow_dispatch:

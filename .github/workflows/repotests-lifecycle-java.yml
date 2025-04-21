@@ -1,4 +1,4 @@
-name: Repo tests Beta
+name: Repo tests Java
 
 on:
   workflow_dispatch:

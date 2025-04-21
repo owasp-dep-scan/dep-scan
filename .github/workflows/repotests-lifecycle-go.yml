@@ -1,4 +1,4 @@
-name: Repo tests Go
+name: Repo tests Golang
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Repo tests Beta
+name: Repo tests Dotnet
 
 on:
   workflow_dispatch:
