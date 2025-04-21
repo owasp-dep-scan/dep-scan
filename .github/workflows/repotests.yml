@@ -68,6 +68,7 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
@@ -77,6 +78,7 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
@@ -89,6 +91,7 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/greyhound
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/greyhound --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
