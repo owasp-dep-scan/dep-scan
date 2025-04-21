@@ -270,6 +270,7 @@ def render_template_report(
     summary,
     template_file,
     result_file,
+    depscan_options={},
 ):
     """
     Render the given vdr_file (falling back to bom_file if no vdr was written)

@@ -257,7 +257,16 @@ def build_parser():
         dest="enable_debug",
         help="Run depscan in debug mode.",
     )
-    parser.add_argument(
+    output_group = parser.add_mutually_exclusive_group(required=False)
+    output_group.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        default=False,
+        dest="quiet",
+        help="Makes depscan quiet.",
+    )
+    output_group.add_argument(
         "--explain",
         action="store_true",
         default=False,

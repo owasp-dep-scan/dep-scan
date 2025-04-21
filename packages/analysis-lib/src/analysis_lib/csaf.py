@@ -505,7 +505,7 @@ def import_csaf_toml(toml_file_path):
     return toml_compatibility(toml_data)
 
 
-def write_toml(toml_file_path, metadata=None):
+def write_toml(toml_file_path, metadata=None, write_version=True):
     """
     Writes the toml data out to file. If no toml data is provided, a toml is
     generated based on the default template.
@@ -514,6 +514,8 @@ def write_toml(toml_file_path, metadata=None):
     :type toml_file_path: str
     :param metadata: A dictionary containing the TOML metadata.
     :type metadata: dict
+    :param write_version: Include the depscan version
+    :type write_version: bool
 
     """
     if not metadata:
@@ -584,7 +586,7 @@ def import_root_component(bom_file):
     bom = json_load(bom_file)
     refs = []
     product_tree = {}
-    if component := bom["metadata"].get("component"):
+    if component := bom.get("metadata", {}).get("component"):
         product_tree = {
             "full_product_names": [
                 {

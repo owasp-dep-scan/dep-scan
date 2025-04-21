@@ -54,9 +54,9 @@ dev = [
     "httpretty>=1.1.4"
 ]
 server = ["quart>=0.20.0"]
-ext = ["atom-tools>=0.7.1", "blint>=2.4.1"]
+ext = ["atom-tools>=0.7.6", "blint>=2.4.1"]
 perf = ["hishel[redis]>=0.1.1"]
-all = ["atom-tools>=0.7.1", "blint>=2.4.1", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
+all = ["atom-tools>=0.7.6", "blint>=2.4.1", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -85,7 +85,7 @@ line-length = 99
 
 [tool.uv.sources]
 appthreat-vulnerability-db = { git = "https://github.com/appthreat/vulnerability-db", rev = "ba88de9194bde83b23d31c2b48a72c60d0ca1944" }
-blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "f03428d614baa4f90d01fa7737b32b93eeafbd07" }
+blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "ed9bbc166fe3db38c6af458fa437e152c1829444" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 

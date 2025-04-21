@@ -324,12 +324,13 @@ def create_blint_bom(
             LOG.info(
                 "The blint invocation was unsuccessful. Try generating the BOM separately."
             )
+        # Empty SBOM is fine if there are no binaries in the project.
         elif bom_result.bom_obj and isinstance(bom_result.bom_obj, CycloneDX):
             if (
                 not bom_result.bom_obj.components
                 and not bom_result.bom_obj.dependencies
             ):
-                LOG.info("Empty SBOM received from blint.")
+                LOG.debug("Empty SBOM received from blint.")
         return bom_result.success and os.path.exists(bom_file)
 
 

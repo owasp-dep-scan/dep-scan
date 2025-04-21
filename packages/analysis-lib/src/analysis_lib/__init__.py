@@ -128,13 +128,13 @@ class ReachabilityAnalysisKV:
             )
         # collect the openapi spec files
         if not self.openapi_spec_files:
-            if self.src_dir:
-                self.openapi_spec_files = glob.glob(
-                    f"{self.src_dir}/*openapi*.json", recursive=False
-                )
-            elif self.bom_dir:
+            if self.bom_dir:
                 self.openapi_spec_files = glob.glob(
                     f"{self.bom_dir}/*openapi*.json", recursive=False
+                )
+            elif self.src_dir:
+                self.openapi_spec_files = glob.glob(
+                    f"{self.src_dir}/*openapi*.json", recursive=False
                 )
 
 

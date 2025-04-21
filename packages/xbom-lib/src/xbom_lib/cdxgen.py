@@ -12,17 +12,26 @@ import httpx
 
 from xbom_lib import BOMResult, XBOMGenerator
 
-headers = {
+cdxgen_server_headers = {
     "Content-Type": "application/json",
     "Accept-Encoding": "gzip",
 }
 
-
+# version of cdxgen to use
 CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "latest")
+
+# cdxgen default image to use
 DEFAULT_IMAGE_NAME = (
     "default-secure"
     if os.getenv("CDXGEN_SECURE_MODE", "") in ("true", "1")
     else "default"
+)
+
+# cdxgen official image namespaces
+OFFICIAL_IMAGE_NAMESPACES = (
+    "ghcr.io/cyclonedx/",
+    "ghcr.io/appthreat/",
+    "ghcr.io/owasp-dep-scan/",
 )
 
 PROJECT_TYPE_IMAGE = {
@@ -66,15 +75,24 @@ def get_env_options_value(options: Dict, k: str, default: Optional[str] = None) 
 
 
 def get_image_for_type(options: Dict, project_type: str | list | None) -> str:
-    # For multiple project types, prefer the default all-in-one image
-    if not project_type or (isinstance(project_type, list) and len(project_type) > 1):
-        return PROJECT_TYPE_IMAGE[DEFAULT_IMAGE_NAME]
-    ptype = project_type[0]
+    if not project_type:
+        return DEFAULT_IMAGE_NAME
+    project_types: list[str] = (
+        project_type if isinstance(project_type, list) else [project_type]
+    )
+    ptype = project_types[0] if len(project_types) == 1 else DEFAULT_IMAGE_NAME
+    default_img = PROJECT_TYPE_IMAGE.get(ptype, PROJECT_TYPE_IMAGE[DEFAULT_IMAGE_NAME])
     return get_env_options_value(
         options,
         f"cdxgen_image_{ptype}",
-        PROJECT_TYPE_IMAGE.get(ptype) or PROJECT_TYPE_IMAGE.get(DEFAULT_IMAGE_NAME),
+        default_img,
     )
+
+
+def needs_latest_image(image_name):
+    return any(
+        image_name.startswith(ns) for ns in OFFICIAL_IMAGE_NAMESPACES
+    ) or image_name.endswith((":latest", ":master", ":main", ":v11"))
 
 
 def resource_path(relative_path):
@@ -228,7 +246,13 @@ class CdxgenGenerator(XBOMGenerator):
             args.append(options.get("profile", ""))
             set_slices_args(project_type_list, args, os.path.dirname(self.bom_file))
             if options.get("profile") not in ("generic",):
-                env["FETCH_LICENSE"] = "true"
+                # This would help create openapi spec file inside the reports directory
+                env["ATOM_TOOLS_WORK_DIR"] = os.path.realpath(
+                    os.path.dirname(self.bom_file)
+                )
+                env["ATOM_TOOLS_OPENAPI_FILENAME"] = (
+                    f"{project_type_list[0]}-openapi.json"
+                )
         if options.get("cdxgen_args"):
             args += shlex.split(options.get("cdxgen_args", ""))
         if len(lifecycles) == 1:
@@ -302,7 +326,7 @@ class CdxgenServerGenerator(CdxgenGenerator):
                         "type": ",".join(project_type_list),
                         "multiProject": options.get("multiProject", ""),
                     },
-                    headers=headers,
+                    headers=cdxgen_server_headers,
                 )
                 if r.status_code == httpx.codes.OK:
                     try:
@@ -371,7 +395,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             app_input_dir,
         ]
         output_file = os.path.basename(self.bom_file)
-        output_dir = os.path.dirname(self.bom_file)
+        output_dir = os.path.realpath(os.path.dirname(self.bom_file))
         # Setup environment variables
         for k, _ in os.environ.items():
             if (
@@ -382,10 +406,13 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
                 run_command_args += ["-e", k]
         # Enabling license fetch will improve metadata such as tags and description
         # These will help with semantic reachability analysis
-        if self.options.get("profile") not in ("generic",) and not os.getenv(
-            "FETCH_LICENSE"
-        ):
-            run_command_args += ["-e", "FETCH_LICENSE=true"]
+        if self.options.get("profile") not in ("generic",):
+            # This would help create openapi spec file inside the reports directory
+            run_command_args += ["-e", f"ATOM_TOOLS_WORK_DIR={image_output_dir}"]
+            run_command_args += [
+                "-e",
+                f"ATOM_TOOLS_OPENAPI_FILENAME={project_type_list[0]}-openapi.json",
+            ]
         run_command_args += ["-e", "CDXGEN_IN_CONTAINER=true"]
         # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
         run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
@@ -400,11 +427,17 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         # Setup volume mounts
         # Mount source directory as /app
         if os.path.isdir(self.source_dir):
-            run_command_args += ["-v", f"{self.source_dir}:{app_input_dir}:rw"]
+            run_command_args += [
+                "-v",
+                f"{os.path.realpath(self.source_dir)}:{app_input_dir}:rw",
+            ]
         else:
             run_command_args.append(self.source_dir)
         run_command_args += ["-v", f"{self.cdxgen_temp_dir}:/tmp:rw"]
-        run_command_args += ["-v", f"{output_dir}:{image_output_dir}:rw"]
+        run_command_args += [
+            "-v",
+            f"{output_dir}:{image_output_dir}:rw",
+        ]
         # Mount the home directory as /root. Can be used for performance reasons.
         if self.options.get("insecure_mount_home"):
             run_command_args += ["-v", f"""{os.path.expanduser("~")}:/root:r"""]
@@ -441,11 +474,13 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
                 command_output=f"{container_command} command not found. Pass `--bom-engine CdxgenGenerator` to force depscan to use the local cdxgen CLI.",
             )
         image_name, run_command_args = self._container_run_cmd()
-        if self.logger:
-            self.logger.debug(f"Pulling the image {image_name}")
-        exec_tool(
-            [container_command, "pull", "--quiet", image_name], logger=self.logger
-        )
+        # Should we pull the most recent image
+        if needs_latest_image(image_name):
+            if self.logger:
+                self.logger.debug(f"Pulling the image {image_name}")
+            exec_tool(
+                [container_command, "pull", "--quiet", image_name], logger=self.logger
+            )
         if self.logger:
             self.logger.debug(f"Executing {' '.join(run_command_args)}")
         bom_result = exec_tool(

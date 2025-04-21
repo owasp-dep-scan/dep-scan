@@ -32,7 +32,10 @@ class BlintGenerator(XBOMGenerator):
         src_dir = self.source_dir
         bom_file = self.bom_file
         temp_reports_dir = tempfile.mkdtemp(
-            prefix="blint-reports-", dir=os.getenv("DEPSCAN_TEMP_DIR")
+            prefix="blint-reports-",
+            dir=os.getenv("DEPSCAN_TEMP_DIR")
+            or os.getenv("RUNNER_TEMP")
+            or os.getenv("AGENT_TEMPDIRECTORY"),
         )
         os.environ["BLINT_TEMP_DIR"] = temp_reports_dir
         blint_options = BlintOptions(

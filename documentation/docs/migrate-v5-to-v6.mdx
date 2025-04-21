@@ -27,3 +27,7 @@ dep-scan repo uses `uv` for building and packaging.
 - BOMs created by depscan now use the new `.cdx.json` extension with the sbom-project_type prefix. Example: sbom-java.cdx.json, sbom-docker.cdx.json.
 - When invoked with the --bom-dir argument containing multiple BOM files or when using the new lifecycle analyzer, a single VDR file named `depscan-universal.vdr.json` is created under the reports directory.
 - The JSON Lines file `depscan.json` is no longer created.
+
+## Remote audit
+
+In v6, remote audit (e.g., for the nodejs project type) is disabled by default. To include remote audit results, invoke depscan with `--risk-audit` or set the environment variable `ENABLE_OSS_RISK=true`.

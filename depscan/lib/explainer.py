@@ -20,7 +20,9 @@ def explain(project_type, src_dir, bom_dir, vdr_result):
     """
     pattern_methods = {}
     slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices.json", recursive=True)
-    openapi_spec_files = glob.glob(f"{src_dir}/*openapi*.json", recursive=False)
+    openapi_spec_files = glob.glob(f"{bom_dir}/*openapi*.json", recursive=False)
+    if not openapi_spec_files:
+        openapi_spec_files = glob.glob(f"{src_dir}/*openapi*.json", recursive=False)
     if openapi_spec_files:
         rsection = Markdown("""## Service Endpoints
 
@@ -68,11 +70,13 @@ def print_endpoints(ospec):
     for pattern, path_obj in paths.items():
         usage_targets = set()
         for k, v in path_obj.items():
+            if k == "parameters":
+                continue
             # Java, JavaScript, Python etc
             if k == "x-atom-usages":
                 _track_usage_targets(usage_targets, v)
                 continue
-            if v.get("x-atom-usages"):
+            if isinstance(v, dict) and v.get("x-atom-usages"):
                 _track_usage_targets(usage_targets, v.get("x-atom-usages"))
             pattern_methods[pattern].append(k)
         pattern_usage_targets[pattern] = usage_targets
@@ -224,10 +228,10 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
             source_sink_desc = f"{source_sink_desc} can be used to reach this package."
     else:
         if is_endpoint_reachable:
-            source_sink_desc = f"{source_sink_desc} It can be used to reach {len(purls)} packages from certain endpoints."
+            source_sink_desc = f"{source_sink_desc} can be used to reach {len(purls)} packages from certain endpoints."
         else:
             source_sink_desc = (
-                f"{source_sink_desc} It can be used to reach {len(purls)} packages."
+                f"{source_sink_desc} can be used to reach {len(purls)} packages."
             )
     return source_sink_desc
 
