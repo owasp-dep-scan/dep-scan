@@ -553,15 +553,13 @@ def run_depscan(args):
     # Is the user looking for semantic analysis?
     # We can default to this when run against a BOM directory
     if (
-        args.reachability_analyzer == "SemanticReachability" or bom_dir_mode
+        args.reachability_analyzer == "SemanticReachability"
     ) and args.vuln_analyzer != "LifecycleAnalyzer":
         LOG.debug(
             "Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis."
         )
         depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
-        args.reachability_analyzer = "SemanticReachability"
-        depscan_options["reachability_analyzer"] = "SemanticReachability"
     # Should we download the latest vdb.
     if db_lib.needs_update(
         days=0,
@@ -650,7 +648,8 @@ def run_depscan(args):
         vuln_analyzer = args.vuln_analyzer
         # Are we performing a lifecycle analysis
         if not args.search_purl and (
-            vuln_analyzer == "LifecycleAnalyzer" or (vuln_analyzer == "auto")
+            vuln_analyzer == "LifecycleAnalyzer"
+            or (vuln_analyzer == "auto" and bom_dir_mode)
         ):
             if args.reachability_analyzer == "SemanticReachability":
                 LOG.info(
