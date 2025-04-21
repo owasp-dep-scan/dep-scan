@@ -1,0 +1,51 @@
+name: Repo tests Go
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+  os-repo-tests:
+    strategy:
+      fail-fast: true
+      matrix:
+      # TODO: Restore all the OS and python versions
+        os: ['ubuntu-24.04']
+        python-version: ['3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: 'TheHackerDev/damn-vulnerable-golang'
+          path: 'repotests/damn-vulnerable-golang'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23.x'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install depscan
+        run: |
+          python -m pip install --upgrade pip
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cyclonedx/cdxgen
+      # LifeCycleAnalyzer tests
+      - name: lifecycle-test damn-vulnerable-golang
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang-lifecycle
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang\
+                          --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang\
+                          -t go\
+                          --vulnerability-analyzer LifecycleAnalyzer
+        shell: bash

@@ -1,0 +1,54 @@
+name: Repo tests Beta
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.head_ref || github.run_id }}"
+  cancel-in-progress: true
+
+jobs:
+  os-repo-tests:
+    strategy:
+      fail-fast: true
+      matrix:
+      # TODO: Restore all the OS and python versions
+        os: ['ubuntu-24.04']
+        python-version: ['3.13']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: 'microsoft/Attestation-Client-Samples'
+          path: 'repotests/attestation-client-samples'
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23.x'
+      - name: Setup Cpp
+        uses: aminya/setup-cpp@v1
+        with:
+          compiler: llvm
+          cmake: true
+          vcpkg: true
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install depscan
+        run: |
+          python -m pip install --upgrade pip
+          uv sync --all-extras --all-packages --dev
+          npm install -g @cyclonedx/cdxgen
+      # LifeCycleAnalyzer tests
+      - name: lifecycle-test attestation-client-samples
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/attestation-client-samples
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/attestation-client-samples\
+                          --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/attestation-client-samples\
+                          -t cpp\
+                          --vulnerability-analyzer LifecycleAnalyzer
+        shell: bash
