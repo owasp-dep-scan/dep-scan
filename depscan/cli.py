@@ -942,7 +942,7 @@ def run_depscan(args):
                 vdr_result,
                 src_dir,
                 reports_dir,
-                bom_file,
+                vdr_file,
             )
     console.record = True
     # Export the console output
