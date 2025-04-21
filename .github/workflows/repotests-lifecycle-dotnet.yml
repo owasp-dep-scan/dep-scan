@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: 'Nova-8/Damm-Vulnerable-dotNet-Application'
-          path: 'repotests/Damm-Vulnerable-dotNet-Application''
+          path: 'repotests/Damm-Vulnerable-dotNet-Application'
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
