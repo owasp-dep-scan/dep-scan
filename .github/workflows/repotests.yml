@@ -78,7 +78,7 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports ${BLINTDB_HOME}
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
