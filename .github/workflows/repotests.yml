@@ -31,6 +31,10 @@ jobs:
         with:
           repository: 'HooliCorp/vulnerable-aws-koa-app'
           path: 'repotests/vulnerable-aws-koa-app'
+      - uses: actions/checkout@v4
+        with:
+          repository: 'microsoft/dotnet-podcasts'
+          path: 'repotests/dotnet-podcasts'
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
@@ -57,6 +61,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.x'
       - name: Install depscan
         run: |
           python -m pip install --upgrade pip
@@ -69,6 +76,15 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
+        env:
+          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+      - name: repotests dotnet-podcasts
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts -t dotnet --bom-engine CdxgenGenerator
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
