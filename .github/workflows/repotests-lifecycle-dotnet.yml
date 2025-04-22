@@ -48,6 +48,7 @@ jobs:
       - name: lifecycle-test Damm-Vulnerable-dotNet-Application
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application-lifecycle
+          dotnet build ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application/WebGoat.NET.sln
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application\
                           --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application\
                           -t dotnet\

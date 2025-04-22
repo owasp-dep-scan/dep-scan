@@ -87,6 +87,9 @@ jobs:
       - name: repotests dotnet-podcasts
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2
+          dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/NetPodcast.Services.sln
+          dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/NetPodcast.sln
+          dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/Podcast.Web.sln
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts -t dotnet --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
@@ -100,7 +103,7 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports ${BLINTDB_HOME}
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home

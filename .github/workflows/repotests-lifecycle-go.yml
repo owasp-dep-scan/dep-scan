@@ -48,6 +48,9 @@ jobs:
       - name: lifecycle-test damn-vulnerable-golang
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang-lifecycle
+          cd ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang-lifecycle
+          go build main.go
+          cd ${GITHUB_WORKSPACE}
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang\
                           --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang\
                           -t go\
