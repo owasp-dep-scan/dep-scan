@@ -59,8 +59,8 @@ if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stderr.reconfigure(encoding="utf-8")
 
 LOGO = """
-  _|  _  ._   _  _  _. ._  
- (_| (/_ |_) _> (_ (_| | | 
+  _|  _  ._   _  _  _. ._
+ (_| (/_ |_) _> (_ (_| | |
          |
 """
 
@@ -670,6 +670,8 @@ def run_depscan(args):
             postbuild_bom_file = os.path.join(
                 reports_dir, f"sbom-postbuild-{project_type}.cdx.json"
             )
+            # We support only one container SBOM per project.
+            # Projects that rely on docker compose and multiple services require some thinking
             container_bom_file = os.path.join(
                 reports_dir, f"sbom-container-{project_type}.cdx.json"
             )

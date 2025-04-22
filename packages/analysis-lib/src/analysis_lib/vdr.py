@@ -101,9 +101,12 @@ class VDRAnalyzer(XBOMAnalyzer):
                 prebuild_purls, build_purls, postbuild_purls, optional_pkgs
             )
         # Retrieve any dependency tree from the SBOM
+        # This logic could be improved to retrieve multiple matching dependency trees
         bom_dependency_tree = retrieve_bom_dependency_tree(
             options.bom_file, options.bom_dir
         )
+        # OCI properties will give us information about the container layer
+        # Can we do anything clever with this information?
         oci_props = retrieve_oci_properties(options.bom_file, options.bom_dir)
         oci_product_types = oci_props.get("oci:image:componentTypes", "")
         counts = Counts()

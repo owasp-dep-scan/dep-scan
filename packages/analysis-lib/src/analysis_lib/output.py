@@ -124,12 +124,14 @@ def generate_console_output(
     options: VdrAnalysisKV,
 ):
     table_rows = []
+    purl_fixed_location = {}
     table = Table(
         title=f"Dependency Scan Results ({options.project_type.upper()})",
         box=box.DOUBLE_EDGE,
         header_style="bold magenta",
-        show_lines=True,
+        show_lines=False,
         min_width=150,
+        caption=f"Vulnerabilities count: {len(pkg_vulnerabilities)}",
     )
     for h in [
         "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
@@ -158,13 +160,15 @@ def generate_console_output(
             )
         if rating := vdr.get("ratings", {}):
             rating = rating[0]
+        if not purl_fixed_location.get(vdr["purl_prefix"]) and vdr["fixed_location"]:
+            purl_fixed_location[vdr["purl_prefix"]] = vdr["fixed_location"]
         table_rows.append(
             [
                 vdr["id"],
                 vdr["purl_prefix"],
                 vdr["p_rich_tree"],
-                "\n".join(vdr["insights"]),
-                vdr["fixed_location"],
+                vdr["insights"],
+                vdr["fixed_location"] or purl_fixed_location.get(vdr["purl_prefix"]),
                 f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}""",
                 f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
             ]
@@ -172,18 +176,40 @@ def generate_console_output(
     # Attempt to group the packages before output
     grouped_purls = defaultdict(list)
     cve_rows = {}
+    # We can dim certain unimportant rows
+    dimmable_severities = ("LOW",) if not pkg_group_rows else ("LOW", "MEDIUM")
     for arow in table_rows:
         grouped_purls[arow[1]].append(arow[0])
-        cve_rows[arow[0]] = [arow[2], arow[3], arow[4], arow[5], arow[6]]
+        cve_rows[arow[0]] = [
+            arow[2],
+            arow[3],
+            arow[4] or purl_fixed_location.get(arow[1]),
+            arow[5],
+            arow[6],
+        ]
     # sort based on cve in descending order
     for purl in grouped_purls:
         grouped_purls[purl].sort(reverse=True)
     # sort the purls
     sorted_purls = sorted(grouped_purls.keys())
     for purl in sorted_purls:
-        for cve in grouped_purls[purl]:
+        for i, cve in enumerate(grouped_purls[purl]):
             arow = cve_rows[cve]
-            table.add_row(arow[0], arow[1], arow[2], arow[3], arow[4])
+            # Reduce insights repetition
+            insights = arow[1] if len(arow[1]) > 1 or i == 0 else []
+            table.add_row(
+                arow[0],
+                "\n".join(insights),
+                f"[bold]{arow[2] or ''}[/bold]"
+                if i == 0
+                else "",  # Reduce fix version repetition
+                arow[3],
+                arow[4],
+                end_section=(i == len(grouped_purls[purl]) - 1),
+                style=Style(dim=True)
+                if not arow[1] or arow[3] in dimmable_severities
+                else None,
+            )
     return pkg_group_rows, table
 
 
@@ -364,7 +390,7 @@ def summarize_priority_actions(
         utable.add_row(
             k,
             "\n".join(sorted(v, reverse=True)),
-            matched_by_fixes.get(k),
+            f"[bold]{matched_by_fixes.get(k) or ''}[/bold]",
             next_step_analysis_obj["next_step_str"],
         )
     return utable
