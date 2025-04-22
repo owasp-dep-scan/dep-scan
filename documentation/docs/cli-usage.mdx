@@ -90,6 +90,7 @@ options:
   --cdxgen-server CDXGEN_SERVER
                         cdxgen server url. Eg: http://cdxgen:9090
   --debug               Run depscan in debug mode.
+  -q, --quiet           Makes depscan quiet.
   --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
   -v, --version         Display the version
 ```
@@ -165,6 +166,10 @@ depscan allows you to customize the BOM generator engine. The supported values a
     pip install owasp-depscan[all]
     ```
 
+### Customize cdxgen container image
+
+Container images used by `CdxgenImageBasedGenerator` can be customized using environment variables prefixed with CDXGEN*IMAGE*. For example, to use a custom cdxgen image for Java, set the environment variable `CDXGEN_IMAGE_JAVA`.
+
 ## Specify the Vulnerability Analyzer
 
 depscan supports customizing the vulnerability analyzer engine. The supported values are: `auto`, `VDRAnalyzer`, and `LifecycleAnalyzer`.
@@ -174,3 +179,7 @@ depscan supports customizing the vulnerability analyzer engine. The supported va
 - **LifecycleAnalyzer**: Optimized for analyzing multiple phases of a BOM lifecycle—such as pre-build, build, post-build, and operations—to support better prioritization.
 
 The `LifecycleAnalyzer` works by repeatedly invoking cdxgen (for pre-build, build, and container phases) and blint (for post-build) to generate multiple SBOMs. With this rich context, depscan can suppress more false positives and more accurately identify high-priority CVEs. Use the environment variable `DEPSCAN_SOURCE_IMAGE` to specify the image for container SBOM generation.
+
+## Configuration File support
+
+You can pass CLI options to depscan using a configuration file with the `--config` argument. By default, depscan looks for `.config/depscan.toml` in the current directory. A sample file named `depscan.toml.sample` is also generated in the reports directory (Specified via `--reports-dir`). Customize this file as needed and copy it to the `.config` directory to run depscan without specifying arguments each time.

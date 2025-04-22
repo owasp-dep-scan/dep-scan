@@ -106,7 +106,7 @@ class SemanticReachability(FrameworkReachability):
                         if k == "x-atom-usages":
                             self._track_usage_targets(usage_targets, v)
                         # Ruby, Scala etc
-                        if v.get("x-atom-usages"):
+                        if isinstance(v, dict) and v.get("x-atom-usages"):
                             self._track_usage_targets(
                                 usage_targets, v.get("x-atom-usages")
                             )

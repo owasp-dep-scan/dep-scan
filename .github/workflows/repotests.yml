@@ -27,6 +27,10 @@ jobs:
           repository: 'wix/greyhound'
           path: 'repotests/greyhound'
           ref: '385bb84a6f712ee18064a3b5ecb8d9dcbc1c75f3'
+      - uses: actions/checkout@v4
+        with:
+          repository: 'HooliCorp/vulnerable-aws-koa-app'
+          path: 'repotests/vulnerable-aws-koa-app'
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
@@ -64,7 +68,20 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
+        env:
+          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+      - name: repotests vulnerable-aws-koa-app
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports ${BLINTDB_HOME}
+        shell: bash
+        env:
+          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
@@ -74,4 +91,7 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/greyhound
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/greyhound --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
+        env:
+          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
