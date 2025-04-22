@@ -33,7 +33,6 @@ echo "Listing 100 largest packages"
 dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n | tail -n 100
 df -h
 echo "Removing large packages"
-sudo apt-get remove -y '^dotnet-.*'
 sudo apt-get remove -y '^llvm-.*'
 sudo apt-get remove -y 'php.*'
 sudo apt-get remove -y '^mongodb-.*'
@@ -44,10 +43,8 @@ sudo apt-get clean
 df -h
 echo "Removing large directories"
 
-sudo rm -rf /usr/share/dotnet/
 sudo rm -rf /usr/local/graalvm/
 sudo rm -rf /usr/local/.ghcup/
 sudo rm -rf /usr/local/share/powershell
 sudo rm -rf /usr/local/share/chromium
-sudo rm -rf /usr/local/lib/android
 df -h

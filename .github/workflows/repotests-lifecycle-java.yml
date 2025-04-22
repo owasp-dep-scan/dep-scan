@@ -30,6 +30,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '23.x'
+      - name: Trim CI agent
+        run: |
+          chmod +x contrib/free_disk_space.sh
+          ./contrib/free_disk_space.sh
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Setup Python

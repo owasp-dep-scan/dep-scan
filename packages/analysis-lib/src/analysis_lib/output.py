@@ -265,7 +265,7 @@ def find_next_steps(
             next_step_str = "Check the package’s issue tracker for available patches and workarounds."
     elif is_deployed:
         if fix_version:
-            next_step_str = "Check if the package can be maintained as a runtime or provided dependency instead of bundling."
+            next_step_str = "Check if the package can be maintained as a 'runtime' dependency instead of bundling."
         else:
             next_step_str = (
                 "Consider replacing this package with a well-maintained alternative."
@@ -865,5 +865,5 @@ Below are the top reachable packages identified by depscan. Set up alerts and no
     for h in ("Package", "Reachable Flows"):
         rtable.add_column(header=h, vertical="top")
     for k, v in sorted_reached_dict.items():
-        rtable.add_row(k, str(v))
+        rtable.add_row(k, "Predicted" if str(v) == "1" else str(v))
     return rsection, rtable

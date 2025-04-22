@@ -6,7 +6,7 @@ from analysis_lib import (
 from analysis_lib.config import SERVICE_TAGS
 from custom_json_diff.lib.utils import json_load
 from collections import defaultdict
-from typing import Optional
+from typing import Dict, Optional
 
 
 def get_reachability_impl(
@@ -19,6 +19,12 @@ def get_reachability_impl(
     if reachability_analyzer == "SemanticReachability":
         return SemanticReachability(reachability_options)
     return NullReachability(reachability_options)
+
+
+def strip_version(purl_str: str) -> str:
+    """Remove the '@version' suffix if present."""
+    purl_no_version, *_ = purl_str.split("@", 1)
+    return purl_no_version
 
 
 class NullReachability(ReachabilityAnalyzer):
@@ -73,17 +79,51 @@ class SemanticReachability(FrameworkReachability):
     Semantic Reachability Analyzer
     """
 
-    def _track_usage_targets(self, usage_targets, usages_object):
+    @staticmethod
+    def _track_usage_targets(usage_targets, usages_object):
         for k, v in usages_object.items():
             for file, lines in v.items():
                 usage_targets[file] = True
-                for l in lines:
-                    usage_targets[f"{file}#{l}"] = True
+                for aline in lines:
+                    usage_targets[f"{file}#{aline}"] = True
 
-    def _is_service_like_tag(self, tags):
+    @staticmethod
+    def _is_service_like_tag(tags):
         if not tags:
             return False
         return any([t for t in tags if t in SERVICE_TAGS])
+
+    @staticmethod
+    def _track_binary_reachability(
+        postbuild_purls: Dict,
+        interesting_postbuild_purls: Dict[str, int],
+        reached_purls: Dict[str, int],
+        endpoint_reached_purls: Dict[str, int],
+        typed_components: Dict[str, list],
+    ):
+        # Return early in we don't have post-build or component type information
+        if not postbuild_purls or not typed_components:
+            return
+        frameworks = typed_components.get("framework", [])
+        cryptos = typed_components.get("cryptographic-asset", [])
+        # require at least one of framework or crypto to proceed
+        if not frameworks and not cryptos:
+            return
+        versionless_purls = set()
+        normalized_to_original_purl = {}
+        for p in frameworks + cryptos:
+            purl_no_version = strip_version(p)
+            versionless_purls.add(purl_no_version)
+            normalized_to_original_purl[purl_no_version] = p
+        for purl in postbuild_purls:
+            purl_no_version = strip_version(purl)
+            if purl_no_version in versionless_purls:
+                reached_purls[normalized_to_original_purl[purl_no_version]] += 1
+                # Could this be endpoint reachable.
+                if endpoint_reached_purls:
+                    endpoint_reached_purls[
+                        normalized_to_original_purl[purl_no_version]
+                    ] += 1
 
     def process(self) -> ReachabilityResult:
         analysis_options = self.analysis_options
@@ -93,6 +133,8 @@ class SemanticReachability(FrameworkReachability):
         reached_purls = defaultdict(int)
         reached_services = defaultdict(int)
         endpoint_reached_purls = defaultdict(int)
+        postbuild_purls = {}
+        interesting_postbuild_purls = {}
         typed_components = defaultdict(list)
         status = True
         # Collect the endpoint usage information from the openapi files
@@ -114,10 +156,32 @@ class SemanticReachability(FrameworkReachability):
         if analysis_options.bom_files:
             for bom_file in analysis_options.bom_files:
                 data = json_load(bom_file)
+                lifecycles = data.get("metadata", {}).get("lifecycles", []) or []
+                is_post_build = any(
+                    [l for l in lifecycles if l.get("phase") == "post-build"]
+                )
                 # For now we will also include usability slice as well
                 for c in data.get("components", []):
                     purl = c.get("purl", "")
-                    typed_components[c.get("type")].append(purl)
+                    # We need to
+                    if (
+                        is_post_build
+                        and not purl.startswith("pkg:generic")
+                        and not purl.startswith("pkg:file")
+                    ):
+                        postbuild_purls[purl] = True
+                    component_type = c.get("type")
+                    typed_components[component_type].append(purl)
+                    # Work harder to track frameworks. See https://github.com/CycloneDX/cdxgen/issues/1750
+                    if (
+                        component_type != "framework"
+                        and c.get("tags")
+                        and "framework" in c.get("tags")
+                    ):
+                        typed_components["framework"].append(purl)
+                        # If this purl is also seen in a post-build SBOM, it is likely interesting
+                        if postbuild_purls.get(purl):
+                            interesting_postbuild_purls[purl] = True
                     if c.get("evidence") and c["evidence"].get("occurrences"):
                         if usage_targets and c.get("type") in (
                             "framework",
@@ -129,6 +193,8 @@ class SemanticReachability(FrameworkReachability):
                             "cryptographic-asset",
                         ):
                             endpoint_reached_purls[purl] += 1
+                            if postbuild_purls.get(purl):
+                                interesting_postbuild_purls[purl] = True
                         direct_purls[purl] += len(c["evidence"].get("occurrences"))
                         for occ in c["evidence"].get("occurrences"):
                             if not occ.get("location"):
@@ -149,9 +215,21 @@ class SemanticReachability(FrameworkReachability):
                             # Could this be an external service
                             if self._is_service_like_tag(tags):
                                 reached_services[apurl] += 1
+                                if postbuild_purls.get(apurl):
+                                    interesting_postbuild_purls[apurl] = True
                             # Could this be endpoint reachable?
                             if apurl in typed_components.get("framework", []):
                                 endpoint_reached_purls[apurl] += 1
+                                if postbuild_purls.get(apurl):
+                                    interesting_postbuild_purls[apurl] = True
+        # Support for binary reachability
+        self._track_binary_reachability(
+            postbuild_purls,
+            interesting_postbuild_purls,
+            reached_purls,
+            endpoint_reached_purls if usage_targets else None,
+            typed_components,
+        )
         if not direct_purls and not reached_purls:
             status = False
         return ReachabilityResult(

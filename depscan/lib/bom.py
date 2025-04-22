@@ -424,7 +424,9 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
     coptions["deep"] = False
     coptions["use_blintdb"] = False
     coptions["lifecycles"] = ["post-build"]
-    res = create_blint_bom(postbuild_bom_file, src_dir, options=coptions)
+    # What if the build directory is different to the source
+    build_dir = os.getenv("DEPSCAN_BUILD_DIR") or options.get("build_dir") or src_dir
+    res = create_blint_bom(postbuild_bom_file, build_dir, options=coptions)
     if not res or not os.path.exists(postbuild_bom_file):
         LOG.debug(
             "The blint invocation was unsuccessful. Try building this project prior to invoking depscan. Alternatively, check if this project generates binary artefacts."

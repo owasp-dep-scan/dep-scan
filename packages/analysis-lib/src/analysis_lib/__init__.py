@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-import glob
+from pathlib import Path
 from importlib.metadata import distribution
 from logging import Logger
 from typing import Dict, List, Optional
@@ -12,9 +12,10 @@ def get_all_bom_files(from_dir):
     """
     Method to collect all BOM files from a given directory.
     """
-    return glob.glob(f"{from_dir}/**/*bom*.json", recursive=True) + glob.glob(
-        f"{from_dir}/**/*.cdx.json", recursive=True
-    )
+    base = Path(from_dir)
+    patterns = ["*bom*.json", "*.cdx.json"]
+    files = {str(p.resolve()) for pattern in patterns for p in base.rglob(pattern)}
+    return sorted(files)
 
 
 @dataclass
@@ -121,21 +122,17 @@ class ReachabilityAnalysisKV:
         # Collect bom files
         if not self.bom_files and self.bom_dir:
             self.bom_files = get_all_bom_files(self.bom_dir)
-        # collect available slices files
+        # Collect available slices files
         if not self.slices_files and self.bom_dir:
-            self.slices_files = glob.glob(
-                f"{self.bom_dir}/**/*slices.json", recursive=True
+            self.slices_files = sorted(
+                str(p.resolve()) for p in Path(self.bom_dir).rglob("*slices.json")
             )
-        # collect the openapi spec files
+        # Collect the openapi spec files
         if not self.openapi_spec_files:
-            if self.bom_dir:
-                self.openapi_spec_files = glob.glob(
-                    f"{self.bom_dir}/*openapi*.json", recursive=False
-                )
-            elif self.src_dir:
-                self.openapi_spec_files = glob.glob(
-                    f"{self.src_dir}/*openapi*.json", recursive=False
-                )
+            search_dir = Path(self.bom_dir) if self.bom_dir else Path(self.src_dir)
+            self.openapi_spec_files = sorted(
+                str(p.resolve()) for p in search_dir.glob("*openapi*.json")
+            )
 
 
 @dataclass
