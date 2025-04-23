@@ -1,7 +1,6 @@
-name: Repo tests Dotnet
+name: Repo tests Dotnet (WIP)
 
 on:
-  pull_request:
   workflow_dispatch:
 
 concurrency:
