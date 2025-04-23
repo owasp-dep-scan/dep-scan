@@ -1,6 +1,7 @@
 name: Repo tests Dotnet
 
 on:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
