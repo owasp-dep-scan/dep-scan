@@ -4,17 +4,26 @@ from pathlib import Path
 from importlib.metadata import distribution
 from logging import Logger
 from typing import Dict, List, Optional
+import fnmatch
 
 from rich.console import Console
 
 
 def get_all_bom_files(from_dir):
     """
-    Method to collect all BOM files from a given directory.
+    Collect all BOM JSON files under `from_dir`,
+    excluding any files matching '*.vdr.json'.
     """
     base = Path(from_dir)
-    patterns = ["*bom*.json", "*.cdx.json"]
-    files = {str(p.resolve()) for pattern in patterns for p in base.rglob(pattern)}
+    include_patterns = ["*bom*.json", "*.cdx.json"]
+    exclude_pattern = "*.vdr.json"
+
+    files = set()
+    for pattern in include_patterns:
+        for p in base.rglob(pattern):
+            if not fnmatch.fnmatch(p.name, exclude_pattern):
+                files.add(str(p.resolve()))
+
     return sorted(files)
 
 

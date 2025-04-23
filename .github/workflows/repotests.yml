@@ -73,6 +73,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           uv sync --all-extras --all-packages --dev
+          uv pip install -U "huggingface_hub[cli]"
           npm install -g @cyclonedx/cdxgen
       - name: repotests java-sec-code
         run: |
@@ -107,6 +108,20 @@ jobs:
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+      - name: repotests Signal-Android
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
+          uv run huggingface-cli download AppThreat/ukaina --include "java/Signal-Android/*.json" --exclude "java/Signal-Android/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
+      - name: repotests cdxgen
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/cdxgen
+          uv run huggingface-cli download AppThreat/ukaina --include "js/cdxgen/*.json" --exclude "js/cdxgen/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:

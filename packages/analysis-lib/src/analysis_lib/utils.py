@@ -1472,7 +1472,7 @@ def analyze_cve_vuln(
 ):
     insights = []
     plain_insights = []
-    pkg_requires_attn = False
+    cve_requires_attn = False
     likely_false_positive = False
     purl = vuln.get("matched_by") or ""
     purl_obj = parse_purl(purl)
@@ -1566,6 +1566,8 @@ def analyze_cve_vuln(
         )
         vdict["recommendation"] = f"Update to version {fixed_location}."
         vdict["fixed_location"] = fixed_location
+    # FIXME: This looks similar to another block above with a subtle
+    # difference in pkg_severity
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
         purl,
         purl.replace(":", "/"),
@@ -1605,7 +1607,7 @@ def analyze_cve_vuln(
             plain_package_usage = "Deployed dependency"
             # Does this require attention
             if rating.get("severity", "").upper() in JUST_CRITICAL:
-                pkg_requires_attn = True
+                cve_requires_attn = True
                 counts.critical_count += 1
                 counts.pkg_attention_count += 1
         elif direct_purls.get(purl):
@@ -1631,6 +1633,7 @@ def analyze_cve_vuln(
             plain_package_usage = "Indirect dependency"
     # There are pocs or bounties against this vulnerability
     if pocs or bounties:
+        # Reachable purls
         if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
             if endpoint_reached_purls.get(purl):
                 insights.append(
@@ -1644,36 +1647,37 @@ def analyze_cve_vuln(
                 plain_insights.append("Reachable Bounty target")
             counts.has_reachable_poc_count += 1
             counts.has_reachable_exploit_count += 1
-            pkg_requires_attn = True
+            cve_requires_attn = True
+        # Direct usage
         elif direct_purls.get(purl) or is_purl_in_postbuild(purl, postbuild_purls):
             insights.append(
                 "[yellow]:notebook_with_decorative_cover: Bug Bounty target[/yellow]"
             )
             plain_insights.append("Bug Bounty target")
-        else:
+        else:  # Just PoC
             insights.append("[yellow]:notebook_with_decorative_cover: Has PoC[/yellow]")
             plain_insights.append("Has PoC")
         counts.has_poc_count += 1
         if rating.get("severity", "").upper() in JUST_CRITICAL:
-            pkg_requires_attn = True
+            cve_requires_attn = True
             if direct_purls.get(purl) or is_purl_in_postbuild(purl, postbuild_purls):
                 counts.pkg_attention_count += 1
             if recommendation:
                 counts.fix_version_count += 1
             counts.critical_count += 1
-    # Purl is reachable
+    # App Purl is reachable
     if (
         vendors
         and package_type not in OS_PKG_TYPES
         and (reached_purls.get(purl) or endpoint_reached_purls.get(purl))
     ):
         # If it has a poc, an insight might have gotten added above
-        if not pkg_requires_attn:
+        if not cve_requires_attn:
             if endpoint_reached_purls.get(purl):
                 insights.append(":spider_web: Endpoint-Reachable")
                 plain_insights.append("Endpoint-Reachable")
                 if rating.get("severity", "").upper() in CRITICAL_OR_HIGH:
-                    pkg_requires_attn = True
+                    cve_requires_attn = True
             else:
                 insights.append(":receipt: Reachable")
                 plain_insights.append("Reachable")
@@ -1710,7 +1714,7 @@ def analyze_cve_vuln(
                 if "Endpoint-Reachable" in plain_insights:
                     plain_insights.remove("Endpoint-Reachable")
             counts.has_reachable_exploit_count += 1
-            pkg_requires_attn = True
+            cve_requires_attn = True
             # Fail safe. Packages with exploits and direct usage without
             # a reachable flow are still considered reachable to reduce
             # false negatives
@@ -1740,7 +1744,7 @@ def analyze_cve_vuln(
             )
             plain_insights.append("Known Exploits")
         counts.has_exploit_count += 1
-        pkg_requires_attn = True
+        cve_requires_attn = True
     if cve_record.root.containers.cna.affected.root and (
         cpes := cve_record.root.containers.cna.affected.root[0].cpes
     ):
@@ -1755,7 +1759,7 @@ def analyze_cve_vuln(
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
-    add_to_pkg_group_rows = not likely_false_positive and pkg_requires_attn and purl
+    add_to_pkg_group_rows = not likely_false_positive and cve_requires_attn and purl
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
     if exploits or pocs:
@@ -1769,7 +1773,7 @@ def analyze_cve_vuln(
     vdict |= {
         "insights": insights,
         "properties": get_vuln_properties(
-            fixed_location, pkg_requires_attn, plain_insights, purl
+            fixed_location, cve_requires_attn, plain_insights, purl
         ),
     }
     return counts, vdict, add_to_pkg_group_rows, likely_false_positive
@@ -1861,6 +1865,8 @@ def get_vendor_url(comp):
     if comp.get("licenses"):
         for lic in comp.get("licenses"):
             license_obj = lic
+            if isinstance(lic, str):
+                continue
             if lic.get("license"):
                 license_obj = lic.get("license")
             if license_obj.get("id"):

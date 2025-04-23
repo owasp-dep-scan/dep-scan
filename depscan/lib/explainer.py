@@ -105,6 +105,7 @@ def explain_reachables(reachables, project_type, vdr_result):
     """"""
     reachable_explanations = 0
     checked_flows = 0
+    has_crypto_flows = False
     for areach in reachables.get("reachables", []):
         if (
             not areach.get("flows")
@@ -120,11 +121,14 @@ def explain_reachables(reachables, project_type, vdr_result):
         #             is_prioritized = True
         #     if not is_prioritized:
         #         continue
-        flow_tree, comment, source_sink_desc, has_check_tag = explain_flows(
+        flow_tree, comment, source_sink_desc, has_check_tag, is_endpoint_reachable, is_crypto_flow = explain_flows(
             areach.get("flows"), areach.get("purls"), project_type, vdr_result
         )
         if not source_sink_desc or not flow_tree:
             continue
+        # Did we find any crypto flows
+        if is_crypto_flow and not has_crypto_flows:
+            has_crypto_flows = True
         rtable = Table(
             box=box.DOUBLE_EDGE,
             show_lines=True,
@@ -146,7 +150,11 @@ def explain_reachables(reachables, project_type, vdr_result):
     if reachable_explanations:
         tips = """## Secure Design Tips"""
 
-        if checked_flows:
+        if has_crypto_flows:
+            tips += """
+- Generate a Cryptography Bill of Materials (CBOM) using tools such as cdxgen, and track it with platforms like Dependency-Track.
+"""
+        elif checked_flows:
             tips += """
 - Review the validation and sanitization methods used in the application.
 - To enhance the security posture, implement a common validation middleware.
@@ -168,6 +176,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
         reached_services = vdr_result.reached_services
     is_endpoint_reachable = False
     possible_reachable_service = False
+    is_crypto_flow = "crypto" in flow.get("tags", []) or "crypto-generate" in flow.get("tags", [])
     method_in_emoji = ":right_arrow_curving_left:"
     for p in purls:
         if endpoint_reached_purls and endpoint_reached_purls.get(p):
@@ -224,16 +233,24 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
     elif len(purls) == 1:
         if is_endpoint_reachable:
             source_sink_desc = f"{source_sink_desc} can be used to reach this package from certain endpoints."
-        else:
-            source_sink_desc = f"{source_sink_desc} can be used to reach this package."
+        elif source_sink_desc:
+            if is_crypto_flow:
+                source_sink_desc = "Reachable crypto-flow."
+            else:
+                source_sink_desc = "Reachable data-flow."
     else:
         if is_endpoint_reachable:
             source_sink_desc = f"{source_sink_desc} can be used to reach {len(purls)} packages from certain endpoints."
         else:
-            source_sink_desc = (
-                f"{source_sink_desc} can be used to reach {len(purls)} packages."
-            )
-    return source_sink_desc
+            if source_sink_desc:
+                source_sink_desc = (
+                    f"{source_sink_desc} can be used to reach {len(purls)} packages."
+                )
+            elif is_crypto_flow:
+                source_sink_desc = f"{len(purls)} packages reachable from this crypto-flow."
+            else:
+                source_sink_desc = f"{len(purls)} packages reachable from this data-flow."
+    return source_sink_desc, is_endpoint_reachable, is_crypto_flow
 
 
 def filter_tags(tags):
@@ -315,7 +332,7 @@ def explain_flows(flows, purls, project_type, vdr_result):
         ):
             continue
         if not source_sink_desc:
-            source_sink_desc = flow_to_source_sink(
+            source_sink_desc, is_endpoint_reachable, is_crypto_flow = flow_to_source_sink(
                 idx, aflow, purls, project_type, vdr_result
             )
         file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow, project_type)
@@ -336,4 +353,4 @@ def explain_flows(flows, purls, project_type, vdr_result):
             0,
             ":white_medium_small_square: Verify that the mitigation(s) used in this flow are valid and appropriate for your security requirements.",
         )
-    return tree, "\n".join(comments), source_sink_desc, has_check_tag
+    return tree, "\n".join(comments), source_sink_desc, has_check_tag, is_endpoint_reachable, is_crypto_flow
