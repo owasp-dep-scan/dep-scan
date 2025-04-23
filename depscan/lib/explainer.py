@@ -33,7 +33,7 @@ The following endpoints and code hotspots were identified by depscan. Ensure pro
     for sf in slices_files:
         if (
             reachables_data := json_load(
-                sf, error_msg=f"Could not load reachables from {sf}", log=LOG
+                sf, log=LOG
             )
         ) and reachables_data.get("reachables"):
             if pattern_methods:
@@ -69,6 +69,7 @@ def print_endpoints(ospec):
     pattern_usage_targets = defaultdict(set)
     for pattern, path_obj in paths.items():
         usage_targets = set()
+        http_method_added = False
         for k, v in path_obj.items():
             if k == "parameters":
                 continue
@@ -79,7 +80,12 @@ def print_endpoints(ospec):
             if isinstance(v, dict) and v.get("x-atom-usages"):
                 _track_usage_targets(usage_targets, v.get("x-atom-usages"))
             pattern_methods[pattern].append(k)
+            http_method_added = True
         pattern_usage_targets[pattern] = usage_targets
+        # We see an endpoint, but do not know the HTTP methods.
+        # Let's track them as empty
+        if not http_method_added and usage_targets:
+            pattern_methods[pattern].append("")
     caption = ""
     if pattern_methods:
         caption = f"Total Endpoints: {len(pattern_methods.keys())}"
@@ -96,8 +102,9 @@ def print_endpoints(ospec):
         sorted_areas = list(pattern_usage_targets[k])
         sorted_areas.sort()
         rtable.add_row(k, ("\n".join(v)).upper(), "\n".join(sorted_areas))
-    console.print()
-    console.print(rtable)
+    if pattern_methods:
+        console.print()
+        console.print(rtable)
     return pattern_methods
 
 
@@ -121,7 +128,14 @@ def explain_reachables(reachables, project_type, vdr_result):
         #             is_prioritized = True
         #     if not is_prioritized:
         #         continue
-        flow_tree, comment, source_sink_desc, has_check_tag, is_endpoint_reachable, is_crypto_flow = explain_flows(
+        (
+            flow_tree,
+            comment,
+            source_sink_desc,
+            has_check_tag,
+            is_endpoint_reachable,
+            is_crypto_flow,
+        ) = explain_flows(
             areach.get("flows"), areach.get("purls"), project_type, vdr_result
         )
         if not source_sink_desc or not flow_tree:
@@ -176,7 +190,9 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
         reached_services = vdr_result.reached_services
     is_endpoint_reachable = False
     possible_reachable_service = False
-    is_crypto_flow = "crypto" in flow.get("tags", []) or "crypto-generate" in flow.get("tags", [])
+    is_crypto_flow = "crypto" in flow.get("tags", []) or "crypto-generate" in flow.get(
+        "tags", []
+    )
     method_in_emoji = ":right_arrow_curving_left:"
     for p in purls:
         if endpoint_reached_purls and endpoint_reached_purls.get(p):
@@ -247,9 +263,13 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
                     f"{source_sink_desc} can be used to reach {len(purls)} packages."
                 )
             elif is_crypto_flow:
-                source_sink_desc = f"{len(purls)} packages reachable from this crypto-flow."
+                source_sink_desc = (
+                    f"{len(purls)} packages reachable from this crypto-flow."
+                )
             else:
-                source_sink_desc = f"{len(purls)} packages reachable from this data-flow."
+                source_sink_desc = (
+                    f"{len(purls)} packages reachable from this data-flow."
+                )
     return source_sink_desc, is_endpoint_reachable, is_crypto_flow
 
 
@@ -262,6 +282,15 @@ def filter_tags(tags):
         ]
         return ", ".join(tags)
     return tags
+
+
+def is_filterable_code(project_type, code):
+    match project_type:
+        case "js" | "ts" | "javascript" | "typescript" | "bom":
+            for c in ("console.log", "thoughtLog(", "_tmp_"):
+                if code and code.startswith(c):
+                    return True
+    return False
 
 
 def flow_to_str(flow, project_type):
@@ -302,9 +331,14 @@ def flow_to_str(flow, project_type):
                 break
     if has_check_tag:
         node_desc = f"[green]{node_desc}[/green]"
+    flow_str = (
+        f"""[gray37]{file_loc}[/gray37]{node_desc}"""
+        if not is_filterable_code(project_type, node_desc)
+        else ""
+    )
     return (
         file_loc,
-        f"""[gray37]{file_loc}[/gray37]{node_desc}""",
+        flow_str,
         has_check_tag,
     )
 
@@ -332,8 +366,8 @@ def explain_flows(flows, purls, project_type, vdr_result):
         ):
             continue
         if not source_sink_desc:
-            source_sink_desc, is_endpoint_reachable, is_crypto_flow = flow_to_source_sink(
-                idx, aflow, purls, project_type, vdr_result
+            source_sink_desc, is_endpoint_reachable, is_crypto_flow = (
+                flow_to_source_sink(idx, aflow, purls, project_type, vdr_result)
             )
         file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow, project_type)
         if last_file_loc == file_loc:
@@ -353,4 +387,11 @@ def explain_flows(flows, purls, project_type, vdr_result):
             0,
             ":white_medium_small_square: Verify that the mitigation(s) used in this flow are valid and appropriate for your security requirements.",
         )
-    return tree, "\n".join(comments), source_sink_desc, has_check_tag, is_endpoint_reachable, is_crypto_flow
+    return (
+        tree,
+        "\n".join(comments),
+        source_sink_desc,
+        has_check_tag,
+        is_endpoint_reachable,
+        is_crypto_flow,
+    )

@@ -1,6 +1,7 @@
 name: Repo tests Golang
 
 on:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -47,8 +48,8 @@ jobs:
       # LifeCycleAnalyzer tests
       - name: lifecycle-test damn-vulnerable-golang
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang-lifecycle
-          cd ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang-lifecycle
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/damn-vulnerable-golang
+          cd ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang
           go build main.go
           cd ${GITHUB_WORKSPACE}
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/damn-vulnerable-golang\
