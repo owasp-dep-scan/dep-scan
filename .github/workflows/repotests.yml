@@ -111,7 +111,7 @@ jobs:
       - name: repotests Signal-Android
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
-          huggingface-cli download AppThreat/ukaina --include "java/Signal-Android/*.json" --exclude "java/Signal-Android/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
+          uv run huggingface-cli download AppThreat/ukaina --include "java/Signal-Android/*.json" --exclude "java/Signal-Android/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
