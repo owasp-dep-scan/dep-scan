@@ -235,8 +235,8 @@ def find_next_steps(
     is_endpoint_reachable = False
     possible_reachable_service = False
     container_escape_possible = (
-        setuid_executable_purls and len(setuid_executable_purls.keys())
-    ) or (setgid_executable_purls and len(setgid_executable_purls.keys()))
+        len(setuid_executable_purls) > 0 and len(setuid_executable_purls.keys()) > 0
+    ) or (len(setgid_executable_purls) > 0 and len(setgid_executable_purls.keys()) > 0)
     # Check if there are any problematic environment variable that could lead to container escape
     if not container_escape_possible and oci_props:
         for k in oci_props.keys():
@@ -273,20 +273,25 @@ def find_next_steps(
         if container_escape_possible and (is_reachable or is_endpoint_reachable):
             if is_flagged_cwe:
                 next_step_str = "[magenta]WARNING[/magenta]: depscan predicts a true [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
-            else:
+            elif has_exploits:
                 next_step_str = "[magenta]INFO[/magenta]: depscan predicts a potential [magenta]container escape[/magenta] by exploiting vulnerabilities in this package. Consider hardening the container image by removing executables with `setuid` and `setgid` bits."
+            else:
+                next_step_str = "These CVEs are likely harmless. However, consider hardening the container image by removing unnecessary OS libraries."
             if fix_version:
                 next_step_str = f"{next_step_str} This is in addition to updating the package to version '{fix_version}'."
         elif is_endpoint_reachable:
-            next_step_str = "Try to make the CVE unreachable by applying the necessary workarounds and validations. Check the framework documentation for any built-in support."
+            next_step_str = "Try to make the CVEs unreachable by applying the necessary workarounds and validations. Check the framework documentation for any built-in support."
             if not fix_version:
                 next_step_str = f"{next_step_str} Check alternative vulnerability databases for potential upgrade versions."
         elif is_reachable:
-            next_step_str = "Try to make the CVE non-reachable by adding the necessary workarounds and validations."
+            next_step_str = "Try to make the CVEs non-reachable by adding the necessary workarounds and validations."
             if not fix_version:
                 next_step_str = f"{next_step_str} Check alternative vulnerability databases for potential upgrade versions."
         elif fix_version:
-            next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to version '{fix_version}'."
+            if has_exploits:
+                next_step_str = f"Test with the available exploit payload, then repeat the tests after patching to version [bold]{fix_version}[/bold]."
+            else:
+                next_step_str = f"These CVEs are likely harmless, but an exploitable flow is present. Update to version [bold]{fix_version}[/bold]."
         else:
             next_step_str = "Check the package’s issue tracker for available patches and workarounds."
     elif is_deployed:
@@ -423,7 +428,7 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
     matched_by_insights = defaultdict(set)
     for _, pkg_vuln_datas in pkg_group_rows.items():
         for c in pkg_vuln_datas:
-            matched_by = c.get("matched_by")
+            matched_by = c.get("matched_by", "").split("@")[0]
             matched_by_cves[matched_by].append(c.get("id"))
             matched_by_insights[matched_by].update(c.get("insights", []))
             fv = c.get("fixed_location")
@@ -891,5 +896,7 @@ Below are the top reachable packages identified by depscan. Set up alerts and no
     for h in ("Package", "Reachable Flows"):
         rtable.add_column(header=h, vertical="top")
     for k, v in sorted_reached_dict.items():
-        rtable.add_row(k, "Predicted" if str(v) == "1" else str(v))
+        rtable.add_row(
+            k, "[italic]Predicted[/italic]" if v < 5 else f"[magenta]{str(v)}[/magenta]"
+        )
     return rsection, rtable

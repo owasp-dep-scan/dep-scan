@@ -7,7 +7,7 @@ from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 
-from depscan.lib.config import max_purl_per_flow, max_reachable_explanations
+from depscan.lib.config import max_purl_per_flow, max_reachable_explanations, max_purls_reachable_explanations
 from depscan.lib.logger import console, LOG
 
 
@@ -111,6 +111,7 @@ def explain_reachables(reachables, project_type, vdr_result):
     reachable_explanations = 0
     checked_flows = 0
     has_crypto_flows = False
+    purls_reachable_explanations = defaultdict(int)
     for areach in reachables.get("reachables", []):
         if (
             not areach.get("flows")
@@ -138,6 +139,9 @@ def explain_reachables(reachables, project_type, vdr_result):
         )
         if not source_sink_desc or not flow_tree:
             continue
+        purls_str = ",".join(sorted(areach.get("purls", [])))
+        if purls_reachable_explanations[purls_str] + 1 > max_purls_reachable_explanations:
+            continue
         # Did we find any crypto flows
         if is_crypto_flow and not has_crypto_flows:
             has_crypto_flows = True
@@ -155,6 +159,7 @@ def explain_reachables(reachables, project_type, vdr_result):
         console.print()
         console.print(rtable)
         reachable_explanations += 1
+        purls_reachable_explanations[purls_str] += 1
         if has_check_tag:
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
@@ -285,7 +290,7 @@ def filter_tags(tags):
 def is_filterable_code(project_type, code):
     match project_type:
         case "js" | "ts" | "javascript" | "typescript" | "bom":
-            for c in ("console.log", "thoughtLog(", "_tmp_"):
+            for c in ("console.log", "thoughtLog(", "_tmp_", "LOG.debug(", "options.get("):
                 if code and code.startswith(c):
                     return True
     return False
