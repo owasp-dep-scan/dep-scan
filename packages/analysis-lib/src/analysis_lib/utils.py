@@ -1,8 +1,5 @@
 import contextlib
 import encodings.utf_8
-import os
-import re
-from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Tuple
 
@@ -1763,7 +1760,12 @@ def analyze_cve_vuln(
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
-    add_to_pkg_group_rows = not likely_false_positive and cve_requires_attn and purl
+    add_to_pkg_group_rows = (
+        not likely_false_positive
+        and cve_requires_attn
+        and purl
+        and not is_endpoint_filterable(purl)
+    )
     insights = list(set(insights))
     plain_insights = list(set(plain_insights))
     if exploits or pocs:
@@ -1919,6 +1921,8 @@ def track_executables(
         return
     props = pkg.get("properties")
     ref = pkg.get("purl") or pkg.get("bom-ref")
+    if not ref:
+        return
     for p in props:
         if p.get("name", "") == "internal:is_executable" and p["value"] == "true":
             executable_purls[ref].append(file_path)
@@ -1948,6 +1952,8 @@ def get_lifecycle_pkgs(file_path):
             populate_dict = postbuild_purls
         for pkg in pkg_list:
             ref = pkg.get("purl") or pkg.get("bom-ref")
+            if not ref:
+                continue
             if not populate_dict.get(ref):
                 populate_dict[ref] = []
             populate_dict[ref].append(file_path)
@@ -2001,3 +2007,22 @@ def get_all_lifecycle_pkgs(from_dir):
         setuid_executable_purls,
         setgid_executable_purls,
     )
+
+
+def strip_version(purl_str: str) -> str:
+    """Remove the '@version' suffix if present."""
+    purl_no_version, *_ = purl_str.split("@", 1)
+    return purl_no_version
+
+
+def is_service_like_tag(tags):
+    if not tags:
+        return False
+    return any([t for t in tags if t in SERVICE_TAGS])
+
+
+def is_endpoint_filterable(purl):
+    for p in SAFE_ENDPOINT_REACHABLE_PURLS:
+        if purl.startswith(p):
+            return True
+    return False

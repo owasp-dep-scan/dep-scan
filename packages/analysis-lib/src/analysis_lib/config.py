@@ -1479,4 +1479,7 @@ SAFE_ENDPOINT_REACHABLE_PURLS = (
     "pkg:maven/org.apache.ant/",
     "pkg:maven/org.apache.ivy/",
     "pkg:maven/gradle",
+    "pkg:composer/symfony/string",
+    "pkg:composer/symfony/dependency-injection",
+    "pkg:composer/psr/http-factory",
 )

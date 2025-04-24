@@ -213,6 +213,15 @@ def generate_console_output(
     return pkg_group_rows, table
 
 
+def check_malware_cve(cve_list):
+    if not cve_list:
+        return False
+    for c in cve_list:
+        if c.startswith("MAL-"):
+            return True
+    return False
+
+
 def find_next_steps(
     matched_by,
     cve_list,
@@ -259,8 +268,13 @@ def find_next_steps(
         is_endpoint_reachable = True
     if reached_services and reached_services.get(matched_by):
         possible_reachable_service = True
+    is_malware = check_malware_cve(cve_list)
+    if is_malware:
+        next_step_str = (
+            ":stop_sign: Malicious package! This is a [bold]security incident[/bold]."
+        )
     # Package has a number of CVEs.
-    if len(cve_list) > 5:
+    elif len(cve_list) > 5:
         if fix_version:
             next_step_str = f"With [magenta]{len(cve_list)}[/magenta] vulnerabilities, identify the challenges involved in updating this package to version '{fix_version}'."
         else:
@@ -326,6 +340,7 @@ def find_next_steps(
         next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
     return {
         "next_step_str": next_step_str,
+        "is_malware": is_malware,
         "is_exploitable": is_exploitable,
         "has_exploits": has_exploits,
         "is_deployed": is_deployed,
@@ -359,6 +374,7 @@ def summarize_priority_actions(
     is_any_exploitable = False
     has_any_exploits = False
     is_any_reachable = False
+    has_any_malware = False
     for h in ("Package", "Prioritized CVEs", "Fix Version", "Next Steps"):
         utable.add_column(header=h, vertical="top", max_width=100)
     for k, v in matched_by_cves.items():
@@ -375,6 +391,8 @@ def summarize_priority_actions(
             setgid_executable_purls,
             oci_props,
         )
+        if not has_any_malware and next_step_analysis_obj["is_malware"]:
+            has_any_malware = True
         if not is_any_exploitable and next_step_analysis_obj["is_exploitable"]:
             is_any_exploitable = True
         if not has_any_exploits and next_step_analysis_obj["has_exploits"]:
@@ -384,6 +402,9 @@ def summarize_priority_actions(
             or next_step_analysis_obj["is_endpoint_reachable"]
         ):
             is_any_reachable = True
+        # If we have a malware that is the sole priority
+        if has_any_malware and not next_step_analysis_obj["is_malware"]:
+            continue
         # Cut down the priorities further
         if (is_any_exploitable or has_any_exploits or is_any_reachable) and (
             not next_step_analysis_obj["is_exploitable"]

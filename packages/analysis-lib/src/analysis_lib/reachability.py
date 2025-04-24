@@ -3,7 +3,11 @@ from analysis_lib import (
     ReachabilityAnalyzer,
     ReachabilityResult,
 )
-from analysis_lib.config import SERVICE_TAGS, SAFE_ENDPOINT_REACHABLE_PURLS
+from analysis_lib.utils import (
+    strip_version,
+    is_service_like_tag,
+    is_endpoint_filterable,
+)
 from custom_json_diff.lib.utils import json_load
 from collections import defaultdict
 from typing import Dict, Optional
@@ -19,25 +23,6 @@ def get_reachability_impl(
     if reachability_analyzer == "SemanticReachability":
         return SemanticReachability(reachability_options)
     return NullReachability(reachability_options)
-
-
-def strip_version(purl_str: str) -> str:
-    """Remove the '@version' suffix if present."""
-    purl_no_version, *_ = purl_str.split("@", 1)
-    return purl_no_version
-
-
-def _is_service_like_tag(tags):
-    if not tags:
-        return False
-    return any([t for t in tags if t in SERVICE_TAGS])
-
-
-def is_endpoint_filterable(purl):
-    for p in SAFE_ENDPOINT_REACHABLE_PURLS:
-        if purl.startswith(p):
-            return True
-    return False
 
 
 class NullReachability(ReachabilityAnalyzer):
@@ -192,14 +177,19 @@ class SemanticReachability(FrameworkReachability):
                         if postbuild_purls.get(purl):
                             interesting_postbuild_purls[purl] = True
                     if c.get("evidence") and c["evidence"].get("occurrences"):
-                        if usage_targets and c.get("type") in (
-                            "framework",
-                            "container",
-                            "platform",
-                            "device-driver",
-                            "firmware",
-                            "machine-learning-model",
-                            "cryptographic-asset",
+                        if (
+                            usage_targets
+                            and c.get("type")
+                            in (
+                                "framework",
+                                "container",
+                                "platform",
+                                "device-driver",
+                                "firmware",
+                                "machine-learning-model",
+                                "cryptographic-asset",
+                            )
+                            and not is_endpoint_filterable(purl)
                         ):
                             endpoint_reached_purls[purl] += 1
                             if postbuild_purls.get(purl):
@@ -208,7 +198,9 @@ class SemanticReachability(FrameworkReachability):
                         for occ in c["evidence"].get("occurrences"):
                             if not occ.get("location"):
                                 continue
-                            if usage_targets.get(occ.get("location")):
+                            if usage_targets.get(
+                                occ.get("location")
+                            ) and not is_endpoint_filterable(purl):
                                 endpoint_reached_purls[purl] += 1
         # Collect the reached purls from the slices
         if analysis_options.slices_files:
@@ -222,12 +214,14 @@ class SemanticReachability(FrameworkReachability):
                         for apurl in flow.get("purls"):
                             reached_purls[apurl] += 1
                             # Could this be an external service
-                            if _is_service_like_tag(tags):
+                            if is_service_like_tag(tags):
                                 reached_services[apurl] += 1
                                 if postbuild_purls.get(apurl):
                                     interesting_postbuild_purls[apurl] = True
                             # Could this be endpoint reachable?
-                            if apurl in typed_components.get("framework", []):
+                            if apurl in typed_components.get(
+                                "framework", []
+                            ) and not is_endpoint_filterable(apurl):
                                 endpoint_reached_purls[apurl] += 1
                                 if postbuild_purls.get(apurl):
                                     interesting_postbuild_purls[apurl] = True
