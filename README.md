@@ -105,10 +105,11 @@ usage: depscan [-h] [--config CONFIG] [--no-banner] [-i SRC_DIR_IMAGE] [-o REPOR
                [--profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}]
                [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
                [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
-               [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer} |
-               --reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--no-suggest] [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]]
-               [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL] [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--fuzzy-search] [--search-order {purlpcu,cpe,cpu,url}] [--no-universal]
-               [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [--explain] [-v]
+               [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} |
+               --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}] [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--no-suggest]
+               [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL]
+               [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}] [--no-universal]
+               [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [-q | --explain] [-v]
 
 Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
@@ -138,7 +139,8 @@ options:
   --cdxgen-args CDXGEN_ARGS
                         Additional arguments to pass to cdxgen
   --private-ns PRIVATE_NS
-                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated
+                        values accepted.
   -t, --type PROJECT_TYPE [PROJECT_TYPE ...]
                         Override project types if auto-detection is incorrect. Multiple values supported.
   --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
@@ -150,7 +152,7 @@ options:
                         Filename of the custom report written to the --reports-dir
   --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
   --fuzzy-search        Perform fuzzy search by creating variations of package names. Use this when the input SBOM lacks a PURL.
-  --search-order {purlpcu,cpe,cpu,url}
+  --search-order {purl,pcu,cpe,cpu,url}
                         Attributes to use while searching for vulnerabilities. Default: PURL, CPE, URL (pcu).
   --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
   --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.

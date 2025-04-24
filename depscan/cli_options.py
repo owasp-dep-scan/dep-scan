@@ -200,7 +200,8 @@ def build_parser():
     parser.add_argument(
         "--search-order",
         choices=(
-            "purlpcu",
+            "purl",
+            "pcu",
             "cpe",
             "cpu",
             "url",
