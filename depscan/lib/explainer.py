@@ -7,7 +7,11 @@ from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 
-from depscan.lib.config import max_purl_per_flow, max_reachable_explanations, max_purls_reachable_explanations
+from depscan.lib.config import (
+    max_purl_per_flow,
+    max_reachable_explanations,
+    max_purls_reachable_explanations,
+)
 from depscan.lib.logger import console, LOG
 
 
@@ -140,7 +144,10 @@ def explain_reachables(reachables, project_type, vdr_result):
         if not source_sink_desc or not flow_tree:
             continue
         purls_str = ",".join(sorted(areach.get("purls", [])))
-        if purls_reachable_explanations[purls_str] + 1 > max_purls_reachable_explanations:
+        if (
+            purls_reachable_explanations[purls_str] + 1
+            > max_purls_reachable_explanations
+        ):
             continue
         # Did we find any crypto flows
         if is_crypto_flow and not has_crypto_flows:
@@ -290,7 +297,15 @@ def filter_tags(tags):
 def is_filterable_code(project_type, code):
     match project_type:
         case "js" | "ts" | "javascript" | "typescript" | "bom":
-            for c in ("console.log", "thoughtLog(", "_tmp_", "LOG.debug(", "options.get(", "RET", "this."):
+            for c in (
+                "console.log",
+                "thoughtLog(",
+                "_tmp_",
+                "LOG.debug(",
+                "options.get(",
+                "RET",
+                "this.",
+            ):
                 if code and code.startswith(c):
                     return True
     return False
@@ -320,7 +335,7 @@ def flow_to_str(flow, project_type):
             node_desc = flow.get("name")
         if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-    if tags:
+    if tags and not is_filterable_code(project_type, node_desc):
         for ctag in (
             "validation",
             "encode",
