@@ -944,7 +944,11 @@ def get_ref_summary_helper(url, patterns):
             _, match = get_ref_summary(
                 url, {patterns["exploits"]["generic"]: "generic"}
             )
-        return value, match, f"{format_system_name(match['org'])} Exploit"
+        return (
+            (value, match, f"{format_system_name(match['org'])} Exploit")
+            if match
+            else (value, None, "Exploit")
+        )
     return value, match, value
 
 

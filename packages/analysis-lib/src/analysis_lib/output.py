@@ -609,7 +609,7 @@ def output_priority_suggestions(
             if counts.has_os_packages:
                 rmessage = (
                     ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
-                    "as glibc, openssl, or libcurl.\nAdditionally, "
+                    "as glibc, openssl, openssh, or libcurl.\nAdditionally, "
                     "prioritize the vulnerabilities with 'Flagged weakness' under insights."
                 )
                 rmessage += (

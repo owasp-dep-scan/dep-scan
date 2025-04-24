@@ -290,7 +290,7 @@ def filter_tags(tags):
 def is_filterable_code(project_type, code):
     match project_type:
         case "js" | "ts" | "javascript" | "typescript" | "bom":
-            for c in ("console.log", "thoughtLog(", "_tmp_", "LOG.debug(", "options.get("):
+            for c in ("console.log", "thoughtLog(", "_tmp_", "LOG.debug(", "options.get(", "RET", "this."):
                 if code and code.startswith(c):
                     return True
     return False
