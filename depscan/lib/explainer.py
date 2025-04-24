@@ -31,11 +31,9 @@ The following endpoints and code hotspots were identified by depscan. Ensure pro
     for ospec in openapi_spec_files:
         pattern_methods = print_endpoints(ospec)
     for sf in slices_files:
-        if (
-            reachables_data := json_load(
-                sf, log=LOG
-            )
-        ) and reachables_data.get("reachables"):
+        if (reachables_data := json_load(sf, log=LOG)) and reachables_data.get(
+            "reachables"
+        ):
             if pattern_methods:
                 rsection = Markdown(
                     """## Reachable Flows
@@ -357,6 +355,7 @@ def explain_flows(flows, purls, project_type, vdr_result):
     has_check_tag = False
     last_file_loc = None
     source_sink_desc = ""
+    last_code = ""
     for idx, aflow in enumerate(flows):
         # For java, we are only interested in identifiers with tags to keep the flows simple to understand
         if (
@@ -365,6 +364,10 @@ def explain_flows(flows, purls, project_type, vdr_result):
             and not aflow.get("tags")
         ):
             continue
+        curr_code = aflow.get("code", "").split("\n")[0]
+        if last_code and last_code == curr_code:
+            continue
+        last_code = curr_code
         if not source_sink_desc:
             source_sink_desc, is_endpoint_reachable, is_crypto_flow = (
                 flow_to_source_sink(idx, aflow, purls, project_type, vdr_result)

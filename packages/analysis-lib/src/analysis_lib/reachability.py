@@ -3,7 +3,7 @@ from analysis_lib import (
     ReachabilityAnalyzer,
     ReachabilityResult,
 )
-from analysis_lib.config import SERVICE_TAGS
+from analysis_lib.config import SERVICE_TAGS, SAFE_ENDPOINT_REACHABLE_PURLS
 from custom_json_diff.lib.utils import json_load
 from collections import defaultdict
 from typing import Dict, Optional
@@ -25,6 +25,19 @@ def strip_version(purl_str: str) -> str:
     """Remove the '@version' suffix if present."""
     purl_no_version, *_ = purl_str.split("@", 1)
     return purl_no_version
+
+
+def _is_service_like_tag(tags):
+    if not tags:
+        return False
+    return any([t for t in tags if t in SERVICE_TAGS])
+
+
+def is_endpoint_filterable(purl):
+    for p in SAFE_ENDPOINT_REACHABLE_PURLS:
+        if purl.startswith(p):
+            return True
+    return False
 
 
 class NullReachability(ReachabilityAnalyzer):
@@ -88,12 +101,6 @@ class SemanticReachability(FrameworkReachability):
                     usage_targets[f"{file}#{aline}"] = True
 
     @staticmethod
-    def _is_service_like_tag(tags):
-        if not tags:
-            return False
-        return any([t for t in tags if t in SERVICE_TAGS])
-
-    @staticmethod
     def _track_binary_reachability(
         postbuild_purls: Dict,
         interesting_postbuild_purls: Dict[str, int],
@@ -117,6 +124,8 @@ class SemanticReachability(FrameworkReachability):
             normalized_to_original_purl[purl_no_version] = p
         for purl in postbuild_purls:
             purl_no_version = strip_version(purl)
+            if is_endpoint_filterable(purl_no_version):
+                continue
             if purl_no_version in versionless_purls:
                 reached_purls[normalized_to_original_purl[purl_no_version]] += 1
                 # Could this be endpoint reachable.
@@ -213,7 +222,7 @@ class SemanticReachability(FrameworkReachability):
                         for apurl in flow.get("purls"):
                             reached_purls[apurl] += 1
                             # Could this be an external service
-                            if self._is_service_like_tag(tags):
+                            if _is_service_like_tag(tags):
                                 reached_services[apurl] += 1
                                 if postbuild_purls.get(apurl):
                                     interesting_postbuild_purls[apurl] = True
