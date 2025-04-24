@@ -287,6 +287,9 @@ UNIVERSAL_SCAN_TYPE = "universal"
 
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
+# How many explanations for a given combination of purls
+max_purls_reachable_explanations = get_int_from_env("max_purls_reachable_explanations", 3)
+
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 8)
 
 RUBY_PLATFORM_MARKERS = [

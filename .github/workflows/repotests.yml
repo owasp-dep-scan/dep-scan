@@ -129,11 +129,25 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
+      - name: repotests forgejo
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/forgejo
+          uv run huggingface-cli download AppThreat/ukaina --include "js/forgejo/*.json" --exclude "js/forgejo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/forgejo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
       - name: repotests django-DefectDojo
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
           uv run huggingface-cli download AppThreat/ukaina --include "python/django-DefectDojo/*.json" --exclude "python/django-DefectDojo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
+      - name: repotests depscan
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
+          uv run huggingface-cli download AppThreat/ukaina --include "python/depscan/*.json" --exclude "python/depscan/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: Set up JDK

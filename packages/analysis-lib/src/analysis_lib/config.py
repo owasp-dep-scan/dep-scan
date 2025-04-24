@@ -1472,3 +1472,11 @@ SERVICE_TAGS = [
     "social",
     "chat",
 ]
+
+# Some libraries such as build tools need not get flagged.
+SAFE_ENDPOINT_REACHABLE_PURLS = (
+    "pkg:maven/org.apache.maven",
+    "pkg:maven/org.apache.ant/",
+    "pkg:maven/org.apache.ivy/",
+    "pkg:maven/gradle",
+)

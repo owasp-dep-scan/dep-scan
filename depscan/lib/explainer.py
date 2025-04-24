@@ -7,7 +7,7 @@ from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 
-from depscan.lib.config import max_purl_per_flow, max_reachable_explanations
+from depscan.lib.config import max_purl_per_flow, max_reachable_explanations, max_purls_reachable_explanations
 from depscan.lib.logger import console, LOG
 
 
@@ -31,11 +31,9 @@ The following endpoints and code hotspots were identified by depscan. Ensure pro
     for ospec in openapi_spec_files:
         pattern_methods = print_endpoints(ospec)
     for sf in slices_files:
-        if (
-            reachables_data := json_load(
-                sf, log=LOG
-            )
-        ) and reachables_data.get("reachables"):
+        if (reachables_data := json_load(sf, log=LOG)) and reachables_data.get(
+            "reachables"
+        ):
             if pattern_methods:
                 rsection = Markdown(
                     """## Reachable Flows
@@ -113,6 +111,7 @@ def explain_reachables(reachables, project_type, vdr_result):
     reachable_explanations = 0
     checked_flows = 0
     has_crypto_flows = False
+    purls_reachable_explanations = defaultdict(int)
     for areach in reachables.get("reachables", []):
         if (
             not areach.get("flows")
@@ -140,6 +139,9 @@ def explain_reachables(reachables, project_type, vdr_result):
         )
         if not source_sink_desc or not flow_tree:
             continue
+        purls_str = ",".join(sorted(areach.get("purls", [])))
+        if purls_reachable_explanations[purls_str] + 1 > max_purls_reachable_explanations:
+            continue
         # Did we find any crypto flows
         if is_crypto_flow and not has_crypto_flows:
             has_crypto_flows = True
@@ -157,6 +159,7 @@ def explain_reachables(reachables, project_type, vdr_result):
         console.print()
         console.print(rtable)
         reachable_explanations += 1
+        purls_reachable_explanations[purls_str] += 1
         if has_check_tag:
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
@@ -287,7 +290,7 @@ def filter_tags(tags):
 def is_filterable_code(project_type, code):
     match project_type:
         case "js" | "ts" | "javascript" | "typescript" | "bom":
-            for c in ("console.log", "thoughtLog(", "_tmp_"):
+            for c in ("console.log", "thoughtLog(", "_tmp_", "LOG.debug(", "options.get(", "RET", "this."):
                 if code and code.startswith(c):
                     return True
     return False
@@ -357,6 +360,7 @@ def explain_flows(flows, purls, project_type, vdr_result):
     has_check_tag = False
     last_file_loc = None
     source_sink_desc = ""
+    last_code = ""
     for idx, aflow in enumerate(flows):
         # For java, we are only interested in identifiers with tags to keep the flows simple to understand
         if (
@@ -365,6 +369,10 @@ def explain_flows(flows, purls, project_type, vdr_result):
             and not aflow.get("tags")
         ):
             continue
+        curr_code = aflow.get("code", "").split("\n")[0]
+        if last_code and last_code == curr_code:
+            continue
+        last_code = curr_code
         if not source_sink_desc:
             source_sink_desc, is_endpoint_reachable, is_crypto_flow = (
                 flow_to_source_sink(idx, aflow, purls, project_type, vdr_result)
