@@ -97,9 +97,7 @@ def create_pkg_variations(pkg_dict):
                     name_aliases.add(f"""{os_distro}/{name}""")
                     # almalinux-9.2 becomes almalinux-9
                     if "-" in os_distro and "." in os_distro:
-                        name_aliases.add(
-                            f"""{os_distro.rsplit(".", 1)[0]}/{name}"""
-                        )
+                        name_aliases.add(f"""{os_distro.rsplit(".", 1)[0]}/{name}""")
         except Exception:
             tmp_parts = purl.split(":")
             if tmp_parts and len(tmp_parts) > 1:
@@ -174,7 +172,9 @@ def create_pkg_variations(pkg_dict):
         # See #294
         if name.lower().startswith("runtime.") and "system." in name.lower():
             runtime_part = name.split(".System")[0]
-            name_with_runtime = name.replace(f"{runtime_part}.", "") + "." + runtime_part
+            name_with_runtime = (
+                name.replace(f"{runtime_part}.", "") + "." + runtime_part
+            )
             name_aliases.add(name_with_runtime)
             name_aliases.add(name_with_runtime.replace(".runtime.native", ""))
     elif purl.startswith("pkg:gem") or purl.startswith("pkg:rubygems"):
@@ -197,11 +197,7 @@ def create_pkg_variations(pkg_dict):
         # The below aliasing is resulting in several false positives for npm
         if pkg_type not in ("npm",):
             for k, v in config.package_alias.items():
-                if (
-                    name.startswith(k)
-                    or k.startswith(name)
-                    or v.startswith(name)
-                ):
+                if name.startswith(k) or k.startswith(name) or v.startswith(name):
                     name_aliases.add(k)
                     name_aliases.add(v)
     if pkg_type in config.OS_PKG_TYPES:
@@ -217,7 +213,11 @@ def create_pkg_variations(pkg_dict):
         # Also needed for nuget. Eg: selenium:selenium
         if not purl.startswith("pkg:nuget"):
             vendor_aliases = [
-                x for x in vendor_aliases if x not in name_aliases or x == vendor or config.package_alias.get(x) is not None
+                x
+                for x in vendor_aliases
+                if x not in name_aliases
+                or x == vendor
+                or config.package_alias.get(x) is not None
             ]
     if len(vendor_aliases) > 1:
         for vvar in list(vendor_aliases):
@@ -279,7 +279,11 @@ def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
             for k, v in pkg_aliases.items():
                 if (
                     full_pkg in v
-                    or (":" + package_issue.get("affected_location", {}).get("package", "")) in v
+                    or (
+                        ":"
+                        + package_issue.get("affected_location", {}).get("package", "")
+                    )
+                    in v
                 ) and full_pkg != k:
                     dealias_dict[full_pkg] = k
                     break

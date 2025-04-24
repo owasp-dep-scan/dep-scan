@@ -136,6 +136,13 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/forgejo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
+      - name: repotests biome
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/biome
+          uv run huggingface-cli download AppThreat/ukaina --include "rust/biome/*.json" --exclude "rust/biome/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/biome
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/biome --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/biome --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/biome --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
       - name: repotests django-DefectDojo
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
