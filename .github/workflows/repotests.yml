@@ -164,6 +164,13 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
+      - name: repotests openssl-3.5.0
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
+          uv run huggingface-cli download AppThreat/ukaina --include "c/openssl-3.5.0/*.json" --exclude "c/openssl-3.5.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
