@@ -19,6 +19,7 @@ cdxgen_server_headers = {
 
 # version of cdxgen to use
 CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "latest")
+CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v11")
 
 # cdxgen default image to use
 DEFAULT_IMAGE_NAME = (
@@ -56,10 +57,10 @@ PROJECT_TYPE_IMAGE = {
     "python": f"ghcr.io/cyclonedx/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
     "swift": f"ghcr.io/cyclonedx/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
     "swift6": f"ghcr.io/cyclonedx/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
-    "ruby26": f"ghcr.io/cyclonedx/cdxgen-debian-ruby26:{CDXGEN_IMAGE_VERSION}",
-    "ruby33": f"ghcr.io/cyclonedx/cdxgen-debian-ruby33:{CDXGEN_IMAGE_VERSION}",
-    "ruby34": f"ghcr.io/cyclonedx/cdxgen-debian-ruby34:{CDXGEN_IMAGE_VERSION}",
-    "ruby": f"ghcr.io/cyclonedx/cdxgen-debian-ruby34:{CDXGEN_IMAGE_VERSION}",
+    "ruby26": f"ghcr.io/cyclonedx/cdxgen-debian-ruby26:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "ruby33": f"ghcr.io/cyclonedx/cdxgen-debian-ruby33:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "ruby34": f"ghcr.io/cyclonedx/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "ruby": f"ghcr.io/cyclonedx/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
     "dotnet-core": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
     "dotnet-framework": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
     "dotnet6": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
@@ -477,7 +478,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         # Should we pull the most recent image
         if needs_latest_image(image_name):
             if self.logger:
-                self.logger.debug(f"Pulling the image {image_name}")
+                self.logger.debug(f"Pulling the image {image_name} using {container_command}.")
             exec_tool(
                 [container_command, "pull", "--quiet", image_name], logger=self.logger
             )
