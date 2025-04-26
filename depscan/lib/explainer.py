@@ -23,6 +23,8 @@ def explain(project_type, src_dir, bom_dir, vdr_result):
     :param bom_dir: BOM directory
     """
     pattern_methods = {}
+    has_any_explanation = False
+    has_any_crypto_flows = False
     slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices.json", recursive=True)
     openapi_spec_files = glob.glob(f"{bom_dir}/*openapi*.json", recursive=False)
     if not openapi_spec_files:
@@ -30,7 +32,7 @@ def explain(project_type, src_dir, bom_dir, vdr_result):
     if openapi_spec_files:
         rsection = Markdown("""## Service Endpoints
 
-The following endpoints and code hotspots were identified by depscan. Ensure proper authentication and authorization mechanisms are implemented to secure them.""")
+The following endpoints and code hotspots were identified by depscan. Verify that proper authentication and authorization mechanisms are in place to secure them.""")
         console.print(rsection)
     for ospec in openapi_spec_files:
         pattern_methods = print_endpoints(ospec)
@@ -42,18 +44,28 @@ The following endpoints and code hotspots were identified by depscan. Ensure pro
                 rsection = Markdown(
                     """## Reachable Flows
 
-Below are some reachable flows, including endpoint-reachable ones, identified by depscan. Use the generated OpenAPI specification file to assess these endpoints for vulnerabilities and risk.
+Below are some reachable flows, including those accessible via endpoints, identified by depscan. Use the generated OpenAPI specification to evaluate these endpoints for vulnerabilities and risk.
                 """
                 )
             else:
                 rsection = Markdown(
                     """## Reachable Flows
 
-Below are some reachable flows identified by depscan. Use the provided tips to enhance your application's security posture.
+Below are several data flows identified by depscan, including reachable ones. Use the tips provided to strengthen your application’s security posture.
                 """
                 )
-            console.print(rsection)
-            explain_reachables(reachables_data, project_type, vdr_result)
+            has_explanation, has_crypto_flows = explain_reachables(
+                reachables_data,
+                project_type,
+                vdr_result,
+                rsection if not has_any_explanation else None,
+            )
+            if not has_any_explanation and has_explanation:
+                has_any_explanation = True
+            if not has_any_crypto_flows and has_crypto_flows:
+                has_any_crypto_flows = True
+    if slices_files and not has_any_explanation and not has_any_crypto_flows:
+        console.print("depscan did not find any reachable flow in this scan.")
 
 
 def _track_usage_targets(usage_targets, usages_object):
@@ -110,17 +122,34 @@ def print_endpoints(ospec):
     return pattern_methods
 
 
-def explain_reachables(reachables, project_type, vdr_result):
+def is_cpp_flow(flows):
+    if not flows:
+        return False
+    attempts = 0
+    for idx, aflow in enumerate(flows):
+        if aflow.get("parentFileName", "").endswith(".c") or aflow.get(
+            "parentFileName", ""
+        ).endswith(".cpp"):
+            return True
+        attempts += 1
+        if attempts > 3:
+            return False
+    return False
+
+
+def explain_reachables(reachables, project_type, vdr_result, header_section=None):
     """"""
     reachable_explanations = 0
     checked_flows = 0
     has_crypto_flows = False
     purls_reachable_explanations = defaultdict(int)
+    has_explanation = False
+    header_shown = False
     for areach in reachables.get("reachables", []):
         if (
             not areach.get("flows")
             or len(areach.get("flows")) < 2
-            or not areach.get("purls")
+            or (not areach.get("purls") and not is_cpp_flow(areach.get("flows")))
         ):
             continue
         # Focus only on the prioritized list if available
@@ -145,10 +174,13 @@ def explain_reachables(reachables, project_type, vdr_result):
             continue
         purls_str = ",".join(sorted(areach.get("purls", [])))
         if (
-            purls_reachable_explanations[purls_str] + 1
+            purls_str
+            and purls_reachable_explanations[purls_str] + 1
             > max_purls_reachable_explanations
         ):
             continue
+        if not has_explanation:
+            has_explanation = True
         # Did we find any crypto flows
         if is_crypto_flow and not has_crypto_flows:
             has_crypto_flows = True
@@ -163,15 +195,21 @@ def explain_reachables(reachables, project_type, vdr_result):
         )
         rtable.add_column(header="Flow", vertical="top")
         rtable.add_row(flow_tree)
+        # Print the header first in case we haven't
+        if not header_shown and header_section:
+            console.print()
+            console.print(header_section)
+            header_shown = True
         console.print()
         console.print(rtable)
         reachable_explanations += 1
-        purls_reachable_explanations[purls_str] += 1
+        if purls_str:
+            purls_reachable_explanations[purls_str] += 1
         if has_check_tag:
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
             break
-    if reachable_explanations:
+    if has_explanation:
         tips = """## Secure Design Tips"""
 
         if has_crypto_flows:
@@ -183,12 +221,18 @@ def explain_reachables(reachables, project_type, vdr_result):
 - Review the validation and sanitization methods used in the application.
 - To enhance the security posture, implement a common validation middleware.
 """
-        else:
+        elif purls_reachable_explanations:
             tips += """
 - Consider implementing a common validation and sanitization library to reduce the risk of exploitability.
 """
+        else:
+            tips += """
+- Enhance your unit and integration tests to cover the flows listed above.
+- Additionally, set up an appropriate fuzzer to continuously evaluate the performance of the parser and validation functions across various payloads.
+"""
         rsection = Markdown(tips)
         console.print(rsection)
+    return has_explanation, has_crypto_flows
 
 
 def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
@@ -200,9 +244,8 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
         reached_services = vdr_result.reached_services
     is_endpoint_reachable = False
     possible_reachable_service = False
-    is_crypto_flow = "crypto" in flow.get("tags", []) or "crypto-generate" in flow.get(
-        "tags", []
-    )
+    tags = flow.get("tags", [])
+    is_crypto_flow = "crypto" in tags or "crypto-generate" in tags
     method_in_emoji = ":right_arrow_curving_left:"
     for p in purls:
         if endpoint_reached_purls and endpoint_reached_purls.get(p):
@@ -256,6 +299,9 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
         "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower()
     ):
         source_sink_desc = "The flow originates from middleware."
+    elif len(purls) == 0:
+        if tags:
+            source_sink_desc = f"{source_sink_desc} can be used to reach packages with tags {','.join(tags[:2])}"
     elif len(purls) == 1:
         if is_endpoint_reachable:
             source_sink_desc = f"{source_sink_desc} can be used to reach this package from certain endpoints."
@@ -369,8 +415,9 @@ def explain_flows(flows, purls, project_type, vdr_result):
         comments.append(
             ":exclamation_mark: Refactor this flow to minimize the use of external libraries."
         )
-    purls_str = "\n".join(purls)
-    comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
+    if purls:
+        purls_str = "\n".join(purls)
+        comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
     added_flows = []
     has_check_tag = False
     last_file_loc = None

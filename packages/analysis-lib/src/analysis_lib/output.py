@@ -268,11 +268,16 @@ def find_next_steps(
         is_endpoint_reachable = True
     if reached_services and reached_services.get(matched_by):
         possible_reachable_service = True
+    # This is a very naive way of determining whether a CVE is for a malware or not
+    # See https://github.com/AppThreat/vulnerability-db/issues/212 for an example of this being wrong.
     is_malware = check_malware_cve(cve_list)
     if is_malware:
-        next_step_str = (
-            ":stop_sign: Malicious package! This is a [bold]security incident[/bold]."
-        )
+        if is_reachable or is_endpoint_reachable:
+            next_step_str = ":stop_sign: Malicious package that is also reachable! This is a [bold]top-priority security incident[/bold]."
+        elif is_exploitable:
+            next_step_str = ":stop_sign: Malicious package that is also exploitable! This is a [bold]top-priority security incident[/bold]."
+        else:
+            next_step_str = ":stop_sign: Malicious package! This is a [bold]security incident[/bold]."
     # Package has a number of CVEs.
     elif len(cve_list) > 5:
         if fix_version:

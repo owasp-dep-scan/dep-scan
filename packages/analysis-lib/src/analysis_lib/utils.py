@@ -1493,6 +1493,7 @@ def analyze_cve_vuln(
         insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
         plain_insights.append("Malicious")
         counts.malicious_count += 1
+        cve_requires_attn = True
     has_flagged_cwe = False
     add_to_pkg_group_rows = False
     if fixed_location := get_unaffected(vuln):
