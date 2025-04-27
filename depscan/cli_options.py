@@ -275,6 +275,24 @@ def build_parser():
         help="Makes depscan to explain the various analysis. Useful for creating detailed reports.",
     )
     parser.add_argument(
+        "--explanation-mode",
+        choices=(
+            "Endpoints",
+            "EndpointsAndReachables",
+            "NonReachables",
+        ),
+        default="EndpointsAndReachables",
+        dest="explanation_mode",
+        help="Style of explanation needed. Defaults to Endpoints and Reachables.",
+    )
+    parser.add_argument(
+        "--annotate",
+        action="store_true",
+        default=False,
+        dest="annotate",
+        help="Include the generated text VDR report as an annotation. Defaults to true when explain is enabled; false otherwise.",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="Display the version",

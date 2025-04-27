@@ -8,6 +8,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from depscan.lib.config import (
+    COMMON_CHECK_TAGS,
     max_purl_per_flow,
     max_reachable_explanations,
     max_purls_reachable_explanations,
@@ -15,9 +16,9 @@ from depscan.lib.config import (
 from depscan.lib.logger import console, LOG
 
 
-def explain(project_type, src_dir, bom_dir, vdr_result):
+def explain(project_type, src_dir, bom_dir, vdr_result, explanation_mode):
     """
-    Explain the analysis and findings
+    Explain the analysis and findings based on the explanation mode.
 
     :param project_type: Project type
     :param bom_dir: BOM directory
@@ -26,35 +27,57 @@ def explain(project_type, src_dir, bom_dir, vdr_result):
     has_any_explanation = False
     has_any_crypto_flows = False
     slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices.json", recursive=True)
-    openapi_spec_files = glob.glob(f"{bom_dir}/*openapi*.json", recursive=False)
-    if not openapi_spec_files:
-        openapi_spec_files = glob.glob(f"{src_dir}/*openapi*.json", recursive=False)
+    openapi_spec_files = None
+    # Should we explain the endpoints and Code Hotspots
+    if explanation_mode in (
+        "Endpoints",
+        "EndpointsAndReachables",
+    ):
+        openapi_spec_files = glob.glob(f"{bom_dir}/*openapi*.json", recursive=False)
+        if not openapi_spec_files:
+            openapi_spec_files = glob.glob(f"{src_dir}/*openapi*.json", recursive=False)
     if openapi_spec_files:
         rsection = Markdown("""## Service Endpoints
 
 The following endpoints and code hotspots were identified by depscan. Verify that proper authentication and authorization mechanisms are in place to secure them.""")
         console.print(rsection)
-    for ospec in openapi_spec_files:
-        pattern_methods = print_endpoints(ospec)
+        for ospec in openapi_spec_files:
+            pattern_methods = print_endpoints(ospec)
+    # Return early for endpoints only explanations
+    if explanation_mode in ("Endpoints",):
+        return
+    section_title = (
+        "Non-Reachable Flows"
+        if explanation_mode in ("NonReachables",)
+        else "Reachable Flows"
+    )
     for sf in slices_files:
         if (reachables_data := json_load(sf, log=LOG)) and reachables_data.get(
             "reachables"
         ):
-            if pattern_methods:
+            if explanation_mode in ("NonReachables",):
                 rsection = Markdown(
-                    """## Reachable Flows
+                    f"""## {section_title}
+
+Below are several data flows deemed safe and non-reachable. Use the provided tips to confirm this assessment.
+                """
+                )
+            elif pattern_methods:
+                rsection = Markdown(
+                    f"""## {section_title}
 
 Below are some reachable flows, including those accessible via endpoints, identified by depscan. Use the generated OpenAPI specification to evaluate these endpoints for vulnerabilities and risk.
                 """
                 )
             else:
                 rsection = Markdown(
-                    """## Reachable Flows
+                    f"""## {section_title}
 
 Below are several data flows identified by depscan, including reachable ones. Use the tips provided to strengthen your application’s security posture.
                 """
                 )
-            has_explanation, has_crypto_flows = explain_reachables(
+            has_explanation, has_crypto_flows, tips = explain_reachables(
+                explanation_mode,
                 reachables_data,
                 project_type,
                 vdr_result,
@@ -137,7 +160,9 @@ def is_cpp_flow(flows):
     return False
 
 
-def explain_reachables(reachables, project_type, vdr_result, header_section=None):
+def explain_reachables(
+    explanation_mode, reachables, project_type, vdr_result, header_section=None
+):
     """"""
     reachable_explanations = 0
     checked_flows = 0
@@ -168,9 +193,20 @@ def explain_reachables(reachables, project_type, vdr_result, header_section=None
             is_endpoint_reachable,
             is_crypto_flow,
         ) = explain_flows(
-            areach.get("flows"), areach.get("purls"), project_type, vdr_result
+            explanation_mode,
+            areach.get("flows"),
+            areach.get("purls"),
+            project_type,
+            vdr_result,
         )
         if not source_sink_desc or not flow_tree:
+            continue
+        # In non-reachables mode, we are not interested in reachable flows.
+        if (
+            explanation_mode
+            and explanation_mode in ("NonReachables",)
+            and not has_check_tag
+        ):
             continue
         purls_str = ",".join(sorted(areach.get("purls", [])))
         if (
@@ -209,12 +245,17 @@ def explain_reachables(reachables, project_type, vdr_result, header_section=None
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
             break
-    if has_explanation:
-        tips = """## Secure Design Tips"""
-
+    tips = """## Secure Design Tips"""
+    if explanation_mode in ("NonReachables",):
+        tips += """
+- Automate tests (including fuzzing) to verify validation, sanitization, encoding, and encryption.
+- Align the implementation with the original architecture and threat models to ensure security compliance.
+- Extract reusable methods into a shared library for organization-wide use.
+"""
+    elif has_explanation:
         if has_crypto_flows:
             tips += """
-- Generate a Cryptography Bill of Materials (CBOM) using tools such as cdxgen, and track it with platforms like Dependency-Track.
+- Generate a Cryptographic BOM with cdxgen and monitor it in Dependency-Track.
 """
         elif checked_flows:
             tips += """
@@ -228,11 +269,12 @@ def explain_reachables(reachables, project_type, vdr_result, header_section=None
         else:
             tips += """
 - Enhance your unit and integration tests to cover the flows listed above.
-- Additionally, set up an appropriate fuzzer to continuously evaluate the performance of the parser and validation functions across various payloads.
+- Continuously fuzz the parser and validation functions with diverse payloads.
 """
+    if tips:
         rsection = Markdown(tips)
         console.print(rsection)
-    return has_explanation, has_crypto_flows
+    return has_explanation, has_crypto_flows, tips
 
 
 def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
@@ -357,7 +399,7 @@ def is_filterable_code(project_type, code):
     return False
 
 
-def flow_to_str(flow, project_type):
+def flow_to_str(explanation_mode, flow, project_type):
     """"""
     has_check_tag = False
     file_loc = ""
@@ -382,19 +424,15 @@ def flow_to_str(flow, project_type):
         if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     if tags and not is_filterable_code(project_type, node_desc):
-        for ctag in (
-            "validation",
-            "encode",
-            "encrypt",
-            "sanitize",
-            "authentication",
-            "authorization",
-        ):
+        for ctag in COMMON_CHECK_TAGS:
             if ctag in tags:
                 has_check_tag = True
                 break
     if has_check_tag:
-        node_desc = f"[green]{node_desc}[/green]"
+        if explanation_mode in ("NonReachables",):
+            node_desc = f"[bold][green]{node_desc}[/green][/bold]"
+        else:
+            node_desc = f"[green]{node_desc}[/green]"
     flow_str = (
         f"""[gray37]{file_loc}[/gray37]{node_desc}"""
         if not is_filterable_code(project_type, node_desc)
@@ -407,7 +445,7 @@ def flow_to_str(flow, project_type):
     )
 
 
-def explain_flows(flows, purls, project_type, vdr_result):
+def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
     """"""
     tree = None
     comments = []
@@ -439,7 +477,9 @@ def explain_flows(flows, purls, project_type, vdr_result):
             source_sink_desc, is_endpoint_reachable, is_crypto_flow = (
                 flow_to_source_sink(idx, aflow, purls, project_type, vdr_result)
             )
-        file_loc, flow_str, has_check_tag_flow = flow_to_str(aflow, project_type)
+        file_loc, flow_str, has_check_tag_flow = flow_to_str(
+            explanation_mode, aflow, project_type
+        )
         if last_file_loc == file_loc:
             continue
         last_file_loc = file_loc
@@ -452,7 +492,7 @@ def explain_flows(flows, purls, project_type, vdr_result):
             tree.add(flow_str)
         if has_check_tag_flow:
             has_check_tag = True
-    if has_check_tag:
+    if has_check_tag and explanation_mode not in ("NonReachables",):
         comments.insert(
             0,
             ":white_medium_small_square: Verify that the mitigation(s) used in this flow are valid and appropriate for your security requirements.",

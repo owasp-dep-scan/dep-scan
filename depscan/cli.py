@@ -36,6 +36,7 @@ from depscan.cli_options import build_parser
 from depscan.lib import explainer, utils
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
 from depscan.lib.bom import (
+    annotate_vdr,
     create_empty_vdr,
     create_bom,
     export_bom,
@@ -51,7 +52,7 @@ from depscan.lib.config import (
     vdb_database_url,
 )
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import DEBUG, LOG, SPINNER, console
+from depscan.lib.logger import DEBUG, LOG, SPINNER, console, IS_CI
 
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
@@ -169,13 +170,14 @@ def vdr_analyze_summarize(
         vdr_file = os.path.join(bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
     if vdr_result.success:
         pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
-        if pkg_vulnerabilities:
+        # Always create VDR files even when empty
+        if pkg_vulnerabilities is not None:
             # Case 1: Single BOM file resulting in a single VDR file
             if bom_file:
                 if bom_data := json_load(bom_file, log=LOG):
                     export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file)
             # Case 2: Multiple BOM files in a bom directory
-            if bom_dir:
+            elif bom_dir:
                 bom_data = create_empty_vdr(pkg_list, ds_version)
                 export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file)
                 LOG.debug(f"The VDR file '{vdr_file}' was created successfully.")
@@ -570,7 +572,9 @@ def run_depscan(args):
             with console.status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
                 spinner=SPINNER,
-            ):
+            ) as vdb_download_status:
+                if not IS_CI:
+                    vdb_download_status.stop()
                 # This line may exit with an exception if the database cannot be downloaded.
                 # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
                 download_image(vdb_database_url, config.DATA_DIR)
@@ -932,6 +936,7 @@ def run_depscan(args):
                 src_dir,
                 args.bom_dir or reports_dir,
                 vdr_result,
+                args.explanation_mode,
             )
         else:
             LOG.debug(
@@ -972,6 +977,9 @@ def run_depscan(args):
             "Template file %s doesn't exist, custom report not created.",
             args.report_template,
         )
+    # Should we include the generated text report as an annotation in the VDR file?
+    if args.explain or args.annotate:
+        annotate_vdr(vdr_file, txt_report_file)
 
 
 def main():

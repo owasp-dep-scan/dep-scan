@@ -115,6 +115,14 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
+      - name: repotests dependency-track
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dependency-track
+          uv run huggingface-cli download AppThreat/ukaina --include "java/dependency-track/*.json" --exclude "java/dependency-track/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
       - name: repotests kafka-4.0.0-src
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src
@@ -155,6 +163,8 @@ jobs:
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
           uv run huggingface-cli download AppThreat/ukaina --include "python/django-DefectDojo/*.json" --exclude "python/django-DefectDojo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain --explanation-mode Endpoints
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests depscan
@@ -162,6 +172,7 @@ jobs:
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
           uv run huggingface-cli download AppThreat/ukaina --include "python/depscan/*.json" --exclude "python/depscan/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reachability-analyzer SemanticReachability --explain --explanation-mode Endpoints
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests phpmyadmin
@@ -189,7 +200,7 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
           uv run huggingface-cli download AppThreat/ukaina --include "c/curl-8.13.0/*.json" --exclude "c/curl-8.13.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
-          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: Set up JDK

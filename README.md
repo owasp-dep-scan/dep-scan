@@ -16,6 +16,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     - [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     - [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
     - [Server mode](#server-mode)
+- [depscanGPT](https://chatgpt.com/g/g-674f260c887c819194e465d2c65f4061-owasp-dep-scan)
 - [Documentation (depscan.readthedocs.io)](https://depscan.readthedocs.io)
     - [Supported languages and package format](https://depscan.readthedocs.io/supported-languages)
     - [Reachability analysis](https://depscan.readthedocs.io/reachability-analysis)
@@ -43,11 +44,29 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
 - Generate a Common Security Advisory Framework (CSAF) 2.0 VEX document (check out the [CSAF Readme](contrib/CSAF_README.md))
 - Perform deep packages risk audit for dependency confusion attacks and maintenance risks (See risk audit)
 
+### Precise Reachable data-flows
+
+Detailed data flows to identify both reachable and non-reachable paths in your application based on the full context.
+
 ![Reachable Flows](documentation/static/img/depscan-flows.png)
 
-![Dependency Tree with Insights](documentation/static/img/tree1.jpg)
+### Clear insights about CVEs
 
-![Dependency Tree with Insights](documentation/static/img/prioritization.jpg)
+Understand CVEs clearly without having to read through the description.
+
+![Dependency Tree with Insights](documentation/static/img/tree1.png)
+
+### Automatic prioritization
+
+Only focus on CVEs that need your attention.
+
+![Prioritization](documentation/static/img/prioritization.png)
+
+### Stay proactive
+
+Always stay a step ahead with advanced vulnerability and exploit prediction.
+
+![Proactive Measures](documentation/static/img/proactive.png)
 
 ### Vulnerability Data sources
 
@@ -166,6 +185,9 @@ options:
   --debug               Run depscan in debug mode.
   -q, --quiet           Makes depscan quiet.
   --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
+  --explanation-mode {Endpoints,EndpointsAndReachables,NonReachables}
+                        Style of explanation needed. Defaults to Endpoints and Reachables.
+  --annotate            Include the generated text VDR report as an annotation. Defaults to true when explain is enabled; false otherwise.
   -v, --version         Display the version
 ```
 
