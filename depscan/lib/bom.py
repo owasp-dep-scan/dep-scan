@@ -535,7 +535,7 @@ def annotate_vdr(vdr_file, txt_report_file):
     vdr = json_load(vdr_file)
     metadata = vdr.get("metadata", {})
     tools = metadata.get("tools", {}).get("components", {})
-    with open(txt_report_file) as txt_fp:
+    with open(txt_report_file, errors="ignore", encoding="utf-8") as txt_fp:
         report = txt_fp.read()
         annotations = vdr.get("annotations", []) or []
         depscan_annotation = {
