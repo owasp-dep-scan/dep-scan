@@ -168,21 +168,28 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin
           uv run huggingface-cli download AppThreat/ukaina --include "php/phpmyadmin/*.json" --exclude "php/phpmyadmin/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin
-          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests openssl-3.5.0
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
           uv run huggingface-cli download AppThreat/ukaina --include "c/openssl-3.5.0/*.json" --exclude "c/openssl-3.5.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
-          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests open5gs-2.7.5
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5
           uv run huggingface-cli download AppThreat/ukaina --include "c/open5gs-2.7.5/*.json" --exclude "c/open5gs-2.7.5/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5
-          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --reachability-analyzer SemanticReachability --explain
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
+      - name: repotests curl-8.13.0
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
+          uv run huggingface-cli download AppThreat/ukaina --include "c/curl-8.13.0/*.json" --exclude "c/curl-8.13.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
+          uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: Set up JDK
