@@ -571,8 +571,10 @@ def run_depscan(args):
         if ORAS_AVAILABLE:
             with console.status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
-                spinner=SPINNER if not IS_CI else None,
-            ):
+                spinner=SPINNER,
+            ) as vdb_download_status:
+                if not IS_CI:
+                    vdb_download_status.stop()
                 # This line may exit with an exception if the database cannot be downloaded.
                 # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
                 download_image(vdb_database_url, config.DATA_DIR)
@@ -978,6 +980,7 @@ def run_depscan(args):
     # Should we include the generated text report as an annotation in the VDR file?
     if args.explain or args.annotate:
         annotate_vdr(vdr_file, txt_report_file)
+
 
 def main():
     cli_args = build_args()
