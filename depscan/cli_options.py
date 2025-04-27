@@ -275,6 +275,17 @@ def build_parser():
         help="Makes depscan to explain the various analysis. Useful for creating detailed reports.",
     )
     parser.add_argument(
+        "--explanation-mode",
+        choices=(
+            "Endpoints",
+            "EndpointsAndReachables",
+            "NonReachables",
+        ),
+        default="EndpointsAndReachables",
+        dest="explanation_mode",
+        help="Style of explanation needed. Defaults to Endpoints and Reachables.",
+    )
+    parser.add_argument(
         "-v",
         "--version",
         help="Display the version",

@@ -311,3 +311,12 @@ NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
 DEPSCAN_DEFAULT_VDR_FILE = os.getenv(
     "DEPSCAN_DEFAULT_VDR_FILE", "depscan-universal.vdr.json"
 )
+
+COMMON_CHECK_TAGS = (
+    "validation",
+    "encode",
+    "encrypt",
+    "sanitize",
+    "authentication",
+    "authorization",
+)

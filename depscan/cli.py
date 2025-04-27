@@ -51,7 +51,7 @@ from depscan.lib.config import (
     vdb_database_url,
 )
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import DEBUG, LOG, SPINNER, console
+from depscan.lib.logger import DEBUG, LOG, SPINNER, console, IS_CI
 
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
@@ -569,7 +569,7 @@ def run_depscan(args):
         if ORAS_AVAILABLE:
             with console.status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
-                spinner=SPINNER,
+                spinner=SPINNER if not IS_CI else None,
             ):
                 # This line may exit with an exception if the database cannot be downloaded.
                 # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
@@ -932,6 +932,7 @@ def run_depscan(args):
                 src_dir,
                 args.bom_dir or reports_dir,
                 vdr_result,
+                args.explanation_mode,
             )
         else:
             LOG.debug(
