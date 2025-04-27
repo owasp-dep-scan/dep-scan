@@ -522,3 +522,33 @@ def trim_vdr_bom_data(bom_data):
         if bom_data.get(p):
             del bom_data[p]
     return bom_data
+
+
+def annotate_vdr(vdr_file, txt_report_file):
+    if (
+        not vdr_file
+        or not txt_report_file
+        or not os.path.exists(vdr_file)
+        or not os.path.exists(txt_report_file)
+    ):
+        return
+    vdr = json_load(vdr_file)
+    metadata = vdr.get("metadata", {})
+    tools = metadata.get("tools", {}).get("components", {})
+    with open(txt_report_file) as txt_fp:
+        report = txt_fp.read()
+        annotations = vdr.get("annotations", []) or []
+        depscan_annotation = {
+            "subjects": [vdr.get("serialNumber")],
+            "annotator": {"component": tools[-1] if len(tools) > 0 else {}},
+            "timestamp": metadata.get("timestamp"),
+            "text": report,
+        }
+        annotations.append(depscan_annotation)
+    vdr["annotations"] = annotations
+    json_dump(
+        vdr_file,
+        vdr,
+        compact=True,
+        error_msg=f"Unable to add annotations to the VDR file at {vdr_file}",
+    )
