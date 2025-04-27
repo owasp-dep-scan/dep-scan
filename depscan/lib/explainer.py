@@ -326,6 +326,8 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
         source_sink_desc = flow.get("code").split("\n")[0]
     elif project_type not in ("java") and flow.get("label") == "IDENTIFIER":
         source_sink_desc = flow.get("code").split("\n")[0]
+        if source_sink_desc.endswith("("):
+            source_sink_desc = f":diamond_suit: {source_sink_desc})"
     # Try to understand the source a bit more
     if source_sink_desc.startswith("require("):
         source_sink_desc = "The flow originates from a module import."
@@ -410,6 +412,8 @@ def flow_to_str(explanation_mode, flow, project_type):
     ):
         file_loc = f"{flow.get('parentFileName').replace('src/main/java/', '').replace('src/main/scala/', '')}#{flow.get('lineNumber')}    "
     node_desc = flow.get("code").split("\n")[0]
+    if node_desc.endswith("("):
+        node_desc = f":diamond_suit: {node_desc})"
     tags = filter_tags(flow.get("tags"))
     if flow.get("label") == "METHOD_PARAMETER_IN":
         param_name = flow.get("name")
@@ -441,6 +445,7 @@ def flow_to_str(explanation_mode, flow, project_type):
     return (
         file_loc,
         flow_str,
+        node_desc,
         has_check_tag,
     )
 
@@ -457,6 +462,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         purls_str = "\n".join(purls)
         comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
     added_flows = []
+    added_node_desc = []
     has_check_tag = False
     last_file_loc = None
     source_sink_desc = ""
@@ -477,15 +483,16 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
             source_sink_desc, is_endpoint_reachable, is_crypto_flow = (
                 flow_to_source_sink(idx, aflow, purls, project_type, vdr_result)
             )
-        file_loc, flow_str, has_check_tag_flow = flow_to_str(
+        file_loc, flow_str, node_desc, has_check_tag_flow = flow_to_str(
             explanation_mode, aflow, project_type
         )
         if last_file_loc == file_loc:
             continue
         last_file_loc = file_loc
-        if flow_str in added_flows:
+        if flow_str in added_flows or node_desc in added_node_desc:
             continue
         added_flows.append(flow_str)
+        added_node_desc.append(node_desc)
         if not tree:
             tree = Tree(flow_str)
         else:
