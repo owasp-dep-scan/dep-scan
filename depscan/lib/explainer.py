@@ -46,7 +46,11 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
     # Return early for endpoints only explanations
     if explanation_mode in ("Endpoints",):
         return
-    section_title = "Non-Reachable Flows" if explanation_mode in ("NonReachables",) else "Reachable Flows"
+    section_title = (
+        "Non-Reachable Flows"
+        if explanation_mode in ("NonReachables",)
+        else "Reachable Flows"
+    )
     for sf in slices_files:
         if (reachables_data := json_load(sf, log=LOG)) and reachables_data.get(
             "reachables"
@@ -241,15 +245,14 @@ def explain_reachables(
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
             break
+    tips = """## Secure Design Tips"""
     if explanation_mode in ("NonReachables",):
-        tips = """
+        tips += """
 - Automate tests (including fuzzing) to verify validation, sanitization, encoding, and encryption.
 - Align the implementation with the original architecture and threat models to ensure security compliance.
 - Extract reusable methods into a shared library for organization-wide use.
 """
     elif has_explanation:
-        tips = """## Secure Design Tips"""
-
         if has_crypto_flows:
             tips += """
 - Generate a Cryptographic BOM with cdxgen and monitor it in Dependency-Track.
