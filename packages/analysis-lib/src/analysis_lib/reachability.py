@@ -3,6 +3,7 @@ from analysis_lib import (
     ReachabilityAnalyzer,
     ReachabilityResult,
 )
+from analysis_lib.config import MIN_POSTBUILD_CONFIDENCE
 from analysis_lib.utils import (
     strip_version,
     is_service_like_tag,
@@ -157,12 +158,25 @@ class SemanticReachability(FrameworkReachability):
                 # For now we will also include usability slice as well
                 for c in data.get("components", []):
                     purl = c.get("purl", "")
-                    # We need to
-                    if (
-                        is_post_build
-                        and not purl.startswith("pkg:generic")
-                        and not purl.startswith("pkg:file")
+                    # Filter low confidence generic and file components
+                    if is_post_build and (
+                        purl.startswith("pkg:generic") or purl.startswith("pkg:file")
                     ):
+                        confidence = None
+                        identity_list_obj = c.get("evidence", {}).get("identity", [])
+                        if isinstance(identity_list_obj, dict):
+                            identity_list_obj = [identity_list_obj]
+                        for aident in identity_list_obj:
+                            if (
+                                aident
+                                and aident.get("confidence")
+                                and aident.get("confidence") >= MIN_POSTBUILD_CONFIDENCE
+                            ):
+                                confidence = aident.get("confidence")
+                                break
+                        if confidence and confidence < MIN_POSTBUILD_CONFIDENCE:
+                            continue
+                    if is_post_build:
                         postbuild_purls[purl] = True
                     component_type = c.get("type")
                     typed_components[component_type].append(purl)

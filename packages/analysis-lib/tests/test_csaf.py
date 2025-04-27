@@ -481,8 +481,12 @@ def test_parse_cwe():
 def test_parse_toml():
     # If running tests using an IDE such as PyCharm, pytest may execute from
     # the test directory rather than the project root.
-    if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml")):
-        filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml")
+    if os.path.exists(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml")
+    ):
+        filepath = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml"
+        )
     else:
         filepath = "../contrib/csaf.toml"
     metadata = import_csaf_toml(filepath)
@@ -587,8 +591,18 @@ def test_get_products():
 
 
 def test_import_root_component():
-    if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json")):
-        [prod, ref] = import_root_component(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"))
+    if os.path.exists(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"
+        )
+    ):
+        [prod, ref] = import_root_component(
+            os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                "data",
+                "bom-root-comp.json",
+            )
+        )
     else:
         [prod, ref] = import_root_component("data/bom-root-comp.json")
 
@@ -686,8 +700,14 @@ def test_verify_components_present():
             "id": "",
         },
     }
-    if os.path.exists(os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json")):
-        vdr_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json")
+    if os.path.exists(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"
+        )
+    ):
+        vdr_file = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"
+        )
     else:
         vdr_file = "data/bom-root-comp.json"
 

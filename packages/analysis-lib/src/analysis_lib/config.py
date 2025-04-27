@@ -1483,3 +1483,5 @@ SAFE_ENDPOINT_REACHABLE_PURLS = (
     "pkg:composer/symfony/dependency-injection",
     "pkg:composer/psr/http-factory",
 )
+
+MIN_POSTBUILD_CONFIDENCE = 0.5

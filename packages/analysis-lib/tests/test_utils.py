@@ -1,5 +1,6 @@
 from analysis_lib import utils
 
+
 def test_max_version():
     ret = utils.max_version("1.0.0")
     assert ret == "1.0.0"
