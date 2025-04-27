@@ -212,7 +212,7 @@ Refer to the docker tests under the GitHub action workflow for this repo for mor
 To scan with default settings
 
 ```bash
-docker run --rm -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+docker run --rm -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan depscan --src /app --reports-dir /app/reports
 ```
 
 To scan with custom environment variables based configuration
@@ -222,7 +222,7 @@ docker run --rm \
     -e VDB_HOME=/db \
     -e GITHUB_TOKEN=<token> \
     -v /tmp:/db \
-    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan --src /app --reports-dir /app/reports
+    -v $PWD:/app ghcr.io/owasp-dep-scan/dep-scan depscan --src /app --reports-dir /app/reports
 ```
 
 In the above example, `/tmp` is mounted as `/db` into the container. This directory is then specified as `VDB_HOME` for caching the vulnerability information. This way the database can be cached and reused to improve performance.

@@ -9,16 +9,17 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
       org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
-      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan --server"
+      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan --server"
 
 ARG TARGETPLATFORM
 ARG JAVA_VERSION=23.0.2-tem
 ARG MAVEN_VERSION=3.9.9
 ARG GRADLE_VERSION=8.13
 ARG PYTHON_VERSION=3.12
+ARG GO_VERSION=1.24.2
 
 ENV GOPATH=/opt/app-root/go \
-    GO_VERSION=1.22.3 \
+    GO_VERSION=$GO_VERSION \
     JAVA_VERSION=$JAVA_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
     GRADLE_VERSION=$GRADLE_VERSION \
@@ -33,7 +34,7 @@ ENV GOPATH=/opt/app-root/go \
     PYTHON_CMD=/usr/bin/python${PYTHON_VERSION} \
     CDXGEN_NO_BANNER=true \
     CDXGEN_CMD=cdxgen
-ENV PATH=${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:
+ENV PATH=/opt/dep-scan/.venv/bin:${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:
 
 COPY . /opt/dep-scan
 
@@ -73,12 +74,12 @@ RUN set -e; \
     && sdk offline enable \
     && mv /root/.sdkman/candidates/* /opt/ \
     && rm -rf /root/.sdkman \
-    && npm install -g @cyclonedx/cdxgen \
+    && npm install -g @cyclonedx/cdxgen @appthreat/atom \
     && cdxgen --version \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
     && rm go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
-    && useradd -ms /bin/bash appthreat \
+    && useradd -ms /bin/bash owasp \
     && pecl channel-update pecl.php.net \
     && pecl install timezonedb \
     && echo 'extension=timezonedb.so' >> /etc/php.ini \
@@ -89,6 +90,12 @@ RUN set -e; \
     && cd /opt/dep-scan \
     && uv sync --all-extras --all-packages --no-dev \
     && uv cache clean \
+    && depscan --help \
+    && cdxgen --help \
+    && atom --help \
+    && atom-tools --help \
+    && which astgen \
+    && which phpastgen \
     && rm ~/.local/bin/uv ~/.local/bin/uvx \
     && chmod a-w -R /opt \
     && rm -rf /var/cache/yum \
