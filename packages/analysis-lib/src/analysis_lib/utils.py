@@ -331,6 +331,7 @@ def get_suggested_version_map(pkg_vulnerabilities: List[Dict]) -> Dict[str, str]
         if not fixed_location or fixed_location in (
             PLACEHOLDER_FIX_VERSION,
             PLACEHOLDER_EXCLUDE_VERSION,
+            "*",
         ):
             continue
         purl_prefix = v.get("purl_prefix") or ""
@@ -1137,7 +1138,7 @@ def process_vuln_occ(
         versions.append({"version": fixed_location, "status": "unaffected"})
         recommendation = f"Update to version {fixed_location}."
     affects = [{"ref": purl, "versions": versions}]
-    if fixed_location == PLACEHOLDER_FIX_VERSION:
+    if fixed_location in (PLACEHOLDER_FIX_VERSION, "*"):
         counts.wont_fix_version_count += 1
     add_to_pkg_group_rows = False
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
@@ -1502,9 +1503,12 @@ def analyze_cve_vuln(
         )
         # This is a basic recommendation
         recommendation = f"Update to version {fixed_location}."
-        if fixed_location == PLACEHOLDER_FIX_VERSION:
+        if fixed_location in (PLACEHOLDER_FIX_VERSION, "*"):
             counts.wont_fix_version_count += 1
             recommendation = "Fix unavailable."
+            fixed_location = ""
+            insights.append("Not maintained")
+            plain_insights.append("Not maintained")
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
         purl,
         purl.replace(":", "/"),
