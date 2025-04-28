@@ -45,7 +45,7 @@ class VDRAnalyzer(XBOMAnalyzer):
             setuid_executable_purls,
             setgid_executable_purls,
             purl_identities,
-        ) = {}, {}, {}, {}, {}, {}
+        ) = {}, {}, {}, {}, {}, {}, {}
         if options.bom_dir:
             (
                 prebuild_purls,
