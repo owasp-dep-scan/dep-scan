@@ -13,7 +13,7 @@ from vdb.lib.utils import parse_purl
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import *
 
-NEWLINE = "\\n"
+NEWLINE = "\n"
 
 
 def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
@@ -347,9 +347,7 @@ def find_next_steps(
         if fix_version:
             next_step_str = "Check if the package can be maintained as a 'runtime' dependency instead of bundling."
         else:
-            next_step_str = (
-                "Consider upgrading this package to the latest version or replacing it with a well-maintained alternative."
-            )
+            next_step_str = "Consider upgrading this package to the latest version or replacing it with a well-maintained alternative."
     elif is_flagged_cwe:
         if fix_version:
             if is_endpoint_reachable:
@@ -374,7 +372,7 @@ def find_next_steps(
     else:
         next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
     if not is_binary_detection and src_files:
-        next_step_str = f"""{next_step_str}\n\n[bold]Patch locations:[/bold]\n{"\n".join(src_files)}"""
+        next_step_str = f"""{next_step_str}\n\n[bold]Patch locations:[/bold]\n{NEWLINE.join(src_files)}"""
     return {
         "next_step_str": next_step_str,
         "is_malware": is_malware,
