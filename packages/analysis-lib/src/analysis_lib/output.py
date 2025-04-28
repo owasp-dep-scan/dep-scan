@@ -13,7 +13,7 @@ from vdb.lib.utils import parse_purl
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import *
 
-NEWLINE = "\\n"
+NEWLINE = "\n"
 
 
 def get_pkg_display(tree_pkg, current_pkg, extra_text=None):
@@ -237,8 +237,34 @@ def find_next_steps(
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
+    purl_identities,
     oci_props,
 ):
+    # Understand about the source manifest, detection techniques, and confidences.
+    identity_evidences = purl_identities.get(matched_by) or []
+    src_files = []
+    techniques = []
+    confidences = []
+    is_binary_detection = False
+    for ident in identity_evidences:
+        if not ident.get("methods"):
+            continue
+        for method in ident.get("methods"):
+            technique = method.get("technique")
+            if technique:
+                techniques.append(technique)
+                if method.get("value"):
+                    if technique in (
+                        "source-code-analysis",
+                        "manifest-analysis",
+                        "ast-fingerprint",
+                        "filename",
+                    ):
+                        src_files.append(method.get("value"))
+                    elif technique in ("binary-analysis", "instrumentation"):
+                        is_binary_detection = True
+            confidences.append(method.get("confidence", 0))
+    average_confidence = int(sum(confidences) / len(confidences)) if confidences else 0
     next_step_str = ""
     is_exploitable = False
     has_exploits = False
@@ -262,7 +288,7 @@ def find_next_steps(
         is_exploitable = True
     if "Exploits" in insights_str:
         has_exploits = True
-    if "Deployed dependency" in insights_str:
+    if "Deployed dependency" in insights_str or is_binary_detection:
         is_deployed = True
     if "Flagged weakness" in insights_str:
         is_flagged_cwe = True
@@ -321,9 +347,7 @@ def find_next_steps(
         if fix_version:
             next_step_str = "Check if the package can be maintained as a 'runtime' dependency instead of bundling."
         else:
-            next_step_str = (
-                "Consider replacing this package with a well-maintained alternative."
-            )
+            next_step_str = "Consider upgrading this package to the latest version or replacing it with a well-maintained alternative."
     elif is_flagged_cwe:
         if fix_version:
             if is_endpoint_reachable:
@@ -347,6 +371,8 @@ def find_next_steps(
             next_step_str = f"Update to version '{fix_version}' and test for any functional defects."
     else:
         next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
+    if not is_binary_detection and src_files:
+        next_step_str = f"""{next_step_str}\n\n[bold]Patch locations:[/bold]\n{NEWLINE.join(src_files)}"""
     return {
         "next_step_str": next_step_str,
         "is_malware": is_malware,
@@ -357,6 +383,9 @@ def find_next_steps(
         "is_reachable": is_reachable,
         "is_endpoint_reachable": is_endpoint_reachable,
         "possible_reachable_service": possible_reachable_service,
+        "average_confidence": average_confidence,
+        "is_binary_detection": is_binary_detection,
+        "src_files": src_files,
     }
 
 
@@ -371,6 +400,7 @@ def summarize_priority_actions(
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
+    purl_identities,
     oci_props,
 ):
     utable = Table(
@@ -398,6 +428,7 @@ def summarize_priority_actions(
             executable_purls,
             setuid_executable_purls,
             setgid_executable_purls,
+            purl_identities,
             oci_props,
         )
         if not has_any_malware and next_step_analysis_obj["is_malware"]:
@@ -440,6 +471,7 @@ def output_priority_table(
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
+    purl_identities,
     oci_props,
 ):
     psection = Markdown(
@@ -459,6 +491,9 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
     for _, pkg_vuln_datas in pkg_group_rows.items():
         for c in pkg_vuln_datas:
             matched_by = c.get("matched_by", "").split("@")[0]
+            # Keep tracking the identity evidences for non-versioned package names as well
+            if c.get("matched_by") and purl_identities.get(c.get("matched_by")):
+                purl_identities[matched_by] = purl_identities[c.get("matched_by")]
             matched_by_cves[matched_by].append(c.get("id"))
             matched_by_insights[matched_by].update(c.get("insights", []))
             fv = c.get("fixed_location")
@@ -476,6 +511,7 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
         executable_purls,
         setuid_executable_purls,
         setgid_executable_purls,
+        purl_identities,
         oci_props,
     )
     console.print()
@@ -495,6 +531,7 @@ def output_priority_suggestions(
     executable_purls,
     setuid_executable_purls,
     setgid_executable_purls,
+    purl_identities,
     oci_props,
     table,
 ):
@@ -526,6 +563,7 @@ def output_priority_suggestions(
             executable_purls,
             setuid_executable_purls,
             setgid_executable_purls,
+            purl_identities,
             oci_props,
         )
         if reached_purls or reached_services or endpoint_reached_purls:
@@ -659,7 +697,7 @@ def output_priority_suggestions(
                     this result."""
                 console.print(Panel(rmessage, title="Recommendation"))
             else:
-                rmessage = None
+                rmessage = ":white_check_mark: No package requires immediate attention."
                 if reached_purls:
                     rmessage = ":white_check_mark: No packages require immediate attention, as the major vulnerabilities are neither reachable nor exploitable."
                 elif direct_purls:

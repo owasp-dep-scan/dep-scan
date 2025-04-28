@@ -71,6 +71,7 @@ class VDRResult:
     reached_purls: Optional[Dict[str, int]] = None
     reached_services: Optional[Dict[str, int]] = None
     endpoint_reached_purls: Optional[Dict[str, int]] = None
+    purl_identities: Optional[Dict[str, List]] = None
 
 
 class Counts:

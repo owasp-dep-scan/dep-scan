@@ -16,12 +16,16 @@ from depscan.lib.config import (
 from depscan.lib.logger import console, LOG
 
 
-def explain(project_type, src_dir, bom_dir, vdr_result, explanation_mode):
+def explain(project_type, src_dir, bom_dir, vdr_file, vdr_result, explanation_mode):
     """
     Explain the analysis and findings based on the explanation mode.
 
     :param project_type: Project type
+    :param src_dir: Source directory
     :param bom_dir: BOM directory
+    :param vdr_file: VDR file
+    :param vdr_result: VDR Result
+    :param explanation_mode: Explanation mode
     """
     pattern_methods = {}
     has_any_explanation = False

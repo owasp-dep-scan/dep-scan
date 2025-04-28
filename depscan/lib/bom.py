@@ -1,6 +1,9 @@
 import os
 import shutil
 import sys
+import uuid
+from collections import defaultdict
+from datetime import datetime, timezone
 from urllib.parse import unquote_plus
 
 from blint.cyclonedx.spec import CycloneDX
@@ -438,8 +441,8 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
 
 def create_empty_vdr(pkg_list, ds_version):
     components = pkg_list or []
-    metadata = update_tools_metadata(None, None, ds_version)
-    return {"metadata": metadata, "components": components}
+    bom_data = update_tools_metadata(None, None, ds_version)
+    return {**bom_data, "components": components}
 
 
 def update_tools_metadata(tools, bom_data, ds_version):
@@ -451,18 +454,31 @@ def update_tools_metadata(tools, bom_data, ds_version):
     :return: None
     """
     if not bom_data:
-        bom_data = {"metadata": {}}
-    components = tools.get("components", []) if tools else []
-    ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
-    components.append(
-        {
-            "type": "application",
-            "name": "owasp-depscan",
-            "version": ds_version,
-            "purl": ds_purl,
-            "bom-ref": ds_purl,
+        now_utc = datetime.now(timezone.utc)
+        bom_data = {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.6",
+            "serialNumber": f"urn:uuid:{uuid.uuid4()}",
+            "version": 1,
+            "metadata": {
+                "timestamp": now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            },
         }
+    components = tools.get("components", []) if tools else []
+    needs_ds_component = (
+        len([c for c in components if c.get("name") == "owasp-depscan"]) == 0
     )
+    if needs_ds_component:
+        ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
+        components.append(
+            {
+                "type": "application",
+                "name": "owasp-depscan",
+                "version": ds_version,
+                "purl": ds_purl,
+                "bom-ref": ds_purl,
+            }
+        )
     bom_data["metadata"]["tools"] = {"components": components}
     return bom_data
 
@@ -505,16 +521,34 @@ def trim_vdr_bom_data(bom_data):
     if metadata and metadata.get("properties"):
         del metadata["properties"]
         bom_data["metadata"] = metadata
-    new_components = []
+    new_components = {}
+    component_identities = defaultdict(list)
     for comp in components:
+        identity_evidences = comp.get("evidence", {}).get("identity", []) or []
+        if isinstance(identity_evidences, dict):
+            identity_evidences = [identity_evidences]
         for p in (
             "properties",
             "signature",
+            "url",
+            "vendor",
+            "licenses",  # We need a better logic to retain licenses here
         ):
-            if comp.get(p):
+            if comp.get(p) is not None:
                 del comp[p]
-        new_components.append(comp)
-    bom_data["components"] = new_components
+        ref = comp.get("bom-ref") or comp.get("purl")
+        # This is an error condition really
+        if not ref:
+            continue
+        component_identities[ref] += identity_evidences
+        if not new_components.get(ref):
+            new_components[ref] = comp
+    vdr_components = []
+    for ref, comp in new_components.items():
+        identity_evidences = component_identities[ref]
+        comp["evidence"] = {"identity": identity_evidences}
+        vdr_components.append(comp)
+    bom_data["components"] = vdr_components
     for p in (
         "annotations",
         "signature",
