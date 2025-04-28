@@ -3,7 +3,14 @@ import os
 
 import pytest
 
-from analysis_lib.utils import cvss_to_vdr_rating, find_purl_usages, get_version_range, split_cwe, pkg_sub_tree, get_suggested_version_map
+from analysis_lib.utils import (
+    cvss_to_vdr_rating,
+    find_purl_usages,
+    get_version_range,
+    split_cwe,
+    pkg_sub_tree,
+    get_suggested_version_map,
+)
 
 
 @pytest.fixture
@@ -661,18 +668,14 @@ def test_locate_pkg_in_tree(test_bom_dependency_tree, test_js_deps_data):
         "pkg:npm/engine.io@6.2.1",
         "",
         test_js_deps_data,
-    )[
-        0
-    ] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]
+    )[0] == ["pkg:npm/socket.io@4.5.4", "pkg:npm/engine.io@6.2.1"]
 
 
 def test_purl_usages():
     test_evinse_file = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "bom-evinse-java.json"
     )
-    direct_purls, reached_purls = find_purl_usages(
-        [test_evinse_file], None, None
-    )
+    direct_purls, reached_purls = find_purl_usages([test_evinse_file], None, None)
     assert direct_purls == {
         "pkg:maven/org.springframework/spring-jdbc@5.2.5.RELEASE?type=jar": 5,
         "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.33?type=jar": 12,
@@ -701,26 +704,29 @@ def test_cvss_to_vdr_rating():
     }
     # Test missing score and vector string
     assert cvss_to_vdr_rating(res) == [
-        {'method': 'CVSSv31', 'score': 2.0, 'severity': 'high'}]
+        {"method": "CVSSv31", "score": 2.0, "severity": "high"}
+    ]
     # Test parsing
-    res["cvss_v3"]["vector_string"] = ("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
-                                       ":N/A:H")
+    res["cvss_v3"]["vector_string"] = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
     res["cvss_score"] = 7.5
 
-    assert cvss_to_vdr_rating(res) == [{
-        'method': 'CVSSv31',
-        'score': 7.5,
-        'severity': 'high',
-        'vector': 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
-    }]
-    res["cvss_v3"]["vector_string"] = ("CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I"
-                                       ":N/A:H")
-    assert cvss_to_vdr_rating(res) == [{
-        'method': 'CVSSv3',
-        'score': 7.5,
-        'severity': 'high',
-        'vector': 'CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H'
-    }]
+    assert cvss_to_vdr_rating(res) == [
+        {
+            "method": "CVSSv31",
+            "score": 7.5,
+            "severity": "high",
+            "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        }
+    ]
+    res["cvss_v3"]["vector_string"] = "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+    assert cvss_to_vdr_rating(res) == [
+        {
+            "method": "CVSSv3",
+            "score": 7.5,
+            "severity": "high",
+            "vector": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+        }
+    ]
 
 
 def test_get_version_range():
@@ -729,19 +735,18 @@ def test_get_version_range():
 
     # Test all components present
     package_issue = {
-        'affected_location': {
-            'version': '>=2.9.0-<3.0.0'
-        }, 'fixed_location': '3.0.0'}
+        "affected_location": {"version": ">=2.9.0-<3.0.0"},
+        "fixed_location": "3.0.0",
+    }
     purl = "pkg:maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar"
     assert get_version_range(package_issue, purl) == {
         "name": "affectedVersionRange",
-        "value": "org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0"
+        "value": "org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0",
     }
 
     # Test invalid purl
     purl = "maven/org.apache.logging.log4j/log4j-api@2.12.1?type=jar"
     assert get_version_range(package_issue, purl) == {
-        'name': 'affectedVersionRange',
-        'value': 'maven/org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0'}
-
-
+        "name": "affectedVersionRange",
+        "value": "maven/org.apache.logging.log4j/log4j-api@>=2.9.0-<3.0.0",
+    }

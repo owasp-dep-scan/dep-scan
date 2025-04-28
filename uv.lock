@@ -1093,7 +1093,6 @@ dependencies = [
     { name = "ds-xbom-lib" },
     { name = "jinja2" },
     { name = "packageurl-python" },
-    { name = "pdfkit" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "tomli" },
@@ -1104,6 +1103,7 @@ all = [
     { name = "atom-tools" },
     { name = "blint" },
     { name = "hishel", extra = ["redis"] },
+    { name = "pdfkit" },
     { name = "pygithub" },
     { name = "quart" },
 ]
@@ -1117,6 +1117,7 @@ dev = [
 ext = [
     { name = "atom-tools" },
     { name = "blint" },
+    { name = "pdfkit" },
 ]
 perf = [
     { name = "hishel", extra = ["redis"] },
@@ -1149,7 +1150,8 @@ requires-dist = [
     { name = "httpretty", marker = "extra == 'dev'", specifier = ">=1.1.4" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "packageurl-python", specifier = ">=0.16.0" },
-    { name = "pdfkit", specifier = ">=1.0.0" },
+    { name = "pdfkit", marker = "extra == 'all'", specifier = ">=1.0.0" },
+    { name = "pdfkit", marker = "extra == 'ext'", specifier = ">=1.0.0" },
     { name = "pygithub", marker = "extra == 'all'", specifier = ">=2.6.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.4" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0.0" },

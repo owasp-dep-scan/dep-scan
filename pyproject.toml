@@ -11,7 +11,6 @@ dependencies = [
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
     "rich>=14.0.0",
-    "pdfkit>=1.0.0",
     "Jinja2>=3.1.6",
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
@@ -54,9 +53,9 @@ dev = [
     "httpretty>=1.1.4"
 ]
 server = ["quart>=0.20.0"]
-ext = ["atom-tools>=0.7.8", "blint>=2.4.1"]
+ext = ["atom-tools>=0.7.8", "blint>=2.4.1", "pdfkit>=1.0.0"]
 perf = ["hishel[redis]>=0.1.1"]
-all = ["atom-tools>=0.7.8", "blint>=2.4.1", "quart>=0.20.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
+all = ["atom-tools>=0.7.8", "blint>=2.4.1", "quart>=0.20.0", "pdfkit>=1.0.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]

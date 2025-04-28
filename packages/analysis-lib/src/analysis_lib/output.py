@@ -197,6 +197,10 @@ def generate_console_output(
             arow = cve_rows[cve]
             # Reduce insights repetition
             insights = arow[1] if len(arow[1]) > 1 or i == 0 else []
+            if i != 0:
+                for ins_str in insights:
+                    if "Used in" in ins_str or " dependency" in ins_str:
+                        insights.remove(ins_str)
             table.add_row(
                 arow[0],
                 "\n".join(insights),
