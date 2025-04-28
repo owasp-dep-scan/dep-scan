@@ -345,7 +345,9 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
         source_sink_desc = "The flow originates from middleware."
     elif len(purls) == 0:
         if tags:
-            source_sink_desc = f"{source_sink_desc} can be used to reach packages with tags {','.join(tags[:2])}"
+            source_sink_desc = (
+                f"{source_sink_desc} can be used to reach packages with tags `{tags}`"
+            )
     elif len(purls) == 1:
         if is_endpoint_reachable:
             source_sink_desc = f"{source_sink_desc} can be used to reach this package from certain endpoints."
