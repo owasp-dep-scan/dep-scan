@@ -492,7 +492,7 @@ The vulnerabilities below have been prioritized by depscan. Follow your team’s
         for c in pkg_vuln_datas:
             matched_by = c.get("matched_by", "").split("@")[0]
             # Keep tracking the identity evidences for non-versioned package names as well
-            if c.get("matched_by") and purl_identities[c.get("matched_by")]:
+            if c.get("matched_by") and purl_identities.get(c.get("matched_by")):
                 purl_identities[matched_by] = purl_identities[c.get("matched_by")]
             matched_by_cves[matched_by].append(c.get("id"))
             matched_by_insights[matched_by].update(c.get("insights", []))
