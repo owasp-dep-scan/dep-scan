@@ -53,6 +53,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 executable_purls,
                 setuid_executable_purls,
                 setgid_executable_purls,
+                purl_identities,
             ) = get_all_lifecycle_pkgs(options.bom_dir)
         elif options.bom_file:
             (
@@ -62,6 +63,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 executable_purls,
                 setuid_executable_purls,
                 setgid_executable_purls,
+                purl_identities,
             ) = get_lifecycle_pkgs(options.bom_file)
         options.prebuild_purls = prebuild_purls
         options.build_purls = build_purls
@@ -145,6 +147,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                         prebuild_purls,
                         build_purls,
                         postbuild_purls,
+                        purl_identities,
                         bom_dependency_tree,
                         counts,
                     )
@@ -180,6 +183,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 executable_purls,
                 setuid_executable_purls,
                 setgid_executable_purls,
+                purl_identities,
                 oci_props,
                 table,
             )
@@ -190,4 +194,5 @@ class VDRAnalyzer(XBOMAnalyzer):
             reached_purls=reached_purls,
             reached_services=reached_services,
             endpoint_reached_purls=endpoint_reached_purls,
+            purl_identities=purl_identities,
         )

@@ -1469,6 +1469,7 @@ def analyze_cve_vuln(
     prebuild_purls,
     build_purls,
     postbuild_purls,
+    purl_identities,
     bom_dependency_tree,
     counts,
 ):
@@ -1855,18 +1856,30 @@ def get_all_pkg_list(from_dir):
     bom_files = get_all_bom_files(from_dir)
     unique_packages = []
     seen_bom_refs = set()
+    # Retain the identity evidences to identify the file to patch
+    component_identities = defaultdict(list)
     for file_path in bom_files:
         pkg_list, lifecycles = get_pkg_list(file_path)
         lifecycle_mode = get_lifecycle(lifecycles)
         for pkg in pkg_list:
+            identity_evidences = pkg.get("evidence", {}).get("identity", []) or []
+            if isinstance(identity_evidences, dict):
+                identity_evidences = [identity_evidences]
             purl = pkg.get("purl")
             # Ignore unversioned components in post-build
             if lifecycle_mode == "post-build" and purl and "@" not in purl:
                 continue
             bom_ref = pkg.get("bom-ref") or purl
-            if bom_ref and bom_ref not in seen_bom_refs:
+            if not bom_ref:
+                continue
+            component_identities[bom_ref] += identity_evidences
+            if bom_ref not in seen_bom_refs:
                 unique_packages.append(pkg)
                 seen_bom_refs.add(bom_ref)
+    for comp in unique_packages:
+        ref = comp.get("bom-ref") or comp.get("purl")
+        identity_evidences = component_identities[ref]
+        comp["evidence"] = {"identity": identity_evidences}
     return unique_packages
 
 
@@ -1944,6 +1957,7 @@ def get_lifecycle_pkgs(file_path):
     executable_purls = defaultdict(list)
     setuid_executable_purls = defaultdict(list)
     setgid_executable_purls = defaultdict(list)
+    purl_identities = defaultdict(list)
     lifecycle_mode = "pre-build"
     populate_dict = prebuild_purls
     if file_path and os.path.exists(file_path):
@@ -1959,6 +1973,10 @@ def get_lifecycle_pkgs(file_path):
             ref = pkg.get("purl") or pkg.get("bom-ref")
             if not ref:
                 continue
+            identity_evidences = pkg.get("evidence", {}).get("identity", []) or []
+            if isinstance(identity_evidences, dict):
+                identity_evidences = [identity_evidences]
+            purl_identities[ref] += identity_evidences
             if not populate_dict.get(ref):
                 populate_dict[ref] = []
             populate_dict[ref].append(file_path)
@@ -1980,6 +1998,7 @@ def get_lifecycle_pkgs(file_path):
         executable_purls,
         setuid_executable_purls,
         setgid_executable_purls,
+        purl_identities,
     )
 
 
@@ -1990,16 +2009,18 @@ def get_all_lifecycle_pkgs(from_dir):
     executable_purls = {}
     setuid_executable_purls = {}
     setgid_executable_purls = {}
+    purl_identities = {}
     if from_dir and os.path.exists(from_dir):
         bom_files = get_all_bom_files(from_dir)
         for file_path in bom_files:
-            pre, build, post, exe, uid, gid = get_lifecycle_pkgs(file_path)
+            pre, build, post, exe, uid, gid, identities = get_lifecycle_pkgs(file_path)
             prebuild_purls |= pre
             build_purls |= build
             postbuild_purls |= post
             executable_purls |= exe
             setuid_executable_purls |= uid
             setgid_executable_purls |= gid
+            purl_identities |= identities
     # Include version numbers to postbuild purls
     postbuild_purls = versionify_postbuild_purls(
         prebuild_purls, build_purls, postbuild_purls
@@ -2011,6 +2032,7 @@ def get_all_lifecycle_pkgs(from_dir):
         executable_purls,
         setuid_executable_purls,
         setgid_executable_purls,
+        purl_identities,
     )
 
 

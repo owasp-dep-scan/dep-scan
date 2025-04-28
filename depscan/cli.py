@@ -170,17 +170,22 @@ def vdr_analyze_summarize(
         vdr_file = os.path.join(bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
     if vdr_result.success:
         pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
+        cdx_vdr_data = None
         # Always create VDR files even when empty
         if pkg_vulnerabilities is not None:
             # Case 1: Single BOM file resulting in a single VDR file
             if bom_file:
-                if bom_data := json_load(bom_file, log=LOG):
-                    export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file)
+                cdx_vdr_data = json_load(bom_file, log=LOG)
             # Case 2: Multiple BOM files in a bom directory
             elif bom_dir:
-                bom_data = create_empty_vdr(pkg_list, ds_version)
-                export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file)
-                LOG.debug(f"The VDR file '{vdr_file}' was created successfully.")
+                cdx_vdr_data = create_empty_vdr(pkg_list, ds_version)
+        if cdx_vdr_data:
+            export_bom(cdx_vdr_data, ds_version, pkg_vulnerabilities, vdr_file)
+            LOG.debug(f"The VDR file '{vdr_file}' was created successfully.")
+        else:
+            LOG.debug(
+                f"VDR file '{vdr_file}' was not created for the type {project_type}."
+            )
         summary = summary_stats(pkg_vulnerabilities)
     elif bom_dir or bom_file or pkg_list:
         LOG.info("No vulnerabilities found for project type '%s'!", project_type)
@@ -656,10 +661,13 @@ def run_depscan(args):
             or (vuln_analyzer == "auto" and bom_dir_mode)
         ):
             if args.reachability_analyzer == "SemanticReachability":
-                LOG.info(
-                    "Semantic Reachability analysis requested for project type '%s'. This might take a while ...",
-                    project_type,
-                )
+                if not args.bom_dir:
+                    LOG.info(
+                        "Semantic Reachability analysis requested for project type '%s'. This might take a while ...",
+                        project_type,
+                    )
+                else:
+                    LOG.info("Attempting semantic analysis based on existing data at '%s'", args.bom_dir)
             else:
                 LOG.info(
                     "Lifecycle-based vulnerability analysis requested for project type '%s'. This might take a while ...",
@@ -862,7 +870,9 @@ def run_depscan(args):
         else:
             LOG.debug("Vulnerability database loaded from %s", config.VDB_BIN_FILE)
         if len(pkg_list) > 1:
-            if args.bom:
+            if project_type == "bom":
+              LOG.info("Scanning CycloneDX xBOMs and atom slices")
+            elif args.bom:
                 LOG.info(
                     "Scanning %s with type %s",
                     args.bom,
@@ -935,6 +945,7 @@ def run_depscan(args):
                 project_type,
                 src_dir,
                 args.bom_dir or reports_dir,
+                vdr_file,
                 vdr_result,
                 args.explanation_mode,
             )

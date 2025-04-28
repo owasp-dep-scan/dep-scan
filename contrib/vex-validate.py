@@ -23,13 +23,13 @@ def build_args():
 
 
 def vvex(vex_json):
-    schema = os.path.join(os.path.dirname(__file__), "bom-1.5.schema.json")
+    schema = os.path.join(os.path.dirname(__file__), "bom-1.6.schema.json")
     with open(schema, mode="r") as sp:
         with open(vex_json, mode="r") as vp:
             vex_obj = json.load(vp)
             try:
                 validate(instance=vex_obj, schema=json.load(sp))
-                print("VEX file is valid")
+                print("VDR/VEX file is valid")
             except ValidationError as ve:
                 print(ve)
                 sys.exit(1)
