@@ -401,7 +401,6 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             status.update(f"Generating container BOM for '{src_dir}' with cdxgen.")
             coptions = {**options}
             coptions["deep"] = "true"
-            coptions["lifecycles"] = ["pre-build"]
             coptions["project_type"] = ["oci"]
             if container_image_name == src_dir:
                 LOG.info(

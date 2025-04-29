@@ -39,7 +39,6 @@ console = Console(
     log_path=False,
     theme=custom_theme,
     color_system=os.getenv("CONSOLE_COLOR_SCHEME", "256"),
-    force_terminal=not IS_CI and not os.getenv("GITHUB_ACTION"),
     highlight=not IS_CI,
     highlighter=CustomHighlighter(),
     record=sys.platform == "win32",

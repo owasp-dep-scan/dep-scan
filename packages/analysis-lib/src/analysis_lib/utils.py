@@ -854,6 +854,9 @@ def process_package_issue(options, vuln_occ_dict):
 
 
 def get_unaffected(vuln):
+    # Do we have a pre-computed fix_version from vdb already?
+    if vuln.get("fix_version"):
+        return vuln.get("fix_version")
     source_data = vuln.get("source_data")
     if source_data and source_data.root.containers:
         products: List[Product] = source_data.root.containers.cna.affected.root
@@ -869,6 +872,12 @@ def get_unaffected(vuln):
         vers = vers.split("|")[-1]
         if "!=" in vers or "<=" not in vers:
             return vers.replace("<", "").replace("!=", "")
+    elif "/<" in vers and "/<=" not in vers:
+        return vers.split("/<")[-1]
+    elif vers.endswith(f"<{PLACEHOLDER_EXCLUDE_VERSION}"):
+        return PLACEHOLDER_EXCLUDE_VERSION
+    elif vers.endswith(f"<{PLACEHOLDER_FIX_VERSION}"):
+        return PLACEHOLDER_FIX_VERSION
     return ""
 
 
@@ -1350,8 +1359,6 @@ def process_vuln_occ(
         or project_type_pkg in optional_pkgs
     ):
         if package_type in OS_PKG_TYPES:
-            package_usage = "[spring_green4]:notebook: Local install[/spring_green4]"
-            plain_package_usage = "Local install"
             counts.has_os_packages = True
         else:
             package_usage = (
@@ -1525,12 +1532,20 @@ def analyze_cve_vuln(
         )
         # This is a basic recommendation
         recommendation = f"Update to version {fixed_location}."
+        if fixed_location in (PLACEHOLDER_EXCLUDE_VERSION,):
+            likely_false_positive = True
+            return counts, {}, False, likely_false_positive
         if fixed_location in (PLACEHOLDER_FIX_VERSION, "*"):
             counts.wont_fix_version_count += 1
             recommendation = "Fix unavailable."
+            if fixed_location == "*":
+                insights.append("Not maintained")
+                plain_insights.append("Not maintained")
+            else:
+                insights.append("Not fixed")
+                plain_insights.append("Not fixed")
+                likely_false_positive = True
             fixed_location = ""
-            insights.append("Not maintained")
-            plain_insights.append("Not maintained")
     pkg_tree_list, p_rich_tree = pkg_sub_tree(
         purl,
         purl.replace(":", "/"),
@@ -1563,12 +1578,12 @@ def analyze_cve_vuln(
     try:
         cve_record = vuln.get("source_data")
         if not isinstance(cve_record, CVE):
-            return counts, vdict, add_to_pkg_group_rows
+            return counts, vdict, add_to_pkg_group_rows, likely_false_positive
     except KeyError:
-        return counts, vdict, add_to_pkg_group_rows
+        return counts, vdict, add_to_pkg_group_rows, likely_false_positive
 
     if not cve_record:
-        return counts, vdict, add_to_pkg_group_rows
+        return counts, vdict, add_to_pkg_group_rows, likely_false_positive
 
     (
         source,
@@ -1616,6 +1631,7 @@ def analyze_cve_vuln(
         "ratings": [rating],
         "published": published.strftime("%Y-%m-%dT%H:%M:%S") if published else "",
         "updated": updated.strftime("%Y-%m-%dT%H:%M:%S") if updated else "",
+        "p_rich_tree": p_rich_tree,
     }
     is_required = False
     # The given purl is considered required if it exists in any of these 3 data structures.
@@ -1652,8 +1668,6 @@ def analyze_cve_vuln(
         not optional_pkgs and pkg_tree_list and len(pkg_tree_list) > 1
     ) or purl in optional_pkgs:
         if package_type in OS_PKG_TYPES:
-            package_usage = "[spring_green4]:notebook: Local install[/spring_green4]"
-            plain_package_usage = "Local install"
             counts.has_os_packages = True
         else:
             package_usage = (
