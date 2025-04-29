@@ -8,7 +8,16 @@ from custom_json_diff.lib.utils import compare_versions, json_load
 from cvss import CVSSError
 from packageurl import PackageURL
 from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION, PLACEHOLDER_FIX_VERSION
-from vdb.lib.cve_model import CVE, Description, Descriptions, ProblemTypes, References
+from vdb.lib.cve_model import (
+    CVE,
+    Description,
+    Descriptions,
+    ProblemTypes,
+    References,
+    Status,
+    Versions,
+    Product,
+)
 from vdb.lib.utils import parse_cpe, parse_purl, version_compare
 
 from analysis_lib import get_all_bom_files
@@ -845,10 +854,21 @@ def process_package_issue(options, vuln_occ_dict):
 
 
 def get_unaffected(vuln):
+    source_data = vuln.get("source_data")
+    if source_data and source_data.root.containers:
+        products: List[Product] = source_data.root.containers.cna.affected.root
+        for p in products:
+            versions: List[Versions] = p.versions
+            if versions:
+                for ver in versions:
+                    if ver.status == Status.unaffected:
+                        if ver.version:
+                            return ver.version.root
     vers = vuln.get("matching_vers", "")
-    if "|" in vers and "<=" not in vers:
+    if "|" in vers:
         vers = vers.split("|")[-1]
-        return vers.replace("<", "")
+        if "!=" in vers or "<=" not in vers:
+            return vers.replace("<", "").replace("!=", "")
     return ""
 
 
@@ -1314,12 +1334,13 @@ def process_vuln_occ(
             counts.critical_count += 1
     if is_required and package_type not in OS_PKG_TYPES:
         if direct_purls.get(purl):
+            label_str = "locations" if direct_purls.get(purl) > 1 else "location"
             package_usage = (
                 f":direct_hit: Used in [info]"
                 f"{str(direct_purls.get(purl))}"
-                f"[/info] locations"
+                f"[/info] {label_str}"
             )
-            plain_package_usage = f"Used in {str(direct_purls.get(purl))} locations"
+            plain_package_usage = f"Used in {str(direct_purls.get(purl))} {label_str}"
         else:
             package_usage = ":direct_hit: Direct dependency"
             plain_package_usage = "Direct dependency"
@@ -1606,6 +1627,8 @@ def analyze_cve_vuln(
         is_required = True
     package_usage = ""
     plain_package_usage = ""
+    if rating.get("severity", "").upper() in JUST_CRITICAL:
+        counts.critical_count += 1
     # We are dealing with a required non-os package
     if is_required and package_type not in OS_PKG_TYPES and not likely_false_positive:
         # Is the package also present in post-build BOM
@@ -1615,7 +1638,6 @@ def analyze_cve_vuln(
             # Does this require attention
             if rating.get("severity", "").upper() in JUST_CRITICAL:
                 cve_requires_attn = True
-                counts.critical_count += 1
                 counts.pkg_attention_count += 1
         elif direct_purls.get(purl):
             package_usage = (
@@ -1644,7 +1666,7 @@ def analyze_cve_vuln(
         if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
             if endpoint_reached_purls.get(purl):
                 insights.append(
-                    "[yellow]:spider_web: Endpoint-Reachable Bounty target[/yellow]"
+                    "[yellow]:heavy_large_circle: Endpoint-Reachable Bounty target[/yellow]"
                 )
                 plain_insights.append("Endpoint-Reachable Bounty target")
             elif reached_purls.get(purl):
@@ -1681,7 +1703,7 @@ def analyze_cve_vuln(
         # If it has a poc, an insight might have gotten added above
         if not cve_requires_attn:
             if endpoint_reached_purls.get(purl):
-                insights.append(":spider_web: Endpoint-Reachable")
+                insights.append(":heavy_large_circle: Endpoint-Reachable")
                 plain_insights.append("Endpoint-Reachable")
                 if rating.get("severity", "").upper() in CRITICAL_OR_HIGH:
                     cve_requires_attn = True
@@ -1693,6 +1715,7 @@ def analyze_cve_vuln(
             plain_insights.append("Vendor Confirmed")
     # There are exploits
     if exploits and not likely_false_positive:
+        cve_requires_attn = True
         # Also reachable
         if (
             reached_purls.get(purl)
@@ -1702,7 +1725,7 @@ def analyze_cve_vuln(
         ):
             if endpoint_reached_purls.get(purl):
                 insights.append(
-                    "[bright_red]:spider_web: Endpoint-Reachable and Exploitable[/bright_red]"
+                    "[bright_red]:collision: Endpoint-Reachable and Exploitable[/bright_red]"
                 )
                 plain_insights.append("Endpoint-Reachable and Exploitable")
             else:
@@ -1716,12 +1739,11 @@ def analyze_cve_vuln(
                     insights.remove(":receipt: Reachable")
                 if "Reachable" in plain_insights:
                     plain_insights.remove("Reachable")
-                if ":spider_web: Endpoint-Reachable" in insights:
-                    insights.remove(":spider_web: Endpoint-Reachable")
+                if ":heavy_large_circle: Endpoint-Reachable" in insights:
+                    insights.remove(":heavy_large_circle: Endpoint-Reachable")
                 if "Endpoint-Reachable" in plain_insights:
                     plain_insights.remove("Endpoint-Reachable")
             counts.has_reachable_exploit_count += 1
-            cve_requires_attn = True
             # Fail safe. Packages with exploits and direct usage without
             # a reachable flow are still considered reachable to reduce
             # false negatives
@@ -1744,14 +1766,14 @@ def analyze_cve_vuln(
                 )
                 plain_insights.append("Exploitable")
                 counts.has_exploit_count += 1
-        # Just known exploits
         else:
             insights.append(
                 "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
             )
             plain_insights.append("Known Exploits")
-        counts.has_exploit_count += 1
-        cve_requires_attn = True
+            # Just known exploits without usage is not a priority
+            if reached_purls or direct_purls:
+                cve_requires_attn = False
     if cve_record.root.containers.cna.affected.root and (
         cpes := cve_record.root.containers.cna.affected.root[0].cpes
     ):

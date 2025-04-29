@@ -188,7 +188,10 @@ def vdr_analyze_summarize(
             )
         summary = summary_stats(pkg_vulnerabilities)
     elif bom_dir or bom_file or pkg_list:
-        LOG.info("No vulnerabilities found for project type '%s'!", project_type)
+        if project_type != "bom":
+            LOG.info("No vulnerabilities found for project type '%s'!", project_type)
+        else:
+            LOG.info("No vulnerabilities found!")
     return summary, vdr_file, vdr_result
 
 
@@ -667,7 +670,10 @@ def run_depscan(args):
                         project_type,
                     )
                 else:
-                    LOG.info("Attempting semantic analysis based on existing data at '%s'", args.bom_dir)
+                    LOG.info(
+                        "Attempting semantic analysis using existing data at '%s'",
+                        args.bom_dir,
+                    )
             else:
                 LOG.info(
                     "Lifecycle-based vulnerability analysis requested for project type '%s'. This might take a while ...",
@@ -809,14 +815,14 @@ def run_depscan(args):
                     args.private_ns,
                     pkg_list,
                 )
-                rtable = pkg_risks_table(
+                rtable, report_data = pkg_risks_table(
                     project_type,
                     scoped_pkgs,
                     risk_results,
                     pkg_max_risk_score=pkg_max_risk_score,
                     risk_report_file=risk_report_file,
                 )
-                if not args.no_vuln_table:
+                if not args.no_vuln_table and report_data:
                     console.print(rtable)
             except Exception as e:
                 LOG.error(e)
@@ -871,7 +877,7 @@ def run_depscan(args):
             LOG.debug("Vulnerability database loaded from %s", config.VDB_BIN_FILE)
         if len(pkg_list) > 1:
             if project_type == "bom":
-              LOG.info("Scanning CycloneDX xBOMs and atom slices")
+                LOG.info("Scanning CycloneDX xBOMs and atom slices")
             elif args.bom:
                 LOG.info(
                     "Scanning %s with type %s",

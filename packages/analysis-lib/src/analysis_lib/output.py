@@ -372,7 +372,8 @@ def find_next_steps(
     else:
         next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
     if not is_binary_detection and src_files:
-        next_step_str = f"""{next_step_str}\n\n[bold]Patch locations:[/bold]\n{NEWLINE.join(src_files)}"""
+        src_label = "Manifest locations" if len(src_files) > 1 else "Manifest file"
+        next_step_str = f"""{next_step_str}\n\n[bold]{src_label}:[/bold]\n{NEWLINE.join(src_files)}"""
     return {
         "next_step_str": next_step_str,
         "is_malware": is_malware,
@@ -409,6 +410,7 @@ def summarize_priority_actions(
         header_style="bold magenta",
         show_lines=True,
         min_width=150,
+        caption=f"Prioritized count: {len(matched_by_cves.keys())}",
     )
     is_any_exploitable = False
     has_any_exploits = False
@@ -476,7 +478,7 @@ def output_priority_table(
 ):
     psection = Markdown(
         """
-Next Steps
+Prioritized Vulnerabilities
 ----------
 
 The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
@@ -535,23 +537,26 @@ def output_priority_suggestions(
     oci_props,
     table,
 ):
+    should_return_early = False
     console = options.console
     if not console:
         return
-    if pkg_vulnerabilities:
-        console.print()
-        console.print(table)
     if counts.malicious_count:
-        rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
+        rmessage = "Malicious package found! Treat this as a security incident and follow your organization's playbook to remove this package from all affected applications."
         if counts.malicious_count > 1:
-            rmessage = f":stop_sign: {counts.malicious_count} malicious packages found in this project! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove the packages from all affected applications."
-        console.print(
-            Panel(
-                rmessage,
-                title="Action Required",
-                expand=False,
-            )
+            rmessage = f"{counts.malicious_count} malicious packages found in this project! Treat this as a security incident and follow your organization's playbook to remove the packages from all affected applications."
+        psection = Markdown(
+            f"""
+Malware Alert
+----------
+
+{rmessage}
+    """,
+            justify="left",
         )
+        console.print(psection)
+        console.print()
+
     # We have prioritized list. Summarize and return.
     if pkg_group_rows:
         output_priority_table(
@@ -574,6 +579,29 @@ def output_priority_suggestions(
                 console.print(rsection)
                 console.print()
                 console.print(rtable)
+        should_return_early = True
+
+    if pkg_vulnerabilities:
+        console.print()
+        if pkg_group_rows:
+            vdr_intro = "The table below lists all vulnerabilities identified in this project. Use this information for your records, as not all vulnerabilities require immediate remediation."
+        else:
+            vdr_intro = "The table below lists all vulnerabilities identified in this project. Review and triage the information to identify any critical vulnerabilities."
+        psection = Markdown(
+            f"""
+Vulnerability Disclosure Report
+----------
+
+{vdr_intro}
+    """,
+            justify="left",
+        )
+        console.print(psection)
+        console.print()
+        console.print(table)
+        console.print()
+
+    if should_return_early:
         return
 
     if options.scoped_pkgs or counts.has_exploit_count:
@@ -666,7 +694,7 @@ def output_priority_suggestions(
         elif counts.critical_count:
             console.print(
                 Panel(
-                    f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
+                    f":white_medium_small_square: Review the [magenta]{counts.critical_count}"
                     f"[/magenta] critical vulnerabilities confirmed by the "
                     f"vendor.",
                     title="Recommendation",
@@ -678,7 +706,7 @@ def output_priority_suggestions(
                 rmessage = (
                     ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
                     "as glibc, openssl, openssh, or libcurl.\nAdditionally, "
-                    "prioritize the vulnerabilities with 'Flagged weakness' under insights."
+                    "review the vulnerabilities with 'Flagged weakness' under insights."
                 )
                 rmessage += (
                     "\nVulnerabilities in Linux Kernel packages can "
@@ -714,7 +742,7 @@ def output_priority_suggestions(
         if not pkg_group_rows:
             console.print(
                 Panel(
-                    f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
+                    f":white_medium_small_square: Review the [magenta]{counts.critical_count}"
                     f"[/magenta] critical vulnerabilities confirmed by the vendor.",
                     title="Recommendation",
                     expand=False,
@@ -733,8 +761,11 @@ def output_priority_suggestions(
             reached_purls, reached_services, endpoint_reached_purls
         )
         if rsection and rtable:
+            console.print()
             console.print(rsection)
+            console.print()
             console.print(rtable)
+            console.print()
 
 
 def summary_stats(results):
@@ -875,7 +906,7 @@ def pkg_risks_table(
             file_write(
                 risk_report_file, "\n".join([json.dumps(row) for row in report_data])
             )
-    return table
+    return table, report_data
 
 
 def licenses_risk_table(project_type, licenses_results, license_report_file=None):
@@ -950,11 +981,12 @@ Proactive Measures
 ------------------
 
 Below are the top reachable packages identified by depscan. Set up alerts and notifications to actively monitor them for new vulnerabilities and exploits.
+
     """,
         justify="left",
     )
     rtable = Table(
-        title=":spider_web:  Top Endpoint-Reachable Packages"
+        title=":collision: Top Endpoint-Reachable Packages"
         if endpoint_reached_purls
         else "Top Reachable Packages",
         box=box.DOUBLE_EDGE,

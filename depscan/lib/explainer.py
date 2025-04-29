@@ -91,8 +91,6 @@ Below are several data flows identified by depscan, including reachable ones. Us
                 has_any_explanation = True
             if not has_any_crypto_flows and has_crypto_flows:
                 has_any_crypto_flows = True
-    if slices_files and not has_any_explanation and not has_any_crypto_flows:
-        console.print("depscan did not find any reachable flow in this scan.")
 
 
 def _track_usage_targets(usage_targets, usages_object):
@@ -129,7 +127,7 @@ def print_endpoints(ospec):
             pattern_methods[pattern].append("")
     caption = ""
     if pattern_methods:
-        caption = f"Total Endpoints: {len(pattern_methods.keys())}"
+        caption = f"Identified Endpoints: {len(pattern_methods.keys())}"
     rtable = Table(
         box=box.DOUBLE_EDGE,
         show_lines=True,
@@ -296,7 +294,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
     for p in purls:
         if endpoint_reached_purls and endpoint_reached_purls.get(p):
             is_endpoint_reachable = True
-            method_in_emoji = ":spider_web: "
+            method_in_emoji = ":heavy_large_circle: "
         if reached_services and reached_services.get(p):
             possible_reachable_service = True
     source_sink_desc = ""

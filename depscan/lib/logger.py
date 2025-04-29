@@ -43,6 +43,7 @@ console = Console(
     highlight=not IS_CI,
     highlighter=CustomHighlighter(),
     record=sys.platform == "win32",
+    emoji=os.getenv("DISABLE_CONSOLE_EMOJI", "") not in ("true", "1"),
 )
 
 logging.basicConfig(
