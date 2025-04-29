@@ -47,10 +47,6 @@ Ensure PHP > 7.4 is installed. However, we support scanning PHP 5.2 - 8.3. Alter
 depscan --profile research -t php -i <source directory> --reports-dir <reports directory> --explain
 ```
 
-[//]: # '    <img src="docs/php-reach1.png" alt="PHP Reachability" width="256">'
-[//]: #
-[//]: # '    <img src="docs/not-reachable.png" alt="PHP NOT Reachability" width="256">'
-
 ## Customize the Reachability Analyzer
 
 depscan supports two different reachability analyzers with `FrameworkReachability` being the default:
@@ -60,24 +56,42 @@ depscan supports two different reachability analyzers with `FrameworkReachabilit
 
 Pass the argument `--reachability-analyzer SemanticReachability` to use the Semantic Reachability analyzer.
 
+SemanticReachability achieves optimal results when supplemented with comprehensive data, including BOM files from multiple project types, various life cycle stages, container SBOMs, atom slices (reachables and usages), and openapi specification files. Since depscan cannot automatically generate all required BOMs, it is recommended to build the project and container images, manually generate the necessary BOM files, and then execute depscan using the `--bom-dir` argument.
+
 ### Example semantic reachability analysis for a Java project
 
 ```shell
-depscan --profile research -t java -i <source directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+depscan -t java -i <source directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
 ```
 
 ### Example semantic reachability analysis for a JavaScript project
 
 ```shell
-depscan --profile research -t js -i <source directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+depscan -t js -i <source directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
 ```
 
-### Example semantic reachability analysis for an existing BOM directory
+### Example semantic reachability analysis for an existing BOM directory (Recommended)
 
 ```shell
-depscan --profile research --bom-dir <bom directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+depscan --bom-dir <bom directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
 ```
+
+This is the recommended invocation style for a thorough semantic analysis.
 
 ## Explainability
 
 Pass the --explain argument to get a detailed explanation of the analysis performed by depscan.
+
+### Explanation Mode
+
+When SemanticReachability is enabled and the `--explanation-mode` argument is provided, the explanation style can be customized. depscan supports three explanation styles:
+
+1.	**Endpoints** – Lists all HTTP endpoints, their methods, and code hotspots detected through static analysis.
+2.	**EndpointsAndReachables** – Includes endpoints along with a selection of up to 20 reachable data flows, providing detailed explanations. This is the default.
+3.	**NonReachables** – Highlights up to 20 non-reachable data flows, useful for showcasing areas where validation and sanitization are properly implemented.
+
+```shell
+depscan --bom-dir <bom directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
+```
+
+Use the environment variable `MAX_REACHABLE_EXPLANATIONS` to customize the number of data-flow explanations.
