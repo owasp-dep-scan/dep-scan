@@ -1715,6 +1715,7 @@ def analyze_cve_vuln(
             plain_insights.append("Vendor Confirmed")
     # There are exploits
     if exploits and not likely_false_positive:
+        cve_requires_attn = True
         # Also reachable
         if (
             reached_purls.get(purl)
@@ -1743,7 +1744,6 @@ def analyze_cve_vuln(
                 if "Endpoint-Reachable" in plain_insights:
                     plain_insights.remove("Endpoint-Reachable")
             counts.has_reachable_exploit_count += 1
-            cve_requires_attn = True
             # Fail safe. Packages with exploits and direct usage without
             # a reachable flow are still considered reachable to reduce
             # false negatives
@@ -1766,14 +1766,14 @@ def analyze_cve_vuln(
                 )
                 plain_insights.append("Exploitable")
                 counts.has_exploit_count += 1
-        # Just known exploits
         else:
             insights.append(
                 "[bright_red]:exclamation_mark: Known Exploits[/bright_red]"
             )
             plain_insights.append("Known Exploits")
-        counts.has_exploit_count += 1
-        cve_requires_attn = True
+            # Just known exploits without usage is not a priority
+            if reached_purls or direct_purls:
+                cve_requires_attn = False
     if cve_record.root.containers.cna.affected.root and (
         cpes := cve_record.root.containers.cna.affected.root[0].cpes
     ):

@@ -410,6 +410,7 @@ def summarize_priority_actions(
         header_style="bold magenta",
         show_lines=True,
         min_width=150,
+        caption=f"Prioritized count: {len(matched_by_cves.keys())}",
     )
     is_any_exploitable = False
     has_any_exploits = False
@@ -541,16 +542,21 @@ def output_priority_suggestions(
     if not console:
         return
     if counts.malicious_count:
-        rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
+        rmessage = "Malicious package found! Treat this as a security incident and follow your organization's playbook to remove this package from all affected applications."
         if counts.malicious_count > 1:
-            rmessage = f":stop_sign: {counts.malicious_count} malicious packages found in this project! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove the packages from all affected applications."
-        console.print(
-            Panel(
-                rmessage,
-                title="Action Required",
-                expand=False,
-            )
+            rmessage = f"{counts.malicious_count} malicious packages found in this project! Treat this as a security incident and follow your organization's playbook to remove the packages from all affected applications."
+        psection = Markdown(
+            f"""
+Malware Alert
+----------
+
+{rmessage}
+    """,
+            justify="left",
         )
+        console.print(psection)
+        console.print()
+
     # We have prioritized list. Summarize and return.
     if pkg_group_rows:
         output_priority_table(
@@ -577,12 +583,16 @@ def output_priority_suggestions(
 
     if pkg_vulnerabilities:
         console.print()
+        if pkg_group_rows:
+            vdr_intro = "The table below lists all vulnerabilities identified in this project. Use this information for your records, as not all vulnerabilities require immediate remediation."
+        else:
+            vdr_intro = "The table below lists all vulnerabilities identified in this project. Review and triage the information to identify any critical vulnerabilities."
         psection = Markdown(
-            """
+            f"""
 Vulnerability Disclosure Report
 ----------
 
-The table below lists all vulnerabilities identified in this project. Use this information for your records, as not all vulnerabilities require immediate remediation.
+{vdr_intro}
     """,
             justify="left",
         )
@@ -684,7 +694,7 @@ The table below lists all vulnerabilities identified in this project. Use this i
         elif counts.critical_count:
             console.print(
                 Panel(
-                    f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
+                    f":white_medium_small_square: Review the [magenta]{counts.critical_count}"
                     f"[/magenta] critical vulnerabilities confirmed by the "
                     f"vendor.",
                     title="Recommendation",
@@ -696,7 +706,7 @@ The table below lists all vulnerabilities identified in this project. Use this i
                 rmessage = (
                     ":white_medium_small_square: Prioritize any vulnerabilities in libraries such "
                     "as glibc, openssl, openssh, or libcurl.\nAdditionally, "
-                    "prioritize the vulnerabilities with 'Flagged weakness' under insights."
+                    "review the vulnerabilities with 'Flagged weakness' under insights."
                 )
                 rmessage += (
                     "\nVulnerabilities in Linux Kernel packages can "
@@ -732,7 +742,7 @@ The table below lists all vulnerabilities identified in this project. Use this i
         if not pkg_group_rows:
             console.print(
                 Panel(
-                    f":white_medium_small_square: Prioritize the [magenta]{counts.critical_count}"
+                    f":white_medium_small_square: Review the [magenta]{counts.critical_count}"
                     f"[/magenta] critical vulnerabilities confirmed by the vendor.",
                     title="Recommendation",
                     expand=False,
