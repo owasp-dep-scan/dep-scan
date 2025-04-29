@@ -296,7 +296,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
     for p in purls:
         if endpoint_reached_purls and endpoint_reached_purls.get(p):
             is_endpoint_reachable = True
-            method_in_emoji = ":spider_web: "
+            method_in_emoji = ":heavy_large_circle: "
         if reached_services and reached_services.get(p):
             possible_reachable_service = True
     source_sink_desc = ""
