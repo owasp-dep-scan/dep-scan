@@ -476,7 +476,7 @@ def output_priority_table(
 ):
     psection = Markdown(
         """
-Next Steps
+Prioritized Vulnerabilities
 ----------
 
 The vulnerabilities below have been prioritized by depscan. Follow your team’s remediation workflow to address these findings.
@@ -535,12 +535,10 @@ def output_priority_suggestions(
     oci_props,
     table,
 ):
+    should_return_early = False
     console = options.console
     if not console:
         return
-    if pkg_vulnerabilities:
-        console.print()
-        console.print(table)
     if counts.malicious_count:
         rmessage = ":stop_sign: Malicious package found! Treat this as a [bold]security incident[/bold] and follow your organization's playbook to remove this package from all affected applications."
         if counts.malicious_count > 1:
@@ -574,6 +572,25 @@ def output_priority_suggestions(
                 console.print(rsection)
                 console.print()
                 console.print(rtable)
+        should_return_early = True
+
+    if pkg_vulnerabilities:
+        console.print()
+        psection = Markdown(
+            """
+Vulnerability Disclosure Report
+----------
+
+The table below lists all vulnerabilities identified in this project. Use this information for your records, as not all vulnerabilities require immediate remediation.
+    """,
+            justify="left",
+        )
+        console.print(psection)
+        console.print()
+        console.print(table)
+        console.print()
+
+    if should_return_early:
         return
 
     if options.scoped_pkgs or counts.has_exploit_count:
@@ -733,8 +750,11 @@ def output_priority_suggestions(
             reached_purls, reached_services, endpoint_reached_purls
         )
         if rsection and rtable:
+            console.print()
             console.print(rsection)
+            console.print()
             console.print(rtable)
+            console.print()
 
 
 def summary_stats(results):
@@ -950,6 +970,7 @@ Proactive Measures
 ------------------
 
 Below are the top reachable packages identified by depscan. Set up alerts and notifications to actively monitor them for new vulnerabilities and exploits.
+
     """,
         justify="left",
     )
