@@ -1334,12 +1334,13 @@ def process_vuln_occ(
             counts.critical_count += 1
     if is_required and package_type not in OS_PKG_TYPES:
         if direct_purls.get(purl):
+            label_str = "locations" if direct_purls.get(purl) > 1 else "location"
             package_usage = (
                 f":direct_hit: Used in [info]"
                 f"{str(direct_purls.get(purl))}"
-                f"[/info] locations"
+                f"[/info] {label_str}"
             )
-            plain_package_usage = f"Used in {str(direct_purls.get(purl))} locations"
+            plain_package_usage = f"Used in {str(direct_purls.get(purl))} {label_str}"
         else:
             package_usage = ":direct_hit: Direct dependency"
             plain_package_usage = "Direct dependency"

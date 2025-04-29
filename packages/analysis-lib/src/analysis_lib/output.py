@@ -372,7 +372,8 @@ def find_next_steps(
     else:
         next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
     if not is_binary_detection and src_files:
-        next_step_str = f"""{next_step_str}\n\n[bold]Patch locations:[/bold]\n{NEWLINE.join(src_files)}"""
+        src_label = "Manifest locations" if len(src_files) > 1 else "Manifest file"
+        next_step_str = f"""{next_step_str}\n\n[bold]{src_label}:[/bold]\n{NEWLINE.join(src_files)}"""
     return {
         "next_step_str": next_step_str,
         "is_malware": is_malware,

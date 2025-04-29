@@ -188,7 +188,10 @@ def vdr_analyze_summarize(
             )
         summary = summary_stats(pkg_vulnerabilities)
     elif bom_dir or bom_file or pkg_list:
-        LOG.info("No vulnerabilities found for project type '%s'!", project_type)
+        if project_type != "bom":
+            LOG.info("No vulnerabilities found for project type '%s'!", project_type)
+        else:
+            LOG.info("No vulnerabilities found!")
     return summary, vdr_file, vdr_result
 
 
@@ -668,7 +671,7 @@ def run_depscan(args):
                     )
                 else:
                     LOG.info(
-                        "Attempting semantic analysis based on existing data at '%s'",
+                        "Attempting semantic analysis using existing data at '%s'",
                         args.bom_dir,
                     )
             else:
