@@ -875,7 +875,7 @@ def pkg_risks_table(
             file_write(
                 risk_report_file, "\n".join([json.dumps(row) for row in report_data])
             )
-    return table
+    return table, report_data
 
 
 def licenses_risk_table(project_type, licenses_results, license_report_file=None):

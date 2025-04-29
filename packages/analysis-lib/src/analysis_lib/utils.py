@@ -8,7 +8,16 @@ from custom_json_diff.lib.utils import compare_versions, json_load
 from cvss import CVSSError
 from packageurl import PackageURL
 from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION, PLACEHOLDER_FIX_VERSION
-from vdb.lib.cve_model import CVE, Description, Descriptions, ProblemTypes, References
+from vdb.lib.cve_model import (
+    CVE,
+    Description,
+    Descriptions,
+    ProblemTypes,
+    References,
+    Status,
+    Versions,
+    Product,
+)
 from vdb.lib.utils import parse_cpe, parse_purl, version_compare
 
 from analysis_lib import get_all_bom_files
@@ -845,10 +854,21 @@ def process_package_issue(options, vuln_occ_dict):
 
 
 def get_unaffected(vuln):
+    source_data = vuln.get("source_data")
+    if source_data and source_data.root.containers:
+        products: List[Product] = source_data.root.containers.cna.affected.root
+        for p in products:
+            versions: List[Versions] = p.versions
+            if versions:
+                for ver in versions:
+                    if ver.status == Status.unaffected:
+                        if ver.version:
+                            return ver.version.root
     vers = vuln.get("matching_vers", "")
-    if "|" in vers and "<=" not in vers:
+    if "|" in vers:
         vers = vers.split("|")[-1]
-        return vers.replace("<", "")
+        if "!=" in vers or "<=" not in vers:
+            return vers.replace("<", "").replace("!=", "")
     return ""
 
 
@@ -1606,6 +1626,8 @@ def analyze_cve_vuln(
         is_required = True
     package_usage = ""
     plain_package_usage = ""
+    if rating.get("severity", "").upper() in JUST_CRITICAL:
+        counts.critical_count += 1
     # We are dealing with a required non-os package
     if is_required and package_type not in OS_PKG_TYPES and not likely_false_positive:
         # Is the package also present in post-build BOM
@@ -1615,7 +1637,6 @@ def analyze_cve_vuln(
             # Does this require attention
             if rating.get("severity", "").upper() in JUST_CRITICAL:
                 cve_requires_attn = True
-                counts.critical_count += 1
                 counts.pkg_attention_count += 1
         elif direct_purls.get(purl):
             package_usage = (
