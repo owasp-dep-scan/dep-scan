@@ -255,10 +255,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           uv sync --all-extras --all-packages
-          sudo npm install -g @cyclonedx/cdxgen
-          curl -LO https://github.com/AppThreat/atom/releases/latest/download/atom-amd64
-          chmod +x atom-amd64
-          sudo mv atom-amd64 /usr/local/bin/
+          sudo npm install -g @cyclonedx/cdxgen @appthreat/atom --omit=optional
       - name: semantic analysis self
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
@@ -276,7 +273,6 @@ jobs:
         shell: bash
         env:
           DEPSCAN_SOURCE_IMAGE: ghcr.io/aboutcode-org/dejacode:v5.2.1
-          ATOM_BIN: /usr/local/bin/atom-amd64
       - uses: actions/upload-artifact@v4
         with:
           name: dejacode_reports
