@@ -359,26 +359,11 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
     with console.status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
     ) as status:
-        # pre-build
-        status.update(f"Generating pre-build BOM for '{src_dir}' with cdxgen.")
-        coptions = {**options}
-        coptions["deep"] = "false"
-        coptions["lifecycles"] = ["pre-build"]
-        bom_result = cdxgen_lib(
-            src_dir, prebuild_bom_file, logger=LOG, options=coptions
-        ).generate()
-        if not bom_result.success or not os.path.exists(prebuild_bom_file):
-            LOG.debug(
-                "The cdxgen invocation was unsuccessful. Trying for the next lifecycle."
-            )
-            LOG.debug(bom_result.command_output)
-        else:
-            any_success = True
-        # build
-        status.update(f"Now generating build BOM for '{src_dir}' with cdxgen.")
-        coptions = {**options}
-        coptions["deep"] = "true"
-        coptions["lifecycles"] = ["build"]
+        # Start with build BOM generation.
+        # This would help atom compute reachable slices from a build perspective without getting confused
+        # about the pre-build state.
+        status.update(f"Generating build BOM for '{src_dir}' with cdxgen.")
+        coptions = {**options, "deep": "true", "lifecycles": ["build"]}
         # We must also run it under research profile to help the reachability analyzer
         # This logic could get refactored in the future
         if reachability_analyzer != "off" and options.get("profile") != "research":
@@ -388,7 +373,20 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
         ).generate()
         if not bom_result.success or not os.path.exists(build_bom_file):
             LOG.debug(
-                "The cdxgen invocation was unsuccessful. Trying for the next lifecycle."
+                "The cdxgen invocation was unsuccessful. Trying pre-build lifecycle."
+            )
+            LOG.debug(bom_result.command_output)
+        else:
+            any_success = True
+        # pre-build
+        status.update(f"Now generating pre-build BOM for '{src_dir}' with cdxgen.")
+        coptions = {**options, "deep": "false", "lifecycles": ["pre-build"]}
+        bom_result = cdxgen_lib(
+            src_dir, prebuild_bom_file, logger=LOG, options=coptions
+        ).generate()
+        if not bom_result.success or not os.path.exists(prebuild_bom_file):
+            LOG.debug(
+                "The cdxgen invocation was unsuccessful. Trying the build lifecycle."
             )
             LOG.debug(bom_result.command_output)
         else:
@@ -399,9 +397,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
         )
         if container_image_name:
             status.update(f"Generating container BOM for '{src_dir}' with cdxgen.")
-            coptions = {**options}
-            coptions["deep"] = "true"
-            coptions["project_type"] = ["oci"]
+            coptions = {**options, "deep": "true", "project_type": ["oci"]}
             if container_image_name == src_dir:
                 LOG.info(
                     "Set the environment variable DEPSCAN_SOURCE_IMAGE to the name of the container image to include its components."
@@ -422,10 +418,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             )
         status.update("Preparing blint for post-build BOM generation.")
     # post-build BOM with blint
-    coptions = {**options}
-    coptions["deep"] = False
-    coptions["use_blintdb"] = False
-    coptions["lifecycles"] = ["post-build"]
+    coptions = {**options, "deep": False, "use_blintdb": False, "lifecycles": ["post-build"]}
     # What if the build directory is different to the source
     build_dir = os.getenv("DEPSCAN_BUILD_DIR") or options.get("build_dir") or src_dir
     res = create_blint_bom(postbuild_bom_file, build_dir, options=coptions)
