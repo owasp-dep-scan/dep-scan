@@ -240,11 +240,6 @@ jobs:
     runs-on: ['self-hosted', 'ubuntu', 'amd64']
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: 'aboutcode-org/dejacode'
-          path: 'repotests/dejacode'
-          ref: 'v5.2.1'
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Setup Python
@@ -259,12 +254,17 @@ jobs:
       - name: semantic analysis self
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
-          uv run depscan --src ${GITHUB_WORKSPACE}/depscan --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          uv run depscan --src ${GITHUB_WORKSPACE} --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           ls -lh ${GITHUB_WORKSPACE}/depscan_reports/depscan
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
           DEPSCAN_SOURCE_IMAGE: ghcr.io/owasp-dep-scan/dep-scan:master
+      - uses: actions/checkout@v4
+        with:
+          repository: 'aboutcode-org/dejacode'
+          path: 'repotests/dejacode'
+          ref: 'v5.2.1'
       - name: semantic analysis dejacode
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dejacode
