@@ -12,6 +12,8 @@ from depscan.lib.config import (
     max_purl_per_flow,
     max_reachable_explanations,
     max_purls_reachable_explanations,
+    max_source_reachable_explanations,
+    max_sink_reachable_explanations,
 )
 from depscan.lib.logger import console, LOG
 
@@ -170,6 +172,8 @@ def explain_reachables(
     checked_flows = 0
     has_crypto_flows = False
     purls_reachable_explanations = defaultdict(int)
+    source_reachable_explanations = defaultdict(int)
+    sink_reachable_explanations = defaultdict(int)
     has_explanation = False
     header_shown = False
     for areach in reachables.get("reachables", []):
@@ -191,6 +195,8 @@ def explain_reachables(
             flow_tree,
             comment,
             source_sink_desc,
+            source_code_str,
+            sink_code_str,
             has_check_tag,
             is_endpoint_reachable,
             is_crypto_flow,
@@ -208,6 +214,18 @@ def explain_reachables(
             explanation_mode
             and explanation_mode in ("NonReachables",)
             and not has_check_tag
+        ):
+            continue
+        if (
+            source_code_str
+            and source_reachable_explanations[source_code_str] + 1
+            > max_source_reachable_explanations
+        ):
+            continue
+        if (
+            sink_code_str
+            and sink_reachable_explanations[sink_code_str] + 1
+            > max_sink_reachable_explanations
         ):
             continue
         purls_str = ",".join(sorted(areach.get("purls", [])))
@@ -243,6 +261,10 @@ def explain_reachables(
         reachable_explanations += 1
         if purls_str:
             purls_reachable_explanations[purls_str] += 1
+        if source_code_str:
+            source_reachable_explanations[source_code_str] += 1
+        if sink_code_str:
+            sink_reachable_explanations[sink_code_str] += 1
         if has_check_tag:
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
@@ -471,6 +493,8 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
     last_file_loc = None
     source_sink_desc = ""
     last_code = ""
+    source_code_str = ""
+    sink_code_str = ""
     for idx, aflow in enumerate(flows):
         # For java, we are only interested in identifiers with tags to keep the flows simple to understand
         if (
@@ -480,6 +504,10 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         ):
             continue
         curr_code = aflow.get("code", "").split("\n")[0]
+        if idx == 0:
+            source_code_str = curr_code
+        if idx == len(flows):
+            sink_code_str = curr_code
         if last_code and last_code == curr_code:
             continue
         last_code = curr_code
@@ -490,7 +518,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         file_loc, flow_str, node_desc, has_check_tag_flow = flow_to_str(
             explanation_mode, aflow, project_type
         )
-        if last_file_loc == file_loc:
+        if last_file_loc and last_file_loc == file_loc:
             continue
         last_file_loc = file_loc
         if flow_str in added_flows or node_desc in added_node_desc:
@@ -512,6 +540,8 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         tree,
         "\n".join(comments),
         source_sink_desc,
+        source_code_str,
+        sink_code_str,
         has_check_tag,
         is_endpoint_reachable,
         is_crypto_flow,

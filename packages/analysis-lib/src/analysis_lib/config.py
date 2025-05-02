@@ -139,6 +139,7 @@ package_alias = {
 }
 
 # Package types allowed for each language
+# TODO: Find a way to remove this
 LANG_PKG_TYPES = {
     "python": "pypi",
     "java": "maven",

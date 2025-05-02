@@ -38,10 +38,19 @@ class BlintGenerator(XBOMGenerator):
             or os.getenv("AGENT_TEMPDIRECTORY"),
         )
         os.environ["BLINT_TEMP_DIR"] = temp_reports_dir
+        project_type_list = self.options.get("project_type") or []
+        possible_binary_type = any(
+            [
+                t
+                for t in project_type_list
+                if t in ("c", "binary", "rust", "go", "dotnet")
+            ]
+        )
         blint_options = BlintOptions(
             deep_mode=self.options.get("deep", True),
             sbom_mode=True,
-            db_mode=True,
+            db_mode=os.getenv("USE_BLINTDB", "") in ("true", "1")
+            or possible_binary_type,
             no_reviews=True,
             no_error=True,
             quiet_mode=True,

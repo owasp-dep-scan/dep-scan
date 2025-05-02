@@ -1,0 +1,106 @@
+images:
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20250313/ubuntu-24.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+  digest: "sha256:eacac65efe9e9bae0cbcb3f9d5c2b5e8c5313fa78a3bc401c3fb28b2d48cefc0"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20250313/ubuntu-24.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+  digest: "sha256:103f31c5a5b7f031a60ce3555c8fbd56317fd8ffbaaa7e17002879e6157d546d"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20250313/ubuntu-24.04-server-cloudimg-riscv64.img"
+  arch: "riscv64"
+  digest: "sha256:bfd6a91a7ee84e26f33ce6b2df2e415b038214db67f009206b40cf2e9158fc3f"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20250313/ubuntu-24.04-server-cloudimg-armhf.img"
+  arch: "armv7l"
+  digest: "sha256:0b862b6a4811f23c76e292ffe5a7cd90a4f03db9f48f664a2a943b02f83621c3"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-riscv64.img"
+  arch: "riscv64"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-armhf.img"
+  arch: "armv7l"
+mounts:
+- location: "~"
+- location: "/tmp/depscan"
+  writable: true
+containerd:
+  system: true
+  user: true
+env:
+  MAVEN_VERSION: 3.9.9
+  SBT_VERSION: 1.10.10
+  GRADLE_VERSION: 8.12.1
+  MAVEN_HOME: /.sdkman/candidates/maven/current
+  MAVEN_CMD: /.sdkman/candidates/maven/current/bin/mvn
+  GRADLE_HOME: /.sdkman/candidates/gradle/current
+  GRADLE_CMD: /.sdkman/candidates/gradle/current/bin/gradle
+  SBT_HOME: /.sdkman/candidates/sbt/current
+  SBT_CMD: /.sdkman/candidates/sbt/current/bin/sbt
+  SDKMAN_DIR: /.sdkman
+  SDKMAN_CANDIDATES_DIR: /.sdkman/candidates
+provision:
+- mode: dependency
+  skipDefaultDependencyResolution: false
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    apt update -y
+    apt install -y zip unzip wget binutils git gnupg2 curl tar libc6-dev libcurl4-openssl-dev libedit2 libgcc-13-dev libpython3-dev libsqlite3-0 libstdc++-13-dev libxml2-dev libncurses-dev libz3-dev pkg-config tzdata zlib1g-dev python3.12 python3.12-venv python3.12-dev openjdk-21-jdk-headless maven gcc-13 build-essential cargo golang-1.23 software-properties-common ruby-full ruby-bundler podman android-sdk android-sdk-build-tools android-sdk-platform-23 android-sdk-platform-tools
+    python3 -m pip install --no-cache-dir --upgrade pip virtualenv
+    python3 -m pip install --no-cache-dir poetry pipenv owasp-depscan uv
+- mode: system
+  script: |
+    #!/bin/bash
+    set -e -o pipefail
+    export MAVEN_VERSION=3.9.9
+    export SBT_VERSION=1.10.11
+    export GRADLE_VERSION=8.13
+    export MAVEN_HOME="/.sdkman/candidates/maven/${MAVEN_VERSION}"
+    export GRADLE_HOME="/.sdkman/candidates/gradle/${GRADLE_VERSION}"
+    export SBT_HOME="/.sdkman/candidates/sbt/${SBT_VERSION}"
+    export SDKMAN_DIR=/.sdkman
+    export SDKMAN_CANDIDATES_DIR=/.sdkman/candidates
+    export PATH=${PATH}:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${SBT_HOME}/bin:/usr/local/bin:
+    curl -s "https://get.sdkman.io" | bash
+    echo -e "sdkman_auto_answer=true\nsdkman_selfupdate_feature=false\nsdkman_auto_env=true\nsdkman_curl_connect_timeout=60\nsdkman_curl_max_time=0" >> /.sdkman/etc/config
+    source "/.sdkman/bin/sdkman-init.sh"
+    sdk install maven $MAVEN_VERSION || true
+    sdk install gradle $GRADLE_VERSION || true
+    sdk install sbt $SBT_VERSION || true
+    curl -fsSL https://deb.nodesource.com/setup_23.x -o nodesource_setup.sh
+    bash nodesource_setup.sh
+    apt install -y nodejs
+    rm nodesource_setup.sh
+    npm install -g node-gyp @cyclonedx/cdxgen
+    npx node-gyp install
+    node -v
+    npm -v
+    gcc --version
+    cdxgen --version
+    ARCH_NAME="$(dpkg --print-architecture)"
+    curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.1/nydus-static-v2.3.1-linux-${ARCH_NAME}.tgz
+    tar -xvf nydus-static-v2.3.1-linux-${ARCH_NAME}.tgz
+    chmod +x nydus-static/*
+    mv nydus-static/* /usr/local/bin/
+    rm -rf nydus-static-v2.3.1-linux-${ARCH_NAME}.tgz nydus-static
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    command -v docker >/dev/null 2>&1 && exit 0
+    export DEBIAN_FRONTEND=noninteractive
+    curl -fsSL https://get.docker.com | sh
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    docker run --privileged --rm tonistiigi/binfmt --install all
+probes:
+- script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 30s bash -c "until command -v docker >/dev/null 2>&1; do sleep 3; done"; then
+      echo >&2 "docker is not installed yet"
+      exit 1
+    fi
+  hint: See "/var/log/cloud-init-output.log". in the guest

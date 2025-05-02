@@ -123,23 +123,16 @@ PYPI_SERVER = "https://pypi.org/pypi"
 
 CARGO_SERVER = "https://crates.io/api/v1/crates"
 
-# Use the env variable VDB_DATABASE_URL=ghcr.io/appthreat/vdbxz-app:v6 for app-only database
-vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v6")
-vdb_rafs_database_url = os.getenv(
-    "VDB_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb:v6-rafs"
-)
+# Use the env variable VDB_DATABASE_URL=ghcr.io/appthreat/vdbxz-app:v6.4.x for app-only database
+vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v6.4.x")
 
 # Larger 10 year database
 vdb_10y_database_url = os.getenv(
-    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbxz-10y:v6"
-)
-vdb_10y_rafs_database_url = os.getenv(
-    "VDB_10Y_RAFS_DATABASE_URL", "ghcr.io/appthreat/vdb-10y:v6-rafs"
+    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbxz-10y:v6.4.x"
 )
 
 if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
     vdb_database_url = vdb_10y_database_url
-    vdb_rafs_database_url = vdb_10y_rafs_database_url
 
 # How old vdb can be before it gets re-downloaded. 48 hours.
 VDB_AGE_HOURS = get_int_from_env("VDB_AGE_HOURS", 48)
@@ -288,7 +281,13 @@ UNIVERSAL_SCAN_TYPE = "universal"
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
 # How many explanations for a given combination of purls
-max_purls_reachable_explanations = get_int_from_env("max_purls_reachable_explanations", 3)
+max_purls_reachable_explanations = get_int_from_env(
+    "max_purls_reachable_explanations", 3
+)
+max_source_reachable_explanations = get_int_from_env(
+    "max_source_reachable_explanations", 2
+)
+max_sink_reachable_explanations = get_int_from_env("max_sink_reachable_explanations", 2)
 
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 8)
 

@@ -43,7 +43,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '23.x'
@@ -231,3 +231,34 @@ jobs:
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+
+  os-semantics-tests:
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ['3.13']
+    runs-on: ['self-hosted', 'ubuntu', 'amd64']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install depscan
+        run: |
+          python -m pip install --upgrade pip
+          uv sync --all-extras --all-packages
+          # Requires cdxgen >= v11.2.7
+          sudo npm install -g @cyclonedx/cdxgen
+      - name: semantic analysis self
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
+          uv run depscan --src ${GITHUB_WORKSPACE} --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          ls -lh ${GITHUB_WORKSPACE}/depscan_reports/depscan
+          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
+        env:
+          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+          DEPSCAN_SOURCE_IMAGE: ghcr.io/owasp-dep-scan/dep-scan:master

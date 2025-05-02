@@ -6,7 +6,7 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db[oras]>=6.3.1",
+    "appthreat-vulnerability-db[oras]",
     "custom-json-diff>=2.1.6",
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
@@ -84,6 +84,7 @@ line-length = 99
 
 [tool.uv.sources]
 blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "0a29b47a1d0ab55fcf4480785f0a8948104d7632" }
+appthreat-vulnerability-db = { git = "https://github.com/AppThreat/vulnerability-db", rev = "dc48e670acec1a62f8f20d6d4714f0c7c1e1f578" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 
@@ -94,3 +95,4 @@ members = ["packages/*"]
 dev = [
     "ruff>=0.11.6",
 ]
+

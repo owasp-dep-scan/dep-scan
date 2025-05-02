@@ -75,7 +75,7 @@ def pkg_sub_tree(
         purl = full_pkg
     if not bom_dependency_tree:
         return [purl], Tree(
-            get_pkg_display(purl, purl, extra_text=extra_text),
+            label=get_pkg_display(purl, purl, extra_text=extra_text),
             style=Style(
                 color="bright_red" if pkg_severity.upper() == "CRITICAL" else None
             ),
@@ -100,19 +100,19 @@ def pkg_sub_tree(
                 break
         if as_tree and pkg_tree:
             tree = Tree(
-                get_pkg_display(purl, pkg_tree[0], extra_text=extra_text),
+                label=get_pkg_display(purl, pkg_tree[0], extra_text=extra_text),
                 style=get_tree_style(purl, pkg_tree[0]),
             )
             if len(pkg_tree) > 1:
                 subtree = tree
                 for p in pkg_tree[1:]:
                     subtree = subtree.add(
-                        get_pkg_display(purl, p, extra_text=extra_text),
+                        label=get_pkg_display(purl, p, extra_text=extra_text),
                         style=get_tree_style(purl, p),
                     )
             return pkg_tree, tree
     return pkg_tree, Tree(
-        get_pkg_display(purl, purl, extra_text=extra_text),
+        label=get_pkg_display(purl, purl, extra_text=extra_text),
         style=Style(color="bright_red" if pkg_severity.upper() == "CRITICAL" else None),
     )
 

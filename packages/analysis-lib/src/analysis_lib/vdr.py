@@ -117,6 +117,7 @@ class VDRAnalyzer(XBOMAnalyzer):
         likely_false_positive = False
         if options.init_results:
             vdb_results = vdb_results + options.init_results
+        added_results = {}
         for vuln_occ_dict in vdb_results:
             if not vuln_occ_dict:
                 continue
@@ -153,6 +154,17 @@ class VDRAnalyzer(XBOMAnalyzer):
                         counts,
                     )
                 )
+                # When multiple BOMs are scanned, we might end up with duplicate vulns
+                # This section attempts to filter the results further.
+                # This is similar to normalize.py -> dedup method, which no longer works
+                vid = vuln.get("id")
+                fixed_location = vuln.get("fixed_location") or ""
+                if vid:
+                    key = f"{vid}|{fixed_location}"
+                    if added_results.get(key):
+                        likely_false_positive = True
+                    else:
+                        added_results[key] = True
             # Surface false positive results only in fuzzy search mode
             if not likely_false_positive or options.fuzzy_search:
                 pkg_vulnerabilities.append(vuln)

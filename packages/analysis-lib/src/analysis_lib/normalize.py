@@ -1,6 +1,5 @@
 from typing import Any, Dict
 
-from vdb.lib import KNOWN_PKG_TYPES
 from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.utils import parse_purl
 
@@ -302,34 +301,33 @@ def dedup(project_type, pkg_list):
     ret_list = []
     for res in pkg_list:
         vid = res.get("cve_id") or res.get("id") or ""
-        package_type = res.get("type") or ""
         package_issue = res.get("package_issue") or {}
-        fixed_location = package_issue.get("fixed_issue") or {}
+        # fix_version is available in vdb >= 6.4.0
+        fixed_location = res.get("fix_version") or package_issue.get("fixed_issue")
         version = None
-        if res.get("matched_by"):
-            version = res.get("matched_by")
+        matched_by = res.get("matched_by")
+        if matched_by:
+            version = matched_by
             if "|" in version:
                 version = version.split("|")[-1]
             else:
                 version = version.split("@")[-1]
-        full_pkg = package_issue.get("affected_location", {}).get("package", "")
-        if package_issue.get("affected_location", {}).get("vendor", ""):
-            full_pkg = (
-                f"{package_issue.affected_location.vendor}:"
-                f"{package_issue.affected_location.package}"
-            )
-        if version:
-            full_pkg = full_pkg + ":" + version
+            full_pkg = matched_by
+        else:
+            full_pkg = package_issue.get("affected_location", {}).get("package", "")
+            if package_issue.get("affected_location", {}).get("vendor", ""):
+                full_pkg = (
+                    f"{package_issue.affected_location.vendor}:"
+                    f"{package_issue.affected_location.package}"
+                )
+            if version:
+                full_pkg = full_pkg + ":" + version
         full_pkg = vid + ":" + full_pkg
         # Ignore any result with the exclude fix location
         # Required for debian
-        if fixed_location == PLACEHOLDER_EXCLUDE_VERSION:
+        if fixed_location and fixed_location == PLACEHOLDER_EXCLUDE_VERSION:
             dedup_dict[full_pkg] = True
             continue
-        allowed_type = config.LANG_PKG_TYPES.get(project_type)
-        if package_type and package_type in KNOWN_PKG_TYPES and allowed_type:
-            if allowed_type != package_type:
-                dedup_dict[full_pkg] = True
         if full_pkg not in dedup_dict:
             ret_list.append(res)
             dedup_dict[full_pkg] = True
