@@ -268,7 +268,6 @@ jobs:
       - name: semantic analysis dejacode
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dejacode
-          cd ${GITHUB_WORKSPACE}/repotests/dejacode
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           ls -lh ${GITHUB_WORKSPACE}/depscan_reports/dejacode
         shell: bash
