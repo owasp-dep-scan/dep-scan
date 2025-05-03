@@ -236,7 +236,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ['3.13']
+        python-version: ['3.12']
     runs-on: ['self-hosted', 'ubuntu', 'amd64']
     steps:
       - uses: actions/checkout@v4
@@ -250,8 +250,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           uv sync --all-extras --all-packages
-          # Requires cdxgen >= v11.2.7
-          sudo npm install -g @cyclonedx/cdxgen
+          sudo npm install -g @cyclonedx/cdxgen @appthreat/atom --omit=optional
       - name: semantic analysis self
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
@@ -260,5 +259,24 @@ jobs:
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
-          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
           DEPSCAN_SOURCE_IMAGE: ghcr.io/owasp-dep-scan/dep-scan:master
+      - uses: actions/checkout@v4
+        with:
+          repository: 'aboutcode-org/dejacode'
+          path: 'repotests/dejacode'
+      - name: semantic analysis dejacode
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dejacode
+          cd ${GITHUB_WORKSPACE}/repotests/dejacode
+          docker build -t dejacode:latest -f Dockerfile .
+          pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
+          cd ${GITHUB_WORKSPACE}
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          ls -lh ${GITHUB_WORKSPACE}/depscan_reports/dejacode
+        shell: bash
+        env:
+          DEPSCAN_SOURCE_IMAGE: dejacode:latest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dejacode_reports
+          path: depscan_reports/dejacode
