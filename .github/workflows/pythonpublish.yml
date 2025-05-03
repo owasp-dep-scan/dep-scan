@@ -60,10 +60,11 @@ jobs:
       - name: Build
         run: |
           uv build --all-packages
+          ls -lh dist
       - name: Publish package distributions to PyPI
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          uv publish
+          uv publish --trusted-publishing always
       - name: Setup nydus
         run: |
           curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.1/nydus-static-v2.3.1-linux-amd64.tgz
