@@ -822,7 +822,7 @@ def run_depscan(args):
                     pkg_max_risk_score=pkg_max_risk_score,
                     risk_report_file=risk_report_file,
                 )
-                if not args.no_vuln_table and report_data:
+                if not args.no_vuln_table and report_data and rtable:
                     console.print(rtable)
             except Exception as e:
                 LOG.error(e)
