@@ -73,6 +73,16 @@ devenv tasks run vdb:download-image
 # devenv tasks run vdb:download-full-image
 ```
 
+Language-specific profile:
+
+```shell
+# Ruby environment
+devenv --option config.profile:string ruby shell
+
+# dotnet environment
+devenv --option config.profile:string dotnet shell
+```
+
 {/* ## Code Style Guide
 
 ## Contribution Workflow */}
