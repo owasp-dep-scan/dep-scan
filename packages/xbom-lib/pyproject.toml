@@ -1,10 +1,12 @@
 [project]
 name = "ds-xbom-lib"
-version = "6.0.0a1"
+version = "6.0.0a2"
 description = "xBOM library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
+
+requires-python = ">=3.10"
 readme = "README.md"
 license = "MIT"
 classifiers = [
@@ -24,8 +26,6 @@ classifiers = [
 Homepage = "https://github.com/owasp-dep-scan/dep-scan"
 Bug-Tracker = "https://github.com/owasp-dep-scan/dep-scan/issues"
 Funding = "https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan"
-
-requires-python = ">=3.10"
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
