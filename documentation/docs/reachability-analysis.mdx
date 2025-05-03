@@ -56,7 +56,19 @@ depscan supports two different reachability analyzers with `FrameworkReachabilit
 
 Pass the argument `--reachability-analyzer SemanticReachability` to use the Semantic Reachability analyzer.
 
-SemanticReachability achieves optimal results when supplemented with comprehensive data, including BOM files from multiple project types, various life cycle stages, container SBOMs, atom slices (reachables and usages), and openapi specification files. Since depscan cannot automatically generate all required BOMs, it is recommended to build the project and container images, manually generate the necessary BOM files, and then execute depscan using the `--bom-dir` argument.
+SemanticReachability achieves optimal results when supplemented with comprehensive data, including BOM files from multiple project types, various life cycle stages, container SBOMs, atom slices (reachables and usages), and openapi specification files. Since depscan cannot automatically generate all required BOMs (aka formulation problem), it is recommended to build the project and container images, **manually generate** the necessary BOM files, and then execute depscan using the `--bom-dir` argument.
+
+**Things to consider:**
+
+- Ensure the BOM files correspond to the same version of the source code. Mixing versions may lead to unexpected results, such as duplicate-looking component names.
+- When the application or service uses a single container image, set the `DEPSCAN_SOURCE_IMAGE` environment variable to enable depscan to automatically generate the container BOM during lifecycle analysis or semantic reachability analysis.
+- When multiple container images are involved, such as in a docker-compose setup, follow these steps:
+	1.	Run `docker compose build`.
+	2.	Manually generate BOMs for each container image, saving them with unique filenames ending in .cdx.json, and place them in a single directory. Example: `cdxgen -t docker -o reports/sbom-container1.cdx.json image_name`
+	3.	Run depscan with the --bom-dir argument pointing to that directory. Example: `--bom-dir reports --reports-dir reports`
+- Semantic analysis (computing the atom slices) is resource-intensive. For larger codebases, allocate over 64GB of memory and expect runtimes of 15 minutes or more.
+
+Sample semantic analysis reports, including the BOM and slices dataset, are available in this Hugging Face [repository](https://huggingface.co/datasets/AppThreat/ukaina/tree/main).
 
 ### Example semantic reachability analysis for a Java project
 
