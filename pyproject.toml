@@ -14,7 +14,7 @@ dependencies = [
     "Jinja2>=3.1.6",
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
-    "tomli>=2.2.1",
+    "tomli>=2.2.1; python_full_version <= '3.11'",
     "ds-xbom-lib",
     "ds-analysis-lib"
 ]
