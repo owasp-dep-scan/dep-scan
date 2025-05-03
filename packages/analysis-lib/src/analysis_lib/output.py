@@ -584,7 +584,12 @@ Malware Alert
     if pkg_vulnerabilities:
         console.print()
         if pkg_group_rows:
-            vdr_intro = "The table below lists all vulnerabilities identified in this project. Use this information for your records, as not all vulnerabilities require immediate remediation."
+            if len(pkg_group_rows) > 1:
+                vdr_intro = "The table below lists all vulnerabilities identified in this project. Use this information for your records, as not all vulnerabilities require immediate remediation."
+            else:
+                if counts.malicious_count:
+                    return
+                vdr_intro = "The table below lists all vulnerabilities identified in this project."
         else:
             vdr_intro = "The table below lists all vulnerabilities identified in this project. Review and triage the information to identify any critical vulnerabilities."
         psection = Markdown(
@@ -811,7 +816,7 @@ def pkg_risks_table(
     :param risk_report_file: Path to the JSON file for the risk audit findings.
     """
     if not risk_results:
-        return None
+        return None, None
     table = Table(
         title=f"Risk Audit Summary ({project_type})",
         box=box.DOUBLE_EDGE,

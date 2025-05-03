@@ -1101,7 +1101,7 @@ dependencies = [
     { name = "packageurl-python" },
     { name = "pyyaml" },
     { name = "rich" },
-    { name = "tomli" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 
 [package.optional-dependencies]
@@ -1165,7 +1165,7 @@ requires-dist = [
     { name = "quart", marker = "extra == 'all'", specifier = ">=0.20.0" },
     { name = "quart", marker = "extra == 'server'", specifier = ">=0.20.0" },
     { name = "rich", specifier = ">=14.0.0" },
-    { name = "tomli", specifier = ">=2.2.1" },
+    { name = "tomli", marker = "python_full_version == '3.10.*'", specifier = ">=2.2.1" },
 ]
 provides-extras = ["dev", "server", "ext", "perf", "all"]
 
