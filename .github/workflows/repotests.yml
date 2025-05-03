@@ -266,13 +266,14 @@ jobs:
           path: 'repotests/dejacode'
       - name: semantic analysis dejacode
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dejacode
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dejacode ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
           cd ${GITHUB_WORKSPACE}/repotests/dejacode
           docker build -t dejacode:latest -f Dockerfile .
           pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
           cd ${GITHUB_WORKSPACE}
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          ls -lh ${GITHUB_WORKSPACE}/depscan_reports/dejacode
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode2 --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
+          ls -lh ${GITHUB_WORKSPACE}/depscan_reports/dejacode ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
         shell: bash
         env:
           DEPSCAN_SOURCE_IMAGE: dejacode:latest
@@ -280,3 +281,7 @@ jobs:
         with:
           name: dejacode_reports
           path: depscan_reports/dejacode
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dejacode_non_reachables
+          path: depscan_reports/dejacode2

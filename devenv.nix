@@ -66,6 +66,8 @@ in
 
       # Common packages
       packages = [
+        pkgs.nodejs_23
+        pkgs.python312Full
         config.languages.python.package.pkgs.astral
         pkgs.uv
         pkgs-unstable.pnpm_10
@@ -76,6 +78,7 @@ in
       difftastic.enable = true;
       # Setup the latest cdxgen using pnpm
       enterShell = ''
+        set -e
         pnpm setup
         source $HOME/.bashrc
         export PNPM_GLOBAL_DIR="$HOME/.local/share/pnpm/global"
