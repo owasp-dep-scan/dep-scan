@@ -24,13 +24,14 @@ in
     pkgs-unstable.pnpm_10
   ];
   devcontainer.enable = true;
-  cachix.enable = false;
   # Setup the latest cdxgen using pnpm
   enterShell = ''
+    pnpm setup
+    source $HOME/.bashrc
     export PNPM_GLOBAL_DIR="$HOME/.local/share/pnpm/global"
     export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
     pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
-    pnpm add -g @cyclonedx/cdxgen
+    pnpm add -g --allow-build sqlite3 @cyclonedx/cdxgen
     uv sync --all-extras --all-packages --dev
   '';
 
