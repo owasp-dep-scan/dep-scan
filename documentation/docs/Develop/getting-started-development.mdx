@@ -55,6 +55,24 @@ uv run depscan --config .config/depscan-dev.toml
 
 This would automatically use the configuration specified in the local config file.
 
+## devenv setup
+
+Install devenv by following the official [instructions](https://devenv.sh/getting-started/).
+
+```shell
+devenv shell
+uv sync --all-extras --all-packages --dev
+uv run pytest
+```
+
+vdb tasks
+
+```shell
+devenv tasks run vdb:clean
+devenv tasks run vdb:download-image
+# devenv tasks run vdb:download-full-image
+```
+
 {/* ## Code Style Guide
 
 ## Contribution Workflow */}

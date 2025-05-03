@@ -1,0 +1,56 @@
+{ pkgs, lib, config, ... }: {
+  # https://devenv.sh/languages/
+  languages = {
+    python = {
+      enable = true;
+      version = "3.12";
+    };
+    javascript = {
+      enable = true;
+      package = pkgs.nodejs_23;
+    };
+    java = {
+      enable = true;
+      jdk.package = pkgs.jdk21;
+    };
+  };
+
+  packages = [
+    config.languages.python.package.pkgs.astral
+    pkgs.uv
+    pkgs.corepack_23
+  ];
+  devcontainer.enable = true;
+  cachix.enable = false;
+  # Setup the latest cdxgen using pnpm
+  enterShell = ''
+    export PNPM_GLOBAL_DIR="$HOME/.local/share/pnpm/global"
+    export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
+    corepack pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
+    corepack pnpm add -g @cyclonedx/cdxgen
+    uv sync --all-extras --all-packages --dev
+  '';
+
+  tasks."env:check" = {
+    exec = ''
+    cdxgen --version
+    python3 --version
+    '';
+    before = [ "devenv:enterShell" "devenv:enterTest" ];
+  };
+  tasks."vdb:clean" = {
+    exec = ''
+    uv run vdb --clean
+    '';
+  };
+  tasks."vdb:download-image" = {
+    exec = ''
+    uv run vdb --download-image
+    '';
+  };
+  tasks."vdb:download-full-image" = {
+    exec = ''
+    uv run vdb --download-full-image
+    '';
+  };
+}
