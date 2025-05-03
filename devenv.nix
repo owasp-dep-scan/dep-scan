@@ -1,4 +1,7 @@
-{ pkgs, lib, config, ... }: {
+{ pkgs, inputs, config, ... }:
+let pkgs-unstable = import inputs.nixpkgs-unstable { system = pkgs.stdenv.system; };
+in
+{
   # https://devenv.sh/languages/
   languages = {
     python = {
@@ -18,7 +21,7 @@
   packages = [
     config.languages.python.package.pkgs.astral
     pkgs.uv
-    pkgs.corepack_23
+    pkgs-unstable.pnpm_10
   ];
   devcontainer.enable = true;
   cachix.enable = false;
@@ -26,8 +29,8 @@
   enterShell = ''
     export PNPM_GLOBAL_DIR="$HOME/.local/share/pnpm/global"
     export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
-    corepack pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
-    corepack pnpm add -g @cyclonedx/cdxgen
+    pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
+    pnpm add -g @cyclonedx/cdxgen
     uv sync --all-extras --all-packages --dev
   '';
 
