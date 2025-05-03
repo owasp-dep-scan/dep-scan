@@ -32,16 +32,12 @@ in
     export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
     pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
     pnpm add -g --allow-build sqlite3 @cyclonedx/cdxgen
+    cdxgen --version
+    python3 --version
     uv sync --all-extras --all-packages --dev
   '';
 
-  tasks."env:check" = {
-    exec = ''
-    cdxgen --version
-    python3 --version
-    '';
-    before = [ "devenv:enterShell" "devenv:enterTest" ];
-  };
+  # Tasks
   tasks."vdb:clean" = {
     exec = ''
     uv run vdb --clean
