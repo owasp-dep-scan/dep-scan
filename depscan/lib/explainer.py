@@ -176,11 +176,15 @@ def explain_reachables(
     sink_reachable_explanations = defaultdict(int)
     has_explanation = False
     header_shown = False
+    has_cpp_flow = False
     for areach in reachables.get("reachables", []):
+        cpp_flow = is_cpp_flow(areach.get("flows"))
+        if not has_cpp_flow and cpp_flow:
+            has_cpp_flow = True
         if (
             not areach.get("flows")
             or len(areach.get("flows")) < 2
-            or (not areach.get("purls") and not is_cpp_flow(areach.get("flows")))
+            or (not areach.get("purls") and not cpp_flow)
         ):
             continue
         # Focus only on the prioritized list if available
@@ -282,9 +286,15 @@ def explain_reachables(
 - Generate a Cryptographic BOM with cdxgen and monitor it in Dependency-Track.
 """
         elif checked_flows:
-            tips += """
+            if not has_cpp_flow:
+                tips += """
 - Review the validation and sanitization methods used in the application.
 - To enhance the security posture, implement a common validation middleware.
+"""
+            else:
+                tips += """
+- Continuously fuzz the parser and validation functions with diverse payloads.
+- Generate post-build SBOMs with OWASP blint by building this project for various architecture combinations. Re-run depscan with the `--bom-dir` argument to enhance the analysis.
 """
         elif purls_reachable_explanations:
             tips += """
