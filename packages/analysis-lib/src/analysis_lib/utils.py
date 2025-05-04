@@ -1643,7 +1643,10 @@ def analyze_cve_vuln(
         is_required = True
     package_usage = ""
     plain_package_usage = ""
-    if rating.get("severity", "").upper() in JUST_CRITICAL:
+    if (
+        rating.get("severity", "").upper() in JUST_CRITICAL
+        and not likely_false_positive
+    ):
         counts.critical_count += 1
     # We are dealing with a required non-os package
     if is_required and package_type not in OS_PKG_TYPES and not likely_false_positive:
