@@ -266,14 +266,17 @@ jobs:
           path: 'repotests/dejacode'
       - name: semantic analysis dejacode
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dejacode ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports
           cd ${GITHUB_WORKSPACE}/repotests/dejacode
+          mkdir reports
           docker build -t dejacode:latest -f Dockerfile .
           pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
-          cd ${GITHUB_WORKSPACE}
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dejacode2 --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
-          ls -lh ${GITHUB_WORKSPACE}/depscan_reports/dejacode ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
+          cd ${GITHUB_WORKSPACE}/repotests/dejacode
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode
+          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --bom-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
+          cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
+          ls -lh ${GITHUB_WORKSPACE}/repotests/dejacode/reports
         shell: bash
         env:
           DEPSCAN_SOURCE_IMAGE: dejacode:latest
