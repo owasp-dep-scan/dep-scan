@@ -266,12 +266,9 @@ jobs:
           path: 'repotests/dejacode'
       - name: semantic analysis dejacode
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports
-          cd ${GITHUB_WORKSPACE}/repotests/dejacode
-          mkdir reports
+          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports ${GITHUB_WORKSPACE}/repotests/dejacode/reports
           docker build -t dejacode:latest -f Dockerfile .
           pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
-          cd ${GITHUB_WORKSPACE}/repotests/dejacode
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --bom-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
