@@ -91,8 +91,6 @@ Always stay a step ahead with advanced vulnerability and exploit prediction.
 - Chainguard
 - Wolfi OS
 
-Application vulnerabilities would be reported for all Linux distros and Windows. To download the full vulnerability database suitable for scanning OS, invoke dep-scan with `` for the first time. dep-scan would also download the appropriate database based on project type automatically.
-
 ## Quick Start
 
 dep-scan is ideal for use during continuous integration (CI) and as a local development tool.
