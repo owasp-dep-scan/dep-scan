@@ -319,3 +319,6 @@ COMMON_CHECK_TAGS = (
     "authentication",
     "authorization",
 )
+
+# cdxgen timeout
+CDXGEN_TIMEOUT_MS = get_int_from_env("cdxgen_timeout_ms", 36000000)
