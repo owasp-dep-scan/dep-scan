@@ -40,6 +40,14 @@ const sidebars: SidebarsConfig = {
         // 'Develop/help'
       ]
     },
+    {
+      type: 'category',
+      collapsible: true,
+      label: 'Tutorials',
+      items: [
+        'Lessons/01-java-semantic-analysis'
+      ]
+    },
   ],
 };
 
