@@ -271,7 +271,6 @@ class CdxgenGenerator(XBOMGenerator):
                 prefix="cdxgen-temp-", dir=os.getenv("DEPSCAN_TEMP_DIR")
             )
             env["CDXGEN_TEMP_DIR"] = cdxgen_temp_dir
-        env["CDXGEN_TIMEOUT_MS"] = self.options.get("CDXGEN_TIMEOUT_MS")
         if cdxgen_cmd:
             bom_result = exec_tool(
                 args,
@@ -416,11 +415,6 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
                 f"ATOM_TOOLS_OPENAPI_FILENAME={project_type_list[0]}-openapi.json",
             ]
         run_command_args += ["-e", "CDXGEN_IN_CONTAINER=true"]
-        if self.options.get("CDXGEN_TIMEOUT_MS"):
-            run_command_args += [
-                "-e",
-                f"CDXGEN_TIMEOUT_MS={self.options.get('CDXGEN_TIMEOUT_MS')}",
-            ]
         # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
         run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
         # Do not repeat the CDXGEN_DEBUG_MODE environment variable

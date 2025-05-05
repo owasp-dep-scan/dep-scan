@@ -15,7 +15,6 @@ from xbom_lib.cdxgen import (
     CdxgenImageBasedGenerator,
     CdxgenServerGenerator,
 )
-from depscan.lib.config import CDXGEN_TIMEOUT_MS
 from depscan.lib.logger import LOG, SPINNER, console
 from depscan.lib.utils import cleanup_license_string
 from typing import Dict, Optional
@@ -239,7 +238,6 @@ def create_bom(bom_file, src_dir=".", options=None):
     project_type_list = options.get("project_type") or []
     bom_engine = options.get("bom_engine", "")
     lifecycle_analysis_mode = options.get("lifecycle_analysis_mode", False)
-    options["CDXGEN_TIMEOUT_MS"] = CDXGEN_TIMEOUT_MS
     # Detect if blint needs to be used for the given project type, technique, and lifecycle.
     # For binaries, generate an sbom with blint directly
     if (
