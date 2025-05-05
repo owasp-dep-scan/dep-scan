@@ -260,6 +260,7 @@ jobs:
         shell: bash
         env:
           DEPSCAN_SOURCE_IMAGE: ghcr.io/owasp-dep-scan/dep-scan:master
+          CDXGEN_TIMEOUT_MS: 3600000
       - uses: actions/checkout@v4
         with:
           repository: 'aboutcode-org/dejacode'
@@ -279,6 +280,7 @@ jobs:
         shell: bash
         env:
           DEPSCAN_SOURCE_IMAGE: dejacode:latest
+          CDXGEN_TIMEOUT_MS: 3600000
       - uses: actions/upload-artifact@v4
         with:
           name: dejacode_reports
