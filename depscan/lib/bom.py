@@ -6,7 +6,6 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from urllib.parse import unquote_plus
 
-from blint.cyclonedx.spec import CycloneDX
 from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 from xbom_lib.blint import BlintGenerator
@@ -326,13 +325,6 @@ def create_blint_bom(
             LOG.info(
                 "The blint invocation was unsuccessful. Try generating the BOM separately."
             )
-        # Empty SBOM is fine if there are no binaries in the project.
-        elif bom_result.bom_obj and isinstance(bom_result.bom_obj, CycloneDX):
-            if (
-                not bom_result.bom_obj.components
-                and not bom_result.bom_obj.dependencies
-            ):
-                LOG.debug("Empty SBOM received from blint.")
         return bom_result.success and os.path.exists(bom_file)
 
 

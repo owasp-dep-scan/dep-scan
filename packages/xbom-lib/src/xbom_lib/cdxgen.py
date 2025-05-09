@@ -17,6 +17,9 @@ cdxgen_server_headers = {
     "Accept-Encoding": "gzip",
 }
 
+# cdxgen timeout. Increased to 30 minutes
+CDXGEN_TIMEOUT_MS = os.getenv("CDXGEN_TIMEOUT_MS", str(int(30 * 60 * 1000)))
+
 # version of cdxgen to use
 CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "latest")
 CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v11")
@@ -271,6 +274,7 @@ class CdxgenGenerator(XBOMGenerator):
                 prefix="cdxgen-temp-", dir=os.getenv("DEPSCAN_TEMP_DIR")
             )
             env["CDXGEN_TEMP_DIR"] = cdxgen_temp_dir
+        env["CDXGEN_TIMEOUT_MS"] = CDXGEN_TIMEOUT_MS
         if cdxgen_cmd:
             bom_result = exec_tool(
                 args,
@@ -405,6 +409,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
                 or k in ("FETCH_LICENSE",)
             ):
                 run_command_args += ["-e", k]
+        run_command_args += ["-e", f"CDXGEN_TIMEOUT_MS={CDXGEN_TIMEOUT_MS}"]
         # Enabling license fetch will improve metadata such as tags and description
         # These will help with semantic reachability analysis
         if self.options.get("profile") not in ("generic",):

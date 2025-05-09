@@ -1,3 +1,4 @@
+import os
 import re
 import glob
 from collections import defaultdict
@@ -58,6 +59,12 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
         else "Reachable Flows"
     )
     for sf in slices_files:
+        if len(slices_files) > 1:
+            fn = os.path.basename(sf)
+            section_label = f"# Explanations for {sf}"
+            if "-" in fn:
+                section_label = f"# Explanations for {fn.split('-')[0].upper()}"
+            console.print(Markdown(section_label))
         if (reachables_data := json_load(sf, log=LOG)) and reachables_data.get(
             "reachables"
         ):
@@ -211,7 +218,7 @@ def explain_reachables(
             project_type,
             vdr_result,
         )
-        if not source_sink_desc or not flow_tree:
+        if not source_sink_desc or not flow_tree or len(flow_tree.children) < 5:
             continue
         # In non-reachables mode, we are not interested in reachable flows.
         if (
@@ -358,7 +365,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
             source_sink_desc = f"Invocation: {method_full_name}"
     elif flow.get("label") == "RETURN" and flow.get("code"):
         source_sink_desc = flow.get("code").split("\n")[0]
-    elif project_type not in ("java") and flow.get("label") == "IDENTIFIER":
+    elif project_type not in ("java",) and flow.get("label") == "IDENTIFIER":
         source_sink_desc = flow.get("code").split("\n")[0]
         if source_sink_desc.endswith("("):
             source_sink_desc = f":diamond_suit: {source_sink_desc})"
@@ -421,19 +428,21 @@ def filter_tags(tags):
 
 
 def is_filterable_code(project_type, code):
-    match project_type:
-        case "js" | "ts" | "javascript" | "typescript" | "bom":
-            for c in (
-                "console.log",
-                "thoughtLog(",
-                "_tmp_",
-                "LOG.debug(",
-                "options.get(",
-                "RET",
-                "this.",
-            ):
-                if code and code.startswith(c):
-                    return True
+    if len(code) < 5:
+        return True
+    for c in (
+        "console.log",
+        "thoughtLog(",
+        "_tmp_",
+        "LOG.debug(",
+        "options.get(",
+        "RET",
+        "this.",
+        "NULL",
+        "!",
+    ):
+        if code and code.startswith(c):
+            return True
     return False
 
 
@@ -450,17 +459,21 @@ def flow_to_str(explanation_mode, flow, project_type):
     node_desc = flow.get("code").split("\n")[0]
     if node_desc.endswith("("):
         node_desc = f":diamond_suit: {node_desc})"
+    elif node_desc.startswith("return "):
+        node_desc = f":arrow_backward: [italic]{node_desc}[/italic]"
     tags = filter_tags(flow.get("tags"))
-    if flow.get("label") == "METHOD_PARAMETER_IN":
+    if flow.get("label") in ("METHOD_PARAMETER_IN",):
         param_name = flow.get("name")
         if param_name == "this":
             param_name = ""
         node_desc = f"{flow.get('parentMethodName')}([red]{param_name}[/red]) :right_arrow_curving_left:"
         if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-    elif flow.get("label") == "IDENTIFIER":
+    elif flow.get("label") in ("IDENTIFIER", "CALL"):
         if node_desc.startswith("<"):
             node_desc = flow.get("name")
+        if flow.get("isExternal"):
+            node_desc = f"{node_desc} :right_arrow_curving_up:"
         if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     if tags and not is_filterable_code(project_type, node_desc):
@@ -528,7 +541,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         file_loc, flow_str, node_desc, has_check_tag_flow = flow_to_str(
             explanation_mode, aflow, project_type
         )
-        if last_file_loc and last_file_loc == file_loc:
+        if not flow_str or (last_file_loc and last_file_loc == file_loc):
             continue
         last_file_loc = file_loc
         if flow_str in added_flows or node_desc in added_node_desc:
