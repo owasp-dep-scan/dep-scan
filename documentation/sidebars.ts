@@ -45,7 +45,8 @@ const sidebars: SidebarsConfig = {
       collapsible: true,
       label: 'Tutorials',
       items: [
-        'Lessons/java-semantic-analysis'
+        'Lessons/java-semantic-analysis',
+        'Lessons/dotnet-framework-analysis'
       ]
     },
   ],
