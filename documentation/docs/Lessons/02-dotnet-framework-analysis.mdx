@@ -1,0 +1,167 @@
+---
+position: 2
+title: Lesson 2 - .NET Framework Reachability Analysis with dotnet-podcasts
+---
+
+# Perform Framework Reachability Analysis for a .NET project (dotnet-podcasts)
+
+## Learning Objective
+
+In this lesson, we will learn how to perform a framework reachability analysis for a complex .NET reference application, `dotnet-podcasts`, using OWASP depscan. We will explore how different options, particularly fuzzy searching, can affect the scan results. We'll also discuss the interpretation of these results, focusing on distinguishing between specific dependency vulnerabilities and broader framework matches.
+
+## Pre-requisites
+
+Ensure the following tools are installed on your Linux environment:
+
+* Git
+* .NET SDK (The `dotnet-podcasts` application uses .NET 6 and .NET 7, with some components potentially updated to .NET 8. Ensure you have these SDKs or newer. Your provided `dotnet --info` indicates a .NET 9 environment, which is fine for running the tools.)
+* Python > 3.10
+* Node.js > 16 (for cdxgen)
+
+## Getting started
+
+First, install OWASP cdxgen (for SBOM generation) and OWASP depscan.
+
+```shell
+sudo npm install -g @cyclonedx/cdxgen
+python -m pip install owasp-depscan[all]
+```
+
+Next, clone the `dotnet-podcasts` project from GitHub. This is a reference application from Microsoft showcasing various .NET technologies.
+
+```shell
+git clone [https://github.com/microsoft/dotnet-podcasts.git](https://github.com/microsoft/dotnet-podcasts.git)
+cd dotnet-podcasts
+```
+
+To ensure all project dependencies can be resolved by `cdxgen` and `depscan`, it's a good practice to build the main solution once:
+```shell
+dotnet build NetPodcast.sln
+```
+This step might take some time as it resolves dependencies for the multiple projects within the solution.
+
+## Invoke depscan
+
+Now, let's run `depscan` on the `dotnet-podcasts` source code. We will use the `FrameworkReachability` analyzer. This analyzer is generally faster than `SemanticReachability` and provides hints about whether a vulnerable component is related to a used framework, but it doesn't perform deep code flow analysis.
+
+**Scenario 1: Standard Framework Reachability Analysis**
+
+Navigate to the `dotnet-podcasts` source directory (if you are not already there).
+
+```shell
+depscan --src . --reports-dir ../reportsFR_dotnetpodcasts1 -t dotnet --reachability-analyzer FrameworkReachability
+```
+
+You should see an output that lists vulnerabilities found in the project's dependencies:
+```
+  _|  _  ._   _  _  _. ._
+ (_| (/_ |_) _> (_ (_| | |
+        |
+
+[HH:MM:SS] INFO    To improve performance, cache the bom file and invoke depscan with --bom ../reportsFR_dotnetpodcasts1/sbom-dotnet.cdx.json instead of -i
+           INFO    Scanning ./dotnet-podcasts/ with type dotnet
+
+                                           Vulnerability Disclosure Report
+
+The table below lists all vulnerabilities identified in this project. Review and triage the information to identify any critical vulnerabilities.
+
+                                       Dependency Scan Results (DOTNET)
+╔════════════════════════════════════════════════════════════════════════════════════╤═══════════════════════════╤═══════════════╤═══════════╤═══════╗
+║ Dependency Tree                                                                    │ Insights                  │ Fix Version   │ Severity  │ Score ║
+╟────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────┼───────────────┼───────────┼───────╢
+║ Microsoft.Data.SqlClient@5.0.1                                                     │ 📓 Indirect dependency    │ 4.60.4        │ MEDIUM    │   6.8 ║
+║ └── Azure.Identity@1.6.0                                                           │                           │               │           │       ║
+║     └── Microsoft.Identity.Client@4.45.0 ⬅ CVE-2024-35255                          │                           │               │           │       ║
+║ Microsoft.Data.SqlClient@5.0.1                                                     │                           │               │ MEDIUM    │   5.5 ║
+║ └── Azure.Identity@1.6.0 ⬅ CVE-2024-29992                                          │                           │               │           │       ║
+║ Microsoft.Data.SqlClient@5.0.1                                                     │                           │               │ HIGH      │   8.8 ║
+║ └── Azure.Identity@1.6.0 ⬅ CVE-2023-36414                                          │                           │               │           │       ║
+╟────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────┼───────────────┼───────────┼───────╢
+║ Microsoft.Orleans.Persistence.AzureStorage@3.6.0                                   │ 📓 Indirect dependency    │ 12.13.0       │ MEDIUM    │   4.7 ║
+║ └── Azure.Storage.Blobs@12.10.0 ⬅ CVE-2022-30187                                     │                           │               │           │       ║
+╟────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────┼───────────────┼───────────┼───────╢
+║ Microsoft.AspNetCore.Components.Forms@7.0.0                                        │ 📓 Indirect dependency    │ 8.0.0         │ MEDIUM    │   6.2 ║
+║ └── Microsoft.AspNetCore.Components@7.0.0 ⬅ CVE-2023-36558                         │                           │               │           │       ║
+╟────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────┼───────────────┼───────────┼───────╢
+║ Microsoft.EntityFrameworkCore.SqlServer@7.0.0                                      │ 📓 Indirect dependency    │ 5.1.3         │ HIGH      │   8.7 ║
+║ └── Microsoft.Data.SqlClient@5.0.1 ⬅ CVE-2024-0056                                 │                           │               │           │       ║
+╟────────────────────────────────────────────────────────────────────────────────────┼───────────────────────────┼───────────────┼───────────┼───────╢
+║ System.Windows.Extensions@5.0.0                                                    │ 📓 Indirect dependency    │ 5.0.3         │ CRITICAL  │   9.8 ║
+║ └── System.Drawing.Common@5.0.0 ⬅ CVE-2021-24112                                   │                           │               │           │       ║
+║ ... (other NuGet package vulnerabilities) ...                                      │                           │               │           │       ║
+╚════════════════════════════════════════════════════════════════════════════════════╧═══════════════════════════╧═══════════════╧═══════════╧═══════╝
+                                         Vulnerabilities count: 18
+
+╭───────────────────────── Recommendation ──────────────────────────╮
+│ ◽ Review the 1 critical vulnerabilities confirmed by the vendor. │
+╰───────────────────────────────────────────────────────────────────╯
+```
+
+**Scenario 2: Framework Reachability Analysis with Fuzzy Search**
+
+Fuzzy searching can help identify vulnerabilities when package naming or versioning in the SBOM doesn't perfectly match the vulnerability database. However, it can also increase the number of findings, including less precise matches.
+
+```shell
+depscan --src . --reports-dir ../reportsFR_dotnetpodcasts2 -t dotnet --reachability-analyzer FrameworkReachability --fuzzy-search
+```
+
+This command will likely produce a much larger list of vulnerabilities:
+```
+  _|  _  ._   _  _  _. ._
+ (_| (/_ |_) _> (_ (_| | |
+        |
+[HH:MM:SS] DEBUG   ...
+           INFO    Scanning ./dotnet-podcasts/ with type dotnet
+
+                                           Vulnerability Disclosure Report
+...
+                                       Dependency Scan Results (DOTNET)
+╔═════════════════════════════════════════════════════════════════════════════════╤════════════════════════════╤════════════════╤════════════╤═══════╗
+║ Dependency Tree                                                                 │ Insights                   │ Fix Version    │ Severity   │ Score ║
+╟─────────────────────────────────────────────────────────────────────────────────┼────────────────────────────┼────────────────┼────────────┼───────╢
+║ .net@6.0.0 ⬅ CVE-2025-21176                                                     │                            │ 17.6.22        │ HIGH       │   8.8 ║
+║ ... (many entries for .net@6.0.0, .net@5.0.0) ...                               │                            │                │            │       ║
+║ asp.net_core@4.3.0 ⬅ CVE-2023-44487                                             │                            │                │ HIGH       │   7.5 ║
+║ ... (many entries for asp.net_core@4.3.0) ...                                   │                            │                │            │       ║
+║ Microsoft.Data.SqlClient@5.0.1                                                  │ 📓 Indirect dependency     │ 4.60.4         │ MEDIUM     │   6.8 ║
+║ └── Azure.Identity@1.6.0                                                        │                            │                │            │       ║
+║     └── Microsoft.Identity.Client@4.45.0 ⬅ CVE-2024-35255                       │                            │                │            │       ║
+║ ... (and all other NuGet vulnerabilities from Scenario 1) ...                   │                            │                │            │       ║
+╚═════════════════════════════════════════════════════════════════════════════════╧════════════════════════════╧════════════════╧════════════╧═══════╝
+                                         Vulnerabilities count: 322
+
+╭───────────────────────── Recommendation ──────────────────────────╮
+│ ◽ Review the 9 critical vulnerabilities confirmed by the vendor. │
+╰───────────────────────────────────────────────────────────────────╯
+```
+
+## Interpreting the Results for `dotnet-podcasts`
+
+The `dotnet-podcasts` application is a complex system with multiple projects targeting different .NET versions (primarily .NET 6 and .NET 7, potentially .NET 8 in newer updates) and using various NuGet packages.
+
+**Key Observations and Interpretation Points:**
+
+1.  **Specific NuGet Package Vulnerabilities (Scenario 1 & 2):**
+    * The first scan (without fuzzy search) correctly identifies vulnerabilities in specific NuGet packages like `Microsoft.Data.SqlClient@5.0.1` (via `Azure.Identity@1.6.0` and `Microsoft.EntityFrameworkCore.SqlServer@7.0.0`), `Azure.Storage.Blobs@12.10.0`, `System.Drawing.Common@5.0.0` (via `System.Windows.Extensions@5.0.0`), and others.
+    * These are generally more actionable findings. You should investigate if the "Fix Version" is applicable and if updating these packages is feasible. The "Insights" column indicating "Indirect dependency" helps trace how these packages are included.
+
+2.  **Broader Framework Vulnerabilities (Scenario 2 - Fuzzy Search):**
+    * With `--fuzzy-search`, a large number of vulnerabilities appear against generic framework versions like `.net@6.0.0`, `.net@5.0.0`, and `asp.net_core@4.3.0`.
+    * **`.net@6.0.0` / `.net@5.0.0`**: Since `dotnet-podcasts` does use .NET 6 and .NET 7 (which includes .NET 6 runtime components), some of these might be relevant if they apply to the specific runtime versions and components used. However, the sheer number and duplication suggest that `cdxgen` might be creating a somewhat generic PURL for the .NET SDK/runtime itself, which then broadly matches many CVEs under fuzzy search. Careful validation against the specific CVE details and your actual patch level is crucial.
+    * **`asp.net_core@4.3.0`**: This is highly likely a PURL/CPE matching artifact due to fuzzy search. ASP.NET Core 4.3.0 is an extremely old version. `dotnet-podcasts` uses much newer ASP.NET Core versions (6, 7, or 8). These findings for 4.3.0 are almost certainly false positives in the context of the actual runtime used by `dotnet-podcasts` and should be deprioritized after confirming the project's target frameworks.
+    * The `dotnet-podcasts` *does* include ASP.NET Core projects. Therefore, unlike the Pinta example, vulnerabilities in ASP.NET Core (if matched to the correct, modern versions used by the project) are relevant. The issue here is the match to a very old version (4.3.0).
+
+3.  **`FrameworkReachability` Analyzer:**
+    * This analyzer provides basic hints on whether the vulnerable components are related to frameworks used in the project. It's less in-depth than `SemanticReachability` (which attempts to trace code execution paths). For a large and diverse project like `dotnet-podcasts`, `FrameworkReachability` offers a quicker assessment.
+
+4.  **Your Local .NET Environment:**
+    * Your `dotnet --info` (showing .NET 9 SDK and runtimes) is the environment where `depscan` and `cdxgen` are *executed*. The target framework versions specified within the `dotnet-podcasts` project files (`.csproj`) determine the actual runtime dependencies of the application being scanned.
+
+## Further Exploration
+
+* Try running `depscan` with the `--explain` flag for more detailed findings:
+    ```shell
+    depscan --src . --reports-dir ../reportsFR_dotnetpodcasts3 -t dotnet --reachability-analyzer FrameworkReachability --fuzzy-search --explain
+    ```
+* Inspect the generated SBOM (`sbom-dotnet.cdx.json` in your reports directory) to understand how components, especially the .NET framework itself, are represented. This can help clarify why certain broad matches occur.
+* For `dotnet-podcasts`, focus on the vulnerabilities within its actual dependencies (e.g., `Microsoft.Data.SqlClient`, `Azure.Identity`, etc.) and modern .NET 6/7/8 vulnerabilities rather than those attributed to much older framework versions like `asp.net_core@4.3.0` unless there's a clear and direct applicability.
