@@ -92,7 +92,6 @@ RUN set -e; \
     && uv cache clean \
     && depscan --help \
     && cdxgen --help \
-    && atom --help \
     && atom-tools --help \
     && which astgen \
     && which phpastgen \
