@@ -66,7 +66,7 @@ in
 
       # Common packages
       packages = [
-        pkgs.nodejs_23
+        pkgs-unstable.nodejs_24
         pkgs.python312Full
         config.languages.python.package.pkgs.astral
         pkgs.uv
@@ -82,9 +82,10 @@ in
         pnpm setup
         source $HOME/.bashrc
         export PNPM_GLOBAL_DIR="$HOME/.local/share/pnpm/global"
+        mkdir -p $PNPM_GLOBAL_DIR
         export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
         pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
-        pnpm add -g --allow-build sqlite3 @cyclonedx/cdxgen
+        pnpm add -g --allow-build=sqlite3 @cyclonedx/cdxgen
         cdxgen --version
         python3 --version
         uv sync --all-extras --all-packages --dev

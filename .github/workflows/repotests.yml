@@ -57,8 +57,6 @@ jobs:
           ruby-version: '3.4.3'
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-      - name: Setup Python
-        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - uses: actions/setup-dotnet@v4
@@ -71,7 +69,6 @@ jobs:
         if: ${{ matrix.os != 'windows-latest' }}
       - name: Install depscan
         run: |
-          python -m pip install --upgrade pip
           uv sync --all-extras --all-packages --dev
           uv pip install -U "huggingface_hub[cli]"
           npm install -g @cyclonedx/cdxgen
@@ -242,13 +239,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-      - name: Setup Python
-        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install depscan
         run: |
-          python -m pip install --upgrade pip
           uv sync --all-extras --all-packages
           sudo npm install -g @cyclonedx/cdxgen @appthreat/atom --omit=optional
       - name: semantic analysis self
@@ -270,7 +264,7 @@ jobs:
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports ${GITHUB_WORKSPACE}/repotests/dejacode/reports
           cd ${GITHUB_WORKSPACE}/repotests/dejacode
           docker build -t dejacode:latest -f Dockerfile .
-          pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
+          uv pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
           cd ${GITHUB_WORKSPACE}
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode

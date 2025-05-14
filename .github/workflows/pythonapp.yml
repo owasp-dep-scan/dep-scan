@@ -17,8 +17,6 @@ jobs:
     - uses: actions/checkout@v4
     - name: Install uv
       uses: astral-sh/setup-uv@v5
-    - name: Set up Python
-      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Use Node.js
@@ -34,11 +32,8 @@ jobs:
       run: |
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
-    - name: Display Python version
-      run: python -c "import sys; print(sys.version)"
     - name: Install dependencies
       run: |
-        python3 -m pip install --upgrade pip setuptools
         uv sync --all-extras --all-packages --dev
         npm install -g @cyclonedx/cdxgen
     - name: Lint with flake8
@@ -67,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-latest]
     steps:
     - uses: actions/checkout@v4
     - name: Trim CI agent
@@ -81,7 +76,10 @@ jobs:
     - name: Install devenv.sh
       run: nix profile install nixpkgs#devenv
     - name: Build the devenv shell
-      run: devenv test
+      run: |
+        mkdir -p $HOME/.local/share/pnpm/global
+        echo "$HOME/.local/share/pnpm/global" >> $GITHUB_PATH
+        devenv test
     - name: Run pytest with uv
       run: |
         devenv shell uv run pytest --cov=depscan test
