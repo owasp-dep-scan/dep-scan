@@ -47,9 +47,14 @@ def explain(project_type, src_dir, bom_dir, vdr_file, vdr_result, explanation_mo
         rsection = Markdown("""## Service Endpoints
 
 The following endpoints and code hotspots were identified by depscan. Verify that proper authentication and authorization mechanisms are in place to secure them.""")
-        console.print(rsection)
+        any_endpoints_shown = False
         for ospec in openapi_spec_files:
-            pattern_methods = print_endpoints(ospec)
+            pattern_methods = print_endpoints(
+                ospec, rsection if not any_endpoints_shown else None
+            )
+            if not any_endpoints_shown and pattern_methods:
+                any_endpoints_shown = True
+
     # Return early for endpoints only explanations
     if explanation_mode in ("Endpoints",):
         return
@@ -109,7 +114,7 @@ def _track_usage_targets(usage_targets, usages_object):
                 usage_targets.add(f"{file}#{l}")
 
 
-def print_endpoints(ospec):
+def print_endpoints(ospec, header_section=None):
     if not ospec:
         return
     paths = json_load(ospec).get("paths") or {}
@@ -151,6 +156,9 @@ def print_endpoints(ospec):
         sorted_areas.sort()
         rtable.add_row(k, ("\n".join(v)).upper(), "\n".join(sorted_areas))
     if pattern_methods:
+        # Print the header section
+        if header_section:
+            console.print(header_section)
         console.print()
         console.print(rtable)
     return pattern_methods
@@ -178,6 +186,7 @@ def explain_reachables(
     reachable_explanations = 0
     checked_flows = 0
     has_crypto_flows = False
+    explained_ids = {}
     purls_reachable_explanations = defaultdict(int)
     source_reachable_explanations = defaultdict(int)
     sink_reachable_explanations = defaultdict(int)
@@ -194,16 +203,9 @@ def explain_reachables(
             or (not areach.get("purls") and not cpp_flow)
         ):
             continue
-        # Focus only on the prioritized list if available
-        # if project_type in ("java",) and pkg_group_rows:
-        #     is_prioritized = False
-        #     for apurl in areach.get("purls"):
-        #         if pkg_group_rows.get(apurl):
-        #             is_prioritized = True
-        #     if not is_prioritized:
-        #         continue
         (
             flow_tree,
+            added_ids,
             comment,
             source_sink_desc,
             source_code_str,
@@ -218,7 +220,13 @@ def explain_reachables(
             project_type,
             vdr_result,
         )
-        if not source_sink_desc or not flow_tree or len(flow_tree.children) < 5:
+        # The goal is to reduce duplicate explanations by checking if a given flow is similar to one we have explained
+        # before. We do this by checking the node ids, source-sink explanations, purl tags and so on.
+        added_ids_str = "-".join(added_ids)
+        # Have we seen this sequence before?
+        if explained_ids.get(added_ids_str) or len(added_ids) < 4:
+            continue
+        if not source_sink_desc or not flow_tree or len(flow_tree.children) < 4:
             continue
         # In non-reachables mode, we are not interested in reachable flows.
         if (
@@ -269,6 +277,7 @@ def explain_reachables(
             header_shown = True
         console.print()
         console.print(rtable)
+        explained_ids[added_ids_str] = True
         reachable_explanations += 1
         if purls_str:
             purls_reachable_explanations[purls_str] += 1
@@ -428,7 +437,7 @@ def filter_tags(tags):
 
 
 def is_filterable_code(project_type, code):
-    if len(code) < 5:
+    if len(code) < 3:
         return True
     for c in (
         "console.log",
@@ -510,6 +519,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
     if purls:
         purls_str = "\n".join(purls)
         comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
+    added_ids = []
     added_flows = []
     added_node_desc = []
     has_check_tag = False
@@ -547,6 +557,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         if flow_str in added_flows or node_desc in added_node_desc:
             continue
         added_flows.append(flow_str)
+        added_ids.append(str(aflow.get("id", "")))
         added_node_desc.append(node_desc)
         if not tree:
             tree = Tree(flow_str)
@@ -561,6 +572,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         )
     return (
         tree,
+        added_ids,
         "\n".join(comments),
         source_sink_desc,
         source_code_str,
