@@ -19,7 +19,7 @@ in
         };
         javascript = {
           enable = true;
-          package = pkgs.nodejs_23;
+          package = pkgs-unstable.nodejs_24;
         };
         java = {
           enable = true;
@@ -88,7 +88,7 @@ in
         pnpm add -g --allow-build=sqlite3 @cyclonedx/cdxgen
         cdxgen --version
         python3 --version
-        uv sync --all-extras --all-packages --dev
+        uv sync --all-extras --all-packages --dev -p 3.12 --active
       '';
 
       # Tasks
