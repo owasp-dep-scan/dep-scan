@@ -7,3 +7,5 @@ contrib
 *.sh
 documentation
 devenv.*
+dist
+*egg-info
