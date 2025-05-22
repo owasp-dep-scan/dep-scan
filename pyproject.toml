@@ -42,7 +42,6 @@ Funding = "https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+d
 
 [project.scripts]
 depscan = "depscan.cli:main"
-scan = "depscan.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -95,4 +94,3 @@ members = ["packages/*"]
 dev = [
     "ruff>=0.11.6",
 ]
-
