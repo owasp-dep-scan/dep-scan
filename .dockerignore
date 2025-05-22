@@ -9,3 +9,5 @@ documentation
 devenv.*
 dist
 *egg-info
+local.properties
+docker-compose.yml
