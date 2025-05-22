@@ -5,3 +5,5 @@ test
 test*
 contrib
 *.sh
+documentation
+devenv.*
