@@ -5,12 +5,22 @@ in
   # Language-specific topions
   options = {
     profile = lib.mkOption {
-      type = lib.types.enum [ "ruby" "php" "c" "cplusplus" "go" "swift" "scala" "rust" "dotnet" "basic" ];
+      type = lib.types.enum [ "ruby" "php" "c" "cplusplus" "go" "swift" "scala" "rust" "dotnet" "android" "flutter" "reactNative" "basic" ];
       default = "basic";
       description = "Development profile to use";
     };
   };
   config = {
+      android = {
+        enable = lib.mkIf (lib.elem config.profile [ "android" "flutter" "reactNative" ]) true;
+        platforms.version = [ "34" ];
+        flutter = {
+          enable = lib.mkIf (config.profile == "flutter") true;
+        };
+        reactNative = {
+          enable = lib.mkIf (config.profile == "reactNative") true;
+        };
+      };
       languages = {
         python = {
           enable = true;
@@ -25,7 +35,7 @@ in
           enable = true;
           package = pkgs-unstable.nodejs_24;
         };
-        java = {
+        java = lib.mkIf (lib.elem config.profile [ "android" "flutter" "reactNative" ] == false) {
           enable = true;
           jdk.package = pkgs.jdk23_headless;
         };
