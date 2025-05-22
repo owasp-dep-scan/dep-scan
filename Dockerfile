@@ -56,7 +56,7 @@ RUN set -e; \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
         python${PYTHON_VERSION} python${PYTHON_VERSION}-devel python${PYTHON_VERSION}-pip \
         libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel diffutils \
-        pcre2 which tar zip unzip sudo nodejs ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
+        pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
     && alternatives --install /usr/bin/python3 python /usr/bin/python${PYTHON_VERSION} 10 \
     && alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 10 \
     && python3 --version \
