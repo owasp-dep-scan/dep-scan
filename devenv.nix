@@ -89,9 +89,7 @@ in
         mkdir -p $PNPM_GLOBAL_DIR
         export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
         pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
-        pnpm add -g --allow-build=sqlite3 @cyclonedx/cdxgen
-        cdxgen --version
-        python3 --version
+        pnpm add -g --allow-build=sqlite3 https://github.com/CycloneDX/cdxgen.git
         uv sync --all-extras --all-packages --dev -p 3.13 --active
       '';
 
