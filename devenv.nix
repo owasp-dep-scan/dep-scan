@@ -15,7 +15,11 @@ in
         python = {
           enable = true;
           venv.enable = true;
-          version = "3.12";
+          venv.quiet = true;
+          version = "3.13";
+          uv.enable = true;
+          uv.sync.allExtras = true;
+          uv.sync.enable = true;
         };
         javascript = {
           enable = true;
@@ -23,7 +27,7 @@ in
         };
         java = {
           enable = true;
-          jdk.package = pkgs.jdk21;
+          jdk.package = pkgs.jdk23_headless;
         };
         ruby = {
           enable = lib.mkIf (config.profile == "ruby") true;
@@ -67,7 +71,7 @@ in
       # Common packages
       packages = [
         pkgs-unstable.nodejs_24
-        pkgs.python312Full
+        pkgs.python313Full
         config.languages.python.package.pkgs.astral
         pkgs.uv
         pkgs-unstable.pnpm_10
@@ -88,7 +92,7 @@ in
         pnpm add -g --allow-build=sqlite3 @cyclonedx/cdxgen
         cdxgen --version
         python3 --version
-        uv sync --all-extras --all-packages --dev -p 3.12 --active
+        uv sync --all-extras --all-packages --dev -p 3.13 --active
       '';
 
       # Tasks
