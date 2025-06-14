@@ -54,7 +54,7 @@ jobs:
           packages: 'platform-tools'
       - uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.4.3'
+          ruby-version: '3.4.4'
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
