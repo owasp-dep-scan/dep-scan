@@ -70,7 +70,7 @@ jobs:
         path: 'repotests/java-sec-code'
     - name: Reachables tests
       run: |
-        mkdir -p ${GITHUB_WORKSPACE}/rtests_ubuntu
+        mkdir -p ${GITHUB_WORKSPACE}/rtests_ubuntu ${RUNNER_TEMP}/cdxgen-temp
         cd ${GITHUB_WORKSPACE}/repotests/java-sec-code
         mvn clean compile -DskipTests
         cd ${GITHUB_WORKSPACE}
@@ -114,7 +114,7 @@ jobs:
         path: 'repotests/NodeGoat'
     - name: Test container images
       run: |
-        mkdir -p containertests_${{ matrix.os }}
+        mkdir -p containertests_${{ matrix.os }} ${RUNNER_TEMP}/cdxgen-temp
         uv pip install -r contrib/requirements.txt
         cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
         cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
@@ -125,6 +125,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PYTHONUTF8: 1
+        SCAN_DEBUG_MODE: debug
+        CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
     - uses: actions/upload-artifact@v4
       with:
         name: containertests_${{ matrix.os }}
@@ -159,13 +161,14 @@ jobs:
           path: containertests_ubuntu-latest_python3.11
       - name: Test container images
         run: |
-          mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
+          mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }} ${RUNNER_TEMP}/cdxgen-temp
           uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/slim/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
           uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/redmine/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1
           SCAN_DEBUG_MODE: "debug"
+          CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
       - uses: actions/upload-artifact@v4
         with:
           name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -201,7 +204,7 @@ jobs:
       - name: Test container images
         shell: bash
         run: |
-          mkdir -p containertests_${{ matrix.os }}
+          mkdir -p containertests_${{ matrix.os }} ${{ runner.temp }}/cdxgen-temp
           mkdir -p containertests_ubuntu-latest/microservices
           mkdir -p containertests_ubuntu-latest/NodeGoat
           mv containertests_ubuntu-latest/msd/sbom-go.cdx.json containertests_ubuntu-latest/microservices/sbom-msd-go.cdx.json
@@ -215,6 +218,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PYTHONUTF8: 1
           SCAN_DEBUG_MODE: "debug"
+          CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
       - uses: actions/upload-artifact@v4
         with:
           name: containertests_${{ matrix.os }}

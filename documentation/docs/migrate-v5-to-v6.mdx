@@ -28,6 +28,7 @@ Use this document as a reference to migrate your depscan v5 workflows to v6.
 - BOMs created by depscan now use the new `.cdx.json` extension with the sbom-project_type prefix. Example: sbom-java.cdx.json, sbom-docker.cdx.json.
 - When invoked with the --bom-dir argument containing multiple BOM files or when using the new lifecycle analyzer, a single VDR file named `depscan-universal.vdr.json` is created under the reports directory.
 - The JSON Lines file `depscan.json` is no longer created.
+- PDF reports based on Rich HTML reports are no longer available. Use the browser print functionality in the HTML report to export to PDF.
 
 ## Remote audit
 

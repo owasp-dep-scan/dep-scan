@@ -130,10 +130,6 @@ For simple container scans, pass the image name via the `--src` argument. For li
 
 Ensure the application is first built, since depscan cannot automatically build arbitrary projects and container images. To customize the build directory, use the environment variable `DEPSCAN_BUILD_DIR`.
 
-### PDF reports were not generated
-
-Install the `wkhtmltopdf` [package](https://wkhtmltopdf.org) based on your operating system. Ensure depscan was installed including the group "ext" or "all"
-
 ```shell
 pip install owasp-depscan[all]
 ```
