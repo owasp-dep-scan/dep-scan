@@ -99,6 +99,10 @@ jobs:
       run: |
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24.x'
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
@@ -120,8 +124,8 @@ jobs:
         cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
         uv run depscan --no-banner  --bom ./test/data/bom-yaml-manifest.json -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --no-vuln-table
         uv run depscan --no-banner  -t docker --src ubuntu:latest -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --no-vuln-table
-        uv run depscan --csaf --no-banner  -t go --src ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/msd
-        uv run depscan --csaf --no-banner  -t js --src ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
+        uv run depscan --csaf --no-banner  -t go --bom-engine CdxgenGenerator --src ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/msd
+        uv run depscan --csaf --no-banner  -t js --bom-engine CdxgenGenerator --src ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PYTHONUTF8: 1
