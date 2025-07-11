@@ -464,8 +464,16 @@ def flow_to_str(explanation_mode, flow, project_type):
         and flow.get("lineNumber")
         and not flow.get("parentFileName").startswith("unknown")
     ):
-        file_loc = f"{flow.get('parentFileName').replace('src/main/java/', '').replace('src/main/scala/', '')}#{flow.get('lineNumber')}    "
+        # strip common prefixes
+        name = flow.get('parentFileName', '')
+        for p in ('src/main/java/', 'src/main/scala/'):
+            name = name.removeprefix(p)
+        file_loc = f"{name}#{flow.get('lineNumber')}    "
     node_desc = flow.get("code").split("\n")[0]
+    if (len(node_desc) < 3 or node_desc.endswith("{")) and len(flow.get("code")) > 3:
+        node_desc = " ".join(flow.get("code", "").split())
+        if "(" in node_desc:
+            node_desc = node_desc.split("(")[0] + "() ..."
     if node_desc.endswith("("):
         node_desc = f":diamond_suit: {node_desc})"
     elif node_desc.startswith("return "):

@@ -6,7 +6,7 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db[oras]>=6.4.1",
+    "appthreat-vulnerability-db[oras]>=6.4.2",
     "custom-json-diff>=2.1.6",
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
@@ -16,7 +16,8 @@ dependencies = [
     "cvss>=3.4",
     "tomli>=2.2.1; python_full_version <= '3.11'",
     "ds-xbom-lib",
-    "ds-analysis-lib"
+    "ds-analysis-lib",
+    "ds-reporting-lib"
 ]
 
 requires-python = ">=3.10"
@@ -85,6 +86,7 @@ line-length = 99
 blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "0a29b47a1d0ab55fcf4480785f0a8948104d7632" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
+ds-reporting-lib = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]

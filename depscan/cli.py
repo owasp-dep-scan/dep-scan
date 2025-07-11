@@ -54,6 +54,7 @@ from depscan.lib.config import (
 from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, SPINNER, console, IS_CI
 
+from reporting_lib.htmlgen import ReportGenerator
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")
@@ -617,15 +618,11 @@ def run_depscan(args):
     html_report_file = depscan_options.get(
         "html_report_file", os.path.join(reports_dir, "depscan.html")
     )
-    pdf_report_file = depscan_options.get(
-        "pdf_report_file", os.path.join(reports_dir, "depscan.pdf")
-    )
     txt_report_file = depscan_options.get(
         "txt_report_file", os.path.join(reports_dir, "depscan.txt")
     )
     run_config_file = os.path.join(reports_dir, "depscan.toml.sample")
     depscan_options["html_report_file"] = html_report_file
-    depscan_options["pdf_report_file"] = pdf_report_file
     depscan_options["txt_report_file"] = txt_report_file
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
@@ -975,7 +972,9 @@ def run_depscan(args):
         theme=(MONOKAI if os.getenv("USE_DARK_THEME") else DEFAULT_TERMINAL_THEME),
     )
     console.save_text(txt_report_file, clear=False)
-    utils.export_pdf(html_report_file, pdf_report_file)
+    # Prettify the rich html report
+    html_report_generator = ReportGenerator(input_rich_html_path=html_report_file, report_output_path=html_report_file, raw_content=False)
+    html_report_generator.parse_and_generate_report()
     # This logic needs refactoring
     # render report into template if wished
     if args.report_template and os.path.isfile(args.report_template):
