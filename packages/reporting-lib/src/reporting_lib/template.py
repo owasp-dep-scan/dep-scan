@@ -39,7 +39,7 @@ PROACTIVE_MEASURES = """
 <h3 class="light-text"><code class="code-title">Proactive Measures</code></h3>
 <div class="box-container">
     <br>
-   <h4>💥 Top Endpoint-Reachable Packages</h4><br>
+   <h4>Top Reachable Packages</h4><br>
    <span><SUMMARY_PLACEHOLDER></span>
     <div id="table-container-inner">
         <table id="proactive-measures-table" class="table table-striped table-bordered"><thead>

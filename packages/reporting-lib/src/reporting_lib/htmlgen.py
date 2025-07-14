@@ -40,6 +40,7 @@ class ReportGenerator:
     )
 
     PRIORITIZED_VULNERABILITIES = "Prioritized Vulnerabilities"
+    PRIORITIZED_VULNERABILITIES_ALTERNATIVE = "Next Steps"
     TOP_PRIORITY_BOM = "Top Priority (BOM)"
     TOP_PRIORITY_BOM_SUMMARY = TOP_PRIORITY_BOM + " " + SUMMARY
     TOP_PRIORITY_BOM_DATA_COLUMNS = [
@@ -53,7 +54,8 @@ class ReportGenerator:
 
     PROACTIVE_MEASURES = "Proactive Measures"
     TOP_REACHABLE_PACKAGES = "Top Reachable Packages"
-    TOP_REACHABLE_PACKAGES_ALTERNATIVE = "💥 Top Endpoint-Reachable Packages"
+    TOP_REACHABLE_PACKAGES_ALTERNATIVE_01 = "💥 Top Endpoint-Reachable Packages"
+    TOP_REACHABLE_PACKAGES_ALTERNATIVE_02 = "🕸  Top Endpoint-Reachable Packages"
     TOP_REACHABLE_PACKAGES_SUMMARY = TOP_REACHABLE_PACKAGES + " " + SUMMARY
     TOP_REACHABLE_PACKAGES_DATA_COLUMNS = ["Package", "Reachable Flows"]
     TOP_REACHABLE_PACKAGES_DATA = TOP_REACHABLE_PACKAGES + " " + DATA
@@ -190,7 +192,7 @@ class ReportGenerator:
         sections_tree = {
             self.VULNERABILITY_DISCLOSURE_REPORT: {
                 self.DEPENDENCY_SCAN_RESULTS_BOM: {
-                    self.VULNERABILITIES_COUNT: "0",
+                    self.VULNERABILITIES_COUNT: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
                     self.DATA: [],
@@ -199,7 +201,7 @@ class ReportGenerator:
             },
             self.PRIORITIZED_VULNERABILITIES: {
                 self.TOP_PRIORITY_BOM: {
-                    self.PRIORITIZED_COUNT: "0",
+                    self.PRIORITIZED_COUNT: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
                     self.DATA: [],
@@ -214,7 +216,7 @@ class ReportGenerator:
             },
             self.SERVICE_ENDPOINTS: {
                 self.ENDPOINTS: {
-                    self.IDENTIFIED_ENDPOINTS: "0",
+                    self.IDENTIFIED_ENDPOINTS: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
                     self.DATA: [],
@@ -360,7 +362,6 @@ class ReportGenerator:
                 ][self.VULNERABILITIES_COUNT] = (
                     line.split("Vulnerabilities count:", 1)[1].split("<", 1)[0].strip()
                 )
-                current_location = None
                 continue
 
             if (
@@ -394,11 +395,15 @@ class ReportGenerator:
                 line
                 in [
                     self.TOP_REACHABLE_PACKAGES,
-                    self.TOP_REACHABLE_PACKAGES_ALTERNATIVE,
+                    self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_01,
+                    self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_02,
                 ]
                 or self.string_matches_span_pattern(line, self.TOP_REACHABLE_PACKAGES)
                 or self.string_matches_span_pattern(
-                    line, self.TOP_REACHABLE_PACKAGES_ALTERNATIVE
+                    line, self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_01
+                )
+                or self.string_matches_span_pattern(
+                    line, self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_02
                 )
             ):
                 current_location = self.TOP_REACHABLE_PACKAGES
@@ -427,9 +432,8 @@ class ReportGenerator:
                 for row_piece in current_table_row:
                     for index, row_piece_column in enumerate(row_piece):
                         cells[index] += row_piece_column + "\n"
-                for row_piece in current_table_row:  # dirty fix to eliminate the useless \n added at the end of each cell
-                    for index, row_piece_column in enumerate(row_piece):
-                        cells[index] = cells[index][:-1]
+                for index, cell in enumerate(cells): # dirty fix to eliminate the useless \n added at the end of each cell
+                    cells[index] = cell[:-1]
 
                 sections_tree[self.PROACTIVE_MEASURES][self.TOP_REACHABLE_PACKAGES][
                     self.DATA
@@ -482,9 +486,8 @@ class ReportGenerator:
                     for row_piece in current_table_row:
                         for index, row_piece_column in enumerate(row_piece):
                             cells[index] += row_piece_column + "\n"
-                    for row_piece in current_table_row:  # dirty fix to eliminate the useless \n added at the end of each cell
-                        for index, row_piece_column in enumerate(row_piece):
-                            cells[index] = cells[index][:-1]
+                    for index, cell in enumerate(cells): # dirty fix to eliminate the useless \n added at the end of each cell
+                        cells[index] = cell[:-1]
 
                     sections_tree[self.PROACTIVE_MEASURES][self.TOP_REACHABLE_PACKAGES][
                         self.DATA
@@ -725,6 +728,15 @@ class ReportGenerator:
                 current_location = self.TOP_PRIORITY_BOM_SUMMARY
                 continue
 
+            if (
+                line == self.PRIORITIZED_VULNERABILITIES_ALTERNATIVE
+                or self.string_matches_span_pattern(
+                    line, self.PRIORITIZED_VULNERABILITIES_ALTERNATIVE
+                )
+            ):
+                current_location = self.TOP_PRIORITY_BOM_SUMMARY
+                continue
+
             if line == self.TOP_PRIORITY_BOM or self.string_matches_span_pattern(
                 line, self.TOP_PRIORITY_BOM
             ):
@@ -754,9 +766,8 @@ class ReportGenerator:
                 for row_piece in current_table_row:
                     for index, row_piece_column in enumerate(row_piece):
                         cells[index] += row_piece_column + "\n"
-                for row_piece in current_table_row:  # dirty fix to eliminate the useless \n added at the end of each cell
-                    for index, row_piece_column in enumerate(row_piece):
-                        cells[index] = cells[index][:-1]
+                for index, cell in enumerate(cells): # dirty fix to eliminate the useless \n added at the end of each cell
+                    cells[index] = cell[:-1]
 
                 sections_tree[self.PRIORITIZED_VULNERABILITIES][self.TOP_PRIORITY_BOM][
                     self.DATA
@@ -809,9 +820,8 @@ class ReportGenerator:
                     for row_piece in current_table_row:
                         for index, row_piece_column in enumerate(row_piece):
                             cells[index] += row_piece_column + "\n"
-                    for row_piece in current_table_row:  # dirty fix to eliminate the useless \n added at the end of each cell
-                        for index, row_piece_column in enumerate(row_piece):
-                            cells[index] = cells[index][:-1]
+                    for index, cell in enumerate(cells): # dirty fix to eliminate the useless \n added at the end of each cell
+                        cells[index] = cell[:-1]
 
                     sections_tree[self.PRIORITIZED_VULNERABILITIES][
                         self.TOP_PRIORITY_BOM
@@ -848,35 +858,6 @@ class ReportGenerator:
 
         return "\n".join(formatted_content)
 
-    def split_vulnerability_disclosure_report_row(self, row_data):
-        yield row_data
-        pass  # TODO
-        # 1. guardo il primo tree dalla colonna DEPENDENCY TREE, da cui estraggo l'elemento foglia (solo il nome della libreria, non la versione) e lo salvo in una variabile "dependency"
-        # 2. guardo se nella prima riga della colonna INSIGHTS ci sono info e le salvo in una variabile "insights"
-        # 3. guardo se nella colonna FIX VERSION ci sono info e le salvo in una variabile "fix_version"
-        # 4. guardo riga per riga tutte le colonne e salvo in N strutture dati (o una generale che le racchiude):
-        #   - il dependency tree
-        #   - l'insights, se presente
-        #   - la severity
-        #   - lo score
-        # 5. creo una riga per ogni struttura dati estratta al punto precedente (quindi verranno fuori N righe). In ogni riga ci metto:
-        #   - DEPENDENCY, con contenuto della variabile "dependency"
-        #   - INSIGHTS, con contenuto della variabile "insights" concatenata con l'insights specifico della struttura dati corrente
-        #   - FIX VERSION, con contenuto della variabile "fix_version"
-        #   - SEVERITY, la severity specifica della struttura dati corrente
-        #   - SCORE, con lo score specifico della struttura dati corrente
-
-    def get_dependency_from_dependency_tree(self, dependency_tree):
-        for line in dependency_tree.splitlines():
-            if " ⬅ " in line:
-                dependency = line.split("@", 1)[0].strip()
-                if dependency.startswith("└──"):
-                    dependency = dependency[3:]
-                elif "└── " in dependency:
-                    dependency = dependency.replace("└── ", "").strip()
-                return dependency
-        return ""
-
     def generate_section_prioritized_vulnerabilities(
         self, sections_tree, report_content, table_inits, tree_is_from_html
     ):
@@ -886,6 +867,24 @@ class ReportGenerator:
         ][self.PRIORITIZED_COUNT]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        try:
+            prioritized_count = int(current_content)
+        except ValueError:
+            prioritized_count = -1
+            pass
+        if prioritized_count == -1:
+            all_cves = set()
+            for row_data in sections_tree[self.PRIORITIZED_VULNERABILITIES][self.TOP_PRIORITY_BOM][self.DATA]:
+                current_data = row_data[
+                                self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")
+                            ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")+1 else "-"
+                if current_data == "-":
+                    continue
+                for data_element in current_data.strip().splitlines():
+                    all_cves.add(data_element)
+            current_content = f"{len(all_cves)}"
+
         prioritized_vulnerabilities = prioritized_vulnerabilities.replace(
             "<PRIORITIZED_COUNT_PLACEHOLDER>", current_content, 1
         )
@@ -906,30 +905,30 @@ class ReportGenerator:
             if self.raw_content:
                 html_row = ["<tr>"]
 
-                current_content = self.get_dependency_from_dependency_tree(
-                    row_data[self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Package")]
-                )
+                current_content = row_data[
+                    self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Package")
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Package")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Fix Version")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Fix Version")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Next Steps")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Next Steps")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
@@ -942,14 +941,14 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Package")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Package")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td>{current_content}</td>")
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 cves = []
@@ -961,14 +960,14 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Fix Version")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Fix Version")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td>{current_content}</td>")
 
                 current_content = row_data[
                     self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Next Steps")
-                ]
+                ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Next Steps")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td>{current_content.replace(NEWLINE, '<br>')}</td>")
@@ -994,6 +993,26 @@ class ReportGenerator:
         ][self.VULNERABILITIES_COUNT]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        try:
+            vulnerabilities_count = int(current_content)
+        except ValueError:
+            vulnerabilities_count = -1
+            pass
+        if vulnerabilities_count == -1:
+            all_cves = set()
+            for row_data in sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][self.DEPENDENCY_SCAN_RESULTS_BOM][self.DATA]:
+                current_data = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
+                        "Dependency Tree"
+                    )] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Dependency Tree")+1 else "-"
+                if current_data == "-":
+                    continue
+                for data_element in current_data.strip().splitlines():
+                    if "⬅" in data_element:
+                        all_cves.add(data_element)
+            current_content = f"{len(all_cves)}"
+
         vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
             "<VULNERABILITIES_COUNT_PLACEHOLDER>", current_content, 1
         )
@@ -1003,6 +1022,9 @@ class ReportGenerator:
         ][self.SUMMARY]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        if current_content == "":
+            current_content = "The table below lists all vulnerabilities identified in this project. Review and triage the information to identify any critical vulnerabilities."
         vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
             "<SUMMARY_PLACEHOLDER>", current_content, 1
         )
@@ -1018,10 +1040,12 @@ class ReportGenerator:
                 current_content = html.escape(current_content)
             current_content = current_content.replace("\n", "<br>")
             current_content = f"""
-        <br><hr><br>
-        <h4>Recommendation</h4>
-        <br>
-        <span>{current_content}</span><br><br>"""
+        <br><br>
+            <div class="alert alert-info" role="alert">
+            <h4>Recommendation</h4>
+            <br>
+            <span>{current_content}</span>
+            </div>"""
             vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
                 "<RECOMMENDATION_PLACEHOLDER>", current_content, 1
             )
@@ -1033,51 +1057,39 @@ class ReportGenerator:
             if self.raw_content:
                 html_row = ["<tr>"]
 
-                current_content = self.get_dependency_from_dependency_tree(
-                    row_data[
-                        self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
-                            "Dependency Tree"
-                        )
-                    ]
-                )
-
-                if tree_is_from_html is False:
-                    current_content = html.escape(current_content)
-                html_row.append(f"<td><pre>{current_content}</pre></td>")
-
                 current_content = row_data[
                     self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
                         "Dependency Tree"
                     )
-                ]
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Dependency Tree")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Insights")
-                ]
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Insights")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Fix Version")
-                ]
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Fix Version")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Severity")
-                ]
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Severity")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Score")
-                ]
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Score")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
@@ -1086,54 +1098,48 @@ class ReportGenerator:
 
                 html_table.append("\n".join(html_row))
             else:
-                for new_row in self.split_vulnerability_disclosure_report_row(row_data):
-                    # temporarily same as raw version
-                    html_row = ["<tr>"]
+                html_row = ["<tr>"]
 
-                    current_content = new_row[
-                        self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
-                            "Dependency Tree"
-                        )
-                    ]
-                    if current_content.startswith('<span class="r3"> CVE'):
-                        continue
-                    if tree_is_from_html is False:
-                        current_content = html.escape(current_content)
-                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                current_content = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
+                        "Dependency Tree"
+                    )
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Dependency Tree")+1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                html_row.append(f"<td><pre>{current_content}</pre></td>")
 
-                    current_content = new_row[
-                        self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Insights")
-                    ]
-                    if tree_is_from_html is False:
-                        current_content = html.escape(current_content)
-                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                current_content = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Insights")
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Insights")+1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                html_row.append(f"<td><pre>{current_content}</pre></td>")
 
-                    current_content = new_row[
-                        self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
-                            "Fix Version"
-                        )
-                    ]
-                    if tree_is_from_html is False:
-                        current_content = html.escape(current_content)
-                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                current_content = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Fix Version")
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Fix Version")+1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                html_row.append(f"<td><pre>{current_content}</pre></td>")
 
-                    current_content = new_row[
-                        self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Severity")
-                    ]
-                    if tree_is_from_html is False:
-                        current_content = html.escape(current_content)
-                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                current_content = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Severity")
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Severity")+1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                html_row.append(f"<td><pre>{current_content}</pre></td>")
 
-                    current_content = new_row[
-                        self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Score")
-                    ]
-                    if tree_is_from_html is False:
-                        current_content = html.escape(current_content)
-                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                current_content = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Score")
+                ] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Score")+1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                html_row.append(f"<td><pre>{current_content}</pre></td>")
 
-                    html_row.append("</tr>")
+                html_row.append("</tr>")
 
-                    html_table.append("\n".join(html_row))
+                html_table.append("\n".join(html_row))
 
         vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
@@ -1165,14 +1171,14 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Package")
-                ]
+                ] if len(row_data) >= self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Package")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Reachable Flows")
-                ]
+                ] if len(row_data) >= self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Reachable Flows")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
@@ -1186,16 +1192,16 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Package")
-                ]
+                ] if len(row_data) >= self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Package")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td>{current_content}</td>")
                 reachable_flows_index = self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index(
                     "Reachable Flows"
                 )
-                current_content = None
-                if len(row_data) > reachable_flows_index + 1:
-                    current_content = row_data[reachable_flows_index]
+                current_content = row_data[
+                    self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Reachable Flows")
+                ] if len(row_data) >= self.TOP_REACHABLE_PACKAGES_DATA_COLUMNS.index("Reachable Flows")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 if current_content:
@@ -1222,6 +1228,16 @@ class ReportGenerator:
         ]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        try:
+            identified_endpoints = int(current_content)
+        except ValueError:
+            identified_endpoints = -1
+            pass
+        if identified_endpoints == -1:
+            current_content = f"{len(sections_tree[self.SERVICE_ENDPOINTS][self.ENDPOINTS][self.DATA])}"
+
+
         service_endpoints = service_endpoints.replace(
             "<IDENTIFIED_ENDPOINTS_PLACEHOLDER>", current_content, 1
         )
@@ -1244,21 +1260,21 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.ENDPOINTS_DATA_COLUMNS.index("URL Pattern")
-                ]
+                ] if len(row_data) >= self.ENDPOINTS_DATA_COLUMNS.index("URL Pattern")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.ENDPOINTS_DATA_COLUMNS.index("HTTP Methods")
-                ]
+                ] if len(row_data) >= self.ENDPOINTS_DATA_COLUMNS.index("HTTP Methods")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
 
                 current_content = row_data[
                     self.ENDPOINTS_DATA_COLUMNS.index("Code Hotspots")
-                ]
+                ] if len(row_data) >= self.ENDPOINTS_DATA_COLUMNS.index("Code Hotspots")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td><pre>{current_content}</pre></td>")
@@ -1271,14 +1287,14 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.ENDPOINTS_DATA_COLUMNS.index("URL Pattern")
-                ]
+                ] if len(row_data) >= self.ENDPOINTS_DATA_COLUMNS.index("URL Pattern")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td>{current_content}</td>")
 
                 current_content = row_data[
                     self.ENDPOINTS_DATA_COLUMNS.index("HTTP Methods")
-                ]
+                ] if len(row_data) >= self.ENDPOINTS_DATA_COLUMNS.index("HTTP Methods")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 current_content = current_content.replace("\n", "<br>")
@@ -1286,7 +1302,7 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.ENDPOINTS_DATA_COLUMNS.index("Code Hotspots")
-                ]
+                ] if len(row_data) >= self.ENDPOINTS_DATA_COLUMNS.index("Code Hotspots")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 current_content = current_content.replace("\n", "<br>")
@@ -1322,7 +1338,7 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.REACHABLE_FLOWS_DATA_COLUMNS.index("Summary")
-                ]
+                ] if len(row_data) >= self.REACHABLE_FLOWS_DATA_COLUMNS.index("Summary")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(
@@ -1331,7 +1347,7 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Flows")
-                ]
+                ] if len(row_data) >= self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Flows")+1 else "-"
                 current_content = "\n".join(
                     line.rstrip() for line in current_content.splitlines()
                 )
@@ -1343,7 +1359,7 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Packages")
-                ]
+                ] if len(row_data) >= self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Packages")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(
@@ -1359,14 +1375,14 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.REACHABLE_FLOWS_DATA_COLUMNS.index("Summary")
-                ]
+                ] if len(row_data) >= self.REACHABLE_FLOWS_DATA_COLUMNS.index("Summary")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 html_row.append(f"<td>{current_content}</td>")
 
                 current_content = row_data[
                     self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Flows")
-                ]
+                ] if len(row_data) >= self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Flows")+1 else "-"
                 current_content = "\n".join(
                     line.rstrip() for line in current_content.splitlines()
                 )
@@ -1378,7 +1394,7 @@ class ReportGenerator:
 
                 current_content = row_data[
                     self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Packages")
-                ]
+                ] if len(row_data) >= self.REACHABLE_FLOWS_DATA_COLUMNS.index("Reachable Packages")+1 else "-"
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
                 formatted_content = self.format_as_html_ul(current_content)
@@ -1465,22 +1481,22 @@ class ReportGenerator:
             )
 
         if (
-            sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
-                self.DEPENDENCY_SCAN_RESULTS_BOM
-            ][self.SUMMARY]
-            != ""
-        ):
-            self.generate_section_vulnerability_disclosure_report(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
-
-        if (
             sections_tree[self.PROACTIVE_MEASURES][self.TOP_REACHABLE_PACKAGES][
                 self.SUMMARY
             ]
             != ""
         ):
             self.generate_section_proactive_measures(
+                sections_tree, report_content, table_inits, tree_is_from_html
+            )
+
+        if (
+            sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
+                self.DEPENDENCY_SCAN_RESULTS_BOM
+            ][self.SUMMARY]
+            != ""
+        ) or len(sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][self.DEPENDENCY_SCAN_RESULTS_BOM][self.DATA]) > 0:
+            self.generate_section_vulnerability_disclosure_report(
                 sections_tree, report_content, table_inits, tree_is_from_html
             )
 
