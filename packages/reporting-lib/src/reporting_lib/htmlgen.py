@@ -40,6 +40,7 @@ class ReportGenerator:
     )
 
     PRIORITIZED_VULNERABILITIES = "Prioritized Vulnerabilities"
+    PRIORITIZED_VULNERABILITIES_ALTERNATIVE = "Next Steps"
     TOP_PRIORITY_BOM = "Top Priority (BOM)"
     TOP_PRIORITY_BOM_SUMMARY = TOP_PRIORITY_BOM + " " + SUMMARY
     TOP_PRIORITY_BOM_DATA_COLUMNS = [
@@ -53,7 +54,8 @@ class ReportGenerator:
 
     PROACTIVE_MEASURES = "Proactive Measures"
     TOP_REACHABLE_PACKAGES = "Top Reachable Packages"
-    TOP_REACHABLE_PACKAGES_ALTERNATIVE = "💥 Top Endpoint-Reachable Packages"
+    TOP_REACHABLE_PACKAGES_ALTERNATIVE_01 = "💥 Top Endpoint-Reachable Packages"
+    TOP_REACHABLE_PACKAGES_ALTERNATIVE_02 = "🕸  Top Endpoint-Reachable Packages"
     TOP_REACHABLE_PACKAGES_SUMMARY = TOP_REACHABLE_PACKAGES + " " + SUMMARY
     TOP_REACHABLE_PACKAGES_DATA_COLUMNS = ["Package", "Reachable Flows"]
     TOP_REACHABLE_PACKAGES_DATA = TOP_REACHABLE_PACKAGES + " " + DATA
@@ -190,7 +192,7 @@ class ReportGenerator:
         sections_tree = {
             self.VULNERABILITY_DISCLOSURE_REPORT: {
                 self.DEPENDENCY_SCAN_RESULTS_BOM: {
-                    self.VULNERABILITIES_COUNT: "0",
+                    self.VULNERABILITIES_COUNT: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
                     self.DATA: [],
@@ -199,7 +201,7 @@ class ReportGenerator:
             },
             self.PRIORITIZED_VULNERABILITIES: {
                 self.TOP_PRIORITY_BOM: {
-                    self.PRIORITIZED_COUNT: "0",
+                    self.PRIORITIZED_COUNT: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
                     self.DATA: [],
@@ -214,7 +216,7 @@ class ReportGenerator:
             },
             self.SERVICE_ENDPOINTS: {
                 self.ENDPOINTS: {
-                    self.IDENTIFIED_ENDPOINTS: "0",
+                    self.IDENTIFIED_ENDPOINTS: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
                     self.DATA: [],
@@ -393,11 +395,15 @@ class ReportGenerator:
                 line
                 in [
                     self.TOP_REACHABLE_PACKAGES,
-                    self.TOP_REACHABLE_PACKAGES_ALTERNATIVE,
+                    self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_01,
+                    self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_02,
                 ]
                 or self.string_matches_span_pattern(line, self.TOP_REACHABLE_PACKAGES)
                 or self.string_matches_span_pattern(
-                    line, self.TOP_REACHABLE_PACKAGES_ALTERNATIVE
+                    line, self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_01
+                )
+                or self.string_matches_span_pattern(
+                    line, self.TOP_REACHABLE_PACKAGES_ALTERNATIVE_02
                 )
             ):
                 current_location = self.TOP_REACHABLE_PACKAGES
@@ -722,6 +728,15 @@ class ReportGenerator:
                 current_location = self.TOP_PRIORITY_BOM_SUMMARY
                 continue
 
+            if (
+                line == self.PRIORITIZED_VULNERABILITIES_ALTERNATIVE
+                or self.string_matches_span_pattern(
+                    line, self.PRIORITIZED_VULNERABILITIES_ALTERNATIVE
+                )
+            ):
+                current_location = self.TOP_PRIORITY_BOM_SUMMARY
+                continue
+
             if line == self.TOP_PRIORITY_BOM or self.string_matches_span_pattern(
                 line, self.TOP_PRIORITY_BOM
             ):
@@ -852,6 +867,24 @@ class ReportGenerator:
         ][self.PRIORITIZED_COUNT]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        try:
+            prioritized_count = int(current_content)
+        except ValueError:
+            prioritized_count = -1
+            pass
+        if prioritized_count == -1:
+            all_cves = set()
+            for row_data in sections_tree[self.PRIORITIZED_VULNERABILITIES][self.TOP_PRIORITY_BOM][self.DATA]:
+                current_data = row_data[
+                                self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")
+                            ] if len(row_data) >= self.TOP_PRIORITY_BOM_DATA_COLUMNS.index("Prioritized CVEs")+1 else "-"
+                if current_data == "-":
+                    continue
+                for data_element in current_data.strip().splitlines():
+                    all_cves.add(data_element)
+            current_content = f"{len(all_cves)}"
+
         prioritized_vulnerabilities = prioritized_vulnerabilities.replace(
             "<PRIORITIZED_COUNT_PLACEHOLDER>", current_content, 1
         )
@@ -960,6 +993,26 @@ class ReportGenerator:
         ][self.VULNERABILITIES_COUNT]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        try:
+            vulnerabilities_count = int(current_content)
+        except ValueError:
+            vulnerabilities_count = -1
+            pass
+        if vulnerabilities_count == -1:
+            all_cves = set()
+            for row_data in sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][self.DEPENDENCY_SCAN_RESULTS_BOM][self.DATA]:
+                current_data = row_data[
+                    self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index(
+                        "Dependency Tree"
+                    )] if len(row_data) >= self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS.index("Dependency Tree")+1 else "-"
+                if current_data == "-":
+                    continue
+                for data_element in current_data.strip().splitlines():
+                    if "⬅" in data_element:
+                        all_cves.add(data_element)
+            current_content = f"{len(all_cves)}"
+
         vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
             "<VULNERABILITIES_COUNT_PLACEHOLDER>", current_content, 1
         )
@@ -969,6 +1022,9 @@ class ReportGenerator:
         ][self.SUMMARY]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        if current_content == "":
+            current_content = "The table below lists all vulnerabilities identified in this project. Review and triage the information to identify any critical vulnerabilities."
         vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
             "<SUMMARY_PLACEHOLDER>", current_content, 1
         )
@@ -1172,6 +1228,16 @@ class ReportGenerator:
         ]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        try:
+            identified_endpoints = int(current_content)
+        except ValueError:
+            identified_endpoints = -1
+            pass
+        if identified_endpoints == -1:
+            current_content = f"{len(sections_tree[self.SERVICE_ENDPOINTS][self.ENDPOINTS][self.DATA])}"
+
+
         service_endpoints = service_endpoints.replace(
             "<IDENTIFIED_ENDPOINTS_PLACEHOLDER>", current_content, 1
         )
@@ -1429,7 +1495,7 @@ class ReportGenerator:
                 self.DEPENDENCY_SCAN_RESULTS_BOM
             ][self.SUMMARY]
             != ""
-        ):
+        ) or len(sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][self.DEPENDENCY_SCAN_RESULTS_BOM][self.DATA]) > 0:
             self.generate_section_vulnerability_disclosure_report(
                 sections_tree, report_content, table_inits, tree_is_from_html
             )
