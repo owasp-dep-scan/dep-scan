@@ -5,6 +5,20 @@ MALWARE_ALERT = """
 </div>
 """
 
+RECOMMENDATION = """
+<div class="alert alert-info" role="alert">
+    <h4>Recommendation</h4> <br>
+<span><SUMMARY_PLACEHOLDER></span>
+</div>
+"""
+
+INFO = """
+<div class="alert alert-info" role="alert">
+    <h4>Info</h4> <br>
+<span><SUMMARY_PLACEHOLDER></span>
+</div>
+"""
+
 PRIORITIZED_VULNERABILITIES = """
 <h3 class="light-text"><code class="code-title">Prioritized Vulnerabilities</code></h3>
 <div class="box-container">
@@ -69,12 +83,38 @@ REACHABLE_FLOWS = """
         <table id="reachable-flows-table" class="table table-striped table-bordered"><thead>
             <tr>
                 <th width=15%>Summary</th>
-                <th>Reachable Flows</th>
+                <th>Flows</th>
                 <th width=15%>Reachable Packages</th>
             </tr>
             <tr>
                 <th><input type="text" placeholder="Search Summary" class="form-control search-in-table-comp"></th>
-                <th><input type="text" placeholder="Search Reachable Flows" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Flows" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Reachable Packages" class="form-control search-in-table-comp"></th>
+            </tr>
+        </thead>
+            <tbody>
+                <TABLE_PLACEHOLDER>
+            </tbody>
+        </table>
+    </div>
+</div>
+"""
+
+NON_REACHABLE_FLOWS = """
+<h3 class="light-text"><code class="code-title">Non-Reachable Flows</code></h3>
+<div class="box-container">
+   <br>
+   <span><SUMMARY_PLACEHOLDER></span>
+    <div>
+        <table id="non-reachable-flows-table" class="table table-striped table-bordered"><thead>
+            <tr>
+                <th width=15%>Summary</th>
+                <th>Flows</th>
+                <th width=15%>Reachable Packages</th>
+            </tr>
+            <tr>
+                <th><input type="text" placeholder="Search Summary" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Flows" class="form-control search-in-table-comp"></th>
                 <th><input type="text" placeholder="Search Reachable Packages" class="form-control search-in-table-comp"></th>
             </tr>
         </thead>
@@ -155,6 +195,7 @@ VDR = """
     </table>
     </div>
     <RECOMMENDATION_PLACEHOLDER>
+    <ACTION_REQUIRED_PLACEHOLDER>
 </div>
 """
 
