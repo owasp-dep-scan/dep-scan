@@ -17,6 +17,7 @@ from reporting_lib.template import (
 )
 
 NEWLINE = "\n"
+SEPARATOR = "✦"
 
 
 class ReportGenerator:
@@ -199,6 +200,47 @@ class ReportGenerator:
                 return False
 
         return True
+
+    def separate_report_by_language_explanations(self, depscan_report):
+        pieces = {}
+
+        current_piece = None
+
+        marker_01 = None # ┏ ━ ┓
+        marker_02 = None # ┃ <span class="rY">Explanations for XXX</span> ┃
+        marker_03 = None # ┗ ━ ┛
+
+        for current_line in depscan_report.splitlines():
+            line = current_line.strip()
+
+            if self.string_matches_regex(line, r"""┏━+┓"""):
+                marker_01 = line
+                marker_02 = None
+                marker_03 = None
+            elif marker_01 is not None and self.string_matches_regex(line, r"""┃\s+<span class=\"r\d\d?\d?">Explanations for [^<]*?<\/span>\s+┃"""):
+                marker_02 = line
+                marker_03 = None
+            elif marker_01 is not None and marker_02 is not None and self.string_matches_regex(line, r"""┗━+┛"""):
+                marker_03 = line
+            else:
+                marker_01 = None
+                marker_02 = None
+                marker_03 = None
+
+            if marker_01 is not None and marker_02 is not None and marker_03 is not None:
+                pieces[current_piece] = pieces[current_piece][:-2]
+                current_piece = marker_02.split("Explanations for", 1)[1].split("<", 1)[0].strip()
+                continue
+
+            if current_piece not in pieces:
+                pieces[current_piece] = []
+
+            pieces[current_piece].append(current_line)
+
+        for key in pieces.keys():
+            pieces[key] = "\n".join(pieces[key])
+
+        return pieces
 
     def parse_depscan_report(self, depscan_report):
         last_seen_reachable_flows = None
@@ -677,7 +719,7 @@ class ReportGenerator:
                 last_seen_reachable_flows = self.REACHABLE_FLOWS
                 continue
 
-            if current_location != self.REACHABLE_FLOWS_DATA and last_seen_reachable_flows == self.REACHABLE_FLOWS:
+            if current_location != self.REACHABLE_FLOWS_DATA and last_seen_reachable_flows  in [self.REACHABLE_FLOWS, None]:
                 if line.startswith("#") or self.string_matches_regex(line, r'<span class="r\d+">#\d+<\/span><span class="r\d+">.*<\/span>'):
                     current_location = self.REACHABLE_FLOWS_DATA
 
@@ -1092,10 +1134,32 @@ class ReportGenerator:
 
         return "\n".join(formatted_content)
 
+    def identify_table_id(self, table_inits, prefix):
+        table_init = f'initTable("#{prefix}");'
+        if table_init not in table_inits:
+            return prefix
+
+        counter = 0
+        while True:
+            table_id = f"{prefix}-{counter}"
+            table_init = f'initTable("#{table_id}");'
+            if table_init not in table_inits:
+                return table_id
+            else:
+                counter += 1
+
     def generate_section_prioritized_vulnerabilities(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         prioritized_vulnerabilities = PRIORITIZED_VULNERABILITIES
+
+        if piece_id is None:
+            prioritized_vulnerabilities = prioritized_vulnerabilities.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            prioritized_vulnerabilities = prioritized_vulnerabilities.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
+
         current_content = sections_tree[self.PRIORITIZED_VULNERABILITIES][
             self.TOP_PRIORITY_BOM
         ][self.PRIORITIZED_COUNT]
@@ -1214,13 +1278,23 @@ class ReportGenerator:
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
         )
 
+        table_id = self.identify_table_id(table_inits, "prioritized-vulnerabilities-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        prioritized_vulnerabilities = prioritized_vulnerabilities.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
         report_content.append(prioritized_vulnerabilities)
-        table_inits.append('initTable("#prioritized-vulnerabilities-table");')
 
     def generate_section_vulnerability_disclosure_report(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         vulnerability_disclosure_report = VDR
+
+        if piece_id is None:
+            vulnerability_disclosure_report = vulnerability_disclosure_report.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            vulnerability_disclosure_report = vulnerability_disclosure_report.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
             self.DEPENDENCY_SCAN_RESULTS_BOM
@@ -1408,13 +1482,23 @@ class ReportGenerator:
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
         )
 
+        table_id = self.identify_table_id(table_inits, "vulnerability-disclosure-report-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        vulnerability_disclosure_report = vulnerability_disclosure_report.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
         report_content.append(vulnerability_disclosure_report)
-        table_inits.append('initTable("#vulnerability-disclosure-report-table");')
 
     def generate_section_proactive_measures(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         proactive_measures = PROACTIVE_MEASURES
+
+        if piece_id is None:
+            proactive_measures = proactive_measures.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            proactive_measures = proactive_measures.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.PROACTIVE_MEASURES][
             self.TOP_REACHABLE_PACKAGES
@@ -1478,13 +1562,24 @@ class ReportGenerator:
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
         )
 
+        table_id = self.identify_table_id(table_inits, "proactive-measures-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        proactive_measures = proactive_measures.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
         report_content.append(proactive_measures)
-        table_inits.append('initTable("#proactive-measures-table");')
+        
 
     def generate_section_service_endpoints(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         service_endpoints = SERVICE_ENDPOINTS
+
+        if piece_id is None:
+            service_endpoints = service_endpoints.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            service_endpoints = service_endpoints.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.SERVICE_ENDPOINTS][self.ENDPOINTS][
             self.IDENTIFIED_ENDPOINTS
@@ -1579,17 +1674,31 @@ class ReportGenerator:
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
         )
 
+        table_id = self.identify_table_id(table_inits, "service-endpoints-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        service_endpoints = service_endpoints.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
         report_content.append(service_endpoints)
-        table_inits.append('initTable("#service-endpoints-table");')
 
     def generate_section_reachable_flows(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         reachable_flows = REACHABLE_FLOWS
+
+        if piece_id is None:
+            reachable_flows = reachable_flows.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            reachable_flows = reachable_flows.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.REACHABLE_FLOWS][self.SUMMARY]
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
+
+        if current_content == "":
+            current_content = "Below are some reachable flows identified by depscan."
+
         reachable_flows = reachable_flows.replace(
             "<SUMMARY_PLACEHOLDER>", current_content, 1
         )
@@ -1703,13 +1812,23 @@ class ReportGenerator:
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
         )
 
+        table_id = self.identify_table_id(table_inits, "reachable-flows-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        reachable_flows = reachable_flows.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
         report_content.append(reachable_flows)
-        table_inits.append('initTable("#reachable-flows-table");')
 
     def generate_section_non_reachable_flows(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         non_reachable_flows = NON_REACHABLE_FLOWS
+
+        if piece_id is None:
+            non_reachable_flows = non_reachable_flows.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            non_reachable_flows = non_reachable_flows.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.NON_REACHABLE_FLOWS][self.SUMMARY]
         if tree_is_from_html is False:
@@ -1795,13 +1914,23 @@ class ReportGenerator:
             "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
         )
 
+        table_id = self.identify_table_id(table_inits, "non-reachable-flows-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        non_reachable_flows = non_reachable_flows.replace("<TABLE_ID_PLACEHOLDER>", table_id, 1)
+
         report_content.append(non_reachable_flows)
-        table_inits.append('initTable("#non-reachable-flows-table");')
 
     def generate_section_secure_design_tips(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         secure_design_tips = SECURE_DESIGN_TIPS
+
+        if piece_id is None:
+            secure_design_tips = secure_design_tips.replace("<SECURE_DESIGN_TIPS>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            secure_design_tips = secure_design_tips.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY]
         if tree_is_from_html is False:
@@ -1821,9 +1950,16 @@ class ReportGenerator:
         report_content.append(secure_design_tips)
 
     def generate_section_malware_alert(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         malware_alert = MALWARE_ALERT
+
+        if piece_id is None:
+            malware_alert = malware_alert.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            malware_alert = malware_alert.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.MALWARE_ALERT][self.SUMMARY]
         if tree_is_from_html is False:
@@ -1843,9 +1979,16 @@ class ReportGenerator:
         report_content.append(malware_alert)
 
     def generate_section_recommendation(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         recommendation = RECOMMENDATION
+
+        if piece_id is None:
+            recommendation = recommendation.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            recommendation = recommendation.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.RECOMMENDATION][self.SUMMARY]
         if tree_is_from_html is False:
@@ -1865,9 +2008,16 @@ class ReportGenerator:
         report_content.append(recommendation)
 
     def generate_section_info(
-        self, sections_tree, report_content, table_inits, tree_is_from_html
+        self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         info = INFO
+
+        if piece_id is None:
+            info = info.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
+        else:
+            if tree_is_from_html is False:
+                piece_id = html.escape(piece_id)
+            info = malware_alert.info("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.INFO][self.SUMMARY]
         if tree_is_from_html is False:
@@ -1886,7 +2036,10 @@ class ReportGenerator:
 
         report_content.append(info)
 
-    def generate_html(self, sections_tree, tree_is_from_html, styles=""):
+    def generate_html(self, sections_tree=None, sections_trees=None, tree_is_from_html=False, styles=""):
+        if sections_tree is not None:
+            sections_trees = {None: sections_tree}
+
         main_report = HTML_REPORT
 
         main_report = main_report.replace("<ADDITIONAL_STYLES_PLACEHOLDER>", styles)
@@ -1896,70 +2049,72 @@ class ReportGenerator:
 
         # if a summary is populated it means that the corresponding section was in the original data, so we put it also in the html report
 
-        if sections_tree[self.MALWARE_ALERT][self.SUMMARY] != "":
-            self.generate_section_malware_alert(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+        for piece_id, sections_tree in sections_trees.items():
 
-        if sections_tree[self.RECOMMENDATION][self.SUMMARY] != "":
-            self.generate_section_recommendation(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if sections_tree[self.MALWARE_ALERT][self.SUMMARY] != "":
+                self.generate_section_malware_alert(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if sections_tree[self.INFO][self.SUMMARY] != "":
-            self.generate_section_info(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if sections_tree[self.RECOMMENDATION][self.SUMMARY] != "":
+                self.generate_section_recommendation(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if (
-            sections_tree[self.PRIORITIZED_VULNERABILITIES][self.TOP_PRIORITY_BOM][
-                self.SUMMARY
-            ]
-            != ""
-        ):
-            self.generate_section_prioritized_vulnerabilities(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if sections_tree[self.INFO][self.SUMMARY] != "":
+                self.generate_section_info(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if (
-            sections_tree[self.PROACTIVE_MEASURES][self.TOP_REACHABLE_PACKAGES][
-                self.SUMMARY
-            ]
-            != ""
-        ):
-            self.generate_section_proactive_measures(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if (
+                sections_tree[self.PRIORITIZED_VULNERABILITIES][self.TOP_PRIORITY_BOM][
+                    self.SUMMARY
+                ]
+                != ""
+            ):
+                self.generate_section_prioritized_vulnerabilities(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if (
-            sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
-                self.DEPENDENCY_SCAN_RESULTS_BOM
-            ][self.SUMMARY]
-            != ""
-        ) or len(sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][self.DEPENDENCY_SCAN_RESULTS_BOM][self.DATA]) > 0:
-            self.generate_section_vulnerability_disclosure_report(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if (
+                sections_tree[self.PROACTIVE_MEASURES][self.TOP_REACHABLE_PACKAGES][
+                    self.SUMMARY
+                ]
+                != ""
+            ):
+                self.generate_section_proactive_measures(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if sections_tree[self.SERVICE_ENDPOINTS][self.ENDPOINTS][self.SUMMARY] != "":
-            self.generate_section_service_endpoints(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if (
+                sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
+                    self.DEPENDENCY_SCAN_RESULTS_BOM
+                ][self.SUMMARY]
+                != ""
+            ) or len(sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][self.DEPENDENCY_SCAN_RESULTS_BOM][self.DATA]) > 0:
+                self.generate_section_vulnerability_disclosure_report(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if sections_tree[self.REACHABLE_FLOWS][self.SUMMARY] != "":
-            self.generate_section_reachable_flows(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if sections_tree[self.SERVICE_ENDPOINTS][self.ENDPOINTS][self.SUMMARY] != "":
+                self.generate_section_service_endpoints(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if sections_tree[self.NON_REACHABLE_FLOWS][self.SUMMARY] != "":
-            self.generate_section_non_reachable_flows(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if sections_tree[self.REACHABLE_FLOWS][self.SUMMARY] != "" or len(sections_tree[self.REACHABLE_FLOWS][self.DATA]) > 0:
+                self.generate_section_reachable_flows(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
-        if sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] != "":
-            self.generate_section_secure_design_tips(
-                sections_tree, report_content, table_inits, tree_is_from_html
-            )
+            if sections_tree[self.NON_REACHABLE_FLOWS][self.SUMMARY] != "":
+                self.generate_section_non_reachable_flows(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
+
+            if sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] != "":
+                self.generate_section_secure_design_tips(
+                    sections_tree, report_content, table_inits, tree_is_from_html, piece_id
+                )
 
         main_report = main_report.replace(
             "<CONTENT_PLACEHOLDER>", "\n<p>&nbsp;</p>".join(report_content), 1
@@ -1982,9 +2137,13 @@ class ReportGenerator:
 
         if self.input_rich_html_path is not None:
             depscan_report, styles = self.extract_depscan_report_from_rich_html()
-            sections_tree = self.parse_depscan_report(depscan_report)
+            report_pieces = self.separate_report_by_language_explanations(depscan_report)
+            sections_trees = {}
+            for piece_id, report_piece in report_pieces.items():
+                sections_tree = self.parse_depscan_report(report_piece)
+                sections_trees[piece_id] = sections_tree
             self.generate_html(
-                sections_tree=sections_tree, tree_is_from_html=True, styles=styles
+                sections_trees=sections_trees, tree_is_from_html=True, styles=styles
             )
             return
 
