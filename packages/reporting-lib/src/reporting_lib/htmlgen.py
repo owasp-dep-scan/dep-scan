@@ -647,7 +647,7 @@ class ReportGenerator:
                 continue
 
             if (
-                current_location in [self.REACHABLE_FLOWS_REACHABLE_PACKAGES, self.REACHABLE_FLOWS_DATA]
+                current_location in [self.REACHABLE_FLOWS_REACHABLE_PACKAGES, self.REACHABLE_FLOWS_DATA, self.REACHABLE_FLOWS_RECOMMENDATION]
                 and line == ""
             ):
                 cells = [
@@ -752,7 +752,7 @@ class ReportGenerator:
                 continue
 
             if (
-                current_location in [self.NON_REACHABLE_FLOWS_REACHABLE_PACKAGES, self.NON_REACHABLE_FLOWS_DATA]
+                current_location in [self.NON_REACHABLE_FLOWS_REACHABLE_PACKAGES, self.NON_REACHABLE_FLOWS_DATA, self.NON_REACHABLE_FLOWS_RECOMMENDATION]
                 and line == ""
             ):
                 cells = [
@@ -1668,6 +1668,8 @@ class ReportGenerator:
 
                 if recommendation != "":
                     current_content = f"""{summary}<br><br><div class="alert alert-info" role="alert">{recommendation}</div>"""
+                else:
+                    current_content = summary
 
                 if tree_is_from_html is False:
                     current_content = html.escape(current_content)
