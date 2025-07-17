@@ -1,19 +1,33 @@
 MALWARE_ALERT = """
 <div class="alert alert-danger" role="alert">
-    <h4>Malware Alert</h4> <br>
+    <h4><PIECE_ID_PLACEHOLDER>Malware Alert</h4> <br>
+<span><SUMMARY_PLACEHOLDER></span>
+</div>
+"""
+
+RECOMMENDATION = """
+<div class="alert alert-info" role="alert">
+    <h4><PIECE_ID_PLACEHOLDER>Recommendation</h4> <br>
+<span><SUMMARY_PLACEHOLDER></span>
+</div>
+"""
+
+INFO = """
+<div class="alert alert-info" role="alert">
+    <h4><PIECE_ID_PLACEHOLDER>Info</h4> <br>
 <span><SUMMARY_PLACEHOLDER></span>
 </div>
 """
 
 PRIORITIZED_VULNERABILITIES = """
-<h3 class="light-text"><code class="code-title">Prioritized Vulnerabilities</code></h3>
+<h3 class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Prioritized Vulnerabilities</code></h3>
 <div class="box-container">
     <br>
    <h4>Top Priority (BOM)</h4>
    <span class="badge border border-dark text-dark fs-6">Prioritized count: <PRIORITIZED_COUNT_PLACEHOLDER></span><br><br>
    <span><SUMMARY_PLACEHOLDER></span>
     <div>
-        <table id="prioritized-vulnerabilities-table" class="table table-striped table-bordered"><thead>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
             <tr>
                 <th>Package</th>
                 <th>Prioritized CVEs</th>
@@ -36,13 +50,13 @@ PRIORITIZED_VULNERABILITIES = """
 """
 
 PROACTIVE_MEASURES = """
-<h3 class="light-text"><code class="code-title">Proactive Measures</code></h3>
+<h3 class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Proactive Measures</code></h3>
 <div class="box-container">
     <br>
    <h4>Top Reachable Packages</h4><br>
    <span><SUMMARY_PLACEHOLDER></span>
     <div id="table-container-inner">
-        <table id="proactive-measures-table" class="table table-striped table-bordered"><thead>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
             <tr>
                 <th>Package</th>
                 <th>Reachable Flows</th>
@@ -61,20 +75,46 @@ PROACTIVE_MEASURES = """
 """
 
 REACHABLE_FLOWS = """
-<h3 class="light-text"><code class="code-title">Reachable Flows</code></h3>
+<h3 class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Reachable Flows</code></h3>
 <div class="box-container">
    <br>
    <span><SUMMARY_PLACEHOLDER></span>
     <div>
-        <table id="reachable-flows-table" class="table table-striped table-bordered"><thead>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
             <tr>
                 <th width=15%>Summary</th>
-                <th>Reachable Flows</th>
+                <th>Flows</th>
                 <th width=15%>Reachable Packages</th>
             </tr>
             <tr>
                 <th><input type="text" placeholder="Search Summary" class="form-control search-in-table-comp"></th>
-                <th><input type="text" placeholder="Search Reachable Flows" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Flows" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Reachable Packages" class="form-control search-in-table-comp"></th>
+            </tr>
+        </thead>
+            <tbody>
+                <TABLE_PLACEHOLDER>
+            </tbody>
+        </table>
+    </div>
+</div>
+"""
+
+NON_REACHABLE_FLOWS = """
+<h3 class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Non-Reachable Flows</code></h3>
+<div class="box-container">
+   <br>
+   <span><SUMMARY_PLACEHOLDER></span>
+    <div>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
+            <tr>
+                <th width=15%>Summary</th>
+                <th>Flows</th>
+                <th width=15%>Reachable Packages</th>
+            </tr>
+            <tr>
+                <th><input type="text" placeholder="Search Summary" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Flows" class="form-control search-in-table-comp"></th>
                 <th><input type="text" placeholder="Search Reachable Packages" class="form-control search-in-table-comp"></th>
             </tr>
         </thead>
@@ -87,7 +127,7 @@ REACHABLE_FLOWS = """
 """
 
 SECURE_DESIGN_TIPS = """
-<h3  class="light-text"><code class="code-title">Secure Design Tips</code></h3>
+<h3  class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Secure Design Tips</code></h3>
 <div class="box-container">
    <br>
    <SUMMARY_PLACEHOLDER>
@@ -95,7 +135,7 @@ SECURE_DESIGN_TIPS = """
 """
 
 SERVICE_ENDPOINTS = """
-<h3  class="light-text"><code class="code-title">Service Endpoints</code></h3>
+<h3  class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Service Endpoints</code></h3>
 <div class="box-container">
    <br>
    <h4>Endpoints</h4>
@@ -103,7 +143,7 @@ SERVICE_ENDPOINTS = """
    <br><br>
    <span><SUMMARY_PLACEHOLDER></span>
     <div>
-        <table id="service-endpoints-table" class="table table-striped table-bordered"><thead>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
             <tr>
                 <th>URL Pattern</th>
                 <th>HTTP Methods</th>
@@ -124,7 +164,7 @@ SERVICE_ENDPOINTS = """
 """
 
 VDR = """
-<h3  class="light-text"><code class="code-title">Vulnerability Disclosure Report</code></h3>
+<h3  class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Vulnerability Disclosure Report</code></h3>
 <div class="box-container">
     <br>
    <h4>Dependency Scan Results (BOM)</h4>
@@ -133,7 +173,7 @@ VDR = """
    <br><br>
    <span><SUMMARY_PLACEHOLDER></span>
     <div>
-        <table id="vulnerability-disclosure-report-table" class="table table-striped table-bordered"><thead>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
             <tr>
                 <th>Dependency Tree</th>
                 <th>Insights</th>
@@ -155,6 +195,7 @@ VDR = """
     </table>
     </div>
     <RECOMMENDATION_PLACEHOLDER>
+    <ACTION_REQUIRED_PLACEHOLDER>
 </div>
 """
 
@@ -464,12 +505,24 @@ HTML_REPORT = """
                     [10, 25, 50, 'All']
                 ],
                 buttons: [
-                  { extend: 'copy', className: 'btn btn-light border-dark text-dark mb-3 btn-sm' },
-                  { extend: 'csv', className: 'btn btn-light border-dark text-dark mb-3 btn-sm' },
-                  { extend: 'excel', className: 'btn btn-light border-dark text-dark mb-3 btn-sm' },
+                  { extend: 'copy', className: 'btn btn-light border-dark text-dark mb-3 btn-sm',
+                    exportOptions: {
+                      stripNewlines: false,
+                    }
+                  },
+                  { extend: 'csv', className: 'btn btn-light border-dark text-dark mb-3 btn-sm',
+                    exportOptions: {
+                      stripNewlines: false,
+                    }
+                  },
+                  { extend: 'excel', className: 'btn btn-light border-dark text-dark mb-3 btn-sm',
+                    exportOptions: {
+                      stripNewlines: false,
+                    }
+                  },
                   { extend: 'print', className: 'btn btn-light border-dark text-dark mb-3 btn-sm',
                     customize: function (win) {
-                        $(win.document.body).css('font-size', '10pt');
+                        $(win.document.body).css('font-size', '8pt');
                         $(win.document.body).find('table').addClass('compact').css('font-size', 'inherit');
 
                         // Add landscape mode
@@ -486,6 +539,15 @@ HTML_REPORT = """
                             style.appendChild(win.document.createTextNode(css));
                         }
                         head.appendChild(style);
+                    },
+                    exportOptions: {
+                        format: {
+                          body: function(data, row, column, node) {
+                            return typeof data === 'string'
+                              ? data.replace(/\\n/g, '<br>')
+                              : data;
+                          }
+                        }
                     }
                   }
                 ],
