@@ -300,6 +300,16 @@ class ReportGenerator:
             previous_line = line
             line = current_line.strip()
 
+            # ---- Dirty fix for unusually structured sections ----
+
+            if current_location != self.REACHABLE_FLOWS_DATA and last_seen_reachable_flows  in [self.REACHABLE_FLOWS, None]:
+                if line.startswith("#") or self.string_matches_regex(line, r'<span class="r\d+">#\d+<\/span><span class="r\d+">.*<\/span>'):
+                    current_location = self.REACHABLE_FLOWS_DATA
+
+            if current_location != self.NON_REACHABLE_FLOWS_DATA and last_seen_reachable_flows == self.NON_REACHABLE_FLOWS:
+                if line.startswith("#") or self.string_matches_regex(line, r'<span class="r\d+">#\d+<\/span><span class="r\d+">.*<\/span>'):
+                    current_location = self.NON_REACHABLE_FLOWS_DATA
+
             # ---- Location identification: Secure Design Tips ----
 
             if line == self.SECURE_DESIGN_TIPS or self.string_matches_span_pattern(
@@ -314,9 +324,10 @@ class ReportGenerator:
             # ---- Data population: Secure Design Tips ----
 
             if current_location == self.SECURE_DESIGN_TIPS:
-                if sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] != "":
-                    sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] += "\n"
-                sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] += line
+                if line not in sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY]:
+                    if sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] != "":
+                        sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] += "\n"
+                    sections_tree[self.SECURE_DESIGN_TIPS][self.SUMMARY] += line
                 continue
 
             # ---- Location identification: INFO ----
@@ -718,14 +729,6 @@ class ReportGenerator:
                 current_location = self.REACHABLE_FLOWS_REACHABLE_PACKAGES
                 last_seen_reachable_flows = self.REACHABLE_FLOWS
                 continue
-
-            if current_location != self.REACHABLE_FLOWS_DATA and last_seen_reachable_flows  in [self.REACHABLE_FLOWS, None]:
-                if line.startswith("#") or self.string_matches_regex(line, r'<span class="r\d+">#\d+<\/span><span class="r\d+">.*<\/span>'):
-                    current_location = self.REACHABLE_FLOWS_DATA
-
-            if current_location != self.NON_REACHABLE_FLOWS_DATA and last_seen_reachable_flows == self.NON_REACHABLE_FLOWS:
-                if line.startswith("#") or self.string_matches_regex(line, r'<span class="r\d+">#\d+<\/span><span class="r\d+">.*<\/span>'):
-                    current_location = self.NON_REACHABLE_FLOWS_DATA
 
             # ---- Data population: Reachable Flows ----
 
