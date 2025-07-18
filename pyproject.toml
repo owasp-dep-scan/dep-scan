@@ -1,12 +1,12 @@
 [project]
 name = "owasp-depscan"
-version = "6.0.0a3"
+version = "6.0.0b1"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db[oras]>=6.4.2",
+    "appthreat-vulnerability-db[oras]>=6.4.3",
     "custom-json-diff>=2.1.6",
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
@@ -83,7 +83,7 @@ select = "B,C,E,F,W,T4,B9"
 line-length = 99
 
 [tool.uv.sources]
-blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "0a29b47a1d0ab55fcf4480785f0a8948104d7632" }
+blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "a2ca09e6f1355e3e31147fbd40027edbf130bc40" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 ds-reporting-lib = { workspace = true }

@@ -1,6 +1,6 @@
 [project]
 name = "ds-reporting-lib"
-version = "6.0.0a3"
+version = "6.0.0b1"
 description = "Reporting library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
