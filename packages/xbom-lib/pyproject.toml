@@ -1,6 +1,6 @@
 [project]
 name = "ds-xbom-lib"
-version = "6.0.0b2"
+version = "6.0.0b3"
 description = "xBOM library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
