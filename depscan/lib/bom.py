@@ -556,7 +556,11 @@ def annotate_vdr(vdr_file, txt_report_file):
         return
     vdr = json_load(vdr_file)
     metadata = vdr.get("metadata", {})
-    tools = metadata.get("tools", {}).get("components", {})
+    # Some cyclonedx sbom don't containg tools.components
+    if "components" in metadata.get("tools"):
+        tools = metadata.get("tools", {}).get("components", {})
+    else:
+        tools = {}
     with open(txt_report_file, errors="ignore", encoding="utf-8") as txt_fp:
         report = txt_fp.read()
         annotations = vdr.get("annotations", []) or []
