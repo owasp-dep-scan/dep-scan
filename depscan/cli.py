@@ -55,6 +55,7 @@ from depscan.lib.license import build_license_data, bulk_lookup
 from depscan.lib.logger import DEBUG, LOG, SPINNER, console, IS_CI
 
 from reporting_lib.htmlgen import ReportGenerator
+
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")
@@ -101,6 +102,7 @@ def vdr_analyze_summarize(
     scoped_pkgs,
     bom_file,
     bom_dir,
+    reports_dir,
     pkg_list,
     reachability_analyzer,
     reachability_options,
@@ -116,6 +118,7 @@ def vdr_analyze_summarize(
     :param scoped_pkgs: Dict containing package scopes.
     :param bom_file: Single BOM file.
     :param bom_dir: Directory containining bom files.
+    :param reports_dir: Directory containining report files.
     :param pkg_list: Direct list of packages when the bom file is empty.
     :param reachability_analyzer: Reachability Analyzer specified.
     :param reachability_options: Reachability Analyzer options.
@@ -166,7 +169,11 @@ def vdr_analyze_summarize(
     )
     ds_version = get_version()
     vdr_result = VDRAnalyzer(vdr_options=options).process()
-    vdr_file = bom_file.replace(".cdx.json", ".vdr.json") if bom_file else None
+    # Set vdr_file in report folder
+    vdr_file = (
+        os.path.join(reports_dir, os.path.basename(bom_file)) if bom_file else None
+    )
+    vdr_file = vdr_file.replace(".cdx.json", ".vdr.json") if vdr_file else None
     if not vdr_file and bom_dir:
         vdr_file = os.path.join(bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
     if vdr_result.success:
@@ -931,6 +938,7 @@ def run_depscan(args):
             scoped_pkgs=scoped_pkgs,
             bom_file=bom_files[0] if len(bom_files) == 1 else None,
             bom_dir=args.bom_dir,
+            reports_dir=args.reports_dir,
             pkg_list=pkg_list,
             reachability_analyzer=reachability_analyzer,
             reachability_options=reachability_options,
@@ -973,7 +981,11 @@ def run_depscan(args):
     )
     console.save_text(txt_report_file, clear=False)
     # Prettify the rich html report
-    html_report_generator = ReportGenerator(input_rich_html_path=html_report_file, report_output_path=html_report_file, raw_content=False)
+    html_report_generator = ReportGenerator(
+        input_rich_html_path=html_report_file,
+        report_output_path=html_report_file,
+        raw_content=False,
+    )
     html_report_generator.parse_and_generate_report()
     # This logic needs refactoring
     # render report into template if wished
