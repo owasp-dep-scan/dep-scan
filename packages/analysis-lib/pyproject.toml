@@ -6,7 +6,7 @@ authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db[oras]>=6.4.1",
+    "appthreat-vulnerability-db[oras]>=6.4.4",
     "custom-json-diff>=2.1.6",
     "cvss>=3.4",
     "rich>=13.9.4",
