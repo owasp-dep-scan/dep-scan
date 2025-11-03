@@ -178,6 +178,11 @@ options:
                         depscan server host
   --server-port SERVER_PORT
                         depscan server port
+  --server-allowed-hosts [SERVER_ALLOWED_HOSTS ...]
+                        List of allowed hostnames or IPs that can access the server (e.g., 'localhost 192.168.1.10'). If unspecified, no host allowlist is
+                        enforced.
+  --server-allowed-paths [SERVER_ALLOWED_PATHS ...]
+                        List of allowed filesystem paths that can be scanned by the server. Restricts `path` parameter in /scan requests.
   --cdxgen-server CDXGEN_SERVER
                         cdxgen server url. Eg: http://cdxgen:9090
   --debug               Run depscan in debug mode.
@@ -258,13 +263,6 @@ docker compose up
 
 ```bash
 depscan --server --server-host 0.0.0.0 --server-port 7070
-```
-
-In server mode, use the `/download-vdb` endpoint to cache the vulnerability database.
-
-```bash
-# This would take over 2 minutes
-curl http://0.0.0.0:7070/download-vdb
 ```
 
 Use the `/scan` endpoint to perform scans.
