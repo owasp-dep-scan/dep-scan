@@ -52,3 +52,5 @@ jobs:
                           -t dotnet\
                           --vulnerability-analyzer LifecycleAnalyzer
         shell: bash
+        env:
+          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
