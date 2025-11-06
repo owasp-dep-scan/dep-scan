@@ -678,6 +678,8 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
     """
     new_results = deepcopy(template)
     agg_score = set()
+    if not pkg_vulnerabilities:
+        return new_results
     for r in pkg_vulnerabilities:
         new_vuln = vdr_to_csaf(r)
         if sev := get_severity(new_vuln["scores"]):
