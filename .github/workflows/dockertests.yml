@@ -19,6 +19,10 @@ jobs:
       uses: astral-sh/setup-uv@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Trim CI agent
+      run: |
+        chmod +x contrib/free_disk_space.sh
+        ./contrib/free_disk_space.sh
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
