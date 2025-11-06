@@ -696,7 +696,7 @@ def find_purl_usages(bom_files, src_dir, reachables_slices_file):
     ):
         reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
     if reachables_slices_file:
-        reachables = json_load(reachables_slices_file).get("reachables") or []
+        reachables = json_load(reachables_slices_file) or []
         for flow in reachables:
             if len(flow.get("purls", [])) > 0:
                 for apurl in flow.get("purls"):
