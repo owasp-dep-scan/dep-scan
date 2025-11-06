@@ -135,7 +135,7 @@ class ReachabilityAnalysisKV:
         # Collect available slices files
         if not self.slices_files and self.bom_dir:
             self.slices_files = sorted(
-                str(p.resolve()) for p in Path(self.bom_dir).rglob("*slices.json")
+                str(p.resolve()) for p in Path(self.bom_dir).rglob("*slices*.json")
             )
         # Collect the openapi spec files
         if not self.openapi_spec_files:

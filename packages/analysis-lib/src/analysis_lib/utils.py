@@ -672,46 +672,6 @@ def classify_links(related_urls):
     return clinks
 
 
-def find_purl_usages(bom_files, src_dir, reachables_slices_file):
-    """
-    Generates a list of reachable elements based on the given BOM file.
-
-    :param bom_file: The path to the BOM file(s).
-    :type bom_file: List[str]
-    :param src_dir: Source directory
-    :type src_dir: str
-    :param reachables_slices_file: Path to the reachables slices file
-    :type reachables_slices_file: str
-
-    :return: Tuple of direct_purls and reached_purls based on the occurrence and
-                callstack evidences from the BOM. If reachables slices json were
-                found, the file is read first.
-    """
-    direct_purls = defaultdict(int)
-    reached_purls = defaultdict(int)
-    if (
-        not reachables_slices_file
-        and src_dir
-        and os.path.exists(os.path.join(src_dir, "reachables.slices.json"))
-    ):
-        reachables_slices_file = os.path.join(src_dir, "reachables.slices.json")
-    if reachables_slices_file:
-        reachables = json_load(reachables_slices_file) or []
-        for flow in reachables:
-            if len(flow.get("purls", [])) > 0:
-                for apurl in flow.get("purls"):
-                    reached_purls[apurl] += 1
-    if bom_files:
-        for bom_file in bom_files:
-            data = json_load(bom_file)
-            # For now we will also include usability slice as well
-            for c in data.get("components", []):
-                purl = c.get("purl", "")
-                if c.get("evidence") and c["evidence"].get("occurrences"):
-                    direct_purls[purl] += len(c["evidence"].get("occurrences"))
-    return dict(direct_purls), dict(reached_purls)
-
-
 def get_cwe_list(data: ProblemTypes | None) -> List:
     cwes = []
     if not data:
