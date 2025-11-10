@@ -1,5 +1,4 @@
-{
-  "reachables" : [
+[
     {
       "flows" : [
         {
@@ -10683,5 +10682,4 @@
         "pkg:maven/org.springframework.security/spring-security-crypto@4.2.1.RELEASE?type=jar"
       ]
     }
-  ]
-}
+]

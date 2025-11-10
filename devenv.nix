@@ -81,7 +81,6 @@ in
       # Common packages
       packages = [
         pkgs-unstable.nodejs_24
-        pkgs.python313Full
         config.languages.python.package.pkgs.astral
         pkgs.uv
         pkgs-unstable.pnpm_10

@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-15', 'windows-latest']
+        os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-26', 'windows-latest']
         python-version: ['3.10', '3.11', '3.12', '3.13']
     runs-on: ${{ matrix.os }}
     steps:
@@ -108,14 +108,14 @@ jobs:
       - name: repotests Signal-Android
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
-          uv run huggingface-cli download AppThreat/ukaina --include "java/Signal-Android/*.json" --exclude "java/Signal-Android/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
+          uv run hf download AppThreat/ukaina --include "java/Signal-Android/*.json" --exclude "java/Signal-Android/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Android --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests dependency-track
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dependency-track
-          uv run huggingface-cli download AppThreat/ukaina --include "java/dependency-track/*.json" --exclude "java/dependency-track/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track
+          uv run hf download AppThreat/ukaina --include "java/dependency-track/*.json" --exclude "java/dependency-track/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reachability-analyzer SemanticReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dependency-track --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
@@ -123,14 +123,14 @@ jobs:
       - name: repotests kafka-4.0.0-src
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src
-          uv run huggingface-cli download AppThreat/ukaina --include "java/kafka-4.0.0-src/*.json" --exclude "java/kafka-4.0.0-src/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src
+          uv run hf download AppThreat/ukaina --include "java/kafka-4.0.0-src/*.json" --exclude "java/kafka-4.0.0-src/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/kafka-4.0.0-src --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests cdxgen
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/cdxgen
-          uv run huggingface-cli download AppThreat/ukaina --include "js/cdxgen/*.json" --exclude "js/cdxgen/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen
+          uv run hf download AppThreat/ukaina --include "js/cdxgen/*.json" --exclude "js/cdxgen/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reachability-analyzer SemanticReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/cdxgen --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
@@ -138,42 +138,42 @@ jobs:
       - name: repotests Signal-Desktop
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Signal-Desktop
-          uv run huggingface-cli download AppThreat/ukaina --include "js/Signal-Desktop/*.json" --exclude "js/Signal-Desktop/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Desktop
+          uv run hf download AppThreat/ukaina --include "js/Signal-Desktop/*.json" --exclude "js/Signal-Desktop/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Desktop
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/Signal-Desktop --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Desktop --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Signal-Desktop --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests forgejo
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/forgejo
-          uv run huggingface-cli download AppThreat/ukaina --include "js/forgejo/*.json" --exclude "js/forgejo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo
+          uv run hf download AppThreat/ukaina --include "js/forgejo/*.json" --exclude "js/forgejo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/forgejo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/forgejo --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests biome
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/biome
-          uv run huggingface-cli download AppThreat/ukaina --include "rust/biome/*.json" --exclude "rust/biome/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/biome
+          uv run hf download AppThreat/ukaina --include "rust/biome/*.json" --exclude "rust/biome/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/biome
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/biome --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/biome --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/biome --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests rustdesk
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/rustdesk
-          uv run huggingface-cli download AppThreat/ukaina --include "rust/rustdesk/*.json" --exclude "rust/rustdesk/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/rustdesk
+          uv run hf download AppThreat/ukaina --include "rust/rustdesk/*.json" --exclude "rust/rustdesk/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/rustdesk
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/rustdesk --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/rustdesk --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/rustdesk --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests rustpad
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/rustpad
-          uv run huggingface-cli download AppThreat/ukaina --include "rust/rustpad/*.json" --exclude "rust/rustpad/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/rustpad
+          uv run hf download AppThreat/ukaina --include "rust/rustpad/*.json" --exclude "rust/rustpad/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/rustpad
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/rustpad --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/rustpad --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/rustpad --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests django-DefectDojo
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
-          uv run huggingface-cli download AppThreat/ukaina --include "python/django-DefectDojo/*.json" --exclude "python/django-DefectDojo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
+          uv run hf download AppThreat/ukaina --include "python/django-DefectDojo/*.json" --exclude "python/django-DefectDojo/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain --explanation-mode Endpoints
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/django-DefectDojo --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
@@ -182,7 +182,7 @@ jobs:
       - name: repotests depscan
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
-          uv run huggingface-cli download AppThreat/ukaina --include "python/depscan/*.json" --exclude "python/depscan/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan
+          uv run hf download AppThreat/ukaina --include "python/depscan/*.json" --exclude "python/depscan/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reachability-analyzer SemanticReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/depscan --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan --reachability-analyzer SemanticReachability --explain --explanation-mode Endpoints
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
@@ -190,28 +190,28 @@ jobs:
       - name: repotests phpmyadmin
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin
-          uv run huggingface-cli download AppThreat/ukaina --include "php/phpmyadmin/*.json" --exclude "php/phpmyadmin/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin
+          uv run hf download AppThreat/ukaina --include "php/phpmyadmin/*.json" --exclude "php/phpmyadmin/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/phpmyadmin --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests openssl-3.5.0
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
-          uv run huggingface-cli download AppThreat/ukaina --include "c/openssl-3.5.0/*.json" --exclude "c/openssl-3.5.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
+          uv run hf download AppThreat/ukaina --include "c/openssl-3.5.0/*.json" --exclude "c/openssl-3.5.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/openssl-3.5.0 --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests open5gs-2.7.5
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5
-          uv run huggingface-cli download AppThreat/ukaina --include "c/open5gs-2.7.5/*.json" --exclude "c/open5gs-2.7.5/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5
+          uv run hf download AppThreat/ukaina --include "c/open5gs-2.7.5/*.json" --exclude "c/open5gs-2.7.5/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/open5gs-2.7.5 --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
       - name: repotests curl-8.13.0
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
-          uv run huggingface-cli download AppThreat/ukaina --include "c/curl-8.13.0/*.json" --exclude "c/curl-8.13.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
+          uv run hf download AppThreat/ukaina --include "c/curl-8.13.0/*.json" --exclude "c/curl-8.13.0/*.vdr.json" --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
