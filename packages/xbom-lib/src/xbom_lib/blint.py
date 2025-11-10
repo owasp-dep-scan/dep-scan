@@ -39,25 +39,17 @@ class BlintGenerator(XBOMGenerator):
         )
         os.environ["BLINT_TEMP_DIR"] = temp_reports_dir
         project_type_list = self.options.get("project_type") or []
-        possible_binary_type = any(
-            [
-                t
-                for t in project_type_list
-                if t in ("c", "binary", "rust", "go", "dotnet")
-            ]
-        )
         blint_options = BlintOptions(
             deep_mode=self.options.get("deep", True),
             sbom_mode=True,
-            db_mode=os.getenv("USE_BLINTDB", "") in ("true", "1")
-            or possible_binary_type,
+            db_mode=os.getenv("USE_BLINTDB", "") in ("true", "1"),
             no_reviews=True,
             no_error=True,
             quiet_mode=True,
             src_dir_image=src_dir.split(","),
             stdout_mode=False,
             reports_dir=temp_reports_dir,
-            use_blintdb=self.options.get("use_blintdb", True),
+            use_blintdb=self.options.get("use_blintdb", False),
             image_url=self.options.get("blintdb_image_url", BLINTDB_IMAGE_URL),
             sbom_output=bom_file,
         )

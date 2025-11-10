@@ -62,6 +62,9 @@ class FrameworkReachability(ReachabilityAnalyzer):
                 if "reachables" not in slice_file:
                     continue
                 reachables = json_load(slice_file) or []
+                # Backwards compatibility
+                if isinstance(reachables, dict) and reachables.get("reachables"):
+                    reachables = reachables.get("reachables")
                 for flow in reachables:
                     if len(flow.get("purls", [])) > 0:
                         for apurl in flow.get("purls"):
@@ -222,6 +225,9 @@ class SemanticReachability(FrameworkReachability):
                 if "reachables" not in slice_file:
                     continue
                 reachables = json_load(slice_file) or []
+                # Backwards compatibility
+                if isinstance(reachables, dict) and reachables.get("reachables"):
+                    reachables = reachables.get("reachables")
                 for flow in reachables:
                     if len(flow.get("purls", [])) > 0:
                         tags = flow.get("tags", []) or []

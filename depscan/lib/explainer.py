@@ -70,9 +70,10 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
             if "-" in fn:
                 section_label = f"# Explanations for {fn.split('-')[0].upper()}"
             console.print(Markdown(section_label))
-        if (reachables_data := json_load(sf, log=LOG)) and reachables_data.get(
-            "reachables"
-        ):
+        if reachables_data := json_load(sf, log=LOG):
+            # Backwards compatibility
+            if isinstance(reachables_data, dict) and reachables_data.get("reachables"):
+                reachables_data = reachables_data.get("reachables")
             if explanation_mode in ("NonReachables",):
                 rsection = Markdown(
                     f"""## {section_title}
@@ -193,7 +194,10 @@ def explain_reachables(
     has_explanation = False
     header_shown = False
     has_cpp_flow = False
-    for areach in reachables.get("reachables", []):
+    # Backwards compatibility
+    if isinstance(reachables, dict) and reachables.get("reachables"):
+        reachables = reachables.get("reachables")
+    for areach in reachables:
         cpp_flow = is_cpp_flow(areach.get("flows"))
         if not has_cpp_flow and cpp_flow:
             has_cpp_flow = True
@@ -465,8 +469,8 @@ def flow_to_str(explanation_mode, flow, project_type):
         and not flow.get("parentFileName").startswith("unknown")
     ):
         # strip common prefixes
-        name = flow.get('parentFileName', '')
-        for p in ('src/main/java/', 'src/main/scala/'):
+        name = flow.get("parentFileName", "")
+        for p in ("src/main/java/", "src/main/scala/"):
             name = name.removeprefix(p)
         file_loc = f"{name}#{flow.get('lineNumber')}    "
     node_desc = flow.get("code").split("\n")[0]
