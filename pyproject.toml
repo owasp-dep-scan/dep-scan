@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "6.0.0b3"
+version = "6.0.0b4"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -46,16 +46,16 @@ depscan = "depscan.cli:main"
 
 [project.optional-dependencies]
 dev = [
-    "black>=25.1.0",
     "flake8>=7.1.2",
     "pytest>=8.3.4",
+    "pytest-asyncio>=1.2.0",
     "pytest-cov>=6.0.0",
     "httpretty>=1.1.4"
 ]
-server = ["quart>=0.20.0"]
-ext = ["atom-tools>=0.7.8", "blint>=2.4.1", "pdfkit>=1.0.0"]
+server = ["ds-server-lib"]
+ext = ["atom-tools>=0.7.8", "blint>=3.0.5"]
 perf = ["hishel[redis]>=0.1.1"]
-all = ["atom-tools>=0.7.8", "blint>=2.4.1", "quart>=0.20.0", "pdfkit>=1.0.0", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
+all = ["atom-tools>=0.7.8", "blint>=3.0.5", "ds-server-lib", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -67,10 +67,11 @@ packages = ["depscan", "depscan.lib", "depscan.lib.package_query", "vendor", "ve
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-q -s --verbose --cov-append --cov-report term --cov depscan --cov packages/analysis-lib --cov packages/xbom-lib"
+addopts = "-q -s --verbose --cov-append --cov-report term --cov depscan --cov packages/analysis-lib --cov packages/xbom-lib --cov packages/server-lib"
 testpaths = [
     "test",
-    "packages/analysis-lib/tests"
+    "packages/analysis-lib/tests",
+    "packages/server-lib/tests"
 ]
 
 [tool.flake8]
@@ -83,10 +84,10 @@ select = "B,C,E,F,W,T4,B9"
 line-length = 99
 
 [tool.uv.sources]
-blint = { git = "https://github.com/owasp-dep-scan/blint", rev = "a2ca09e6f1355e3e31147fbd40027edbf130bc40" }
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 ds-reporting-lib = { workspace = true }
+ds-server-lib = { workspace = true }
 
 [tool.uv.workspace]
 members = ["packages/*"]

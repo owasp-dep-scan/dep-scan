@@ -246,6 +246,19 @@ def build_parser():
         help="depscan server port",
     )
     parser.add_argument(
+        "--server-allowed-hosts",
+        nargs="*",
+        help="List of allowed hostnames or IPs that can access the server (e.g., 'localhost 192.168.1.10'). If unspecified, no host allowlist is enforced.",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--server-allowed-paths",
+        nargs="*",
+        help="List of allowed filesystem paths that can be scanned by the server. Restricts `path` parameter in /scan requests.",
+        default=None,
+    )
+    parser.add_argument(
         "--cdxgen-server",
         default=os.getenv("CDXGEN_SERVER_URL"),
         dest="cdxgen_server",

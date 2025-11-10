@@ -61,7 +61,7 @@ class FrameworkReachability(ReachabilityAnalyzer):
             for slice_file in analysis_options.slices_files:
                 if "reachables" not in slice_file:
                     continue
-                reachables = json_load(slice_file).get("reachables") or []
+                reachables = json_load(slice_file) or []
                 for flow in reachables:
                     if len(flow.get("purls", [])) > 0:
                         for apurl in flow.get("purls"):
@@ -221,7 +221,7 @@ class SemanticReachability(FrameworkReachability):
             for slice_file in analysis_options.slices_files:
                 if "reachables" not in slice_file:
                     continue
-                reachables = json_load(slice_file).get("reachables") or []
+                reachables = json_load(slice_file) or []
                 for flow in reachables:
                     if len(flow.get("purls", [])) > 0:
                         tags = flow.get("tags", []) or []

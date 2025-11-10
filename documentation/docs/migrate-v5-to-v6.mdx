@@ -33,3 +33,9 @@ Use this document as a reference to migrate your depscan v5 workflows to v6.
 ## Remote audit
 
 In v6, remote audit (e.g., for the nodejs project type) is disabled by default. To include remote audit results, invoke depscan with `--risk-audit` or set the environment variable `ENABLE_OSS_RISK=true`.
+
+## Server mode
+
+Server-related functionality has been extracted to a separate project called `ds-server-lib` and is now optional.
+
+- The `/download-vdb` endpoint is no longer available to remove oras as a dependency for the server lib.

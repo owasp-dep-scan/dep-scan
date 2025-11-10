@@ -36,10 +36,6 @@ jobs:
       run: |
         uv sync --all-extras --all-packages --dev
         npm install -g @cyclonedx/cdxgen
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        uv run flake8 --exclude test,contrib --exit-zero
     - name: Test with pytest
       run: |
         uv run pytest --cov=depscan test

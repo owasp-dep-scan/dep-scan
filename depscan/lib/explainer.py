@@ -33,7 +33,7 @@ def explain(project_type, src_dir, bom_dir, vdr_file, vdr_result, explanation_mo
     pattern_methods = {}
     has_any_explanation = False
     has_any_crypto_flows = False
-    slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices.json", recursive=True)
+    slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices*.json", recursive=True)
     openapi_spec_files = None
     # Should we explain the endpoints and Code Hotspots
     if explanation_mode in (

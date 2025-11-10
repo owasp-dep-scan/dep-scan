@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import contextlib
-import json
 import os
 import sys
-import tempfile
 from typing import List
 
 from analysis_lib import (
@@ -24,7 +22,7 @@ from analysis_lib.utils import (
 )
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.reachability import get_reachability_impl
-from custom_json_diff.lib.utils import file_write, json_load
+from custom_json_diff.lib.utils import json_load
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
@@ -67,14 +65,11 @@ LOGO = """
          |
 """
 
-QUART_AVAILABLE = False
+SERVER_LIB = None
 try:
-    from quart import Quart, request
+    from server_lib import simple, ServerOptions
 
-    app = Quart(__name__, static_folder=None)
-    app.config.from_prefixed_env()
-    app.config["PROVIDE_AUTOMATIC_OPTIONS"] = True
-    QUART_AVAILABLE = True
+    SERVER_LIB = simple
 except ImportError:
     pass
 
@@ -239,237 +234,6 @@ def set_project_types(args, src_dir):
     return pkg_list, project_types_list
 
 
-if QUART_AVAILABLE:
-
-    @app.get("/")
-    async def index():
-        """
-
-        :return: An empty dictionary
-        """
-        return {}
-
-    @app.get("/download-vdb")
-    async def download_vdb():
-        """
-
-        :return: a JSON response indicating the status of the caching operation.
-        """
-        if db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False):
-            if not ORAS_AVAILABLE:
-                return {
-                    "error": "true",
-                    "message": "The oras package must be installed to automatically download the vulnerability database. Install depscan using `pip install owasp-depscan[all]` or use the official container image.",
-                }
-            if download_image(vdb_database_url, config.DATA_DIR):
-                return {
-                    "error": "false",
-                    "message": "vulnerability database downloaded successfully",
-                }
-            return {
-                "error": "true",
-                "message": "vulnerability database did not get downloaded correctly. Check the server logs.",
-            }
-        return {
-            "error": "false",
-            "message": "vulnerability database already exists",
-        }
-
-    @app.route("/scan", methods=["GET", "POST"])
-    async def run_scan():
-        """
-        :return: A JSON response containing the SBOM file path and a list of
-        vulnerabilities found in the scanned packages
-        """
-        q = request.args
-        params = await request.get_json()
-        uploaded_bom_file = await request.files
-
-        url = None
-        path = None
-        multi_project = None
-        project_type = None
-        results = []
-        profile = "generic"
-        deep = False
-        suggest_mode = True if q.get("suggest") in ("true", "1") else False
-        fuzzy_search = True if q.get("fuzzy_search") in ("true", "1") else False
-        if q.get("url"):
-            url = q.get("url")
-        if q.get("path"):
-            path = q.get("path")
-        if q.get("multiProject"):
-            multi_project = q.get("multiProject", "").lower() in ("true", "1")
-        if q.get("deep"):
-            deep = q.get("deep", "").lower() in ("true", "1")
-        if q.get("type"):
-            project_type = q.get("type")
-        if q.get("profile"):
-            profile = q.get("profile")
-        if params is not None:
-            if not url and params.get("url"):
-                url = params.get("url")
-            if not path and params.get("path"):
-                path = params.get("path")
-            if not multi_project and params.get("multiProject"):
-                multi_project = params.get("multiProject", "").lower() in (
-                    "true",
-                    "1",
-                )
-            if not deep and params.get("deep"):
-                deep = params.get("deep", "").lower() in (
-                    "true",
-                    "1",
-                )
-            if not project_type and params.get("type"):
-                project_type = params.get("type")
-            if not profile and params.get("profile"):
-                profile = params.get("profile")
-
-        if not path and not url and (uploaded_bom_file.get("file", None) is None):
-            return {
-                "error": "true",
-                "message": "path or url or a bom file upload is required",
-            }, 400
-        if not project_type:
-            return {"error": "true", "message": "project type is required"}, 400
-        if db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False):
-            return (
-                {
-                    "error": "true",
-                    "message": "Vulnerability database is empty. Prepare the "
-                    "vulnerability database by invoking /download-vdb endpoint "
-                    "before running scans.",
-                },
-                500,
-                {"Content-Type": "application/json"},
-            )
-
-        cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
-        bom_file_path = None
-
-        if uploaded_bom_file.get("file", None) is not None:
-            bom_file = uploaded_bom_file["file"]
-            bom_file_content = bom_file.read().decode("utf-8")
-            try:
-                _ = json.loads(bom_file_content)
-            except Exception as e:
-                LOG.info(e)
-                return (
-                    {
-                        "error": "true",
-                        "message": "The uploaded file must be a valid JSON or XML.",
-                    },
-                    400,
-                    {"Content-Type": "application/json"},
-                )
-
-            LOG.debug("Processing uploaded file")
-            bom_file_suffix = str(bom_file.filename).rsplit(".", maxsplit=1)[-1]
-            tmp_bom_file = tempfile.NamedTemporaryFile(
-                delete=False, suffix=f".bom.{bom_file_suffix}"
-            )
-            path = tmp_bom_file.name
-            file_write(path, bom_file_content)
-
-        # Path points to a project directory
-        # Bug# 233. Path could be a url
-        if url or (path and os.path.isdir(path)):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
-                project_type_list = project_type.split(",")
-                bom_status = create_bom(
-                    bfp.name,
-                    path,
-                    {
-                        "url": url,
-                        "path": path,
-                        "project_type": project_type_list,
-                        "multiProject": multi_project,
-                        "cdxgen_server": cdxgen_server,
-                        "profile": profile,
-                        "deep": deep,
-                    },
-                )
-                if bom_status:
-                    LOG.debug("BOM file was generated successfully at %s", bfp.name)
-                    bom_file_path = bfp.name
-
-        # Path points to a SBOM file
-        else:
-            if os.path.exists(path):
-                bom_file_path = path
-        # Direct purl-based lookups are not supported yet.
-        if bom_file_path is not None:
-            pkg_list, _ = get_pkg_list(bom_file_path)
-            # Here we are assuming there will be only one type
-            if project_type in type_audit_map:
-                audit_results = audit(project_type, pkg_list)
-                if audit_results:
-                    results = results + audit_results
-            if not pkg_list:
-                LOG.debug("Empty package search attempted!")
-            else:
-                LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-            bom_data = json_load(bom_file_path)
-            if not bom_data:
-                return (
-                    {
-                        "error": "true",
-                        "message": "Unable to generate SBOM. Check your input path or url.",
-                    },
-                    400,
-                    {"Content-Type": "application/json"},
-                )
-            options = VdrAnalysisKV(
-                project_type,
-                results,
-                pkg_aliases={},
-                purl_aliases={},
-                suggest_mode=suggest_mode,
-                scoped_pkgs={},
-                no_vuln_table=True,
-                bom_file=bom_file_path,
-                pkg_list=[],
-                direct_purls={},
-                reached_purls={},
-                console=console,
-                logger=LOG,
-                fuzzy_search=fuzzy_search,
-            )
-            vdr_result = VDRAnalyzer(vdr_options=options).process()
-            if vdr_result.success:
-                pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
-                if pkg_vulnerabilities:
-                    bom_data["vulnerabilities"] = pkg_vulnerabilities
-                return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
-        return (
-            {
-                "error": "true",
-                "message": "Unable to generate SBOM. Check your input path or url.",
-            },
-            500,
-            {"Content-Type": "application/json"},
-        )
-
-    def run_server(args):
-        """
-        Run depscan as server
-
-        :param args: Command line arguments passed to the function.
-        """
-        print(LOGO)
-        console.print(
-            f"Depscan server running on {args.server_host}:{args.server_port}"
-        )
-        app.config["CDXGEN_SERVER_URL"] = args.cdxgen_server
-        app.run(
-            host=args.server_host,
-            port=args.server_port,
-            debug=os.getenv("SCAN_DEBUG_MODE") == "debug",
-            use_reloader=False,
-        )
-
-
 def run_depscan(args):
     """
     Detects the project type, performs various scans and audits,
@@ -518,8 +282,20 @@ def run_depscan(args):
         os.environ["CDXGEN_DEBUG_MODE"] = "debug"
         LOG.setLevel(DEBUG)
     if args.server_mode:
-        if QUART_AVAILABLE:
-            return run_server(args)
+        if SERVER_LIB:
+            server_options = ServerOptions(
+                server_host=args.server_host,
+                server_port=args.server_port,
+                cdxgen_server=args.cdxgen_server,
+                allowed_hosts=args.server_allowed_hosts,
+                allowed_paths=args.server_allowed_paths,
+                console=console,
+                logger=LOG,
+                debug=args.enable_debug or os.environ.get("SCAN_DEBUG_MODE") == "debug",
+                create_bom=create_bom,
+                max_content_length=os.getenv("DEPSCAN_SERVER_MAX_CONTENT_LENGTH"),
+            )
+            return simple.run_server(server_options)
         else:
             LOG.info(
                 "The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`."
@@ -565,9 +341,7 @@ def run_depscan(args):
     bom_dir_mode = args.bom_dir and os.path.exists(args.bom_dir)
     # Are we running with a config file
     config_file_mode = args.config and os.path.exists(args.config)
-    depscan_options = {**vars(args)}
-    depscan_options["src_dir"] = src_dir
-    depscan_options["reports_dir"] = reports_dir
+    depscan_options = {**vars(args), "src_dir": src_dir, "reports_dir": reports_dir}
     # Is the user looking for semantic analysis?
     # We can default to this when run against a BOM directory
     if (
