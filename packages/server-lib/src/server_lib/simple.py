@@ -290,7 +290,7 @@ def run_server(options: ServerOptions):
         app.config["MAX_CONTENT_LENGTH"] = options.max_content_length
     # Dirty hack to get access to the create_bom function
     if options.create_bom:
-        app.config["create_bom"] = create_bom
+        app.config["create_bom"] = options.create_bom
     logger = options.logger
     if logger:
         logger.info(

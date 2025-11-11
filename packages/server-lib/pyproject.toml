@@ -1,6 +1,6 @@
 [project]
 name = "ds-server-lib"
-version = "6.0.0b4"
+version = "6.0.0b5"
 description = "Server library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
