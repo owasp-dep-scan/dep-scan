@@ -9,7 +9,7 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
       org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
-      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -p 7070:7070 -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan --server"
+      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan"
 
 ARG TARGETPLATFORM
 ARG JAVA_VERSION=23.0.2-tem
@@ -51,9 +51,8 @@ RUN set -e; \
     esac; \
     echo -e "[nodejs]\nname=nodejs\nstream=22\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
-        python3 python3-devel python3-pip \
-        libX11-devel libXext-devel libXrender-devel libjpeg-turbo-devel diffutils \
-        pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks xorg-x11-fonts-75dpi xorg-x11-fonts-Type1 \
+        python3 python3-devel python3-pip diffutils \
+        pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks \
     && python3 --version \
     && node --version \
     && curl -s "https://get.sdkman.io" | bash \

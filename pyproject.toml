@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "6.0.0b5"
+version = "6.0.0b6"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -53,9 +53,9 @@ dev = [
     "httpretty>=1.1.4"
 ]
 server = ["ds-server-lib"]
-ext = ["atom-tools>=0.7.8", "blint>=3.0.5"]
+ext = ["atom-tools>=0.7.8", "blint>=3.0.6"]
 perf = ["hishel[redis]>=0.1.1"]
-all = ["atom-tools>=0.7.8", "blint>=3.0.5", "ds-server-lib", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
+all = ["atom-tools>=0.7.8", "blint>=3.0.6", "ds-server-lib", "PyGithub>=2.6.1", "hishel[redis]>=0.1.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
