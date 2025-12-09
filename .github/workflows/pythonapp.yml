@@ -7,6 +7,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -55,6 +57,8 @@ jobs:
         PYTHONIOENCODING: utf-8
 
   devenv:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

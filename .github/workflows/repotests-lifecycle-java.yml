@@ -10,6 +10,8 @@ concurrency:
 
 jobs:
   os-repo-tests:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     strategy:
       fail-fast: true
       matrix:
