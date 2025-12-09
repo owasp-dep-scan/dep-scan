@@ -34,7 +34,7 @@ async def index():
 
 @app.before_request
 async def enforce_allowlists():
-    LOG = app.config.get("LOGGER_INSTANCE")
+    logger_instance = app.config.get("LOGGER_INSTANCE")
     is_testing = bool(os.getenv("PYTEST_CURRENT_TEST"))
     if is_testing:
         client_host = request.headers.get("X-Test-Remote-Addr")
@@ -43,8 +43,8 @@ async def enforce_allowlists():
     allowed_hosts = app.config.get("ALLOWED_HOSTS")
     if allowed_hosts is not None:
         if not client_host or client_host not in allowed_hosts:
-            if LOG:
-                LOG.warning(f"Blocked request from unauthorized host: {client_host}")
+            if logger_instance:
+                logger_instance.warning(f"Blocked request from unauthorized host: {client_host}")
             return {"error": "true", "message": "Host not allowed"}, 403
     if request.path == "/scan":
         allowed_paths = app.config.get("ALLOWED_PATHS")
@@ -62,8 +62,8 @@ async def enforce_allowlists():
                     if not any(
                         real_path.startswith(os.path.realpath(a)) for a in allowed_paths
                     ):
-                        if LOG:
-                            LOG.warning(f"Blocked request for path: {path}")
+                        if logger_instance:
+                            logger_instance.warning(f"Blocked request for path: {path}")
                         return {"error": "true", "message": "Path not allowed"}, 403
                 except (OSError, ValueError):
                     return {"error": "true", "message": "Invalid path"}, 403
@@ -86,7 +86,7 @@ async def run_scan():
     :return: A JSON response containing the SBOM file path and a list of
     vulnerabilities found in the scanned packages
     """
-    LOG = app.config.get("LOGGER_INSTANCE")
+    logger_instance = app.config.get("LOGGER_INSTANCE")
     q = request.args
     params = await request.get_json()
     uploaded_bom_file = await request.files
@@ -156,7 +156,7 @@ async def run_scan():
             )
         bom_file_content = bom_file.read().decode("utf-8")
         try:
-            _ = json.loads(bom_file_content)
+            bom_data = json.loads(bom_file_content)
             if (
                 not isinstance(bom_data, dict)
                 or bom_data.get("bomFormat") != "CycloneDX"
@@ -174,8 +174,8 @@ async def run_scan():
                 400,
                 {"Content-Type": "application/json"},
             )
-        if LOG:
-            LOG.debug("Processing uploaded file")
+        if logger_instance:
+            logger_instance.debug("Processing uploaded file")
         tmp_bom_file = tempfile.NamedTemporaryFile(
             delete=False, suffix=f".bom.{bom_file_suffix}"
         )
@@ -205,8 +205,8 @@ async def run_scan():
                     },
                 )
                 if bom_status:
-                    if LOG:
-                        LOG.debug("BOM file was generated successfully at %s", bfp.name)
+                    if logger_instance:
+                        logger_instance.debug("BOM file was generated successfully at %s", bfp.name)
                     bom_file_path = bfp.name
 
     # Path points to a SBOM file
@@ -222,11 +222,11 @@ async def run_scan():
             if audit_results:
                 results = results + audit_results
         if not pkg_list:
-            if LOG:
-                LOG.debug("Empty package search attempted!")
+            if logger_instance:
+                logger_instance.debug("Empty package search attempted!")
         else:
-            if LOG:
-                LOG.debug("Scanning %d oss dependencies for issues", len(pkg_list))
+            if logger_instance:
+                logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
         bom_data = json_load(bom_file_path)
         if not bom_data:
             cleanup_temp(tmp_bom_file)
@@ -251,7 +251,7 @@ async def run_scan():
             direct_purls={},
             reached_purls={},
             console=console,
-            logger=LOG,
+            logger=logger_instance,
             fuzzy_search=fuzzy_search,
         )
         vdr_result = VDRAnalyzer(vdr_options=options).process()

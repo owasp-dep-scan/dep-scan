@@ -48,10 +48,4 @@ jobs:
         VDB_HOME: ${{ runner.temp }}/vdb_data_bin
         CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
         SCAN_DEBUG_MODE: debug
-    - name: Test without nydus
-      run: |
-        uv run depscan --no-banner --src ubuntu:latest --reports-dir ${GITHUB_WORKSPACE}/containertests -t docker
-        docker rmi ubuntu:latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
+        VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"

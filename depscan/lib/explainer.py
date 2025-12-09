@@ -66,7 +66,7 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
     for sf in slices_files:
         if len(slices_files) > 1:
             fn = os.path.basename(sf)
-            section_label = f"# Explanations for {sf}"
+            section_label = f"# Explanations for {fn}"
             if "-" in fn:
                 section_label = f"# Explanations for {fn.split('-')[0].upper()}"
             console.print(Markdown(section_label))

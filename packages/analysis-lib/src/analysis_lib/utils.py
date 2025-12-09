@@ -2,6 +2,8 @@ import contextlib
 import encodings.utf_8
 from datetime import datetime
 from typing import Dict, List, Tuple
+import re
+from urllib.parse import quote
 
 import cvss
 from custom_json_diff.lib.utils import compare_versions, json_load
@@ -1479,6 +1481,9 @@ def analyze_cve_vuln(
     ]
     recommendation = ""
     vid = vuln.get("cve_id") or ""
+    vid = vid.strip()
+    if not re.match(r"^[A-Za-z0-9\-]+$", vid):
+        vid = re.sub(r"[^A-Za-z0-9\-]", "", vid)
     if vid.startswith("MAL-"):
         insights.append("[bright_red]:stop_sign: Malicious[/bright_red]")
         plain_insights.append("Malicious")
@@ -1849,7 +1854,7 @@ def get_all_pkg_list(from_dir):
     """
     Method to extract packages from a bom json file
 
-    :param jsonfile: Path to a bom json file.
+    :param from_dir: Path to a directory containing bom json files.
     return List of dicts representing extracted packages
     """
     bom_files = get_all_bom_files(from_dir)
