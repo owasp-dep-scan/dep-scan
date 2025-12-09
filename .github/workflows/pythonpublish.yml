@@ -13,7 +13,7 @@ on:
       - master
       - release/*
     tags:
-      - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+      - 'v*'
   workflow_dispatch:
 
 concurrency:
@@ -95,7 +95,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=depscan
           cache-to: type=gha,mode=max,scope=depscan
-
       - name: Generate SBOM with cdxgen
         run: |
           npm install -g @cyclonedx/cdxgen
@@ -124,3 +123,19 @@ jobs:
           nydusify convert --oci --oci-ref --source ghcr.io/owasp-dep-scan/dep-scan:master --target ghcr.io/owasp-dep-scan/dep-scan:master-nydus --prefetch-dir /opt/dep-scan
         if: github.ref == 'refs/heads/master'
         continue-on-error: true
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta2
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/owasp-dep-scan/depscan-al9
+            ghcr.io/owasp-dep-scan/dep-scan-al9
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.al9
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta2.outputs.tags }}
+          labels: ${{ steps.meta2.outputs.labels }}
