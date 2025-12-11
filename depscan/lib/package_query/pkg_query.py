@@ -5,23 +5,9 @@ from depscan.lib import config
 from depscan.lib.logger import LOG
 
 try:
-    if os.getenv("DEPSCAN_CACHE_HOST") or os.getenv("DEPSCAN_CACHE_PORT"):
-        import hishel
-        import redis
+    from hishel.httpx import SyncCacheClient
 
-        storage = hishel.RedisStorage(
-            ttl=config.get_int_from_env("DEPSCAN_CACHE_TTL", 36000),
-            client=redis.Redis(
-                host=os.getenv("DEPSCAN_CACHE_HOST", "127.0.0.1"),
-                port=config.get_int_from_env("DEPSCAN_CACHE_PORT", 6379),
-            ),
-        )
-        httpclient = hishel.CacheClient(storage=storage)
-        LOG.debug("valkey cache activated.")
-    else:
-        import httpx
-
-        httpclient = httpx
+    httpclient = SyncCacheClient()
 except ImportError:
     import httpx
 
@@ -89,8 +75,7 @@ def get_category_score(
     return (
         0
         if weight == 0 or math.log(1 + max(param, max_value)) == 0
-        else (math.log(1 + param) / math.log(1 + max(param, max_value)))
-             * weight
+        else (math.log(1 + param) / math.log(1 + max(param, max_value))) * weight
     )
 
 
@@ -124,9 +109,9 @@ def calculate_risk_score(risk_metrics):
             if (
                 risk_category_base
                 and (
-                isinstance(risk_category_base, float)
-                or isinstance(risk_category_base, int)
-            )
+                    isinstance(risk_category_base, float)
+                    or isinstance(risk_category_base, int)
+                )
                 and risk_category_base > risk_category_value
             ):
                 value = risk_category_base - risk_category_value
@@ -170,9 +155,7 @@ def compute_time_risks(
     # Check for the maximum seconds difference between latest version and now
     if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
         risk_metrics["latest_now_max_seconds_risk"] = True
-        risk_metrics["latest_now_max_seconds_value"] = (
-            latest_now_diff.total_seconds()
-        )
+        risk_metrics["latest_now_max_seconds_value"] = latest_now_diff.total_seconds()
         # Since the package is quite old we can relax the min versions risk
         risk_metrics["pkg_min_versions_risk"] = False
     else:
@@ -189,7 +172,5 @@ def compute_time_risks(
     # Check for the minimum seconds difference between latest version and now
     if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
         risk_metrics["latest_now_min_seconds_risk"] = True
-        risk_metrics["latest_now_min_seconds_value"] = (
-            latest_now_diff.total_seconds()
-        )
+        risk_metrics["latest_now_min_seconds_value"] = latest_now_diff.total_seconds()
     return risk_metrics

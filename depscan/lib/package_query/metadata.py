@@ -8,9 +8,7 @@ from depscan.lib.package_query.pypi_pkg import pypi_pkg_risk
 from depscan.lib.package_query.cargo_pkg import cargo_pkg_risk
 
 
-def metadata_from_registry(
-    registry_type, scoped_pkgs, pkg_list, private_ns=None
-):
+def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None):
     """
     Method to query registry for the package metadata
 
@@ -33,11 +31,9 @@ def metadata_from_registry(
         redirect_stderr=False,
         redirect_stdout=False,
         refresh_per_second=1,
-        disable=len(pkg_list) < 10
+        disable=len(pkg_list) < 10,
     ) as progress:
-        task = progress.add_task(
-            "[green] Auditing packages", total=len(pkg_list)
-        )
+        task = progress.add_task("[green] Auditing packages", total=len(pkg_list))
         for pkg in pkg_list:
             if circuit_breaker:
                 LOG.info(
@@ -59,8 +55,11 @@ def metadata_from_registry(
                     timeout=config.request_timeout_sec,
                 )
                 json_data = r.json()
+                # Npm is returning textual errors at times
+                if isinstance(json_data, str):
+                    continue
                 # Npm returns this error if the package is not found
-                if (
+                if isinstance(json_data, dict) and (
                     json_data.get("code") == "MethodNotAllowedError"
                     or r.status_code > 400
                 ):
@@ -69,9 +68,9 @@ def metadata_from_registry(
                 if private_ns:
                     namespace_prefixes = private_ns.split(",")
                     for ns in namespace_prefixes:
-                        if key.lower().startswith(
-                            ns.lower()
-                        ) or key.lower().startswith("@" + ns.lower()):
+                        if key.lower().startswith(ns.lower()) or key.lower().startswith(
+                            "@" + ns.lower()
+                        ):
                             is_private_pkg = True
                             break
                 risk_metrics = {}

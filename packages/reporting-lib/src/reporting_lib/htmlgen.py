@@ -275,7 +275,7 @@ class ReportGenerator:
     def parse_depscan_report(self, depscan_report):
         last_seen_reachable_flows = None
         current_location = None
-        current_table_row = None
+        current_table_row = []
         current_columns_count = None
         summary_column = ""
         reachable_flow_column = ""

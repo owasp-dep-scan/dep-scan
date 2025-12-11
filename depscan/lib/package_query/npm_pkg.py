@@ -179,7 +179,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         # case 4: fileCount <= 2 and size > 20 MB
         if not theversion.get("binary"):
             binary_count = 1
-            if theversion.get("bin"):
+            if theversion.get("bin") and isinstance(theversion.get("bin"), dict):
                 binary_count = max(len(theversion.get("bin", {}).keys()), 1)
             for opkg in theversion.get("optionalDependencies", {}).keys():
                 if (

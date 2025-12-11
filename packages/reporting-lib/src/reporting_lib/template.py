@@ -228,6 +228,13 @@ HTML_REPORT = """
             font-size: 90%;
         }
 
+        td .alert-info {
+            white-space: pre;
+            font-family: "Courier New", Courier, monospace;
+            overflow-x: auto;
+            max-width: 100%;
+        }
+
         .box-container {
             background-color: #ffffff;
             padding: 10px;

@@ -402,9 +402,13 @@ def run_depscan(args):
     txt_report_file = depscan_options.get(
         "txt_report_file", os.path.join(reports_dir, "depscan.txt")
     )
+    llm_prompt_file = depscan_options.get(
+        "llm_prompt_file", os.path.join(reports_dir, "depscan-prompts.md")
+    )
     run_config_file = os.path.join(reports_dir, "depscan.toml.sample")
     depscan_options["html_report_file"] = html_report_file
     depscan_options["txt_report_file"] = txt_report_file
+    depscan_options["llm_prompt_file"] = llm_prompt_file
     # Create reports directory
     if reports_dir and not os.path.exists(reports_dir):
         os.makedirs(reports_dir, exist_ok=True)
@@ -575,36 +579,44 @@ def run_depscan(args):
             if ltable and not args.no_vuln_table:
                 console.print(ltable)
         # Do we support OSS risk audit for this type? If yes, proceed with the relevant checks.
-        if perform_risk_audit and project_type in risk_audit_map:
-            if len(pkg_list) > 1:
-                console.print(
-                    Panel(
-                        f"Performing OSS Risk Audit for packages from "
-                        f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
-                        f"[/bold]. This will take a while ...",
-                        title="OSS Risk Audit",
-                        expand=False,
+        if perform_risk_audit:
+            pkg_list_to_use = []
+            project_type_to_use = project_type
+            if project_type in risk_audit_map:
+                pkg_list_to_use = pkg_list
+            elif project_type in ("bom",):
+                pkg_list_to_use = get_pkg_by_type(pkg_list, "npm")
+                project_type_to_use = "npm"
+            if pkg_list_to_use:
+                if len(pkg_list) > 1:
+                    console.print(
+                        Panel(
+                            f"Performing OSS Risk Audit for packages from "
+                            f"{src_dir}\nNo of packages [bold]{len(pkg_list)}"
+                            f"[/bold]. This will take a while ...",
+                            title="OSS Risk Audit",
+                            expand=False,
+                        )
                     )
-                )
-            try:
-                risk_results = risk_audit(
-                    project_type,
-                    scoped_pkgs,
-                    args.private_ns,
-                    pkg_list,
-                )
-                rtable, report_data = pkg_risks_table(
-                    project_type,
-                    scoped_pkgs,
-                    risk_results,
-                    pkg_max_risk_score=pkg_max_risk_score,
-                    risk_report_file=risk_report_file,
-                )
-                if not args.no_vuln_table and report_data and rtable:
-                    console.print(rtable)
-            except Exception as e:
-                LOG.error(e)
-                LOG.error("Risk audit was not successful")
+                try:
+                    risk_results = risk_audit(
+                        project_type_to_use,
+                        scoped_pkgs,
+                        args.private_ns,
+                        pkg_list_to_use,
+                    )
+                    rtable, report_data = pkg_risks_table(
+                        project_type_to_use,
+                        scoped_pkgs,
+                        risk_results,
+                        pkg_max_risk_score=pkg_max_risk_score,
+                        risk_report_file=risk_report_file,
+                    )
+                    if not args.no_vuln_table and report_data and rtable:
+                        console.print(rtable)
+                except Exception as e:
+                    LOG.error(e)
+                    LOG.error("Risk audit was not successful")
         # Do we support remote audit for this type?
         # Remote audits can improve results for some project types like npm by fetching vulnerabilities that might not yet be in our database.
         # In v6, remote audit is disabled by default and gets enabled with risk audit
@@ -733,6 +745,7 @@ def run_depscan(args):
                 vdr_file,
                 vdr_result,
                 args.explanation_mode,
+                depscan_options["llm_prompt_file"],
             )
         else:
             LOG.debug(

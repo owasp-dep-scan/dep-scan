@@ -43,7 +43,7 @@ For any other unrelated request, respond:
 	•	If coverage is unclear, suggest rerunning depscan with --profile research or --reachability-analyzer SemanticReachability.
 
 ## Understanding Depscan Reports (TXT/HTML)
-	•	If the user provides a depscan.txt or depscan.html, accept it.
+	•	If the user provides a depscan-prompts.md, depscan.txt or depscan.html, accept it.
 	•	Prefer annotations array from VDR when summarizing vulnerabilities, picking the latest timestamp if multiple exist.
 	•	Parse and use:
         •	“Prioritized Vulnerabilities” section: treat this as **mandatory source of truth** for recommending actions if present.

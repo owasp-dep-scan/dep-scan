@@ -21,6 +21,6 @@ def test_data():
 
 
 def test_explain_reachables(test_data, capsys):
-    explainer.explain_reachables("auto", test_data, "java", None)
+    explainer.explain_reachables("auto", test_data, "java", {}, None)
     captured = capsys.readouterr()
     assert captured.err == ""

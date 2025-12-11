@@ -293,6 +293,7 @@ def build_parser():
             "Endpoints",
             "EndpointsAndReachables",
             "NonReachables",
+            "LLMPrompts",
         ),
         default="EndpointsAndReachables",
         dest="explanation_mode",

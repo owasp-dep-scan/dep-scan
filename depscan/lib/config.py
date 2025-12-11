@@ -290,6 +290,7 @@ max_source_reachable_explanations = get_int_from_env(
 max_sink_reachable_explanations = get_int_from_env("max_sink_reachable_explanations", 2)
 
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 8)
+max_flows_per_prompt = get_int_from_env("max_flows_per_prompt", 8)
 
 RUBY_PLATFORM_MARKERS = [
     "-x86_64",
