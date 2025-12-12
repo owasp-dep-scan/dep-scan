@@ -7,6 +7,7 @@ from rich import box
 from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
+from rich.panel import Panel
 
 from depscan.lib.config import (
     COMMON_CHECK_TAGS,
@@ -15,11 +16,29 @@ from depscan.lib.config import (
     max_purls_reachable_explanations,
     max_source_reachable_explanations,
     max_sink_reachable_explanations,
+    max_flows_per_prompt,
 )
 from depscan.lib.logger import console, LOG
 
+SEVERITY_COLORS = {
+    "CRITICAL": "bold red",
+    "HIGH": "red",
+    "MEDIUM": "yellow",
+    "LOW": "blue",
+    "INFO": "white",
+    "UNKNOWN": "white",
+}
 
-def explain(project_type, src_dir, bom_dir, vdr_file, vdr_result, explanation_mode):
+
+def explain(
+    project_type,
+    src_dir,
+    bom_dir,
+    vdr_file,
+    vdr_result,
+    explanation_mode,
+    prompts_file=None,
+):
     """
     Explain the analysis and findings based on the explanation mode.
 
@@ -29,17 +48,23 @@ def explain(project_type, src_dir, bom_dir, vdr_file, vdr_result, explanation_mo
     :param vdr_file: VDR file
     :param vdr_result: VDR Result
     :param explanation_mode: Explanation mode
+    :param prompts_file: File path to save LLM prompts
     """
     pattern_methods = {}
     has_any_explanation = False
     has_any_crypto_flows = False
     slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices*.json", recursive=True)
     openapi_spec_files = None
+
+    purl_vuln_map = defaultdict(list)
+    if vdr_result and vdr_result.pkg_vulnerabilities:
+        for vuln in vdr_result.pkg_vulnerabilities:
+            ref = vuln.get("bom-ref") or vuln.get("purl")
+            if ref:
+                purl_vuln_map[ref].append(vuln)
+
     # Should we explain the endpoints and Code Hotspots
-    if explanation_mode in (
-        "Endpoints",
-        "EndpointsAndReachables",
-    ):
+    if explanation_mode in ("Endpoints", "EndpointsAndReachables", "LLMPrompts"):
         openapi_spec_files = glob.glob(f"{bom_dir}/*openapi*.json", recursive=False)
         if not openapi_spec_files:
             openapi_spec_files = glob.glob(f"{src_dir}/*openapi*.json", recursive=False)
@@ -67,8 +92,6 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
         if len(slices_files) > 1:
             fn = os.path.basename(sf)
             section_label = f"# Explanations for {fn}"
-            if "-" in fn:
-                section_label = f"# Explanations for {fn.split('-')[0].upper()}"
             console.print(Markdown(section_label))
         if reachables_data := json_load(sf, log=LOG):
             # Backwards compatibility
@@ -100,6 +123,8 @@ Below are several data flows identified by depscan, including reachable ones. Us
                 reachables_data,
                 project_type,
                 vdr_result,
+                purl_vuln_map,
+                prompts_file,
                 rsection if not has_any_explanation else None,
             )
             if not has_any_explanation and has_explanation:
@@ -181,7 +206,13 @@ def is_cpp_flow(flows):
 
 
 def explain_reachables(
-    explanation_mode, reachables, project_type, vdr_result, header_section=None
+    explanation_mode,
+    reachables,
+    project_type,
+    vdr_result,
+    purl_vuln_map,
+    prompts_file=None,
+    header_section=None,
 ):
     """"""
     reachable_explanations = 0
@@ -194,6 +225,8 @@ def explain_reachables(
     has_explanation = False
     header_shown = False
     has_cpp_flow = False
+    purl_grouped_flows = defaultdict(list)
+
     # Backwards compatibility
     if isinstance(reachables, dict) and reachables.get("reachables"):
         reachables = reachables.get("reachables")
@@ -217,12 +250,15 @@ def explain_reachables(
             has_check_tag,
             is_endpoint_reachable,
             is_crypto_flow,
+            max_severity,
+            vuln_ids,
         ) = explain_flows(
             explanation_mode,
             areach.get("flows"),
             areach.get("purls"),
             project_type,
             vdr_result,
+            purl_vuln_map,
         )
         # The goal is to reduce duplicate explanations by checking if a given flow is similar to one we have explained
         # before. We do this by checking the node ids, source-sink explanations, purl tags and so on.
@@ -263,6 +299,12 @@ def explain_reachables(
         # Did we find any crypto flows
         if is_crypto_flow and not has_crypto_flows:
             has_crypto_flows = True
+
+        title_style = "bold"
+        if max_severity and max_severity in SEVERITY_COLORS:
+            title_style = SEVERITY_COLORS[max_severity]
+            source_sink_desc = f"[{title_style}][{max_severity} {', '.join(vuln_ids)}][/{title_style}] {source_sink_desc}"
+
         rtable = Table(
             box=box.DOUBLE_EDGE,
             show_lines=True,
@@ -271,9 +313,11 @@ def explain_reachables(
             title=f"[bold]#{reachable_explanations + 1}[/bold] {source_sink_desc}",
             title_justify="left",
             min_width=150,
+            border_style=title_style if max_severity else "white",
         )
         rtable.add_column(header="Flow", vertical="top")
         rtable.add_row(flow_tree)
+
         # Print the header first in case we haven't
         if not header_shown and header_section:
             console.print()
@@ -281,6 +325,17 @@ def explain_reachables(
             header_shown = True
         console.print()
         console.print(rtable)
+
+        if is_endpoint_reachable and explanation_mode in ("LLMPrompts",):
+            for p in areach.get("purls", []):
+                purl_grouped_flows[p].append(
+                    {
+                        "flows": areach.get("flows"),
+                        "desc": source_sink_desc,
+                        "id": reachable_explanations + 1,
+                    }
+                )
+
         explained_ids[added_ids_str] = True
         reachable_explanations += 1
         if purls_str:
@@ -293,6 +348,7 @@ def explain_reachables(
             checked_flows += 1
         if reachable_explanations + 1 > max_reachable_explanations:
             break
+
     tips = """## Secure Design Tips"""
     if explanation_mode in ("NonReachables",):
         tips += """
@@ -325,13 +381,54 @@ def explain_reachables(
 - Enhance your unit and integration tests to cover the flows listed above.
 - Continuously fuzz the parser and validation functions with diverse payloads.
 """
-    if tips:
+    if tips and (has_explanation or has_crypto_flows):
         rsection = Markdown(tips)
         console.print(rsection)
+    if purl_grouped_flows:
+        save_llm_prompts(purl_grouped_flows, purl_vuln_map, project_type, prompts_file)
     return has_explanation, has_crypto_flows, tips
 
 
-def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
+def get_vulns_for_purls(purls, purl_vuln_map):
+    """
+    Finds the highest severity vulnerability among the given purls.
+    Returns (max_severity, [list_of_vuln_ids])
+    """
+    if not purls or not purl_vuln_map:
+        return None, []
+
+    found_vulns = []
+    max_severity_val = 100
+    severity_order = {
+        "CRITICAL": 1,
+        "HIGH": 2,
+        "MEDIUM": 3,
+        "LOW": 4,
+        "INFO": 5,
+        "UNKNOWN": 6,
+    }
+
+    current_max_severity = None
+
+    for p in purls:
+        vulns = purl_vuln_map.get(p, [])
+        for v in vulns:
+            v_id = v.get("id")
+            v_sev = str(v.get("severity", "UNKNOWN")).upper()
+
+            if v_id and v_id not in found_vulns:
+                found_vulns.append(v_id)
+
+            rank = severity_order.get(v_sev, 6)
+            current_rank = severity_order.get(current_max_severity, 100)
+
+            if rank < current_rank:
+                current_max_severity = v_sev
+
+    return current_max_severity, found_vulns
+
+
+def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_map):
     """ """
     endpoint_reached_purls = {}
     reached_services = {}
@@ -349,6 +446,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
             method_in_emoji = ":heavy_large_circle: "
         if reached_services and reached_services.get(p):
             possible_reachable_service = True
+    max_severity, vuln_ids = get_vulns_for_purls(purls, purl_vuln_map)
     source_sink_desc = ""
     param_name = flow.get("name")
     method_str = "method"
@@ -426,7 +524,13 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result):
                 source_sink_desc = (
                     f"{len(purls)} packages reachable from this data-flow."
                 )
-    return source_sink_desc, is_endpoint_reachable, is_crypto_flow
+    return (
+        source_sink_desc,
+        is_endpoint_reachable,
+        is_crypto_flow,
+        max_severity,
+        vuln_ids,
+    )
 
 
 def filter_tags(tags):
@@ -520,7 +624,77 @@ def flow_to_str(explanation_mode, flow, project_type):
     )
 
 
-def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
+def get_comment_symbol(filename):
+    """
+    Returns the appropriate comment symbol based on the file extension.
+    """
+    if filename.endswith((".py", ".rb", ".sh", ".pl", ".yaml", ".yml", ".dockerfile")):
+        return "#"
+    return "//"
+
+
+def generate_grouped_llm_prompt(purl, flows_data, purl_vuln_map, project_type):
+    """
+    Generates a consolidated prompt for a specific PURL and its reachable flows.
+    """
+    max_sev, vulns = get_vulns_for_purls([purl], purl_vuln_map)
+    vuln_text = f", associated with {', '.join(vulns)}" if vulns else ""
+
+    prompt = f"## LLM Prompt for `{purl}`\n\n"
+    prompt += f"Analyze the security risks for the package `{purl}`{vuln_text}. "
+    prompt += f"depscan identified {len(flows_data)} endpoint reachable data flows leading to this package.\n\n"
+
+    count = 0
+    for item in flows_data:
+        if count >= max_flows_per_prompt:
+            prompt += f"... (and {len(flows_data) - max_flows_per_prompt} more flows)\n"
+            break
+
+        desc = item.get("desc", "Unknown flow")
+        desc = re.sub(r"\[.*?]", "", desc)
+
+        prompt += f"### Flow #{item.get('id')}: {desc}\n\n"
+        last_code = ""
+        for flow in item.get("flows", []):
+            code = flow.get("code", "").strip()
+            if last_code and last_code == code:
+                continue
+            if len(code) < 8:
+                continue
+            last_code = code
+            filename = flow.get("parentFileName", "")
+            lineno = flow.get("lineNumber", "")
+            tags = flow.get("tags")
+            if tags:
+                comment_symbol = get_comment_symbol(filename)
+                code = f"{comment_symbol} {tags}\n{code}"
+            prompt += f"- Source: `{filename}:{lineno}`\n```\n{code}\n```\n"
+        prompt += "\n"
+        count += 1
+
+    prompt += "Based on these data flows, explain how an attacker might exploit the vulnerabilities in this package and suggest secure code fixes or mitigations."
+    return prompt
+
+
+def save_llm_prompts(purl_grouped_flows, purl_vuln_map, project_type, prompts_file):
+    """
+    Iterates through grouped flows and saves consolidated LLM prompts to a file.
+    """
+    if not prompts_file:
+        return
+    with open(prompts_file, "w", encoding="utf-8") as f:
+        f.write("# LLM Prompts generated by OWASP dep-scan\n\n")
+        for purl, flows_data in purl_grouped_flows.items():
+            prompt_text = generate_grouped_llm_prompt(
+                purl, flows_data, purl_vuln_map, project_type
+            )
+            f.write(prompt_text)
+            f.write("\n---\n\n")
+
+
+def explain_flows(
+    explanation_mode, flows, purls, project_type, vdr_result, purl_vuln_map
+):
     """"""
     tree = None
     comments = []
@@ -529,8 +703,18 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
             ":exclamation_mark: Refactor this flow to minimize the use of external libraries."
         )
     if purls:
-        purls_str = "\n".join(purls)
+        purls_display = []
+        for p in purls:
+            max_sev, vulns = get_vulns_for_purls([p], purl_vuln_map)
+            if max_sev:
+                style = SEVERITY_COLORS.get(max_sev, "white")
+                purls_display.append(f"[{style}]{p} ({', '.join(vulns)})[/{style}]")
+            else:
+                purls_display.append(p)
+
+        purls_str = "\n".join(purls_display)
         comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
+
     added_ids = []
     added_flows = []
     added_node_desc = []
@@ -540,6 +724,11 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
     last_code = ""
     source_code_str = ""
     sink_code_str = ""
+    is_endpoint_reachable = False
+    is_crypto_flow = False
+    max_severity = None
+    vuln_ids = []
+
     for idx, aflow in enumerate(flows):
         # For java, we are only interested in identifiers with tags to keep the flows simple to understand
         if (
@@ -557,8 +746,14 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
             continue
         last_code = curr_code
         if not source_sink_desc:
-            source_sink_desc, is_endpoint_reachable, is_crypto_flow = (
-                flow_to_source_sink(idx, aflow, purls, project_type, vdr_result)
+            (
+                source_sink_desc,
+                is_endpoint_reachable,
+                is_crypto_flow,
+                max_severity,
+                vuln_ids,
+            ) = flow_to_source_sink(
+                idx, aflow, purls, project_type, vdr_result, purl_vuln_map
             )
         file_loc, flow_str, node_desc, has_check_tag_flow = flow_to_str(
             explanation_mode, aflow, project_type
@@ -592,4 +787,6 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result):
         has_check_tag,
         is_endpoint_reachable,
         is_crypto_flow,
+        max_severity,
+        vuln_ids,
     )

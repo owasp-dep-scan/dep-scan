@@ -188,7 +188,7 @@ options:
   --debug               Run depscan in debug mode.
   -q, --quiet           Makes depscan quiet.
   --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
-  --explanation-mode {Endpoints,EndpointsAndReachables,NonReachables}
+  --explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}
                         Style of explanation needed. Defaults to Endpoints and Reachables.
   --annotate            Include the generated text VDR report as an annotation. Defaults to true when explain is enabled; false otherwise.
   -v, --version         Display the version

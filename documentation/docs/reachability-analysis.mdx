@@ -96,11 +96,12 @@ Pass the --explain argument to get a detailed explanation of the analysis perfor
 
 ### Explanation Mode
 
-When SemanticReachability is enabled and the `--explanation-mode` argument is provided, the explanation style can be customized. depscan supports three explanation styles:
+When SemanticReachability is enabled and the `--explanation-mode` argument is provided, the explanation style can be customized. depscan supports the following explanation styles:
 
 1.	**Endpoints** – Lists all HTTP endpoints, their methods, and code hotspots detected through static analysis.
 2.	**EndpointsAndReachables** – Includes endpoints along with a selection of up to 20 reachable data flows, providing detailed explanations. This is the default.
 3.	**NonReachables** – Highlights up to 20 non-reachable data flows, useful for showcasing areas where validation and sanitization are properly implemented.
+4.  **LLMPrompts** - Generates prompt text for use with LLMs for code fix suggestions.
 
 ```shell
 depscan --bom-dir <bom directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
