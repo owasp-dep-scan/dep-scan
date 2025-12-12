@@ -7,6 +7,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   ubuntu_version_tests:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -42,6 +44,8 @@ jobs:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
   reachable_tests:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -87,6 +91,8 @@ jobs:
         name: rtests_ubuntu
         path: rtests_ubuntu
   ubuntu_version_tests2:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -140,6 +146,8 @@ jobs:
         name: containertests_${{ matrix.os }}
         path: containertests_${{ matrix.os }}
   version_tests_mac_win:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     needs: ubuntu_version_tests
     runs-on: ${{ matrix.os }}
     strategy:
@@ -182,6 +190,8 @@ jobs:
           name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
           path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
   version_tests2_mac_win:
+    env:
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
     needs: ubuntu_version_tests2
     runs-on: ${{ matrix.os }}
     strategy:
