@@ -66,9 +66,10 @@ class FrameworkReachability(ReachabilityAnalyzer):
                 if isinstance(reachables, dict) and reachables.get("reachables"):
                     reachables = reachables.get("reachables")
                 for flow in reachables:
-                    if len(flow.get("purls", [])) > 0:
-                        for apurl in flow.get("purls"):
-                            reached_purls[apurl] += 1
+                    if not isinstance(flow, dict):
+                        continue
+                    for apurl in (flow.get("purls") or []):
+                        reached_purls[apurl] += 1
         if not direct_purls and not reached_purls:
             status = False
         return ReachabilityResult(
