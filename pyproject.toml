@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "6.0.0"
+version = "6.1.0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -88,6 +88,7 @@ ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
 ds-reporting-lib = { workspace = true }
 ds-server-lib = { workspace = true }
+appthreat-vulnerability-db = { git = "https://github.com/AppThreat/vulnerability-db", rev = "c5cb4bce0808ebef86b0d46d8029722b974fe4d9" }
 
 [tool.uv.workspace]
 members = ["packages/*"]

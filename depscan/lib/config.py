@@ -117,7 +117,7 @@ def get_int_from_env(name, default):
 
 
 NPM_SERVER = "https://registry.npmjs.org"
-npm_app_info = {"name": "owasp-depscan", "version": "6.0.0"}
+npm_app_info = {"name": "owasp-depscan", "version": "6.1.0"}
 
 PYPI_SERVER = "https://pypi.org/pypi"
 
