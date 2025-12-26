@@ -230,22 +230,23 @@ class SemanticReachability(FrameworkReachability):
                 if isinstance(reachables, dict) and reachables.get("reachables"):
                     reachables = reachables.get("reachables")
                 for flow in reachables:
-                    if len(flow.get("purls", [])) > 0:
-                        tags = flow.get("tags", []) or []
-                        for apurl in flow.get("purls"):
-                            reached_purls[apurl] += 1
-                            # Could this be an external service
-                            if is_service_like_tag(tags):
-                                reached_services[apurl] += 1
-                                if postbuild_purls.get(apurl):
-                                    interesting_postbuild_purls[apurl] = True
-                            # Could this be endpoint reachable?
-                            if apurl in typed_components.get(
-                                "framework", []
-                            ) and not is_endpoint_filterable(apurl):
-                                endpoint_reached_purls[apurl] += 1
-                                if postbuild_purls.get(apurl):
-                                    interesting_postbuild_purls[apurl] = True
+                    if not isinstance(flow, dict):
+                        continue
+                    tags = flow.get("tags", []) or []
+                    for apurl in flow.get("purls"):
+                        reached_purls[apurl] += 1
+                        # Could this be an external service
+                        if is_service_like_tag(tags):
+                            reached_services[apurl] += 1
+                            if postbuild_purls.get(apurl):
+                                interesting_postbuild_purls[apurl] = True
+                        # Could this be endpoint reachable?
+                        if apurl in typed_components.get(
+                            "framework", []
+                        ) and not is_endpoint_filterable(apurl):
+                            endpoint_reached_purls[apurl] += 1
+                            if postbuild_purls.get(apurl):
+                                interesting_postbuild_purls[apurl] = True
         # Support for binary reachability
         self._track_binary_reachability(
             postbuild_purls,
