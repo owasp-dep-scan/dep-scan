@@ -231,6 +231,8 @@ def explain_reachables(
     if isinstance(reachables, dict) and reachables.get("reachables"):
         reachables = reachables.get("reachables")
     for areach in reachables:
+        if not isinstance(areach, dict):
+            continue
         cpp_flow = is_cpp_flow(areach.get("flows"))
         if not has_cpp_flow and cpp_flow:
             has_cpp_flow = True
