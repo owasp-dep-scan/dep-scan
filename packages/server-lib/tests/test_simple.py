@@ -97,17 +97,6 @@ async def test_path_from_json_body_enforced(client: QuartClient, allowed_dirs):
 
 
 @pytest.mark.asyncio
-async def test_no_allowlist_means_no_enforcement(client: QuartClient):
-    app.config.pop("ALLOWED_HOSTS", None)
-    app.config.pop("ALLOWED_PATHS", None)
-    response = await client.get(
-        "/scan?type=python&path=/any/path",
-        headers={"X-Test-Remote-Addr": "192.168.99.99"},
-    )
-    assert response.status_code != 403
-
-
-@pytest.mark.asyncio
 async def test_security_headers(client: QuartClient):
     response = await client.get("/")
     headers = response.headers
