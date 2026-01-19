@@ -1,10 +1,16 @@
+import json
 import os
-
-from quart import request, Quart
 import tempfile
+from urllib.parse import urlparse
+
+from custom_json_diff.lib.utils import file_write, json_load
+from quart import request, Quart
+from rich.console import Console
+from vdb.lib.npm import NpmSource
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.vdr import VDRAnalyzer
+from analysis_lib.utils import get_pkg_list
 from server_lib import ServerOptions
 
 app = Quart(f"dep-scan server ({__name__})", static_folder=None)
@@ -22,6 +28,39 @@ def get_allowed_git_schemes(default_schemes=None):
 
 
 allowed_git_schemes = get_allowed_git_schemes()
+
+# Dict mapping project type to the audit source
+type_audit_map = {
+    "nodejs": NpmSource(),
+    "js": NpmSource(),
+    "javascript": NpmSource(),
+    "ts": NpmSource(),
+    "typescript": NpmSource(),
+    "npm": NpmSource(),
+}
+npm_app_info = {"name": "owasp-depscan-server", "version": "6.1.0"}
+
+console = Console(
+    log_time=False,
+    log_path=False,
+    color_system=os.getenv("CONSOLE_COLOR_SCHEME", "256"),
+    tab_size=2,
+    emoji=os.getenv("DISABLE_CONSOLE_EMOJI", "") not in ("true", "1"),
+)
+
+
+def audit(project_type, pkg_list):
+    """
+    Method to audit packages using remote source such as npm advisory
+
+    :param project_type: Project type
+    :param pkg_list: List of packages
+    :return: Results
+    """
+    results = type_audit_map[project_type].bulk_search(
+        app_info=npm_app_info, pkg_list=pkg_list
+    )
+    return results
 
 
 @app.get("/")
@@ -44,7 +83,9 @@ async def enforce_allowlists():
     if allowed_hosts is not None:
         if not client_host or client_host not in allowed_hosts:
             if logger_instance:
-                logger_instance.warning(f"Blocked request from unauthorized host: {client_host}")
+                logger_instance.warning(
+                    f"Blocked request from unauthorized host: {client_host}"
+                )
             return {"error": "true", "message": "Host not allowed"}, 403
     if request.path == "/scan":
         allowed_paths = app.config.get("ALLOWED_PATHS")
@@ -156,7 +197,7 @@ async def run_scan():
             )
         bom_file_content = bom_file.read().decode("utf-8")
         try:
-            bom_data = json.loads(bom_file_content)
+            bom_data = json_load(bom_file_content)
             if (
                 not isinstance(bom_data, dict)
                 or bom_data.get("bomFormat") != "CycloneDX"
@@ -188,6 +229,15 @@ async def run_scan():
     # Path points to a project directory
     # Bug# 233. Path could be a url
     if url or (path and os.path.isdir(path)):
+        if url and not path and not cdxgen_server:
+            return (
+                {
+                    "error": "true",
+                    "message": "cdxgen server is required to generate SBOM for url.",
+                },
+                400,
+                {"Content-Type": "application/json"},
+            )
         with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
             project_type_list = project_type.split(",")
             if create_bom:
@@ -206,9 +256,14 @@ async def run_scan():
                 )
                 if bom_status:
                     if logger_instance:
-                        logger_instance.debug("BOM file was generated successfully at %s", bfp.name)
+                        logger_instance.debug(
+                            "BOM file was generated successfully at %s", bfp.name
+                        )
                     bom_file_path = bfp.name
-
+                else:
+                    logger_instance.debug(
+                        "Problem generating the SBOM for %s %s", url, path
+                    )
     # Path points to a SBOM file
     else:
         if os.path.exists(path):
@@ -226,7 +281,9 @@ async def run_scan():
                 logger_instance.debug("Empty package search attempted!")
         else:
             if logger_instance:
-                logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
+                logger_instance.debug(
+                    "Scanning %d oss dependencies for issues", len(pkg_list)
+                )
         bom_data = json_load(bom_file_path)
         if not bom_data:
             cleanup_temp(tmp_bom_file)
@@ -259,6 +316,9 @@ async def run_scan():
             pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
             if pkg_vulnerabilities:
                 bom_data["vulnerabilities"] = pkg_vulnerabilities
+            cleanup_temp(tmp_bom_file)
+            return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
+        elif bom_data:
             cleanup_temp(tmp_bom_file)
             return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
     cleanup_temp(tmp_bom_file)

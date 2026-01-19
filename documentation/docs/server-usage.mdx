@@ -17,6 +17,12 @@ Alternatively, start the server directly:
 depscan --server --server-host 127.0.0.1 --server-port 7070
 ```
 
+To scan git URLs, cdxgen server is mandatory. Use the argument `--cdxgen-server` to pass the url.
+
+```bash
+depscan --server --server-host 127.0.0.1 --server-port 7070 --cdxgen-server http://127.0.0.1:9090
+```
+
 The server listens for requests on the `/scan` endpoint. The `type` parameter is mandatory for all scan requests.
 
 **Example: Scanning a local SBOM file**
@@ -26,6 +32,9 @@ curl --json '{"path": "/tmp/app/sbom.json", "type": "js"}' http://0.0.0.0:7070/s
 ```
 
 **Example: Scanning a remote Git repository**
+
+> [!NOTE]
+> cdxgen must be running in server mode for the below to work.
 
 ```bash
 curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
@@ -50,8 +59,8 @@ Access to the `/scan` endpoint can be restricted based on the client's IP addres
 
 **Configuration:**
 
--   `--allowed-hosts`: A space-separated list of IP addresses or hostnames permitted to access the server.
--   `--allowed-paths`: A space-separated list of base directories that the server is allowed to read from or write to.
+- `--allowed-hosts`: A space-separated list of IP addresses or hostnames permitted to access the server.
+- `--allowed-paths`: A space-separated list of base directories that the server is allowed to read from or write to.
 
 ```bash
 depscan --server \
@@ -84,15 +93,15 @@ Requests containing URLs with schemes not in this list will be rejected with a `
 
 ### Input Validation and Sanitization
 
--   **File Uploads**: Uploaded BOM files are validated for JSON structure and CycloneDX format. The file extension must be `.json`, `.cdx`, or `.bom`.
--   **Content Length**: The maximum size for incoming request bodies (including file uploads) is limited to prevent resource exhaustion. This limit is controlled internally and defaults to 100MB.
--   **Parameter Validation**: The `url` parameter is parsed to ensure its scheme is allowed.
+- **File Uploads**: Uploaded BOM files are validated for JSON structure and CycloneDX format. The file extension must be `.json`, `.cdx`, or `.bom`.
+- **Content Length**: The maximum size for incoming request bodies (including file uploads) is limited to prevent resource exhaustion. This limit is controlled internally and defaults to 100MB.
+- **Parameter Validation**: The `url` parameter is parsed to ensure its scheme is allowed.
 
 ### Security Headers
 
 The server automatically appends common security headers to all HTTP responses to mitigate client-side vulnerabilities:
 
--   `X-Content-Type-Options: nosniff`
--   `X-Frame-Options: SAMEORIGIN`
--   `X-XSS-Protection: 1; mode=block`
--   `Strict-Transport-Security: max-age=31536000; includeSubDomains` (if served over HTTPS)
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `X-XSS-Protection: 1; mode=block`
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains` (if served over HTTPS)

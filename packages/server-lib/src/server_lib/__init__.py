@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
 from logging import Logger
+from typing import Callable, List, Optional
+
 from rich.console import Console
 
 

@@ -97,3 +97,16 @@ members = ["packages/*"]
 dev = [
     "ruff>=0.11.6",
 ]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    "__pycache__",
+    "build",
+    "dist",
+    "test",
+]
+
+[lint]
+select = ["E", "F"]
+ignore = ["E501", "F405", "F841"]
