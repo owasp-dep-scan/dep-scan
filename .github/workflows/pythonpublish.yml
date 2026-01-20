@@ -174,7 +174,8 @@ jobs:
       - uses: int128/docker-manifest-create-action@v2
         with:
           index-annotations: ${{ steps.metadata.outputs.labels }}
-          tags: ${{ steps.metadata.outputs.tags }}
+          tags: |
+            ${{ steps.metadata.outputs.tags }}
           sources: |
             ${{ fromJSON(steps.read.outputs.result).image-uri[format('amd64{0}', matrix.image.image-suffix)] }}
             ${{ fromJSON(steps.read.outputs.result).image-uri[format('arm64{0}', matrix.image.image-suffix)] }}
