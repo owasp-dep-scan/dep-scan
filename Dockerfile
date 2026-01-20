@@ -1,4 +1,4 @@
-FROM almalinux:10.0-minimal
+FROM ghcr.io/almalinux/10-minimal:10.1
 
 LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
@@ -16,7 +16,7 @@ ARG JAVA_VERSION=23.0.2-tem
 ARG MAVEN_VERSION=3.9.10
 ARG GRADLE_VERSION=8.14.2
 ARG PYTHON_VERSION=3.12
-ARG GO_VERSION=1.24.4
+ARG GO_VERSION=1.25.6
 
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=$GO_VERSION \
@@ -50,7 +50,7 @@ RUN set -e; \
         *) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
     esac; \
     echo -e "[nodejs]\nname=nodejs\nstream=22\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
-    && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
+    && microdnf update -y && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
         python3 python3-devel python3-pip diffutils \
         pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks \
     && python3 --version \
@@ -64,11 +64,11 @@ RUN set -e; \
     && sdk offline enable \
     && mv /root/.sdkman/candidates/* /opt/ \
     && rm -rf /root/.sdkman \
-    && npm install -g @cyclonedx/cdxgen @appthreat/atom-parsetools \
-    && cdxgen --version \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
     && rm go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
+    && npm install -g @cyclonedx/cdxgen @appthreat/atom-parsetools \
+    && cdxgen --version \
     && useradd -ms /bin/bash owasp \
     && pecl channel-update pecl.php.net \
     && pecl install timezonedb \
