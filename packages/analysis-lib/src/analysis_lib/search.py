@@ -147,12 +147,7 @@ def search_expanded(pkg: Dict, fuzzy_search, search_order) -> List:
         search_logic = search_by_any
         search_term = pkg.get("cpe") or pkg.get("purl") or pkg.get("url")
     # Discussion #465. When there are versionless purls, filter them in non-fuzzy mode
-    if (
-        not fuzzy_search
-        and search_term
-        and pkg.get("purl")
-        and not pkg.get("version")
-    ):
+    if not fuzzy_search and search_term and pkg.get("purl") and not pkg.get("version"):
         return raw_results
     # Give preference to our search logic
     if search_term and (res := search_logic(search_term, with_data=True)):

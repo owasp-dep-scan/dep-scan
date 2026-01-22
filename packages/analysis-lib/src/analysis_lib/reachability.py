@@ -68,7 +68,7 @@ class FrameworkReachability(ReachabilityAnalyzer):
                 for flow in reachables:
                     if not isinstance(flow, dict):
                         continue
-                    for apurl in (flow.get("purls") or []):
+                    for apurl in flow.get("purls") or []:
                         reached_purls[apurl] += 1
         if not direct_purls and not reached_purls:
             status = False
@@ -233,7 +233,7 @@ class SemanticReachability(FrameworkReachability):
                     if not isinstance(flow, dict):
                         continue
                     tags = flow.get("tags", []) or []
-                    for apurl in (flow.get("purls") or []):
+                    for apurl in flow.get("purls") or []:
                         reached_purls[apurl] += 1
                         # Could this be an external service
                         if is_service_like_tag(tags):
