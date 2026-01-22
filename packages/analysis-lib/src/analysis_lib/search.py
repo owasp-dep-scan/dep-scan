@@ -95,6 +95,7 @@ def find_vulns(
     :param project_type: Project type.
     :param pkg_list: List of packages to search.
     :param fuzzy_search: Perform fuzzy search by creating variations. Disabled by default.
+    :param search_order: Search order such as purl, cpe, url, cpu.
 
     :returns: raw_results, pkg_aliases, purl_aliases
     """
@@ -145,6 +146,14 @@ def search_expanded(pkg: Dict, fuzzy_search, search_order) -> List:
     elif search_order == "cpu":
         search_logic = search_by_any
         search_term = pkg.get("cpe") or pkg.get("purl") or pkg.get("url")
+    # Discussion #465. When there are versionless purls, filter them in non-fuzzy mode
+    if (
+        not fuzzy_search
+        and search_term
+        and pkg.get("purl")
+        and not pkg.get("version")
+    ):
+        return raw_results
     # Give preference to our search logic
     if search_term and (res := search_logic(search_term, with_data=True)):
         raw_results.extend(res)
