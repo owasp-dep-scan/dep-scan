@@ -103,21 +103,13 @@ async def test_security_headers(client: QuartClient):
     assert headers.get("X-Content-Type-Options") == "nosniff"
     assert headers.get("X-Frame-Options") == "SAMEORIGIN"
     assert headers.get("X-XSS-Protection") == "1; mode=block"
-    assert (
-        headers.get("Strict-Transport-Security")
-        == "max-age=31536000; includeSubDomains"
-    )
-    response_scan = await client.get(
-        "/scan", headers={"X-Test-Remote-Addr": "127.0.0.1"}
-    )
+    assert headers.get("Strict-Transport-Security") == "max-age=31536000; includeSubDomains"
+    response_scan = await client.get("/scan", headers={"X-Test-Remote-Addr": "127.0.0.1"})
     headers_scan = response_scan.headers
     assert headers_scan.get("X-Content-Type-Options") == "nosniff"
     assert headers_scan.get("X-Frame-Options") == "SAMEORIGIN"
     assert headers_scan.get("X-XSS-Protection") == "1; mode=block"
-    assert (
-        headers_scan.get("Strict-Transport-Security")
-        == "max-age=31536000; includeSubDomains"
-    )
+    assert headers_scan.get("Strict-Transport-Security") == "max-age=31536000; includeSubDomains"
 
 
 @pytest.mark.asyncio

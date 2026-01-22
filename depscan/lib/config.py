@@ -127,9 +127,7 @@ CARGO_SERVER = "https://crates.io/api/v1/crates"
 vdb_database_url = os.getenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz:v6.5.x")
 
 # Larger 10 year database
-vdb_10y_database_url = os.getenv(
-    "VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbxz-10y:v6.5.x"
-)
+vdb_10y_database_url = os.getenv("VDB_10Y_DATABASE_URL", "ghcr.io/appthreat/vdbxz-10y:v6.5.x")
 
 if os.getenv("USE_VDB_10Y", "") in ("true", "1"):
     vdb_database_url = vdb_10y_database_url
@@ -153,18 +151,14 @@ pkg_min_versions_max = get_float_from_env("pkg_min_versions_max", 100)
 pkg_min_versions_weight = get_float_from_env("pkg_min_versions_weight", 2)
 
 # At least 12 hours difference between the creation and modified time
-mod_create_min_seconds = get_float_from_env(
-    "mod_create_min_seconds", 12 * SECONDS_IN_HOUR
-)
+mod_create_min_seconds = get_float_from_env("mod_create_min_seconds", 12 * SECONDS_IN_HOUR)
 mod_create_min_seconds_max = get_float_from_env(
     "mod_create_min_seconds_max", 1000 * SECONDS_IN_DAY
 )
 mod_create_min_seconds_weight = get_float_from_env("mod_create_min_seconds_weight", 1)
 
 # At least 12 hours difference between the latest version and the current time
-latest_now_min_seconds = get_float_from_env(
-    "latest_now_min_seconds", 12 * SECONDS_IN_HOUR
-)
+latest_now_min_seconds = get_float_from_env("latest_now_min_seconds", 12 * SECONDS_IN_HOUR)
 latest_now_min_seconds_max = get_float_from_env(
     "latest_now_min_seconds_max", 1000 * SECONDS_IN_DAY
 )
@@ -183,9 +177,7 @@ created_now_quarantine_seconds_weight = get_float_from_env(
 )
 
 # Max package age - 6 years
-latest_now_max_seconds = get_float_from_env(
-    "latest_now_max_seconds", 6 * 365 * SECONDS_IN_DAY
-)
+latest_now_max_seconds = get_float_from_env("latest_now_max_seconds", 6 * 365 * SECONDS_IN_DAY)
 latest_now_max_seconds_max = get_float_from_env(
     "latest_now_max_seconds_max", 6 * 365 * SECONDS_IN_DAY
 )
@@ -234,9 +226,7 @@ pkg_attested_max = get_float_from_env("pkg_attested_max", 0)
 pkg_private_on_public_registry_weight = get_float_from_env(
     "pkg_private_on_public_registry_weight", 4
 )
-pkg_private_on_public_registry_max = get_float_from_env(
-    "pkg_private_on_public_registry_max", 1
-)
+pkg_private_on_public_registry_max = get_float_from_env("pkg_private_on_public_registry_max", 1)
 
 # Package scope related weight
 pkg_required_scope_weight = get_float_from_env("pkg_required_scope_weight", 4.0)
@@ -281,12 +271,8 @@ UNIVERSAL_SCAN_TYPE = "universal"
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
 # How many explanations for a given combination of purls
-max_purls_reachable_explanations = get_int_from_env(
-    "max_purls_reachable_explanations", 3
-)
-max_source_reachable_explanations = get_int_from_env(
-    "max_source_reachable_explanations", 2
-)
+max_purls_reachable_explanations = get_int_from_env("max_purls_reachable_explanations", 3)
+max_source_reachable_explanations = get_int_from_env("max_source_reachable_explanations", 2)
 max_sink_reachable_explanations = get_int_from_env("max_sink_reachable_explanations", 2)
 
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 8)
@@ -308,9 +294,7 @@ RUBY_PLATFORM_MARKERS = [
 # This could be replaced with a better heuristics or lookup database in the future.
 NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)
 
-DEPSCAN_DEFAULT_VDR_FILE = os.getenv(
-    "DEPSCAN_DEFAULT_VDR_FILE", "depscan-universal.vdr.json"
-)
+DEPSCAN_DEFAULT_VDR_FILE = os.getenv("DEPSCAN_DEFAULT_VDR_FILE", "depscan-universal.vdr.json")
 
 COMMON_CHECK_TAGS = (
     "validation",

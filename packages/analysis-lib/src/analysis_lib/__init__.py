@@ -178,6 +178,4 @@ def get_version():
     """
     Returns the version of depscan
     """
-    return (
-        distribution("ds-analysis-lib").version or distribution("owasp-depscan").version
-    )
+    return distribution("ds-analysis-lib").version or distribution("owasp-depscan").version

@@ -64,7 +64,9 @@ def build_args():
 
 
 def analyze_with_npm(keywords, insecure_only, unstable_only, pages, output_file):
-    pkg_list = search_npm(keywords=keywords, insecure_only=insecure_only, unstable_only=unstable_only, pages=pages)
+    pkg_list = search_npm(
+        keywords=keywords, insecure_only=insecure_only, unstable_only=unstable_only, pages=pages
+    )
     analyze_pkgs(output_file, pkg_list, insecure_only)
 
 
@@ -76,7 +78,20 @@ def get_vuln_stats(search_results, vuln_stats):
         if added_row_keys.get(row_key):
             return
         source_data: CVE = res.get("source_data")
-        source, references, advisories, cwes, description, detail, rating, bounties, pocs, exploits, vendors, vendor = cve_to_vdr(source_data, res.get("cve_id"))
+        (
+            source,
+            references,
+            advisories,
+            cwes,
+            description,
+            detail,
+            rating,
+            bounties,
+            pocs,
+            exploits,
+            vendors,
+            vendor,
+        ) = cve_to_vdr(source_data, res.get("cve_id"))
         severity = rating.get("severity")
         vuln_stats[severity] += 1
 
@@ -111,7 +126,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                 "dependencies_critical",
                 "dependencies_high",
                 "dependencies_medium",
-                "dependencies_low"
+                "dependencies_low",
             ]
         )
         with Progress(
@@ -163,9 +178,12 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                         ind_versions_count += 1
                         progress.update(
                             task,
-                            description=f"Checking the version {the_version.get("name")}@{the_version_str}",
+                            description=f"""Checking the version {the_version.get("name")}@{the_version_str}""",
                         )
-                        if res := search_by_purl_like(f'pkg:npm/{the_version.get("name").replace("@", "%40")}@{the_version_str}', with_data=True):
+                        if res := search_by_purl_like(
+                            f"pkg:npm/{the_version.get('name').replace('@', '%40')}@{the_version_str}",
+                            with_data=True,
+                        ):
                             get_vuln_stats(res, package_vuln_stats)
                         for k, v in package_vuln_stats.items():
                             if v:
@@ -183,7 +201,10 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 task,
                                 description=f"Checking the dependency `{k}` for vulnerabilities",
                             )
-                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                            if res := search_by_purl_like(
+                                f"pkg:npm/{k.replace('@', '%40')}@{re.sub('[<>=^~]', '', v)}",
+                                with_data=True,
+                            ):
                                 get_vuln_stats(res, deps_vuln_stats)
                         for k, v in version_dev_deps.items():
                             if k.startswith("@types/"):
@@ -192,7 +213,10 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 task,
                                 description=f"Checking the dev dependency `{k}` for vulnerabilities",
                             )
-                            if res := search_by_purl_like(f'pkg:npm/{k.replace("@", "%40")}@{re.sub("[<>=^~]", "", v)}', with_data=True):
+                            if res := search_by_purl_like(
+                                f"pkg:npm/{k.replace('@', '%40')}@{re.sub('[<>=^~]', '', v)}",
+                                with_data=True,
+                            ):
                                 get_vuln_stats(res, deps_vuln_stats)
                         for k, v in deps_vuln_stats.items():
                             if v:
@@ -207,7 +231,9 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                             [
                                 name,
                                 the_version_str,
-                                download_stats.get("downloads") if the_version_str == latest_version else None,
+                                download_stats.get("downloads")
+                                if the_version_str == latest_version
+                                else None,
                                 is_insecure,
                                 has_insecure_dependencies,
                                 created,
@@ -220,7 +246,7 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
                                 deps_vuln_stats.get("critical", 0),
                                 deps_vuln_stats.get("high", 0),
                                 deps_vuln_stats.get("medium", 0),
-                                deps_vuln_stats.get("low", 0)
+                                deps_vuln_stats.get("low", 0),
                             ]
                         )
                 progress.advance(task)
@@ -229,7 +255,9 @@ def analyze_pkgs(output_file, pkg_list, insecure_only):
 def main():
     args = build_args()
     keywords = args.keywords.split(",") if args.keywords else None
-    analyze_with_npm(keywords, args.insecure_only, args.unstable_only, args.pages, args.output_file)
+    analyze_with_npm(
+        keywords, args.insecure_only, args.unstable_only, args.pages, args.output_file
+    )
 
 
 if __name__ == "__main__":

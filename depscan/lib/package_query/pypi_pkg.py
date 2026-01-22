@@ -46,8 +46,7 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     # without yanking the package
     pkg_description = info.get("description", "").lower()
     if not is_deprecated and (
-        "is deprecated" in pkg_description
-        or "no longer maintained" in pkg_description
+        "is deprecated" in pkg_description or "no longer maintained" in pkg_description
     ):
         is_deprecated = True
     latest_deprecated = False

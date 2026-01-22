@@ -192,9 +192,7 @@ def parse_cvss(ratings: List[Optional[Dict]]) -> List[Optional[Dict]]:
     if not ratings:
         return scores
     for rating in ratings:
-        if not (vector_string := rating.get("vector")) or not vector_string.startswith(
-            "CVSS:3"
-        ):
+        if not (vector_string := rating.get("vector")) or not vector_string.startswith("CVSS:3"):
             continue
         try:
             cvss_v3 = cvss.CVSS3(vector_string)
@@ -260,9 +258,7 @@ def format_references(references: List) -> Tuple[List[Dict], List[Dict]]:
     ids = [{"system_name": idx[0], "text": idx[1].upper()} for idx in new_ids]
     ids = sorted(ids, key=lambda x: x["text"])
     new_refs = {
-        (idx["summary"], idx["url"])
-        for idx in fmt_refs
-        if not idx["summary"].startswith("Cve ")
+        (idx["summary"], idx["url"]) for idx in fmt_refs if not idx["summary"].startswith("Cve ")
     }
     fmt_refs = [{"summary": idx[0], "url": idx[1]} for idx in new_refs]
     fmt_refs = sorted(fmt_refs, key=lambda x: x["url"])
@@ -297,9 +293,7 @@ def parse_revision_history(tracking):
 
     elif hx and (len(hx) > 0):
         hx = cleanup_list(hx)
-        if tracking.get("status") == "final" and int(tracking.get("version", 1)) > (
-            len(hx) + 1
-        ):
+        if tracking.get("status") == "final" and int(tracking.get("version", 1)) > (len(hx) + 1):
             tracking["version"] = int(len(hx) + 1)
     status = tracking.get("status")
     if not status or len(status) == 0:
@@ -318,9 +312,7 @@ def parse_revision_history(tracking):
         ).strftime(TIME_FMT)
         tracking["current_release_date"] = (
             convert_time(
-                tracking.get(
-                    "current_release_date", tracking.get("initial_release_date")
-                )
+                tracking.get("current_release_date", tracking.get("initial_release_date"))
             )
         ).strftime(TIME_FMT)
     except AttributeError:
@@ -352,9 +344,7 @@ def parse_revision_history(tracking):
             }
         )
     if len(hx) > 0:
-        tracking["version"] = str(
-            max(int(tracking.get("version", 0)), int(hx[-1]["number"]))
-        )
+        tracking["version"] = str(max(int(tracking.get("version", 0)), int(hx[-1]["number"])))
     else:
         tracking["version"] = "1"
     if not tracking.get("id") or len(tracking.get("id")) == 0:
@@ -634,9 +624,7 @@ def verify_components_present(data, metadata, bom_file):
         "'code_not_in_execute_path' with this in mind.",
     }
     if template["document"].get("notes"):
-        template["document"]["notes"].append(
-            {"category": "legal_disclaimer", "text": disclaimer}
-        )
+        template["document"]["notes"].append({"category": "legal_disclaimer", "text": disclaimer})
     else:
         template["document"]["notes"] = [disclaimer]
 
@@ -656,9 +644,7 @@ def verify_components_present(data, metadata, bom_file):
         new_metadata["tracking"] = deepcopy(template["document"]["tracking"])
 
     # Reset the id if it's one we've generated
-    if re.match(
-        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}_v", new_metadata["tracking"]["id"]
-    ):
+    if re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}_v", new_metadata["tracking"]["id"]):
         new_metadata["tracking"]["id"] = ""
 
     return template, new_metadata
@@ -688,12 +674,8 @@ def add_vulnerabilities(template, pkg_vulnerabilities):
     if agg_score := list(agg_score):
         agg_score.sort()
         severity_ref = {v: k for k, v in SEVERITY_REF.items()}
-        agg_severity = (
-            severity_ref[agg_score[0]][0] + severity_ref[agg_score[0]][1:].lower()
-        )
-        new_results["document"]["aggregate_severity"] = {
-            "text": agg_severity.capitalize()
-        }
+        agg_severity = severity_ref[agg_score[0]][0] + severity_ref[agg_score[0]][1:].lower()
+        new_results["document"]["aggregate_severity"] = {"text": agg_severity.capitalize()}
 
     return new_results
 

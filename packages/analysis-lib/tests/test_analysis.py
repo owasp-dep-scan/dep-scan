@@ -33,9 +33,7 @@ def test_data():
 @pytest.fixture
 def test_js_deps_data():
     with open(
-        os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data", "bom-js.json"
-        ),
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-js.json"),
         mode="r",
         encoding="utf-8",
     ) as fp:
@@ -90,9 +88,7 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.springframework/spring-jcl@5.2.5.RELEASE?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.springframework/spring-jcl@5.2.5.RELEASE?type=jar"],
         },
         {
             "ref": "pkg:maven/org.springframework/spring-jcl@5.2.5.RELEASE?type=jar",
@@ -116,21 +112,15 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.springframework/spring-beans@5.2.5.RELEASE?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"],
         },
         {
             "ref": "pkg:maven/org.springframework/spring-expression@5.2.5.RELEASE?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"],
         },
         {
             "ref": "pkg:maven/org.springframework.boot/spring-boot-autoconfigure@2.2.6.RELEASE?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.springframework.boot/spring-boot@2.2.6.RELEASE?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.springframework.boot/spring-boot@2.2.6.RELEASE?type=jar"],
         },
         {
             "ref": "pkg:maven/org.springframework.boot/spring-boot-starter-logging@2.2.6.RELEASE?type=jar",
@@ -321,9 +311,7 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.apache.tomcat.embed/tomcat-embed-websocket@9.0.33?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.33?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@9.0.33?type=jar"],
         },
         {
             "ref": "pkg:maven/org.springframework.boot/spring-boot-starter-validation@2.2.6.RELEASE?type=jar",
@@ -451,9 +439,7 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.springframework.boot/spring-boot-test@2.2.6.RELEASE?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.springframework.boot/spring-boot@2.2.6.RELEASE?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.springframework.boot/spring-boot@2.2.6.RELEASE?type=jar"],
         },
         {
             "ref": "pkg:maven/org.springframework.boot/spring-boot-test-autoconfigure@2.2.6.RELEASE?type=jar",
@@ -480,9 +466,7 @@ def test_bom_dependency_tree():
         {"ref": "pkg:maven/org.ow2.asm/asm@5.0.4?type=jar", "dependsOn": []},
         {
             "ref": "pkg:maven/jakarta.xml.bind/jakarta.xml.bind-api@2.3.3?type=jar",
-            "dependsOn": [
-                "pkg:maven/jakarta.activation/jakarta.activation-api@1.2.2?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/jakarta.activation/jakarta.activation-api@1.2.2?type=jar"],
         },
         {
             "ref": "pkg:maven/jakarta.activation/jakarta.activation-api@1.2.2?type=jar",
@@ -586,9 +570,7 @@ def test_bom_dependency_tree():
         },
         {
             "ref": "pkg:maven/org.springframework/spring-test@5.2.5.RELEASE?type=jar",
-            "dependsOn": [
-                "pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"
-            ],
+            "dependsOn": ["pkg:maven/org.springframework/spring-core@5.2.5.RELEASE?type=jar"],
         },
         {
             "ref": "pkg:maven/org.xmlunit/xmlunit-core@2.6.4?type=jar",
@@ -685,9 +667,7 @@ def test_cvss_to_vdr_rating():
         "severity": "HIGH",
     }
     # Test missing score and vector string
-    assert cvss_to_vdr_rating(res) == [
-        {"method": "CVSSv31", "score": 2.0, "severity": "high"}
-    ]
+    assert cvss_to_vdr_rating(res) == [{"method": "CVSSv31", "score": 2.0, "severity": "high"}]
     # Test parsing
     res["cvss_v3"]["vector_string"] = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
     res["cvss_score"] = 7.5

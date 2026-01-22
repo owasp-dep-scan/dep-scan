@@ -4,14 +4,15 @@ from depscan.lib import config
 from depscan.lib.package_query.pkg_query import compute_time_risks, calculate_risk_score
 from semver import Version
 
+
 def set_binary_risks(risk_metrics, current_version, latest_version):
     """
     If current version has bin_names. then we should set "pkg_includes_binary_risk" as True.
     and add the number of bin_names to the "pkg_includes_binary_value" key.
     """
     version = current_version if current_version else latest_version
-    bin_names = version.get('bin_names', [])
-    risk_metrics["pkg_includes_binary_risk"] = True if len(bin_names)>0 else False
+    bin_names = version.get("bin_names", [])
+    risk_metrics["pkg_includes_binary_risk"] = True if len(bin_names) > 0 else False
     risk_metrics["pkg_includes_binary_value"] = len(bin_names)
 
 
@@ -33,12 +34,8 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         "pkg_private_on_public_registry_risk": False,
     }
     versions_list = pkg_metadata.get("versions", [])
-    versions_dict = {
-        crate_version.get('num'): crate_version
-        for crate_version in versions_list}
-    versions_nums = [
-        crate_version.get('num')
-        for crate_version in versions_list]
+    versions_dict = {crate_version.get("num"): crate_version for crate_version in versions_list}
+    versions_nums = [crate_version.get("num") for crate_version in versions_list]
 
     is_deprecated = versions_list[0].get("yanked")
     is_version_deprecated = False
@@ -46,7 +43,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     if not is_deprecated and pkg and pkg.get("version"):
         theversion = versions_dict.get(pkg.get("version"), {})
         if isinstance(theversion, dict) and len(theversion) > 0:
-            theversion = theversion.get('num')
+            theversion = theversion.get("num")
         elif theversion and theversion.get("yanked"):
             is_version_deprecated = True
         # Check if the version exists in the registry
@@ -56,8 +53,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
 
     pkg_description = info.get("description", "").lower()
     if not is_deprecated and (
-        "is deprecated" in pkg_description
-        or "no longer maintained" in pkg_description
+        "is deprecated" in pkg_description or "no longer maintained" in pkg_description
     ):
         is_deprecated = True
     latest_deprecated = False
@@ -74,7 +70,7 @@ def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
     except (ValueError, TypeError):
         first_version_num = versions_nums[-1]
         latest_version_num = versions_nums[0]
-    
+
     first_version = versions_dict[first_version_num]
     latest_version = versions_list[latest_version_num]
 

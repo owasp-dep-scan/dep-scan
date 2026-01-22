@@ -57,9 +57,7 @@ def audit(project_type, pkg_list):
     :param pkg_list: List of packages
     :return: Results
     """
-    results = type_audit_map[project_type].bulk_search(
-        app_info=npm_app_info, pkg_list=pkg_list
-    )
+    results = type_audit_map[project_type].bulk_search(app_info=npm_app_info, pkg_list=pkg_list)
     return results
 
 
@@ -83,9 +81,7 @@ async def enforce_allowlists():
     if allowed_hosts is not None:
         if not client_host or client_host not in allowed_hosts:
             if logger_instance:
-                logger_instance.warning(
-                    f"Blocked request from unauthorized host: {client_host}"
-                )
+                logger_instance.warning(f"Blocked request from unauthorized host: {client_host}")
             return {"error": "true", "message": "Host not allowed"}, 403
     if request.path == "/scan":
         allowed_paths = app.config.get("ALLOWED_PATHS")
@@ -100,9 +96,7 @@ async def enforce_allowlists():
             if path:
                 try:
                     real_path = os.path.realpath(path)
-                    if not any(
-                        real_path.startswith(os.path.realpath(a)) for a in allowed_paths
-                    ):
+                    if not any(real_path.startswith(os.path.realpath(a)) for a in allowed_paths):
                         if logger_instance:
                             logger_instance.warning(f"Blocked request for path: {path}")
                         return {"error": "true", "message": "Path not allowed"}, 403
@@ -115,9 +109,7 @@ async def add_security_headers(response):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Strict-Transport-Security"] = (
-        "max-age=31536000; includeSubDomains"
-    )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
 
 
@@ -198,10 +190,7 @@ async def run_scan():
         bom_file_content = bom_file.read().decode("utf-8")
         try:
             bom_data = json_load(bom_file_content)
-            if (
-                not isinstance(bom_data, dict)
-                or bom_data.get("bomFormat") != "CycloneDX"
-            ):
+            if not isinstance(bom_data, dict) or bom_data.get("bomFormat") != "CycloneDX":
                 return {
                     "error": "true",
                     "message": "Uploaded file is not a valid CycloneDX BOM.",
@@ -217,9 +206,7 @@ async def run_scan():
             )
         if logger_instance:
             logger_instance.debug("Processing uploaded file")
-        tmp_bom_file = tempfile.NamedTemporaryFile(
-            delete=False, suffix=f".bom.{bom_file_suffix}"
-        )
+        tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".bom.{bom_file_suffix}")
         path = tmp_bom_file.name
         file_write(path, bom_file_content)
     if url:
@@ -261,9 +248,7 @@ async def run_scan():
                         )
                     bom_file_path = bfp.name
                 else:
-                    logger_instance.debug(
-                        "Problem generating the SBOM for %s %s", url, path
-                    )
+                    logger_instance.debug("Problem generating the SBOM for %s %s", url, path)
     # Path points to a SBOM file
     else:
         if os.path.exists(path):
@@ -281,9 +266,7 @@ async def run_scan():
                 logger_instance.debug("Empty package search attempted!")
         else:
             if logger_instance:
-                logger_instance.debug(
-                    "Scanning %d oss dependencies for issues", len(pkg_list)
-                )
+                logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
         bom_data = json_load(bom_file_path)
         if not bom_data:
             cleanup_temp(tmp_bom_file)
@@ -343,9 +326,7 @@ def run_server(options: ServerOptions):
     if options.allowed_hosts:
         app.config["ALLOWED_HOSTS"] = [h.strip() for h in options.allowed_hosts if h]
     if options.allowed_paths:
-        app.config["ALLOWED_PATHS"] = [
-            os.path.realpath(p) for p in options.allowed_paths if p
-        ]
+        app.config["ALLOWED_PATHS"] = [os.path.realpath(p) for p in options.allowed_paths if p]
     if options.max_content_length:
         app.config["MAX_CONTENT_LENGTH"] = options.max_content_length
     # Dirty hack to get access to the create_bom function
@@ -353,18 +334,14 @@ def run_server(options: ServerOptions):
         app.config["create_bom"] = options.create_bom
     logger = options.logger
     if logger:
-        logger.info(
-            f"dep-scan server running on {options.server_host}:{options.server_port}"
-        )
+        logger.info(f"dep-scan server running on {options.server_host}:{options.server_port}")
         if options.server_host not in (
             "127.0.0.1",
             "0000:0000:0000:0000:0000:0000:0000:0001",
             "0:0:0:0:0:0:0:1",
             "::1",
         ):
-            logger.warning(
-                "Server listening on non-local host without built-in authentication."
-            )
+            logger.warning("Server listening on non-local host without built-in authentication.")
     app.run(
         host=options.server_host,
         port=options.server_port,

@@ -10,9 +10,7 @@ def build_args():
     """
     Constructs command line arguments for the comparison tool
     """
-    parser = argparse.ArgumentParser(
-        description="Validate VDR/VEX files against BOM 1.5 schema."
-    )
+    parser = argparse.ArgumentParser(description="Validate VDR/VEX files against BOM 1.5 schema.")
     parser.add_argument(
         "--json",
         dest="vex_json",

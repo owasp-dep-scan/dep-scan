@@ -109,9 +109,7 @@ if os.getenv("DEPSCAN_THINK_MODE", "") in ("true", "1"):
     tlogger = logging.getLogger("depscan_thoughts")
     tlogger.setLevel(DEBUG)
     file_handler = logging.FileHandler(
-        os.getenv(
-            "DEPSCAN_THOUGHT_LOG", os.path.join(os.getcwd(), "depscan-thoughts.log")
-        )
+        os.getenv("DEPSCAN_THOUGHT_LOG", os.path.join(os.getcwd(), "depscan-thoughts.log"))
     )
     file_handler.setLevel(DEBUG)
     formatter = logging.Formatter("%(message)s")

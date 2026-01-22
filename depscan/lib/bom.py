@@ -74,16 +74,12 @@ def get_licenses(ele):
     for data in ele.findall(f"{namespace}licenses/{namespace}license/{namespace}id"):
         license_list.append(data.text)
     if not license_list:
-        for data in ele.findall(
-            f"{namespace}licenses/{namespace}license/{namespace}name"
-        ):
+        for data in ele.findall(f"{namespace}licenses/{namespace}license/{namespace}name"):
             if data is not None and data.text:
                 ld_list = [data.text]
                 if "http" in data.text:
                     ld_list = [
-                        os.path.basename(data.text)
-                        .replace(".txt", "")
-                        .replace(".html", "")
+                        os.path.basename(data.text).replace(".txt", "").replace(".html", "")
                     ]
                 elif "/" in data.text:
                     ld_list = [cleanup_license_string(data.text)]
@@ -139,9 +135,7 @@ def get_pkg_list_json(jsonfile):
         if bom_data.get("components"):
             for comp in bom_data.get("components", []):
                 licenses, vendor, url = get_license_vendor_url(comp)
-                pkgs.append(
-                    {**comp, "vendor": vendor, "licenses": licenses, "url": url}
-                )
+                pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
         return pkgs
 
 
@@ -214,9 +208,7 @@ def get_pkg_by_type(pkg_list, pkg_type):
     """
     if not pkg_list:
         return []
-    return [
-        pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)
-    ]
+    return [pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)]
 
 
 def create_bom(bom_file, src_dir=".", options=None):
@@ -264,10 +256,7 @@ def create_bom(bom_file, src_dir=".", options=None):
         elif bom_engine == "auto":
             # Prefer local CLI while scanning container images
             if any(
-                [
-                    t in ("docker", "podman", "oci", "os", "hardware")
-                    for t in project_type_list
-                ]
+                [t in ("docker", "podman", "oci", "os", "hardware") for t in project_type_list]
             ):
                 cdxgen_lib = CdxgenGenerator
                 if lifecycle_analysis_mode:
@@ -275,10 +264,7 @@ def create_bom(bom_file, src_dir=".", options=None):
                         "Lifecycle analysis is not supported for oci and os project types."
                     )
                     lifecycle_analysis_mode = True
-            elif (
-                shutil.which(os.getenv("DOCKER_CMD", "docker"))
-                and sys.platform != "win32"
-            ):
+            elif shutil.which(os.getenv("DOCKER_CMD", "docker")) and sys.platform != "win32":
                 cdxgen_lib = CdxgenImageBasedGenerator
     # We now have the cdxgen library to use.
     # For lifecycle analysis, we need to generate multiple BOM files
@@ -288,20 +274,14 @@ def create_bom(bom_file, src_dir=".", options=None):
     with console.status(
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
-        bom_result = cdxgen_lib(
-            src_dir, bom_file, logger=LOG, options=options
-        ).generate()
+        bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
         if not bom_result.success:
-            LOG.info(
-                "The cdxgen invocation was unsuccessful. Try generating the BOM separately."
-            )
+            LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
         return bom_result.success and os.path.exists(bom_file)
 
 
-def create_blint_bom(
-    bom_file: str, src_dir: str = ".", options: Optional[Dict] = None
-) -> bool:
+def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] = None) -> bool:
     """
     Method to create BOM file by using blint
 
@@ -317,14 +297,10 @@ def create_blint_bom(
     if reachability_analyzer != "off" and not options.get("deep"):
         options["deep"] = True
     blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=options)
-    with console.status(
-        f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER
-    ):
+    with console.status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:
-            LOG.info(
-                "The blint invocation was unsuccessful. Try generating the BOM separately."
-            )
+            LOG.info("The blint invocation was unsuccessful. Try generating the BOM separately.")
         return bom_result.success and os.path.exists(bom_file)
 
 
@@ -359,13 +335,9 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
         # This logic could get refactored in the future
         if reachability_analyzer != "off" and options.get("profile") != "research":
             coptions["profile"] = "research"
-        bom_result = cdxgen_lib(
-            src_dir, build_bom_file, logger=LOG, options=coptions
-        ).generate()
+        bom_result = cdxgen_lib(src_dir, build_bom_file, logger=LOG, options=coptions).generate()
         if not bom_result.success or not os.path.exists(build_bom_file):
-            LOG.debug(
-                "The cdxgen invocation was unsuccessful. Trying pre-build lifecycle."
-            )
+            LOG.debug("The cdxgen invocation was unsuccessful. Trying pre-build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:
             any_success = True
@@ -376,16 +348,12 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             src_dir, prebuild_bom_file, logger=LOG, options=coptions
         ).generate()
         if not bom_result.success or not os.path.exists(prebuild_bom_file):
-            LOG.debug(
-                "The cdxgen invocation was unsuccessful. Trying the build lifecycle."
-            )
+            LOG.debug("The cdxgen invocation was unsuccessful. Trying the build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:
             any_success = True
         # container bom. For this we need the image name.
-        container_image_name = os.getenv("DEPSCAN_SOURCE_IMAGE") or options.get(
-            "source_image"
-        )
+        container_image_name = os.getenv("DEPSCAN_SOURCE_IMAGE") or options.get("source_image")
         if container_image_name:
             status.update(f"Generating container BOM for '{src_dir}' with cdxgen.")
             coptions = {**options, "deep": "true", "project_type": ["oci"]}
@@ -397,9 +365,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
                 container_image_name, container_bom_file, logger=LOG, options=coptions
             ).generate()
             if not bom_result.success or not os.path.exists(container_bom_file):
-                LOG.debug(
-                    "The cdxgen invocation was unsuccessful. Trying for the next lifecycle."
-                )
+                LOG.debug("The cdxgen invocation was unsuccessful. Trying for the next lifecycle.")
                 LOG.debug(bom_result.command_output)
             else:
                 any_success = True
@@ -453,9 +419,7 @@ def update_tools_metadata(tools, bom_data, ds_version):
             },
         }
     components = tools.get("components", []) if tools else []
-    needs_ds_component = (
-        len([c for c in components if c.get("name") == "owasp-depscan"]) == 0
-    )
+    needs_ds_component = len([c for c in components if c.get("name") == "owasp-depscan"]) == 0
     if needs_ds_component:
         ds_purl = f"pkg:pypi/owasp-depscan@{ds_version}"
         components.append(

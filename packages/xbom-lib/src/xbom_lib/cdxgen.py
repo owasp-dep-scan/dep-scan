@@ -26,9 +26,7 @@ CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v12")
 
 # cdxgen default image to use
 DEFAULT_IMAGE_NAME = (
-    "default-secure"
-    if os.getenv("CDXGEN_SECURE_MODE", "") in ("true", "1")
-    else "default"
+    "default-secure" if os.getenv("CDXGEN_SECURE_MODE", "") in ("true", "1") else "default"
 )
 
 # cdxgen official image namespaces
@@ -81,9 +79,7 @@ def get_env_options_value(options: Dict, k: str, default: Optional[str] = None) 
 def get_image_for_type(options: Dict, project_type: str | list | None) -> str:
     if not project_type:
         return DEFAULT_IMAGE_NAME
-    project_types: list[str] = (
-        project_type if isinstance(project_type, list) else [project_type]
-    )
+    project_types: list[str] = project_type if isinstance(project_type, list) else [project_type]
     ptype = project_types[0] if len(project_types) == 1 else DEFAULT_IMAGE_NAME
     default_img = PROJECT_TYPE_IMAGE.get(ptype, PROJECT_TYPE_IMAGE[DEFAULT_IMAGE_NAME])
     return get_env_options_value(
@@ -251,12 +247,8 @@ class CdxgenGenerator(XBOMGenerator):
             set_slices_args(project_type_list, args, os.path.dirname(self.bom_file))
             if options.get("profile") not in ("generic",):
                 # This would help create openapi spec file inside the reports directory
-                env["ATOM_TOOLS_WORK_DIR"] = os.path.realpath(
-                    os.path.dirname(self.bom_file)
-                )
-                env["ATOM_TOOLS_OPENAPI_FILENAME"] = (
-                    f"{project_type_list[0]}-openapi.json"
-                )
+                env["ATOM_TOOLS_WORK_DIR"] = os.path.realpath(os.path.dirname(self.bom_file))
+                env["ATOM_TOOLS_OPENAPI_FILENAME"] = f"{project_type_list[0]}-openapi.json"
         if options.get("cdxgen_args"):
             args += shlex.split(options.get("cdxgen_args", ""))
         if len(lifecycles) == 1:
@@ -279,9 +271,7 @@ class CdxgenGenerator(XBOMGenerator):
             bom_result = exec_tool(
                 args,
                 self.source_dir
-                if not any(
-                    t in project_type_list for t in ("docker", "oci", "container")
-                )
+                if not any(t in project_type_list for t in ("docker", "oci", "container"))
                 and self.source_dir
                 and os.path.isdir(self.source_dir)
                 else None,
@@ -403,11 +393,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         output_dir = os.path.realpath(os.path.dirname(self.bom_file))
         # Setup environment variables
         for k, _ in os.environ.items():
-            if (
-                k.startswith("CDXGEN_")
-                or k.startswith("GIT")
-                or k in ("FETCH_LICENSE",)
-            ):
+            if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
         run_command_args += ["-e", f"CDXGEN_TIMEOUT_MS={CDXGEN_TIMEOUT_MS}"]
         # Enabling license fetch will improve metadata such as tags and description
@@ -423,9 +409,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         # Do not repeat the sponsorship banner. Please note that cdxgen and depscan are separate projects, so they ideally require separate sponsorships.
         run_command_args += ["-e", "CDXGEN_NO_BANNER=true"]
         # Do not repeat the CDXGEN_DEBUG_MODE environment variable
-        if os.getenv("SCAN_DEBUG_MODE") == "debug" and not os.getenv(
-            "CDXGEN_DEBUG_MODE"
-        ):
+        if os.getenv("SCAN_DEBUG_MODE") == "debug" and not os.getenv("CDXGEN_DEBUG_MODE"):
             run_command_args += ["-e", "CDXGEN_DEBUG_MODE=debug"]
         # Extra args like --platform=linux/amd64
         if os.getenv("DEPSCAN_DOCKER_ARGS"):
@@ -483,12 +467,8 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         # Should we pull the most recent image
         if needs_latest_image(image_name):
             if self.logger:
-                self.logger.debug(
-                    f"Pulling the image {image_name} using {container_command}."
-                )
-            exec_tool(
-                [container_command, "pull", "--quiet", image_name], logger=self.logger
-            )
+                self.logger.debug(f"Pulling the image {image_name} using {container_command}.")
+            exec_tool([container_command, "pull", "--quiet", image_name], logger=self.logger)
         if self.logger:
             self.logger.debug(f"Executing {' '.join(run_command_args)}")
         bom_result = exec_tool(

@@ -76,9 +76,7 @@ def test_parse_revision_history():
         "current_release_date": "2022-09-22T20:54:06",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06",
-        "revision_history": [
-            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
-        ],
+        "revision_history": [{"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}],
         "status": "final",
         "version": "1",
     }
@@ -160,9 +158,7 @@ def test_parse_revision_history():
         "current_release_date": "2022-09-22T20:54:06",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06",
-        "revision_history": [
-            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
-        ],
+        "revision_history": [{"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}],
         "status": "final",
         "version": "1",
     }
@@ -180,9 +176,7 @@ def test_parse_revision_history():
         "current_release_date": "2022-09-22T20:54:06",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06",
-        "revision_history": [
-            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
-        ],
+        "revision_history": [{"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}],
         "status": "final",
         "version": "1",
     }
@@ -200,9 +194,7 @@ def test_parse_revision_history():
         "current_release_date": "2022-09-22T20:54:06",
         "id": "ID",
         "initial_release_date": "2022-09-22T20:54:06",
-        "revision_history": [
-            {"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}
-        ],
+        "revision_history": [{"date": "2022-09-22T20:54:06", "number": "1", "summary": "Initial"}],
         "status": "final",
         "version": "1",
     }
@@ -230,10 +222,7 @@ def test_get_ref_summary():
     url = "https://github.com/user/repo/pull/123"
     assert get_ref_summary_helper(url, REF_MAP)[0] == "github-pull-user-repo-123"
     url = "https://github.com/user/repo/commit/123456789abcdef"
-    assert (
-        get_ref_summary_helper(url, REF_MAP)[0]
-        == "github-commit-user-repo-123456789abcdef"
-    )
+    assert get_ref_summary_helper(url, REF_MAP)[0] == "github-commit-user-repo-123456789abcdef"
     url = ""
     assert get_ref_summary_helper(url, REF_MAP)[0] == "Other"
     url = "https://example.com"
@@ -484,9 +473,7 @@ def test_parse_toml():
     if os.path.exists(
         os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml")
     ):
-        filepath = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml"
-        )
+        filepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "csaf.toml")
     else:
         filepath = "../contrib/csaf.toml"
     metadata = import_csaf_toml(filepath)
@@ -592,9 +579,7 @@ def test_get_products():
 
 def test_import_root_component():
     if os.path.exists(
-        os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"
-        )
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json")
     ):
         [prod, ref] = import_root_component(
             os.path.join(
@@ -612,9 +597,7 @@ def test_import_root_component():
                 "name": "vuln-spring",
                 "product_id": "vuln-spring:0.0.1-SNAPSHOT",
                 "product_identification_helper": {
-                    "purl": (
-                        "pkg:maven/com.example/vuln-spring@0.0.1-SNAPSHOT?type=jar"
-                    )
+                    "purl": ("pkg:maven/com.example/vuln-spring@0.0.1-SNAPSHOT?type=jar")
                 },
             }
         ]
@@ -624,8 +607,7 @@ def test_import_root_component():
         {
             "summary": "website",
             "url": (
-                "https://projects.spring.io/spring-boot/#/spring"
-                "-boot-starter-parent/vuln-spring"
+                "https://projects.spring.io/spring-boot/#/spring-boot-starter-parent/vuln-spring"
             ),
         },
         {
@@ -701,9 +683,7 @@ def test_verify_components_present():
         },
     }
     if os.path.exists(
-        os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"
-        )
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json")
     ):
         vdr_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "data", "bom-root-comp.json"
@@ -908,8 +888,7 @@ def test_add_vulnerabilities():
             ],
             "affects": [
                 {
-                    "ref": "pkg:maven/com.fasterxml.jackson.core/jackson"
-                    "-databind@2.9.6?type=jar",
+                    "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.6?type=jar",
                     "versions": [
                         {"version": "2.9.6", "status": "affected"},
                         {"version": "2.12.7.1", "status": "unaffected"},
@@ -995,8 +974,7 @@ def test_add_vulnerabilities():
             ],
             "affects": [
                 {
-                    "ref": "pkg:maven/com.fasterxml.jackson.core/jackson"
-                    "-databind@2.9.6?type=jar",
+                    "ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.6?type=jar",
                     "versions": [
                         {"version": "2.9.6", "status": "affected"},
                         {"version": "2.12.7.1", "status": "unaffected"},
@@ -1251,9 +1229,7 @@ def test_add_vulnerabilities():
             ],
             "product_status": {
                 "known_affected": ["com.fasterxml.jackson.core/jackson-databind@2.9.6"],
-                "known_not_affected": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
-                ],
+                "known_not_affected": ["com.fasterxml.jackson.core/jackson-databind@2.12.7.1"],
             },
             "references": [
                 {
@@ -1375,9 +1351,7 @@ def test_add_vulnerabilities():
             ],
             "product_status": {
                 "known_affected": ["com.fasterxml.jackson.core/jackson-databind@2.9.6"],
-                "known_not_affected": [
-                    "com.fasterxml.jackson.core/jackson-databind@2.12.7.1"
-                ],
+                "known_not_affected": ["com.fasterxml.jackson.core/jackson-databind@2.12.7.1"],
             },
             "references": [
                 {

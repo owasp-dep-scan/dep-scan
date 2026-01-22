@@ -25,9 +25,7 @@ def build_args():
     """
     Constructs command line arguments
     """
-    parser = argparse.ArgumentParser(
-        description="Collect npm packages for given search strings."
-    )
+    parser = argparse.ArgumentParser(description="Collect npm packages for given search strings.")
     parser.add_argument(
         "--keywords",
         dest="keywords",
@@ -168,18 +166,14 @@ def analyze_pkgs(output_file, pkg_list=None):
                 ):
                     risk_metrics["rank"] = pkg_rank.get(name)
                     risk_metrics["stars"] = pkg_stars.get(name)
-                    risk_metrics["dependents_count"] = pkg_dependents_count.get(
-                        name
-                    )
+                    risk_metrics["dependents_count"] = pkg_dependents_count.get(name)
                     download_stats = get_npm_download_stats(name)
                     rwriter.writerow(
                         [
                             purl,
                             risk_metrics.get("risk_score"),
                             risk_metrics.get("pkg_includes_binary_risk"),
-                            risk_metrics.get(
-                                "pkg_includes_binary_info", ""
-                            ).replace("\n", "\\n"),
+                            risk_metrics.get("pkg_includes_binary_info", "").replace("\n", "\\n"),
                             risk_metrics.get("pkg_attested_check"),
                             risk_metrics.get("pkg_deprecated_risk"),
                             risk_metrics.get("pkg_version_deprecated_risk"),
@@ -191,21 +185,22 @@ def analyze_pkgs(output_file, pkg_list=None):
                         ]
                     )
                     risky_pkg_found = True
-                    console.print(name, "with", download_stats.get("downloads"), "downloads matched the critieria")
+                    console.print(
+                        name,
+                        "with",
+                        download_stats.get("downloads"),
+                        "downloads matched the critieria",
+                    )
     if risky_pkg_found:
         console.print("Report", output_file, "created successfully")
     else:
-        console.print(
-            "No risks identified. Try searching with a different keyword."
-        )
+        console.print("No risks identified. Try searching with a different keyword.")
 
 
 def main():
     popular_only = False
     if not os.getenv("LIBRARIES_API_KEY"):
-        print(
-            "Set the environment variable LIBRARIES_API_KEY with a valid libraries.io API key"
-        )
+        print("Set the environment variable LIBRARIES_API_KEY with a valid libraries.io API key")
         popular_only = True
     args = build_args()
     keywords = args.keywords.split(",")
@@ -215,6 +210,7 @@ def main():
         analyze_with_npm(keywords, args.pages, args.output_file)
     else:
         from pybraries.search import Search
+
         search = Search()
         with Progress(
             console=console,

@@ -120,9 +120,7 @@ class SemanticReachability(FrameworkReachability):
                 reached_purls[normalized_to_original_purl[purl_no_version]] += 1
                 # Could this be endpoint reachable.
                 if endpoint_reached_purls:
-                    endpoint_reached_purls[
-                        normalized_to_original_purl[purl_no_version]
-                    ] += 1
+                    endpoint_reached_purls[normalized_to_original_purl[purl_no_version]] += 1
 
     def process(self) -> ReachabilityResult:
         analysis_options = self.analysis_options
@@ -148,16 +146,14 @@ class SemanticReachability(FrameworkReachability):
                             self._track_usage_targets(usage_targets, v)
                         # Ruby, Scala etc
                         if isinstance(v, dict) and v.get("x-atom-usages"):
-                            self._track_usage_targets(
-                                usage_targets, v.get("x-atom-usages")
-                            )
+                            self._track_usage_targets(usage_targets, v.get("x-atom-usages"))
         # Collect the direct purls based on the occurrences evidence in the BOMs
         if analysis_options.bom_files:
             for bom_file in analysis_options.bom_files:
                 data = json_load(bom_file)
                 lifecycles = data.get("metadata", {}).get("lifecycles", []) or []
                 is_post_build = any(
-                    [l for l in lifecycles if l.get("phase") == "post-build"]
+                    [aline for aline in lifecycles if aline.get("phase") == "post-build"]
                 )
                 # For now we will also include usability slice as well
                 for c in data.get("components", []):

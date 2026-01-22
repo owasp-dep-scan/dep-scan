@@ -18,11 +18,7 @@ def filter_ignored_dirs(dirs):
     :param dirs: Directories to ignore
     :return: Filtered directory list
     """
-    [
-        dirs.remove(d)
-        for d in list(dirs)
-        if d.lower() in ignore_directories or d.startswith(".")
-    ]
+    [dirs.remove(d) for d in list(dirs) if d.lower() in ignore_directories or d.startswith(".")]
     return dirs
 
 
@@ -115,9 +111,7 @@ def detect_project_type(src_dir):
     project_types = []
     if find_python_reqfiles(src_dir) or find_files(src_dir, ".py", quick=True):
         project_types.append("python")
-    if find_files(src_dir, "pom.xml", quick=True) or find_files(
-        src_dir, ".gradle", quick=True
-    ):
+    if find_files(src_dir, "pom.xml", quick=True) or find_files(src_dir, ".gradle", quick=True):
         project_types.append("java")
     if find_files(src_dir, ".gradle.kts", quick=True):
         project_types.append("kotlin")
@@ -129,9 +123,7 @@ def detect_project_type(src_dir):
         or find_files(src_dir, "rush.json", quick=True)
     ):
         project_types.append("nodejs")
-    if find_files(src_dir, "go.sum", quick=True) or find_files(
-        src_dir, "Gopkg.lock", quick=True
-    ):
+    if find_files(src_dir, "go.sum", quick=True) or find_files(src_dir, "Gopkg.lock", quick=True):
         project_types.append("go")
     if find_files(src_dir, "Cargo.lock", quick=True):
         project_types.append("rust")
@@ -172,9 +164,7 @@ def detect_project_type(src_dir):
     # Jenkins plugins or plain old jars
     if "java" not in project_types and find_files(src_dir, ".hpi", quick=True):
         project_types.append("jenkins")
-    if find_files(src_dir, ".yml", quick=True) or find_files(
-        src_dir, ".yaml", quick=True
-    ):
+    if find_files(src_dir, ".yml", quick=True) or find_files(src_dir, ".yaml", quick=True):
         project_types.append("yaml-manifest")
     return project_types
 

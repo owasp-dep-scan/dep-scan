@@ -7,7 +7,6 @@ from rich import box
 from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
-from rich.panel import Panel
 
 from depscan.lib.config import (
     COMMON_CHECK_TAGS,
@@ -74,9 +73,7 @@ def explain(
 The following endpoints and code hotspots were identified by depscan. Verify that proper authentication and authorization mechanisms are in place to secure them.""")
         any_endpoints_shown = False
         for ospec in openapi_spec_files:
-            pattern_methods = print_endpoints(
-                ospec, rsection if not any_endpoints_shown else None
-            )
+            pattern_methods = print_endpoints(ospec, rsection if not any_endpoints_shown else None)
             if not any_endpoints_shown and pattern_methods:
                 any_endpoints_shown = True
 
@@ -84,9 +81,7 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
     if explanation_mode in ("Endpoints",):
         return
     section_title = (
-        "Non-Reachable Flows"
-        if explanation_mode in ("NonReachables",)
-        else "Reachable Flows"
+        "Non-Reachable Flows" if explanation_mode in ("NonReachables",) else "Reachable Flows"
     )
     for sf in slices_files:
         if len(slices_files) > 1:
@@ -136,8 +131,8 @@ Below are several data flows identified by depscan, including reachable ones. Us
 def _track_usage_targets(usage_targets, usages_object):
     for k, v in usages_object.items():
         for file, lines in v.items():
-            for l in lines:
-                usage_targets.add(f"{file}#{l}")
+            for aline in lines:
+                usage_targets.add(f"{file}#{aline}")
 
 
 def print_endpoints(ospec, header_section=None):
@@ -271,11 +266,7 @@ def explain_reachables(
         if not source_sink_desc or not flow_tree or len(flow_tree.children) < 4:
             continue
         # In non-reachables mode, we are not interested in reachable flows.
-        if (
-            explanation_mode
-            and explanation_mode in ("NonReachables",)
-            and not has_check_tag
-        ):
+        if explanation_mode and explanation_mode in ("NonReachables",) and not has_check_tag:
             continue
         if (
             source_code_str
@@ -285,15 +276,13 @@ def explain_reachables(
             continue
         if (
             sink_code_str
-            and sink_reachable_explanations[sink_code_str] + 1
-            > max_sink_reachable_explanations
+            and sink_reachable_explanations[sink_code_str] + 1 > max_sink_reachable_explanations
         ):
             continue
         purls_str = ",".join(sorted(areach.get("purls", [])))
         if (
             purls_str
-            and purls_reachable_explanations[purls_str] + 1
-            > max_purls_reachable_explanations
+            and purls_reachable_explanations[purls_str] + 1 > max_purls_reachable_explanations
         ):
             continue
         if not has_explanation:
@@ -471,7 +460,9 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
         if param_name:
             source_sink_desc = f"""{param_str} [red]{param_name}[/red] {method_in_emoji} to the {method_str} [bold]{parent_method}[/bold]"""
         else:
-            source_sink_desc = f"""{method_str.capitalize()} [red]{parent_method}[/red] {method_in_emoji}"""
+            source_sink_desc = (
+                f"""{method_str.capitalize()} [red]{parent_method}[/red] {method_in_emoji}"""
+            )
     elif flow.get("label") == "CALL" and flow.get("isExternal"):
         method_full_name = flow.get("fullName", "")
         if not method_full_name.startswith("<"):
@@ -493,9 +484,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
         or " => {" in source_sink_desc
     ):
         source_sink_desc = "The flow originates from a callback function."
-    elif (
-        "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower()
-    ):
+    elif "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower():
         source_sink_desc = "The flow originates from middleware."
     elif len(purls) == 0:
         if tags:
@@ -504,7 +493,9 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
             )
     elif len(purls) == 1:
         if is_endpoint_reachable:
-            source_sink_desc = f"{source_sink_desc} can be used to reach this package from certain endpoints."
+            source_sink_desc = (
+                f"{source_sink_desc} can be used to reach this package from certain endpoints."
+            )
         elif source_sink_desc:
             if is_crypto_flow:
                 source_sink_desc = "Reachable crypto-flow."
@@ -519,13 +510,9 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
                     f"{source_sink_desc} can be used to reach {len(purls)} packages."
                 )
             elif is_crypto_flow:
-                source_sink_desc = (
-                    f"{len(purls)} packages reachable from this crypto-flow."
-                )
+                source_sink_desc = f"{len(purls)} packages reachable from this crypto-flow."
             else:
-                source_sink_desc = (
-                    f"{len(purls)} packages reachable from this data-flow."
-                )
+                source_sink_desc = f"{len(purls)} packages reachable from this data-flow."
     return (
         source_sink_desc,
         is_endpoint_reachable,
@@ -593,7 +580,9 @@ def flow_to_str(explanation_mode, flow, project_type):
         param_name = flow.get("name")
         if param_name == "this":
             param_name = ""
-        node_desc = f"{flow.get('parentMethodName')}([red]{param_name}[/red]) :right_arrow_curving_left:"
+        node_desc = (
+            f"{flow.get('parentMethodName')}([red]{param_name}[/red]) :right_arrow_curving_left:"
+        )
         if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     elif flow.get("label") in ("IDENTIFIER", "CALL"):
@@ -694,9 +683,7 @@ def save_llm_prompts(purl_grouped_flows, purl_vuln_map, project_type, prompts_fi
             f.write("\n---\n\n")
 
 
-def explain_flows(
-    explanation_mode, flows, purls, project_type, vdr_result, purl_vuln_map
-):
+def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl_vuln_map):
     """"""
     tree = None
     comments = []
@@ -754,9 +741,7 @@ def explain_flows(
                 is_crypto_flow,
                 max_severity,
                 vuln_ids,
-            ) = flow_to_source_sink(
-                idx, aflow, purls, project_type, vdr_result, purl_vuln_map
-            )
+            ) = flow_to_source_sink(idx, aflow, purls, project_type, vdr_result, purl_vuln_map)
         file_loc, flow_str, node_desc, has_check_tag_flow = flow_to_str(
             explanation_mode, aflow, project_type
         )

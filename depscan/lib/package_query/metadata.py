@@ -60,8 +60,7 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                     continue
                 # Npm returns this error if the package is not found
                 if isinstance(json_data, dict) and (
-                    json_data.get("code") == "MethodNotAllowedError"
-                    or r.status_code > 400
+                    json_data.get("code") == "MethodNotAllowedError" or r.status_code > 400
                 ):
                     continue
                 is_private_pkg = False
@@ -76,36 +75,21 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
                 risk_metrics = {}
                 match registry_type:
                     case "npm":
-                        risk_metrics = npm_pkg_risk(
-                            json_data, is_private_pkg, scope, pkg
-                        )
+                        risk_metrics = npm_pkg_risk(json_data, is_private_pkg, scope, pkg)
                     case "pypi":
                         project_type_pkg = f"python:{key}".lower()
                         required_pkgs = scoped_pkgs.get("required", [])
                         optional_pkgs = scoped_pkgs.get("optional", [])
                         excluded_pkgs = scoped_pkgs.get("excluded", [])
-                        if (
-                            pkg.get("purl") in required_pkgs
-                            or project_type_pkg in required_pkgs
-                        ):
+                        if pkg.get("purl") in required_pkgs or project_type_pkg in required_pkgs:
                             scope = "required"
-                        elif (
-                            pkg.get("purl") in optional_pkgs
-                            or project_type_pkg in optional_pkgs
-                        ):
+                        elif pkg.get("purl") in optional_pkgs or project_type_pkg in optional_pkgs:
                             scope = "optional"
-                        elif (
-                            pkg.get("purl") in excluded_pkgs
-                            or project_type_pkg in excluded_pkgs
-                        ):
+                        elif pkg.get("purl") in excluded_pkgs or project_type_pkg in excluded_pkgs:
                             scope = "excluded"
-                        risk_metrics = pypi_pkg_risk(
-                            json_data, is_private_pkg, scope, pkg
-                        )
+                        risk_metrics = pypi_pkg_risk(json_data, is_private_pkg, scope, pkg)
                     case "cargo":
-                        risk_metrics = cargo_pkg_risk(
-                            json_data, is_private_pkg, scope, pkg
-                        )
+                        risk_metrics = cargo_pkg_risk(json_data, is_private_pkg, scope, pkg)
                     case _:
                         pass
                 # TODO: remove unnecessary if elif statements

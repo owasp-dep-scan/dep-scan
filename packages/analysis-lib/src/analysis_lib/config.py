@@ -342,9 +342,7 @@ REF_MAP = {
         ): "Exploit",
         ADVISORY: "Advisory",
         re.compile(r"cve-[0-9]{4,}-[0-9]{4,}$", re.IGNORECASE): "CVE Record",
-        re.compile(
-            "hackerone|bugcrowd|bug-bounty|huntr.dev|bounties", re.IGNORECASE
-        ): "BugBounty",
+        re.compile("hackerone|bugcrowd|bug-bounty|huntr.dev|bounties", re.IGNORECASE): "BugBounty",
         re.compile(r"(?P<org>snyk).io/vuln/(?P<id>\S+)", re.IGNORECASE): "Advisory",
         re.compile(r"(?P<org>vuldb).com/\?id.(?P<id>\d+)", re.IGNORECASE): "Advisory",
         re.compile("poc", re.IGNORECASE): "POC",
@@ -356,9 +354,7 @@ REF_MAP = {
         # "chrome.google.com/webstore": "Chrome Extension",
     },
     "exploits": {
-        "seclists": re.compile(
-            r"(?P<org>seclists).org/(?P<id>\S+/\d{4}/\w{3}/\d{1,2})"
-        ),
+        "seclists": re.compile(r"(?P<org>seclists).org/(?P<id>\S+/\d{4}/\w{3}/\d{1,2})"),
         "generic": re.compile(
             r"(?P<org>[^/\s.]+)(?:.blogspot)?.(?:com|org|zone|gov)/(?:[\w-]+/){1,5}(?P<id>[^/\s)]+)",
             re.IGNORECASE,
@@ -438,8 +434,7 @@ CWE_MAP = {
     71: "DEPRECATED: Apple .DS_Store",
     72: "Improper Handling of Apple HFS+ Alternate Data Stream Path",
     73: "External Control of File Name or Path",
-    74: "Improper Neutralization of Special Elements in Output Used by a "
-    "Downstream Component",
+    74: "Improper Neutralization of Special Elements in Output Used by a Downstream Component",
     75: "Failure to Sanitize Special Elements into a Different Plane",
     76: "Improper Neutralization of Equivalent Special Elements",
     77: "Improper Neutralization of Special Elements used in a Command",
@@ -854,8 +849,7 @@ CWE_MAP = {
     535: "Exposure of Information Through Shell Error Message",
     536: "Servlet Runtime Error Message Containing Sensitive Information",
     537: "Java Runtime Error Message Containing Sensitive Information",
-    538: "Insertion of Sensitive Information into Externally-Accessible File or"
-    " Directory",
+    538: "Insertion of Sensitive Information into Externally-Accessible File or Directory",
     539: "Use of Persistent Cookies Containing Sensitive Information",
     540: "Inclusion of Sensitive Information in Source Code",
     541: "Inclusion of Sensitive Information in an Include File",
@@ -907,8 +901,7 @@ CWE_MAP = {
     590: "Free of Memory not on the Heap",
     591: "Sensitive Data Storage in Improperly Locked Memory",
     592: "DEPRECATED: Authentication Bypass Issues",
-    593: "Authentication Bypass: OpenSSL CTX Object Modified after SSL Objects "
-    "are Created",
+    593: "Authentication Bypass: OpenSSL CTX Object Modified after SSL Objects are Created",
     594: "J2EE Framework: Saving Unserializable Objects to Disk",
     595: "Comparison of Object References Instead of Object Contents",
     596: "DEPRECATED: Incorrect Semantic Object Comparison",
@@ -1040,8 +1033,7 @@ CWE_MAP = {
     781: "Improper Address Validation in IOCTL with METHOD_NEITHER I/O Control Code",
     782: "Exposed IOCTL with Insufficient Access Control",
     783: "Operator Precedence Logic Error",
-    784: "Reliance on Cookies without Validation and Integrity Checking in a "
-    "Security Decision",
+    784: "Reliance on Cookies without Validation and Integrity Checking in a Security Decision",
     785: "Use of Path Manipulation Function without Maximum-sized Buffer",
     786: "Access of Memory Location Before Start of Buffer",
     787: "Out-of-bounds Write",
@@ -1093,11 +1085,9 @@ CWE_MAP = {
     912: "Hidden Functionality",
     913: "Improper Control of Dynamically-Managed Code Resources",
     914: "Improper Control of Dynamically-Identified Variables",
-    915: "Improperly Controlled Modification of Dynamically-Determined Object "
-    "Attributes",
+    915: "Improperly Controlled Modification of Dynamically-Determined Object Attributes",
     916: "Use of Password Hash With Insufficient Computational Effort",
-    917: "Improper Neutralization of Special Elements used in an Expression "
-    "Language Statement",
+    917: "Improper Neutralization of Special Elements used in an Expression Language Statement",
     918: "Server-Side Request Forgery",
     920: "Improper Restriction of Power Consumption",
     921: "Storage of Sensitive Data in a Mechanism without Access Control",
@@ -1126,11 +1116,9 @@ CWE_MAP = {
     "Handling of Adversarial Input Perturbations",
     1041: "Use of Redundant Code",
     1042: "Static Member Data Element outside of a Singleton Class Element",
-    1043: "Data Element Aggregating an Excessively Large Number of "
-    "Non-Primitive Elements",
+    1043: "Data Element Aggregating an Excessively Large Number of Non-Primitive Elements",
     1044: "Architecture with Number of Horizontal Layers Outside of Expected Range",
-    1045: "Parent Class with a Virtual Destructor and a Child Class without a "
-    "Virtual Destructor",
+    1045: "Parent Class with a Virtual Destructor and a Child Class without a Virtual Destructor",
     1046: "Creation of Immutable Text Using String Concatenation",
     1047: "Modules with Circular Dependencies",
     1048: "Invokable Control Element with Large Number of Outward Calls",
@@ -1150,8 +1138,7 @@ CWE_MAP = {
     1061: "Insufficient Encapsulation",
     1062: "Parent Class with References to Child Class",
     1063: "Creation of Class Instance within a Static Code Block",
-    1064: "Invokable Control Element with Signature Containing an Excessive "
-    "Number of Parameters",
+    1064: "Invokable Control Element with Signature Containing an Excessive Number of Parameters",
     1065: "Runtime Resource Management Control Element in a Component Built "
     "to Run on Application Servers",
     1066: "Missing Serialization Control Element",
@@ -1161,8 +1148,7 @@ CWE_MAP = {
     1070: "Serializable Data Element Containing non-Serializable Item Elements",
     1071: "Empty Code Block",
     1072: "Data Resource Access without Use of Connection Pooling",
-    1073: "Non-SQL Invokable Control Element with Excessive Number of Data "
-    "Resource Accesses",
+    1073: "Non-SQL Invokable Control Element with Excessive Number of Data Resource Accesses",
     1074: "Class with Excessively Deep Inheritance",
     1075: "Unconditional Control Flow Transfer outside of Switch Block",
     1076: "Insufficient Adherence to Expected Conventions",
@@ -1185,8 +1171,7 @@ CWE_MAP = {
     1094: "Excessive Index Range Scan for a Data Resource",
     1095: "Loop Condition Value Update within the Loop",
     1096: "Singleton Class Instance Creation without Proper Locking or Synchronization",
-    1097: "Persistent Storable Data Element without Associated Comparison "
-    "Control Element",
+    1097: "Persistent Storable Data Element without Associated Comparison Control Element",
     1098: "Data Element containing Pointer Item without Proper Copy Control Element",
     1099: "Inconsistent Naming Conventions for Identifiers",
     1100: "Insufficient Isolation of System-Dependent Functions",
@@ -1242,8 +1227,7 @@ CWE_MAP = {
     1232: "Improper Lock Behavior After Power State Transition",
     1233: "Security-Sensitive Hardware Controls with Missing Lock Bit Protection",
     1234: "Hardware Internal or Debug Modes Allow Override of Locks",
-    1235: "Incorrect Use of Autoboxing and Unboxing for Performance Critical "
-    "Operations",
+    1235: "Incorrect Use of Autoboxing and Unboxing for Performance Critical Operations",
     1236: "Improper Neutralization of Formula Elements in a CSV File",
     1239: "Improper Zeroization of Hardware Register",
     1240: "Use of a Cryptographic Primitive with a Risky Implementation",
@@ -1254,15 +1238,12 @@ CWE_MAP = {
     1245: "Improper Finite State Machines",
     1246: "Improper Write Handling in Limited-write Non-Volatile Memories",
     1247: "Improper Protection Against Voltage and Clock Glitches",
-    1248: "Semiconductor Defects in Hardware Logic with Security-Sensitive "
-    "Implications",
-    1249: "Application-Level Admin Tool with Inconsistent View of Underlying "
-    "Operating System",
+    1248: "Semiconductor Defects in Hardware Logic with Security-Sensitive Implications",
+    1249: "Application-Level Admin Tool with Inconsistent View of Underlying Operating System",
     1250: "Improper Preservation of Consistency Between Independent "
     "Representations of Shared State",
     1251: "Mirrored Regions with Different Values",
-    1252: "CPU Hardware Not Configured to Support Exclusivity of Write and "
-    "Execute Operations",
+    1252: "CPU Hardware Not Configured to Support Exclusivity of Write and Execute Operations",
     1253: "Incorrect Selection of Fuse Values",
     1254: "Incorrect Comparison Logic Granularity",
     1255: "Comparison Logic is Vulnerable to Power Side-Channel Attacks",
@@ -1274,13 +1255,11 @@ CWE_MAP = {
     1261: "Improper Handling of Single Event Upsets",
     1262: "Improper Access Control for Register Interface",
     1263: "Improper Physical Access Control",
-    1264: "Hardware Logic with Insecure De-Synchronization between Control and "
-    "Data Channels",
+    1264: "Hardware Logic with Insecure De-Synchronization between Control and Data Channels",
     1265: "Unintended Reentrant Invocation of Non-reentrant Code Via Nested Calls",
     1266: "Improper Scrubbing of Sensitive Data from Decommissioned Device",
     1267: "Policy Uses Obsolete Encoding",
-    1268: "Policy Privileges are not Assigned Consistently Between Control and "
-    "Data Agents",
+    1268: "Policy Privileges are not Assigned Consistently Between Control and Data Agents",
     1269: "Product Released in Non-Release Configuration",
     1270: "Generation of Incorrect Security Tokens",
     1271: "Uninitialized Value on Reset for Registers Holding Security Settings",
@@ -1290,8 +1269,7 @@ CWE_MAP = {
     1275: "Sensitive Cookie with Improper SameSite Attribute",
     1276: "Hardware Child Block Incorrectly Connected to Parent System",
     1277: "Firmware Not Updateable",
-    1278: "Missing Protection Against Hardware Reverse Engineering Using "
-    "Integrated Circuit",
+    1278: "Missing Protection Against Hardware Reverse Engineering Using Integrated Circuit",
     1279: "Cryptographic Operations are run Before Supporting Units are Ready",
     1280: "Access Control Check Implemented After Asset is Accessed",
     1281: "Sequence of Processor Instructions Leads to Unexpected Behavior",
@@ -1310,8 +1288,7 @@ CWE_MAP = {
     1294: "Insecure Security Identifier Mechanism",
     1295: "Debug Messages Revealing Unnecessary Information",
     1296: "Incorrect Chaining or Granularity of Debug Components",
-    1297: "Unprotected Confidential Information on Device is Accessible by "
-    "OSAT Vendors",
+    1297: "Unprotected Confidential Information on Device is Accessible by OSAT Vendors",
     1298: "Hardware Logic Contains Race Conditions",
     1299: "Missing Protection Mechanism for Alternate Hardware Interface",
     1300: "Improper Protection of Physical Side Channels",
@@ -1335,8 +1312,7 @@ CWE_MAP = {
     1321: "Improperly Controlled Modification of Object Prototype Attributes",
     1322: "Use of Blocking Code in Single-threaded, Non-blocking Context",
     1323: "Improper Management of Sensitive Trace Data",
-    1324: "DEPRECATED: Sensitive Information Accessible by Physical Probing "
-    "of JTAG Interface",
+    1324: "DEPRECATED: Sensitive Information Accessible by Physical Probing of JTAG Interface",
     1325: "Improperly Controlled Sequential Memory Allocation",
     1326: "Missing Immutable Root of Trust in Hardware",
     1327: "Binding to an Unrestricted IP Address",
@@ -1352,8 +1328,7 @@ CWE_MAP = {
     1338: "Improper Protections Against Hardware Overheating",
     1339: "Insufficient Precision or Accuracy of a Real Number",
     1341: "Multiple Releases of Same Resource or Handle",
-    1342: "Information Exposure through Microarchitectural State after "
-    "Transient Execution",
+    1342: "Information Exposure through Microarchitectural State after Transient Execution",
     1351: "Improper Handling of Hardware Behavior in Exceptionally Cold Environments",
     1357: "Reliance on Insufficiently Trustworthy Component",
     1384: "Improper Handling of Physical or Environmental Conditions",

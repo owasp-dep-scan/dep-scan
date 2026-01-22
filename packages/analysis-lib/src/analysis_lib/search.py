@@ -109,9 +109,7 @@ def find_vulns(
     expanded_list = []
     if fuzzy_search:
         for pkg in pkg_list:
-            tmp_expanded, pkg_aliases, tmp_purl_aliases = generate_variations(
-                pkg, pkg_aliases
-            )
+            tmp_expanded, pkg_aliases, tmp_purl_aliases = generate_variations(pkg, pkg_aliases)
             expanded_list.extend(tmp_expanded)
             purl_aliases |= tmp_purl_aliases
     else:
@@ -121,9 +119,7 @@ def find_vulns(
         if res := search_expanded(pkg, fuzzy_search, search_order):
             raw_results.extend(res)
     raw_results = dedup(project_type, raw_results)
-    pkg_aliases = dealias_packages(
-        raw_results, pkg_aliases=pkg_aliases, purl_aliases=purl_aliases
-    )
+    pkg_aliases = dealias_packages(raw_results, pkg_aliases=pkg_aliases, purl_aliases=purl_aliases)
     return raw_results, pkg_aliases, purl_aliases
 
 
@@ -186,13 +182,9 @@ def generate_variations(pkg: Dict, pkg_aliases: Dict) -> Tuple[List, Dict, Dict]
         for vari in variations:
             vari_full_pkg = f"{vari.get('vendor')}:{vari.get('name')}"
             if pkg_aliases.get(f"{vendor.lower()}:{name.lower()}:{version}"):
-                pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"].append(
-                    vari_full_pkg
-                )
+                pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"].append(vari_full_pkg)
             else:
-                pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = [
-                    vari_full_pkg
-                ]
+                pkg_aliases[f"{vendor.lower()}:{name.lower()}:{version}"] = [vari_full_pkg]
             if pkg.get("purl"):
                 purl_aliases[f"{vari_full_pkg.lower()}:{version}"] = pkg["purl"]
     return expanded_list, pkg_aliases, purl_aliases

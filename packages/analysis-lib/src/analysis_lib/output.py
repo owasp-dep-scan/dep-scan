@@ -76,9 +76,7 @@ def pkg_sub_tree(
     if not bom_dependency_tree:
         return [purl], Tree(
             label=get_pkg_display(purl, purl, extra_text=extra_text),
-            style=Style(
-                color="bright_red" if pkg_severity.upper() == "CRITICAL" else None
-            ),
+            style=Style(color="bright_red" if pkg_severity.upper() == "CRITICAL" else None),
         )
     if len(bom_dependency_tree) > 1:
         for dep in bom_dependency_tree[1:]:
@@ -204,15 +202,11 @@ def generate_console_output(
             table.add_row(
                 arow[0],
                 "\n".join(insights),
-                f"[bold]{arow[2] or ''}[/bold]"
-                if i == 0
-                else "",  # Reduce fix version repetition
+                f"[bold]{arow[2] or ''}[/bold]" if i == 0 else "",  # Reduce fix version repetition
                 arow[3],
                 arow[4],
                 end_section=(i == len(grouped_purls[purl]) - 1),
-                style=Style(dim=True)
-                if not arow[1] or arow[3] in dimmable_severities
-                else None,
+                style=Style(dim=True) if not arow[1] or arow[3] in dimmable_severities else None,
             )
     return pkg_group_rows, table
 
@@ -307,7 +301,9 @@ def find_next_steps(
         elif is_exploitable:
             next_step_str = ":stop_sign: Malicious package that is also exploitable! This is a [bold]top-priority security incident[/bold]."
         else:
-            next_step_str = ":stop_sign: Malicious package! This is a [bold]security incident[/bold]."
+            next_step_str = (
+                ":stop_sign: Malicious package! This is a [bold]security incident[/bold]."
+            )
     # Package has a number of CVEs.
     elif len(cve_list) > 5:
         if fix_version:
@@ -342,7 +338,9 @@ def find_next_steps(
             else:
                 next_step_str = f"These CVEs are likely harmless, but an exploitable flow is present. Update to version [bold]{fix_version}[/bold]."
         else:
-            next_step_str = "Check the package’s issue tracker for available patches and workarounds."
+            next_step_str = (
+                "Check the package’s issue tracker for available patches and workarounds."
+            )
     elif is_deployed:
         if fix_version:
             next_step_str = "Check if the package can be maintained as a 'runtime' dependency instead of bundling."
@@ -355,25 +353,25 @@ def find_next_steps(
             elif is_reachable:
                 next_step_str = f"Update to version '{fix_version}'."
             else:
-                next_step_str = (
-                    "Ignore this vulnerability if this CWE category is not relevant."
-                )
+                next_step_str = "Ignore this vulnerability if this CWE category is not relevant."
         elif possible_reachable_service:
             next_step_str = "Ignore this vulnerability if the package uses or interacts with an allow-listed service."
         else:
-            next_step_str = (
-                "Consider replacing this package with a well-maintained alternative."
-            )
+            next_step_str = "Consider replacing this package with a well-maintained alternative."
     elif fix_version:
         if possible_reachable_service:
             next_step_str = f"Coordinate with the library’s publisher or community to plan an update to version ‘{fix_version}’ at your convenience."
         else:
-            next_step_str = f"Update to version '{fix_version}' and test for any functional defects."
+            next_step_str = (
+                f"Update to version '{fix_version}' and test for any functional defects."
+            )
     else:
         next_step_str = "depscan is unable to determine a fixed version. Refer to the project’s documentation and issue tracker for possible upgrade options."
     if not is_binary_detection and src_files:
         src_label = "Manifest locations" if len(src_files) > 1 else "Manifest file"
-        next_step_str = f"""{next_step_str}\n\n[bold]{src_label}:[/bold]\n{NEWLINE.join(src_files)}"""
+        next_step_str = (
+            f"""{next_step_str}\n\n[bold]{src_label}:[/bold]\n{NEWLINE.join(src_files)}"""
+        )
     return {
         "next_step_str": next_step_str,
         "is_malware": is_malware,
@@ -622,8 +620,7 @@ Vulnerability Disclosure Report
             if not counts.has_os_packages:
                 if not options.scoped_pkgs:
                     rmessage += (
-                        "\nNOTE: Package usage analysis was not "
-                        "performed for this project."
+                        "\nNOTE: Package usage analysis was not performed for this project."
                     )
             else:
                 rmessage += "\n:scissors: Consider trimming this image by removing any unwanted packages, or use a slim base image instead."
@@ -678,9 +675,7 @@ Vulnerability Disclosure Report
                     )
                 else:
                     v_text = (
-                        "vulnerability"
-                        if counts.fix_version_count == 1
-                        else "vulnerabilities"
+                        "vulnerability" if counts.fix_version_count == 1 else "vulnerabilities"
                     )
                     rmessage += (
                         f"\nYou can remediate [bright_green]"
@@ -895,9 +890,7 @@ def pkg_risks_table(
                         ):
                             risk_categories.append(f":cross_mark: {help_text}")
                         elif rk.endswith("_check"):
-                            risk_categories.append(
-                                f":white_heavy_check_mark: {help_text}"
-                            )
+                            risk_categories.append(f":white_heavy_check_mark: {help_text}")
                         else:
                             risk_categories.append(f":warning: {help_text}")
                         risk_categories_simple.append(help_text)
@@ -908,9 +901,7 @@ def pkg_risks_table(
     if report_data:
         # Store the risk audit findings in jsonl format
         if risk_report_file:
-            file_write(
-                risk_report_file, "\n".join([json.dumps(row) for row in report_data])
-            )
+            file_write(risk_report_file, "\n".join([json.dumps(row) for row in report_data]))
     return table, report_data
 
 
@@ -967,9 +958,7 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
     if report_data:
         # Store the license scan findings in jsonl format
         if license_report_file:
-            file_write(
-                license_report_file, "\n".join([json.dumps(row) for row in report_data])
-            )
+            file_write(license_report_file, "\n".join([json.dumps(row) for row in report_data]))
     return table
 
 

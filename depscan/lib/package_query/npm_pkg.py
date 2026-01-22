@@ -1,9 +1,16 @@
 from datetime import datetime
 
 from depscan.lib import config
-from depscan.lib.package_query.pkg_query import httpclient, compute_time_risks, calculate_risk_score
+from depscan.lib.package_query.pkg_query import (
+    httpclient,
+    compute_time_risks,
+    calculate_risk_score,
+)
 
-def search_npm(keywords=None, insecure_only=False, unstable_only=False, pages=1, popularity=1.0, size=250):
+
+def search_npm(
+    keywords=None, insecure_only=False, unstable_only=False, pages=1, popularity=1.0, size=250
+):
     pkg_list = []
     for page in range(0, pages):
         from_value = page * 250
@@ -36,9 +43,9 @@ def search_npm(keywords=None, insecure_only=False, unstable_only=False, pages=1,
                             {
                                 "name": name,
                                 "version": package.get("version"),
-                                "purl": f'pkg:npm/{package.get("name").replace("@", "%40")}@{package.get("version")}',
+                                "purl": f"pkg:npm/{package.get('name').replace('@', '%40')}@{package.get('version')}",
                                 "insecure": is_pkg_insecure,
-                                "unstable": flags.get("unstable", False)
+                                "unstable": flags.get("unstable", False),
                             }
                         )
         except Exception as e:
@@ -129,41 +136,35 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
             # Capture the remote host
             if theversion["binary"].get("host"):
                 risk_metrics["pkg_includes_binary_info"] = (
-                    f'Host: {theversion["binary"].get("host")}\nBinary: {theversion["binary"].get("module_name")}'
+                    f"Host: {theversion['binary'].get('host')}\nBinary: {theversion['binary'].get('module_name')}"
                 )
             # For some packages,
             elif theversion["binary"].get("napi_versions"):
                 if theversion.get("repository", {}).get("url"):
                     risk_metrics["pkg_includes_binary_info"] = (
-                        f'Repository: {theversion.get("repository").get("url")}'
+                        f"Repository: {theversion.get('repository').get('url')}"
                     )
                 elif theversion.get("homepage"):
                     risk_metrics["pkg_includes_binary_info"] = (
-                        f'Homepage: {theversion.get("homepage")}'
+                        f"Homepage: {theversion.get('homepage')}"
                     )
         elif bin_block_dict and maybe_binary_npm_package(pkg.get("name")):
             # See #317
             risk_metrics["pkg_includes_binary_risk"] = True
-            risk_metrics["pkg_includes_binary_value"] = len(
-                bin_block_dict.keys()
-            )
+            risk_metrics["pkg_includes_binary_value"] = len(bin_block_dict.keys())
             bin_block_desc = ""
             for k, v in bin_block_dict.items():
                 bin_block_desc = f"{bin_block_desc}\n{k}: {v}"
             if bin_block_desc:
-                risk_metrics["pkg_includes_binary_info"] = (
-                    f"Binary commands:{bin_block_desc}"
-                )
+                risk_metrics["pkg_includes_binary_info"] = f"Binary commands:{bin_block_desc}"
         # Look for slsa attestations
-        if theversion.get("dist", {}).get("attestations") and theversion.get(
-            "dist", {}
-        ).get("signatures"):
+        if theversion.get("dist", {}).get("attestations") and theversion.get("dist", {}).get(
+            "signatures"
+        ):
             attestations = theversion.get("dist").get("attestations")
             signatures = theversion.get("dist").get("signatures")
             if (
-                attestations.get("url").startswith(
-                    "https://registry.npmjs.org/"
-                )
+                attestations.get("url").startswith("https://registry.npmjs.org/")
                 and attestations.get("provenance", {}).get("predicateType", "")
                 == "https://slsa.dev/provenance/v1"
             ):
@@ -195,34 +196,22 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
             # Eg: pkg:npm/zeromq@6.0.0-beta.19
             dev_deps = list(theversion.get("devDependencies", {}).keys())
             direct_deps = list(theversion.get("dependencies", {}).keys())
-            if "prebuild" in " ".join(dev_deps) or "prebuild" in " ".join(
-                direct_deps
-            ):
+            if "prebuild" in " ".join(dev_deps) or "prebuild" in " ".join(direct_deps):
                 risk_metrics["pkg_includes_binary_risk"] = True
                 risk_metrics["pkg_includes_binary_value"] = binary_count
             if not risk_metrics.get("pkg_includes_binary_risk"):
                 if theversion.get("libc"):
                     risk_metrics["pkg_includes_binary_risk"] = True
-                    risk_metrics["pkg_includes_binary_value"] = len(
-                        theversion.get("libc", [])
-                    )
+                    risk_metrics["pkg_includes_binary_value"] = len(theversion.get("libc", []))
                 elif (
                     theversion.get("dist", {}).get("fileCount", 0) <= 2
                     and theversion.get("dist", {}).get("unpackedSize")
-                    and (
-                        theversion.get("dist").get("unpackedSize", 0)
-                        / (1000 * 1000)
-                    )
-                    > 20
+                    and (theversion.get("dist").get("unpackedSize", 0) / (1000 * 1000)) > 20
                 ):
                     risk_metrics["pkg_includes_binary_risk"] = True
                     risk_metrics["pkg_includes_binary_value"] = 1
-    is_deprecated = (
-        versions.get(latest_version, {}).get("deprecated", None) is not None
-    )
-    is_version_deprecated = (
-        True if theversion and theversion.get("deprecated") else False
-    )
+    is_deprecated = versions.get(latest_version, {}).get("deprecated", None) is not None
+    is_version_deprecated = True if theversion and theversion.get("deprecated") else False
     # Is the package deprecated
     if is_deprecated:
         risk_metrics["pkg_deprecated_risk"] = True
@@ -231,9 +220,7 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
         risk_metrics["pkg_version_deprecated_risk"] = True
         risk_metrics["pkg_version_deprecated_value"] = 1
         # The deprecation reason for a specific version are often useful
-        risk_metrics["pkg_version_deprecated_info"] = theversion.get(
-            "deprecated"
-        )
+        risk_metrics["pkg_version_deprecated_info"] = theversion.get("deprecated")
     scripts_block_list = []
     # There are some packages on npm with incorrectly configured scripts
     # block Good news is that the install portion would only for if the

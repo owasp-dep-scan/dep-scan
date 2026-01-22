@@ -1,8 +1,6 @@
 import math
-import os
 
 from depscan.lib import config
-from depscan.lib.logger import LOG
 
 try:
     from hishel.httpx import SyncCacheClient
@@ -48,9 +46,7 @@ def get_lookup_url(registry_type, pkg):
     return None, None
 
 
-def get_category_score(
-    param, max_value=config.DEFAULT_MAX_VALUE, weight=config.DEFAULT_WEIGHT
-):
+def get_category_score(param, max_value=config.DEFAULT_MAX_VALUE, weight=config.DEFAULT_WEIGHT):
     """
     Return parameter score given its current value, max value and
     parameter weight.
@@ -98,9 +94,7 @@ def calculate_risk_score(risk_metrics):
         if k.endswith("_risk") and v is True:
             risk_category = k.replace("_risk", "")
             risk_category_value = risk_metrics.get(f"{risk_category}_value", 0)
-            risk_category_max = getattr(
-                config, f"{risk_category}_max", config.DEFAULT_MAX_VALUE
-            )
+            risk_category_max = getattr(config, f"{risk_category}_max", config.DEFAULT_MAX_VALUE)
             risk_category_weight = getattr(
                 config, f"{risk_category}_weight", config.DEFAULT_WEIGHT
             )
@@ -108,18 +102,13 @@ def calculate_risk_score(risk_metrics):
             value = risk_category_value
             if (
                 risk_category_base
-                and (
-                    isinstance(risk_category_base, float)
-                    or isinstance(risk_category_base, int)
-                )
+                and (isinstance(risk_category_base, float) or isinstance(risk_category_base, int))
                 and risk_category_base > risk_category_value
             ):
                 value = risk_category_base - risk_category_value
             elif risk_category_max and risk_category_max > risk_category_value:
                 value = risk_category_max - risk_category_value
-            cat_score = get_category_score(
-                value, risk_category_max, risk_category_weight
-            )
+            cat_score = get_category_score(value, risk_category_max, risk_category_weight)
             total_weight += risk_category_weight
             working_score += min(cat_score, 1)
             num_risks += 1
@@ -128,9 +117,7 @@ def calculate_risk_score(risk_metrics):
     return working_score
 
 
-def compute_time_risks(
-    risk_metrics, created_now_diff, mod_create_diff, latest_now_diff
-):
+def compute_time_risks(risk_metrics, created_now_diff, mod_create_diff, latest_now_diff):
     """
     Compute risks based on creation, modified and time elapsed
 
@@ -148,9 +135,7 @@ def compute_time_risks(
     # Check if the package is at least 1 year old. Quarantine period.
     if created_now_diff.total_seconds() < config.created_now_quarantine_seconds:
         risk_metrics["created_now_quarantine_seconds_risk"] = True
-        risk_metrics["created_now_quarantine_seconds_value"] = (
-            latest_now_diff.total_seconds()
-        )
+        risk_metrics["created_now_quarantine_seconds_value"] = latest_now_diff.total_seconds()
 
     # Check for the maximum seconds difference between latest version and now
     if latest_now_diff.total_seconds() > config.latest_now_max_seconds:
@@ -166,9 +151,7 @@ def compute_time_risks(
         # packages
         if mod_create_diff.total_seconds() < config.mod_create_min_seconds:
             risk_metrics["mod_create_min_seconds_risk"] = True
-            risk_metrics["mod_create_min_seconds_value"] = (
-                mod_create_diff.total_seconds()
-            )
+            risk_metrics["mod_create_min_seconds_value"] = mod_create_diff.total_seconds()
     # Check for the minimum seconds difference between latest version and now
     if latest_now_diff.total_seconds() < config.latest_now_min_seconds:
         risk_metrics["latest_now_min_seconds_risk"] = True

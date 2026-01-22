@@ -5,6 +5,7 @@ This module provides a class, `ArgumentParser`, which extends the functionality
 of `argparse.ArgumentParser` by allowing users to specify default values for
 arguments in a TOML file, in addition to the command line.
 """
+
 # Based on https://github.com/florianmahner/tomlparse/blob/main/tomlparse/argparse.py
 # MIT license
 import argparse
@@ -45,8 +46,11 @@ class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         default_config = os.path.join(os.getcwd(), ".config", "depscan.toml")
-        self.add_argument("--config", help="Path to the configuration file. Default: $PWD/.config/depscan.toml",
-                          default=os.getenv("DEPSCAN_CONFIG", default_config))
+        self.add_argument(
+            "--config",
+            help="Path to the configuration file. Default: $PWD/.config/depscan.toml",
+            default=os.getenv("DEPSCAN_CONFIG", default_config),
+        )
 
     def extract_args(
         self, args: Optional[List[str]] = None, namespace: Optional[object] = None

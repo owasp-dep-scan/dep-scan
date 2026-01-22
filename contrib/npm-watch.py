@@ -16,9 +16,7 @@ with httpx.stream("GET", url=url, params=settings, timeout=30) as r:
                 doc = json_obj.get("doc")
                 if doc.get("_deleted"):
                     continue
-                risk_metrics = npm_pkg_risk(
-                    json_obj.get("doc"), False, None, {"name": npm_pkg}
-                )
+                risk_metrics = npm_pkg_risk(json_obj.get("doc"), False, None, {"name": npm_pkg})
                 if risk_metrics and (
                     risk_metrics["risk_score"] > 0.4
                     or risk_metrics.get("pkg_includes_binary_risk")

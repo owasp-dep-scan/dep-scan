@@ -100,14 +100,10 @@ class VDRAnalyzer(XBOMAnalyzer):
         optional_pkgs = options.scoped_pkgs.get("optional", [])
         # Can we identify more optional packages?
         if prebuild_purls and build_purls:
-            predict_optionals(
-                prebuild_purls, build_purls, postbuild_purls, optional_pkgs
-            )
+            predict_optionals(prebuild_purls, build_purls, postbuild_purls, optional_pkgs)
         # Retrieve any dependency tree from the SBOM
         # This logic could be improved to retrieve multiple matching dependency trees
-        bom_dependency_tree = retrieve_bom_dependency_tree(
-            options.bom_file, options.bom_dir
-        )
+        bom_dependency_tree = retrieve_bom_dependency_tree(options.bom_file, options.bom_dir)
         # OCI properties will give us information about the container layer
         # Can we do anything clever with this information?
         oci_props = retrieve_oci_properties(options.bom_file, options.bom_dir)
@@ -137,22 +133,20 @@ class VDRAnalyzer(XBOMAnalyzer):
                 )
             else:
                 # All our focus has gone into this particular method.
-                counts, vuln, add_to_pkg_group_rows, likely_false_positive = (
-                    analyze_cve_vuln(
-                        vuln_occ_dict,
-                        reached_purls,
-                        direct_purls,
-                        reached_services,
-                        endpoint_reached_purls,
-                        optional_pkgs,
-                        required_pkgs,
-                        prebuild_purls,
-                        build_purls,
-                        postbuild_purls,
-                        purl_identities,
-                        bom_dependency_tree,
-                        counts,
-                    )
+                counts, vuln, add_to_pkg_group_rows, likely_false_positive = analyze_cve_vuln(
+                    vuln_occ_dict,
+                    reached_purls,
+                    direct_purls,
+                    reached_services,
+                    endpoint_reached_purls,
+                    optional_pkgs,
+                    required_pkgs,
+                    prebuild_purls,
+                    build_purls,
+                    postbuild_purls,
+                    purl_identities,
+                    bom_dependency_tree,
+                    counts,
                 )
                 # When multiple BOMs are scanned, we might end up with duplicate vulns
                 # This section attempts to filter the results further.

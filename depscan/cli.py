@@ -131,9 +131,7 @@ def vdr_analyze_summarize(
     reached_services = {}
     endpoint_reached_purls = {}
     # Perform the reachability analysis first
-    reach_result = get_reachability_impl(
-        reachability_analyzer, reachability_options
-    ).process()
+    reach_result = get_reachability_impl(reachability_analyzer, reachability_options).process()
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
     if reach_result and reach_result.success:
         direct_purls = reach_result.direct_purls
@@ -165,9 +163,7 @@ def vdr_analyze_summarize(
     ds_version = get_version()
     vdr_result = VDRAnalyzer(vdr_options=options).process()
     # Set vdr_file in report folder
-    vdr_file = (
-        os.path.join(reports_dir, os.path.basename(bom_file)) if bom_file else None
-    )
+    vdr_file = os.path.join(reports_dir, os.path.basename(bom_file)) if bom_file else None
     vdr_file = vdr_file.replace(".cdx.json", ".vdr.json") if vdr_file else None
     if not vdr_file and bom_dir:
         vdr_file = os.path.join(bom_dir, DEPSCAN_DEFAULT_VDR_FILE)
@@ -186,9 +182,7 @@ def vdr_analyze_summarize(
             export_bom(cdx_vdr_data, ds_version, pkg_vulnerabilities, vdr_file)
             LOG.debug(f"The VDR file '{vdr_file}' was created successfully.")
         else:
-            LOG.debug(
-                f"VDR file '{vdr_file}' was not created for the type {project_type}."
-            )
+            LOG.debug(f"VDR file '{vdr_file}' was not created for the type {project_type}.")
         summary = summary_stats(pkg_vulnerabilities)
     elif bom_dir or bom_file or pkg_list:
         if project_type != "bom":
@@ -347,9 +341,7 @@ def run_depscan(args):
     if (
         args.reachability_analyzer == "SemanticReachability"
     ) and args.vuln_analyzer != "LifecycleAnalyzer":
-        LOG.debug(
-            "Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis."
-        )
+        LOG.debug("Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis.")
         depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
     # Should we download the latest vdb.
@@ -373,9 +365,7 @@ def run_depscan(args):
                 "The latest vulnerability database is not found. Follow the documentation to manually download it."
             )
     if args.csaf:
-        toml_file_path = os.getenv(
-            "DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml")
-        )
+        toml_file_path = os.getenv("DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml"))
         if not os.path.exists(toml_file_path):
             LOG.info("CSAF toml not found, creating template in %s", src_dir)
             write_toml(toml_file_path)
@@ -442,8 +432,7 @@ def run_depscan(args):
         vuln_analyzer = args.vuln_analyzer
         # Are we performing a lifecycle analysis
         if not args.search_purl and (
-            vuln_analyzer == "LifecycleAnalyzer"
-            or (vuln_analyzer == "auto" and bom_dir_mode)
+            vuln_analyzer == "LifecycleAnalyzer" or (vuln_analyzer == "auto" and bom_dir_mode)
         ):
             if args.reachability_analyzer == "SemanticReachability":
                 if not args.bom_dir:
@@ -461,12 +450,8 @@ def run_depscan(args):
                     "Lifecycle-based vulnerability analysis requested for project type '%s'. This might take a while ...",
                     project_type,
                 )
-            prebuild_bom_file = os.path.join(
-                reports_dir, f"sbom-prebuild-{project_type}.cdx.json"
-            )
-            build_bom_file = os.path.join(
-                reports_dir, f"sbom-build-{project_type}.cdx.json"
-            )
+            prebuild_bom_file = os.path.join(reports_dir, f"sbom-prebuild-{project_type}.cdx.json")
+            build_bom_file = os.path.join(reports_dir, f"sbom-build-{project_type}.cdx.json")
             postbuild_bom_file = os.path.join(
                 reports_dir, f"sbom-postbuild-{project_type}.cdx.json"
             )
@@ -488,9 +473,7 @@ def run_depscan(args):
                 args.bom_dir = os.path.realpath(reports_dir)
         # If the user opts out of lifecycle analysis, we need to maintain multiple SBOMs based on the project type.
         bom_file = os.path.join(reports_dir, f"sbom-{project_type}.cdx.json")
-        risk_report_file = os.path.join(
-            reports_dir, f"depscan-risk-{project_type}.json"
-        )
+        risk_report_file = os.path.join(reports_dir, f"depscan-risk-{project_type}.json")
         # Are we scanning a single purl
         if args.search_purl:
             bom_file = None
@@ -562,20 +545,13 @@ def run_depscan(args):
         # Depending on the SBOM tool used, there may be details about component usage and scopes. Let’s analyze and interpret that information.
         scoped_pkgs = get_pkgs_by_scope(pkg_list)
         # Is the user interested in seeing license risks? Handle that first before any security-related analysis.
-        if (
-            os.getenv("FETCH_LICENSE", "") in (True, "1", "true")
-            or "license" in args.profile
-        ):
+        if os.getenv("FETCH_LICENSE", "") in (True, "1", "true") or "license" in args.profile:
             licenses_results = bulk_lookup(
                 build_license_data(license_data_dir, spdx_license_list),
                 pkg_list=pkg_list,
             )
-            license_report_file = os.path.join(
-                reports_dir, f"license-{project_type}.json"
-            )
-            ltable = licenses_risk_table(
-                project_type, licenses_results, license_report_file
-            )
+            license_report_file = os.path.join(reports_dir, f"license-{project_type}.json")
+            ltable = licenses_risk_table(project_type, licenses_results, license_report_file)
             if ltable and not args.no_vuln_table:
                 console.print(ltable)
         # Do we support OSS risk audit for this type? If yes, proceed with the relevant checks.
@@ -682,11 +658,7 @@ def run_depscan(args):
                 )
         # We could be dealing with multiple bom files
         bom_files = (
-            get_all_bom_files(args.bom_dir)
-            if args.bom_dir
-            else [bom_file]
-            if bom_file
-            else []
+            get_all_bom_files(args.bom_dir) if args.bom_dir else [bom_file] if bom_file else []
         )
         if not pkg_list and not bom_files:
             LOG.debug("Empty package search attempted!")
@@ -705,9 +677,9 @@ def run_depscan(args):
         # From there, we can further narrow it down to flows that are Endpoint-Reachable, Exploitable, Container-Escapable, etc.
         reachability_analyzer = depscan_options.get("reachability_analyzer")
         reachability_options = None
-        if (
-            reachability_analyzer and reachability_analyzer != "off"
-        ) or depscan_options.get("profile") != "generic":
+        if (reachability_analyzer and reachability_analyzer != "off") or depscan_options.get(
+            "profile"
+        ) != "generic":
             reachability_options = ReachabilityAnalysisKV(
                 project_types=[project_type],
                 src_dir=src_dir,

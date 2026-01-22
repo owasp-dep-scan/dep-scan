@@ -63,12 +63,8 @@ def compare(trivy_json, depscan_json):
         purl = line_obj.get("purl")
         purl_obj = PackageURL.from_string(purl).to_dict()
         name = purl_obj.get("name")
-        depscan_pkgs.add(
-            f"""{name}:{purl_obj.get("version")}:{line_obj.get("fix_version", "")}"""
-        )
-        print(
-            line_obj.get("id"), purl_obj.get("version"), line_obj.get("fix_version", "")
-        )
+        depscan_pkgs.add(f"""{name}:{purl_obj.get("version")}:{line_obj.get("fix_version", "")}""")
+        print(line_obj.get("id"), purl_obj.get("version"), line_obj.get("fix_version", ""))
     print("-----------------------------------\n")
 
     print("Packages in Trivy but not in depscan")
