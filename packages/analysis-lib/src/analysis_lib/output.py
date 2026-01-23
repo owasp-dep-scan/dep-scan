@@ -790,6 +790,8 @@ def summary_stats(results):
         ratings = i.get("ratings")
         if ratings:
             sev = ratings[0].get("severity", "").upper()
+            if not sev:
+                sev = "UNSPECIFIED"
             summary[sev] += 1
 
     return summary
@@ -808,6 +810,7 @@ def pkg_risks_table(
     :param project_type: Project type
     :param scoped_pkgs: A dict of lists of required/optional/excluded packages.
     :param risk_results: A dict of the risk metrics and scope for each package.
+    :param pkg_max_risk_score: Max risk score
     :param risk_report_file: Path to the JSON file for the risk audit findings.
     """
     if not risk_results:

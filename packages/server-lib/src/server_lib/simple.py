@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from custom_json_diff.lib.utils import file_write, json_load
 from quart import request, Quart
 from rich.console import Console
+from vdb.lib import search
 from vdb.lib.npm import NpmSource
 
 from analysis_lib import VdrAnalysisKV
@@ -332,6 +333,12 @@ def run_server(options: ServerOptions):
     # Dirty hack to get access to the create_bom function
     if options.create_bom:
         app.config["create_bom"] = options.create_bom
+    if options.custom_data_directory:
+        if options.logger:
+            options.logger.info(
+                f"Loading custom vulnerability data from {options.custom_data_directory}"
+            )
+        search.load_custom_data(options.custom_data_directory)
     logger = options.logger
     if logger:
         logger.info(f"dep-scan server running on {options.server_host}:{options.server_port}")
