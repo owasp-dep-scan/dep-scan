@@ -37,7 +37,7 @@ in
         };
         java = lib.mkIf (lib.elem config.profile [ "android" "flutter" "reactNative" ] == false) {
           enable = true;
-          jdk.package = pkgs.jdk23_headless;
+          jdk.package = pkgs.jdk25_headless;
         };
         ruby = {
           enable = lib.mkIf (config.profile == "ruby") true;

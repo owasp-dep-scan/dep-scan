@@ -680,7 +680,15 @@ def cve_to_vdr(cve: CVE, vid: str):
     except AttributeError:
         description, detail = "", ""
     if not source:
-        source = {"name": cve.root.cveMetadata.assignerShortName.root.capitalize()}
+        assigner_short_name = cve.root.cveMetadata.assignerShortName
+        assigner_name = ""
+        if assigner_short_name:
+            if hasattr(assigner_short_name, "root"):
+                assigner_name = str(assigner_short_name.root)
+            else:
+                assigner_name = str(assigner_short_name)
+
+        source = {"name": assigner_name.capitalize()}
         if source.get("name") == "Github_m":
             source = {
                 "name": "GitHub Advisory Database",
