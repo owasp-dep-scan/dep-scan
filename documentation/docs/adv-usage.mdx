@@ -8,8 +8,8 @@ sidebar_position: 8
 
 To download security advisories from GitHub, a personal access token with minimal permissions is necessary.
 
--   Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
--   Token (classic): Grant no permissions
+- Fine-grained token: Grant no permissions and select the following for repository access: `Public Repositories (read-only)`
+- Token (classic): Grant no permissions
 
 ```bash
 export GITHUB_TOKEN="<PAT token>"
@@ -19,9 +19,8 @@ export GITHUB_TOKEN="<PAT token>"
 
 Depscan comes with a suggest mode enabled by default to simplify the triaging experience. The fix version for each vulnerability is retrieved from the sources. Sometimes, there might be known vulnerabilities in the fix version reported. Eg: in the below screenshot the fix versions suggested for jackson-databind might contain known vulnerabilities.
 
-[//]: # (![Normal mode]&#40;docs/depscan-normal.png&#41;)
-
-[//]: # (![Suggest mode]&#40;docs/depscan-suggest.png&#41;)
+[//]: # "![Normal mode](docs/depscan-normal.png)"
+[//]: # "![Suggest mode](docs/depscan-suggest.png)"
 
 Notice, how the new suggested version is `2.9.10.5` which is an optimal fix version. Please note that the optimal fix version may not be the appropriate version for your application based on compatibility.
 
@@ -91,7 +90,7 @@ export FETCH_LICENSE=true
 
 The license data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behavior could change in the future once the detection logic gets improved.
 
-[//]: # (![License scan]&#40;docs/license-scan.png&#41;)
+[//]: # "![License scan](docs/license-scan.png)"
 
 ## Kubernetes and Cloud apps
 
@@ -129,11 +128,11 @@ Severity counts:
 
 The objects available are taken from the CycloneDX \*.vdr.json BOM file generated, just have a look at the file for its full structure:
 
--   `metadata`
--   `vulnerabilities`
--   `components`
--   `dependencies`
--   `services`
+- `metadata`
+- `vulnerabilities`
+- `components`
+- `dependencies`
+- `services`
 
 `summary` is a dictionary type with vulnerability severity quantities as shown in the example above.
 `pkg_vulnerabilities` - Same as `vulnerabilities` from the VDR
@@ -141,3 +140,91 @@ The objects available are taken from the CycloneDX \*.vdr.json BOM file generate
 
 Furthermore, insights are imaginable to be made available to the template, please reach out or contribute on demand.
 We appreciate it if you like to contribute your report templates as examples, please add/find them [here](https://github.com/owasp-dep-scan/dep-scan/blob/master/contrib/report-templates).
+
+## Custom Vulnerability Data
+
+VDB 6 supports loading custom vulnerability data from a local directory at runtime. This allows you to:
+
+1.  **Add Private Vulnerabilities:** Include internal CVEs that are not public.
+2.  **Override False Positives:** Correct data returned by the official database by marking specific versions as `unaffected`.
+
+Custom data must follow the **CVE 5.2 JSON Schema**. Supported file extensions are `.json`, `.yaml`, `.yml`, and `.toml`.
+
+To use custom data, pass the directory path to the `--custom-data` argument.
+
+```shell
+depscan --purl pkg:npm/my-lib@1.0.0 --custom-data /path/to/custom/vulns
+```
+
+Custom data is also supported in server mode.
+
+```shell
+depscan --server --custom-data /path/to/custom/vulns
+```
+
+### Example 1: Adding a Private Vulnerability
+
+Create a file `private-vuln.yaml`. Since you are defining a new vulnerability record, you use the `cna` container.
+
+```yaml
+dataType: CVE_RECORD
+dataVersion: "5.2"
+cveMetadata:
+    cveId: PRIVATE-2025-001
+    assignerOrgId: 00000000-0000-4000-8000-000000000000
+    state: PUBLISHED
+    datePublished: "2025-01-01T00:00:00Z"
+    dateUpdated: "2025-01-01T00:00:00Z"
+containers:
+    cna:
+        providerMetadata:
+            orgId: 00000000-0000-4000-8000-000000000000
+        descriptions:
+            - lang: en
+              value: "Private vulnerability in internal library"
+        affected:
+            - vendor: internal
+              product: my-lib
+              packageName: my-lib
+              packageURL: pkg:npm/my-lib
+              versions:
+                  - version: "1.0.0"
+                    status: affected
+                    versionType: semver
+                    lessThan: "2.0.0"
+```
+
+### Example 2: Overriding a False Positive
+
+If the official database reports `CVE-2023-9999` for `pkg:pypi/requests` but you have determined it is a false positive for your specific version, you can override it using an **ADP (Authorized Data Publisher)** container. This is the recommended way to append or dispute existing vulnerability data.
+
+**Logic:** If a CVE ID and Package URL combination exists in your custom data, VDB will **ignore** the entry from the official database and use yours instead.
+
+Create `override.yaml`:
+
+```yaml
+dataType: CVE_RECORD
+dataVersion: "5.2"
+cveMetadata:
+    cveId: CVE-2023-9999
+    assignerOrgId: 00000000-0000-4000-8000-000000000000
+    state: PUBLISHED
+containers:
+    # Use 'adp' to append/modify existing vulnerability data
+    adp:
+        - providerMetadata:
+              orgId: 00000000-0000-4000-8000-000000000000
+              shortName: "MySecTeam"
+          descriptions:
+              - lang: en
+                value: "Override to mark specific version as unaffected"
+          affected:
+              - product: requests
+                packageName: requests
+                packageURL: pkg:pypi/requests
+                versions:
+                    # Explicitly mark your version as unaffected
+                    - version: "2.31.0"
+                      status: unaffected
+                      versionType: semver
+```

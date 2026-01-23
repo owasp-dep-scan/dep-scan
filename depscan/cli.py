@@ -25,7 +25,7 @@ from analysis_lib.reachability import get_reachability_impl
 from custom_json_diff.lib.utils import json_load
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
-from vdb.lib import config
+from vdb.lib import config, search
 from vdb.lib import db6 as db_lib
 from vdb.lib.utils import parse_purl
 
@@ -288,6 +288,7 @@ def run_depscan(args):
                 debug=args.enable_debug or os.environ.get("SCAN_DEBUG_MODE") == "debug",
                 create_bom=create_bom,
                 max_content_length=os.getenv("DEPSCAN_SERVER_MAX_CONTENT_LENGTH"),
+                custom_data_directory=args.custom_data,
             )
             return simple.run_server(server_options)
         else:
@@ -382,6 +383,9 @@ def run_depscan(args):
             )
             sys.exit(0)
     pkg_list, project_types_list = set_project_types(args, src_dir)
+    if args.custom_data:
+        LOG.info(f"Loading custom vulnerability data from {args.custom_data}")
+        search.load_custom_data(args.custom_data)
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         perform_risk_audit = True

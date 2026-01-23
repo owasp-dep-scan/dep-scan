@@ -21,3 +21,4 @@ class ServerOptions:
     max_content_length: int = 100 * 1024 * 1024  # 100MB
     # Hack
     create_bom: Optional[Callable] = None
+    custom_data_directory: Optional[str] = None

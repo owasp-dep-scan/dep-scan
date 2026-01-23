@@ -172,6 +172,11 @@ def build_parser():
         help="Scan a single package url.",
     )
     parser.add_argument(
+        "--custom-data",
+        dest="custom_data",
+        help="Path to directory containing custom vulnerability data (JSON/YAML/TOML) to override/augment results.",
+    )
+    parser.add_argument(
         "--report-template",
         dest="report_template",
         help="Jinja template file used for rendering a custom report",

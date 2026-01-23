@@ -163,6 +163,8 @@ options:
   --bom BOM             Examine using the given Software Bill-of-Materials (SBOM) file in CycloneDX format. Use cdxgen command to produce one.
   --bom-dir BOM_DIR     Examine all the Bill-of-Materials (BOM) files in the given directory.
   --purl SEARCH_PURL    Scan a single package url.
+  --custom-data CUSTOM_DATA
+                        Path to directory containing custom vulnerability data (JSON/YAML/TOML) to override/augment results.
   --report-template REPORT_TEMPLATE
                         Jinja template file used for rendering a custom report
   --report-name REPORT_NAME
