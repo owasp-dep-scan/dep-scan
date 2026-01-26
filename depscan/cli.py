@@ -346,25 +346,30 @@ def run_depscan(args):
         depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
     # Should we download the latest vdb.
-    if db_lib.needs_update(
-        days=0,
-        hours=VDB_AGE_HOURS,
-        default_status=db_lib.get_db_file_metadata is not None,
-    ):
-        if ORAS_AVAILABLE:
-            with console.status(
-                f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
-                spinner=SPINNER,
-            ) as vdb_download_status:
-                if not IS_CI:
-                    vdb_download_status.stop()
-                # This line may exit with an exception if the database cannot be downloaded.
-                # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
-                download_image(vdb_database_url, config.DATA_DIR)
-        else:
+    if args.offline and db_lib.get_db_file_metadata:
             LOG.warning(
-                "The latest vulnerability database is not found. Follow the documentation to manually download it."
+                "Cached vdb will be used. Will not fetch database updates in OFFLINE mode"
             )
+    else: 
+        if db_lib.needs_update(
+            days=0,
+            hours=VDB_AGE_HOURS,
+            default_status=db_lib.get_db_file_metadata is not None,
+        ):
+            if ORAS_AVAILABLE:
+                with console.status(
+                    f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
+                    spinner=SPINNER,
+                ) as vdb_download_status:
+                    if not IS_CI:
+                        vdb_download_status.stop()
+                    # This line may exit with an exception if the database cannot be downloaded.
+                    # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
+                    download_image(vdb_database_url, config.DATA_DIR)
+            else:
+                LOG.warning(
+                    "The latest vulnerability database is not found. Follow the documentation to manually download it."
+                )
     if args.csaf:
         toml_file_path = os.getenv("DEPSCAN_CSAF_TEMPLATE", os.path.join(src_dir, "csaf.toml"))
         if not os.path.exists(toml_file_path):
