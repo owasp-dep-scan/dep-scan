@@ -318,4 +318,10 @@ def build_parser():
         action="version",
         version="%(prog)s " + get_version(),
     )
+    parser.add argument(
+        "--x",
+        "--offline",
+        help="Run depscan with cached database. Will check for database updates",
+        action="store_true"
+    )
     return parser
