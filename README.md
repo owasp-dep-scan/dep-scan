@@ -98,7 +98,6 @@ dep-scan is ideal for use during continuous integration (CI) and as a local deve
 ### Scanning projects locally (Python version)
 
 ```bash
-sudo npm install -g @cyclonedx/cdxgen
 # Normal version recommended for most users (MIT)
 pip install owasp-depscan
 
@@ -106,9 +105,12 @@ pip install owasp-depscan
 pip install owasp-depscan[all]
 ```
 
-This would install two commands called `cdxgen` and `depscan`.
+This would install `depscan`.
 
-You can invoke the scan command directly with the various options.
+You can invoke the scan command directly with the various options
+
+> [!NOTE]
+> depscan requires docker to generate sbom using [cdxgen](https://github.com/cdxgen/cdxgen)
 
 ```bash
 cd <project to scan>
