@@ -268,7 +268,7 @@ async def run_scan():
         else:
             if logger_instance:
                 logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-        bom_data = json_load(bom_file)
+        bom_data = json_loads(bom_file_content)
         if not bom_data:
             cleanup_temp(tmp_bom_file)
             return (
