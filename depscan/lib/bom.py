@@ -521,7 +521,7 @@ def annotate_vdr(vdr_file, txt_report_file):
     vdr = json_load(vdr_file)
     metadata = vdr.get("metadata", {})
     # Some cyclonedx sbom don't containg tools.components
-    if "components" in metadata.get("tools"):
+    if metadata and "components" in metadata.get("tools"):
         tools = metadata.get("tools", {}).get("components", {})
     else:
         tools = {}

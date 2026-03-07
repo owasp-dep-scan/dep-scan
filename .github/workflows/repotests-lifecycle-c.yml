@@ -14,9 +14,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-      # TODO: Restore all the OS and python versions
         os: ['ubuntu-24.04']
-        python-version: ['3.13']
+        python-version: ['3.14']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

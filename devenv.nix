@@ -26,7 +26,7 @@ in
           enable = true;
           venv.enable = true;
           venv.quiet = true;
-          version = "3.13";
+          version = "3.14";
           uv.enable = true;
           uv.sync.allExtras = true;
           uv.sync.enable = true;
@@ -98,8 +98,8 @@ in
         mkdir -p $PNPM_GLOBAL_DIR
         export PATH="$PNPM_GLOBAL_DIR/bin:$PATH"
         pnpm config set global-dir "$PNPM_GLOBAL_DIR" --location=global
-        pnpm add -g --allow-build=sqlite3 https://github.com/CycloneDX/cdxgen.git
-        uv sync --all-extras --all-packages --dev -p 3.13 --active
+        pnpm add -g --allow-build=sqlite3 https://github.com/cdxgen/cdxgen.git
+        uv sync --all-extras --all-packages --dev -p 3.14 --active
       '';
 
       # Tasks

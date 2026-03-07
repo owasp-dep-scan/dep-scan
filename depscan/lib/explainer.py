@@ -486,6 +486,10 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
         source_sink_desc = "The flow originates from a callback function."
     elif "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower():
         source_sink_desc = "The flow originates from middleware."
+    elif "node_modules" in parent_file:
+        source_sink_desc = "The flow originates from an npm package."
+    elif "vendor" in parent_file:
+        source_sink_desc = "The flow originates from a vendored dependency."
     elif len(purls) == 0:
         if tags:
             source_sink_desc = (
@@ -708,6 +712,7 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl
     added_flows = []
     added_node_desc = []
     has_check_tag = False
+    first_file_loc = None
     last_file_loc = None
     source_sink_desc = ""
     last_code = ""
@@ -747,6 +752,8 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl
         )
         if not flow_str or (last_file_loc and last_file_loc == file_loc):
             continue
+        if not first_file_loc:
+            first_file_loc = file_loc
         last_file_loc = file_loc
         if flow_str in added_flows or node_desc in added_node_desc:
             continue
@@ -764,6 +771,10 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl
             0,
             ":white_medium_small_square: Verify that the mitigation(s) used in this flow are valid and appropriate for your security requirements.",
         )
+    if "node_modules" in first_file_loc and "node_modules" in last_file_loc:
+        comments.insert(0, ":warning: This flow belongs to a library and is for informational purposes only. Please ignore it for prioritisation purposes.")
+    elif "vendor" in first_file_loc and "vendor" in last_file_loc:
+        comments.insert(0, ":warning: This flow belongs to a vendored dependency. Check if the upstream includes any configuration or secure coding ideas to help with this flow.")
     return (
         tree,
         added_ids,
