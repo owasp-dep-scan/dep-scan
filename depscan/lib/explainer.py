@@ -486,6 +486,10 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
         source_sink_desc = "The flow originates from a callback function."
     elif "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower():
         source_sink_desc = "The flow originates from middleware."
+    elif "node_modules" in parent_file:
+        source_sink_desc = "The flow originates from an npm package."
+    elif "vendor" in parent_file:
+        source_sink_desc = "The flow originates from a vendored dependency."
     elif len(purls) == 0:
         if tags:
             source_sink_desc = (
