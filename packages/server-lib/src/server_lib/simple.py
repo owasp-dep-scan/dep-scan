@@ -3,7 +3,7 @@ import os
 import tempfile
 from urllib.parse import urlparse
 
-from custom_json_diff.lib.utils import file_write, json_load
+from custom_json_diff.lib.utils import file_write
 from quart import request, Quart
 from rich.console import Console
 from vdb.lib import search
@@ -179,7 +179,7 @@ async def run_scan():
     if uploaded_bom_file.get("file", None) is not None:
         bom_file = uploaded_bom_file["file"]
         bom_file_suffix = str(bom_file.filename).rsplit(".", maxsplit=1)[-1]
-        if bom_file_suffix not in (".json", ".cdx", ".bom"):
+        if bom_file_suffix not in ("json", "cdx", "bom"):
             return (
                 {
                     "error": "true",
@@ -190,7 +190,7 @@ async def run_scan():
             )
         bom_file_content = bom_file.read().decode("utf-8")
         try:
-            bom_data = json_load(bom_file_content)
+            bom_data = json.loads(bom_file_content)
             if not isinstance(bom_data, dict) or bom_data.get("bomFormat") != "CycloneDX":
                 return {
                     "error": "true",
@@ -268,7 +268,7 @@ async def run_scan():
         else:
             if logger_instance:
                 logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-        bom_data = json_load(bom_file_path)
+        bom_data = json.loads(bom_file_content)
         if not bom_data:
             cleanup_temp(tmp_bom_file)
             return (
