@@ -187,13 +187,11 @@ def get_description_detail(data: Descriptions | str) -> Tuple[str, str]:
     elif "." in detail:
         description = detail.split(".")[0]
     detail = (
-        detail.replace("\\n", " ")
-        .replace("\\t", " ")
-        .replace("\\r", " ")
-        .replace("\n", " ")
-        .replace("\t", " ")
-        .replace("\r", " ")
-        .replace("\\`", "")
+        detail.replace("\\n", "\n")
+        .replace("\\t", "  ")
+        .replace("\\r", "")
+        .replace("\r", "")
+        .replace("\\`", "`")
     )
     detail = bytes.decode(encodings.utf_8.encode(detail)[0], errors="replace")
     description = description.lstrip("# ")
