@@ -19,6 +19,7 @@ services:
       - /tmp:/tmp
     entrypoint: depscan --server --server-host 0.0.0.0 --server-port 7070 --cdxgen-server http://cdxgen:9090
     environment:
+      DEPSCAN_SERVER_API_KEY: ${DEPSCAN_SERVER_API_KEY:-dev-only-change-me}
       VDB_HOME: /app/vdb
     links:
       - "cdxgen:cdxgen"

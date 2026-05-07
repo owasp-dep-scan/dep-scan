@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -5,12 +6,22 @@ from pathlib import Path
 import pytest
 from quart.testing import QuartClient
 
-from server_lib.simple import app
+from server_lib import ServerOptions
+from server_lib.simple import app, run_server
 
 
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
+    for config_key in (
+        "ALLOWED_HOSTS",
+        "ALLOWED_PATHS",
+        "API_KEY",
+        "ALLOW_PRIVATE_URLS",
+        "ALLOW_UNAUTHENTICATED_BIND",
+        "create_bom",
+    ):
+        app.config.pop(config_key, None)
     return app.test_client()
 
 
@@ -83,6 +94,22 @@ async def test_path_allowlist_prevents_traversal(client: QuartClient, allowed_di
 
 
 @pytest.mark.asyncio
+async def test_path_allowlist_blocks_prefix_bypass(client: QuartClient, tmp_path):
+    safe_dir = tmp_path / "data"
+    safe_dir.mkdir()
+    attacker_dir = tmp_path / "database"
+    attacker_dir.mkdir()
+    app.config["ALLOWED_PATHS"] = [str(safe_dir)]
+    response = await client.get(
+        f"/scan?type=python&path={attacker_dir}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 403
+    data = await response.get_json()
+    assert "Path not allowed" in data["message"]
+
+
+@pytest.mark.asyncio
 async def test_path_from_json_body_enforced(client: QuartClient, allowed_dirs):
     safe_dir, _ = allowed_dirs
     app.config["ALLOWED_PATHS"] = [safe_dir]
@@ -103,13 +130,13 @@ async def test_security_headers(client: QuartClient):
     assert headers.get("X-Content-Type-Options") == "nosniff"
     assert headers.get("X-Frame-Options") == "SAMEORIGIN"
     assert headers.get("X-XSS-Protection") == "1; mode=block"
-    assert headers.get("Strict-Transport-Security") == "max-age=31536000; includeSubDomains"
+    assert headers.get("Strict-Transport-Security") is None
     response_scan = await client.get("/scan", headers={"X-Test-Remote-Addr": "127.0.0.1"})
     headers_scan = response_scan.headers
     assert headers_scan.get("X-Content-Type-Options") == "nosniff"
     assert headers_scan.get("X-Frame-Options") == "SAMEORIGIN"
     assert headers_scan.get("X-XSS-Protection") == "1; mode=block"
-    assert headers_scan.get("Strict-Transport-Security") == "max-age=31536000; includeSubDomains"
+    assert headers_scan.get("Strict-Transport-Security") is None
 
 
 @pytest.mark.asyncio
@@ -126,6 +153,94 @@ async def test_no_allowlist_means_no_enforcement(client: QuartClient):
         headers={"X-Test-Remote-Addr": "127.0.0.1"},
     )
     assert response2.status_code != 403
+
+
+@pytest.mark.asyncio
+async def test_private_url_scan_is_blocked_by_default(client: QuartClient):
+    response = await client.post(
+        "/scan",
+        json={"type": "python", "url": "http://127.0.0.1/internal/repo"},
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "restricted address" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_private_url_scan_can_be_explicitly_allowed(client: QuartClient):
+    app.config["ALLOW_PRIVATE_URLS"] = True
+    response = await client.post(
+        "/scan",
+        json={"type": "python", "url": "http://127.0.0.1/internal/repo"},
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "cdxgen server is required" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_api_key_authentication_is_enforced(client: QuartClient):
+    app.config["API_KEY"] = "super-secret"
+    response = await client.get("/", headers={"X-Test-Remote-Addr": "127.0.0.1"})
+    assert response.status_code == 401
+    data = await response.get_json()
+    assert "Authentication required" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_scan_existing_bom_path(client: QuartClient, tmp_path, monkeypatch):
+    bom_path = tmp_path / "sample.bom.json"
+    bom_path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "version": 1,
+                "components": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class DummyAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type(
+                "DummyResult",
+                (),
+                {"success": True, "pkg_vulnerabilities": []},
+            )()
+
+    monkeypatch.setattr("server_lib.simple.get_pkg_list", lambda _: ([], None))
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+
+    response = await client.get(
+        f"/scan?type=python&path={bom_path}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert data["bomFormat"] == "CycloneDX"
+
+
+def test_run_server_refuses_non_local_bind_without_auth(monkeypatch):
+    called = {"run": False}
+
+    def fake_run(**_kwargs):
+        called["run"] = True
+
+    monkeypatch.setattr(app, "run", fake_run)
+    app.config["API_KEY"] = None
+    app.config["ALLOW_UNAUTHENTICATED_BIND"] = False
+
+    result = run_server(ServerOptions(server_host="0.0.0.0", server_port=7070))
+
+    assert result is False
+    assert called["run"] is False
 
 
 @pytest.mark.asyncio

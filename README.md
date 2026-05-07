@@ -263,32 +263,55 @@ git clone https://github.com/owasp-dep-scan/dep-scan
 docker compose up
 ```
 
+The bundled compose file sets `DEPSCAN_SERVER_API_KEY` to a development placeholder by default so the dep-scan service can bind to `0.0.0.0`. Override this value before exposing the service outside a local lab.
+
 ```bash
+depscan --server --server-host 127.0.0.1 --server-port 7070
+```
+
+If you need to bind dep-scan to a non-local address, set an API key first:
+
+```bash
+export DEPSCAN_SERVER_API_KEY="change-this-before-production"
 depscan --server --server-host 0.0.0.0 --server-port 7070
 ```
+
+> [!IMPORTANT]
+> As of `6.2.0`, dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
 
 Use the `/scan` endpoint to perform scans.
 
 > [!NOTE]
-> The `type` parameter is mandatory in server mode.
+> The `type` parameter is mandatory in server mode. When API key authentication is enabled, send the key using `X-API-Key` or `Authorization: Bearer <key>`.
 
 - Scanning a local directory.
   Scanning an SBOM file (present locally).
 
 ```bash
-curl --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' http://0.0.0.0:7070/scan
+curl \
+  -H 'X-API-Key: dev-only-change-me' \
+  --json '{"path": "/tmp/vulnerable-aws-koa-app/sbom_file.json", "type": "js"}' \
+  http://127.0.0.1:7070/scan
 ```
 
 - Scanning a GitHub repo.
 
 ```bash
-curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
+curl \
+  -H 'Authorization: Bearer dev-only-change-me' \
+  --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' \
+  http://127.0.0.1:7070/scan \
+  -o app.vdr.json
 ```
 
 - Uploading an SBOM file and generating results based on it.
 
 ```bash
-curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom_file.json' http://0.0.0.0:7070/scan?type=js
+curl -X POST \
+  -H 'X-API-Key: dev-only-change-me' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@/tmp/app/sbom_file.json' \
+  http://127.0.0.1:7070/scan?type=js
 ```
 
 ## Local development

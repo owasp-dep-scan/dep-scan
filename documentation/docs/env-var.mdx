@@ -16,3 +16,7 @@ The following environment variables can be used to customize the behavior.
 - DEPSCAN_REPORTS_DIR - Alternative to `--reports-dir` to pass the output reports directory.
 - DEPSCAN_SOURCE_IMAGE - Source image name to use for lifecycle analysis. Same as the key `source_image` in the configuration file.
 - DEPSCAN_BUILD_DIR - Build directory to use for lifecycle analysis. Blint sbom command will be executed with this directory. Defaults to the source directory (`--src`). Same as the key `build_dir` in the configuration file.
+- DEPSCAN_SERVER_API_KEY - API key required for all requests when the dep-scan server is configured with built-in authentication. Accepted via `X-API-Key` or `Authorization: Bearer <key>`.
+- DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND - Set to `true` only if you intentionally want the dep-scan server to bind to a non-local address without built-in authentication.
+- DEPSCAN_SERVER_ALLOWED_GIT_SCHEMES - Comma-separated list of allowed URL schemes for server-side URL scans. Defaults to `http,https,git,git+http,git+https`.
+- DEPSCAN_SERVER_ALLOW_PRIVATE_URLS - Set to `true` to allow the server to scan URLs that resolve to private, loopback, or link-local addresses. Leave unset for the safer default.

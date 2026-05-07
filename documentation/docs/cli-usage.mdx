@@ -107,6 +107,9 @@ options:
   -v, --version         Display the version
 ```
 
+> [!IMPORTANT]
+> Binding dep-scan to a non-local address is authenticated by default as of `6.2.0`. Set `DEPSCAN_SERVER_API_KEY` before using `--server-host 0.0.0.0`, or explicitly opt out with `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true` only for trusted development environments.
+
 ## Scanning containers locally (Python version)
 
 Scan a Java project.

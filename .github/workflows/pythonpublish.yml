@@ -230,10 +230,12 @@ jobs:
       - name: Setup nydus
         run: |
           curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.1/nydus-static-v2.3.1-linux-amd64.tgz
+          curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.1/nydus-static-v2.3.1-linux-amd64.tgz.sha256sum
+          sha256sum -c nydus-static-v2.3.1-linux-amd64.tgz.sha256sum
           tar -xvf nydus-static-v2.3.1-linux-amd64.tgz
           chmod +x nydus-static/*
           mv nydus-static/* /usr/local/bin/
-          rm -rf nydus-static-v2.3.1-linux-amd64.tgz nydus-static
+          rm -rf nydus-static-v2.3.1-linux-amd64.tgz nydus-static-v2.3.1-linux-amd64.tgz.sha256sum nydus-static
       - name: nydusify
         run: |
           nydusify convert --oci --oci-ref --source ghcr.io/owasp-dep-scan/depscan:master --target ghcr.io/owasp-dep-scan/depscan:master-nydus --prefetch-dir /opt/dep-scan

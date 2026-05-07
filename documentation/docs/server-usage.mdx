@@ -6,15 +6,40 @@ sidebar_position: 4
 
 dep-scan and cdxgen can operate in a server mode for distributed or centralized scanning. This mode exposes an HTTP API for on-demand analysis.
 
+## Starting the server
+
 ```bash
 git clone https://github.com/owasp-dep-scan/dep-scan
 docker compose up
 ```
 
+The bundled `docker-compose.yml` now configures the dep-scan service with a development API key by default so the server can bind to `0.0.0.0`. Override `DEPSCAN_SERVER_API_KEY` before starting the stack if you do not want to use the placeholder value.
+
 Alternatively, start the server directly:
 
 ```bash
 depscan --server --server-host 127.0.0.1 --server-port 7070
+```
+
+Local-only binds such as `127.0.0.1` continue to work without additional configuration.
+
+To bind the dep-scan server to a non-local address, set an API key first.
+
+```bash
+export DEPSCAN_SERVER_API_KEY="change-this-before-production"
+depscan --server --server-host 0.0.0.0 --server-port 7070
+```
+
+All authenticated requests can then supply the key using either `X-API-Key` or `Authorization: Bearer ...`.
+
+> [!IMPORTANT]
+> As of `6.2.0`, dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
+
+If you need the old behavior for a short-lived trusted development setup, opt in explicitly:
+
+```bash
+export DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true
+depscan --server --server-host 0.0.0.0 --server-port 7070
 ```
 
 To scan git URLs, cdxgen server is mandatory. Use the argument `--cdxgen-server` to pass the url.
@@ -28,7 +53,10 @@ The server listens for requests on the `/scan` endpoint. The `type` parameter is
 **Example: Scanning a local SBOM file**
 
 ```bash
-curl --json '{"path": "/tmp/app/sbom.json", "type": "js"}' http://0.0.0.0:7070/scan
+curl \
+  -H 'X-API-Key: dev-only-change-me' \
+  --json '{"path": "/tmp/app/sbom.json", "type": "js"}' \
+  http://127.0.0.1:7070/scan
 ```
 
 **Example: Scanning a remote Git repository**
@@ -37,13 +65,21 @@ curl --json '{"path": "/tmp/app/sbom.json", "type": "js"}' http://0.0.0.0:7070/s
 > cdxgen must be running in server mode for the below to work.
 
 ```bash
-curl --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' http://0.0.0.0:7070/scan -o app.vdr.json
+curl \
+  -H 'Authorization: Bearer dev-only-change-me' \
+  --json '{"url": "https://github.com/HooliCorp/vulnerable-aws-koa-app", "type": "js"}' \
+  http://127.0.0.1:7070/scan \
+  -o app.vdr.json
 ```
 
 **Example: Uploading an SBOM file for analysis**
 
 ```bash
-curl -X POST -H 'Content-Type: multipart/form-data' -F 'file=@/tmp/app/sbom.json' http://0.0.0.0:7070/scan?type=js
+curl -X POST \
+  -H 'X-API-Key: dev-only-change-me' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@/tmp/app/sbom.json' \
+  http://127.0.0.1:7070/scan?type=js
 ```
 
 > [!WARNING]
@@ -59,15 +95,16 @@ Access to the `/scan` endpoint can be restricted based on the client's IP addres
 
 **Configuration:**
 
-- `--allowed-hosts`: A space-separated list of IP addresses or hostnames permitted to access the server.
-- `--allowed-paths`: A space-separated list of base directories that the server is allowed to read from or write to.
+- `--server-allowed-hosts`: A space-separated list of IP addresses or hostnames permitted to access the server.
+- `--server-allowed-paths`: A space-separated list of base directories that the server is allowed to read from or write to.
 
 ```bash
+export DEPSCAN_SERVER_API_KEY="change-this-before-production"
 depscan --server \
   --server-host 0.0.0.0 \
   --server-port 7070 \
-  --allowed-hosts 10.0.1.100 10.0.1.101 \
-  --allowed-paths /scan_input /scan_output
+  --server-allowed-hosts 10.0.1.100 10.0.1.101 \
+  --server-allowed-paths /scan_input /scan_output
 ```
 
 When a scan request includes a `path` parameter, the server resolves it to its absolute path using `realpath` and verifies that it falls under one of the specified `--allowed-paths`. Requests for paths outside this allowlist are rejected with a `403 Forbidden` response.
@@ -91,11 +128,13 @@ export DEPSCAN_SERVER_ALLOWED_GIT_SCHEMES="https,git+https"
 
 Requests containing URLs with schemes not in this list will be rejected with a `400 Bad Request` response.
 
+By default, dep-scan also rejects URLs that resolve to loopback, link-local, or private IP space. Only set `DEPSCAN_SERVER_ALLOW_PRIVATE_URLS=true` if your cdxgen-backed URL scanning workflow depends on private Git infrastructure and the deployment is already properly segmented.
+
 ### Input Validation and Sanitization
 
 - **File Uploads**: Uploaded BOM files are validated for JSON structure and CycloneDX format. The file extension must be `.json`, `.cdx`, or `.bom`.
 - **Content Length**: The maximum size for incoming request bodies (including file uploads) is limited to prevent resource exhaustion. This limit is controlled internally and defaults to 100MB.
-- **Parameter Validation**: The `url` parameter is parsed to ensure its scheme is allowed.
+- **Parameter Validation**: The `url` parameter is parsed to ensure its scheme is allowed, its hostname resolves to an allowed address class, and incoming project types contain only supported characters.
 
 ### Security Headers
 
