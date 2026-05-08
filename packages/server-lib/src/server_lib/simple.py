@@ -56,6 +56,8 @@ MAX_PROJECT_TYPES = 32
 MAX_PROJECT_TYPE_LENGTH = 64
 DEFAULT_MAX_BOM_FILE_SIZE = 100 * 1024 * 1024
 
+UPLOAD_SIZE_LIMIT_MESSAGE = "BOM file exceeds the configured size limit."
+
 
 def _is_truthy(value):
     if isinstance(value, bool):
@@ -171,7 +173,7 @@ def _parse_project_types(project_type_value: str) -> list[str]:
 def _load_bom_data(bom_file_path: str, max_bytes: int):
     try:
         if max_bytes and os.path.getsize(bom_file_path) > max_bytes:
-            return None, "BOM file exceeds the configured size limit."
+            return None, UPLOAD_SIZE_LIMIT_MESSAGE
         with open(bom_file_path, encoding="utf-8") as bom_fp:
             bom_data = json.load(bom_fp)
     except (FileNotFoundError, OSError, UnicodeDecodeError, json.JSONDecodeError):
@@ -179,6 +181,40 @@ def _load_bom_data(bom_file_path: str, max_bytes: int):
     if not isinstance(bom_data, dict) or bom_data.get("bomFormat") != "CycloneDX":
         return None, "Uploaded file is not a valid CycloneDX BOM."
     return bom_data, ""
+
+
+def _read_upload_with_limit(upload, max_bytes: int):
+    declared_size = getattr(upload, "content_length", None)
+    if declared_size not in (None, ""):
+        with contextlib.suppress(TypeError, ValueError):
+            if max_bytes and int(declared_size) > max_bytes:
+                return None, UPLOAD_SIZE_LIMIT_MESSAGE
+
+    stream = getattr(upload, "stream", None) or upload
+    reader = getattr(stream, "read", None)
+    if not callable(reader):
+        return None, "Unable to read uploaded file."
+
+    if not max_bytes:
+        return reader(), ""
+
+    max_bytes = int(max_bytes)
+    bytes_remaining = max_bytes + 1
+    chunks = []
+    while bytes_remaining > 0:
+        chunk = reader(min(65536, bytes_remaining))
+        if not chunk:
+            break
+        if isinstance(chunk, str):
+            chunk = chunk.encode("utf-8")
+        elif not isinstance(chunk, bytes):
+            chunk = bytes(chunk)
+        chunks.append(chunk)
+        bytes_remaining -= len(chunk)
+    upload_content = b"".join(chunks)
+    if len(upload_content) > max_bytes:
+        return None, UPLOAD_SIZE_LIMIT_MESSAGE
+    return upload_content, ""
 
 
 def _get_request_api_key() -> str | None:
@@ -337,17 +373,17 @@ async def run_scan():
                 400,
                 {"Content-Type": "application/json"},
             )
-        bom_file_content_raw = bom_file.read()
+        bom_file_content_raw, bom_read_error = _read_upload_with_limit(bom_file, max_bom_file_size)
+        if bom_read_error:
+            return (
+                {
+                    "error": "true",
+                    "message": bom_read_error,
+                },
+                400,
+                {"Content-Type": "application/json"},
+            )
         if isinstance(bom_file_content_raw, bytes):
-            if max_bom_file_size and len(bom_file_content_raw) > max_bom_file_size:
-                return (
-                    {
-                        "error": "true",
-                        "message": "BOM file exceeds the configured size limit.",
-                    },
-                    400,
-                    {"Content-Type": "application/json"},
-                )
             try:
                 bom_file_content = bom_file_content_raw.decode("utf-8")
             except UnicodeDecodeError:

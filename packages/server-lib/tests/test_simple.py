@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pytest
 from quart.testing import QuartClient
-from werkzeug.datastructures import FileStorage
 from server_lib import ServerOptions
 from server_lib import simple as simple_module
 from server_lib.simple import app, run_server
+from werkzeug.datastructures import FileStorage
 
 
 @pytest.fixture
@@ -245,6 +245,75 @@ async def test_uploaded_bom_rejects_invalid_utf8(client: QuartClient):
     assert response.status_code == 400
     data = await response.get_json()
     assert "valid UTF-8 JSON" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_uploaded_bom_size_limit_is_enforced(client: QuartClient):
+    app.config["MAX_BOM_FILE_SIZE"] = 32
+    response = await client.post(
+        "/scan?type=python",
+        files={
+            "file": FileStorage(
+                stream=io.BytesIO(b"{" + (b"a" * 128) + b"}"),
+                filename="sample.bom.json",
+                content_type="application/json",
+            )
+        },
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "configured size limit" in data["message"]
+
+
+def test_read_upload_with_limit_uses_bounded_reads():
+    class TrackingStream(io.BytesIO):
+        def __init__(self, payload):
+            super().__init__(payload)
+            self.read_sizes = []
+
+        def read(self, size=-1):
+            self.read_sizes.append(size)
+            if size == -1:
+                raise AssertionError("upload stream should not be read without a size limit")
+            return super().read(size)
+
+    stream = TrackingStream(b"{" + (b"a" * 128) + b"}")
+    upload = FileStorage(
+        stream=stream,
+        filename="sample.bom.json",
+        content_type="application/json",
+    )
+
+    upload_content, upload_error = simple_module._read_upload_with_limit(upload, 32)
+
+    assert upload_content is None
+    assert "configured size limit" in upload_error
+    assert stream.read_sizes
+    assert all(size != -1 for size in stream.read_sizes)
+    assert max(stream.read_sizes) <= 33
+
+
+def test_read_upload_with_limit_rejects_declared_size_before_reading():
+    app.config["MAX_BOM_FILE_SIZE"] = 64
+
+    class FailIfReadStream(io.BytesIO):
+        def read(self, size=-1):
+            raise AssertionError(
+                "stream should not be read when declared size already exceeds limit"
+            )
+
+    upload = FileStorage(
+        stream=FailIfReadStream(b'{"bomFormat":"CycloneDX"}'),
+        filename="sample.bom.json",
+        content_type="application/json",
+        content_length=128,
+    )
+
+    upload_content, upload_error = simple_module._read_upload_with_limit(upload, 64)
+
+    assert upload_content is None
+    assert "configured size limit" in upload_error
 
 
 @pytest.mark.asyncio
