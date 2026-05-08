@@ -34,6 +34,12 @@ custom_theme = Theme(
 
 IS_CI = os.getenv("CI") or os.getenv("CONTINUOUS_INTEGRATION")
 
+
+def _emoji_enabled():
+    if os.getenv("DISABLE_CONSOLE_EMOJI", "") in ("true", "1"):
+        return False
+    return not (sys.platform == "win32" and IS_CI)
+
 console = Console(
     log_time=False,
     log_path=False,
@@ -44,7 +50,7 @@ console = Console(
     tab_size=2,
     highlighter=CustomHighlighter(),
     record=sys.platform == "win32",
-    emoji=os.getenv("DISABLE_CONSOLE_EMOJI", "") not in ("true", "1"),
+    emoji=_emoji_enabled(),
 )
 
 logging.basicConfig(
