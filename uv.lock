@@ -66,7 +66,7 @@ wheels = [
 
 [[package]]
 name = "appthreat-vulnerability-db"
-version = "6.6.1"
+version = "6.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -79,9 +79,9 @@ dependencies = [
     { name = "rich" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/da/46c6bf936c8474d1b996b57b5b7a240af17c71c7aa976c0bb45e8d3c1d5b/appthreat_vulnerability_db-6.6.1.tar.gz", hash = "sha256:e85ef2855dffdd560972e4be98bc890323d106e230e4a9518642bdd1efc97c43", size = 104377, upload-time = "2026-03-07T12:08:47.768Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ed/1d/cbcc74d25b83cf55a028b5631696465d04d3ebc6b7f1fe916144a74fed2d/appthreat_vulnerability_db-6.6.2.tar.gz", hash = "sha256:6362d301b7d119d15c3e76e4472a3a5be94e82796964f681e36ded22ba1f9333", size = 129225, upload-time = "2026-05-08T08:46:26.145Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b1/67/f6f9061bdf954a130fe55c994d5f4a521e5a7185db5c0ab505c2a547b368/appthreat_vulnerability_db-6.6.1-py3-none-any.whl", hash = "sha256:bfa457d03f718ce5db34c22b6f31cb8556ea84840094e21162959c525fecfeec", size = 97021, upload-time = "2026-03-07T12:08:46.298Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/4f/ae946a02f756e6f9aef14887b97d4ab2af6efbc6486f546002916e7af868/appthreat_vulnerability_db-6.6.2-py3-none-any.whl", hash = "sha256:1dc5e598aec9bee8a585be1e56615881d8e0327445d984400ecd4bd6d9061c3c", size = 109445, upload-time = "2026-05-08T08:46:27.639Z" },
 ]
 
 [package.optional-dependencies]
@@ -724,7 +724,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = ">=6.6.0" },
+    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = ">=6.6.2" },
     { name = "custom-json-diff", specifier = ">=2.1.6" },
     { name = "cvss", specifier = ">=3.4" },
     { name = "rich", specifier = ">=13.9.4" },
@@ -1081,14 +1081,14 @@ wheels = [
 
 [[package]]
 name = "markdown-it-py"
-version = "4.1.0"
+version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mdurl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5c/5c/f3aedc83549aae71cd52b9e9687fe896e3dc6e966ba20eba04718605d198/markdown_it_py-4.1.0.tar.gz", hash = "sha256:760e3f87b2787c044c5138a5ba107b7c2be26c03b13cc7f8fe42756b65b1df6c", size = 81613, upload-time = "2026-05-06T16:32:13.649Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49", size = 82454, upload-time = "2026-05-07T12:08:28.36Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/88/802c82060c54bc7dde21eb0033e337838b8181a1323254aa9ec41cbfc3d1/markdown_it_py-4.1.0-py3-none-any.whl", hash = "sha256:d4939a62a2dd0cd9cb80a191a711ba1d39bac8ed5ef9e9966895b0171c01c46d", size = 90955, upload-time = "2026-05-06T16:32:12.184Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a", size = 91687, upload-time = "2026-05-07T12:08:27.182Z" },
 ]
 
 [[package]]
@@ -1457,7 +1457,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = ">=6.6.1" },
+    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = ">=6.6.2" },
     { name = "atom-tools", marker = "extra == 'all'", specifier = ">=0.7.8" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = ">=0.7.8" },
     { name = "blint", marker = "extra == 'all'", specifier = ">=3.0.6" },
@@ -2275,11 +2275,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.3"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
 ]
 
 [[package]]

@@ -459,9 +459,7 @@ def run_server(options: ServerOptions):
     app.config["CDXGEN_SERVER_URL"] = options.cdxgen_server
     app.config["LOGGER_INSTANCE"] = options.logger
     app.config.setdefault("API_KEY", os.getenv("DEPSCAN_SERVER_API_KEY"))
-    app.config.setdefault(
-        "ALLOW_PRIVATE_URLS", os.getenv("DEPSCAN_SERVER_ALLOW_PRIVATE_URLS")
-    )
+    app.config.setdefault("ALLOW_PRIVATE_URLS", os.getenv("DEPSCAN_SERVER_ALLOW_PRIVATE_URLS"))
     app.config.setdefault(
         "ALLOW_UNAUTHENTICATED_BIND",
         os.getenv("DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND"),

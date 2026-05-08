@@ -1,4 +1,4 @@
-FROM ghcr.io/almalinux/10-minimal:10.1
+FROM ghcr.io/almalinux/10-minimal:10
 
 LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
@@ -12,11 +12,11 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=23.0.2-tem
-ARG MAVEN_VERSION=3.9.10
-ARG GRADLE_VERSION=8.14.2
+ARG JAVA_VERSION=26.0.1-tem
+ARG MAVEN_VERSION=3.9.15
+ARG GRADLE_VERSION=9.5.0
 ARG PYTHON_VERSION=3.12
-ARG GO_VERSION=1.25.6
+ARG GO_VERSION=1.26.3
 
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=$GO_VERSION \

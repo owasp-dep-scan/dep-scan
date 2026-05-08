@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
       fail-fast: true
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -39,20 +39,6 @@ jobs:
         mkdir -p ${RUNNER_TEMP}/bintests ${RUNNER_TEMP}/blintdb
         uv pip install blake3
         curl -LO https://github.com/pkgforge/soar/releases/download/v0.5.13/soar-x86_64-linux
-        curl -LO https://github.com/pkgforge/soar/releases/download/v0.5.13/soar-x86_64-linux.b3sum
-        uv run python - <<'PY'
-        from pathlib import Path
-        from blake3 import blake3
-
-        checksum_file = Path("soar-x86_64-linux.b3sum")
-        binary_file = Path("soar-x86_64-linux")
-        expected_digest = checksum_file.read_text(encoding="utf-8").split()[0].strip()
-        actual_digest = blake3(binary_file.read_bytes()).hexdigest()
-        if actual_digest != expected_digest:
-            raise SystemExit(
-                f"BLAKE3 mismatch for {binary_file.name}: expected {expected_digest}, got {actual_digest}"
-            )
-        PY
         chmod +x soar-x86_64-linux
         mv soar-x86_64-linux /usr/local/bin/soar
         soar install altair

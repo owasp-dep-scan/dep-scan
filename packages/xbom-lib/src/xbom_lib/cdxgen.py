@@ -21,7 +21,7 @@ cdxgen_server_headers = {
 CDXGEN_TIMEOUT_MS = os.getenv("CDXGEN_TIMEOUT_MS", str(int(30 * 60 * 1000)))
 
 # version of cdxgen to use
-CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "v12.0.0")
+CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "v12.3.3")
 CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v12")
 
 # cdxgen default image to use
@@ -37,38 +37,38 @@ OFFICIAL_IMAGE_NAMESPACES = (
 )
 
 PROJECT_TYPE_IMAGE = {
-    "default": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
-    "deno": f"ghcr.io/cyclonedx/cdxgen-deno:{CDXGEN_IMAGE_VERSION}",
-    "bun": f"ghcr.io/cyclonedx/cdxgen-bun:{CDXGEN_IMAGE_VERSION}",
-    "default-secure": f"ghcr.io/cyclonedx/cdxgen-secure:{CDXGEN_IMAGE_VERSION}",
-    "java": f"ghcr.io/cyclonedx/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
-    "java24": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
-    "android": f"ghcr.io/cyclonedx/cdxgen:{CDXGEN_IMAGE_VERSION}",
-    "java8": f"ghcr.io/cyclonedx/cdxgen-temurin-java8:{CDXGEN_IMAGE_VERSION}",
-    "java11-slim": f"ghcr.io/cyclonedx/cdxgen-java11-slim:{CDXGEN_IMAGE_VERSION}",
-    "java11": f"ghcr.io/cyclonedx/cdxgen-java11:{CDXGEN_IMAGE_VERSION}",
-    "java17": f"ghcr.io/cyclonedx/cdxgen-java17:{CDXGEN_IMAGE_VERSION}",
-    "java17-slim": f"ghcr.io/cyclonedx/cdxgen-java17-slim:{CDXGEN_IMAGE_VERSION}",
-    "java21": f"ghcr.io/cyclonedx/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
-    "node20": f"ghcr.io/cyclonedx/cdxgen-node20:{CDXGEN_IMAGE_VERSION}",
-    "python39": f"ghcr.io/cyclonedx/cdxgen-python39:{CDXGEN_IMAGE_VERSION}",
-    "python310": f"ghcr.io/cyclonedx/cdxgen-python310:{CDXGEN_IMAGE_VERSION}",
-    "python311": f"ghcr.io/cyclonedx/cdxgen-python311:{CDXGEN_IMAGE_VERSION}",
-    "python312": f"ghcr.io/cyclonedx/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
-    "python": f"ghcr.io/cyclonedx/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
-    "swift": f"ghcr.io/cyclonedx/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
-    "swift6": f"ghcr.io/cyclonedx/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
-    "ruby26": f"ghcr.io/cyclonedx/cdxgen-debian-ruby26:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "ruby33": f"ghcr.io/cyclonedx/cdxgen-debian-ruby33:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "ruby34": f"ghcr.io/cyclonedx/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "ruby": f"ghcr.io/cyclonedx/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "dotnet-core": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
-    "dotnet-framework": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
-    "dotnet6": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
-    "dotnet7": f"ghcr.io/cyclonedx/cdxgen-dotnet7:{CDXGEN_IMAGE_VERSION}",
-    "dotnet8": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
-    "dotnet9": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
-    "dotnet": f"ghcr.io/cyclonedx/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
+    "default": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    "deno": f"ghcr.io/cdxgen/cdxgen-deno:{CDXGEN_IMAGE_VERSION}",
+    "bun": f"ghcr.io/cdxgen/cdxgen-bun:{CDXGEN_IMAGE_VERSION}",
+    "default-secure": f"ghcr.io/cdxgen/cdxgen-secure:{CDXGEN_IMAGE_VERSION}",
+    "java": f"ghcr.io/cdxgen/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
+    "java24": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    "android": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    "java8": f"ghcr.io/cdxgen/cdxgen-temurin-java8:{CDXGEN_IMAGE_VERSION}",
+    "java11-slim": f"ghcr.io/cdxgen/cdxgen-java11-slim:{CDXGEN_IMAGE_VERSION}",
+    "java11": f"ghcr.io/cdxgen/cdxgen-java11:{CDXGEN_IMAGE_VERSION}",
+    "java17": f"ghcr.io/cdxgen/cdxgen-java17:{CDXGEN_IMAGE_VERSION}",
+    "java17-slim": f"ghcr.io/cdxgen/cdxgen-java17-slim:{CDXGEN_IMAGE_VERSION}",
+    "java21": f"ghcr.io/cdxgen/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
+    "node20": f"ghcr.io/cdxgen/cdxgen-node20:{CDXGEN_IMAGE_VERSION}",
+    "python39": f"ghcr.io/cdxgen/cdxgen-python39:{CDXGEN_IMAGE_VERSION}",
+    "python310": f"ghcr.io/cdxgen/cdxgen-python310:{CDXGEN_IMAGE_VERSION}",
+    "python311": f"ghcr.io/cdxgen/cdxgen-python311:{CDXGEN_IMAGE_VERSION}",
+    "python312": f"ghcr.io/cdxgen/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
+    "python": f"ghcr.io/cdxgen/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
+    "swift": f"ghcr.io/cdxgen/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
+    "swift6": f"ghcr.io/cdxgen/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
+    "ruby26": f"ghcr.io/cdxgen/cdxgen-debian-ruby26:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "ruby33": f"ghcr.io/cdxgen/cdxgen-debian-ruby33:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "ruby34": f"ghcr.io/cdxgen/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "ruby": f"ghcr.io/cdxgen/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "dotnet-core": f"ghcr.io/cdxgen/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
+    "dotnet-framework": f"ghcr.io/cdxgen/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
+    "dotnet6": f"ghcr.io/cdxgen/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
+    "dotnet7": f"ghcr.io/cdxgen/cdxgen-dotnet7:{CDXGEN_IMAGE_VERSION}",
+    "dotnet8": f"ghcr.io/cdxgen/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
+    "dotnet9": f"ghcr.io/cdxgen/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
+    "dotnet": f"ghcr.io/cdxgen/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
 }
 
 
