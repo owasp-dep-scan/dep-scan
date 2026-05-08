@@ -16,6 +16,7 @@ jobs:
       PYTHONIOENCODING: ${{ matrix.os == 'windows-latest' && 'utf-8' || '' }}
       PYTHONUTF8: ${{ matrix.os == 'windows-latest' && '1' || '' }}
       DISABLE_CONSOLE_EMOJI: ${{ matrix.os == 'windows-latest' && '1' || '' }}
+      HF_TOKEN: ${{ secrets.HF_RO }}
     strategy:
       fail-fast: false
       matrix:
