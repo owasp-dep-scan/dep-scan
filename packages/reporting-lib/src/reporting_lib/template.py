@@ -167,7 +167,7 @@ VDR = """
 <h3  class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Vulnerability Disclosure Report</code></h3>
 <div class="box-container">
     <br>
-   <h4>Dependency Scan Results (BOM)</h4>
+   <h4><SCAN_TITLE_PLACEHOLDER></h4>
    <br>
    <span class="badge border border-dark text-dark fs-6">Vulnerabilities count: <VULNERABILITIES_COUNT_PLACEHOLDER></span>
    <br><br>
@@ -233,6 +233,11 @@ HTML_REPORT = """
             font-family: "Courier New", Courier, monospace;
             overflow-x: auto;
             max-width: 100%;
+        }
+
+        .box-container > span:not(.badge),
+        .box-container .alert span {
+            white-space: pre-wrap;
         }
 
         .box-container {

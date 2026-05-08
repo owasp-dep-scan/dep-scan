@@ -25,6 +25,7 @@ class ReportGenerator:
     SUMMARY = "Summary"
     DATA = "Data"
     TABLE_HEADERS = "Table headers"
+    TITLE = "Title"
     RECOMMENDATION = "Recommendation"
     ACTION_REQUIRED = "Action Required"
     INFO = "INFO"
@@ -102,6 +103,23 @@ class ReportGenerator:
 
     SECURE_DESIGN_TIPS = "Secure Design Tips"
     MALWARE_ALERT = "Malware Alert"
+
+    @staticmethod
+    def normalize_rich_text(text):
+        text = re.sub(r"</?span[^>]*>", "", text)
+        return html.unescape(text).strip()
+
+    def normalized_text_equals(self, text, expected):
+        return self.normalize_rich_text(text) == expected
+
+    def normalized_text_matches(self, text, pattern):
+        return re.fullmatch(pattern, self.normalize_rich_text(text)) is not None
+
+    def extract_dependency_scan_results_title(self, text):
+        normalized_text = self.normalize_rich_text(text)
+        if self.normalized_text_matches(text, r"Dependency Scan Results \(.+\)"):
+            return normalized_text
+        return None
 
     def __init__(
         self,
@@ -275,6 +293,7 @@ class ReportGenerator:
         sections_tree = {
             self.VULNERABILITY_DISCLOSURE_REPORT: {
                 self.DEPENDENCY_SCAN_RESULTS_BOM: {
+                    self.TITLE: self.DEPENDENCY_SCAN_RESULTS_BOM,
                     self.VULNERABILITIES_COUNT: "-1",
                     self.SUMMARY: "",
                     self.TABLE_HEADERS: [],
@@ -344,9 +363,7 @@ class ReportGenerator:
 
             # ---- Location identification: Secure Design Tips ----
 
-            if line == self.SECURE_DESIGN_TIPS or self.string_matches_span_pattern(
-                line, self.SECURE_DESIGN_TIPS
-            ):
+            if self.normalized_text_equals(line, self.SECURE_DESIGN_TIPS):
                 current_location = self.SECURE_DESIGN_TIPS
                 continue
 
@@ -424,15 +441,15 @@ class ReportGenerator:
 
             # ---- Location identification: Vulnerability Disclosure Report ----
 
-            if line == self.VULNERABILITY_DISCLOSURE_REPORT or self.string_matches_span_pattern(
-                line, self.VULNERABILITY_DISCLOSURE_REPORT
-            ):
+            if self.normalized_text_equals(line, self.VULNERABILITY_DISCLOSURE_REPORT):
                 current_location = self.DEPENDENCY_SCAN_RESULTS_BOM_SUMMARY
                 continue
 
-            if line == self.DEPENDENCY_SCAN_RESULTS_BOM or self.string_matches_span_pattern(
-                line, self.DEPENDENCY_SCAN_RESULTS_BOM
-            ):
+            dependency_scan_results_title = self.extract_dependency_scan_results_title(line)
+            if dependency_scan_results_title is not None:
+                sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
+                    self.DEPENDENCY_SCAN_RESULTS_BOM
+                ][self.TITLE] = dependency_scan_results_title
                 current_location = self.DEPENDENCY_SCAN_RESULTS_BOM
                 continue
 
@@ -523,16 +540,11 @@ class ReportGenerator:
                     columns = line[1:-1].rsplit("│", maxsplit=current_columns_count - 1)
 
                     stripped_columns = [column.strip() for column in columns]
-                    if (
-                        stripped_columns == self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS
-                        or self.array_matches_span_pattern(
-                            stripped_columns,
-                            self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS,
-                        )
-                    ):
+                    normalized_columns = [self.normalize_rich_text(column) for column in columns]
+                    if normalized_columns == self.DEPENDENCY_SCAN_RESULTS_BOM_DATA_COLUMNS:
                         sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
                             self.DEPENDENCY_SCAN_RESULTS_BOM
-                        ][self.TABLE_HEADERS] = stripped_columns
+                        ][self.TABLE_HEADERS] = normalized_columns
                         current_table_row = []
                         continue
                     else:
@@ -555,14 +567,14 @@ class ReportGenerator:
 
                 continue
 
-            if current_location == self.DEPENDENCY_SCAN_RESULTS_BOM and (
-                line.startswith("Vulnerabilities count:")
-                or self.string_matches_span_pattern(line, r"Vulnerabilities count: \d+")
+            if (
+                current_location == self.DEPENDENCY_SCAN_RESULTS_BOM
+                and self.normalized_text_matches(line, r"Vulnerabilities count: \d+")
             ):
                 sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
                     self.DEPENDENCY_SCAN_RESULTS_BOM
                 ][self.VULNERABILITIES_COUNT] = (
-                    line.split("Vulnerabilities count:", 1)[1].split("<", 1)[0].strip()
+                    self.normalize_rich_text(line).split("Vulnerabilities count:", 1)[1].strip()
                 )
                 continue
 
@@ -1390,6 +1402,15 @@ class ReportGenerator:
             vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
                 "<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1
             )
+
+        current_content = sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
+            self.DEPENDENCY_SCAN_RESULTS_BOM
+        ][self.TITLE]
+        if tree_is_from_html is False:
+            current_content = html.escape(current_content)
+        vulnerability_disclosure_report = vulnerability_disclosure_report.replace(
+            "<SCAN_TITLE_PLACEHOLDER>", current_content, 1
+        )
 
         current_content = sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
             self.DEPENDENCY_SCAN_RESULTS_BOM
