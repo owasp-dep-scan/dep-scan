@@ -223,7 +223,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ['3.13']
+        python-version: ['3.14']
     runs-on: ['self-hosted', 'ubuntu', 'amd64']
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
