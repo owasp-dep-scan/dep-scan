@@ -40,6 +40,7 @@ def _emoji_enabled():
         return False
     return not (sys.platform == "win32" and IS_CI)
 
+
 console = Console(
     log_time=False,
     log_path=False,

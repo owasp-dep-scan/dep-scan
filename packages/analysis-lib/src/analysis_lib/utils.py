@@ -1,10 +1,35 @@
 import contextlib
 import encodings.utf_8
+import json
+import os
+import re
+from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Tuple
-import re
 
 import cvss
+from analysis_lib import get_all_bom_files
+from analysis_lib.config import (
+    ADVISORY,
+    CPE_FULL_REGEX,
+    CWE_SPLITTER,
+    JFROG_ADVISORY,
+    LANG_PKG_TYPES,
+    LINUX_DISTRO_WITH_EDITIONS,
+    OS_PKG_IGNORABLE,
+    OS_PKG_TYPES,
+    OS_PKG_UNINSTALLABLE,
+    OS_VULN_KEY_CWES,
+    REF_MAP,
+    SAFE_ENDPOINT_REACHABLE_PURLS,
+    SERVICE_TAGS,
+    SEVERITY_REF,
+    TIME_FMT,
+    UPPER_VERSION_FROM_DETAIL_A,
+    UPPER_VERSION_FROM_DETAIL_B,
+)
+from analysis_lib.output import pkg_sub_tree
+from analysis_lib.search import find_vulns
 from custom_json_diff.lib.utils import compare_versions, json_load
 from cvss import CVSSError
 from packageurl import PackageURL
@@ -14,17 +39,12 @@ from vdb.lib.cve_model import (
     Description,
     Descriptions,
     ProblemTypes,
+    Product,
     References,
     Status,
     Versions,
-    Product,
 )
 from vdb.lib.utils import parse_cpe, parse_purl, version_compare
-
-from analysis_lib import get_all_bom_files
-from analysis_lib.config import *
-from analysis_lib.output import *
-from analysis_lib.search import find_vulns
 
 CRITICAL_OR_HIGH = ("CRITICAL", "HIGH")
 
@@ -182,19 +202,19 @@ def get_description_detail(data: Descriptions | str) -> Tuple[str, str]:
         data = data.root[0].value
     description = ""
     detail = data or ""
-    if detail and "\\n" in detail:
-        description = detail.split("\\n")[0]
+    detail = (
+        detail.replace("\\r\\n", "\n")
+        .replace("\\n", "\n")
+        .replace("\\r", "\n")
+        .replace("\r\n", "\n")
+        .replace("\r", "\n")
+        .replace("\\t", "\t")
+        .replace("\\`", "`")
+    )
+    if detail and "\n" in detail:
+        description = detail.split("\n")[0]
     elif "." in detail:
         description = detail.split(".")[0]
-    detail = (
-        detail.replace("\\n", " ")
-        .replace("\\t", " ")
-        .replace("\\r", " ")
-        .replace("\n", " ")
-        .replace("\t", " ")
-        .replace("\r", " ")
-        .replace("\\`", "")
-    )
     detail = bytes.decode(encodings.utf_8.encode(detail)[0], errors="replace")
     description = description.lstrip("# ")
     return description, detail
@@ -671,16 +691,19 @@ def get_cwe_list(data: ProblemTypes | None) -> List:
 
 
 def cve_to_vdr(cve: CVE, vid: str):
+    root = getattr(cve, "root", None)
+    cna = getattr(getattr(root, "containers", None), "cna", None)
+    metadata = getattr(root, "cveMetadata", None)
     advisories, references, bug_bounties, pocs, exploits, vendors, source = refs_to_vdr(
-        cve.root.containers.cna.references, vid.lower()
+        getattr(cna, "references", None), vid.lower()
     )
-    vector, method, severity, score = parse_metrics(cve.root.containers.cna.metrics)
+    vector, method, severity, score = parse_metrics(getattr(cna, "metrics", None))
     try:
-        description, detail = get_description_detail(cve.root.containers.cna.descriptions)
+        description, detail = get_description_detail(getattr(cna, "descriptions", None))
     except AttributeError:
         description, detail = "", ""
     if not source:
-        assigner_short_name = cve.root.cveMetadata.assignerShortName
+        assigner_short_name = getattr(metadata, "assignerShortName", None)
         assigner_name = ""
         if assigner_short_name:
             if hasattr(assigner_short_name, "root"):
@@ -700,10 +723,12 @@ def cve_to_vdr(cve: CVE, vid: str):
                     "url": f"https://github.com/advisories/{vid}",
                 }
             )
-    cwes = get_cwe_list(cve.root.containers.cna.problemTypes)
+    cwes = get_cwe_list(getattr(cna, "problemTypes", None))
     vendor = ""
-    if cve.root.containers.cna.affected:
-        vendor = cve.root.containers.cna.affected.root[0].vendor
+    affected = getattr(cna, "affected", None)
+    affected_root = getattr(affected, "root", None) or []
+    if affected_root:
+        vendor = getattr(affected_root[0], "vendor", "") or ""
     ratings = {}
     if vector:
         ratings = {
@@ -733,21 +758,30 @@ def parse_metrics(metrics):
     method = ""
     severity = "unknown"
     score = ""
-    if not metrics:
+    if not metrics or not getattr(metrics, "root", None):
         return vector, method, severity, score
-    if metrics.root:
-        for metric in metrics.root:
-            if metric.cvssV4_0:
-                vector = metric.cvssV4_0.vectorString
-                method = "CVSSv4"
-                severity = metric.cvssV4_0.baseSeverity.value
-                score = metric.cvssV4_0.baseScore.value
-                break
-            elif method != "CVSSv31" and (m := (metric.cvssV3_1 or metric.cvssV3_0)):
-                vector = m.vectorString
-                method = "CVSSv31" if m.version.value == "3.1" else "CVSSv3"
-                severity = m.baseSeverity.value
-                score = m.baseScore.root
+    for metric in metrics.root:
+        cvss_v4 = getattr(metric, "cvssV4_0", None)
+        if cvss_v4:
+            return (
+                getattr(cvss_v4, "vectorString", "") or "",
+                "CVSSv4",
+                getattr(getattr(cvss_v4, "baseSeverity", None), "value", "unknown") or "unknown",
+                getattr(getattr(cvss_v4, "baseScore", None), "value", "") or "",
+            )
+
+        if method == "CVSSv31":
+            continue
+
+        cvss_v3 = getattr(metric, "cvssV3_1", None) or getattr(metric, "cvssV3_0", None)
+        if not cvss_v3:
+            continue
+
+        vector = getattr(cvss_v3, "vectorString", "") or ""
+        version = getattr(getattr(cvss_v3, "version", None), "value", "") or ""
+        method = "CVSSv31" if version == "3.1" else "CVSSv3"
+        severity = getattr(getattr(cvss_v3, "baseSeverity", None), "value", "unknown") or "unknown"
+        score = getattr(getattr(cvss_v3, "baseScore", None), "root", "") or ""
     return vector, method, severity, score
 
 
@@ -806,15 +840,17 @@ def get_unaffected(vuln):
     if vuln.get("fix_version"):
         return vuln.get("fix_version")
     source_data = vuln.get("source_data")
-    if source_data and source_data.root.containers:
-        products: List[Product] = source_data.root.containers.cna.affected.root
+    containers = getattr(getattr(source_data, "root", None), "containers", None)
+    affected = getattr(getattr(containers, "cna", None), "affected", None)
+    products: List[Product] = getattr(affected, "root", None) or []
+    if products:
         for p in products:
-            versions: List[Versions] = p.versions
+            versions: List[Versions] = getattr(p, "versions", None) or []
             if versions:
                 for ver in versions:
-                    if ver.status == Status.unaffected:
-                        if ver.version:
-                            return ver.version.root
+                    if getattr(ver, "status", None) == Status.unaffected:
+                        if getattr(ver, "version", None):
+                            return getattr(ver.version, "root", "") or ""
     vers = vuln.get("matching_vers", "")
     if "|" in vers:
         vers = vers.split("|")[-1]
@@ -933,8 +969,11 @@ def refs_to_vdr(
     """
     if not references:
         return [], [], [], [], [], [], {}
-    with contextlib.suppress(AttributeError):
-        ref = {str(i.url.root) for i in references.root}
+    ref = set()
+    for reference in getattr(references, "root", None) or []:
+        url = getattr(getattr(reference, "url", None), "root", None)
+        if url:
+            ref.add(str(url))
     advisories = []
     refs = []
     bug_bounty = []
@@ -1520,8 +1559,9 @@ def analyze_cve_vuln(
         as_tree=True,
         extra_text=f":left_arrow: {vid}",
     )
-    published = cve_record.root.cveMetadata.datePublished
-    updated = cve_record.root.cveMetadata.dateUpdated
+    metadata = getattr(getattr(cve_record, "root", None), "cveMetadata", None)
+    published = getattr(metadata, "datePublished", None)
+    updated = getattr(metadata, "dateUpdated", None)
     vdict |= {
         "source": source,
         "references": references,
@@ -1677,9 +1717,13 @@ def analyze_cve_vuln(
             # Just known exploits without usage is not a priority
             if reached_purls or direct_purls:
                 cve_requires_attn = False
-    if cve_record.root.containers.cna.affected.root and (
-        cpes := cve_record.root.containers.cna.affected.root[0].cpes
-    ):
+    affected = getattr(
+        getattr(getattr(getattr(cve_record, "root", None), "containers", None), "cna", None),
+        "affected",
+        None,
+    )
+    affected_root = getattr(affected, "root", None) or []
+    if affected_root and (cpes := getattr(affected_root[0], "cpes", None)):
         # Distro-specific package
         if all((distro_package(i.root) for i in cpes)):
             insights.append("[spring_green4]:direct_hit: Distro specific[/spring_green4]")

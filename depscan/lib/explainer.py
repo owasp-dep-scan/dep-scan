@@ -1,7 +1,8 @@
+import glob
 import os
 import re
-import glob
 from collections import defaultdict
+
 from custom_json_diff.lib.utils import json_load
 from rich import box
 from rich.markdown import Markdown
@@ -10,14 +11,14 @@ from rich.tree import Tree
 
 from depscan.lib.config import (
     COMMON_CHECK_TAGS,
-    max_purl_per_flow,
-    max_reachable_explanations,
-    max_purls_reachable_explanations,
-    max_source_reachable_explanations,
-    max_sink_reachable_explanations,
     max_flows_per_prompt,
+    max_purl_per_flow,
+    max_purls_reachable_explanations,
+    max_reachable_explanations,
+    max_sink_reachable_explanations,
+    max_source_reachable_explanations,
 )
-from depscan.lib.logger import console, LOG
+from depscan.lib.logger import LOG, console
 
 SEVERITY_COLORS = {
     "CRITICAL": "bold red",
@@ -129,8 +130,14 @@ Below are several data flows identified by depscan, including reachable ones. Us
 
 
 def _track_usage_targets(usage_targets, usages_object):
+    if not isinstance(usages_object, dict):
+        return
     for k, v in usages_object.items():
+        if not isinstance(v, dict):
+            continue
         for file, lines in v.items():
+            if not isinstance(lines, list):
+                continue
             for aline in lines:
                 usage_targets.add(f"{file}#{aline}")
 
@@ -138,10 +145,17 @@ def _track_usage_targets(usage_targets, usages_object):
 def print_endpoints(ospec, header_section=None):
     if not ospec:
         return
-    paths = json_load(ospec).get("paths") or {}
+    spec_data = json_load(ospec)
+    if not isinstance(spec_data, dict):
+        return defaultdict(list)
+    paths = spec_data.get("paths") or {}
+    if not isinstance(paths, dict):
+        return defaultdict(list)
     pattern_methods = defaultdict(list)
     pattern_usage_targets = defaultdict(set)
     for pattern, path_obj in paths.items():
+        if not isinstance(path_obj, dict):
+            continue
         usage_targets = set()
         http_method_added = False
         for k, v in path_obj.items():
@@ -225,6 +239,8 @@ def explain_reachables(
     # Backwards compatibility
     if isinstance(reachables, dict) and reachables.get("reachables"):
         reachables = reachables.get("reachables")
+    if not isinstance(reachables, list):
+        return False, False, "## Secure Design Tips"
     for areach in reachables:
         if not isinstance(areach, dict):
             continue
@@ -423,12 +439,15 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
     """ """
     endpoint_reached_purls = {}
     reached_services = {}
+    purls = purls or []
     if vdr_result:
         endpoint_reached_purls = vdr_result.endpoint_reached_purls
         reached_services = vdr_result.reached_services
     is_endpoint_reachable = False
     possible_reachable_service = False
-    tags = flow.get("tags", [])
+    tags = flow.get("tags") or []
+    if isinstance(tags, str):
+        tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
     is_crypto_flow = "crypto" in tags or "crypto-generate" in tags
     method_in_emoji = ":right_arrow_curving_left:"
     for p in purls:
@@ -445,7 +464,7 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
     if param_name == "this":
         param_name = ""
     parent_file = flow.get("parentFileName", "")
-    parent_method = flow.get("parentMethodName", "")
+    parent_method = flow.get("parentMethodName") or ""
     # Improve the labels based on the language
     if re.search(".(js|ts|jsx|tsx|py|cs|php)$", parent_file):
         method_str = "function"
@@ -528,6 +547,10 @@ def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_ma
 
 def filter_tags(tags):
     if tags:
+        if isinstance(tags, list):
+            tags = ", ".join(str(atag) for atag in tags if atag)
+        elif not isinstance(tags, str):
+            return ""
         tags = [
             atag
             for atag in tags.split(", ")
@@ -560,6 +583,7 @@ def flow_to_str(explanation_mode, flow, project_type):
     """"""
     has_check_tag = False
     file_loc = ""
+    parent_method_name = flow.get("parentMethodName") or ""
     if (
         flow.get("parentFileName")
         and flow.get("lineNumber")
@@ -570,9 +594,12 @@ def flow_to_str(explanation_mode, flow, project_type):
         for p in ("src/main/java/", "src/main/scala/"):
             name = name.removeprefix(p)
         file_loc = f"{name}#{flow.get('lineNumber')}    "
-    node_desc = flow.get("code").split("\n")[0]
-    if (len(node_desc) < 3 or node_desc.endswith("{")) and len(flow.get("code")) > 3:
-        node_desc = " ".join(flow.get("code", "").split())
+    code = flow.get("code") or ""
+    if not isinstance(code, str):
+        code = str(code)
+    node_desc = code.split("\n")[0]
+    if (len(node_desc) < 3 or node_desc.endswith("{")) and len(code) > 3:
+        node_desc = " ".join(code.split())
         if "(" in node_desc:
             node_desc = node_desc.split("(")[0] + "() ..."
     if node_desc.endswith("("):
@@ -584,9 +611,7 @@ def flow_to_str(explanation_mode, flow, project_type):
         param_name = flow.get("name")
         if param_name == "this":
             param_name = ""
-        node_desc = (
-            f"{flow.get('parentMethodName')}([red]{param_name}[/red]) :right_arrow_curving_left:"
-        )
+        node_desc = f"{parent_method_name}([red]{param_name}[/red]) :right_arrow_curving_left:"
         if tags:
             node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
     elif flow.get("label") in ("IDENTIFIER", "CALL"):
@@ -689,6 +714,8 @@ def save_llm_prompts(purl_grouped_flows, purl_vuln_map, project_type, prompts_fi
 
 def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl_vuln_map):
     """"""
+    flows = flows or []
+    purls = purls or []
     tree = None
     comments = []
     if len(purls) > max_purl_per_flow:
@@ -730,10 +757,13 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl
             and not aflow.get("tags")
         ):
             continue
-        curr_code = aflow.get("code", "").split("\n")[0]
+        curr_code = aflow.get("code") or ""
+        if not isinstance(curr_code, str):
+            curr_code = str(curr_code)
+        curr_code = curr_code.split("\n")[0]
         if idx == 0:
             source_code_str = curr_code
-        if idx == len(flows):
+        if idx == len(flows) - 1:
             sink_code_str = curr_code
         if last_code and last_code == curr_code:
             continue

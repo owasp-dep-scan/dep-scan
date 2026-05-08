@@ -1,6 +1,8 @@
 import json
 from collections import OrderedDict, defaultdict
 
+from analysis_lib import VdrAnalysisKV
+from analysis_lib.config import max_distro_vulnerabilities, risk_help_text
 from custom_json_diff.lib.utils import file_write
 from rich import box
 from rich.markdown import Markdown
@@ -9,9 +11,6 @@ from rich.style import Style
 from rich.table import Table
 from rich.tree import Tree
 from vdb.lib.utils import parse_purl
-
-from analysis_lib import VdrAnalysisKV
-from analysis_lib.config import *
 
 NEWLINE = "\n"
 

@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import tempfile
@@ -5,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from quart.testing import QuartClient
-
+from werkzeug.datastructures import FileStorage
 from server_lib import ServerOptions
 from server_lib import simple as simple_module
 from server_lib.simple import app, run_server
@@ -200,6 +201,50 @@ async def test_private_url_scan_can_be_explicitly_allowed(client: QuartClient):
     assert response.status_code == 400
     data = await response.get_json()
     assert "cdxgen server is required" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_scan_rejects_non_object_json_body_without_crashing(client: QuartClient):
+    response = await client.post(
+        "/scan?type=python",
+        json=["unexpected"],
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "path or url or a bom file upload is required" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_path_allowlist_ignores_non_object_json_body(client: QuartClient, allowed_dirs):
+    safe_dir, _ = allowed_dirs
+    app.config["ALLOWED_PATHS"] = [safe_dir]
+    response = await client.post(
+        "/scan?type=python",
+        json=["path"],
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "path or url or a bom file upload is required" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_uploaded_bom_rejects_invalid_utf8(client: QuartClient):
+    response = await client.post(
+        "/scan?type=python",
+        files={
+            "file": FileStorage(
+                stream=io.BytesIO(b"\xff\xfe\x00\x01"),
+                filename="sample.bom.json",
+                content_type="application/json",
+            )
+        },
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "valid UTF-8 JSON" in data["message"]
 
 
 @pytest.mark.asyncio

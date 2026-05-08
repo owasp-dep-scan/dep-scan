@@ -1,22 +1,21 @@
 import contextlib
-import json
 import ipaddress
-import socket
-from hmac import compare_digest
+import json
 import os
+import socket
 import tempfile
+from hmac import compare_digest
 from urllib.parse import urlparse
 
+from analysis_lib import VdrAnalysisKV
+from analysis_lib.utils import get_pkg_list
+from analysis_lib.vdr import VDRAnalyzer
 from custom_json_diff.lib.utils import file_write
-from quart import request, Quart
+from quart import Quart, request
 from rich.console import Console
+from server_lib import ServerOptions
 from vdb.lib import search
 from vdb.lib.npm import NpmSource
-
-from analysis_lib import VdrAnalysisKV
-from analysis_lib.vdr import VDRAnalyzer
-from analysis_lib.utils import get_pkg_list
-from server_lib import ServerOptions
 
 app = Quart(f"dep-scan server ({__name__})", static_folder=None)
 app.config.from_prefixed_env(prefix="DEPSCAN_SERVER")
@@ -238,7 +237,7 @@ async def enforce_allowlists():
                 path = request.args.get("path")
             elif request.method == "POST":
                 json_data = await request.get_json(silent=True)
-                if json_data and "path" in json_data:
+                if isinstance(json_data, dict) and "path" in json_data:
                     path = json_data["path"]
             if path:
                 if not _is_allowed_scan_path(path, allowed_paths):
@@ -265,7 +264,9 @@ async def run_scan():
     """
     logger_instance = app.config.get("LOGGER_INSTANCE")
     q = request.args
-    params = await request.get_json(silent=True) or {}
+    params = await request.get_json(silent=True)
+    if not isinstance(params, dict):
+        params = {}
     uploaded_bom_file = await request.files
     create_bom = app.config.get("create_bom")
     allow_private_urls = _is_truthy(app.config.get("ALLOW_PRIVATE_URLS"))
@@ -336,7 +337,30 @@ async def run_scan():
                 400,
                 {"Content-Type": "application/json"},
             )
-        bom_file_content = bom_file.read().decode("utf-8")
+        bom_file_content_raw = bom_file.read()
+        if isinstance(bom_file_content_raw, bytes):
+            if max_bom_file_size and len(bom_file_content_raw) > max_bom_file_size:
+                return (
+                    {
+                        "error": "true",
+                        "message": "BOM file exceeds the configured size limit.",
+                    },
+                    400,
+                    {"Content-Type": "application/json"},
+                )
+            try:
+                bom_file_content = bom_file_content_raw.decode("utf-8")
+            except UnicodeDecodeError:
+                return (
+                    {
+                        "error": "true",
+                        "message": "The uploaded file must be valid UTF-8 JSON.",
+                    },
+                    400,
+                    {"Content-Type": "application/json"},
+                )
+        else:
+            bom_file_content = str(bom_file_content_raw)
         try:
             bom_data = json.loads(bom_file_content)
             if not isinstance(bom_data, dict) or bom_data.get("bomFormat") != "CycloneDX":
