@@ -2,13 +2,12 @@ import json
 import os
 
 import pytest
-
+from analysis_lib.output import pkg_sub_tree
 from analysis_lib.utils import (
     cvss_to_vdr_rating,
+    get_suggested_version_map,
     get_version_range,
     split_cwe,
-    pkg_sub_tree,
-    get_suggested_version_map,
 )
 
 

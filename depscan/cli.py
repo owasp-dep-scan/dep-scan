@@ -6,40 +6,27 @@ import os
 import sys
 from typing import List
 
-from analysis_lib import (
-    ReachabilityAnalysisKV,
-    VdrAnalysisKV,
-)
+from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.csaf import export_csaf, write_toml
-from analysis_lib.search import get_pkgs_by_scope
-from analysis_lib.utils import (
-    get_all_bom_files,
-    get_all_pkg_list,
-    get_pkg_list,
-    licenses_risk_table,
-    pkg_risks_table,
-    summary_stats,
-)
-from analysis_lib.vdr import VDRAnalyzer
+from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
 from analysis_lib.reachability import get_reachability_impl
+from analysis_lib.search import get_pkgs_by_scope
+from analysis_lib.utils import get_all_pkg_list, get_pkg_list
+from analysis_lib.vdr import VDRAnalyzer
 from custom_json_diff.lib.utils import json_load
+from reporting_lib.htmlgen import ReportGenerator
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
-from vdb.lib import config, search
+from vdb.lib import config
 from vdb.lib import db6 as db_lib
+from vdb.lib import search
 from vdb.lib.utils import parse_purl
 
 from depscan import get_version
 from depscan.cli_options import build_parser
 from depscan.lib import explainer, utils
 from depscan.lib.audit import audit, risk_audit, risk_audit_map, type_audit_map
-from depscan.lib.bom import (
-    annotate_vdr,
-    create_empty_vdr,
-    create_bom,
-    export_bom,
-    get_pkg_by_type,
-)
+from depscan.lib.bom import annotate_vdr, create_bom, create_empty_vdr, export_bom, get_pkg_by_type
 from depscan.lib.config import (
     DEPSCAN_DEFAULT_VDR_FILE,
     UNIVERSAL_SCAN_TYPE,
@@ -50,9 +37,7 @@ from depscan.lib.config import (
     vdb_database_url,
 )
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import DEBUG, LOG, SPINNER, console, IS_CI
-
-from reporting_lib.htmlgen import ReportGenerator
+from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console
 
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
@@ -67,7 +52,7 @@ LOGO = """
 
 SERVER_LIB = None
 try:
-    from server_lib import simple, ServerOptions
+    from server_lib import ServerOptions, simple
 
     SERVER_LIB = simple
 except ImportError:
