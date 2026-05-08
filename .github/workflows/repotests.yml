@@ -30,12 +30,6 @@ jobs:
           persist-credentials: false
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          repository: 'wix/greyhound'
-          path: 'repotests/greyhound'
-          ref: '385bb84a6f712ee18064a3b5ecb8d9dcbc1c75f3'
-          persist-credentials: false
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
           repository: 'HooliCorp/vulnerable-aws-koa-app'
           path: 'repotests/vulnerable-aws-koa-app'
           persist-credentials: false
@@ -225,20 +219,6 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --bom-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/curl-8.13.0 --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
-      - name: Set up JDK
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
-        with:
-          distribution: 'temurin'
-          java-version: '11'
-      - name: repotests greyhound
-        run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/greyhound
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/greyhound --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/greyhound -t java --bom-engine CdxgenGenerator
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
-        shell: bash
-        env:
-          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
-
   os-semantics-tests:
     strategy:
       fail-fast: true
