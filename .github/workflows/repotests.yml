@@ -17,7 +17,7 @@ jobs:
       PYTHONUTF8: ${{ matrix.os == 'windows-latest' && '1' || '' }}
       DISABLE_CONSOLE_EMOJI: ${{ matrix.os == 'windows-latest' && '1' || '' }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-26', 'windows-latest']
         python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
@@ -224,7 +224,7 @@ jobs:
         shell: bash
   os-semantics-tests:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         python-version: ['3.14']
     runs-on: ['self-hosted', 'ubuntu', 'amd64']

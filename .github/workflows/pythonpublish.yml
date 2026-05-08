@@ -68,7 +68,7 @@ jobs:
 
   build-images:
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         image:
           - id: default-amd64
@@ -137,7 +137,7 @@ jobs:
   deploy-manifest:
     needs: [build-images]
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         image:
           - id: default
