@@ -880,12 +880,6 @@ wheels = [
 ]
 
 [[package]]
-name = "httpretty"
-version = "1.1.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6e/19/850b7ed736319d0c4088581f4fc34f707ef14461947284026664641e16d4/httpretty-1.1.4.tar.gz", hash = "sha256:20de0e5dd5a18292d36d928cc3d6e52f8b2ac73daec40d41eb62dee154933b68", size = 442389, upload-time = "2021-08-16T19:35:31.4Z" }
-
-[[package]]
 name = "httpx"
 version = "0.28.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1434,7 +1428,6 @@ all = [
     { name = "pygithub" },
 ]
 dev = [
-    { name = "httpretty" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -1472,7 +1465,6 @@ requires-dist = [
     { name = "ds-xbom-lib", editable = "packages/xbom-lib" },
     { name = "hishel", extras = ["httpx"], marker = "extra == 'all'", specifier = ">=1.1.7" },
     { name = "hishel", extras = ["httpx"], marker = "extra == 'perf'", specifier = ">=1.1.7" },
-    { name = "httpretty", marker = "extra == 'dev'", specifier = ">=1.1.4" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "packageurl-python", specifier = ">=0.16.0" },
     { name = "pygithub", marker = "extra == 'all'", specifier = ">=2.6.1" },

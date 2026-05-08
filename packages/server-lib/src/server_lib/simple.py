@@ -55,6 +55,7 @@ console = Console(
 
 MAX_PROJECT_TYPES = 32
 MAX_PROJECT_TYPE_LENGTH = 64
+DEFAULT_MAX_BOM_FILE_SIZE = 100 * 1024 * 1024
 
 
 def _is_truthy(value):
@@ -85,13 +86,29 @@ def _is_local_host(host: str | None) -> bool:
 def _is_allowed_scan_path(path: str, allowed_paths: list[str]) -> bool:
     try:
         real_path = os.path.realpath(path)
-        return any(
-            os.path.commonpath((real_path, os.path.realpath(allowed_path)))
-            == os.path.realpath(allowed_path)
-            for allowed_path in allowed_paths
-        )
     except (OSError, ValueError):
         return False
+    for allowed_path in allowed_paths:
+        try:
+            real_allowed_path = os.path.realpath(allowed_path)
+            if os.path.commonpath((real_path, real_allowed_path)) == real_allowed_path:
+                return True
+        except (OSError, ValueError):
+            continue
+    return False
+
+
+def _get_config_int(config, *keys: str, default: int, logger=None) -> int:
+    for key in keys:
+        value = config.get(key)
+        if value in (None, ""):
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            if logger:
+                logger.warning("Ignoring invalid integer config for %s: %r", key, value)
+    return default
 
 
 def _is_private_or_local_ip(ip_text: str) -> bool:
@@ -252,10 +269,12 @@ async def run_scan():
     uploaded_bom_file = await request.files
     create_bom = app.config.get("create_bom")
     allow_private_urls = _is_truthy(app.config.get("ALLOW_PRIVATE_URLS"))
-    max_bom_file_size = int(
-        app.config.get("MAX_BOM_FILE_SIZE")
-        or app.config.get("MAX_CONTENT_LENGTH")
-        or (100 * 1024 * 1024)
+    max_bom_file_size = _get_config_int(
+        app.config,
+        "MAX_BOM_FILE_SIZE",
+        "MAX_CONTENT_LENGTH",
+        default=DEFAULT_MAX_BOM_FILE_SIZE,
+        logger=logger_instance,
     )
     url = None
     path = None

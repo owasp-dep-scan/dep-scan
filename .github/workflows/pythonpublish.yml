@@ -24,6 +24,8 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  NYDUS_VERSION: v2.3.1
+  NYDUS_STATIC_AMD64_SHA256: bd0cac0785572b2d8af1b4f97f9272713356fbc0c8e0770b23cfc8ea0e3920ae
 
 jobs:
   pypi:
@@ -229,13 +231,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup nydus
         run: |
-          curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.1/nydus-static-v2.3.1-linux-amd64.tgz
-          curl -LO https://github.com/dragonflyoss/nydus/releases/download/v2.3.1/nydus-static-v2.3.1-linux-amd64.tgz.sha256sum
-          sha256sum -c nydus-static-v2.3.1-linux-amd64.tgz.sha256sum
-          tar -xvf nydus-static-v2.3.1-linux-amd64.tgz
+          NYDUS_ARCHIVE="nydus-static-${NYDUS_VERSION}-linux-amd64.tgz"
+          curl -LO "https://github.com/dragonflyoss/nydus/releases/download/${NYDUS_VERSION}/${NYDUS_ARCHIVE}"
+          echo "${NYDUS_STATIC_AMD64_SHA256}  ${NYDUS_ARCHIVE}" | sha256sum -c -
+          tar -xvf "${NYDUS_ARCHIVE}"
           chmod +x nydus-static/*
           mv nydus-static/* /usr/local/bin/
-          rm -rf nydus-static-v2.3.1-linux-amd64.tgz nydus-static-v2.3.1-linux-amd64.tgz.sha256sum nydus-static
+          rm -rf "${NYDUS_ARCHIVE}" nydus-static
       - name: nydusify
         run: |
           nydusify convert --oci --oci-ref --source ghcr.io/owasp-dep-scan/depscan:master --target ghcr.io/owasp-dep-scan/depscan:master-nydus --prefetch-dir /opt/dep-scan

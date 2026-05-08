@@ -7,21 +7,25 @@ import pytest
 from quart.testing import QuartClient
 
 from server_lib import ServerOptions
+from server_lib import simple as simple_module
 from server_lib.simple import app, run_server
 
 
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
+    app.config["MAX_CONTENT_LENGTH"] = None
     for config_key in (
         "ALLOWED_HOSTS",
         "ALLOWED_PATHS",
         "API_KEY",
         "ALLOW_PRIVATE_URLS",
         "ALLOW_UNAUTHENTICATED_BIND",
+        "MAX_BOM_FILE_SIZE",
         "create_bom",
     ):
         app.config.pop(config_key, None)
+    app.config["MAX_CONTENT_LENGTH"] = None
     return app.test_client()
 
 
@@ -107,6 +111,24 @@ async def test_path_allowlist_blocks_prefix_bypass(client: QuartClient, tmp_path
     assert response.status_code == 403
     data = await response.get_json()
     assert "Path not allowed" in data["message"]
+
+
+def test_path_allowlist_skips_invalid_entries(monkeypatch, tmp_path):
+    allowed_dir = tmp_path / "allowed"
+    allowed_dir.mkdir()
+    target_dir = allowed_dir / "subdir"
+    target_dir.mkdir()
+
+    real_commonpath = simple_module.os.path.commonpath
+
+    def flaky_commonpath(paths):
+        if paths[1] == "/invalid":
+            raise ValueError("bad allowlist entry")
+        return real_commonpath(paths)
+
+    monkeypatch.setattr(simple_module.os.path, "commonpath", flaky_commonpath)
+
+    assert simple_module._is_allowed_scan_path(str(target_dir), ["/invalid", str(allowed_dir)])
 
 
 @pytest.mark.asyncio
@@ -215,6 +237,47 @@ async def test_scan_existing_bom_path(client: QuartClient, tmp_path, monkeypatch
                 {"success": True, "pkg_vulnerabilities": []},
             )()
 
+    monkeypatch.setattr("server_lib.simple.get_pkg_list", lambda _: ([], None))
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+
+    response = await client.get(
+        f"/scan?type=python&path={bom_path}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert data["bomFormat"] == "CycloneDX"
+
+
+@pytest.mark.asyncio
+async def test_scan_existing_bom_path_with_invalid_max_content_length(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    bom_path = tmp_path / "sample.bom.json"
+    bom_path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "version": 1,
+                "components": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class DummyAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type(
+                "DummyResult",
+                (),
+                {"success": True, "pkg_vulnerabilities": []},
+            )()
+
+    app.config["MAX_CONTENT_LENGTH"] = "not-an-integer"
     monkeypatch.setattr("server_lib.simple.get_pkg_list", lambda _: ([], None))
     monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
 
