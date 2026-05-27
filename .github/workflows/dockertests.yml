@@ -10,7 +10,7 @@ permissions:
 jobs:
   ubuntu_version_tests:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -49,7 +49,7 @@ jobs:
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
   reachable_tests:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -99,7 +99,7 @@ jobs:
         path: rtests_ubuntu
   ubuntu_version_tests2:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -159,7 +159,7 @@ jobs:
         path: containertests_${{ matrix.os }}
   version_tests_mac_win:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     needs: ubuntu_version_tests
     runs-on: ${{ matrix.os }}
     strategy:
@@ -205,7 +205,7 @@ jobs:
           path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
   version_tests2_mac_win:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     needs: ubuntu_version_tests2
     runs-on: ${{ matrix.os }}
     strategy:

@@ -12,7 +12,7 @@ permissions:
 jobs:
   os-repo-tests:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.5.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     strategy:
       fail-fast: false
       matrix:
