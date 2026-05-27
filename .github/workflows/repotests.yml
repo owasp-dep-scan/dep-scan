@@ -107,8 +107,6 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
@@ -244,6 +242,7 @@ jobs:
       - name: semantic analysis self
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
+          uv run vdb --clean
           uv run depscan --src ${GITHUB_WORKSPACE} --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           ls -lh ${GITHUB_WORKSPACE}/depscan_reports/depscan
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
