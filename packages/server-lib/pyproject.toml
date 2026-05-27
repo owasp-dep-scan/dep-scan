@@ -1,12 +1,12 @@
 [project]
 name = "ds-server-lib"
-version = "6.2.0"
+version = "6.3.0"
 description = "Server library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db>=6.6.0",
+    "appthreat-vulnerability-db~=6.7.0",
     "custom-json-diff>=2.1.6",
     "quart>=0.20.0",
     "rich>=13.9.4",
@@ -25,6 +25,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Security",
     "Topic :: Utilities",
 ]

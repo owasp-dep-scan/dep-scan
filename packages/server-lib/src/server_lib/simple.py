@@ -42,7 +42,7 @@ type_audit_map = {
     "typescript": NpmSource(),
     "npm": NpmSource(),
 }
-npm_app_info = {"name": "owasp-depscan-server", "version": "6.2.0"}
+npm_app_info = {"name": "owasp-depscan-server", "version": "6.3.0"}
 
 console = Console(
     log_time=False,

@@ -1,16 +1,16 @@
 [project]
 name = "owasp-depscan"
-version = "6.2.0"
+version = "6.3.0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
-    "appthreat-vulnerability-db[oras]>=6.6.2",
-    "custom-json-diff>=2.1.6",
+    "appthreat-vulnerability-db[oras]~=6.7.0",
+    "custom-json-diff~=2.1.6",
     "defusedxml>=0.7.1",
     "PyYAML>=6.0.2",
-    "rich>=14.0.0",
+    "rich~=14.0.0",
     "Jinja2>=3.1.6",
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Security",
     "Topic :: Utilities",
 ]

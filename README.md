@@ -277,7 +277,7 @@ depscan --server --server-host 0.0.0.0 --server-port 7070
 ```
 
 > [!IMPORTANT]
-> As of `6.2.0`, dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
+> dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
 
 Use the `/scan` endpoint to perform scans.
 
