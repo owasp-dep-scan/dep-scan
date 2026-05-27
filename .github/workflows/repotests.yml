@@ -55,12 +55,12 @@ jobs:
         with:
           node-version: '24.x'
           package-manager-cache: false
-      - uses: sbt/setup-sbt@508b753e53cb6095967669e0911487d2b9bc9f41  # v1.1.22
+      - uses: sbt/setup-sbt@4ed7b7ec4bfa2074fe48554c09e341267397247c  # v1.2.0
       - name: Setup Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4.0.1
         with:
           packages: 'platform-tools'
-      - uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f  # v1.306.0
+      - uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f  # v1.310.0
         with:
           ruby-version: '3.4.4'
       - name: Install uv
