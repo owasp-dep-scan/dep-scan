@@ -1,0 +1,35 @@
+contrib/bench_fixtures/sparse-bom.json
+  s_760c1ad4ab1835::t_60ca64c2080113 1-2037
+contrib/bench_fixtures/large-bom.json
+  s_760c1ad4ab1835::t_d3982568182414 1-2247
+packages/analysis-lib/src/analysis_lib/search.py
+  s_760c1ad4ab1835::t_6a388b4c1e4a5f 1,12,18-24
+  s_760c1ad4ab1835::t_648d3093b48132 130-141
+  s_760c1ad4ab1835::t_e01b17cd74a40e 5,7
+  s_760c1ad4ab1835::t_e108ba77a0b199 171,173-178,182-183,195,197-198,202-206,208-210,212-221
+  s_760c1ad4ab1835::t_36a698553e0d07 147-170,172,179-181,184-194,196,199-201,207,211,222-224
+  s_760c1ad4ab1835::t_b0510fbac85d02 25-26
+packages/analysis-lib/tests/test_search.py
+  s_760c1ad4ab1835::t_fea43cf7c777a6 142-143,146-150,154,156-157
+  s_760c1ad4ab1835::t_5bff93181efec7 89-91,97-101,112
+  s_760c1ad4ab1835::t_e2c8b18ca1bef9 49-86,93-94,104,109,114-118,123-141,144-145,151-153,155
+  s_760c1ad4ab1835::t_b879eaa3cdfa88 87-88,92,95-96,102-103,105-108,110-111,113,119-122
+contrib/bench_scan.py
+  s_760c1ad4ab1835::t_3679f5f1eab0f4 1-210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8c41d4b77a089c78467c9acf91d1e6796140d971",
+  "prompts": {},
+  "sessions": {
+    "s_760c1ad4ab1835": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07f3ff0b8ffenv8NkryzRRncPP",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
