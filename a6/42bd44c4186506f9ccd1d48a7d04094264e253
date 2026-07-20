@@ -1,0 +1,24 @@
+pyproject.toml
+  h_0926447d100ad2 9,13,55,57
+Dockerfile.al9
+  h_0926447d100ad2 7
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  h_0926447d100ad2 24
+packages/analysis-lib/pyproject.toml
+  h_0926447d100ad2 9
+Dockerfile
+  h_0926447d100ad2 7
+packages/server-lib/pyproject.toml
+  h_0926447d100ad2 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a642bd44c4186506f9ccd1d48a7d04094264e253",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
