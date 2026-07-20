@@ -1,0 +1,25 @@
+test/data/bom-1.7.xml
+  s_760c1ad4ab1835::t_9ca9a94507ee3e 1-25
+depscan/lib/bom.py
+  s_760c1ad4ab1835::t_f554d1797e4ce8 420-422
+  s_760c1ad4ab1835::t_00d39423a84278 73-79
+test/test_bom.py
+  s_760c1ad4ab1835::t_30376479dab179 3-8
+  s_760c1ad4ab1835::t_e32aae067388a6 132-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "cce0888c5705a4eb5e819e1c9638b09c83d43034",
+  "prompts": {},
+  "sessions": {
+    "s_760c1ad4ab1835": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07f3ff0b8ffenv8NkryzRRncPP",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
