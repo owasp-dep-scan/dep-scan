@@ -1,0 +1,67 @@
+.gitignore
+  s_e4cc1a133099a5::t_815065a019ac81 5-7
+depscan/cli_options.py
+  s_e4cc1a133099a5::t_7c051243d430b1 155-165
+  s_e4cc1a133099a5::t_43eadac91f888b 154
+test/data/rusi/repos/reachable-app/Cargo.toml
+  s_e4cc1a133099a5::t_d9d9bff03801e1 1-6
+test/data/rusi/repos/unreachable-app/src/main.rs
+  s_e4cc1a133099a5::t_a5654e77d9eeee 1-8
+test/test_rusi_integration.py
+  s_e4cc1a133099a5::t_5bd072dffeae92 196-197,207
+  s_e4cc1a133099a5::t_c20c86fa3e983a 1-111,116-195,198-206,208-344
+  s_e4cc1a133099a5::t_e9b8bfcd997821 112-115
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_31a7d9f788395d::t_842323e53e4afd 155
+  s_31a7d9f788395d::t_425797cdd28b44 181-190
+  s_31a7d9f788395d::t_7fe79b24bd9988 212
+  s_31a7d9f788395d::t_20a04d4da796c7 59-63
+  s_31a7d9f788395d::t_89136f866ea5a2 56-58
+  s_31a7d9f788395d::t_8fd5ce64bae587 64-66,152-154
+  s_31a7d9f788395d::t_4f0e52b5ff2474 156-158,178-180
+  s_31a7d9f788395d::t_9d4f0974b4f174 191-193,209-211
+  s_31a7d9f788395d::t_c5bdccd82a56e0 213-215
+  s_31a7d9f788395d::t_1d3321df39b99d 1-55,67-151,159-177,194-208,216-261
+test/data/rusi/repos/unreachable-app/Cargo.toml
+  s_e4cc1a133099a5::t_b3a75a36412ad9 1-6
+test/data/rusi/repos/reachable-app/src/main.rs
+  s_e4cc1a133099a5::t_e5e47530c8fab3 1-16
+depscan/lib/config.py
+  s_e4cc1a133099a5::t_e58ea0bb14b044 324-340
+depscan/lib/bom.py
+  s_e4cc1a133099a5::t_300c51fba16f69 19-24,27
+  s_e4cc1a133099a5::t_61258191973e59 540-545
+  s_e4cc1a133099a5::t_7b7f94ade02d5e 322-329
+  s_e4cc1a133099a5::t_dcca5f6dcf4544 332-428
+  s_e4cc1a133099a5::t_f96df2a80e20c2 330-331
+packages/analysis-lib/tests/test_rusi_slices.py
+  s_e4cc1a133099a5::t_100b1234179e4d 414
+  s_e4cc1a133099a5::t_caf3b90a5a12e1 411-413
+  s_e4cc1a133099a5::t_18e5f3a365610b 415-417
+packages/analysis-lib/tests/data/rusi/vulnerable-web-app.golden.json
+  s_e4cc1a133099a5::t_697ce2a5f73cec 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c453e79f79eb43af67f64d956cdd8acf32dc7151",
+  "prompts": {},
+  "sessions": {
+    "s_31a7d9f788395d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2df36391-80c2-48c3-951d-42bb6263995e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_e4cc1a133099a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_079236fb1ffe2DlEJpLtUs70xk",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
