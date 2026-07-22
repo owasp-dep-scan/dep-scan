@@ -1,0 +1,101 @@
+test/data/rusi/repos/unreachable-app/Cargo.toml
+  s_e4cc1a133099a5::t_b3a75a36412ad9 1-6
+.gitignore
+  s_e4cc1a133099a5::t_815065a019ac81 5-7
+test/data/rusi/repos/unreachable-app/src/main.rs
+  s_e4cc1a133099a5::t_a5654e77d9eeee 1-8
+test/test_rusi_integration.py
+  s_e4cc1a133099a5::t_e9b8bfcd997821 104-107
+  s_e4cc1a133099a5::t_c20c86fa3e983a 1-103,108-187,190-198,200-336,338
+  s_e4cc1a133099a5::t_5bd072dffeae92 188-189,199
+  s_e4cc1a133099a5::t_e547c2112359c5 337
+  s_e4cc1a133099a5::t_80958c5fff7e87 339-341
+  s_31a7d9f788395d::t_4a1e4385c8d606 342-641
+depscan/lib/config.py
+  s_e4cc1a133099a5::t_e58ea0bb14b044 324-340
+depscan/cli_options.py
+  s_e4cc1a133099a5::t_7c051243d430b1 155-165
+  s_e4cc1a133099a5::t_43eadac91f888b 154
+packages/analysis-lib/tests/test_rusi_slices.py
+  s_e4cc1a133099a5::t_caf3b90a5a12e1 411-413
+  s_e4cc1a133099a5::t_100b1234179e4d 414
+  s_e4cc1a133099a5::t_18e5f3a365610b 415-417
+  s_e4cc1a133099a5::t_d0994e9caebd97 408-410
+  s_e4cc1a133099a5::t_51b64c8d6e36bb 418-420
+depscan/lib/bom.py
+  s_e4cc1a133099a5::t_dcca5f6dcf4544 332-422,432,439,455,461,464,466,473,592
+  s_e4cc1a133099a5::t_7b7f94ade02d5e 322-329
+  s_e4cc1a133099a5::t_300c51fba16f69 19-24,27
+  s_e4cc1a133099a5::t_f96df2a80e20c2 330-331
+  s_e4cc1a133099a5::t_6f8863b6718f1a 423-425,429-431
+  s_e4cc1a133099a5::t_c797c43fb3500c 433-438
+  s_e4cc1a133099a5::t_8f855206ecfc7c 440-442,452-454
+  s_e4cc1a133099a5::t_848384998207a1 456-460
+  s_e4cc1a133099a5::t_b9f4ec411769de 462-463
+  s_e4cc1a133099a5::t_da65b879d7f8e8 465
+  s_e4cc1a133099a5::t_3bb35b78caa341 467-472
+  s_e4cc1a133099a5::t_7d740606b5996f 474-476
+  s_e4cc1a133099a5::t_4f3deae0d1a2db 589-591
+  s_e4cc1a133099a5::t_850309429e6e37 593-594
+  s_31a7d9f788395d::t_a127823c4a2eff 426-428,443-451,477
+test/data/rusi/repos/reachable-app/src/main.rs
+  s_e4cc1a133099a5::t_e5e47530c8fab3 1-16
+packages/analysis-lib/tests/data/rusi/vulnerable-web-app.golden.json
+  s_e4cc1a133099a5::t_697ce2a5f73cec 1-79
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_31a7d9f788395d::t_9d4f0974b4f174 188-190,206-208,253
+  s_31a7d9f788395d::t_8fd5ce64bae587 64-66,152-154
+  s_31a7d9f788395d::t_4f0e52b5ff2474 156-158,178-180
+  s_31a7d9f788395d::t_425797cdd28b44 181-187
+  s_31a7d9f788395d::t_20a04d4da796c7 59-63
+  s_31a7d9f788395d::t_89136f866ea5a2 56-58
+  s_31a7d9f788395d::t_7fe79b24bd9988 209
+  s_31a7d9f788395d::t_1d3321df39b99d 1-55,67-151,159-177,191-205,213-249
+  s_31a7d9f788395d::t_842323e53e4afd 155
+  s_31a7d9f788395d::t_c5bdccd82a56e0 210-212
+  s_31a7d9f788395d::t_5705d6b9167c8f 250-252
+  s_31a7d9f788395d::t_45185901c30ed8 254-256
+  s_31a7d9f788395d::t_a84d95030ac449 257-329
+test/data/rusi/repos/reachable-app/Cargo.toml
+  s_e4cc1a133099a5::t_d9d9bff03801e1 1-6
+test/data/rusi/repos/rustsec-app/Cargo.lock
+  s_02d9ae40844d4d::t_794ef04c25bf15 1-55
+test/data/rusi/repos/rustsec-app/Cargo.toml
+  s_02d9ae40844d4d::t_ed0c0c58b595aa 1-10
+test/data/rusi/repos/rustsec-app/src/main.rs
+  s_02d9ae40844d4d::t_8e8abd71c549db 1-14
+packages/analysis-lib/tests/test_rusi_runner.py
+  s_31a7d9f788395d::t_f522d2ad516752 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a52a9369328d925e124e9391330ea3a30fc90066",
+  "prompts": {},
+  "sessions": {
+    "s_02d9ae40844d4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_076797f31ffePa3R7q4Yxrk7Wp",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_31a7d9f788395d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2df36391-80c2-48c3-951d-42bb6263995e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_e4cc1a133099a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_079236fb1ffe2DlEJpLtUs70xk",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
