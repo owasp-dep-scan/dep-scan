@@ -1,0 +1,68 @@
+test/data/golem/repos/reachable-app/main.go
+  s_317a1f4f55c190::t_1d72a4e61d6733 1-24
+test/data/golem/repos/reachable-app/go.mod
+  s_317a1f4f55c190::t_b11c5801733f7b 1-7
+.gitignore
+  s_317a1f4f55c190::t_deaf911e57070a 8-10
+depscan/cli_options.py
+  s_317a1f4f55c190::t_c418cd8fa111c3 167-177
+  s_317a1f4f55c190::t_ded5401a135325 166
+test/data/golem/repos/vuln-lib/go.mod
+  s_317a1f4f55c190::t_59fd96c53c821d 1-3
+test/data/golem/repos/unreachable-app/main.go
+  s_317a1f4f55c190::t_1fe5abe3fb1a6e 1-18
+packages/analysis-lib/tests/data/golem/vuln-app.golden.json
+  s_317a1f4f55c190::t_933694e94f4c19 1-72
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_317a1f4f55c190::t_dee21b57361538 460
+  s_317a1f4f55c190::t_10eebf9ecf4e20 1-459,461-463
+packages/analysis-lib/tests/test_golem_runner.py
+  s_317a1f4f55c190::t_37df77fd0eff1f 1-72,74-118,122-228,234-235,241-345
+  s_317a1f4f55c190::t_dee21b57361538 73,119-121,229-233,236-240
+depscan/lib/config.py
+  s_317a1f4f55c190::t_9bbd6682aee4ed 341-353
+test/test_golem_integration.py
+  s_317a1f4f55c190::t_dee21b57361538 104
+  s_317a1f4f55c190::t_69eebff5c3ac63 1-103,105-313
+depscan/lib/bom.py
+  s_317a1f4f55c190::t_f9fb27729b6609 332-335
+  s_317a1f4f55c190::t_dee21b57361538 580-582
+  s_317a1f4f55c190::t_e770b5046ccc08 20-22
+  s_317a1f4f55c190::t_179365c92b773a 724-729
+  s_317a1f4f55c190::t_607b1a3245fea9 477-579,583-608
+test/data/golem/repos/unreachable-app/go.mod
+  s_317a1f4f55c190::t_aa2fd46ae895a9 1-7
+README.md
+  s_317a1f4f55c190::t_a74c66e4a05930 13
+  s_317a1f4f55c190::t_ec519ebaf33890 75-97
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_317a1f4f55c190::t_6ba08986888f05 312
+test/data/golem/repos/vuln-lib/vuln.go
+  s_317a1f4f55c190::t_663b5e978ceee1 1-19
+packages/analysis-lib/src/analysis_lib/golem_slices.py
+  s_317a1f4f55c190::t_1c7cf559dfa541 466-480,483-499,503-508
+  s_317a1f4f55c190::t_e5d8e1c61d3d60 1-283,285-287,289-290,297-465,509-526,530-603
+  s_317a1f4f55c190::t_ff9d0073763ed4 481-482,500-502
+  s_317a1f4f55c190::t_dee21b57361538 527-529
+  s_317a1f4f55c190::t_3e5f3e75e4e28e 284,288,291-296
+packages/analysis-lib/tests/test_golem_slices.py
+  s_317a1f4f55c190::t_dee21b57361538 97-100,128,388,417-419,461,614-616
+  s_317a1f4f55c190::t_87f7f0afc9a945 1-96,101-127,129-387,389-409,416,420-460,462-613,617-640
+  s_317a1f4f55c190::t_8d462c4b2d4733 410-415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ce445c86e06a47a1bc0853768f3675d104d82d8e",
+  "prompts": {},
+  "sessions": {
+    "s_317a1f4f55c190": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_075fc62ebffeg2HmakxTxkSUnr",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
