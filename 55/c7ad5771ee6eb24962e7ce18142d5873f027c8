@@ -1,0 +1,31 @@
+depscan/cli_options.py
+  s_84aee975dbda03::t_fb05a2fcef0ed0 307-310
+documentation/docs/cli-usage.mdx
+  s_84aee975dbda03::t_fb652a44504710 88
+packages/analysis-lib/tests/test_utils.py
+  s_84aee975dbda03::t_db33b03f339b6e 72-94
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_84aee975dbda03::t_451e019872a02c 16
+  s_84aee975dbda03::t_a9cee1c32ed0b0 178-184
+documentation/docs/env-var.mdx
+  s_84aee975dbda03::t_5dc7076756e282 18
+  s_84aee975dbda03::t_c3da0ece05c6c1 14
+packages/analysis-lib/src/analysis_lib/utils.py
+  s_84aee975dbda03::t_f2cfba7bacbf44 53-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "55c7ad5771ee6eb24962e7ce18142d5873f027c8",
+  "prompts": {},
+  "sessions": {
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
