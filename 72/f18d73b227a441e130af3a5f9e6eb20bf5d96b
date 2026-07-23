@@ -1,0 +1,31 @@
+documentation/docs/cli-usage.mdx
+  s_9a9b85de49db4d::t_df36b63b4a8fa2 39
+  s_9a9b85de49db4d::t_eab7089fef0e49 87-89
+documentation/docs/env-var.mdx
+  s_9a9b85de49db4d::t_7ee35cb0225e57 18-19
+  s_9a9b85de49db4d::t_7d448af6790974 14
+depscan/cli_options.py
+  s_9a9b85de49db4d::t_97362056afc197 301-320
+depscan/cli.py
+  s_9a9b85de49db4d::t_30c3f08a6374e5 230-232
+  s_9a9b85de49db4d::t_07c61e3617bcab 418-423
+  s_9a9b85de49db4d::t_b40e78e061e562 188-191
+  s_9a9b85de49db4d::t_9ab3db8d805d2c 746-748
+  s_9a9b85de49db4d::t_ea845da459fb83 168-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "72f18d73b227a441e130af3a5f9e6eb20bf5d96b",
+  "prompts": {},
+  "sessions": {
+    "s_9a9b85de49db4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06f027cb2ffeP3zny0d88wyLPh",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
