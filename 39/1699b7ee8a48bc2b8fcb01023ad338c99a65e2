@@ -1,0 +1,19 @@
+packages/analysis-lib/src/analysis_lib/utils.py
+  s_84aee975dbda03::t_85b370d8d97c6e 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "391699b7ee8a48bc2b8fcb01023ad338c99a65e2",
+  "prompts": {},
+  "sessions": {
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
