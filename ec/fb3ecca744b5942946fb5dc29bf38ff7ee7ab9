@@ -1,0 +1,41 @@
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_9a9b85de49db4d::t_fe09b881ebeeaf 55-57
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_9a9b85de49db4d::t_86dd358b0e9ec3 5
+  s_9a9b85de49db4d::t_c9fd894a71bf6f 77-81
+packages/analysis-lib/tests/test_search.py
+  s_9a9b85de49db4d::t_97951bdaef83b8 197-372
+  s_9a9b85de49db4d::t_2949b0a44b8688 170,184,188
+packages/analysis-lib/src/analysis_lib/utils.py
+  s_9a9b85de49db4d::t_47d5cb0cbce30a 1283
+  s_9a9b85de49db4d::t_1239cdbd90de6e 1006-1007
+  s_9a9b85de49db4d::t_2ef631d6c6e476 232,235-241
+  s_9a9b85de49db4d::t_7f6c5470a409ed 875
+  s_9a9b85de49db4d::t_bfaaad3a08e100 748
+  s_9a9b85de49db4d::t_02bab37a6c1343 751
+packages/analysis-lib/tests/test_utils.py
+  s_9a9b85de49db4d::t_8117a2d1b85364 178
+  s_9a9b85de49db4d::t_4849922c00d049 2
+  s_9a9b85de49db4d::t_444fe82f8851db 153
+packages/analysis-lib/src/analysis_lib/search.py
+  s_9a9b85de49db4d::t_e10bd7ea28d2b4 290-292,306-311,335-337,340-342,361,364-365
+  s_9a9b85de49db4d::t_765f2f8f8ff4c3 381-386,419,431
+  s_9a9b85de49db4d::t_3a49ca799455f1 225,234-235,260,264
+  s_9a9b85de49db4d::t_73709d429bc174 17-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ecfb3ecca744b5942946fb5dc29bf38ff7ee7ab9",
+  "prompts": {},
+  "sessions": {
+    "s_9a9b85de49db4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06f027cb2ffeP3zny0d88wyLPh",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
