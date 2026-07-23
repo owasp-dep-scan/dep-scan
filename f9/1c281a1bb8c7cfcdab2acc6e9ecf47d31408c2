@@ -1,0 +1,28 @@
+depscan/cli_options.py
+  s_84aee975dbda03::t_bc1378bbc94ed6 320-374
+depscan/cli.py
+  s_84aee975dbda03::t_89dcdcb272c373 170-184,190-207,209-211,213,215-219,222-223,225-229,231
+documentation/docs/vulnerability-database.mdx
+  s_84aee975dbda03::t_3db343ae4afedc 111-126
+test/test_cli.py
+  s_84aee975dbda03::t_706e5f5bf401a7 227-288
+  s_84aee975dbda03::t_ed7283e808da89 145-152,154-167
+documentation/docs/env-var.mdx
+  s_84aee975dbda03::t_706026cd175547 33-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f91c281a1bb8c7cfcdab2acc6e9ecf47d31408c2",
+  "prompts": {},
+  "sessions": {
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
