@@ -1,0 +1,24 @@
+README.md
+  s_84aee975dbda03::t_354a9c4fdab124 55
+  s_84aee975dbda03::t_6d61104c0f9a1d 61,63,69,75,81,87
+documentation/docs/supported-languages.mdx
+  s_84aee975dbda03::t_213c3d3f6559d4 18
+documentation/docs/languages/rust-reachability.mdx
+  s_84aee975dbda03::t_213c3d3f6559d4 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6a4edae9a902d6c02d1e55aa3b9b73695b365878",
+  "prompts": {},
+  "sessions": {
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
