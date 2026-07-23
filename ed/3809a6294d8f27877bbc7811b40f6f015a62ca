@@ -1,0 +1,24 @@
+test/test_vdb_cli.py
+  s_0113b3b8dbc2ae::t_c759b3d6ddd142 1-170
+pyproject.toml
+  s_0113b3b8dbc2ae::t_745f45efca8372 48
+depscan/vdb_cli.py
+  s_0113b3b8dbc2ae::t_d223dcbc09168e 28
+  s_0113b3b8dbc2ae::t_c0578157a4d01e 1-27,29-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ed3809a6294d8f27877bbc7811b40f6f015a62ca",
+  "prompts": {},
+  "sessions": {
+    "s_0113b3b8dbc2ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06edf371effeyMlG91P55NbbzY",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
