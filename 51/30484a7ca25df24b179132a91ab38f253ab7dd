@@ -1,0 +1,47 @@
+README.md
+  s_895eb0c7d45551::t_de5ede3f51cab7 99-121
+  s_895eb0c7d45551::t_33dcf11792df7f 14
+test/test_dosai_integration.py
+  s_895eb0c7d45551::t_8f809d52521cd3 237-399
+  s_895eb0c7d45551::t_72cb2bfbed26a7 1-16,20,22,25-26,30,34
+test/data/dosai/repos/README.md
+  s_895eb0c7d45551::t_b95e2af5119c05 1-52
+test/test_explainer.py
+  s_895eb0c7d45551::t_b416b2d5ec9865 219-244
+  s_895eb0c7d45551::t_4d9bd174e1228c 55-68
+  s_895eb0c7d45551::t_7614b908bcaed6 152-155
+test/data/dosai/repos/reachable-app/Program.cs
+  s_895eb0c7d45551::t_38e5e41ba5de90 1-17
+test/data/dosai/repos/reachable-app/bin/Debug/net10.0/reachable-app.deps.json
+  s_895eb0c7d45551::t_5a1858f236038c 1-41
+test/data/dosai/repos/reachable-app/obj/project.assets.json
+  s_895eb0c7d45551::t_a6e76700c8c20d 1-399
+test/data/dosai/repos/reachable-app/reachable-app.csproj
+  s_895eb0c7d45551::t_7e0a673187302e 1-4
+test/data/dosai/repos/unreachable-app/Program.cs
+  s_895eb0c7d45551::t_8dc3fba23c6b02 1-16
+test/data/dosai/repos/unreachable-app/bin/Debug/net10.0/unreachable-app.deps.json
+  s_895eb0c7d45551::t_84bd96d90ca110 1-41
+test/data/dosai/repos/unreachable-app/obj/project.assets.json
+  s_895eb0c7d45551::t_44fee408533e98 1-399
+test/data/dosai/repos/unreachable-app/unreachable-app.csproj
+  s_895eb0c7d45551::t_06d54ce14754a1 1-4
+test/data/dotnet-reachables.slices.json
+  s_895eb0c7d45551::t_332c29915bafd9 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "5130484a7ca25df24b179132a91ab38f253ab7dd",
+  "prompts": {},
+  "sessions": {
+    "s_895eb0c7d45551": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_070b86e7dffe41JrYJom9AYcpI",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
