@@ -1,0 +1,65 @@
+documentation/docs/env-var.mdx
+  s_0113b3b8dbc2ae::t_d5ac8c5c40dfd9 10-42,46
+test/test_vdb_cli.py
+  s_0113b3b8dbc2ae::t_c759b3d6ddd142 1-170
+documentation/docs/cli-usage.mdx
+  s_0113b3b8dbc2ae::t_0fd436288a1baf 197
+  s_0113b3b8dbc2ae::t_a0e2aafa85897e 204-240
+  s_0113b3b8dbc2ae::t_7c14bf69753bb6 181
+README.md
+  s_0113b3b8dbc2ae::t_7c97e56390da2f 264
+depscan/vdb_cli.py
+  s_0113b3b8dbc2ae::t_c0578157a4d01e 1-27,29-216
+  s_0113b3b8dbc2ae::t_d223dcbc09168e 28
+documentation/docs/vulnerability-database.mdx
+  s_0113b3b8dbc2ae::t_2bb2d3549617da 1-129
+documentation/sidebars.ts
+  s_0113b3b8dbc2ae::t_d4b1b3773b1ba0 20
+pyproject.toml
+  s_0113b3b8dbc2ae::t_745f45efca8372 48
+depscan/cli.py
+  s_0113b3b8dbc2ae::t_95b2a32124058a 128-142,149-151,153-166
+  s_0113b3b8dbc2ae::t_aa3ccd85b00f84 167-226
+  s_84aee975dbda03::t_00e60a5e3d70fc 143-148,152
+  s_0113b3b8dbc2ae::t_e6bf4e1f425e58 45,47
+  s_0113b3b8dbc2ae::t_91121f13cf29ee 534-536,538,550,553
+  s_0113b3b8dbc2ae::t_67a9d2d05d83e3 44,48
+  s_0113b3b8dbc2ae::t_653673dc58932b 539,551-552
+test/test_vdb_config.py
+  s_84aee975dbda03::t_a73abfbed84773 217-231
+  s_0113b3b8dbc2ae::t_675a167970a2eb 52
+  s_0113b3b8dbc2ae::t_756de0ea388416 1-51,53-216
+documentation/docs/migrate-v5-to-v6.mdx
+  s_0113b3b8dbc2ae::t_8f84007969055e 10
+depscan/lib/config.py
+  s_84aee975dbda03::t_6cc1bd1fd8d38c 251-258
+  s_0113b3b8dbc2ae::t_cc5967b5e3206c 143-250,259-297,299-302,305-308
+test/test_cli.py
+  s_0113b3b8dbc2ae::t_ca0ffc37707b0e 4
+  s_0113b3b8dbc2ae::t_f77698f98315ec 97-138
+  s_0113b3b8dbc2ae::t_5cfdefcb85031f 139-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "919ddf53bc1355106ec8f075390a8a420e94dd42",
+  "prompts": {},
+  "sessions": {
+    "s_0113b3b8dbc2ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06edf371effeyMlG91P55NbbzY",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
