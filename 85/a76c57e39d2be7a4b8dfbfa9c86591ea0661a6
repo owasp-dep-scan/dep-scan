@@ -1,0 +1,193 @@
+depscan/lib/explainer.py
+  s_8bcb0eb1f24514::t_bffc883a3876fe 513
+  s_8bcb0eb1f24514::t_39e3676271c492 556-557
+  s_8bcb0eb1f24514::t_8914f6095b90e9 221-224,233-239,244-247
+  s_31a7d9f788395d::t_2a717dfff8ea39 225-232,240-243
+  s_31a7d9f788395d::t_5b96e49f07ef7a 319-322,326
+  s_8bcb0eb1f24514::t_b6868ce35fe58a 281-285,288
+  s_8bcb0eb1f24514::t_4b9df204eccd58 315-318,324
+.gitignore
+  s_317a1f4f55c190::t_deaf911e57070a 8-10
+test/data/golem/repos/real-cve-app/main.go
+  s_175176acfa047e::t_f91bb152e47fb0 1-14
+packages/analysis-lib/tests/data/rusi/vulnerable-web-app.golden.json
+  s_8bcb0eb1f24514::t_763b3e6ac462f6 5-16,20,22-23,25-27,37-49,53,55-56,58-60,75-76,78-80,88-89,91-93,101-102,104-106,117-129,133,135-136,138-140
+  s_e4cc1a133099a5::t_697ce2a5f73cec 4
+packages/xbom-lib/src/xbom_lib/plugins.py
+  s_175176acfa047e::t_e3c8512a9f3d03 1-73
+packages/analysis-lib/tests/data/golem/vuln-app.golden.json
+  s_8bcb0eb1f24514::t_763b3e6ac462f6 9-10,12-14,29-30,32-34,42-43,45-47,60-72,75,77-78,80-82,93-105,108,110-111,113-115
+  s_317a1f4f55c190::t_933694e94f4c19 1-8,11,15-28,31,35-41,44,48-59,73-74,76,79,83-92,106-107,109,112,116-123
+test/test_golem_integration.py
+  s_175176acfa047e::t_72c6f3ff15a130 315-393,395-454,456-463,465-472
+  s_175176acfa047e::t_6a394f3785742c 25,27
+  s_317a1f4f55c190::t_dee21b57361538 105
+  s_175176acfa047e::t_45c27d54e43c60 394,455,464
+  s_317a1f4f55c190::t_69eebff5c3ac63 1-24,26,28-104,106-314
+README.md
+  s_317a1f4f55c190::t_a74c66e4a05930 13
+  s_317a1f4f55c190::t_ec519ebaf33890 75-97
+test/test_explainer.py
+  s_31a7d9f788395d::t_819c4778075d1a 223-226,228-232
+  s_8bcb0eb1f24514::t_e0ca3dc3415c80 3-4,7-8,27-54,123-153,155-222,227,233-237
+  s_8bcb0eb1f24514::t_862824c318af5b 154
+test/test_htmlgen.py
+  s_8bcb0eb1f24514::t_862824c318af5b 31,33,35,39,41-45,48-50,60,62-72,78,80-87,90-92,102-108,137-138,142,166-167
+  s_8bcb0eb1f24514::t_99f92ba809013d 109-136,139-141,143-165,168-183,185-191
+  s_8bcb0eb1f24514::t_711f172beae934 1-8
+test/data/golem/repos/reachable-app/go.mod
+  s_317a1f4f55c190::t_b11c5801733f7b 1-7
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_175176acfa047e::t_93db3cc0e96d0b 50
+  s_317a1f4f55c190::t_dee21b57361538 465
+  s_317a1f4f55c190::t_10eebf9ecf4e20 1-49,51-269,272,276-464,466-468
+  s_31a7d9f788395d::t_62942378da9e56 270-271,273-275
+packages/analysis-lib/src/analysis_lib/golem_slices.py
+  s_8bcb0eb1f24514::t_b9e8ceee23b64b 473-476,479,481-499,502,505-509,511
+  s_8bcb0eb1f24514::t_0f151f5f7a9576 397-398,401,422-433,439,442-446
+  s_8bcb0eb1f24514::t_de426eed4ea8d0 517-519,537,541-543,545-561,564,567-571,573
+  s_8bcb0eb1f24514::t_fc2ff89a24215e 290-291,296-297
+  s_317a1f4f55c190::t_e5d8e1c61d3d60 1-283,285-287,289,299-396,399-400,402-421,434-438,440-441,447-472,477-478,480,500-501,503-504,510,512,576-590,592-594,598-603,605-607,613-676
+  s_317a1f4f55c190::t_1c7cf559dfa541 513-516,520-526,529-536,539-540,562-563,565-566,572,574-575
+  s_317a1f4f55c190::t_ff9d0073763ed4 527-528
+  s_8bcb0eb1f24514::t_862824c318af5b 538,544
+  s_8bcb0eb1f24514::t_c1199e16e030dc 591,604,608-612
+  s_317a1f4f55c190::t_dee21b57361538 595-597
+  s_317a1f4f55c190::t_3e5f3e75e4e28e 284,288,292-295,298
+packages/analysis-lib/tests/test_golem_runner.py
+  s_317a1f4f55c190::t_37df77fd0eff1f 1-72,74-114,116-118,122-228,234-235,241-345
+  s_317a1f4f55c190::t_dee21b57361538 73,119-121,229-233,236-240
+  s_31a7d9f788395d::t_e6f1f39ca88702 115
+test/data/golem/repos/real-cve-app/go.mod
+  s_175176acfa047e::t_f91bb152e47fb0 1-8
+test/data/golem/repos/unreachable-app/main.go
+  s_317a1f4f55c190::t_1fe5abe3fb1a6e 1-18
+packages/analysis-lib/src/analysis_lib/rusi_slices.py
+  s_8bcb0eb1f24514::t_c9db50069d985d 466-471,474,476-494,497,500-504,506
+  s_8bcb0eb1f24514::t_52488e38f63a1e 303-306
+  s_8bcb0eb1f24514::t_43ae9162e6c68d 389-390,393,412-423,429,432-436
+  s_8bcb0eb1f24514::t_d5f922816f91aa 552-556,568-572
+test/data/rust-reachables.slices.json
+  s_8bcb0eb1f24514::t_f1ba2e4589ddb4 1-148
+packages/analysis-lib/tests/test_golem_slices.py
+  s_317a1f4f55c190::t_87f7f0afc9a945 1-96,101-127,129-387,389-409,416,420-460,462-613,617-640
+  s_317a1f4f55c190::t_dee21b57361538 97-100,128,388,417-419,461,614-616
+  s_317a1f4f55c190::t_8d462c4b2d4733 410-415
+test/data/golem/repos/reachable-app/main.go
+  s_317a1f4f55c190::t_1d72a4e61d6733 1-24
+test/data/golem/repos/unreachable-app/go.mod
+  s_317a1f4f55c190::t_aa2fd46ae895a9 1-7
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_175176acfa047e::t_fb5da5e9bb3fe0 40
+  s_31a7d9f788395d::t_1d3321df39b99d 41
+depscan/cli_options.py
+  s_317a1f4f55c190::t_c418cd8fa111c3 167-177
+  s_317a1f4f55c190::t_ded5401a135325 166
+depscan/lib/config.py
+  s_317a1f4f55c190::t_9bbd6682aee4ed 341-353
+test/data/golem/repos/vuln-lib/vuln.go
+  s_317a1f4f55c190::t_663b5e978ceee1 1-19
+packages/analysis-lib/tests/test_vex.py
+  s_31a7d9f788395d::t_9d93ba541623fd 467,478
+  s_31a7d9f788395d::t_61db1410bafee5 416-466,468-477,479-484
+test/data/go-reachables.slices.json
+  s_8bcb0eb1f24514::t_dc53da05f0683c 1-123
+depscan/lib/bom.py
+  s_317a1f4f55c190::t_e770b5046ccc08 20-22
+  s_317a1f4f55c190::t_f9fb27729b6609 332-335
+  s_317a1f4f55c190::t_607b1a3245fea9 477-579,583-608
+  s_317a1f4f55c190::t_179365c92b773a 724-729
+  s_317a1f4f55c190::t_dee21b57361538 580-582
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_317a1f4f55c190::t_6ba08986888f05 312
+test/data/golem/repos/vuln-lib/go.mod
+  s_317a1f4f55c190::t_59fd96c53c821d 1-3
+test/data/golem/repos/real-cve-app/go.sum
+  s_175176acfa047e::t_b425718fc86abd 1-4
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/.editorconfig
+  s_175176acfa047e::t_80e5099c6f1f18 1-20
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/.gitignore
+  s_175176acfa047e::t_b81e4afd3bd6f8 1
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/LICENSE
+  s_175176acfa047e::t_0cf77486413aba 1-27
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/Makefile
+  s_175176acfa047e::t_c1c49a243c6d5d 1-34
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/README.md
+  s_175176acfa047e::t_8f654a26dd49dd 1-812
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/doc.go
+  s_175176acfa047e::t_4010d04002e87d 1-305
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/middleware.go
+  s_175176acfa047e::t_cb8fe23cfbb583 1-74
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/mux.go
+  s_175176acfa047e::t_0f0860177ce845 1-608
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/regexp.go
+  s_175176acfa047e::t_2bae8e19763411 1-388
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/route.go
+  s_175176acfa047e::t_7317eb1bc6cba4 1-765
+test/data/golem/repos/real-cve-app/vendor/github.com/gorilla/mux/test_helpers.go
+  s_175176acfa047e::t_a25fca49cbe6c1 1-19
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/.travis.yml
+  s_175176acfa047e::t_ea4c4f6acaec3b 1-23
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/LICENSE
+  s_175176acfa047e::t_7b10e915a8f8d9 1-20
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/README.md
+  s_175176acfa047e::t_daa5f9919f812a 1-65
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/codec.go
+  s_175176acfa047e::t_d4b6f4609278c0 1-206
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/generator.go
+  s_175176acfa047e::t_0ca516aa1e3a6b 1-239
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/sql.go
+  s_175176acfa047e::t_f01fe039bcd057 1-78
+test/data/golem/repos/real-cve-app/vendor/github.com/satori/go.uuid/uuid.go
+  s_175176acfa047e::t_bc1f5440b9ddb1 1-161
+test/data/golem/repos/real-cve-app/vendor/modules.txt
+  s_175176acfa047e::t_eaa3f9be7f85d0 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "85a76c57e39d2be7a4b8dfbfa9c86591ea0661a6",
+  "prompts": {},
+  "sessions": {
+    "s_175176acfa047e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_073d2046effe4ovflc60AA5Drm",
+        "model": "glm-5.2"
+      },
+      "human_author": null
+    },
+    "s_317a1f4f55c190": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_075fc62ebffeg2HmakxTxkSUnr",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_31a7d9f788395d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2df36391-80c2-48c3-951d-42bb6263995e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_8bcb0eb1f24514": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_07401b94fffeJ17GAr4u1TPfcf",
+        "model": "glm-5.2"
+      },
+      "human_author": null
+    },
+    "s_e4cc1a133099a5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_079236fb1ffe2DlEJpLtUs70xk",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
