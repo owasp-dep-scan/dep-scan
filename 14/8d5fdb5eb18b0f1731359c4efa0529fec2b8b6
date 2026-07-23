@@ -1,0 +1,67 @@
+documentation/docs/supported-languages.mdx
+  s_50338e74fdf758::t_a3a0e57e88b8d2 6-32
+documentation/docs/concepts/reachability-model.mdx
+  s_50338e74fdf758::t_e2fd18790a2b4c 1-24,61-85
+  s_84aee975dbda03::t_309036ecea8777 25-60
+documentation/docs/languages/rust-reachability.mdx
+  s_50338e74fdf758::t_e2edbb34130cfc 1-24,37-107
+  s_84aee975dbda03::t_1c759e175e11b0 25-36
+documentation/sidebars.ts
+  s_50338e74fdf758::t_011b9b643f88fd 23-61
+README.md
+  s_50338e74fdf758::t_c67dabe4b69935 12-13,17,22,26,32-34,36-37,45-60,63,65,79,83,106,108,125-147,299-307,321,324,473-486
+  s_50338e74fdf758::t_bb9c95a7e0ba75 487
+documentation/docs/languages/dotnet-reachability.mdx
+  s_84aee975dbda03::t_4bb81e8d0d8de3 100-114
+  s_84aee975dbda03::t_efbdbcd83707c6 68
+  s_50338e74fdf758::t_6e97e4ec40b8df 1-67,69-99,115-125
+documentation/docs/analyzers/framework-reachability.mdx
+  s_50338e74fdf758::t_25bf1267ca64c2 1-43
+documentation/docs/output/vex-csaf-guide.mdx
+  s_84aee975dbda03::t_858053f6712feb 47-59
+  s_50338e74fdf758::t_a118cc5a059171 1-46,60-152
+documentation/docs/reachability-analysis.mdx
+  s_50338e74fdf758::t_840bb07463550d 3,6,8,10,12,14,16,18,20,22-26,28,30,32,34-37,39,41,43,46,49,51,53,55,57
+documentation/docusaurus.config.ts
+  s_84aee975dbda03::t_d3f9ccc6c3cf9a 20-24
+documentation/docs/languages/go-reachability.mdx
+  s_84aee975dbda03::t_36a250fcd00ab8 28-38
+  s_50338e74fdf758::t_198018e43b930e 1-27,39-109
+documentation/docs/output/vdr-guide.mdx
+  s_50338e74fdf758::t_07740268f76e01 1-76
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  s_84aee975dbda03::t_4db96f27670fe5 52-59
+  s_50338e74fdf758::t_9cd71b65bdfedb 1-51,60-103
+documentation/docs/concepts/sbom-and-evidence.mdx
+  s_50338e74fdf758::t_d50c27203b794e 1-18,30-48
+  s_84aee975dbda03::t_65836a301ffab5 19-29
+documentation/docs/concepts/prioritization.mdx
+  s_50338e74fdf758::t_a291bfde7b606e 1-24,47-65
+  s_84aee975dbda03::t_b1effd36068c23 25-46
+documentation/docs/analyzers/semantic-reachability.mdx
+  s_50338e74fdf758::t_fbc754712c5db0 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "148d5fdb5eb18b0f1731359c4efa0529fec2b8b6",
+  "prompts": {},
+  "sessions": {
+    "s_50338e74fdf758": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06f259beaffey2Wh72sKF8vq6e",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
