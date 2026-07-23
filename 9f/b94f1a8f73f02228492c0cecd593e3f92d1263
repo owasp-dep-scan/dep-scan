@@ -1,0 +1,20 @@
+packages/analysis-lib/tests/test_vex.py
+  s_39f70b7b9d2bc4::t_dfc1167060aa38 496-518
+  s_39f70b7b9d2bc4::t_c90c24e8735a41 417-419,434-443
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "9fb94f1a8f73f02228492c0cecd593e3f92d1263",
+  "prompts": {},
+  "sessions": {
+    "s_39f70b7b9d2bc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3f17c53-f907-40ea-8c8e-8b34fae99c15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
