@@ -1,0 +1,19 @@
+depscan/cli.py
+  s_84aee975dbda03::t_00e60a5e3d70fc 143-148,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "14d5c5f1e602383cc59350789d70ab8c5a123442",
+  "prompts": {},
+  "sessions": {
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
