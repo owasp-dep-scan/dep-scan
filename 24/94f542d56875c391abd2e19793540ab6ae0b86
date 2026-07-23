@@ -1,0 +1,26 @@
+packages/analysis-lib/tests/test_utils.py
+  s_9a9b85de49db4d::t_6e5d9126db6ebc 43-70
+packages/analysis-lib/src/analysis_lib/utils.py
+  s_9a9b85de49db4d::t_3cab6109b468e3 54-74
+  s_9a9b85de49db4d::t_91e1f19e415af6 1266,1273
+  s_9a9b85de49db4d::t_b7988167bc6000 1181
+  s_9a9b85de49db4d::t_59dc1d5370f34c 1526
+packages/analysis-lib/src/analysis_lib/output.py
+  s_9a9b85de49db4d::t_dc093ad3424a44 247-252,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2494f542d56875c391abd2e19793540ab6ae0b86",
+  "prompts": {},
+  "sessions": {
+    "s_9a9b85de49db4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06f027cb2ffeP3zny0d88wyLPh",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
