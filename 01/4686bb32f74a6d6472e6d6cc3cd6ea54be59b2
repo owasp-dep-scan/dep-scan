@@ -1,0 +1,21 @@
+test/test_vdb_config.py
+  s_84aee975dbda03::t_a73abfbed84773 217-231
+depscan/lib/config.py
+  s_84aee975dbda03::t_6cc1bd1fd8d38c 251-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "014686bb32f74a6d6472e6d6cc3cd6ea54be59b2",
+  "prompts": {},
+  "sessions": {
+    "s_84aee975dbda03": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64804ec5-504a-44d0-9c36-f157da2ad116",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
