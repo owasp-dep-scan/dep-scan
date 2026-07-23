@@ -1,0 +1,74 @@
+packages/analysis-lib/tests/data/dosai/vuln-app.golden.json
+  s_895eb0c7d45551::t_7b7e1d84480184 1-81
+packages/analysis-lib/tests/test_dosai_runner.py
+  s_895eb0c7d45551::t_5f03fc8032a2fd 90,92
+  s_895eb0c7d45551::t_29a41dbcca88ff 1-35,39-89,91,93-149,151-318,320-338,340-341,347-421
+  s_895eb0c7d45551::t_1a2b1a4f40c515 319,339,342-346
+  s_895eb0c7d45551::t_ebeec4da5fad44 36-38,150
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_895eb0c7d45551::t_276fbd0cbf78fd 307-313
+packages/analysis-lib/tests/data/dosai/dosai-combined.sample.json
+  s_895eb0c7d45551::t_1665b441e0b47f 1-504
+packages/analysis-lib/tests/data/dosai/nuget-bom.sample.json
+  s_895eb0c7d45551::t_1665b441e0b47f 1-16
+depscan/cli_options.py
+  s_895eb0c7d45551::t_2cd28723dc3b11 179-192
+  s_895eb0c7d45551::t_3a5467dfbbe08d 178
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_895eb0c7d45551::t_ebeec4da5fad44 142
+  s_895eb0c7d45551::t_072021595d6035 1-141,143-472
+packages/analysis-lib/tests/data/dosai/dosai-dataflows.sample.json
+  s_895eb0c7d45551::t_1665b441e0b47f 1-428
+packages/analysis-lib/tests/test_dosai_slices.py
+  s_895eb0c7d45551::t_5b9fcb2d70a263 1-122,127-265,269-282,286-342,346-362,395-412,417-425
+  s_895eb0c7d45551::t_c4a11531899708 123-126,266-268,283-285,343-345,413-416
+  s_39f70b7b9d2bc4::t_0b265daa1f7d0c 363-394
+depscan/lib/bom.py
+  s_39f70b7b9d2bc4::t_1d176be2ab6914 788
+  s_895eb0c7d45551::t_5bf694b59529b9 785,789-790
+  s_895eb0c7d45551::t_4349d7b75d528d 338-342
+  s_895eb0c7d45551::t_efdcff1b5be3a1 686,689
+  s_895eb0c7d45551::t_07ad89ae91336b 619-681,685,687-688,690-757,761-784,786-787,791-797
+  s_895eb0c7d45551::t_071330c688fd86 20-21
+  s_895eb0c7d45551::t_0308b712aa664d 682-684,758-760
+  s_895eb0c7d45551::t_df560797c6861c 921-928
+depscan/lib/explainer.py
+  s_895eb0c7d45551::t_0706aec0091b74 513-515
+  s_895eb0c7d45551::t_0308b712aa664d 516-518
+  s_895eb0c7d45551::t_a6d654f7dfd09e 222-233,244
+test/test_dosai_integration.py
+  s_895eb0c7d45551::t_8bc2c2e3a8c9bc 1-133,135-140,142-144,154-228
+  s_895eb0c7d45551::t_9d687707343b16 134,141,145-153
+depscan/lib/config.py
+  s_895eb0c7d45551::t_288375ae4e729d 354-381
+packages/analysis-lib/src/analysis_lib/dosai_slices.py
+  s_895eb0c7d45551::t_93c5417d6acee3 733-738,740-745
+  s_39f70b7b9d2bc4::t_e53b7a3b8ffea5 368-376
+  s_39f70b7b9d2bc4::t_a599b6c89a34f3 561-565
+  s_895eb0c7d45551::t_d3177c042dd6d1 1-367,377-560,566-676,678-732,739,746-797
+  s_895eb0c7d45551::t_f94d2229363189 677
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "99b24efa6c6b9b87dabd30aa4fd343bbc13a3d65",
+  "prompts": {},
+  "sessions": {
+    "s_39f70b7b9d2bc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3f17c53-f907-40ea-8c8e-8b34fae99c15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_895eb0c7d45551": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_070b86e7dffe41JrYJom9AYcpI",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
