@@ -1,0 +1,23 @@
+test/test_cli.py
+  s_0113b3b8dbc2ae::t_f77698f98315ec 96-137
+depscan/cli.py
+  s_0113b3b8dbc2ae::t_653673dc58932b 468-469,481-483
+  s_0113b3b8dbc2ae::t_95b2a32124058a 127-159
+  s_0113b3b8dbc2ae::t_67a9d2d05d83e3 44,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "eb904e35fe87991c0d0c41196d0e80ad900a9882",
+  "prompts": {},
+  "sessions": {
+    "s_0113b3b8dbc2ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06edf371effeyMlG91P55NbbzY",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
