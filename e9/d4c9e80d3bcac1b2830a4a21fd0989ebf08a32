@@ -1,0 +1,22 @@
+depscan/lib/config.py
+  s_0113b3b8dbc2ae::t_cc5967b5e3206c 143-289,291-294,297-300
+test/test_vdb_config.py
+  s_0113b3b8dbc2ae::t_675a167970a2eb 52
+  s_0113b3b8dbc2ae::t_756de0ea388416 1-51,53-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e9d4c9e80d3bcac1b2830a4a21fd0989ebf08a32",
+  "prompts": {},
+  "sessions": {
+    "s_0113b3b8dbc2ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06edf371effeyMlG91P55NbbzY",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
