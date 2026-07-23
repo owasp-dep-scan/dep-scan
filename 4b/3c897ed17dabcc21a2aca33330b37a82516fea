@@ -1,0 +1,31 @@
+documentation/docs/cli-usage.mdx
+  s_0113b3b8dbc2ae::t_7c14bf69753bb6 181
+  s_0113b3b8dbc2ae::t_0fd436288a1baf 197
+  s_0113b3b8dbc2ae::t_a0e2aafa85897e 204-240
+documentation/docs/env-var.mdx
+  s_0113b3b8dbc2ae::t_d5ac8c5c40dfd9 10-42,46
+documentation/docs/migrate-v5-to-v6.mdx
+  s_0113b3b8dbc2ae::t_8f84007969055e 10
+documentation/sidebars.ts
+  s_0113b3b8dbc2ae::t_d4b1b3773b1ba0 20
+documentation/docs/vulnerability-database.mdx
+  s_0113b3b8dbc2ae::t_2bb2d3549617da 1-129
+README.md
+  s_0113b3b8dbc2ae::t_7c97e56390da2f 264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4b3c897ed17dabcc21a2aca33330b37a82516fea",
+  "prompts": {},
+  "sessions": {
+    "s_0113b3b8dbc2ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06edf371effeyMlG91P55NbbzY",
+        "model": "glm-5.2"
+      },
+      "human_author": null
+    }
+  }
+}
