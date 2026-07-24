@@ -1,0 +1,150 @@
+packages/analysis-lib/src/analysis_lib/data/__init__.py
+  s_90b905d78f545f::t_e5c50661b59907 1
+packages/analysis-lib/src/analysis_lib/vex/vulnerabilities.py
+  s_90b905d78f545f::t_da0e9c465269c5 155-157
+  s_90b905d78f545f::t_203794dd4283d6 21,24
+  s_90b905d78f545f::t_17c457ac5d08b5 131-132,136-143,158,187-211
+  s_90b905d78f545f::t_151eabf72b0b11 159,161-186
+  s_90b905d78f545f::t_2da4f68cc5c22a 135
+  s_90b905d78f545f::t_984dfa42bd05f4 26,72
+  s_90b905d78f545f::t_a001bff83871ef 122
+  s_90b905d78f545f::t_a9e6c4b645c569 129
+depscan/validate_cli.py
+  s_90b905d78f545f::t_3fd1842a547d3b 4
+  s_90b905d78f545f::t_fc6c733d607a61 32-33
+  s_90b905d78f545f::t_2bbc319759c352 5-7
+  s_90b905d78f545f::t_0eb579acaeabf5 1-3
+  s_90b905d78f545f::t_bde5153ff2a74f 8-16,21-29,38-46,48-51,53-60,62-63,67-72,74-83,86-92,96
+  s_90b905d78f545f::t_50469e4cfe71e5 35-37
+  s_90b905d78f545f::t_ce026b0a8865e3 34
+  s_90b905d78f545f::t_9de1ddf9d170ef 64-66
+packages/analysis-lib/src/analysis_lib/validation.py
+  s_90b905d78f545f::t_46da304b94b97b 1
+  s_90b905d78f545f::t_910a73ba43704d 19,23,29-44
+  s_90b905d78f545f::t_9001491a94a1c7 2-9,14-18,20-22,24-28,46-49,51-52,60-80,86-87,100-113,117-147
+  s_90b905d78f545f::t_0f7a6887c8f4b4 50,53-59
+  s_90b905d78f545f::t_384570337e2fa4 10-13
+  s_90b905d78f545f::t_153630fe73bee0 81-85,88-99
+  s_90b905d78f545f::t_32f56ca2fe9e66 114-116
+  s_90b905d78f545f::t_3147a296724865 45
+packages/analysis-lib/pyproject.toml
+  s_90b905d78f545f::t_a418af11c51740 47
+  s_90b905d78f545f::t_e2bc70df3e7dfa 3
+packages/analysis-lib/tests/test_vex.py
+  s_90b905d78f545f::t_4a9e51002e0906 690-728,730-732,734-753,755-777,779-785,787-839,984-992
+  s_90b905d78f545f::t_0e419b8916c4ea 840-841
+  s_90b905d78f545f::t_2b2957b1bd666c 842-912
+  s_90b905d78f545f::t_f56ab879d2c1b4 25,27-28,30
+  s_90b905d78f545f::t_21da6e4288dfb3 729,778,786
+  s_90b905d78f545f::t_ed63b387c9083f 960-983
+  s_90b905d78f545f::t_f1802a97a3f95a 754
+  s_90b905d78f545f::t_a049b676876ffe 733
+  s_90b905d78f545f::t_78d12c8a8fcec8 913-959
+pyproject.toml
+  s_90b905d78f545f::t_e2bc70df3e7dfa 3
+  s_90b905d78f545f::t_0e7b178b97f09a 49
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/bom-1.7.schema.json
+  s_90b905d78f545f::t_53431967da13e5 1-6700
+documentation/docs/output/validate-command.mdx
+  s_90b905d78f545f::t_b3b188b6f52c8a 1-19,21-51,53-56
+  s_90b905d78f545f::t_38ef68262b6353 52
+  s_90b905d78f545f::t_b4328a96b5d2ff 20
+contrib/CSAF_README.md
+  s_90b905d78f545f::t_058332702d943d 1,3-4,6-7,9,11-20,22-24,36,38-39
+  s_90b905d78f545f::t_ee2a3f42329922 26-28,31,34-35
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/bom-1.5.schema.json
+  s_90b905d78f545f::t_53431967da13e5 2287,2329
+  s_90b905d78f545f::t_78313ee0462ff5 1-2286,2288-2328,2330-3799
+packages/reporting-lib/pyproject.toml
+  s_90b905d78f545f::t_e2bc70df3e7dfa 3
+packages/analysis-lib/src/analysis_lib/vex/semantic.py
+  s_90b905d78f545f::t_23095b8e224206 13
+  s_90b905d78f545f::t_2379b379772124 98
+  s_90b905d78f545f::t_08187a2154b45b 227-236
+  s_90b905d78f545f::t_1758bb73048553 226
+  s_90b905d78f545f::t_600ec0f6caa33e 19-25,44-46
+  s_90b905d78f545f::t_2396497d4c3292 258,268,270-271
+  s_90b905d78f545f::t_f089ae08d78262 291-292,295,306-307
+  s_90b905d78f545f::t_6124febeacc7aa 330-335,337-340,346-347,379-385
+  s_90b905d78f545f::t_5d463f8397588c 348,366-370,372-373,376,378,386,393,396-398,405,408,411
+  s_90b905d78f545f::t_43ca2d12572317 1-12,14-18,30-43,47-60,62,64-68,70,76-90,92,96-97,99-100,103,126-225,237-256,265,269,280,293-294,296-305,308-329,336,341-345,349-351,355,359-361,363-364,371,374-375,377,387-392,394-395,399-404,406-407,409-410,412-416,465-473,477,479,481-483,485-543
+  s_90b905d78f545f::t_362616fa6a0260 257,266-267
+  s_90b905d78f545f::t_d4892462331dcc 281-289
+  s_90b905d78f545f::t_459449732f28da 91,93-95,101-102,104-125
+  s_90b905d78f545f::t_09aaf61f85b89b 26-29
+  s_90b905d78f545f::t_20e12e331266a9 75
+  s_90b905d78f545f::t_da9c431541b314 61,63,69,71-74
+  s_90b905d78f545f::t_f1267e44e094cd 259-264,273-279
+  s_90b905d78f545f::t_a08f42ff01e083 272,417-419,425,428-430,432,437-444,450,453-457,459-464,474-476,478,480,484
+  s_90b905d78f545f::t_c6952b3b85611c 352-354,356-358,362,365
+  s_90b905d78f545f::t_206ab9c9670785 420-424,426-427,431,433-436,445-449,451-452,458
+  s_90b905d78f545f::t_857090c079b860 290
+packages/analysis-lib/src/analysis_lib/vex/product_tree.py
+  s_90b905d78f545f::t_c5a89077f7dbbc 134-135
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/bom-1.4.schema.json
+  s_90b905d78f545f::t_53431967da13e5 285,614,1643-1644,1686,1692
+  s_90b905d78f545f::t_78313ee0462ff5 1-284,286-613,615-1642,1645-1685,1687-1691,1693-1697
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/cryptography-defs.schema.json
+  s_90b905d78f545f::t_05413230765111 1-592
+documentation/sidebars.ts
+  s_90b905d78f545f::t_2f8e4e723b4591 60-61
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/spdx.schema.json
+  s_90b905d78f545f::t_53431967da13e5 1-1632
+documentation/docs/output/vex-csaf-guide.mdx
+  s_90b905d78f545f::t_5ad5f1dc0129aa 146
+  s_90b905d78f545f::t_74997eb25ca514 148
+  s_90b905d78f545f::t_90aacb7220b12d 140,142,144
+  s_90b905d78f545f::t_0e0073ded26e25 45-55
+packages/analysis-lib/src/analysis_lib/vex/emit.py
+  s_90b905d78f545f::t_955f89fb6dad6e 61-73
+  s_90b905d78f545f::t_27e574e3540634 128,130-136,139-141,146-150
+  s_90b905d78f545f::t_b2207f76b6342f 25,32-33
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/bom-1.6.schema.json
+  s_90b905d78f545f::t_78313ee0462ff5 1-538,540-1163,1165-2683,2685-2930,2932-2985,2987-5699
+  s_90b905d78f545f::t_53431967da13e5 539,1164,2684,2931,2986
+packages/server-lib/pyproject.toml
+  s_90b905d78f545f::t_e2bc70df3e7dfa 3
+packages/analysis-lib/tests/test_validation.py
+  s_90b905d78f545f::t_9d566a8115723b 70-83
+  s_90b905d78f545f::t_5f86cea3fb0e3d 97-105
+  s_90b905d78f545f::t_5ddd8b367a6cae 1-69,84-96,106-108
+packages/analysis-lib/src/analysis_lib/vex/refs.py
+  s_90b905d78f545f::t_f0e8b596997166 79-80
+  s_90b905d78f545f::t_d08f226c0802f7 14,21-48,50-52,57-78
+packages/analysis-lib/src/analysis_lib/data/cyclonedx/jsf-0.82.schema.json
+  s_90b905d78f545f::t_78313ee0462ff5 1-240
+packages/xbom-lib/pyproject.toml
+  s_90b905d78f545f::t_e2bc70df3e7dfa 3
+packages/analysis-lib/src/analysis_lib/vex/dates.py
+  s_90b905d78f545f::t_b461a8313208c1 19-21,23
+  s_90b905d78f545f::t_13abf2074545bb 86-88
+  s_90b905d78f545f::t_e9cb2fd924f29a 1-18,22,24-85,89
+packages/analysis-lib/src/analysis_lib/vex/tracking.py
+  s_90b905d78f545f::t_878a8975577aa7 11,18,22-23
+uv.lock
+  s_0f2caa0b80b12d::t_0d36c5be74d5af 713,738,743,776,1338
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "195e18996ca59cc97f8213aad162d78c2df51226",
+  "prompts": {},
+  "sessions": {
+    "s_0f2caa0b80b12d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06c9c86a4ffeLXbEcajBqUAJj6",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_90b905d78f545f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c43c374-5853-40c6-ab2a-0fde0fbd3964",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}
