@@ -1,0 +1,21 @@
+test/test_tomlparse.py
+  s_c7f226c8b2f8d8::t_cb1d689da918ee 1-60
+depscan/lib/tomlparse.py
+  s_c7f226c8b2f8d8::t_eccc2e12d54d1d 115-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0b517275970b0b9d53c5eeecaa432d125ce2e4b4",
+  "prompts": {},
+  "sessions": {
+    "s_c7f226c8b2f8d8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06b6d6cdbfferDPOiMTLmzzFDa",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
