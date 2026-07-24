@@ -1,0 +1,23 @@
+build/assets/file_version_info.txt
+  s_90b905d78f545f::t_b21d0ddc6364ed 40
+  s_90b905d78f545f::t_719ac635cc2ba2 35
+  s_90b905d78f545f::t_87e8c7705f3b24 10-11
+build/assets/Info.plist
+  s_90b905d78f545f::t_ec8878d43a04e1 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d484e9c8ef6a77c882f7993fdb3ed499b4cc3542",
+  "prompts": {},
+  "sessions": {
+    "s_90b905d78f545f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c43c374-5853-40c6-ab2a-0fde0fbd3964",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
