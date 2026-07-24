@@ -1,0 +1,43 @@
+documentation/docs/output/vex-csaf-guide.mdx
+  s_90b905d78f545f::t_90aacb7220b12d 129,131-135
+packages/analysis-lib/src/analysis_lib/vex/refs.py
+  s_90b905d78f545f::t_d08f226c0802f7 14,21-48,50-52,57-78
+  s_90b905d78f545f::t_f0e8b596997166 79-80
+packages/analysis-lib/src/analysis_lib/vex/dates.py
+  s_90b905d78f545f::t_e9cb2fd924f29a 1-84
+packages/analysis-lib/src/analysis_lib/vex/vulnerabilities.py
+  s_90b905d78f545f::t_203794dd4283d6 21,24
+  s_90b905d78f545f::t_a001bff83871ef 122
+  s_90b905d78f545f::t_17c457ac5d08b5 130-131,134-142,154-155,157-181
+packages/analysis-lib/src/analysis_lib/vex/tracking.py
+  s_90b905d78f545f::t_878a8975577aa7 11,18,22-23
+packages/analysis-lib/src/analysis_lib/vex/emit.py
+  s_90b905d78f545f::t_27e574e3540634 128,130-136,139-141,146-150
+  s_90b905d78f545f::t_955f89fb6dad6e 61-73
+  s_90b905d78f545f::t_b2207f76b6342f 25,32-33
+packages/analysis-lib/tests/test_vex.py
+  s_90b905d78f545f::t_4a9e51002e0906 687-735,737-756,758-853
+  s_90b905d78f545f::t_a049b676876ffe 736
+  s_90b905d78f545f::t_f1802a97a3f95a 757
+packages/analysis-lib/src/analysis_lib/vex/semantic.py
+  s_90b905d78f545f::t_2396497d4c3292 216-219,221-226,228-229,231,233-234
+  s_90b905d78f545f::t_43ca2d12572317 1-215,220,227,230,232,235-416
+contrib/CSAF_README.md
+  s_90b905d78f545f::t_834adcdb76069b 47-68,72-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "71ab2e4ec11234b9517448d26379be923a9cbdf5",
+  "prompts": {},
+  "sessions": {
+    "s_90b905d78f545f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c43c374-5853-40c6-ab2a-0fde0fbd3964",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
