@@ -1,0 +1,33 @@
+depscan/lib/tomlparse.py
+  s_c7f226c8b2f8d8::t_eccc2e12d54d1d 132-133,137
+  s_c0f754546c483e::t_0163c402a245f5 126,134-136,138-140
+  s_c0f754546c483e::t_c154fbad7c5d0e 65-94
+  s_c0f754546c483e::t_ebd5a90ef019f7 117
+test/test_tomlparse.py
+  s_c7f226c8b2f8d8::t_cb1d689da918ee 1-60
+  s_c0f754546c483e::t_65708e82ffb0d8 61-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "ff270b85d8bad31fdfee955c8ca94fbbda855e0d",
+  "prompts": {},
+  "sessions": {
+    "s_c0f754546c483e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a91f9694-2544-41d2-81a6-f90f78d41501",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_c7f226c8b2f8d8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06b6d6cdbfferDPOiMTLmzzFDa",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
