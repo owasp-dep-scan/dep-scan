@@ -1,0 +1,23 @@
+test/test_tomlparse.py
+  s_c0f754546c483e::t_65708e82ffb0d8 61-99
+depscan/lib/tomlparse.py
+  s_c0f754546c483e::t_0163c402a245f5 126,134-136,138-140
+  s_c0f754546c483e::t_c154fbad7c5d0e 65-94
+  s_c0f754546c483e::t_ebd5a90ef019f7 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "1626b26f1939bb4273b7ad2ed8d023a5bbce3930",
+  "prompts": {},
+  "sessions": {
+    "s_c0f754546c483e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a91f9694-2544-41d2-81a6-f90f78d41501",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
