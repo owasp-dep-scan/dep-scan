@@ -62,19 +62,36 @@ class ArgumentParser(argparse.ArgumentParser):
 
         return default_args, cmdl_args
 
-    def find_changed_args(
-        self, default_args: argparse.Namespace, sys_args: argparse.Namespace
-    ) -> List[str]:
-        """Find the arguments that have been changed from the command
-        line to replace the .toml arguments"""
-        default_dict = vars(default_args)
-        sys_dict = vars(sys_args)
-        changed_dict = []
-        for key, value in default_dict.items():
-            sys_value = sys_dict[key]
-            if sys_value != value:
-                changed_dict.append(key)
-        return changed_dict
+    def find_changed_args(self, args: Optional[List[str]] = None) -> List[str]:
+        """Find the dest names that were explicitly supplied on the command
+        line so the TOML config does not override them.
+
+        A plain value comparison against the defaults misses arguments that
+        are explicitly passed with a value equal to their default (e.g.
+        ``--level info`` when ``info`` is already the default). To detect
+        those reliably, each argument's default is temporarily replaced with a
+        unique sentinel: any dest whose parsed value is not its sentinel was
+        supplied on the command line."""
+        originals: Dict[int, Any] = {}
+        sentinels: Dict[str, object] = {}
+        for action in self._actions:
+            if action.dest is argparse.SUPPRESS:
+                continue
+            originals[id(action)] = action.default
+            sentinel = object()
+            sentinels[action.dest] = sentinel
+            action.default = sentinel
+        try:
+            parsed = super().parse_args(args)
+        finally:
+            for action in self._actions:
+                if id(action) in originals:
+                    action.default = originals[id(action)]
+        return [
+            dest
+            for dest, sentinel in sentinels.items()
+            if getattr(parsed, dest, sentinel) is not sentinel
+        ]
 
     def load_toml(self, path: str) -> MutableMapping[str, Any]:
         try:
@@ -97,7 +114,7 @@ class ArgumentParser(argparse.ArgumentParser):
         """Parse the arguments from the command line and the TOML file
         and return the updated arguments. Same functionality as the
         `argparse.ArgumentParser.parse_args` method."""
-        default_args, sys_args = self.extract_args(args, namespace)
+        _, sys_args = self.extract_args(args, namespace)
         config = sys_args.config
         # These are the default arguments options updated by the command line
         if not config or not os.path.exists(config):
@@ -106,15 +123,20 @@ class ArgumentParser(argparse.ArgumentParser):
         # If a config file is passed, update the cmdl args with the config file unless
         # the argument is already specified in the command line
         toml_data = self.load_toml(config)
-        changed_args = self.find_changed_args(default_args, sys_args)
+        changed_args = self.find_changed_args(args)
         toml_args = self.remove_nested_keys(toml_data)
 
         # Replaced unchanged command line arguments with arguments from
         # the TOML file.
         for key, value in toml_args.items():
-            if key not in changed_args:
-                setattr(sys_args, key, value)
-                # Support both hyphen and underscore representations
-                setattr(sys_args, key.replace("-", "_"), value)
+            # ``changed_args`` holds argparse dest names, which are normalized
+            # to underscores (e.g. ``risk_audit``). TOML keys may mirror the
+            # hyphenated CLI flags (e.g. ``risk-audit``), so normalize the key
+            # to the argparse dest and use it for both the precedence check and
+            # the assignment, keeping the documented precedence where
+            # command-line arguments win over the TOML config.
+            dest = key.replace("-", "_")
+            if dest not in changed_args:
+                setattr(sys_args, dest, value)
 
         return sys_args
