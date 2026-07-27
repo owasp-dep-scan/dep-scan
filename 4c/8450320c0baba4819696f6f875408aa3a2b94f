@@ -1,0 +1,25 @@
+packages/analysis-lib/tests/test_golem_slices.py
+  s_cdb2fa2bd51788::t_b56bae1c4258e5 328,344,355-356,607
+  s_cdb2fa2bd51788::t_c1b6ca514b2189 26,642-658
+packages/analysis-lib/tests/data/golem/vuln-app.golden.json
+  s_cdb2fa2bd51788::t_f413d8b60122bb 35,48
+packages/analysis-lib/src/analysis_lib/golem_slices.py
+  s_cdb2fa2bd51788::t_55c02708d38626 49-62,115,117-124,126-128
+  s_cdb2fa2bd51788::t_ce238ffd01c4c5 63-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "4c8450320c0baba4819696f6f875408aa3a2b94f",
+  "prompts": {},
+  "sessions": {
+    "s_cdb2fa2bd51788": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2cc4c8d-c3f6-40c3-a016-c7a9d7be5d04",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
