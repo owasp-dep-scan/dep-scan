@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: '24.x'
           package-manager-cache: false
-      - uses: sbt/setup-sbt@6444f4c8111de4b9059c3975def104b03cfaa5f0  # v1.5.2
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf  # v1.5.6
       - name: Setup Android SDK
         uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699  # v4.0.1
         with:
