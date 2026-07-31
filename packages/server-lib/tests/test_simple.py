@@ -404,6 +404,102 @@ async def test_scan_existing_bom_path_with_invalid_max_content_length(
     assert data["bomFormat"] == "CycloneDX"
 
 
+def _write_bom_with_components(bom_path: Path):
+    bom_path.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.5",
+                "version": 1,
+                "components": [
+                    {
+                        "type": "library",
+                        "name": "lodash",
+                        "version": "4.17.20",
+                        "purl": "pkg:npm/lodash@4.17.20",
+                        "scope": "required",
+                    },
+                    {
+                        "type": "library",
+                        "name": "axios",
+                        "version": "0.21.0",
+                        "purl": "pkg:npm/axios@0.21.0",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.asyncio
+async def test_scan_passes_parsed_pkg_list_to_analyzer(client: QuartClient, tmp_path, monkeypatch):
+    """Regression test for issue #515: the parsed pkg_list must reach the VDR
+    analyzer instead of being discarded in favor of a hardcoded empty list."""
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+
+    captured = {}
+
+    class CapturingAnalyzer:
+        def __init__(self, vdr_options):
+            captured["options"] = vdr_options
+
+        def process(self):
+            return type(
+                "DummyResult",
+                (),
+                {"success": True, "pkg_vulnerabilities": []},
+            )()
+
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", CapturingAnalyzer)
+
+    response = await client.get(
+        f"/scan?type=js&path={bom_path}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+
+    options = captured["options"]
+    purls = [pkg.get("purl") for pkg in options.pkg_list]
+    assert "pkg:npm/lodash@4.17.20" in purls
+    assert "pkg:npm/axios@0.21.0" in purls
+    assert options.scoped_pkgs == {"required": ["pkg:npm/lodash@4.17.20"]}
+
+
+@pytest.mark.asyncio
+async def test_scan_attaches_vulnerabilities_to_response(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    """When the VDR analyzer reports vulnerabilities, the /scan response BOM
+    must carry a vulnerabilities array instead of echoing the input unchanged."""
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+
+    sample_vulns = [{"id": "CVE-2021-23337", "ratings": [{"severity": "high"}]}]
+
+    class ReportingAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type(
+                "DummyResult",
+                (),
+                {"success": True, "pkg_vulnerabilities": sample_vulns},
+            )()
+
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", ReportingAnalyzer)
+
+    response = await client.get(
+        f"/scan?type=js&path={bom_path}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert data["vulnerabilities"] == sample_vulns
+
+
 def test_run_server_refuses_non_local_bind_without_auth(monkeypatch):
     called = {"run": False}
 
