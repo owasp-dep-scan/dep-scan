@@ -8,6 +8,7 @@ from hmac import compare_digest
 from urllib.parse import urlparse
 
 from analysis_lib import VdrAnalysisKV
+from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.utils import get_pkg_list
 from analysis_lib.vdr import VDRAnalyzer
 from custom_json_diff.lib.utils import file_write
@@ -452,6 +453,9 @@ async def run_scan():
             else:
                 if logger_instance:
                     logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
+            # Categorize packages by CycloneDX scope (required/optional/excluded)
+            # so scope-based prioritization works in server mode just like the CLI.
+            scoped_pkgs = get_pkgs_by_scope(pkg_list)
             bom_data, bom_error = _load_bom_data(bom_file_path, max_bom_file_size)
             if not bom_data:
                 return (
@@ -465,10 +469,10 @@ async def run_scan():
                 pkg_aliases={},
                 purl_aliases={},
                 suggest_mode=suggest_mode,
-                scoped_pkgs={},
+                scoped_pkgs=scoped_pkgs,
                 no_vuln_table=True,
                 bom_file=bom_file_path,
-                pkg_list=[],
+                pkg_list=pkg_list,
                 direct_purls={},
                 reached_purls={},
                 console=console,
