@@ -29,7 +29,36 @@ from depscan.lib.config import (
 )
 from depscan.lib.logger import LOG, SPINNER, console
 from depscan.lib.utils import cleanup_license_string
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional
+
+
+@dataclass(frozen=True)
+class BomResult:
+    """What a BOM generation attempt actually produced.
+
+    ``create_bom`` takes the path where a BOM is *requested*, but that is an
+    instruction, not a promise: lifecycle analysis ignores it entirely and
+    writes up to five differently named documents instead. When this returned
+    a bare ``bool`` the caller could only learn "something was written
+    somewhere" and had no choice but to assume the path it asked for was the
+    path that got written, which it then had to disprove by stat'ing the
+    filesystem. Report what was written instead.
+
+    There is deliberately no ``__bool__``: callers must say whether they mean
+    ``result.success`` or "did I get a document to work with", because those
+    are different questions and conflating them is what caused #517.
+
+    :param success: True when at least one BOM document was written.
+    :param bom_files: Every document written, verified to exist.
+    :param primary: The single BOM representing the project, when the run
+        produced one. ``None`` for lifecycle runs, which produce per-stage
+        documents rather than one project BOM.
+    """
+
+    success: bool
+    bom_files: List[str] = field(default_factory=list)
+    primary: Optional[str] = None
 
 
 def _has_bundled_cdxgen() -> bool:
@@ -251,15 +280,18 @@ def get_pkg_by_type(pkg_list, pkg_type):
     return [pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)]
 
 
-def create_bom(bom_file, src_dir=".", options=None):
+def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     """
     Method to create BOM file by executing cdxgen command
 
-    :param bom_file: BOM file
+    :param bom_file: Path where the BOM is requested to be written. Honoured by
+        the cdxgen and blint paths; lifecycle analysis ignores it and writes
+        per-stage documents instead, so always read the paths back from the
+        returned :class:`BomResult` rather than assuming this one exists.
     :param src_dir: Source directory
     :param options: Additional options for generating the BOM file.
-    :returns: True if the command was executed. False if the executable was
-    not found.
+    :returns: A :class:`BomResult` describing the documents written. Falsy when
+        nothing was produced.
     """
     if not options:
         options = {}
@@ -277,7 +309,12 @@ def create_bom(bom_file, src_dir=".", options=None):
         or "post-build" in lifecycles
         or any([t in ("binary", "apk") for t in project_type_list])
     ):
-        return create_blint_bom(bom_file, src_dir, options=options)
+        blint_ok = create_blint_bom(bom_file, src_dir, options=options)
+        return BomResult(
+            success=blint_ok,
+            bom_files=[bom_file] if blint_ok else [],
+            primary=bom_file if blint_ok else None,
+        )
     cdxgen_server = options.get("cdxgen_server")
     cdxgen_lib = CdxgenGenerator
 
@@ -287,7 +324,7 @@ def create_bom(bom_file, src_dir=".", options=None):
             LOG.error(
                 "Pass the `--cdxgen-server` argument to use the cdxgen server for BOM generation. Alternatively, use `--bom-engine auto` or `--bom-engine CdxgenGenerator`."
             )
-            return False
+            return BomResult(success=False)
         cdxgen_lib = CdxgenServerGenerator
     else:
         # Prefer the new image based generators if docker command is available in auto mode
@@ -324,9 +361,12 @@ def create_bom(bom_file, src_dir=".", options=None):
         if not bom_result.success:
             LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
-            return False
+            return BomResult(success=False)
+        # cdxgen can report success without writing anything, so the requested
+        # path only counts once it is on disk.
         if not os.path.exists(bom_file):
-            return False
+            LOG.debug("cdxgen reported success but `%s` was not written.", bom_file)
+            return BomResult(success=False)
         # Rust reachability via rusi: emits rust-reachables.slices.json next to
         # the BOM so the existing purl-keyed pipeline picks it up. No-op for
         # non-rust projects or when reachability is off / rusi is absent.
@@ -340,7 +380,7 @@ def create_bom(bom_file, src_dir=".", options=None):
         # / dosai is absent. PRIMARY path consumes the cdxgen-persisted
         # combined native report; direct-spawn is only a fallback.
         run_dosai_reachability(bom_file, src_dir, options=options)
-        return True
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
 
 
 def _load_rusi_report(path, is_report_ok, json_load, require_report=False):
@@ -818,20 +858,24 @@ def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] 
         return bom_result.success and os.path.exists(bom_file)
 
 
-def create_lifecycle_boms(cdxgen_lib, src_dir, options):
+def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     """
     Method to create multiple BOM files for each lifecycle
 
     :param cdxgen_lib: cdxgen library to use
     :param src_dir: Source directory
     :param options: Additional options for generating the BOM files
+    :returns: A :class:`BomResult` listing the per-stage documents written. Its
+        ``primary`` is always None: a lifecycle run produces per-stage
+        documents, not one BOM representing the project.
     """
     lifecycles = options.get("lifecycles", []) or []
     if lifecycles:
         LOG.warning(
             "Ignoring the `lifecycles` argument, as it is not required for lifecycle analysis."
         )
-    any_success = False
+    # Every stage document actually written, in the order produced.
+    written_bom_files = []
     prebuild_bom_file = options.get("prebuild_bom_file")
     build_bom_file = options.get("build_bom_file")
     postbuild_bom_file = options.get("postbuild_bom_file")
@@ -854,7 +898,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             LOG.debug("The cdxgen invocation was unsuccessful. Trying pre-build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:
-            any_success = True
+            written_bom_files.append(build_bom_file)
         # pre-build
         status.update(f"Now generating pre-build BOM for '{src_dir}' with cdxgen.")
         coptions = {**options, "deep": "false", "lifecycles": ["pre-build"]}
@@ -865,7 +909,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             LOG.debug("The cdxgen invocation was unsuccessful. Trying the build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:
-            any_success = True
+            written_bom_files.append(prebuild_bom_file)
         # container bom. For this we need the image name.
         container_image_name = os.getenv("DEPSCAN_SOURCE_IMAGE") or options.get("source_image")
         if container_image_name:
@@ -882,7 +926,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
                 LOG.debug("The cdxgen invocation was unsuccessful. Trying for the next lifecycle.")
                 LOG.debug(bom_result.command_output)
             else:
-                any_success = True
+                written_bom_files.append(container_bom_file)
         else:
             LOG.debug(
                 "Set the environment variable DEPSCAN_SOURCE_IMAGE to the name of the container image to include its components."
@@ -903,7 +947,8 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
             "The blint invocation was unsuccessful. Try building this project prior to invoking depscan. Alternatively, check if this project generates binary artefacts."
         )
     else:
-        any_success = True
+        written_bom_files.append(postbuild_bom_file)
+    any_success = bool(written_bom_files)
     # Rust reachability via rusi: run once against the source and drop the
     # slice next to the build BOM (the bom_dir the reachability engine scans).
     # No-op for non-rust projects, when reachability is off, or when rusi is
@@ -926,7 +971,9 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options):
         pt in ("dotnet", "csharp", "nuget") for pt in (options.get("project_type") or [])
     ):
         run_dosai_reachability(build_bom_file, src_dir, options=options)
-    return any_success
+    # `primary` stays None: no single one of these documents represents the
+    # project, so nothing downstream may treat one as "the" BOM.
+    return BomResult(success=any_success, bom_files=written_bom_files)
 
 
 def _spec_version_sort_key(spec_version):

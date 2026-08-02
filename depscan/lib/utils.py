@@ -235,7 +235,9 @@ def render_template_report(
     bom = {}
     if vdr_file:
         bom = json_load(vdr_file, log=LOG)
-    if not bom:
+    # `bom_file` is None whenever no single BOM was produced (lifecycle, bom-dir
+    # and purl modes). json_load would raise TypeError on it, so guard here.
+    if not bom and bom_file:
         bom = json_load(bom_file, log=LOG)
     template = file_read(template_file, log=LOG)
     jinja_env = Environment(autoescape=True)

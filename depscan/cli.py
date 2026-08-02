@@ -257,6 +257,60 @@ def build_args():
     return parser.parse_args()
 
 
+def validate_scan_inputs(args):
+    """Validate the scan input arguments before any expensive work begins.
+
+    ``--bom``, ``--bom-dir`` and ``--purl`` are mutually exclusive at the
+    argparse level, but values supplied via a TOML config file bypass that
+    group. Worse, a path that simply did not exist used to be ignored
+    silently: ``--bom missing.json`` fell through to generating a brand new
+    BOM and ``--bom-dir missing/`` aggregated zero packages, both of which are
+    indistinguishable from a clean scan in the output.
+
+    :param args: Parsed CLI arguments.
+    :returns: A list of human readable error messages. Empty when the inputs
+        are usable.
+    """
+    errors = []
+    provided = [
+        (name, value)
+        for name, value in (
+            ("--bom", args.bom),
+            ("--bom-dir", args.bom_dir),
+            ("--purl", args.search_purl),
+        )
+        if value
+    ]
+    if len(provided) > 1:
+        errors.append(
+            "The arguments {} are mutually exclusive. Pass only one of them.".format(
+                ", ".join(f"`{name}`" for name, _ in provided)
+            )
+        )
+    if args.bom:
+        if not os.path.exists(args.bom):
+            errors.append(
+                f"The BOM file `{args.bom}` passed via `--bom` does not exist. "
+                "Generate one with cdxgen, or drop the argument to let depscan create it."
+            )
+        elif not os.path.isfile(args.bom):
+            errors.append(
+                f"The path `{args.bom}` passed via `--bom` is not a file. "
+                "Use `--bom-dir` to scan a directory of BOM files."
+            )
+    if args.bom_dir:
+        if not os.path.exists(args.bom_dir):
+            errors.append(
+                f"The BOM directory `{args.bom_dir}` passed via `--bom-dir` does not exist."
+            )
+        elif not os.path.isdir(args.bom_dir):
+            errors.append(
+                f"The path `{args.bom_dir}` passed via `--bom-dir` is not a directory. "
+                "Use `--bom` to scan a single BOM file."
+            )
+    return errors
+
+
 def configure_vdb_readonly():
     """Default vdb SQLite to read-only/immutable + WAL for scan runs.
 
@@ -504,6 +558,13 @@ def run_depscan(args):
     if not args.no_banner:
         with contextlib.suppress(UnicodeEncodeError):
             print(LOGO)
+    # Fail fast on unusable scan inputs. Silently ignoring them produces an
+    # empty-looking but successful scan, which is worse than no scan at all.
+    input_errors = validate_scan_inputs(args)
+    if input_errors:
+        for input_error in input_errors:
+            LOG.error(input_error)
+        sys.exit(1)
     # Break early if the user prefers CPE-based searches
     search_order = args.search_order
     if search_order:
@@ -537,8 +598,11 @@ def run_depscan(args):
     # User has not provided an explicit reports_dir. Reuse the bom_dir
     if not reports_dir and args.bom_dir:
         reports_dir = os.path.realpath(args.bom_dir)
-    # Are we running for a BOM directory
-    bom_dir_mode = args.bom_dir and os.path.exists(args.bom_dir)
+    # Are we running for a BOM directory the *user* supplied? This must be
+    # captured before the lifecycle branch below repurposes the bom dir as an
+    # output directory, otherwise the two modes become indistinguishable.
+    user_bom_dir = args.bom_dir
+    bom_dir_mode = bool(user_bom_dir and os.path.isdir(user_bom_dir))
     # Are we running with a config file
     config_file_mode = args.config and os.path.exists(args.config)
     depscan_options = {**vars(args), "src_dir": src_dir, "reports_dir": reports_dir}
@@ -642,12 +706,20 @@ def run_depscan(args):
     for project_type in project_types_list:
         results = []
         vuln_analyzer = args.vuln_analyzer
+        # Reset every per-iteration path. These used to leak from one project
+        # type to the next, so a second type could be handed the first type's
+        # lifecycle BOM paths.
+        bom_dir = user_bom_dir
+        lifecycle_mode = False
+        prebuild_bom_file = build_bom_file = postbuild_bom_file = None
+        container_bom_file = operations_bom_file = None
         # Are we performing a lifecycle analysis
         if not args.search_purl and (
             vuln_analyzer == "LifecycleAnalyzer" or (vuln_analyzer == "auto" and bom_dir_mode)
         ):
+            lifecycle_mode = True
             if args.reachability_analyzer == "SemanticReachability":
-                if not args.bom_dir:
+                if not bom_dir:
                     LOG.info(
                         "Semantic Reachability analysis requested for project type '%s'. This might take a while ...",
                         project_type,
@@ -655,7 +727,7 @@ def run_depscan(args):
                 else:
                     LOG.info(
                         "Attempting semantic analysis using existing data at '%s'",
-                        args.bom_dir,
+                        bom_dir,
                     )
             else:
                 LOG.info(
@@ -681,14 +753,23 @@ def run_depscan(args):
             # We need to set the following two values to make the rest of the code correctly use
             # the generated BOM files after lifecycle analysis
             depscan_options["lifecycle_analysis_mode"] = True
-            if not args.bom_dir:
-                args.bom_dir = os.path.realpath(reports_dir)
+            if not bom_dir:
+                bom_dir = os.path.realpath(reports_dir)
         # If the user opts out of lifecycle analysis, we need to maintain multiple SBOMs based on the project type.
-        bom_file = os.path.join(reports_dir, f"sbom-{project_type}.cdx.json")
+        # This is where we *ask* for a BOM to be written. It is an input to the
+        # generator, never evidence that a document exists, so nothing below
+        # reads it - `bom_files` holds what was actually produced.
+        target_bom_file = os.path.join(reports_dir, f"sbom-{project_type}.cdx.json")
         risk_report_file = os.path.join(reports_dir, f"depscan-risk-{project_type}.json")
+        # Every BOM document available for this project type. An empty list is
+        # a normal state (purl scans), not a failure.
+        bom_files = []
+        # The document a producer explicitly nominates as the project's BOM.
+        # Lifecycle runs nominate nothing: no one of their per-stage documents
+        # represents the project.
+        nominated_bom_file = None
         # Are we scanning a single purl
         if args.search_purl:
-            bom_file = None
             creation_status = True
         # Are we scanning a bom file
         ###################
@@ -703,22 +784,25 @@ def run_depscan(args):
         # If in doubt, speak to us before benchmarking depscan. Don’t run depscan with default settings and expect magic.
         # SCA and xBOM are complex domains that require understanding, configuration, and continuous learning.
         ###################
-        elif args.bom and os.path.exists(args.bom):
-            bom_file = args.bom
+        elif args.bom:
+            # Existence was validated up front by validate_scan_inputs.
+            bom_files = [args.bom]
+            nominated_bom_file = args.bom
             creation_status = True
         # Are we scanning a bom directory
         elif bom_dir_mode:
-            bom_file = None
             creation_status = True
         else:
-            # Create a bom for each project type
-            creation_status = create_bom(
-                bom_file,
+            # Create a bom for each project type. The generator reports back the
+            # documents it wrote, which is not necessarily the path we asked for:
+            # lifecycle analysis writes per-stage documents instead.
+            bom_result = create_bom(
+                target_bom_file,
                 src_dir,
                 {
                     **depscan_options,
                     "project_type": [project_type],
-                    "bom_file": bom_file,
+                    "bom_file": target_bom_file,
                     "prebuild_bom_file": prebuild_bom_file,
                     "build_bom_file": build_bom_file,
                     "postbuild_bom_file": postbuild_bom_file,
@@ -726,19 +810,33 @@ def run_depscan(args):
                     "operations_bom_file": operations_bom_file,
                 },
             )
+            creation_status = bom_result.success
+            bom_files = list(bom_result.bom_files)
+            nominated_bom_file = bom_result.primary
         if not creation_status:
             LOG.warning(
                 "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
-                bom_file,
+                target_bom_file,
             )
             continue
+        # A BOM directory supersedes whatever a single run produced: it is the
+        # aggregate view, and in lifecycle mode it is where the per-stage
+        # documents were written.
+        if bom_dir:
+            bom_files = get_all_bom_files(bom_dir)
+        # The BOM document for this scan: whichever a producer nominated, or -
+        # when only one document is available at all - that one, since a lone
+        # document is the project's BOM however it got here. None only when
+        # several documents exist and none of them is nominated, as with a
+        # lifecycle run's per-stage documents.
+        bom_file = nominated_bom_file or (bom_files[0] if len(bom_files) == 1 else None)
         # We have a BOM directory. Let’s aggregate all packages from every file within it.
-        if args.bom_dir:
+        if bom_dir:
             LOG.debug(
                 "Collecting components from all the BOM files at %s",
-                args.bom_dir,
+                bom_dir,
             )
-            pkg_list = get_all_pkg_list(args.bom_dir)
+            pkg_list = get_all_pkg_list(bom_dir)
         # We are working with a single BOM file and will collect all packages from it accordingly.
         elif bom_file:
             LOG.debug("Scanning using the bom file %s", bom_file)
@@ -749,7 +847,7 @@ def run_depscan(args):
                     bom_file,
                 )
             pkg_list, _ = get_pkg_list(bom_file)
-        if not pkg_list and not args.bom_dir:
+        if not pkg_list and not bom_dir:
             LOG.info(
                 "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
             )
@@ -825,10 +923,7 @@ def run_depscan(args):
                     src_dir,
                     project_type,
                 )
-        # We could be dealing with multiple bom files
-        bom_files = (
-            get_all_bom_files(args.bom_dir) if args.bom_dir else [bom_file] if bom_file else []
-        )
+        # `bom_files` was resolved once, above, from what actually exists.
         if not pkg_list and not bom_files:
             LOG.debug("Empty package search attempted!")
         elif bom_files:
@@ -852,7 +947,7 @@ def run_depscan(args):
             reachability_options = ReachabilityAnalysisKV(
                 project_types=[project_type],
                 src_dir=src_dir,
-                bom_dir=args.bom_dir or reports_dir,
+                bom_dir=bom_dir or reports_dir,
                 require_multi_usage=depscan_options.get("require_multi_usage", False),
                 source_tags=depscan_options.get("source_tags"),
                 sink_tags=depscan_options.get("sink_tags"),
@@ -863,8 +958,8 @@ def run_depscan(args):
             results,
             suggest_mode=args.suggest,
             scoped_pkgs=scoped_pkgs,
-            bom_file=bom_files[0] if len(bom_files) == 1 else None,
-            bom_dir=args.bom_dir,
+            bom_file=bom_file,
+            bom_dir=bom_dir,
             reports_dir=args.reports_dir,
             pkg_list=pkg_list,
             reachability_analyzer=reachability_analyzer,
@@ -886,7 +981,7 @@ def run_depscan(args):
             explainer.explain(
                 project_type,
                 src_dir,
-                args.bom_dir or reports_dir,
+                bom_dir or reports_dir,
                 vdr_file,
                 vdr_result,
                 args.explanation_mode,
@@ -898,24 +993,35 @@ def run_depscan(args):
             )
         # CSAF VEX export
         if args.csaf:
-            # Prefer the CDX BOM path so the output is named after the project
-            # (<base>.csaf.json) and the product tree is built from the BOM.
-            # Fall back to the VDR (also a CycloneDX document) when only that
-            # exists. The emit layer guarantees the VDR is never overwritten.
-            csaf_bom_file = bom_file or vdr_file
+            # Prefer the project BOM so the output is named after the project
+            # (<base>.csaf.json) and the product tree is built from it. Fall
+            # back to the VDR (also a CycloneDX document), which the analysis
+            # may not have written either. The emit layer guarantees the VDR is
+            # never overwritten.
+            csaf_bom_file = bom_file or (
+                vdr_file if vdr_file and os.path.exists(vdr_file) else None
+            )
             if not csaf_bom_file:
                 LOG.warning(
-                    "CSAF export skipped: no BOM or VDR file is available to "
-                    "name the output and build the product tree."
+                    "CSAF export skipped for project type '%s': no readable BOM or "
+                    "VDR file is available to name the output and build the product tree.",
+                    project_type,
                 )
             else:
-                export_csaf(
+                csaf_file, _csaf_errors = export_csaf(
                     vdr_result,
                     src_dir=src_dir,
                     reports_dir=reports_dir,
                     bom_file=csaf_bom_file,
                     csaf_version=getattr(args, "csaf_version", "2.1"),
                 )
+                # A failed export must never look like a successful one.
+                if not csaf_file:
+                    LOG.warning(
+                        "CSAF export failed for project type '%s' using `%s`.",
+                        project_type,
+                        csaf_bom_file,
+                    )
     console.record = True
     # Export the console output
     console.save_html(

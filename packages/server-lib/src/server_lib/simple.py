@@ -433,12 +433,15 @@ async def run_scan():
                             "deep": deep,
                         },
                     )
-                    if bom_status:
+                    # Use the path the generator says it wrote. The temp file
+                    # above always exists, so `os.path.exists` proves nothing
+                    # here and only the returned path is trustworthy.
+                    if bom_status.success and bom_status.primary:
                         if logger_instance:
                             logger_instance.debug(
-                                "BOM file was generated successfully at %s", bfp.name
+                                "BOM file was generated successfully at %s", bom_status.primary
                             )
-                        bom_file_path = bfp.name
+                        bom_file_path = bom_status.primary
                     elif logger_instance:
                         logger_instance.debug("Problem generating the SBOM for %s %s", url, path)
         # Path points to a SBOM file

@@ -58,18 +58,14 @@ def test_create_empty_vdr_threads_spec_version():
 
 
 def test_get_pkg():
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml")
     pkg_list = get_pkg_list(test_bom)
     assert len(pkg_list) == 157
     for pkg in pkg_list:
         assert pkg["vendor"] != "maven"
         assert " " not in pkg["name"]
         assert pkg["version"]
-    test_py_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml"
-    )
+    test_py_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml")
     pkg_list = get_pkg_list(test_py_bom)
     assert len(pkg_list) == 31
     for pkg in pkg_list:
@@ -144,17 +140,13 @@ def test_parse():
         "version": "1.0.1",
         "licenses": None,
     }
-    assert parse_bom_ref(
-        "pkg:golang/github.com%2FAzure%2Fazure-amqp-common-go/v2@v2.1.0"
-    ) == {
+    assert parse_bom_ref("pkg:golang/github.com%2FAzure%2Fazure-amqp-common-go/v2@v2.1.0") == {
         "vendor": "azure-amqp-common-go",
         "name": "v2",
         "version": "2.1.0",
         "licenses": None,
     }
-    assert parse_bom_ref(
-        "pkg:golang/github.com%2FAzure/go-autorest@v13.0.0%2Bincompatible"
-    ) == {
+    assert parse_bom_ref("pkg:golang/github.com%2FAzure/go-autorest@v13.0.0%2Bincompatible") == {
         "vendor": "Azure",
         "name": "go-autorest",
         "version": "13.0.0+incompatible",
@@ -171,9 +163,7 @@ def test_parse():
 
 
 def test_get_pkg_by_type():
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-docker.json"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-docker.json")
     pkg_list = get_pkg_list(test_bom)
     assert len(pkg_list) == 1824
     filtered_list = get_pkg_by_type(pkg_list, "npm")
@@ -188,9 +178,7 @@ def test_get_pkg_by_type():
 def test_get_pkg_list_parses_cyclonedx_1_7_xml():
     """A CycloneDX 1.7 XML BOM (cdxgen 12.8 default) must parse cleanly,
     including the licenses section under the 1.7 namespace."""
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-1.7.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-1.7.xml")
     pkg_list = get_pkg_list(test_bom)
     assert pkg_list is not None
     assert len(pkg_list) == 2
@@ -240,3 +228,133 @@ def test_export_bom_preserves_source_spec_version(tmp_path):
     with open(vdr_file) as f:
         vdr = json.load(f)
     assert vdr["specVersion"] == "1.7"
+
+
+# ---------------------------------------------------------------------------
+# create_bom / BomResult contract
+#
+# create_bom is handed the path where a BOM is *requested*. It must report back
+# the documents it actually wrote, because that is not always the path it was
+# given (see https://github.com/owasp-dep-scan/dep-scan/issues/517).
+# ---------------------------------------------------------------------------
+
+
+class _FakeGenResult:
+    def __init__(self, success):
+        self.success = success
+        self.command_output = ""
+
+
+def _fake_generator(success=True, writes=True):
+    """Build a cdxgen-compatible generator class with controllable behaviour."""
+
+    class _Gen:
+        def __init__(self, src_dir, bom_file, logger=None, options=None):
+            self.bom_file = bom_file
+
+        def generate(self):
+            if writes and self.bom_file:
+                with open(self.bom_file, "w") as fh:
+                    json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+            return _FakeGenResult(success)
+
+    return _Gen
+
+
+def test_create_bom_reports_the_document_it_wrote(tmp_path, monkeypatch):
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
+    monkeypatch.setattr(bom_mod, "run_rusi_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_dosai_reachability", lambda *a, **k: None)
+
+    target = str(tmp_path / "sbom-rust.cdx.json")
+    result = bom_mod.create_bom(target, str(tmp_path), {})
+
+    assert result.success is True
+    assert result.bom_files == [target]
+    assert result.primary == target
+
+
+def test_create_bom_reports_failure_when_nothing_was_written(tmp_path, monkeypatch):
+    """A generator can report success and still write nothing. The requested
+    path must not be handed back as if it were a real document."""
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator(success=True, writes=False))
+
+    target = str(tmp_path / "sbom-rust.cdx.json")
+    result = bom_mod.create_bom(target, str(tmp_path), {})
+
+    assert result.success is False
+    assert result.bom_files == []
+    assert result.primary is None
+
+
+def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator(success=False, writes=False))
+
+    result = bom_mod.create_bom(str(tmp_path / "sbom.cdx.json"), str(tmp_path), {})
+
+    assert result.success is False
+    assert result.primary is None
+
+
+def test_create_bom_requires_cdxgen_server_url(tmp_path):
+    from depscan.lib import bom as bom_mod
+
+    result = bom_mod.create_bom(
+        str(tmp_path / "sbom.cdx.json"),
+        str(tmp_path),
+        {"bom_engine": "CdxgenServerGenerator"},
+    )
+
+    assert result.success is False
+    assert result.bom_files == []
+
+
+def test_lifecycle_boms_report_stage_files_and_no_primary(tmp_path, monkeypatch):
+    """Lifecycle analysis ignores the requested path and writes per-stage
+    documents, so it must report those and never nominate one as *the* BOM."""
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+
+    prebuild = str(tmp_path / "sbom-prebuild-rust.cdx.json")
+    build = str(tmp_path / "sbom-build-rust.cdx.json")
+    options = {
+        "prebuild_bom_file": prebuild,
+        "build_bom_file": build,
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild-rust.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container-rust.cdx.json"),
+        "reachability_analyzer": "off",
+    }
+    result = bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
+
+    assert result.success is True
+    assert result.bom_files == [build, prebuild]
+    assert result.primary is None, "no single lifecycle document represents the project"
+
+
+def test_lifecycle_boms_report_failure_when_every_stage_fails(tmp_path, monkeypatch):
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+
+    options = {
+        "prebuild_bom_file": str(tmp_path / "sbom-prebuild-rust.cdx.json"),
+        "build_bom_file": str(tmp_path / "sbom-build-rust.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild-rust.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container-rust.cdx.json"),
+        "reachability_analyzer": "off",
+    }
+    result = bom_mod.create_lifecycle_boms(
+        _fake_generator(success=False, writes=False), str(tmp_path), options
+    )
+
+    assert result.success is False
+    assert result.bom_files == []
+    assert result.primary is None
