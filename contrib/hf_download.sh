@@ -18,7 +18,7 @@ attempts="${HF_DOWNLOAD_ATTEMPTS:-5}"
 delay="${HF_DOWNLOAD_DELAY:-15}"
 
 for attempt in $(seq 1 "${attempts}"); do
-  if uvx --from "huggingface_hub[cli]" hf download "$@"; then
+  if uvx --from huggingface_hub hf download "$@"; then
     exit 0
   fi
   if [ "${attempt}" -eq "${attempts}" ]; then

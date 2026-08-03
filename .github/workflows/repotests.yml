@@ -29,17 +29,39 @@ jobs:
       - name: Download ukaina boms
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/ukaina_boms
+          # --include takes a single pattern and must be repeated. Passing
+          # several patterns to one flag makes the CLI treat all but the first
+          # as positional filenames and silently ignore --include altogether.
+          # The repo tests generate their own VDRs, so the published ones are
+          # excluded from the artifact.
           bash ${GITHUB_WORKSPACE}/contrib/hf_download.sh AppThreat/ukaina --repo-type dataset --local-dir ${GITHUB_WORKSPACE}/ukaina_boms \
-            --include "java/Signal-Android/*.json" "java/dependency-track/*.json" "java/kafka-4.0.0-src/*.json" \
-              "js/cdxgen/*.json" "js/Signal-Desktop/*.json" "js/forgejo/*.json" \
-              "rust/biome/*.json" "rust/rustdesk/*.json" "rust/rustpad/*.json" \
-              "python/django-DefectDojo/*.json" "python/depscan/*.json" \
-              "php/phpmyadmin/*.json" \
-              "c/openssl-3.5.0/*.json" "c/open5gs-2.7.5/*.json" "c/curl-8.13.0/*.json"
-          # The repo tests scan the BOMs and generate their own VDRs, so the
-          # published ones must not be part of the artifact.
-          find ${GITHUB_WORKSPACE}/ukaina_boms -name '*.vdr.json' -delete
+            --exclude "*.vdr.json" \
+            --include "java/Signal-Android/*.json" \
+            --include "java/dependency-track/*.json" \
+            --include "java/kafka-4.0.0-src/*.json" \
+            --include "js/cdxgen/*.json" \
+            --include "js/Signal-Desktop/*.json" \
+            --include "js/forgejo/*.json" \
+            --include "rust/biome/*.json" \
+            --include "rust/rustdesk/*.json" \
+            --include "rust/rustpad/*.json" \
+            --include "python/django-DefectDojo/*.json" \
+            --include "python/depscan/*.json" \
+            --include "php/phpmyadmin/*.json" \
+            --include "c/openssl-3.5.0/*.json" \
+            --include "c/open5gs-2.7.5/*.json" \
+            --include "c/curl-8.13.0/*.json"
           rm -rf ${GITHUB_WORKSPACE}/ukaina_boms/.cache
+          # Fail loudly here rather than in a matrix job if a project is missing.
+          for project in java/Signal-Android java/dependency-track java/kafka-4.0.0-src \
+            js/cdxgen js/Signal-Desktop js/forgejo rust/biome rust/rustdesk rust/rustpad \
+            python/django-DefectDojo python/depscan php/phpmyadmin c/openssl-3.5.0 \
+            c/open5gs-2.7.5 c/curl-8.13.0; do
+            if [ -z "$(ls -A "${GITHUB_WORKSPACE}/ukaina_boms/${project}" 2>/dev/null)" ]; then
+              echo "No BOMs were downloaded for ${project}" >&2
+              exit 1
+            fi
+          done
           ls -R ${GITHUB_WORKSPACE}/ukaina_boms
         shell: bash
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
