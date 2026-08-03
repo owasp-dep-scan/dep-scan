@@ -1,5 +1,8 @@
 import argparse
 import os
+
+from analysis_lib.config import SUPPORTED_BOM_PROFILES
+
 from depscan import get_version
 from depscan.lib import tomlparse
 
@@ -75,19 +78,7 @@ def build_parser():
     parser.add_argument(
         "--profile",
         default="generic",
-        choices=(
-            "appsec",
-            "research",
-            "operational",
-            "threat-modeling",
-            "license-compliance",
-            "generic",
-            "machine-learning",
-            "ml",
-            "deep-learning",
-            "ml-deep",
-            "ml-tiny",
-        ),
+        choices=SUPPORTED_BOM_PROFILES,
         dest="profile",
         help="Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-analyzer.",
     )

@@ -22,6 +22,24 @@ def get_int_from_env(name, default):
     return value
 
 
+# BOM generation profiles understood by cdxgen. This is the single source of
+# truth shared by the CLI (`--profile`) and the server (`/scan?profile=`): the
+# value is forwarded to cdxgen as a command line argument, so any caller
+# supplying it must constrain it to this set.
+SUPPORTED_BOM_PROFILES = (
+    "appsec",
+    "research",
+    "operational",
+    "threat-modeling",
+    "license-compliance",
+    "generic",
+    "machine-learning",
+    "ml",
+    "deep-learning",
+    "ml-deep",
+    "ml-tiny",
+)
+
 # CPE Full Regex including unused parameters
 CPE_FULL_REGEX = re.compile(
     "cpe:?:[^:]+:(?P<cve_type>[^:]+):(?P<vendor>[^:]+):(?P<package>[^:]+):(?P<version>[^:]+):(?P<update>[^:]+):(?P<edition>[^:]+):(?P<lang>[^:]+):(?P<sw_edition>[^:]+):(?P<target_sw>[^:]+):(?P<target_hw>[^:]+):(?P<other>[^:]+)"
