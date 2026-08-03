@@ -500,6 +500,292 @@ async def test_scan_attaches_vulnerabilities_to_response(
     assert data["vulnerabilities"] == sample_vulns
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("profile", ["--output", "generic; rm -rf /", "unknown-profile", ""])
+async def test_scan_rejects_unsupported_profile(client: QuartClient, tmp_path, profile):
+    """The profile reaches cdxgen as a command line argument, so only the
+    documented values may be accepted from a request."""
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+
+    response = await client.post(
+        "/scan",
+        json={"type": "js", "path": str(bom_path), "profile": profile},
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    if profile == "":
+        # An empty profile is ignored and the default is used.
+        assert response.status_code != 400
+        return
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "profile must be one of" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_scan_accepts_supported_profile(client: QuartClient, tmp_path, monkeypatch):
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+    captured = {}
+
+    class CapturingAnalyzer:
+        def __init__(self, vdr_options):
+            captured["options"] = vdr_options
+
+        def process(self):
+            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
+
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", CapturingAnalyzer)
+
+    response = await client.get(
+        f"/scan?type=js&path={bom_path}&profile=appsec",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    assert captured["options"] is not None
+
+
+@pytest.mark.asyncio
+async def test_scan_query_profile_is_validated(client: QuartClient, tmp_path):
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+    response = await client.get(
+        f"/scan?type=js&path={bom_path}&profile=--deep",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "profile must be one of" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_url_with_embedded_credentials_is_rejected(client: QuartClient):
+    response = await client.post(
+        "/scan",
+        json={"type": "js", "url": "https://user:token@example.com/repo.git"},
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert "embedded credentials" in data["message"]
+
+
+def test_validate_remote_url_accepts_plain_public_url():
+    is_valid, message = simple_module._validate_remote_url(
+        "https://github.com/owasp-dep-scan/dep-scan.git",
+        simple_module.allowed_git_schemes,
+        False,
+    )
+    assert is_valid
+    assert message == ""
+
+
+@pytest.mark.asyncio
+async def test_scan_path_is_revalidated_after_dispatch(client: QuartClient, tmp_path, monkeypatch):
+    """A path that passes the initial allowlist check must be checked again
+    before it is read, so a symlink planted inside an allowed directory in the
+    meantime cannot redirect the scan."""
+    safe_dir = tmp_path / "safe"
+    safe_dir.mkdir()
+    secret = tmp_path / "secret.bom.json"
+    secret.write_text(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5"}), encoding="utf-8"
+    )
+    bom_link = safe_dir / "sample.bom.json"
+    bom_link.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5"}), "utf-8")
+
+    app.config["ALLOWED_PATHS"] = [str(safe_dir)]
+
+    original_is_allowed = simple_module._is_allowed_scan_path
+    calls = {"count": 0}
+
+    def swap_after_first_check(path, allowed_paths):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return original_is_allowed(path, allowed_paths)
+        # Simulate the path now resolving outside the allowed tree.
+        bom_link.unlink()
+        bom_link.symlink_to(secret)
+        return original_is_allowed(path, allowed_paths)
+
+    monkeypatch.setattr(simple_module, "_is_allowed_scan_path", swap_after_first_check)
+
+    response = await client.get(
+        f"/scan?type=js&path={bom_link}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 403
+    data = await response.get_json()
+    assert "Path not allowed" in data["message"]
+    assert calls["count"] > 1
+
+
+@pytest.mark.asyncio
+async def test_uploaded_bom_is_not_blocked_by_path_allowlist(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    """An upload is staged in the server's own temporary directory, so the
+    allowlist configured for caller supplied paths must not reject it."""
+    safe_dir = tmp_path / "safe"
+    safe_dir.mkdir()
+    app.config["ALLOWED_PATHS"] = [str(safe_dir)]
+
+    class DummyAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
+
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+
+    payload = json.dumps(
+        {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": []}
+    ).encode("utf-8")
+    response = await client.post(
+        "/scan?type=js",
+        files={
+            "file": FileStorage(
+                stream=io.BytesIO(payload),
+                filename="sample.bom.json",
+                content_type="application/json",
+            )
+        },
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert data["bomFormat"] == "CycloneDX"
+
+
+def test_server_temp_dir_is_private_and_reused():
+    app.config.pop("SERVER_TEMP_DIR", None)
+    temp_dir = simple_module._get_server_temp_dir()
+    try:
+        assert os.path.isdir(temp_dir)
+        assert os.path.basename(temp_dir).startswith(simple_module.SERVER_TEMP_DIR_PREFIX)
+        assert oct(os.stat(temp_dir).st_mode & 0o777) == oct(0o700)
+        assert simple_module._get_server_temp_dir() == temp_dir
+    finally:
+        app.config.pop("SERVER_TEMP_DIR", None)
+        os.rmdir(temp_dir)
+
+
+@pytest.mark.asyncio
+async def test_uploaded_bom_is_staged_in_private_temp_dir(client: QuartClient, monkeypatch):
+    staged_paths = []
+    original_file_write = simple_module.file_write
+
+    def tracking_file_write(path, content, *args, **kwargs):
+        staged_paths.append(path)
+        return original_file_write(path, content, *args, **kwargs)
+
+    monkeypatch.setattr(simple_module, "file_write", tracking_file_write)
+
+    class DummyAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
+
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+
+    payload = json.dumps(
+        {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": []}
+    ).encode("utf-8")
+    response = await client.post(
+        "/scan?type=js",
+        files={
+            "file": FileStorage(
+                stream=io.BytesIO(payload),
+                filename="sample.bom.json",
+                content_type="application/json",
+            )
+        },
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    assert staged_paths
+    assert os.path.dirname(staged_paths[0]) == simple_module._get_server_temp_dir()
+
+
+@pytest.mark.asyncio
+async def test_generated_bom_outside_temp_dir_is_rejected(client: QuartClient, tmp_path):
+    """Only a BOM written inside the directory created for the request may be
+    read back and returned to the caller."""
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    stray_bom = tmp_path / "stray.bom.json"
+    stray_bom.write_text(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5"}), encoding="utf-8"
+    )
+
+    def create_bom(bom_file, _source_dir, _options):
+        return type("BOMStatus", (), {"success": True, "primary": str(stray_bom)})()
+
+    app.config["create_bom"] = create_bom
+
+    response = await client.get(
+        f"/scan?type=js&path={project_dir}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 500
+    data = await response.get_json()
+    assert "unexpected location" in data["message"]
+
+
+@pytest.mark.asyncio
+async def test_generated_bom_inside_temp_dir_is_accepted(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+
+    def create_bom(bom_file, _source_dir, _options):
+        with open(bom_file, "w", encoding="utf-8") as fp:
+            json.dump({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": []}, fp)
+        return type("BOMStatus", (), {"success": True, "primary": bom_file})()
+
+    class DummyAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
+
+    app.config["create_bom"] = create_bom
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+
+    response = await client.get(
+        f"/scan?type=js&path={project_dir}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    data = await response.get_json()
+    assert data["bomFormat"] == "CycloneDX"
+
+
+def test_is_path_within_resolves_symlinks(tmp_path):
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    outside = tmp_path / "outside.txt"
+    outside.write_text("data", encoding="utf-8")
+    inside = parent / "inside.txt"
+    inside.write_text("data", encoding="utf-8")
+    escaping_link = parent / "escape.txt"
+    escaping_link.symlink_to(outside)
+
+    assert simple_module._is_path_within(str(inside), str(parent))
+    assert not simple_module._is_path_within(str(escaping_link), str(parent))
+    assert not simple_module._is_path_within(str(outside), str(parent))
+
+
+def test_revalidate_scan_path_is_a_noop_without_allowlist():
+    app.config.pop("ALLOWED_PATHS", None)
+    assert simple_module._revalidate_scan_path("/etc/passwd")
+
+
 def test_run_server_refuses_non_local_bind_without_auth(monkeypatch):
     called = {"run": False}
 

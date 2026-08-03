@@ -190,6 +190,9 @@ jobs:
           name: containertests_ubuntu-latest_python3.11
           path: containertests_ubuntu-latest_python3.11
       - name: Test container images
+        # bash is required on Windows too: the step relies on ${GITHUB_WORKSPACE},
+        # which pwsh expands to an empty string.
+        shell: bash
         run: |
           mkdir -p containertests_${{ matrix.os }}_python${{ matrix.python-version }}
           uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest_python3.11/slim/sbom-docker.cdx.json -o containertests_${{ matrix.os }}_python${{ matrix.python-version }} --no-vuln-table
@@ -212,6 +215,7 @@ jobs:
       matrix:
         os: [ macos-26, windows-latest ]
         python-version: [ '3.12' ]
+      fail-fast: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -240,12 +244,12 @@ jobs:
         run: |
           mkdir -p containertests_${{ matrix.os }}
           mkdir -p containertests_ubuntu-latest/microservices
-          mkdir -p containertests_ubuntu-latest/NodeGoat
+          mkdir -p containertests_ubuntu-latest/nodegoat
           mv containertests_ubuntu-latest/msd/sbom-go.cdx.json containertests_ubuntu-latest/microservices/sbom-msd-go.cdx.json
           mv containertests_ubuntu-latest/ng-reports/sbom-js.cdx.json containertests_ubuntu-latest/nodegoat/sbom-js.cdx.json
           cp contrib/csaf.toml containertests_ubuntu-latest/microservices/csaf.toml
           cp contrib/csaf.toml containertests_ubuntu-latest/nodegoat/csaf.toml
-          uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-rocket-docker.cdx.json -o containertests_${{ matrix.os }}/reports --no-vuln-table
+          uv run depscan --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/sbom-docker.cdx.json -o containertests_${{ matrix.os }}/reports --no-vuln-table
           uv run depscan --csaf --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/microservices/sbom-msd-go.cdx.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/reports
           uv run depscan --csaf --no-banner --bom ${GITHUB_WORKSPACE}/containertests_ubuntu-latest/nodegoat/sbom-js.cdx.json --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
         env:

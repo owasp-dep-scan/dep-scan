@@ -8,6 +8,7 @@ from hmac import compare_digest
 from urllib.parse import urlparse
 
 from analysis_lib import VdrAnalysisKV
+from analysis_lib.config import SUPPORTED_BOM_PROFILES
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.utils import get_pkg_list
 from analysis_lib.vdr import VDRAnalyzer
@@ -47,6 +48,8 @@ MAX_PROJECT_TYPE_LENGTH = 64
 DEFAULT_MAX_BOM_FILE_SIZE = 100 * 1024 * 1024
 
 UPLOAD_SIZE_LIMIT_MESSAGE = "BOM file exceeds the configured size limit."
+PATH_NOT_ALLOWED_MESSAGE = "Path not allowed"
+SERVER_TEMP_DIR_PREFIX = "depscan-server-"
 
 
 def _is_truthy(value):
@@ -87,6 +90,59 @@ def _is_allowed_scan_path(path: str, allowed_paths: list[str]) -> bool:
         except (OSError, ValueError):
             continue
     return False
+
+
+def _is_path_within(path: str, parent_dir: str) -> bool:
+    """
+    Check whether ``path`` resolves to a location inside ``parent_dir``.
+
+    Both operands are fully resolved first so symlinks and relative segments
+    cannot be used to escape the parent directory.
+    """
+    try:
+        real_path = os.path.realpath(path)
+        real_parent = os.path.realpath(parent_dir)
+    except (OSError, ValueError):
+        return False
+    try:
+        return os.path.commonpath((real_path, real_parent)) == real_parent
+    except (OSError, ValueError):
+        return False
+
+
+def _revalidate_scan_path(path: str | None) -> bool:
+    """
+    Re-check a scan path against the configured allowlist at the point of use.
+
+    ``enforce_allowlists`` validates the requested path before the request is
+    dispatched, but the path is consumed later, once BOM generation is under
+    way. Re-resolving it immediately before every filesystem access keeps a
+    symlink that appears inside an allowed directory after the initial check
+    from redirecting the scan outside the allowlist.
+    """
+    allowed_paths = app.config.get("ALLOWED_PATHS")
+    if allowed_paths is None or not path:
+        return True
+    return _is_allowed_scan_path(path, allowed_paths)
+
+
+def _get_server_temp_dir() -> str:
+    """
+    Return the private directory used for this server's temporary BOM files.
+
+    The directory is created once per process with ``0o700`` permissions so
+    uploaded and generated BOMs are not exposed to other users or to sibling
+    containers that happen to share the system temporary directory.
+    """
+    temp_dir = app.config.get("SERVER_TEMP_DIR")
+    if temp_dir and os.path.isdir(temp_dir):
+        return temp_dir
+    temp_dir = tempfile.mkdtemp(
+        prefix=SERVER_TEMP_DIR_PREFIX, dir=os.getenv("DEPSCAN_TEMP_DIR") or None
+    )
+    os.chmod(temp_dir, 0o700)
+    app.config["SERVER_TEMP_DIR"] = temp_dir
+    return temp_dir
 
 
 def _get_config_int(config, *keys: str, default: int, logger=None) -> int:
@@ -138,6 +194,10 @@ def _validate_remote_url(url: str, allowed_schemes: set[str], allow_private_urls
         return False, "URL scheme is not allowed."
     if not parsed.hostname:
         return False, "URL host is required."
+    # Credentials embedded in a scan URL would be handed to the BOM generator
+    # and, on a redirect, to whichever host it ends up talking to.
+    if parsed.username or parsed.password:
+        return False, "URL must not contain embedded credentials."
     if not allow_private_urls and _is_private_target(parsed.hostname):
         return False, "URL host resolves to a private, loopback, or otherwise restricted address."
     return True, ""
@@ -257,7 +317,7 @@ async def enforce_allowlists():
                 if not _is_allowed_scan_path(path, allowed_paths):
                     if logger_instance:
                         logger_instance.warning(f"Blocked request for path: {path}")
-                    return {"error": "true", "message": "Path not allowed"}, 403
+                    return {"error": "true", "message": PATH_NOT_ALLOWED_MESSAGE}, 403
 
 
 @app.after_request
@@ -301,6 +361,7 @@ async def run_scan():
     suggest_mode = _is_truthy(q.get("suggest"))
     fuzzy_search = _is_truthy(q.get("fuzzy_search"))
     temp_paths = []
+    path_is_caller_supplied = True
     if q.get("url"):
         url = q.get("url")
     if q.get("path"):
@@ -337,6 +398,13 @@ async def run_scan():
         project_type_list = _parse_project_types(project_type)
     except ValueError as exc:
         return {"error": "true", "message": str(exc)}, 400
+    # The profile is forwarded to cdxgen as a command line argument, so only
+    # the documented values are accepted here.
+    if profile not in SUPPORTED_BOM_PROFILES:
+        return {
+            "error": "true",
+            "message": f"profile must be one of {', '.join(SUPPORTED_BOM_PROFILES)}.",
+        }, 400
     cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
     bom_file_path = None
     if uploaded_bom_file.get("file", None) is not None:
@@ -393,8 +461,15 @@ async def run_scan():
             )
         if logger_instance:
             logger_instance.debug("Processing uploaded file")
-        tmp_bom_file = tempfile.NamedTemporaryFile(delete=False, suffix=f".bom.{bom_file_suffix}")
+        tmp_bom_file = tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=f".bom.{bom_file_suffix}",
+            dir=_get_server_temp_dir(),
+        )
         path = tmp_bom_file.name
+        # The uploaded BOM now lives in the server's own temporary directory,
+        # so it is no longer a caller supplied path for allowlist purposes.
+        path_is_caller_supplied = False
         tmp_bom_file.close()
         temp_paths.append(path)
         file_write(path, bom_file_content)
@@ -407,6 +482,10 @@ async def run_scan():
     # Path points to a project directory
     # Bug# 233. Path could be a url
     try:
+        if path_is_caller_supplied and not _revalidate_scan_path(path):
+            if logger_instance:
+                logger_instance.warning("Blocked request for path: %s", path)
+            return {"error": "true", "message": PATH_NOT_ALLOWED_MESSAGE}, 403
         if url or (path and os.path.isdir(path)):
             if url and not path and not cdxgen_server:
                 return (
@@ -417,7 +496,10 @@ async def run_scan():
                     400,
                     {"Content-Type": "application/json"},
                 )
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".bom.json") as bfp:
+            server_temp_dir = _get_server_temp_dir()
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".bom.json", dir=server_temp_dir
+            ) as bfp:
                 temp_paths.append(bfp.name)
                 if create_bom:
                     bom_status = create_bom(
@@ -437,6 +519,25 @@ async def run_scan():
                     # above always exists, so `os.path.exists` proves nothing
                     # here and only the returned path is trustworthy.
                     if bom_status.success and bom_status.primary:
+                        # Generators are expected to write inside the temporary
+                        # directory created for this request. Refusing anything
+                        # else keeps the response from returning the contents of
+                        # an unrelated file.
+                        if not _is_path_within(bom_status.primary, server_temp_dir):
+                            if logger_instance:
+                                logger_instance.warning(
+                                    "Discarding BOM written outside the server temporary "
+                                    "directory: %s",
+                                    bom_status.primary,
+                                )
+                            return (
+                                {
+                                    "error": "true",
+                                    "message": "Generated BOM was written to an unexpected location.",
+                                },
+                                500,
+                                {"Content-Type": "application/json"},
+                            )
                         if logger_instance:
                             logger_instance.debug(
                                 "BOM file was generated successfully at %s", bom_status.primary
@@ -449,6 +550,11 @@ async def run_scan():
             bom_file_path = path
         # Direct purl-based lookups are not supported yet.
         if bom_file_path is not None:
+            # Final check before the BOM is opened and its contents returned.
+            if path_is_caller_supplied and not _revalidate_scan_path(bom_file_path):
+                if logger_instance:
+                    logger_instance.warning("Blocked request for path: %s", bom_file_path)
+                return {"error": "true", "message": PATH_NOT_ALLOWED_MESSAGE}, 403
             pkg_list, _ = get_pkg_list(bom_file_path)
             if not pkg_list:
                 if logger_instance:
