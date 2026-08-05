@@ -177,9 +177,7 @@ def generate_console_output(
         if vdr["bom-ref"] in include_pkg_group_rows:
             # Issue #519: matched_by is a transient field set during vuln
             # processing but can be absent after dedupe_vdrs collapses two
-            # components into one VDR entry. Use .get() so a missing key
-            # never crashes the entire scan — the prioritization table
-            # degrades gracefully with an empty string instead.
+            # components into one VDR entry.
             pkg_group_rows[vdr["bom-ref"]].append(
                 {
                     "id": vdr["id"],
