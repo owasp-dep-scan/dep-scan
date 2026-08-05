@@ -384,6 +384,8 @@ def combine_vdrs(v1, v2):
         "affects": combine_affects(v1.get("affects", []), v2.get("affects", [])),
         "analysis": v1.get("analysis", "") or v2.get("analysis", ""),
         "bom-ref": preferred.get("bom-ref"),
+        # Issue #519: matched_by was missing here
+        "matched_by": preferred.get("matched_by") or v1.get("matched_by") or v2.get("matched_by"),
         "cwes": list(set((v1.get("cwes") or []) + (v2.get("cwes") or []))),
         "detail": v1.get("detail", "") or v2.get("detail", ""),
         "description": v1.get("description", "") or v2.get("description", ""),
@@ -1283,6 +1285,7 @@ def process_vuln_occ(
         "purl_prefix": purl_prefix,
         "ratings": cvss_to_vdr_rating(vuln_occ_dict),
         "recommendation": recommendation,
+        "references": [],
         "source": source,
         "updated": vuln_occ_dict.get("source_update_time", ""),
         "insights": [],
@@ -1613,6 +1616,7 @@ def analyze_cve_vuln(
         "analysis": get_analysis({}, pkg_tree_list),
         "insights": [],
         "p_rich_tree": p_rich_tree,
+        "properties": [],
     }
     try:
         cve_record = vuln.get("source_data")

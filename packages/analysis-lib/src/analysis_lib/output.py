@@ -175,12 +175,15 @@ def generate_console_output(
     pkg_group_rows = defaultdict(list)
     for vdr in pkg_vulnerabilities:
         if vdr["bom-ref"] in include_pkg_group_rows:
+            # Issue #519: matched_by is a transient field set during vuln
+            # processing but can be absent after dedupe_vdrs collapses two
+            # components into one VDR entry.
             pkg_group_rows[vdr["bom-ref"]].append(
                 {
                     "id": vdr["id"],
-                    "matched_by": vdr["matched_by"],
-                    "fixed_location": vdr["fixed_location"],
-                    "p_rich_tree": vdr["p_rich_tree"],
+                    "matched_by": vdr.get("matched_by", ""),
+                    "fixed_location": vdr.get("fixed_location"),
+                    "p_rich_tree": vdr.get("p_rich_tree"),
                     "cwes": vdr.get("cwes"),
                     "insights": vdr.get("insights"),
                     "description": vdr.get("description"),

@@ -165,7 +165,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                     else:
                         added_results[key] = True
             # Surface false positive results only in fuzzy search mode
-            if not likely_false_positive or options.fuzzy_search:
+            if vuln and (not likely_false_positive or options.fuzzy_search):
                 pkg_vulnerabilities.append(vuln)
             if add_to_pkg_group_rows:
                 include_pkg_group_rows.add(vuln.get("bom-ref"))

@@ -1,0 +1,55 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:aa99610e-f03a-4f69-a3e8-294c899fcd1c",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-05T06:35:54Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "author": "anchore",
+          "name": "syft",
+          "version": "1.50.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "file",
+      "bom-ref": "a4fc283e4ba11489",
+      "name": "adapter_cdm2_webapp-42.12.17.0-SNAPSHOT.war",
+      "version": "sha256:0dab6ed09767bb698428e373949665f08f9648cdc8577577ad15b5bd8abb23ce"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.springframework/spring-web@5.3.22?package-id=26fe3cc3d0427889",
+      "name": "spring-web",
+      "version": "5.3.22",
+      "cpe": "cpe:2.3:a:org.springframework:spring-web:5.3.22:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.springframework/spring-web@5.3.22",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/adapter_cdm2_webapp-42.12.17.0-SNAPSHOT.war:WEB-INF/lib/spring-web-5.3.22.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE?package-id=5f581bf7829ede8b",
+      "name": "spring-web",
+      "version": "5.0.5.RELEASE",
+      "cpe": "cpe:2.3:a:org.springframework:spring-web:5.0.5.RELEASE:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/speed_control-39.7-SNAPSHOT.war:WEB-INF/lib/spring-web-5.0.5.RELEASE.jar"
+        }
+      ]
+    }
+  ]
+}
