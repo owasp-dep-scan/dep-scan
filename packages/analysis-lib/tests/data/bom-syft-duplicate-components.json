@@ -1,0 +1,125 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:bba7122f-1c4d-4e8a-9f22-3a5b6c7d8e9f",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-08-05T07:10:00Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "author": "anchore",
+          "name": "syft",
+          "version": "1.50.0"
+        }
+      ]
+    },
+    "component": {
+      "type": "container",
+      "bom-ref": "pkg:oci/merged-apps@sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890",
+      "name": "merged-apps",
+      "version": "sha256:1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1?package-id=abc123",
+      "name": "log4j-core",
+      "version": "2.14.1",
+      "cpe": "cpe:2.3:a:org.apache.logging.log4j:log4j-core:2.14.1:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-a/WEB-INF/lib/log4j-core-2.14.1.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0?package-id=def456",
+      "name": "log4j-core",
+      "version": "2.17.0",
+      "cpe": "cpe:2.3:a:org.apache.logging.log4j:log4j-core:2.17.0:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-b/WEB-INF/lib/log4j-core-2.17.0.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.apache.logging.log4j/log4j-core@2.12.1?package-id=ghi789",
+      "name": "log4j-core",
+      "version": "2.12.1",
+      "cpe": "cpe:2.3:a:org.apache.logging.log4j:log4j-core:2.12.1:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.12.1",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-c/WEB-INF/lib/log4j-core-2.12.1.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.10.8?package-id=jkl012",
+      "name": "jackson-databind",
+      "version": "2.9.10.8",
+      "cpe": "cpe:2.3:a:com.fasterxml.jackson.core:jackson-databind:2.9.10.8:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.9.10.8",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-a/WEB-INF/lib/jackson-databind-2.9.10.8.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.0?package-id=mno345",
+      "name": "jackson-databind",
+      "version": "2.13.0",
+      "cpe": "cpe:2.3:a:com.fasterxml.jackson.core:jackson-databind:2.13.0:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.13.0",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-b/WEB-INF/lib/jackson-databind-2.13.0.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.springframework/spring-web@5.3.22?package-id=pqr678",
+      "name": "spring-web",
+      "version": "5.3.22",
+      "cpe": "cpe:2.3:a:org.springframework:spring-web:5.3.22:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.springframework/spring-web@5.3.22",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-a/WEB-INF/lib/spring-web-5.3.22.jar"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE?package-id=stu901",
+      "name": "spring-web",
+      "version": "5.0.5.RELEASE",
+      "cpe": "cpe:2.3:a:org.springframework:spring-web:5.0.5.RELEASE:*:*:*:*:*:*:*",
+      "purl": "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE",
+      "properties": [
+        {
+          "name": "syft:metadata:virtualPath",
+          "value": "/app-b/WEB-INF/lib/spring-web-5.0.5.RELEASE.jar"
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,6 @@
+import json
+import os
+from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any
 
@@ -12,6 +15,7 @@ def _make_vdr(
     insights=None,
     properties=None,
     matching_vers="vers:apache/>=0.0.1|<9.0.0",
+    ratings=None,
 ):
     """Build a minimal vdict matching the shape returned by analyze_cve_vuln."""
     versions = [{"range": matching_vers, "status": "affected"}]
@@ -31,7 +35,9 @@ def _make_vdr(
         "description": "",
         "fixed_location": fixed_location,
         "detail": "",
-        "ratings": [],
+        "ratings": ratings
+        if ratings is not None
+        else [{"method": "CVSSv31", "score": 7.5, "severity": "high"}],
         "published": "",
         "updated": "",
         "analysis": "",
@@ -326,3 +332,206 @@ def test_dedupe_vdrs_preserves_reachable_insight_and_bom_ref():
     assert "Has PoC" in merged["insights"]
     # bom-ref of the prioritized entry is preferred for console grouping
     assert merged["bom-ref"] == "CVE-2024-7777/pkg:npm/scope/pkg@2.0.0"
+
+
+# ---------------------------------------------------------------------------
+# Issue #519 — KeyError: 'matched_by' when a scanned BOM contains two
+# components matched to the same CVE. combine_vdrs must propagate
+# matched_by so the merged VDR remains consumable by generate_console_output.
+# This happens whenever SBOMs are merged (e.g. via cyclonedx-cli merge) from
+# multiple applications that share a vulnerable dependency — even at different
+# versions, since matching can be CPE- or vers-range-based.
+#
+# Root cause: combine_vdrs built the merged dict from a hardcoded key set that
+# omitted matched_by. The bom-ref of the preferred entry was still preserved,
+# so the include_pkg_group_rows check passed, but output.py then crashed with
+# KeyError on vdr["matched_by"].
+#
+# The fix has two layers:
+#   1. combine_vdrs propagates matched_by (preferred → v1 → v2 fallback)
+#   2. output.py uses vdr.get("matched_by", "") so a missing key degrades
+#      gracefully instead of crashing the entire scan.
+# ---------------------------------------------------------------------------
+
+
+def test_combine_vdrs_preserves_matched_by():
+    """combine_vdrs must propagate matched_by so the merged VDR retains the
+    field that generate_console_output reads unconditionally."""
+    v1 = _make_vdr("CVE-2024-5001", "pkg:maven/org.springframework/spring-web@5.3.22")
+    v2 = _make_vdr("CVE-2024-5001", "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE")
+
+    merged = utils.combine_vdrs(v1, v2)
+
+    assert "matched_by" in merged
+    # preferred is v1 (neither is prioritized), so matched_by comes from v1
+    assert merged["matched_by"] == "pkg:maven/org.springframework/spring-web@5.3.22"
+
+
+def test_combine_vdrs_matched_by_prefers_prioritized_entry():
+    """When the second entry is prioritized, matched_by should come from it to
+    stay consistent with the bom-ref that include_pkg_group_rows tracks."""
+    v1 = _make_vdr("CVE-2024-5002", "pkg:npm/demo@1.0.0")
+    v2 = _make_vdr(
+        "CVE-2024-5002",
+        "pkg:npm/demo@2.0.0",
+        properties=[{"name": "depscan:prioritized", "value": "true"}],
+    )
+
+    merged = utils.combine_vdrs(v1, v2)
+
+    assert merged["matched_by"] == "pkg:npm/demo@2.0.0"
+
+
+def test_dedupe_vdrs_preserves_matched_after_merge():
+    """After dedupe_vdrs collapses two components sharing a CVE, the merged
+    result must still carry matched_by — otherwise generate_console_output
+    crashes with KeyError."""
+    v1 = _make_vdr(
+        "CVE-2024-5003",
+        "pkg:maven/org.springframework/spring-web@5.3.22",
+        fixed_location="5.3.30",
+    )
+    v2 = _make_vdr(
+        "CVE-2024-5003",
+        "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE",
+        fixed_location="5.0.20",
+    )
+
+    result = utils.dedupe_vdrs([v1, v2])
+
+    assert len(result) == 1
+    assert "matched_by" in result[0]
+    assert result[0]["matched_by"] != ""
+
+
+def test_generate_console_output_survives_missing_matched_by():
+    """generate_console_output must not crash when a VDR entry lacks
+    matched_by (the pre-fix regression). The defensive .get() should
+    degrade gracefully with an empty string."""
+    from analysis_lib.output import generate_console_output
+
+    options = SimpleNamespace(project_type="java")
+    # Simulate a merged VDR that lost matched_by (pre-fix combine_vdrs output)
+    vdr_no_matched_by = {
+        "id": "CVE-2024-5004",
+        "bom-ref": "CVE-2024-5004/pkg:maven/demo@1.0.0",
+        "affects": [{"ref": "pkg:maven/demo@1.0.0", "versions": []}],
+        "matched_by": None,  # explicitly absent / None
+        "fixed_location": "2.0.0",
+        "p_rich_tree": None,
+        "purl_prefix": "pkg:maven/demo",
+        "insights": [],
+        "ratings": [{"method": "CVSSv31", "score": 7.5, "severity": "high"}],
+        "description": "",
+        "cwes": [],
+    }
+    bom_ref = vdr_no_matched_by["bom-ref"]
+    # If we remove matched_by entirely, it should still work (belt-and-suspenders)
+    del vdr_no_matched_by["matched_by"]
+    include = {bom_ref}
+
+    # This call used to raise KeyError: 'matched_by'
+    pkg_group_rows, table = generate_console_output(
+        [vdr_no_matched_by],
+        [],
+        include,
+        options,
+    )
+
+    assert bom_ref in pkg_group_rows
+    assert pkg_group_rows[bom_ref][0]["matched_by"] == ""
+
+
+def test_generate_console_output_with_deduped_duplicate_cves():
+    """End-to-end regression: two components sharing a CVE are deduped, and
+    generate_console_output should render without crashing even when one of
+    them was added to include_pkg_group_rows before the merge."""
+    from analysis_lib.output import generate_console_output
+
+    options = SimpleNamespace(project_type="java")
+    v1 = _make_vdr(
+        "CVE-2024-5005",
+        "pkg:maven/org.springframework/spring-web@5.3.22",
+        fixed_location="5.3.30",
+        insights=["[bright_red]:exclamation_mark: Exploitable[/bright_red]"],
+        properties=[{"name": "depscan:prioritized", "value": "true"}],
+    )
+    v2 = _make_vdr(
+        "CVE-2024-5005",
+        "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE",
+        fixed_location="5.0.20",
+    )
+    # Both bom-refs are added to include_pkg_group_rows before dedup
+    include = {v1["bom-ref"], v2["bom-ref"]}
+    deduped = utils.dedupe_vdrs([v1, v2])
+
+    assert len(deduped) == 1
+    # The merged entry carries matched_by and the preferred bom-ref
+    assert "matched_by" in deduped[0]
+
+    # This used to raise KeyError: 'matched_by'
+    pkg_group_rows, table = generate_console_output(
+        deduped,
+        [],
+        include,
+        options,
+    )
+    # The prioritized bom-ref should be in the group rows
+    prioritized_ref = v1["bom-ref"]
+    assert prioritized_ref in pkg_group_rows
+
+
+# ---------------------------------------------------------------------------
+# SBOM fixture validation — verifies that the test SBOMs with duplicate
+# components are parsed correctly, simulating the merged-BOM scenario from
+# the issue report.
+# ---------------------------------------------------------------------------
+
+
+def test_merged_duplicate_cve_bom_has_two_spring_web_versions():
+    """The merged-BOM fixture must contain two distinct versions of
+    spring-web so that a real scan would produce two VDR entries that
+    dedupe_vdrs collapses into one (the trigger for issue #519)."""
+    bom_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "data",
+        "bom-merged-duplicate-cve.json",
+    )
+    with open(bom_path, encoding="utf-8") as f:
+        bom = json.load(f)
+
+    spring_versions = [c["version"] for c in bom["components"] if c.get("name") == "spring-web"]
+    assert len(spring_versions) == 2
+    assert "5.3.22" in spring_versions
+    assert "5.0.5.RELEASE" in spring_versions
+    # bom-refs must be distinct (different purls) so they don't collapse
+    # before reaching dedupe_vdrs
+    bom_refs = {c["bom-ref"] for c in bom["components"]}
+    assert len(bom_refs) == 2
+
+
+def test_syft_duplicate_components_bom_has_overlapping_cves():
+    """The syft-style fixture must contain multiple versions of the same
+    package so that CPE/vers matching produces overlapping CVEs — the exact
+    condition that triggers the dedup path."""
+    bom_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        "data",
+        "bom-syft-duplicate-components.json",
+    )
+    with open(bom_path, encoding="utf-8") as f:
+        bom = json.load(f)
+
+    names = defaultdict(list)
+    for c in bom["components"]:
+        names[c["name"]].append(c["version"])
+
+    # log4j-core has 3 versions — all would match CVE-2021-44228
+    assert len(names["log4j-core"]) == 3
+    # jackson-databind has 2 versions
+    assert len(names["jackson-databind"]) == 2
+    # spring-web has 2 versions
+    assert len(names["spring-web"]) == 2
+    # All bom-refs must be distinct
+    bom_refs = [c["bom-ref"] for c in bom["components"]]
+    assert len(bom_refs) == len(set(bom_refs))
