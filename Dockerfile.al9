@@ -72,8 +72,10 @@ RUN set -e; \
     && pecl channel-update pecl.php.net \
     && pecl install timezonedb \
     && echo 'extension=timezonedb.so' >> /etc/php.ini \
-    && php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && php composer-setup.php \
+    && curl -Lo composer-setup.php "https://getcomposer.org/installer" \
+    && php composer-setup.php \
     && mv composer.phar /usr/local/bin/composer \
+    && rm composer-setup.php \
     && python3 -m pip install pipenv certifi \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && cd /opt/dep-scan \
