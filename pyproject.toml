@@ -16,9 +16,9 @@ dependencies = [
     "packageurl-python>=0.16.0",
     "cvss>=3.4",
     "tomli>=2.2.1; python_full_version <= '3.11'",
-    "ds-xbom-lib",
-    "ds-analysis-lib",
-    "ds-reporting-lib"
+    "ds-xbom-lib>=6.3.1",
+    "ds-analysis-lib>=6.3.1",
+    "ds-reporting-lib>=6.3.1"
 ]
 
 requires-python = ">=3.10"
@@ -54,9 +54,9 @@ dev = [
     "pytest-asyncio>=1.2.0",
     "pytest-cov>=6.0.0"
 ]
-server = ["ds-server-lib"]
+server = ["ds-server-lib>=6.3.1"]
 ext = ["atom-tools>=0.7.8", "blint>=3.2.3"]
-all = ["atom-tools>=0.7.8", "blint>=3.2.3", "ds-server-lib", "PyGithub>=2.6.1"]
+all = ["atom-tools>=0.7.8", "blint>=3.2.3", "ds-server-lib>=6.3.1", "PyGithub>=2.6.1"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
