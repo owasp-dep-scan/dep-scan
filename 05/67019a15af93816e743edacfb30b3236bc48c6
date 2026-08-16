@@ -1,0 +1,48 @@
+documentation/docs/env-var.mdx
+  s_d3741f4b459d3b::t_e33bb85feb7adf 49
+depscan/cli.py
+  s_d3741f4b459d3b::t_d46467388a9cc0 800-815,818-820,829-833
+  s_d3741f4b459d3b::t_563a316655a231 816-817
+  s_d3741f4b459d3b::t_014b9e6168240a 864-870
+  s_d3741f4b459d3b::t_34dc917aa84e1e 31
+depscan/lib/bom.py
+  s_d3741f4b459d3b::t_d88d8a8685e38c 884-885,896-900,912-917,937-940
+  s_d3741f4b459d3b::t_6a61b4d481e2ff 563,578-579,595,599-600,617-621,623-625
+  s_d3741f4b459d3b::t_4a9c24702b762a 397,411-412,428,432-433,453-457,459-461
+  s_d3741f4b459d3b::t_47aec9fa6845b5 1009-1013
+  s_d3741f4b459d3b::t_be062405cfb928 665-666,681-685,697-701
+  s_d3741f4b459d3b::t_aa1c7aadb0ea56 718,734-735,751,755-756,768-772,775-778,785-788,790-794,799-802,804-808,810-814
+  s_d3741f4b459d3b::t_82abb592ea5b7c 36-46
+  s_d3741f4b459d3b::t_09e59e5dc8275f 505-506,523-529,540-544
+depscan/cli_options.py
+  s_d3741f4b459d3b::t_78a5ffd8bd4548 199-210
+  s_d3741f4b459d3b::t_088d4bbb06aa6c 198
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_d3741f4b459d3b::t_a79ebb07542b9b 280-281
+  s_d3741f4b459d3b::t_073cd3f40d8363 503-504
+test/test_cli_inputs.py
+  s_d3741f4b459d3b::t_b196de7cb49f11 458-519
+test/test_fail_on_error.py
+  s_d3741f4b459d3b::t_8279094c44035b 1-68,73-122,124-135,137-142,144-257,259-280,282-335,339-346
+  s_d3741f4b459d3b::t_0d8e308174c8c8 123,136,143,258,281,336-338
+  s_d3741f4b459d3b::t_777d57b00abe4f 69-72
+documentation/docs/cli-usage.mdx
+  s_d3741f4b459d3b::t_59e9426fa42a3f 67
+  s_d3741f4b459d3b::t_ebedacbc71df68 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0567019a15af93816e743edacfb30b3236bc48c6",
+  "prompts": {},
+  "sessions": {
+    "s_d3741f4b459d3b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ff51feb6fffe40lKQGRvpNil8L",
+        "model": "glm-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
