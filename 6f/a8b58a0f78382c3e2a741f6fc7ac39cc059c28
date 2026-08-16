@@ -1,0 +1,86 @@
+test/test_cli_inputs.py
+  s_d3741f4b459d3b::t_b196de7cb49f11 458-519
+test/test_tomlparse.py
+  s_a540fc98f0e028::t_2020baee3a49f4 23,72
+test/test_vdb_config.py
+  s_a540fc98f0e028::t_2020baee3a49f4 22-36,38-47,52-76,92,101,145,204,206-209,211-214
+  s_0113b3b8dbc2ae::t_756de0ea388416 116,159,223
+test/test_fail_on_error.py
+  s_a540fc98f0e028::t_dbc7bf84bb553d 166-170
+  s_d3741f4b459d3b::t_0d8e308174c8c8 123,136,143,294,317
+  s_a540fc98f0e028::t_782a6f6356e5b5 191,193-194,196-197,200-228
+  s_d3741f4b459d3b::t_777d57b00abe4f 69-72
+  s_a540fc98f0e028::t_b08c3db5915fb1 369-371,373-376
+  s_d3741f4b459d3b::t_8279094c44035b 1-68,73-122,124-135,137-142,144-165,171-190,192,195,198-199,229-293,295-316,318-368,372,377-384
+documentation/docs/cli-usage.mdx
+  s_a540fc98f0e028::t_39e84a22e77401 67
+  s_d3741f4b459d3b::t_ebedacbc71df68 38
+test/snapshots.py
+  s_a540fc98f0e028::t_2020baee3a49f4 13-14,44-45,48-49,91,115-122,171-173,184-190,200-206,214-216
+depscan/cli.py
+  s_d3741f4b459d3b::t_d46467388a9cc0 800-815,819,828-832
+  s_d3741f4b459d3b::t_014b9e6168240a 863-869
+  s_a540fc98f0e028::t_3dc3ce2cab5529 816-818
+  s_d3741f4b459d3b::t_34dc917aa84e1e 31
+documentation/docs/env-var.mdx
+  s_d3741f4b459d3b::t_e33bb85feb7adf 49
+depscan/cli_options.py
+  s_d3741f4b459d3b::t_78a5ffd8bd4548 199-202,207
+  s_a540fc98f0e028::t_0c32635eb3e172 203-206
+  s_d3741f4b459d3b::t_088d4bbb06aa6c 198
+test/test_license.py
+  s_a540fc98f0e028::t_2020baee3a49f4 30,35,85,92
+depscan/lib/bom.py
+  s_d3741f4b459d3b::t_d88d8a8685e38c 896-897,908-912,924-929,949-952
+  s_d3741f4b459d3b::t_be062405cfb928 665-666,681-685,697-701
+  s_d3741f4b459d3b::t_aa1c7aadb0ea56 718,734-735,791,795-796,808-812,815-818,822-826
+  s_a540fc98f0e028::t_d87f170811ab90 819-820
+  s_a540fc98f0e028::t_e78c4475b8bfe5 1021-1027
+  s_d3741f4b459d3b::t_4a9c24702b762a 397,411-412,428,432-433,453-457,459-461
+  s_d3741f4b459d3b::t_82abb592ea5b7c 36-46
+  s_a540fc98f0e028::t_f0f0e5f63b3ef2 747-754,757-758,763-768,775,778,784-786
+  s_d3741f4b459d3b::t_09e59e5dc8275f 505-506,523-529,540-544
+  s_d3741f4b459d3b::t_6a61b4d481e2ff 563,578-579,595,599-600,617-621,623-625
+  s_a540fc98f0e028::t_a938455cf330f9 755-756,759-762,769-774,776-777,779-783
+test/test_vdb_cli.py
+  s_a540fc98f0e028::t_2020baee3a49f4 68,76,85,93,103,113,127
+test/test_pkg_query.py
+  s_a540fc98f0e028::t_2020baee3a49f4 12-13,30,32,139,147,248-251,265-268,277-280,331,361,366,399
+test/test_cli.py
+  s_a540fc98f0e028::t_2020baee3a49f4 103,117,144,154
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_d3741f4b459d3b::t_073cd3f40d8363 503-504
+  s_d3741f4b459d3b::t_a79ebb07542b9b 280-281
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "6fa8b58a0f78382c3e2a741f6fc7ac39cc059c28",
+  "prompts": {},
+  "sessions": {
+    "s_0113b3b8dbc2ae": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_06edf371effeyMlG91P55NbbzY",
+        "model": "glm-5.2"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_a540fc98f0e028": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8681dbf-930d-4ef9-b45d-ed9dcc9a120c",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    },
+    "s_d3741f4b459d3b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ff51feb6fffe40lKQGRvpNil8L",
+        "model": "glm-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
