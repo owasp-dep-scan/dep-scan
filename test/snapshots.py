@@ -10,7 +10,8 @@ from typing import Set, List, Dict
 from custom_json_diff.lib.custom_diff import (
     compare_dicts,
     perform_bom_diff,
-    report_results, perform_csaf_diff,
+    report_results,
+    perform_csaf_diff,
 )
 from custom_json_diff.lib.custom_diff_classes import Options
 from custom_json_diff.lib.utils import json_load, json_dump
@@ -40,12 +41,12 @@ def build_args():
         help="Directory containing the BOM files to analyze",
     )
     parser.add_argument(
-        '--snapshot-dirs',
-        '-d',
+        "--snapshot-dirs",
+        "-d",
         # Preserving with the intention of allowing an output directory in the depscan cli
         default=["/home/runner/work/original_snapshots", "/home/runner/work/new_snapshots"],
-        help='Directories containing the snapshots to compare',
-        nargs=2
+        help="Directories containing the snapshots to compare",
+        nargs=2,
     )
     parser.add_argument(
         "--projects",
@@ -87,7 +88,7 @@ def filter_normalize_jsons(filename: str, options: Options, v5: bool):
 
 
 def filter_years(vdrs: List) -> List:
-    new_vdrs= []
+    new_vdrs = []
     for i in vdrs:
         if vid := (i.get("id") or i.get("cve", "")):
             vid = vid.upper()
@@ -111,7 +112,14 @@ def generate_snapshot_diffs(dir1: str, dir2: str, projects: List, v5: bool):
         allow_new_versions=True,
         allow_new_data=True,
         preconfig_type="bom",
-        exclude=["tools", "components", "dependencies", "services", "metadata", "vulnerabilities.[].source"],
+        exclude=[
+            "tools",
+            "components",
+            "dependencies",
+            "services",
+            "metadata",
+            "vulnerabilities.[].source",
+        ],
     )
     csaf_diff_options = Options(
         allow_new_versions=True,
@@ -160,7 +168,9 @@ def handle_new_recommendation_for_comparison(bom_data: Dict):
 
 def migrate_old_csaf_formatting(csaf_data: Dict):
     for i, v in enumerate(csaf_data.get("vulnerabilities", [])):
-        csaf_data["vulnerabilities"][i]["acknowledgements"] = [v.get("acknowledgements")] if v.get("acknowledgements") else []
+        csaf_data["vulnerabilities"][i]["acknowledgements"] = (
+            [v.get("acknowledgements")] if v.get("acknowledgements") else []
+        )
     return csaf_data
 
 
@@ -171,7 +181,13 @@ def migrate_old_vdr_formatting(bom_data: Dict):
             bom_data["vulnerabilities"][i]["description"] = description
             bom_data["vulnerabilities"][i]["detail"] = detail
         if v.get("recommendation"):
-            new_rec = v["recommendation"].replace(" or later", "").replace("Update to version ", "Update to ").replace("Update to", "Update to version").rstrip(".")
+            new_rec = (
+                v["recommendation"]
+                .replace(" or later", "")
+                .replace("Update to version ", "Update to ")
+                .replace("Update to", "Update to version")
+                .rstrip(".")
+            )
             bom_data["vulnerabilities"][i]["recommendation"] = f"{new_rec}."
         if v.get("properties"):
             new_properties = [i for i in v["properties"] if i["name"] != "affectedVersionRange"]
@@ -181,8 +197,13 @@ def migrate_old_vdr_formatting(bom_data: Dict):
 
 def perform_snapshot_tests(dir1: str, dir2: str, projects: List, v5: bool):
     if failed_diffs := generate_snapshot_diffs(dir1, dir2, projects, v5):
-        diff_file = os.path.join(dir2, 'diffs.json')
-        json_dump(diff_file, failed_diffs, success_msg=f"Results of failed diffs saved to {diff_file}", log=logger)
+        diff_file = os.path.join(dir2, "diffs.json")
+        json_dump(
+            diff_file,
+            failed_diffs,
+            success_msg=f"Results of failed diffs saved to {diff_file}",
+            log=logger,
+        )
     else:
         print("Snapshot tests passed!")
 
@@ -190,7 +211,9 @@ def perform_snapshot_tests(dir1: str, dir2: str, projects: List, v5: bool):
 def main():
     args = build_args()
     generate_new_snapshots(args.bom_dir, args.projects)
-    perform_snapshot_tests(args.snapshot_dirs[0], args.snapshot_dirs[1], args.projects, args.legacy)
+    perform_snapshot_tests(
+        args.snapshot_dirs[0], args.snapshot_dirs[1], args.projects, args.legacy
+    )
 
 
 if __name__ == "__main__":

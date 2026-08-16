@@ -20,9 +20,7 @@ def test_cli_overrides_hyphenated_toml_key(tmp_path):
     """
     parser = ArgumentParser()
     parser.add_argument("--risk-audit", action="store_true")
-    args = _parse_with_config(
-        parser, "risk-audit = false\n", ["--risk-audit"], tmp_path
-    )
+    args = _parse_with_config(parser, "risk-audit = false\n", ["--risk-audit"], tmp_path)
     assert args.risk_audit is True
 
 
@@ -71,9 +69,7 @@ def test_cli_wins_when_explicit_value_equals_default(tmp_path):
     """
     parser = ArgumentParser()
     parser.add_argument("--level", default="info")
-    args = _parse_with_config(
-        parser, 'level = "high"\n', ["--level", "info"], tmp_path
-    )
+    args = _parse_with_config(parser, 'level = "high"\n', ["--level", "info"], tmp_path)
     assert args.level == "info"
 
 

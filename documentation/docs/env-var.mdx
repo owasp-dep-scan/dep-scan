@@ -46,6 +46,7 @@ The environment variables below are advanced override knobs for automation and s
 - DEPSCAN_SOURCE_DIR_IMAGE - Alternative to `--src` argument to pass the source directory or image name.
 - DEPSCAN_REPORTS_DIR - Alternative to `--reports-dir` to pass the output reports directory.
 - DEPSCAN_SEVERITY - Alternative to the `--severity` argument. Set to `low`, `medium`, `high`, or `critical` to apply a minimum severity floor to the report. When set, depscan auto-selects the extended vdb image (unless `VDB_DATABASE_URL` is pinned) and pushes the filter into the search layer.
+- DEPSCAN_FAIL_ON_ERROR - Alternative to the `--fail-on-error` argument. Set to `true` or `1` to abort the scan with a non-zero exit code on unreadable reachability reports, empty slices, failed tools (blint, rusi, golem, dosai), or a failed BOM/package lookup, instead of silently degrading the results. The flag is also passed through to cdxgen's `--fail-on-error`.
 - OSV_EXCLUDE_MALWARE - Set to `true` or `1` to exclude malware (MAL-*) advisories from the results. This filter works on the default database because the is_malware signal is always populated.
 - DEPSCAN_SOURCE_IMAGE - Source image name to use for lifecycle analysis. Same as the key `source_image` in the configuration file.
 - DEPSCAN_BUILD_DIR - Build directory to use for lifecycle analysis. Blint sbom command will be executed with this directory. Defaults to the source directory (`--src`). Same as the key `build_dir` in the configuration file.

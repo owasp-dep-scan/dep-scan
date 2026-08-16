@@ -27,16 +27,12 @@ def test_license_data():
 
 
 def test_lookup(test_license_data):
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom.xml")
     pkg_list = get_pkg_list(test_bom)
     pkg_lic_dict = bulk_lookup(test_license_data, pkg_list)
     assert pkg_lic_dict
 
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-dotnet.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-dotnet.xml")
     pkg_list = get_pkg_list(test_bom)
     pkg_lic_dict = bulk_lookup(test_license_data, pkg_list)
     assert pkg_lic_dict
@@ -86,18 +82,14 @@ def test_dual_license(test_license_data):
             }
         ]
     }
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-node2.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-node2.xml")
     pkg_list = get_pkg_list(test_bom)
     pkg_lic_dict = bulk_lookup(test_license_data, pkg_list)
     assert pkg_lic_dict
 
 
 def test_large_lookup(test_license_data):
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-docker.json"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-docker.json")
     pkg_list = get_pkg_list(test_bom)
     pkg_lic_dict = bulk_lookup(test_license_data, pkg_list)
     assert pkg_lic_dict

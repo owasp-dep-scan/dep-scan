@@ -9,7 +9,8 @@ from depscan.lib import config as config
 from depscan.lib.bom import get_pkg_list
 from depscan.lib.package_query.pkg_query import (
     calculate_risk_score,
-    get_category_score, )
+    get_category_score,
+)
 from depscan.lib.package_query.metadata import npm_metadata, pypi_metadata, metadata_from_registry
 from depscan.lib.package_query.pypi_pkg import pypi_pkg_risk
 from depscan.lib.package_query.npm_pkg import npm_pkg_risk
@@ -26,13 +27,9 @@ def test_risk_scores():
 
 def test_calculate_risk_score():
     # Test for min versions
-    one_score = calculate_risk_score(
-        {"pkg_min_versions_risk": True, "pkg_min_versions_value": 1}
-    )
+    one_score = calculate_risk_score({"pkg_min_versions_risk": True, "pkg_min_versions_value": 1})
     assert one_score > 0
-    two_score = calculate_risk_score(
-        {"pkg_min_versions_risk": True, "pkg_min_versions_value": 2}
-    )
+    two_score = calculate_risk_score({"pkg_min_versions_risk": True, "pkg_min_versions_value": 2})
     assert two_score < one_score
     # Deprecated package risk
     dep_score = calculate_risk_score({"pkg_deprecated_risk": True, "pkg_deprecated_value": 1})
@@ -139,9 +136,7 @@ def test_calculate_risk_score():
 
 @pytest.mark.skip(reason="This downloads and tests with live data")
 def test_query_metadata():
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-node.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-node.xml")
     pkg_list = get_pkg_list(test_bom)
     metadata_dict = npm_metadata({}, pkg_list, None)
     assert metadata_dict
@@ -149,9 +144,7 @@ def test_query_metadata():
 
 @pytest.mark.skip(reason="This downloads and tests with live data")
 def test_query_metadata1():
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-goof.json"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-goof.json")
     pkg_list = get_pkg_list(test_bom)
     metadata_dict = npm_metadata({}, pkg_list, "snyk")
     assert metadata_dict
@@ -252,7 +245,10 @@ def test_npm_risks():
         assert not risk_metrics["pkg_version_missing_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
         assert risk_metrics["pkg_attested_check"]
-        assert risk_metrics["pkg_attested_info"] == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        assert (
+            risk_metrics["pkg_attested_info"]
+            == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        )
 
     biomec_pkg = os.path.join(
         os.path.dirname(os.path.realpath(__file__)), "data", "npm-biome-cli-metadata.json"
@@ -266,7 +262,10 @@ def test_npm_risks():
         assert not risk_metrics["pkg_version_missing_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
         assert risk_metrics["pkg_attested_check"]
-        assert risk_metrics["pkg_attested_info"] == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        assert (
+            risk_metrics["pkg_attested_info"]
+            == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        )
 
         risk_metrics = npm_pkg_risk(pkg_metadata, False, None, {"version": "1.8.0"})
         assert risk_metrics["pkg_includes_binary_risk"]
@@ -275,7 +274,10 @@ def test_npm_risks():
         assert not risk_metrics["pkg_version_missing_risk"]
         assert not risk_metrics["pkg_min_versions_risk"]
         assert risk_metrics["pkg_attested_check"]
-        assert risk_metrics["pkg_attested_info"] == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        assert (
+            risk_metrics["pkg_attested_info"]
+            == "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        )
 
 
 def test_pypi_confusion_risks():
@@ -326,9 +328,7 @@ def test_pypi_confusion_risks():
 
 
 def test_query_metadata2():
-    test_bom = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml"
-    )
+    test_bom = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "bom-py.xml")
     pkg_list = get_pkg_list(test_bom)
     metadata_dict = pypi_metadata({}, pkg_list, None)
     assert metadata_dict
@@ -358,10 +358,12 @@ def _make_mock_client(delay=0):
     }
 
     client = MagicMock()
+
     def _get(url, **kwargs):
         if delay:
             time.sleep(delay)
         return _make_mock_response(npm_meta)
+
     client.get.side_effect = _get
     # metadata_from_registry uses `with httpx.Client() as client:`
     client.__enter__.return_value = client
@@ -394,10 +396,7 @@ def test_parallel_metadata_preserves_result_shape():
 
 def test_parallel_metadata_circuit_breaker():
     """The circuit breaker trips and returns {} after max_request_failures."""
-    pkg_list = [
-        {"name": f"fail-{i}", "vendor": "", "scope": "required"}
-        for i in range(20)
-    ]
+    pkg_list = [{"name": f"fail-{i}", "vendor": "", "scope": "required"} for i in range(20)]
     client = MagicMock()
     client.get.side_effect = ConnectionError("boom")
     client.__enter__.return_value = client

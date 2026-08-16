@@ -19,51 +19,61 @@ TAG = "v6.7.x"
 APPOS_CASES = [
     # (kwargs, expected_repo)
     # App scope
-    ({"scope": "app", "time": "2y", "extended": False, "compression": "xz"},
-     "vdbxz-app-2y"),
-    ({"scope": "app", "time": "2y", "extended": True, "compression": "xz"},
-     "vdbxz-app-2y-extended"),
-    ({"scope": "app", "time": "default", "extended": False, "compression": "xz"},
-     "vdbxz-app"),
-    ({"scope": "app", "time": "default", "extended": True, "compression": "xz"},
-     "vdbxz-app-extended"),
-    ({"scope": "app", "time": "10y", "extended": False, "compression": "xz"},
-     "vdbxz-app-10y"),
-    ({"scope": "app", "time": "10y", "extended": True, "compression": "xz"},
-     "vdbxz-app-10y-extended"),
+    ({"scope": "app", "time": "2y", "extended": False, "compression": "xz"}, "vdbxz-app-2y"),
+    (
+        {"scope": "app", "time": "2y", "extended": True, "compression": "xz"},
+        "vdbxz-app-2y-extended",
+    ),
+    ({"scope": "app", "time": "default", "extended": False, "compression": "xz"}, "vdbxz-app"),
+    (
+        {"scope": "app", "time": "default", "extended": True, "compression": "xz"},
+        "vdbxz-app-extended",
+    ),
+    ({"scope": "app", "time": "10y", "extended": False, "compression": "xz"}, "vdbxz-app-10y"),
+    (
+        {"scope": "app", "time": "10y", "extended": True, "compression": "xz"},
+        "vdbxz-app-10y-extended",
+    ),
     # App+OS scope (no 2y)
-    ({"scope": "app+os", "time": "default", "extended": False, "compression": "xz"},
-     "vdbxz"),
-    ({"scope": "app+os", "time": "default", "extended": True, "compression": "xz"},
-     "vdbxz-extended"),
-    ({"scope": "app+os", "time": "10y", "extended": False, "compression": "xz"},
-     "vdbxz-10y"),
-    ({"scope": "app+os", "time": "10y", "extended": True, "compression": "xz"},
-     "vdbxz-10y-extended"),
+    ({"scope": "app+os", "time": "default", "extended": False, "compression": "xz"}, "vdbxz"),
+    (
+        {"scope": "app+os", "time": "default", "extended": True, "compression": "xz"},
+        "vdbxz-extended",
+    ),
+    ({"scope": "app+os", "time": "10y", "extended": False, "compression": "xz"}, "vdbxz-10y"),
+    (
+        {"scope": "app+os", "time": "10y", "extended": True, "compression": "xz"},
+        "vdbxz-10y-extended",
+    ),
 ]
 
 # zst variants: swap vdbxz -> vdbzst
 APP_ZST_CASES = [
-    ({"scope": "app", "time": "2y", "extended": False, "compression": "zst"},
-     "vdbzst-app-2y"),
-    ({"scope": "app", "time": "2y", "extended": True, "compression": "zst"},
-     "vdbzst-app-2y-extended"),
-    ({"scope": "app", "time": "default", "extended": False, "compression": "zst"},
-     "vdbzst-app"),
-    ({"scope": "app", "time": "default", "extended": True, "compression": "zst"},
-     "vdbzst-app-extended"),
-    ({"scope": "app", "time": "10y", "extended": False, "compression": "zst"},
-     "vdbzst-app-10y"),
-    ({"scope": "app", "time": "10y", "extended": True, "compression": "zst"},
-     "vdbzst-app-10y-extended"),
-    ({"scope": "app+os", "time": "default", "extended": False, "compression": "zst"},
-     "vdbzst"),
-    ({"scope": "app+os", "time": "default", "extended": True, "compression": "zst"},
-     "vdbzst-extended"),
-    ({"scope": "app+os", "time": "10y", "extended": False, "compression": "zst"},
-     "vdbzst-10y"),
-    ({"scope": "app+os", "time": "10y", "extended": True, "compression": "zst"},
-     "vdbzst-10y-extended"),
+    ({"scope": "app", "time": "2y", "extended": False, "compression": "zst"}, "vdbzst-app-2y"),
+    (
+        {"scope": "app", "time": "2y", "extended": True, "compression": "zst"},
+        "vdbzst-app-2y-extended",
+    ),
+    ({"scope": "app", "time": "default", "extended": False, "compression": "zst"}, "vdbzst-app"),
+    (
+        {"scope": "app", "time": "default", "extended": True, "compression": "zst"},
+        "vdbzst-app-extended",
+    ),
+    ({"scope": "app", "time": "10y", "extended": False, "compression": "zst"}, "vdbzst-app-10y"),
+    (
+        {"scope": "app", "time": "10y", "extended": True, "compression": "zst"},
+        "vdbzst-app-10y-extended",
+    ),
+    ({"scope": "app+os", "time": "default", "extended": False, "compression": "zst"}, "vdbzst"),
+    (
+        {"scope": "app+os", "time": "default", "extended": True, "compression": "zst"},
+        "vdbzst-extended",
+    ),
+    ({"scope": "app+os", "time": "10y", "extended": False, "compression": "zst"}, "vdbzst-10y"),
+    (
+        {"scope": "app+os", "time": "10y", "extended": True, "compression": "zst"},
+        "vdbzst-10y-extended",
+    ),
 ]
 
 ALL_VALID = APPOS_CASES + APP_ZST_CASES
@@ -79,6 +89,7 @@ def test_resolve_vdb_image_valid(kwargs, repo):
 # Default args: zero-flag default is App+OS default standard xz
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_vdb_image_defaults():
     assert resolve_vdb_image() == f"{REG}/vdbxz:{TAG}"
 
@@ -86,6 +97,7 @@ def test_resolve_vdb_image_defaults():
 # ---------------------------------------------------------------------------
 # default-no-segment rule
 # ---------------------------------------------------------------------------
+
 
 def test_default_time_adds_no_segment():
     # app, default -> vdbxz-app (no time infix)
@@ -100,6 +112,7 @@ def test_non_default_time_adds_segment():
 # ---------------------------------------------------------------------------
 # App+OS -app drop
 # ---------------------------------------------------------------------------
+
 
 def test_app_os_drops_app_infix():
     assert resolve_vdb_image(scope="app+os") == f"{REG}/vdbxz:{TAG}"
@@ -129,6 +142,7 @@ def test_resolve_distro_default_compression_is_xz():
 # Tag override
 # ---------------------------------------------------------------------------
 
+
 def test_tag_override():
     url = resolve_vdb_image(tag="stable")
     assert url.endswith(":stable")
@@ -141,6 +155,7 @@ def test_vdb_image_tag_default():
 # ---------------------------------------------------------------------------
 # Rejected combinations
 # ---------------------------------------------------------------------------
+
 
 def test_reject_app_os_2y():
     with pytest.raises(ValueError, match="App\\+OS has no 2y"):
@@ -186,12 +201,17 @@ def test_reject_invalid_distro():
 # Spot checks from the plan
 # ---------------------------------------------------------------------------
 
+
 def test_spot_checks():
-    assert resolve_vdb_image(scope="app", time="2y", extended=True) == \
-        f"{REG}/vdbxz-app-2y-extended:{TAG}"
+    assert (
+        resolve_vdb_image(scope="app", time="2y", extended=True)
+        == f"{REG}/vdbxz-app-2y-extended:{TAG}"
+    )
     assert resolve_vdb_image(scope="app+os", time="default") == f"{REG}/vdbxz:{TAG}"
-    assert resolve_vdb_image(scope="app+os", time="10y", extended=True) == \
-        f"{REG}/vdbxz-10y-extended:{TAG}"
+    assert (
+        resolve_vdb_image(scope="app+os", time="10y", extended=True)
+        == f"{REG}/vdbxz-10y-extended:{TAG}"
+    )
     assert resolve_vdb_image(scope="app", compression="zst") == f"{REG}/vdbzst-app:{TAG}"
     assert resolve_vdb_image(distro="ubuntu") == f"{REG}/vdbxz-ubuntu:{TAG}"
 
@@ -199,6 +219,7 @@ def test_spot_checks():
 # ---------------------------------------------------------------------------
 # vdb_image_size
 # ---------------------------------------------------------------------------
+
 
 def test_vdb_image_size_full_ref():
     assert vdb_image_size(f"{REG}/vdbxz:{TAG}") == "42.36 GiB"
