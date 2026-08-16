@@ -277,6 +277,8 @@ class CdxgenGenerator(XBOMGenerator):
             args = args + (" ".join(technique_args).split())
         if options.get("deep"):
             args.append("--deep")
+        if options.get("fail_on_error"):
+            args.append("--fail-on-error")
         if options.get("profile"):
             args.append("--profile")
             args.append(options.get("profile", ""))
@@ -498,6 +500,8 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             run_command_args += ["--lifecycle", lifecycles[0]]
         if self.options.get("deep", "") in ("true", "1"):
             run_command_args.append("--deep")
+        if self.options.get("fail_on_error"):
+            run_command_args.append("--fail-on-error")
         if self.options.get("cdxgen_args"):
             run_command_args += shlex.split(self.options.get("cdxgen_args", ""))
         return image_name, run_command_args

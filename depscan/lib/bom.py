@@ -33,6 +33,17 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 
+class ScanFailureError(RuntimeError):
+    """A recoverable-by-default failure surfaced by ``--fail-on-error``.
+
+    Issue #523 showed that unreadable reachability reports and swallowed
+    exceptions silently downgrade a scan (missing warnings, degraded VDR).
+    Paths that normally degrade keep their behaviour; when the option
+    ``fail_on_error`` is set they raise this error instead so the scan aborts
+    with a non-zero exit code.
+    """
+
+
 @dataclass(frozen=True)
 class BomResult:
     """What a BOM generation attempt actually produced.
@@ -383,7 +394,7 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
 
 
-def _load_rusi_report(path, is_report_ok, json_load, require_report=False):
+def _load_rusi_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
     """Load a rusi report JSON, or return None.
 
     When ``require_report`` is set, a file that is not a rusi report (e.g. an
@@ -397,6 +408,8 @@ def _load_rusi_report(path, is_report_ok, json_load, require_report=False):
     try:
         data = json_load(path, log=LOG)
     except Exception as e:
+        if fail_on_error:
+            raise ScanFailureError(f"Could not read rusi report {path}: {e}") from e
         LOG.debug("Could not read rusi report %s: %s", path, e)
         return None
     if not isinstance(data, dict):
@@ -412,9 +425,12 @@ def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke rusi directly when cdxgen did not produce a report. Returns the
     parsed report or None. Kept as a fallback so reachability still works when
     cdxgen/plugins are unavailable."""
+    fail_on_error = bool(options.get("fail_on_error"))
     try:
         from xbom_lib.rusi import run_rusi
     except ImportError as e:
+        if fail_on_error:
+            raise ScanFailureError(f"rusi runner unavailable: {e}") from e
         LOG.debug("rusi runner unavailable: %s", e)
         return None
     report_path = os.path.join(bom_dir, "rusi.json")
@@ -434,8 +450,15 @@ def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             logger=LOG,
         )
     if res.skipped or not res.success or not os.path.exists(report_path):
+        if fail_on_error:
+            raise ScanFailureError(
+                f"rusi reachability failed (skipped={res.skipped}, "
+                f"success={res.success}, report={report_path}); no slices were produced."
+            )
         return None
-    return _load_rusi_report(report_path, is_report_ok, json_load, require_report=False)
+    return _load_rusi_report(
+        report_path, is_report_ok, json_load, require_report=False, fail_on_error=fail_on_error
+    )
 
 
 def run_rusi_reachability(
@@ -479,6 +502,8 @@ def run_rusi_reachability(
         )
         from custom_json_diff.lib.utils import json_load as _json_load
     except ImportError as e:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(f"rusi reachability dependencies unavailable: {e}") from e
         LOG.debug("rusi reachability dependencies unavailable: %s", e)
         return False
 
@@ -495,7 +520,13 @@ def run_rusi_reachability(
     # reads the FULL original report (call graph + data-flow slices), not the
     # projected subset cdxgen embeds in the SBOM.
     cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
-    report = _load_rusi_report(cdxgen_report_path, is_rusi_report, _json_load, require_report=True)
+    report = _load_rusi_report(
+        cdxgen_report_path,
+        is_rusi_report,
+        _json_load,
+        require_report=True,
+        fail_on_error=bool(options.get("fail_on_error")),
+    )
     if report is not None:
         LOG.debug(
             "rusi reachability: using cdxgen-produced report at %s",
@@ -506,6 +537,11 @@ def run_rusi_reachability(
         # or reachability invoked without cdxgen). Invoke rusi directly.
         report = _run_rusi_fallback(src_dir, bom_dir, options, is_rusi_report, _json_load)
     if report is None:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(
+                "No rusi report was available for this Rust project; reachability "
+                "slices were not produced."
+            )
         LOG.debug("No rusi report available; reachability via rusi skipped.")
         return False
 
@@ -524,7 +560,7 @@ def run_rusi_reachability(
     return True
 
 
-def _load_golem_report(path, is_report_ok, json_load, require_report=False):
+def _load_golem_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
     """Load a golem report JSON, or return None.
 
     When ``require_report`` is set, a file that is not a golem report (e.g. an
@@ -539,6 +575,8 @@ def _load_golem_report(path, is_report_ok, json_load, require_report=False):
     try:
         data = json_load(path, log=LOG)
     except Exception as e:
+        if fail_on_error:
+            raise ScanFailureError(f"Could not read golem report {path}: {e}") from e
         LOG.debug("Could not read golem report %s: %s", path, e)
         return None
     if not isinstance(data, dict):
@@ -554,9 +592,12 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke golem directly when cdxgen did not produce a report. Returns the
     parsed report or None. Kept as a fallback so reachability still works when
     cdxgen/plugins are unavailable."""
+    fail_on_error = bool(options.get("fail_on_error"))
     try:
         from xbom_lib.golem import run_golem
     except ImportError as e:
+        if fail_on_error:
+            raise ScanFailureError(f"golem runner unavailable: {e}") from e
         LOG.debug("golem runner unavailable: %s", e)
         return None
     report_path = os.path.join(bom_dir, "golem.json")
@@ -573,8 +614,15 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             logger=LOG,
         )
     if res.skipped or not res.success or not os.path.exists(report_path):
+        if fail_on_error:
+            raise ScanFailureError(
+                f"golem reachability failed (skipped={res.skipped}, "
+                f"success={res.success}, report={report_path}); no slices were produced."
+            )
         return None
-    return _load_golem_report(report_path, is_report_ok, json_load, require_report=False)
+    return _load_golem_report(
+        report_path, is_report_ok, json_load, require_report=False, fail_on_error=fail_on_error
+    )
 
 
 def run_golem_reachability(
@@ -614,6 +662,8 @@ def run_golem_reachability(
         )
         from custom_json_diff.lib.utils import json_load as _json_load
     except ImportError as e:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(f"golem reachability dependencies unavailable: {e}") from e
         LOG.debug("golem reachability dependencies unavailable: %s", e)
         return False
 
@@ -628,7 +678,11 @@ def run_golem_reachability(
     # passes as ``<bomdir>/<type>-semantics.slices.json``.
     cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
     report = _load_golem_report(
-        cdxgen_report_path, is_golem_report, _json_load, require_report=True
+        cdxgen_report_path,
+        is_golem_report,
+        _json_load,
+        require_report=True,
+        fail_on_error=bool(options.get("fail_on_error")),
     )
     if report is not None:
         LOG.debug(
@@ -640,6 +694,11 @@ def run_golem_reachability(
         # or reachability invoked without cdxgen). Invoke golem directly.
         report = _run_golem_fallback(src_dir, bom_dir, options, is_golem_report, _json_load)
     if report is None:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(
+                "No golem report was available for this Go project; reachability "
+                "slices were not produced."
+            )
         LOG.debug("No golem report available; reachability via golem skipped.")
         return False
 
@@ -656,7 +715,7 @@ def run_golem_reachability(
     return True
 
 
-def _load_dosai_report(path, is_report_ok, json_load, require_report=False):
+def _load_dosai_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
     """Load a dosai report JSON, or return None.
 
     When ``require_report`` is set, a file that is not a dosai report (e.g. an
@@ -672,6 +731,8 @@ def _load_dosai_report(path, is_report_ok, json_load, require_report=False):
     try:
         data = json_load(path, log=LOG)
     except Exception as e:
+        if fail_on_error:
+            raise ScanFailureError(f"Could not read dosai report {path}: {e}") from e
         LOG.debug("Could not read dosai report %s: %s", path, e)
         return None
     if not isinstance(data, dict):
@@ -683,13 +744,56 @@ def _load_dosai_report(path, is_report_ok, json_load, require_report=False):
     return data
 
 
+def _load_dosai_artifact(path, label, json_load, fail_on_error):
+    """Read one raw dosai artifact (methods or dataflows), or return None.
+
+    ``json_load`` swallows ``JSONDecodeError`` and returns ``{}`` (issue #523),
+    so a corrupt artifact looks exactly like an empty one. A file with bytes on
+    disk that parses to nothing is therefore treated as unreadable, which under
+    ``fail_on_error`` aborts the scan instead of quietly downgrading the VDR.
+    A genuinely empty artifact stays soft: the caller fails only when both
+    artifacts are missing. Every degraded outcome is warned about, since the
+    scan then continues with less reachability data than the user asked for.
+    """
+    if not path or not os.path.exists(path):
+        LOG.warning(
+            "dosai did not produce a %s report. Reachability analysis will be incomplete.",
+            label,
+        )
+        return None
+    try:
+        data = json_load(path, log=LOG)
+    except Exception as e:
+        if fail_on_error:
+            raise ScanFailureError(f"Could not read dosai {label} report {path}: {e}") from e
+        LOG.warning(
+            "Could not read the dosai %s report %s: %s. Reachability analysis will be incomplete.",
+            label,
+            path,
+            e,
+        )
+        return None
+    if not data:
+        if fail_on_error and os.path.getsize(path) > 0:
+            raise ScanFailureError(f"dosai {label} report {path} was unreadable or empty.")
+        LOG.warning(
+            "The dosai %s report %s is empty or unreadable. Reachability analysis will be incomplete.",
+            label,
+            path,
+        )
+    return data
+
+
 def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke dosai directly when cdxgen did not produce a report. Returns the
     parsed combined report ``{Metadata, methods, dataflows}`` or None. Kept as a
     fallback so reachability still works when cdxgen/plugins are unavailable."""
+    fail_on_error = bool(options.get("fail_on_error"))
     try:
         from xbom_lib.dosai import run_dosai
     except ImportError as e:
+        if fail_on_error:
+            raise ScanFailureError(f"dosai runner unavailable: {e}") from e
         LOG.debug("dosai runner unavailable: %s", e)
         return None
     pattern_packs = options.get("dotnet_pattern_packs") or DOSAI_PATTERN_PACKS_DEFAULT
@@ -701,22 +805,25 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             logger=LOG,
         )
     if res.skipped or not res.success:
+        if fail_on_error:
+            raise ScanFailureError(
+                f"dosai reachability failed (skipped={res.skipped}, "
+                f"success={res.success}); no report was produced."
+            )
         return None
     # Assemble a combined report from the two persisted raw artifacts (source
-    # of truth). Each may be missing if dosai produced only one.
-    methods = None
-    dataflows = None
-    if res.methods_path and os.path.exists(res.methods_path):
-        try:
-            methods = json_load(res.methods_path, log=LOG)
-        except Exception as e:
-            LOG.debug("Could not read dosai methods report %s: %s", res.methods_path, e)
-    if res.dataflows_path and os.path.exists(res.dataflows_path):
-        try:
-            dataflows = json_load(res.dataflows_path, log=LOG)
-        except Exception as e:
-            LOG.debug("Could not read dosai dataflows report %s: %s", res.dataflows_path, e)
+    # of truth). Each may be missing if dosai produced only one. NOTE:
+    # json_load swallows JSONDecodeError and returns {} (issue #523), so an
+    # unreadable artifact is indistinguishable from an empty one here -- under
+    # fail-on-error both must abort the scan.
+    methods = _load_dosai_artifact(res.methods_path, "methods", json_load, fail_on_error)
+    dataflows = _load_dosai_artifact(res.dataflows_path, "dataflows", json_load, fail_on_error)
     if not methods and not dataflows:
+        if fail_on_error:
+            raise ScanFailureError(
+                "dosai produced no usable methods/dataflows slices; reachability "
+                "would silently degrade (issue #523)."
+            )
         return None
     # prefer the dataflows Metadata (richest), else methods
     meta = (
@@ -786,6 +893,8 @@ def run_dosai_reachability(
         )
         from custom_json_diff.lib.utils import json_load as _json_load
     except ImportError as e:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(f"dosai reachability dependencies unavailable: {e}") from e
         LOG.debug("dosai reachability dependencies unavailable: %s", e)
         return False
 
@@ -796,7 +905,11 @@ def run_dosai_reachability(
     # PRIMARY: prefer the combined dosai report cdxgen already produced.
     cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
     report = _load_dosai_report(
-        cdxgen_report_path, is_dosai_report, _json_load, require_report=True
+        cdxgen_report_path,
+        is_dosai_report,
+        _json_load,
+        require_report=True,
+        fail_on_error=bool(options.get("fail_on_error")),
     )
     if report is not None:
         LOG.debug(
@@ -808,6 +921,12 @@ def run_dosai_reachability(
         # or reachability invoked without cdxgen). Invoke dosai directly.
         report = _run_dosai_fallback(src_dir, bom_dir, options, is_dosai_report, _json_load)
     if report is None:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(
+                "No dosai report was available for this .NET project; reachability "
+                "slices were not produced and the VDR would silently downgrade "
+                "(issue #523)."
+            )
         LOG.debug("No dosai report available; reachability via dosai skipped.")
         return False
 
@@ -827,6 +946,10 @@ def run_dosai_reachability(
         facts = extract_native_reachability(report, bom_index)
         json_dump(facts_path, facts, compact=True)
     except Exception as e:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(
+                f"Could not persist dosai native reachability facts to {facts_path}: {e}"
+            ) from e
         LOG.debug("Could not persist dosai native reachability facts: %s", e)
 
     flows = convert_dosai_report(report, bom_index)
@@ -895,6 +1018,13 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             coptions["profile"] = "research"
         bom_result = cdxgen_lib(src_dir, build_bom_file, logger=LOG, options=coptions).generate()
         if not bom_result.success or not os.path.exists(build_bom_file):
+            if options.get("fail_on_error"):
+                # Falling back to the pre-build stage silently downgrades the
+                # lifecycle result, which is exactly what the flag forbids.
+                raise ScanFailureError(
+                    "The cdxgen invocation failed for the build lifecycle BOM and "
+                    "--fail-on-error is set."
+                )
             LOG.debug("The cdxgen invocation was unsuccessful. Trying pre-build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:

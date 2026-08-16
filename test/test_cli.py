@@ -100,6 +100,7 @@ def test_positive_int_env(monkeypatch):
 # Change C: variant marker + forced re-download on mismatch
 # ---------------------------------------------------------------------------
 
+
 def test_vdb_download_needed_stale(monkeypatch):
     """needs_update=True should trigger download regardless of marker."""
     monkeypatch.setattr(cli.db_lib, "needs_update", lambda **kw: True)
@@ -113,9 +114,7 @@ def test_vdb_download_needed_variant_change_forces_redownload(monkeypatch):
     """A variant mismatch forces re-download even when the DB is fresh."""
     monkeypatch.setattr(cli.db_lib, "needs_update", lambda **kw: False)
     monkeypatch.setattr(cli, "read_vdb_image_marker", lambda d: "ghcr.io/appthreat/vdbxz:v6.7.x")
-    should, reason = cli.vdb_download_needed(
-        "ghcr.io/appthreat/vdbxz-extended:v6.7.x", "/tmp/d"
-    )
+    should, reason = cli.vdb_download_needed("ghcr.io/appthreat/vdbxz-extended:v6.7.x", "/tmp/d")
     assert should is True
     assert reason == "variant-change"
 
@@ -142,6 +141,7 @@ def test_vdb_download_needed_no_marker_does_not_force(monkeypatch):
 # Change D: scan-time resolver + auto-extended for --severity
 # ---------------------------------------------------------------------------
 
+
 def _make_args(severity=None, deep_scan=False, src_dir_image=".", bom_dir=None, **vdb):
     """Build a lightweight args namespace for resolve_scan_vdb_image tests.
 
@@ -151,6 +151,7 @@ def _make_args(severity=None, deep_scan=False, src_dir_image=".", bom_dir=None, 
     leaves unset config keys.
     """
     import argparse
+
     fields = {
         "severity": severity,
         "deep_scan": deep_scan,

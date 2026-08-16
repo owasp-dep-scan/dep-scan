@@ -28,6 +28,7 @@ from depscan.cli_options import build_parser
 from depscan.lib import explainer, utils
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
+    ScanFailureError,
     annotate_vdr,
     create_bom,
     create_empty_vdr,
@@ -796,20 +797,26 @@ def run_depscan(args):
             # Create a bom for each project type. The generator reports back the
             # documents it wrote, which is not necessarily the path we asked for:
             # lifecycle analysis writes per-stage documents instead.
-            bom_result = create_bom(
-                target_bom_file,
-                src_dir,
-                {
-                    **depscan_options,
-                    "project_type": [project_type],
-                    "bom_file": target_bom_file,
-                    "prebuild_bom_file": prebuild_bom_file,
-                    "build_bom_file": build_bom_file,
-                    "postbuild_bom_file": postbuild_bom_file,
-                    "container_bom_file": container_bom_file,
-                    "operations_bom_file": operations_bom_file,
-                },
-            )
+            try:
+                bom_result = create_bom(
+                    target_bom_file,
+                    src_dir,
+                    {
+                        **depscan_options,
+                        "project_type": [project_type],
+                        "bom_file": target_bom_file,
+                        "prebuild_bom_file": prebuild_bom_file,
+                        "build_bom_file": build_bom_file,
+                        "postbuild_bom_file": postbuild_bom_file,
+                        "container_bom_file": container_bom_file,
+                        "operations_bom_file": operations_bom_file,
+                    },
+                )
+            except ScanFailureError as e:
+                # Only raised when --fail-on-error is set; every other path keeps
+                # its degrade-and-continue behaviour.
+                LOG.error("%s --fail-on-error is set; aborting the scan.", e)
+                sys.exit(1)
             creation_status = bom_result.success
             bom_files = list(bom_result.bom_files)
             nominated_bom_file = bom_result.primary
@@ -818,6 +825,11 @@ def run_depscan(args):
                 "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
                 target_bom_file,
             )
+            if args.fail_on_error:
+                LOG.error(
+                    "--fail-on-error is set; aborting the scan because BOM generation failed."
+                )
+                sys.exit(1)
             continue
         # A BOM directory supersedes whatever a single run produced: it is the
         # aggregate view, and in lifecycle mode it is where the per-stage
@@ -848,6 +860,13 @@ def run_depscan(args):
                 )
             pkg_list, _ = get_pkg_list(bom_file)
         if not pkg_list and not bom_dir:
+            if args.fail_on_error:
+                LOG.error(
+                    "No packages were found in the project and --fail-on-error is set; "
+                    "aborting the scan instead of skipping project type '%s'.",
+                    project_type,
+                )
+                sys.exit(1)
             LOG.info(
                 "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
             )

@@ -455,3 +455,65 @@ def test_explicit_bom_is_the_project_bom(harness, tmp_path):
 
     assert harness["vdr"][0]["bom_file"] == bom
     assert harness["csaf"] == [bom]
+
+
+# ---------------------------------------------------------------------------
+# --fail-on-error: silent degradations must abort the scan instead
+# ---------------------------------------------------------------------------
+
+
+def test_fail_on_error_exits_when_bom_creation_fails(harness, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "create_bom", lambda *a, **k: BomResult(success=False))
+    args = _args(_base_argv(tmp_path, ["--fail-on-error"]))
+    with pytest.raises(SystemExit) as excinfo:
+        cli.run_depscan(args)
+    assert excinfo.value.code == 1
+    assert harness["vdr"] == [], "the scan must not proceed without a BOM"
+
+
+def test_bom_creation_failure_continues_without_flag(harness, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "create_bom", lambda *a, **k: BomResult(success=False))
+    args = _args(_base_argv(tmp_path))
+    cli.run_depscan(args)
+    assert harness["vdr"] == [], "no BOM means nothing to analyze, but no exit either"
+
+
+def test_fail_on_error_exits_on_scan_failure_error(harness, tmp_path, monkeypatch):
+    from depscan.lib.bom import ScanFailureError
+
+    def raising_create_bom(*a, **k):
+        raise ScanFailureError("dosai produced no usable slices")
+
+    monkeypatch.setattr(cli, "create_bom", raising_create_bom)
+    args = _args(_base_argv(tmp_path, ["--fail-on-error"]))
+    with pytest.raises(SystemExit) as excinfo:
+        cli.run_depscan(args)
+    assert excinfo.value.code == 1
+    assert harness["vdr"] == []
+
+
+def test_fail_on_error_exits_when_no_packages_found(harness, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "get_pkg_list", lambda f: ([], []))
+    bom = _write_bom(str(tmp_path / "given.cdx.json"))
+    args = _args(
+        [
+            "--bom",
+            bom,
+            "--reports-dir",
+            str(tmp_path / "reports"),
+            "--no-banner",
+            "--fail-on-error",
+        ]
+    )
+    with pytest.raises(SystemExit) as excinfo:
+        cli.run_depscan(args)
+    assert excinfo.value.code == 1
+    assert harness["vdr"] == [], "an empty package list is a failed scan under the flag"
+
+
+def test_empty_package_list_continues_without_flag(harness, tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "get_pkg_list", lambda f: ([], []))
+    bom = _write_bom(str(tmp_path / "given.cdx.json"))
+    args = _args(["--bom", bom, "--reports-dir", str(tmp_path / "reports"), "--no-banner"])
+    cli.run_depscan(args)
+    assert harness["vdr"] == []

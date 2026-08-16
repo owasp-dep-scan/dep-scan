@@ -35,7 +35,7 @@ usage: depscan [-h] [--config CONFIG] [--no-banner] [-i SRC_DIR_IMAGE] [-o REPOR
                [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
                [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} |
                --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}] [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--no-suggest]
-               [--risk-audit] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL]
+               [--risk-audit] [--fail-on-error] [--cdxgen-args CDXGEN_ARGS] [--private-ns PRIVATE_NS] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--bom BOM | --bom-dir BOM_DIR | --purl SEARCH_PURL]
                [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}] [--severity {low,medium,high,critical}] [--malware-only] [--no-universal]
                [--no-vuln-table] [--server] [--server-host SERVER_HOST] [--server-port SERVER_PORT] [--cdxgen-server CDXGEN_SERVER] [--debug] [-q | --explain] [-v]
 
@@ -64,6 +64,7 @@ options:
                         Reachability analyzer to use. Default FrameworkReachability.
   --no-suggest          Disable suggest mode
   --risk-audit          Perform package risk audit (slow operation). Npm only.
+  --fail-on-error       Abort the scan with a non-zero exit code instead of silently degrading. Passed through to cdxgen so extractor failures fail BOM generation, and applied to blint, rusi, golem, and dosai failures, unreadable reachability reports, empty slices, and empty package lists.
   --cdxgen-args CDXGEN_ARGS
                         Additional arguments to pass to cdxgen
   --private-ns PRIVATE_NS

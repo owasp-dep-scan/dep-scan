@@ -196,6 +196,16 @@ def build_parser():
         help="Perform package risk audit (slow operation). Supported for npm, pypi, and cargo.",
     )
     parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        default=os.getenv("DEPSCAN_FAIL_ON_ERROR", "") in ("true", "1"),
+        dest="fail_on_error",
+        help="Abort the scan with a non-zero exit code instead of silently degrading. "
+        "Passed through to cdxgen so extractor failures fail BOM generation, and "
+        "applied to blint, rusi, golem, and dosai failures, unreadable reachability "
+        "reports, empty slices, and empty package lists.",
+    )
+    parser.add_argument(
         "--cdxgen-args",
         default=os.getenv("CDXGEN_ARGS"),
         dest="cdxgen_args",
