@@ -1,0 +1,88 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:b9c10161-7c8a-4f8b-9d2e-3f6a1c9e7a55",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-09-01T10:00:00Z",
+    "component": {
+      "type": "application",
+      "bom-ref": "app-root",
+      "name": "multiversion-demo",
+      "version": "1.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/postcss@8.4.31",
+      "name": "postcss",
+      "version": "8.4.31",
+      "purl": "pkg:npm/postcss@8.4.31",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/postcss@8.4.49",
+      "name": "postcss",
+      "version": "8.4.49",
+      "purl": "pkg:npm/postcss@8.4.49",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/postcss@8.5.4",
+      "name": "postcss",
+      "version": "8.5.4",
+      "purl": "pkg:npm/postcss@8.5.4",
+      "scope": "optional"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@3.0.4",
+      "name": "minimatch",
+      "version": "3.0.4",
+      "purl": "pkg:npm/minimatch@3.0.4",
+      "scope": "required"
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:npm/minimatch@3.1.2",
+      "name": "minimatch",
+      "version": "3.1.2",
+      "purl": "pkg:npm/minimatch@3.1.2",
+      "scope": "required"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "app-root",
+      "dependsOn": [
+        "pkg:npm/postcss@8.4.31",
+        "pkg:npm/postcss@8.4.49",
+        "pkg:npm/minimatch@3.0.4",
+        "pkg:npm/minimatch@3.1.2"
+      ]
+    },
+    {
+      "ref": "pkg:npm/postcss@8.4.31",
+      "dependsOn": ["pkg:npm/minimatch@3.0.4"]
+    },
+    {
+      "ref": "pkg:npm/postcss@8.4.49",
+      "dependsOn": ["pkg:npm/minimatch@3.1.2"]
+    },
+    {
+      "ref": "pkg:npm/postcss@8.5.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/minimatch@3.0.4",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:npm/minimatch@3.1.2",
+      "dependsOn": []
+    }
+  ]
+}

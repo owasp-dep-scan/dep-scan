@@ -156,10 +156,16 @@ class VDRAnalyzer(XBOMAnalyzer):
                 # When multiple BOMs are scanned, we might end up with duplicate vulns
                 # This section attempts to filter the results further.
                 # This is similar to normalize.py -> dedup method, which no longer works
+                # Issue #527: key on the affected component (bom-ref embeds the
+                # matched purl) as well, so distinct components hit by the same CVE
+                # survive this filter and reach dedupe_vdrs, which merges them into a
+                # single VDR entry carrying every affects ref. Only exact duplicates
+                # of the same (CVE, fix version, component) are filtered here.
                 vid = vuln.get("id")
                 fixed_location = vuln.get("fixed_location") or ""
+                bom_ref = vuln.get("bom-ref") or ""
                 if vid:
-                    key = f"{vid}|{fixed_location}"
+                    key = f"{vid}|{fixed_location}|{bom_ref}"
                     if added_results.get(key):
                         likely_false_positive = True
                     else:
