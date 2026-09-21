@@ -1,0 +1,23 @@
+packages/analysis-lib/tests/test_output.py
+  s_9d783fb1e8d1fd::t_f740087b408c16 1-227
+packages/reporting-lib/src/reporting_lib/htmlgen.py
+  s_9d783fb1e8d1fd::t_571d7301ea5ebe 572-574,1423-1430
+test/test_htmlgen.py
+  s_9d783fb1e8d1fd::t_c8b95df6c854a6 111-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "76d182b475cf42a09297a9431987b50d182b27ab",
+  "prompts": {},
+  "sessions": {
+    "s_9d783fb1e8d1fd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70b6339c-f98b-44f9-a0af-a2adbc268048",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
