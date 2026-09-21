@@ -569,7 +569,9 @@ class ReportGenerator:
 
             if (
                 current_location == self.DEPENDENCY_SCAN_RESULTS_BOM
-                and self.normalized_text_matches(line, r"Vulnerabilities count: \d+")
+                and self.normalized_text_matches(
+                    line, r"Vulnerabilities count: \d+( \(\d+ unique\))?"
+                )
             ):
                 sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][
                     self.DEPENDENCY_SCAN_RESULTS_BOM
@@ -1418,11 +1420,15 @@ class ReportGenerator:
         if tree_is_from_html is False:
             current_content = html.escape(current_content)
 
-        try:
-            vulnerabilities_count = int(current_content)
-        except ValueError:
+        # The caption counts (id, affects) pairs and may append the unique
+        # vulnerability count when merged entries were expanded per component
+        # (discussion #527 follow-up). Only the leading number gates the
+        # recount fallback; the suffix stays in the badge.
+        count_match = re.fullmatch(r"(\d+)( \(\d+ unique\))?", current_content)
+        if count_match:
+            vulnerabilities_count = int(count_match.group(1))
+        else:
             vulnerabilities_count = -1
-            pass
         if vulnerabilities_count == -1:
             all_cves = set()
             for row_data in sections_tree[self.VULNERABILITY_DISCLOSURE_REPORT][

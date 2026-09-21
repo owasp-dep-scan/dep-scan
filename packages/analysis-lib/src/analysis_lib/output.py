@@ -145,6 +145,63 @@ def pkg_sub_tree(
     )
 
 
+def _purl_prefix_from_ref(ref):
+    """Derive the version-less purl prefix of an affects ref.
+
+    Mirrors the purl_prefix vdb indexes: refs carrying a version lose their
+    trailing @version, versionless refs are returned unchanged.
+    """
+    purl_obj = parse_purl(ref)
+    if purl_obj and purl_obj.get("version"):
+        return ref.rsplit("@", 1)[0]
+    return ref
+
+
+def _affects_fix_version(affects_entry):
+    """Per-component fix version: the unaffected version recorded on the
+    affects entry by analyze_cve_vuln / process_vuln_occ."""
+    for vers in affects_entry.get("versions") or []:
+        if vers.get("status") == "unaffected" and vers.get("version"):
+            return vers["version"]
+    return ""
+
+
+def _expanded_vuln_rows(vdr, bom_dependency_tree):
+    """One (purl_prefix, p_rich_tree, fix_version) tuple per affected component.
+
+    After dedupe_vdrs merges components sharing a CVE (#504/#527), a single
+    entry can carry several affects refs while its transient purl_prefix,
+    p_rich_tree and fixed_location fields describe only one of them. Expand
+    every affected ref into its own console row — recomputing the dependency
+    tree per ref — so the table (and depscan.txt) shows every affected
+    component. Entries with a single (or no) affects ref keep using the
+    entry-level fields unchanged.
+    """
+    affects = vdr.get("affects") or []
+    if len(affects) <= 1:
+        return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None)]
+    rating = (vdr.get("ratings") or [{}])[0]
+    severity = rating.get("severity") or "unknown"
+    vid = vdr.get("id") or ""
+    rows = []
+    for affects_entry in affects:
+        ref = affects_entry.get("ref") or ""
+        if not ref:
+            continue
+        _, p_rich_tree = pkg_sub_tree(
+            ref,
+            ref.replace(":", "/"),
+            bom_dependency_tree,
+            pkg_severity=severity,
+            as_tree=True,
+            extra_text=f":left_arrow: {vid}",
+        )
+        rows.append((_purl_prefix_from_ref(ref), p_rich_tree, _affects_fix_version(affects_entry)))
+    if not rows:
+        return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None)]
+    return rows
+
+
 def generate_console_output(
     pkg_vulnerabilities,
     bom_dependency_tree,
@@ -153,25 +210,6 @@ def generate_console_output(
 ):
     table_rows = []
     purl_fixed_location = {}
-    table = Table(
-        title=f"Dependency Scan Results ({options.project_type.upper()})",
-        box=box.DOUBLE_EDGE,
-        header_style="bold magenta",
-        show_lines=False,
-        min_width=150,
-        caption=f"Vulnerabilities count: {len(pkg_vulnerabilities)}",
-    )
-    for h in [
-        "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
-        "Insights",
-        "Fix Version",
-        "Severity",
-        "Score",
-    ]:
-        justify = "left"
-        if h == "Score":
-            justify = "right"
-        table.add_column(header=h, justify=justify, vertical="top")
     pkg_group_rows = defaultdict(list)
     for vdr in pkg_vulnerabilities:
         if vdr["bom-ref"] in include_pkg_group_rows:
@@ -189,57 +227,77 @@ def generate_console_output(
                     "description": vdr.get("description"),
                 }
             )
-        if rating := vdr.get("ratings", {}):
-            rating = rating[0]
-        if not purl_fixed_location.get(vdr["purl_prefix"]) and vdr["fixed_location"]:
-            purl_fixed_location[vdr["purl_prefix"]] = vdr["fixed_location"]
-        table_rows.append(
-            [
-                vdr["id"],
-                vdr["purl_prefix"],
-                vdr["p_rich_tree"],
-                vdr["insights"],
-                vdr["fixed_location"] or purl_fixed_location.get(vdr["purl_prefix"]),
-                f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}""",
-                f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}""",
-            ]
-        )
+        rating = (vdr.get("ratings") or [{}])[0]
+        severity = f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}"""
+        score = f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}"""
+        for purl_prefix, p_rich_tree, per_ref_fix in _expanded_vuln_rows(vdr, bom_dependency_tree):
+            fixed_location = per_ref_fix or vdr.get("fixed_location")
+            if not purl_fixed_location.get(purl_prefix) and fixed_location:
+                purl_fixed_location[purl_prefix] = fixed_location
+            table_rows.append(
+                [
+                    vdr["id"],
+                    purl_prefix,
+                    p_rich_tree,
+                    vdr.get("insights"),
+                    fixed_location or purl_fixed_location.get(purl_prefix),
+                    severity,
+                    score,
+                ]
+            )
+    # Caption counts (id, affects ref) pairs so merged multi-component entries
+    # (#527 follow-up) are not under-reported; the unique count is only shown
+    # when the merge actually collapsed components.
+    caption = f"Vulnerabilities count: {len(table_rows)}"
+    if len(table_rows) != len(pkg_vulnerabilities):
+        caption += f" ({len(pkg_vulnerabilities)} unique)"
+    table = Table(
+        title=f"Dependency Scan Results ({options.project_type.upper()})",
+        box=box.DOUBLE_EDGE,
+        header_style="bold magenta",
+        show_lines=False,
+        min_width=150,
+        caption=caption,
+    )
+    for h in [
+        "Dependency Tree" if len(bom_dependency_tree) > 0 else "CVE",
+        "Insights",
+        "Fix Version",
+        "Severity",
+        "Score",
+    ]:
+        justify = "left"
+        if h == "Score":
+            justify = "right"
+        table.add_column(header=h, justify=justify, vertical="top")
     # Attempt to group the packages before output
     grouped_purls = defaultdict(list)
-    cve_rows = {}
+    for row_idx, arow in enumerate(table_rows):
+        grouped_purls[arow[1]].append(row_idx)
     # We can dim certain unimportant rows
     dimmable_severities = ("LOW",) if not pkg_group_rows else ("LOW", "MEDIUM")
-    for arow in table_rows:
-        grouped_purls[arow[1]].append(arow[0])
-        cve_rows[arow[0]] = [
-            arow[2],
-            arow[3],
-            arow[4] or purl_fixed_location.get(arow[1]),
-            arow[5],
-            arow[6],
-        ]
-    # sort based on cve in descending order
-    for purl in grouped_purls:
-        grouped_purls[purl].sort(reverse=True)
     # sort the purls
     sorted_purls = sorted(grouped_purls.keys())
     for purl in sorted_purls:
-        for i, cve in enumerate(grouped_purls[purl]):
-            arow = cve_rows[cve]
+        # sort based on cve in descending order; a CVE shared by several
+        # components of the same package keeps its affects order
+        row_indices = sorted(grouped_purls[purl], key=lambda i: table_rows[i][0], reverse=True)
+        for i, ridx in enumerate(row_indices):
+            arow = table_rows[ridx]
             # Reduce insights repetition
-            insights = arow[1] if len(arow[1]) > 1 or i == 0 else []
+            insights = arow[3] if len(arow[3]) > 1 or i == 0 else []
             if i != 0:
                 for ins_str in insights:
                     if "Used in" in ins_str or " dependency" in ins_str:
                         insights.remove(ins_str)
             table.add_row(
-                arow[0],
+                arow[2],
                 "\n".join(insights),
-                f"[bold]{arow[2] or ''}[/bold]" if i == 0 else "",  # Reduce fix version repetition
-                arow[3],
-                arow[4],
-                end_section=(i == len(grouped_purls[purl]) - 1),
-                style=Style(dim=True) if not arow[1] or arow[3] in dimmable_severities else None,
+                f"[bold]{arow[4] or ''}[/bold]" if i == 0 else "",  # Reduce fix version repetition
+                arow[5],
+                arow[6],
+                end_section=(i == len(row_indices) - 1),
+                style=Style(dim=True) if not arow[3] or arow[5] in dimmable_severities else None,
             )
     return pkg_group_rows, table
 
