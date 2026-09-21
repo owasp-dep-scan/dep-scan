@@ -282,8 +282,16 @@ def generate_console_output(
         # sort based on cve in descending order; a CVE shared by several
         # components of the same package keeps its affects order
         row_indices = sorted(grouped_purls[purl], key=lambda i: table_rows[i][0], reverse=True)
+        prev_fix = ""
         for i, ridx in enumerate(row_indices):
             arow = table_rows[ridx]
+            # Reduce fix version repetition without hiding distinct fixes:
+            # consecutive rows repeating the last shown fix stay blank, but a
+            # changed fix (per-CVE or per-component after affects expansion,
+            # #527 follow-up) is shown again.
+            show_fix = bool(arow[4]) and (i == 0 or arow[4] != prev_fix)
+            if arow[4]:
+                prev_fix = arow[4]
             # Reduce insights repetition
             insights = arow[3] if len(arow[3]) > 1 or i == 0 else []
             if i != 0:
@@ -293,7 +301,7 @@ def generate_console_output(
             table.add_row(
                 arow[2],
                 "\n".join(insights),
-                f"[bold]{arow[4] or ''}[/bold]" if i == 0 else "",  # Reduce fix version repetition
+                f"[bold]{arow[4]}[/bold]" if show_fix else "",
                 arow[5],
                 arow[6],
                 end_section=(i == len(row_indices) - 1),

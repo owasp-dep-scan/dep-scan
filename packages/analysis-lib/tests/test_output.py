@@ -9,6 +9,7 @@ JSON. The table must expand affects[] into per-component rows and the caption
 must count (id, affects) pairs.
 """
 
+import json
 import os
 
 from rich.console import Console
@@ -183,8 +184,109 @@ def test_per_component_fix_version_is_used_for_each_row():
     )
     _, table = generate_console_output([vdr, minimatch], _multiversion_tree(), set(), _options())
     rendered = _render(table)
+    # 8.4.50 leads the postcss group; 8.5.5 differs from it and must also
+    # render instead of being blanked by the repetition reduction.
     assert "8.4.50" in rendered
+    assert "8.5.5" in rendered
     assert "3.1.2" in rendered
+
+
+def test_distinct_fix_versions_within_one_package_group_all_render():
+    """Discussion #527 follow-up: the fix column must never hide a distinct
+    fix version. Within one package group the repetition reduction may only
+    blank consecutive rows repeating the last shown fix — a changed fix (from
+    a different CVE or a different affected component) must render again.
+    Here the postcss group's first rows have no fix while CVE-2026-41305
+    carries 8.5.10, and minimatch mixes 3.1.4/3.1.3/3.1.3/3.0.5."""
+    postcss_rows = []
+    # CVE order within the group after descending sort: 73646, 69153, 45623, 41305
+    for cve, fixes in (
+        ("CVE-2026-73646", ("", "", "")),
+        ("CVE-2026-69153", ("", "", "")),
+        ("CVE-2026-45623", ("", "", "")),
+        ("CVE-2026-41305", ("8.5.10", "8.5.10", "8.5.10")),
+    ):
+        postcss_rows.append(
+            _merged_vdr(
+                cve,
+                [
+                    _affects_entry(p, fix_version=f)
+                    for p, f in zip((POSTCSS_8431, POSTCSS_8449, POSTCSS_8554), fixes)
+                ],
+                matched_by=POSTCSS_8431,
+                fixed_location=fixes[0],
+            )
+        )
+    minimatch_rows = []
+    for cve, fixes in (
+        ("CVE-2026-27904", ("3.1.4", "3.1.4")),
+        ("CVE-2026-27903", ("3.1.3", "3.1.3")),
+        ("CVE-2026-26996", ("3.1.3", "3.1.3")),
+        ("CVE-2022-3517", ("3.0.5",)),  # only the older component is affected
+    ):
+        minimatch_rows.append(
+            _merged_vdr(
+                cve,
+                [
+                    _affects_entry(p, fix_version=f)
+                    for p, f in zip((MINIMATCH_304, MINIMATCH_312)[: len(fixes)], fixes)
+                ],
+                matched_by=MINIMATCH_304,
+                fixed_location=fixes[0],
+            )
+        )
+    _, table = generate_console_output(
+        postcss_rows + minimatch_rows, _multiversion_tree(), set(), _options()
+    )
+    rendered = _render(table)
+    # Every distinct fix version is visible somewhere in the table
+    for fix in ("3.1.4", "3.1.3", "3.0.5", "8.5.10"):
+        assert fix in rendered, f"fix version {fix} was omitted from the table"
+    # Repeats are still suppressed: two CVEs share fix 3.1.3 and three rows
+    # share 8.5.10, but each renders on its first row of the run only.
+    assert rendered.count("3.1.3") == 1
+    assert rendered.count("8.5.10") == 1
+
+
+def test_reporter_bom_fixture_renders_every_fix_version():
+    """End-to-end guard using the merged VDR fixture generated from the
+    reporter's sample BOM (8 entries / 19 affects refs): every distinct fix
+    version in the fixture must appear in the rendered console table."""
+    fixture = os.path.join(DATA_DIR, "vdr-merged-multiversion.json")
+    with open(fixture, encoding="utf-8") as f:
+        vdrs = json.load(f)
+    assert len(vdrs) == 8
+    assert sum(len(v["affects"]) for v in vdrs) == 19
+    # Single-ref entries rely on the entry-level tree, which JSON cannot
+    # carry; hydrate it exactly like analyze_cve_vuln does.
+    from analysis_lib.output import pkg_sub_tree
+
+    for vdr in vdrs:
+        if len(vdr.get("affects") or []) <= 1 and vdr.get("matched_by"):
+            ref = vdr["affects"][0]["ref"]
+            rating = (vdr.get("ratings") or [{}])[0]
+            _, vdr["p_rich_tree"] = pkg_sub_tree(
+                ref,
+                ref.replace(":", "/"),
+                _multiversion_tree(),
+                pkg_severity=rating.get("severity") or "unknown",
+                as_tree=True,
+                extra_text=f":left_arrow: {vdr['id']}",
+            )
+    expected_fixes = {
+        vers["version"]
+        for vdr in vdrs
+        for a in vdr["affects"]
+        for vers in a.get("versions", [])
+        if vers.get("status") == "unaffected"
+    }
+    assert expected_fixes == {"3.1.4", "3.1.3", "3.0.5", "8.5.10"}
+    _, table = generate_console_output(vdrs, _multiversion_tree(), set(), _options())
+    assert table.row_count == 19
+    assert table.caption == "Vulnerabilities count: 19 (8 unique)"
+    rendered = _render(table)
+    for fix in expected_fixes:
+        assert fix in rendered, f"fix version {fix} was omitted from the table"
 
 
 def test_rows_sorted_by_cve_descending_within_package_group():

@@ -1,0 +1,453 @@
+[
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/postcss@8.4.31",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.17",
+            "status": "affected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.4.49",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.17",
+            "status": "affected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.5.4",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.17",
+            "status": "affected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-73646/pkg:npm/postcss@8.4.31",
+    "matched_by": "pkg:npm/postcss@8.4.31",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-73646",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "high",
+        "score": 7.3,
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/postcss",
+    "fixed_location": ""
+  },
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/postcss@8.4.31",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.22",
+            "status": "affected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.4.49",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.22",
+            "status": "affected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.5.4",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.22",
+            "status": "affected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-69153/pkg:npm/postcss@8.4.31",
+    "matched_by": "pkg:npm/postcss@8.4.31",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-69153",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "medium",
+        "score": 5.0,
+        "vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:L"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/postcss",
+    "fixed_location": ""
+  },
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/postcss@8.4.31",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.11",
+            "status": "affected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.4.49",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.11",
+            "status": "affected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.5.4",
+        "versions": [
+          {
+            "range": "vers:npm/<=8.5.11",
+            "status": "affected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-45623/pkg:npm/postcss@8.4.31",
+    "matched_by": "pkg:npm/postcss@8.4.31",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-45623",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "high",
+        "score": 7.3,
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/postcss",
+    "fixed_location": ""
+  },
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/postcss@8.4.31",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<8.5.10|!=8.5.10",
+            "status": "affected"
+          },
+          {
+            "version": "8.5.10",
+            "status": "unaffected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.4.49",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<8.5.10|!=8.5.10",
+            "status": "affected"
+          },
+          {
+            "version": "8.5.10",
+            "status": "unaffected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/postcss@8.5.4",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<8.5.10|!=8.5.10",
+            "status": "affected"
+          },
+          {
+            "version": "8.5.10",
+            "status": "unaffected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-41305/pkg:npm/postcss@8.4.31",
+    "matched_by": "pkg:npm/postcss@8.4.31",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-41305",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "medium",
+        "score": 6.1,
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/postcss",
+    "fixed_location": "8.5.10"
+  },
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/minimatch@3.0.4",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.1.4|!=3.1.4",
+            "status": "affected"
+          },
+          {
+            "version": "3.1.4",
+            "status": "unaffected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/minimatch@3.1.2",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.1.4|!=3.1.4",
+            "status": "affected"
+          },
+          {
+            "version": "3.1.4",
+            "status": "unaffected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-27904/pkg:npm/minimatch@3.0.4",
+    "matched_by": "pkg:npm/minimatch@3.0.4",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-27904",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "high",
+        "score": 7.5,
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/minimatch",
+    "fixed_location": "3.1.4"
+  },
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/minimatch@3.0.4",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.1.3|!=3.1.3",
+            "status": "affected"
+          },
+          {
+            "version": "3.1.3",
+            "status": "unaffected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/minimatch@3.1.2",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.1.3|!=3.1.3",
+            "status": "affected"
+          },
+          {
+            "version": "3.1.3",
+            "status": "unaffected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-27903/pkg:npm/minimatch@3.0.4",
+    "matched_by": "pkg:npm/minimatch@3.0.4",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-27903",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "high",
+        "score": 7.5,
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/minimatch",
+    "fixed_location": "3.1.3"
+  },
+  {
+    "advisories": [],
+    "affects": [
+      {
+        "ref": "pkg:npm/minimatch@3.0.4",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.1.3|!=3.1.3",
+            "status": "affected"
+          },
+          {
+            "version": "3.1.3",
+            "status": "unaffected"
+          }
+        ]
+      },
+      {
+        "ref": "pkg:npm/minimatch@3.1.2",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.1.3|!=3.1.3",
+            "status": "affected"
+          },
+          {
+            "version": "3.1.3",
+            "status": "unaffected"
+          }
+        ]
+      }
+    ],
+    "analysis": {},
+    "bom-ref": "CVE-2026-26996/pkg:npm/minimatch@3.0.4",
+    "matched_by": "pkg:npm/minimatch@3.0.4",
+    "cwes": [],
+    "detail": "",
+    "description": "",
+    "id": "CVE-2026-26996",
+    "properties": [],
+    "published": "",
+    "ratings": [
+      {
+        "method": "CVSSv4",
+        "severity": "high",
+        "score": 8.7,
+        "vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:H/SC:N/SI:N/SA:N"
+      }
+    ],
+    "recommendation": "",
+    "references": [],
+    "source": {},
+    "updated": "",
+    "p_rich_tree": null,
+    "insights": [],
+    "purl_prefix": "pkg:npm/minimatch",
+    "fixed_location": "3.1.3"
+  },
+  {
+    "id": "CVE-2022-3517",
+    "matched_by": "pkg:npm/minimatch@3.0.4",
+    "bom-ref": "CVE-2022-3517/pkg:npm/minimatch@3.0.4",
+    "affects": [
+      {
+        "ref": "pkg:npm/minimatch@3.0.4",
+        "versions": [
+          {
+            "range": "vers:npm/>=0.0.0|<3.0.5|!=3.0.5",
+            "status": "affected"
+          },
+          {
+            "version": "3.0.5",
+            "status": "unaffected"
+          }
+        ]
+      }
+    ],
+    "ratings": [
+      {
+        "method": "CVSSv31",
+        "severity": "high",
+        "score": 7.5,
+        "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+      }
+    ],
+    "purl_prefix": "pkg:npm/minimatch",
+    "p_rich_tree": null,
+    "insights": [],
+    "fixed_location": "3.0.5",
+    "recommendation": "",
+    "source": {},
+    "references": [],
+    "advisories": [],
+    "cwes": [],
+    "description": "",
+    "detail": "",
+    "published": "",
+    "updated": "",
+    "analysis": {},
+    "properties": []
+  }
+]
