@@ -108,6 +108,45 @@ def test_parse_and_generate_report_handles_universal_title(tmp_path):
     assert "Dependency Scan Results (UNIVERSAL)" in rendered_report
 
 
+def test_parse_and_generate_report_accepts_unique_count_caption(tmp_path):
+    """Discussion #527 follow-up: when affects[] expansion splits merged VDR
+    entries into per-component rows, the caption counts (id, affects) pairs
+    and appends the unique vulnerability count. The HTML badge must carry the
+    whole caption."""
+    report = "\n".join(
+        [
+            "Vulnerability Disclosure Report",
+            '<span class="r1">Dependency Scan Results </span><span class="r2">(NODEJS)</span>',
+            "╔══════════════════════╤══════════════════════╤═════════════╤══════════╤═══════╗",
+            "║ Dependency Tree      │ Insights             │ Fix Version │ Severity │ Score ║",
+            "╟──────────────────────┼──────────────────────┼─────────────┼──────────┼───────╢",
+            "║ postcss@8.4.31 ⬅     │                      │ 8.5.0       │ HIGH     │   7.5 ║",
+            "║ CVE-2026-41305       │                      │             │          │       ║",
+            "║ postcss@8.4.49 ⬅     │                      │             │          │       ║",
+            "║ CVE-2026-41305       │                      │             │          │       ║",
+            "╚══════════════════════╧══════════════════════╧═════════════╧══════════╧═══════╝",
+            "Vulnerabilities count: 2 (1 unique)",
+        ]
+    )
+    input_html = tmp_path / "rich-unique-count-report.html"
+    output_html = tmp_path / "depscan-unique-count.html"
+    input_html.write_text(RICH_HTML_WRAPPER.format(report=report), encoding="utf-8")
+
+    generator = ReportGenerator(
+        input_rich_html_path=str(input_html),
+        report_output_path=str(output_html),
+        raw_content=False,
+    )
+
+    generator.parse_and_generate_report()
+
+    rendered_report = output_html.read_text(encoding="utf-8")
+
+    assert "Vulnerabilities count: 2 (1 unique)" in rendered_report
+    assert "postcss@8.4.49" in rendered_report
+    assert "<tbody>" in rendered_report and "<tr>" in rendered_report
+
+
 # ---------------------------------------------------------------------------
 # Rust / Go reachable flows through the full console.save_html + ReportGenerator
 # ---------------------------------------------------------------------------

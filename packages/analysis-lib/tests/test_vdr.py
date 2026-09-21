@@ -309,6 +309,8 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
         "pkg:npm/postcss@8.4.31",
         "pkg:npm/postcss@8.4.49",
     }
-    # One console row per merged CVE entry, rendered without KeyError
+    # One console row per affected component, rendered without KeyError
     pkg_group_rows, table = captured["result"]
-    assert table.row_count == 1
+    assert table.row_count == 2
+    # Caption counts (id, affects) pairs plus the unique vulnerability count
+    assert table.caption == "Vulnerabilities count: 2 (1 unique)"
