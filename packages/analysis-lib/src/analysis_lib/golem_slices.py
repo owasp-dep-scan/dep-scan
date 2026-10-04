@@ -166,6 +166,50 @@ def reconcile_purls(golem_purls: Iterable[str], bom_index: Dict[str, str]) -> Li
 
 
 # ---------------------------------------------------------------------------
+# Root-reachability helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_init_function(node_id: str) -> bool:
+    """Whether a call-graph node id names a package init function.
+
+    golem ids are SSA function strings: ``github.com/pkg.init`` and the
+    numbered clones ``github.com/pkg.init#1`` a package earns per file.
+    """
+    if not node_id:
+        return False
+    last = node_id.rsplit(".", 1)[-1]
+    return last == "init" or last.startswith("init#")
+
+
+def _build_reachability_index(cg: dict) -> Dict[str, bool]:
+    """nodeId -> reachableFromRoots from ``callGraph.reachability.nodes``."""
+    reach: Dict[str, bool] = {}
+    for rn in (cg.get("reachability") or {}).get("nodes", []) or []:
+        if isinstance(rn, dict) and rn.get("nodeId"):
+            reach[rn["nodeId"]] = bool(rn.get("reachableFromRoots"))
+    return reach
+
+
+def _packages_with_reachable_code(
+    reach: Dict[str, bool], cg_nodes: Dict[str, dict]
+) -> set:
+    """packagePaths holding at least one reachable NON-init node.
+
+    A package whose only reachable node is its init was merely imported --
+    blank imports run init -- which is initialization plumbing, not usage.
+    """
+    used: set = set()
+    for nid, is_reachable in reach.items():
+        if not is_reachable or _is_init_function(nid):
+            continue
+        pp = (cg_nodes.get(nid) or {}).get("packagePath")
+        if pp:
+            used.add(pp)
+    return used
+
+
+# ---------------------------------------------------------------------------
 # Module path -> purl resolution (for nodes/slices that only carry packagePath)
 # ---------------------------------------------------------------------------
 
@@ -311,6 +355,15 @@ def convert_golem_report(
     df = report.get("dataFlow") or {}
     df_nodes = {n.get("id"): n for n in df.get("nodes", []) if isinstance(n, dict)}
 
+    # Root reachability, when golem reported it. Absent (older golem, or no
+    # call graph was built) keeps the historical behaviour: everything golem
+    # observed is kept. Present, it separates application-driven evidence
+    # from module-internal flows -- exactly the distinction a blank-imported,
+    # never-called dependency needs to stay unreached.
+    cg_reach = _build_reachability_index(cg)
+    has_reachability = bool(cg_reach)
+    pkgs_with_reachable_code = _packages_with_reachable_code(cg_reach, cg_nodes)
+
     # --- Build symbol -> reconciled purl map from call-graph nodes ---------
     # golem callgraph nodes have NO qualifiedName. We index by name AND by
     # packagePath so dataflow nodes can be attributed to the owning dependency
@@ -339,6 +392,20 @@ def convert_golem_report(
         # Skip stdlib and main module targets
         if tgt.get("standard") or _is_main_module(tgt):
             continue
+        # Skip targets the roots provably never reach: an edge between two
+        # unreachable functions inside a dependency is library self-analysis,
+        # not reachability evidence for the application.
+        if has_reachability and not cg_reach.get(e.get("targetId"), False):
+            continue
+        # An edge into a package init runs for any import, blank imports
+        # included. When the package has no reachable non-init node at all,
+        # the import is the whole story -- keep the package unreached.
+        if (
+            has_reachability
+            and _is_init_function(e.get("targetId") or "")
+            and (tgt.get("packagePath") or "") not in pkgs_with_reachable_code
+        ):
+            continue
         # Skip edges rooted entirely in local (app) code targeting local code
         # (those are intra-app calls, not dependency reachability)
         tgt_name = e.get("targetName") or tgt.get("label") or tgt.get("name") or ""
@@ -365,6 +432,12 @@ def convert_golem_report(
     # --- 1. dataflow slice flows -----------------------------------------
     for sl in df.get("slices", []) or []:
         if not isinstance(sl, dict):
+            continue
+        # golem's reachableFromRoots is False only for slices that live
+        # entirely in code the application never drives into. Absent (older
+        # golem, or no call graph) keeps the slice: the flag is a filter, not
+        # a requirement.
+        if sl.get("reachableFromRoots") is False:
             continue
         flow_purls: set = set()
         flow_nodes: List[dict] = []
