@@ -32,7 +32,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 
 # golem reports are detected by SHAPE, not ``schemaVersion``. A golem report is
@@ -170,46 +170,45 @@ def reconcile_purls(golem_purls: Iterable[str], bom_index: Dict[str, str]) -> Li
 # ---------------------------------------------------------------------------
 
 
-def _is_init_function(node_id: str) -> bool:
-    """Whether a call-graph node id names a package init function.
+# Call graphs whose "unreachable" a converter may act on. golem computes the
+# slice verdicts on RTA and falls back to CHA only when RTA panics; both follow
+# interface and func-value dispatch. Static and VTA graphs miss that dispatch,
+# so a "false" from them is not evidence that code is unused.
+SOUND_REACHABILITY_ALGORITHMS = frozenset({"rta", "cha"})
 
-    golem ids are SSA function strings: ``github.com/pkg.init`` and the
-    numbered clones ``github.com/pkg.init#1`` a package earns per file. A
-    METHOD named init -- ``(*github.com/pkg.Type).init`` -- is ordinary code
-    and must not be classified as the package initializer, so anything with a
-    receiver (an open paren) is rejected first.
+
+def _slice_reachability(df: dict) -> Optional[dict]:
+    """golem's ``dataFlow.sliceReachability`` when its verdicts are usable.
+
+    Returns the section only when it says the verdicts were computed on a
+    graph in :data:`SOUND_REACHABILITY_ALGORITHMS`. Anything else -- an older
+    golem that stamped ``reachableFromRoots`` from whatever ``--callgraph``
+    built, a library whose only roots are initializers (``skipped``), an
+    unknown algorithm -- yields ``None`` and the historical keep-everything
+    behaviour.
     """
-    if not node_id or "(" in node_id:
-        return False
-    last = node_id.rsplit(".", 1)[-1]
-    return last == "init" or last.startswith("init#")
+    sr = df.get("sliceReachability") if isinstance(df, dict) else None
+    if not isinstance(sr, dict) or sr.get("status") not in ("computed", "partial"):
+        return None
+    algorithms = {a for a in str(sr.get("algorithm") or "").split(",") if a}
+    if not algorithms or not algorithms <= SOUND_REACHABILITY_ALGORITHMS:
+        return None
+    return sr
 
 
-def _build_reachability_index(cg: dict) -> Dict[str, bool]:
-    """nodeId -> reachableFromRoots from ``callGraph.reachability.nodes``."""
-    reach: Dict[str, bool] = {}
-    for rn in (cg.get("reachability") or {}).get("nodes", []) or []:
-        if isinstance(rn, dict) and rn.get("nodeId"):
-            reach[rn["nodeId"]] = bool(rn.get("reachableFromRoots"))
-    return reach
+def _reachable_package_set(sr: Optional[dict]) -> Optional[Set[str]]:
+    """Packages golem's sound graph reaches through non-init code, or ``None``
+    when call-graph evidence must not be gated.
 
-
-def _packages_with_reachable_code(
-    reach: Dict[str, bool], cg_nodes: Dict[str, dict]
-) -> set:
-    """packagePaths holding at least one reachable NON-init node.
-
-    A package whose only reachable node is its init was merely imported --
-    blank imports run init -- which is initialization plumbing, not usage.
+    Only a fully ``computed`` section qualifies: in a ``partial`` multi-module
+    merge a skipped child (a library module) contributed no packages, and
+    gating on the union would mark its genuinely used dependencies unreached.
+    golem omits the list when it is empty, so a computed section without it
+    is an empty set, not "unknown".
     """
-    used: set = set()
-    for nid, is_reachable in reach.items():
-        if not is_reachable or _is_init_function(nid):
-            continue
-        pp = (cg_nodes.get(nid) or {}).get("packagePath")
-        if pp:
-            used.add(pp)
-    return used
+    if not sr or sr.get("status") != "computed":
+        return None
+    return {p for p in (sr.get("reachablePackages") or []) if isinstance(p, str)}
 
 
 # ---------------------------------------------------------------------------
@@ -358,14 +357,14 @@ def convert_golem_report(
     df = report.get("dataFlow") or {}
     df_nodes = {n.get("id"): n for n in df.get("nodes", []) if isinstance(n, dict)}
 
-    # Root reachability, when golem reported it. Absent (older golem, or no
-    # call graph was built) keeps the historical behaviour: everything golem
-    # observed is kept. Present, it separates application-driven evidence
-    # from module-internal flows -- exactly the distinction a blank-imported,
-    # never-called dependency needs to stay unreached.
-    cg_reach = _build_reachability_index(cg)
-    has_reachability = bool(cg_reach)
-    pkgs_with_reachable_code = _packages_with_reachable_code(cg_reach, cg_nodes)
+    # Root reachability, when golem reported it on a dispatch-aware graph.
+    # Absent or unsound keeps the historical behaviour: everything golem
+    # observed is kept. Present, it separates application-driven evidence from
+    # module-internal flows -- exactly the distinction a blank-imported,
+    # never-called dependency needs to stay unreached -- while a registered
+    # driver the program dispatches into stays reached.
+    slice_reach = _slice_reachability(df)
+    reachable_packages = _reachable_package_set(slice_reach)
 
     # --- Build symbol -> reconciled purl map from call-graph nodes ---------
     # golem callgraph nodes have NO qualifiedName. We index by name AND by
@@ -408,19 +407,11 @@ def convert_golem_report(
         pp = tgt.get("packagePath")
         if pp:
             pkgpath_to_purl.setdefault(pp, vpurl)
-        # Skip targets the roots provably never reach: an edge between two
-        # unreachable functions inside a dependency is library self-analysis,
-        # not reachability evidence for the application.
-        if has_reachability and not cg_reach.get(e.get("targetId"), False):
-            continue
-        # An edge into a package init runs for any import, blank imports
-        # included. When the package has no reachable non-init node at all,
-        # the import is the whole story -- keep the package unreached.
-        if (
-            has_reachability
-            and _is_init_function(e.get("targetId") or "")
-            and (tgt.get("packagePath") or "") not in pkgs_with_reachable_code
-        ):
+        # Skip targets in packages golem's sound graph never reaches through
+        # non-init code: an edge into a blank-imported package's init, or
+        # between two functions of a never-called dependency, is import
+        # plumbing or library self-analysis, not reachability evidence.
+        if reachable_packages is not None and pp and pp not in reachable_packages:
             continue
         # Skip edges rooted entirely in local (app) code targeting local code
         # (those are intra-app calls, not dependency reachability)
@@ -440,11 +431,11 @@ def convert_golem_report(
     for sl in df.get("slices", []) or []:
         if not isinstance(sl, dict):
             continue
-        # golem's reachableFromRoots is False only for slices that live
-        # entirely in code the application never drives into. Absent (older
-        # golem, or no call graph) keeps the slice: the flag is a filter, not
-        # a requirement.
-        if sl.get("reachableFromRoots") is False:
+        # reachableFromRoots is False only for slices that live entirely in
+        # code the application never drives into -- trusted only when
+        # sliceReachability says a dispatch-aware graph produced it. Absent
+        # keeps the slice: the flag is a filter, not a requirement.
+        if slice_reach is not None and sl.get("reachableFromRoots") is False:
             continue
         flow_purls: set = set()
         flow_nodes: List[dict] = []

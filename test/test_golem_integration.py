@@ -414,6 +414,25 @@ def test_real_cve_reached_vs_unused_dep(tmp_path, golem_env):
     )
 
 
+@pytest.mark.parametrize("callgraph_mode", ["none", "static", "cha", "rta", "vta"])
+def test_real_cve_verdict_independent_of_callgraph_mode(
+    tmp_path, golem_env, monkeypatch, callgraph_mode
+):
+    """golem computes slice and package reachability on RTA whatever
+    ``--callgraph`` builds, so the reached/unreached split must not move with
+    the mode -- CHA alone used to put gorilla/mux back in the reached set."""
+    import depscan.lib.bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "GOLEM_DEFAULT_CALLGRAPH_MODE", callgraph_mode)
+    reached = _golem_reached_on_real_cve(tmp_path)
+    assert SATORI_PURL in reached, (
+        f"satori/go.uuid must be reached under --callgraph {callgraph_mode}"
+    )
+    assert MUX_PURL not in reached, (
+        f"gorilla/mux must stay unreached under --callgraph {callgraph_mode}"
+    )
+
+
 def _make_advisory_occurrence(vid, vendor, pkg, version):
     """Build a VulnerabilityOccurrence representing a real advisory for a Go
     module. Used to drive the VDR reachability mapping without the full vdb

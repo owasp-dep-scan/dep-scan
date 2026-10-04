@@ -462,8 +462,11 @@ def test_converter_unused_dep_not_reached(bom_index):
 
 
 # ---------------------------------------------------------------------------
-# root-reachability gating (golem >= 3.2 stamps reachableFromRoots)
+# root-reachability gating (dataFlow.sliceReachability, computed on RTA)
 # ---------------------------------------------------------------------------
+
+GIN = "pkg:golang/github.com/gin-gonic/gin@v1.9.1"
+PGX = "pkg:golang/github.com/jackc/pgx/v4@v4.18.1"
 
 
 def _reached_purls(flows):
@@ -473,198 +476,148 @@ def _reached_purls(flows):
     return reached
 
 
-def _with_reachability(fixture, nodes):
-    """Attach a callGraph.reachability section mapping node id -> bool."""
-    fixture = json.loads(json.dumps(fixture))  # deep copy
-    fixture["callGraph"]["reachability"] = {
-        "nodes": [{"nodeId": nid, "reachableFromRoots": val} for nid, val in nodes.items()]
-    }
-    return fixture
-
-
-def test_converter_skips_unrooted_slices(bom_index):
-    """A slice golem stamped ``reachableFromRoots: false`` lives entirely in
-    code the application never drives into; it must not become a flow. The
-    pgx purl still arrives through the (rooted) call-graph edge -- the slice
-    itself is what disappears."""
-    report = _golem_report_fixture()
-    report["dataFlow"]["slices"][0]["reachableFromRoots"] = False
-    flows = convert_golem_report(report, bom_index)
-    for f in flows:
-        node_ids = {n.get("id") for n in f["flows"]}
-        assert "df-source" not in node_ids and "df-pgx" not in node_ids, (
-            "an unrooted slice must not be emitted as a flow"
-        )
-
-
-def test_converter_rooted_slice_is_kept(bom_index):
-    """A slice stamped ``reachableFromRoots: true`` flows exactly as an
-    unflagged one does."""
-    report = _golem_report_fixture()
-    report["dataFlow"]["slices"][0]["reachableFromRoots"] = True
-    flows = convert_golem_report(report, bom_index)
-    assert any(
-        any(n.get("id") == "df-pgx" for n in f["flows"]) for f in flows
-    ), "a rooted slice must survive"
-
-
-def test_converter_keeps_slice_without_reachability_flag(bom_index):
-    """Older golem reports carry no ``reachableFromRoots`` at all; their
-    slices must keep flowing (absent is unknown, not unreachable)."""
-    report = _golem_report_fixture()
-    assert "reachableFromRoots" not in report["dataFlow"]["slices"][0]
-    flows = convert_golem_report(report, bom_index)
-    assert any(
-        any(n.get("id") == "df-pgx" for n in f["flows"]) for f in flows
-    ), "unflagged slice must survive"
-
-
-def test_converter_drops_edges_into_unreachable_targets(bom_index):
-    """Call-graph edges between two functions the roots never reach are
-    library self-analysis; with reachability reported they must not mark the
-    package reached. The data-flow section is dropped so the edges under test
-    are the only purl carriers."""
-    report = _with_reachability(
-        _golem_report_fixture(),
-        {
-            "cg-app-main": True,
-            "cg-pgx-connect": True,
-            # gin's Handle is never reached from the roots...
-            "cg-gin-handle": False,
-            "cg-stdlib-fmt": True,
-        },
-    )
-    del report["dataFlow"]
-    reached = _reached_purls(convert_golem_report(report, bom_index))
-    assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" not in reached
-    assert "pkg:golang/github.com/jackc/pgx/v4@v4.18.1" in reached
-
-
-def _with_gin_init_edge(report, gin_init_reachable, gin_code_reachable):
-    """Retarget the gin edge at gin's package init, mirroring a blank import,
-    and optionally give gin a reachable non-init node."""
-    report["callGraph"]["nodes"][1]["id"] = "github.com/gin-gonic/gin.init"
-    report["callGraph"]["nodes"][1]["name"] = "init"
-    report["callGraph"]["edges"][1]["targetId"] = "github.com/gin-gonic/gin.init"
-    report["callGraph"]["edges"][1]["targetName"] = "github.com/gin-gonic/gin.init"
-    report["callGraph"]["reachability"]["nodes"].append(
-        {"nodeId": "github.com/gin-gonic/gin.init", "reachableFromRoots": gin_init_reachable}
-    )
-    if gin_code_reachable:
-        report["callGraph"]["nodes"].append(
-            {
-                "id": "github.com/gin-gonic/gin.Engine.Render",
-                "name": "Render",
-                "label": "gin.Engine.Render",
-                "kind": "function",
-                "packagePath": "github.com/gin-gonic/gin",
-                "purl": "pkg:golang/github.com/gin-gonic/gin@v1.9.1",
-                "standard": False,
-                "external": True,
-                "local": False,
-            }
-        )
-        report["callGraph"]["reachability"]["nodes"].append(
-            {"nodeId": "github.com/gin-gonic/gin.Engine.Render", "reachableFromRoots": True}
-        )
-    del report["dataFlow"]
+def _with_slice_reachability(
+    report, *, algorithm="rta", status="computed", packages=None, rooted=None
+):
+    """Attach golem's dataFlow.sliceReachability and stamp the fixture slice."""
+    report = json.loads(json.dumps(report))  # deep copy
+    sr = {"status": status, "algorithm": algorithm, "rootKinds": ["init", "main"]}
+    if packages is not None:
+        sr["reachablePackages"] = packages
+    report["dataFlow"]["sliceReachability"] = sr
+    if rooted is not None:
+        report["dataFlow"]["slices"][0]["reachableFromRoots"] = rooted
     return report
 
 
-def test_converter_init_only_package_stays_unreached(bom_index):
-    """A blank import runs the package init, so the app->init edge is
-    reachable -- but when init is the ONLY reachable node of the package the
-    import is the whole story and the package must stay unreached."""
-    report = _with_reachability(
-        _golem_report_fixture(),
-        {
-            "cg-app-main": True,
-            "cg-pgx-connect": True,
-            "cg-gin-handle": False,
-            "cg-stdlib-fmt": True,
-        },
-    )
-    report = _with_gin_init_edge(report, gin_init_reachable=True, gin_code_reachable=False)
-    reached = _reached_purls(convert_golem_report(report, bom_index))
-    assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" not in reached
-    assert "pkg:golang/github.com/jackc/pgx/v4@v4.18.1" in reached
+def _slice_flows(flows):
+    return [f for f in flows if any(n.get("id") == "df-pgx" for n in f["flows"])]
 
 
-def test_converter_init_edge_kept_when_package_has_reachable_code(bom_index):
-    """When other nodes of the package ARE reachable the package is genuinely
-    used and its init edge is ordinary evidence, not an import artifact."""
-    report = _with_reachability(
-        _golem_report_fixture(),
-        {
-            "cg-app-main": True,
-            "cg-pgx-connect": True,
-            "cg-gin-handle": False,
-            "cg-stdlib-fmt": True,
-        },
-    )
-    report = _with_gin_init_edge(report, gin_init_reachable=True, gin_code_reachable=True)
-    reached = _reached_purls(convert_golem_report(report, bom_index))
-    assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" in reached
+def test_converter_skips_unrooted_slice_on_sound_graph(bom_index):
+    """A slice golem stamped ``reachableFromRoots: false`` on RTA lives entirely
+    in code the application never drives into; it must not become a flow."""
+    report = _with_slice_reachability(_golem_report_fixture(), rooted=False)
+    assert not _slice_flows(convert_golem_report(report, bom_index))
 
 
-def test_converter_method_named_init_counts_as_reachable_code(bom_index):
-    """A dependency METHOD called ``init`` -- ``(*gin.Engine).init`` -- is
-    ordinary code, not the package initializer: it must mark its package as
-    genuinely used, unlike the blank-import package init."""
-    report = _with_reachability(
-        _golem_report_fixture(),
-        {
-            "cg-app-main": True,
-            "cg-pgx-connect": True,
-            "cg-gin-handle": False,
-            "cg-stdlib-fmt": True,
-        },
+def test_converter_trusts_cha_fallback(bom_index):
+    """golem falls back to CHA only when RTA panics; CHA over-approximates, so
+    its "unreachable" is still safe to act on."""
+    report = _with_slice_reachability(_golem_report_fixture(), algorithm="cha", rooted=False)
+    assert not _slice_flows(convert_golem_report(report, bom_index))
+
+
+def test_converter_keeps_unrooted_slice_from_unsound_graph(bom_index):
+    """A verdict from a static (or VTA) graph misses interface and func-value
+    dispatch: acting on its "false" would drop real application flows."""
+    for algorithm in ("static", "vta", "rta,static", ""):
+        report = _with_slice_reachability(
+            _golem_report_fixture(), algorithm=algorithm, rooted=False
+        )
+        assert _slice_flows(convert_golem_report(report, bom_index)), algorithm
+
+
+def test_converter_keeps_unrooted_slice_without_section(bom_index):
+    """An older golem stamped reachableFromRoots from whatever --callgraph
+    built and wrote no sliceReachability: the flag must be ignored."""
+    report = _golem_report_fixture()
+    report["dataFlow"]["slices"][0]["reachableFromRoots"] = False
+    assert _slice_flows(convert_golem_report(report, bom_index))
+
+
+def test_converter_keeps_slices_when_verdict_skipped(bom_index):
+    """A library (only initializer roots) gets status=skipped and no verdicts;
+    nothing may be gated, slices or edges."""
+    report = _with_slice_reachability(
+        _golem_report_fixture(), status="skipped", algorithm="", packages=[]
     )
-    report = _with_gin_init_edge(
-        report, gin_init_reachable=True, gin_code_reachable=False
-    )
-    # The reachable non-initializer is a method that happens to be named init.
-    report["callGraph"]["nodes"].append(
-        {
-            "id": "(*github.com/gin-gonic/gin.Engine).init",
-            "name": "init",
-            "label": "(*gin.Engine).init",
-            "kind": "function",
-            "packagePath": "github.com/gin-gonic/gin",
-            "purl": "pkg:golang/github.com/gin-gonic/gin@v1.9.1",
-            "standard": False,
-            "external": True,
-            "local": False,
-        }
-    )
-    report["callGraph"]["reachability"]["nodes"].append(
-        {"nodeId": "(*github.com/gin-gonic/gin.Engine).init", "reachableFromRoots": True}
+    report["dataFlow"]["sliceReachability"]["reason"] = "no-entry-roots"
+    flows = convert_golem_report(report, bom_index)
+    assert _slice_flows(flows)
+    assert GIN in _reached_purls(flows)
+
+
+def test_converter_rooted_slice_is_kept(bom_index):
+    report = _with_slice_reachability(_golem_report_fixture(), rooted=True)
+    assert _slice_flows(convert_golem_report(report, bom_index))
+
+
+def _edges_only(report):
+    """Drop the data-flow slices so call-graph edges are the only purl
+    carriers, keeping sliceReachability."""
+    report["dataFlow"]["slices"] = []
+    return report
+
+
+def test_converter_gates_edges_on_reachable_packages(bom_index):
+    """Edges into a package golem's sound graph never reaches through non-init
+    code -- a blank import, or a never-called dependency's self-calls -- are
+    not usage evidence; gin is that package here, pgx is used."""
+    report = _edges_only(
+        _with_slice_reachability(_golem_report_fixture(), packages=["github.com/jackc/pgx/v4"])
     )
     reached = _reached_purls(convert_golem_report(report, bom_index))
-    assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" in reached
+    assert GIN not in reached
+    assert PGX in reached
 
 
-def test_is_init_function_classifies_ssa_ids():
-    """Package inits and their numbered clones only; never methods."""
-    from analysis_lib.golem_slices import _is_init_function
+def test_converter_keeps_registered_driver_reached(bom_index):
+    """A blank-imported database/sql driver is reached only through its init
+    and the driver.Driver dispatch. golem lists it in reachablePackages, so its
+    edges -- including the one into init -- must stay usage evidence."""
+    report = _with_slice_reachability(
+        _golem_report_fixture(),
+        packages=["github.com/gin-gonic/gin", "github.com/jackc/pgx/v4"],
+    )
+    report = _edges_only(report)
+    report["callGraph"]["nodes"][1]["id"] = "github.com/gin-gonic/gin.init"
+    report["callGraph"]["nodes"][1]["name"] = "init"
+    report["callGraph"]["edges"][1]["targetId"] = "github.com/gin-gonic/gin.init"
+    assert GIN in _reached_purls(convert_golem_report(report, bom_index))
 
-    assert _is_init_function("github.com/gorilla/mux.init")
-    assert _is_init_function("github.com/gorilla/mux.init#1")
-    assert _is_init_function("example.com/pkg/dir.init#12")
-    assert not _is_init_function("(*github.com/gorilla/mux.Router).init")
-    assert not _is_init_function("github.com/gorilla/mux.newRouteRegexp")
-    assert not _is_init_function("")
-    assert not _is_init_function("github.com/pkg.initializer")
+
+def test_converter_empty_reachable_packages_is_not_unknown(bom_index):
+    """golem omits an empty reachablePackages; with status=computed that means
+    no dependency is reached, not "not computed"."""
+    report = _edges_only(_with_slice_reachability(_golem_report_fixture()))
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert GIN not in reached and PGX not in reached
+
+
+def test_converter_does_not_gate_edges_on_partial_merge(bom_index):
+    """A multi-module merge with a skipped (library) child has an incomplete
+    package list; gating on it would drop that child's real dependencies."""
+    report = _edges_only(
+        _with_slice_reachability(_golem_report_fixture(), status="partial", packages=[])
+    )
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert GIN in reached and PGX in reached
+
+
+def test_converter_ignores_unsound_call_graph_reachability(bom_index):
+    """callGraph.reachability follows --callgraph (static by default), which
+    misses dynamic dispatch; without a sound sliceReachability the converter
+    must not gate edges on it."""
+    report = _golem_report_fixture()
+    report["callGraph"]["reachability"] = {
+        "nodes": [
+            {"nodeId": "cg-app-main", "reachableFromRoots": True},
+            {"nodeId": "cg-gin-handle", "reachableFromRoots": False},
+        ]
+    }
+    report = _edges_only(report)
+    assert GIN in _reached_purls(convert_golem_report(report, bom_index))
 
 
 def test_converter_without_reachability_section_keeps_everything(bom_index):
-    """No reachability section (older golem / --callgraph none): the converter
-    must behave exactly as before -- both external edges flow."""
+    """No reachability data at all (older golem / no data flow): both external
+    edges flow exactly as before."""
     report = _golem_report_fixture()
-    assert "reachability" not in report["callGraph"]
+    assert "sliceReachability" not in report["dataFlow"]
     reached = _reached_purls(convert_golem_report(report, bom_index))
-    assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" in reached
-    assert "pkg:golang/github.com/jackc/pgx/v4@v4.18.1" in reached
+    assert GIN in reached
+    assert PGX in reached
 
 
 def test_converter_is_deterministic(bom_index):

@@ -255,6 +255,21 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
         return cdxgen_cmd
 
 
+def cdxgen_source_arg(source_dir: str) -> str:
+    """The source argument to hand cdxgen for ``source_dir``.
+
+    cdxgen is launched with its working directory set to the source directory,
+    so a relative argument would be resolved a second time against it --
+    ``<src>/<src>``, a directory that does not exist -- and the plugins
+    (rusi, golem, kosi) would analyse nothing. A local directory is therefore
+    always passed absolute. Anything else (a git URL, a purl, an image name)
+    is passed through untouched.
+    """
+    if source_dir and os.path.isdir(source_dir):
+        return os.path.abspath(source_dir)
+    return source_dir
+
+
 def set_slices_args(project_type_list, args, dir):
     if len(project_type_list) == 1:
         for s in ("deps", "usages", "data-flow", "reachables", "semantics"):
@@ -309,7 +324,7 @@ class CdxgenGenerator(XBOMGenerator):
             args = args + ["--lifecycle", lifecycles[0]]
         # Bug #233 - Source directory could be None when working with url
         if self.source_dir:
-            args.append(self.source_dir)
+            args.append(cdxgen_source_arg(self.source_dir))
         # Setup cdxgen thought logging
         if self.options.get("explain"):
             env["CDXGEN_THINK_MODE"] = "true"
