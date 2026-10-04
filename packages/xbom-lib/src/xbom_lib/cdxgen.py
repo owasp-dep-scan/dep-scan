@@ -76,6 +76,22 @@ def get_env_options_value(options: Dict, k: str, default: Optional[str] = None) 
     return os.getenv(k.upper(), options.get(k.lower(), default))
 
 
+def deep_enabled(options: Dict) -> bool:
+    """Whether the ``deep`` option asks for a deep cdxgen scan.
+
+    ``deep`` reaches the generators either as a real boolean (depscan's blint
+    fallback and the depscan server normalize it) or as the strings the
+    lifecycle stages pass ("true"/"false"). A bare truthiness test would treat
+    the string "false" as enabled (issue #536), and a membership test against
+    ("true", "1") alone would drop a boolean True, so normalize both forms
+    here and keep every generator consistent.
+    """
+    deep = options.get("deep")
+    if isinstance(deep, bool):
+        return deep
+    return str(deep).strip().lower() in ("true", "1")
+
+
 def get_image_for_type(options: Dict, project_type: str | list | None) -> str:
     if not project_type:
         return DEFAULT_IMAGE_NAME
@@ -275,7 +291,7 @@ class CdxgenGenerator(XBOMGenerator):
             args = args + ["--spec-version", str(options.get("spec_version"))]
         if technique_args:
             args = args + (" ".join(technique_args).split())
-        if options.get("deep"):
+        if deep_enabled(options):
             args.append("--deep")
         if options.get("fail_on_error"):
             args.append("--fail-on-error")
@@ -498,7 +514,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             set_slices_args(project_type_list, run_command_args, image_output_dir)
         if len(lifecycles) == 1:
             run_command_args += ["--lifecycle", lifecycles[0]]
-        if self.options.get("deep", "") in ("true", "1"):
+        if deep_enabled(self.options):
             run_command_args.append("--deep")
         if self.options.get("fail_on_error"):
             run_command_args.append("--fail-on-error")
