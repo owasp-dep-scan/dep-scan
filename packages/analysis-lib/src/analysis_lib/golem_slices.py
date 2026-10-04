@@ -174,9 +174,12 @@ def _is_init_function(node_id: str) -> bool:
     """Whether a call-graph node id names a package init function.
 
     golem ids are SSA function strings: ``github.com/pkg.init`` and the
-    numbered clones ``github.com/pkg.init#1`` a package earns per file.
+    numbered clones ``github.com/pkg.init#1`` a package earns per file. A
+    METHOD named init -- ``(*github.com/pkg.Type).init`` -- is ordinary code
+    and must not be classified as the package initializer, so anything with a
+    receiver (an open paren) is rejected first.
     """
-    if not node_id:
+    if not node_id or "(" in node_id:
         return False
     last = node_id.rsplit(".", 1)[-1]
     return last == "init" or last.startswith("init#")
@@ -392,6 +395,19 @@ def convert_golem_report(
         # Skip stdlib and main module targets
         if tgt.get("standard") or _is_main_module(tgt):
             continue
+        # Attribution indexes are built from every external edge, reachable or
+        # not: a KEPT slice can traverse an unreachable intermediate function,
+        # and its nodes still need purl attribution. Only the usage evidence
+        # below is gated on reachability.
+        # Index by name for dataflow node matching
+        tgt_name = e.get("targetName") or tgt.get("label") or tgt.get("name") or ""
+        for nm in (tgt.get("name"), tgt.get("label"), tgt_name):
+            if nm:
+                symbol_to_purl.setdefault(nm, vpurl)
+        # Index by packagePath
+        pp = tgt.get("packagePath")
+        if pp:
+            pkgpath_to_purl.setdefault(pp, vpurl)
         # Skip targets the roots provably never reach: an edge between two
         # unreachable functions inside a dependency is library self-analysis,
         # not reachability evidence for the application.
@@ -408,7 +424,6 @@ def convert_golem_report(
             continue
         # Skip edges rooted entirely in local (app) code targeting local code
         # (those are intra-app calls, not dependency reachability)
-        tgt_name = e.get("targetName") or tgt.get("label") or tgt.get("name") or ""
         pos = tgt.get("position") or e.get("position") or {}
         rec = {
             "callee": tgt_name,
@@ -418,14 +433,6 @@ def convert_golem_report(
             "rule_name": "call-graph",
         }
         external_call_records.append(rec)
-        # Index by name for dataflow node matching
-        for nm in (tgt.get("name"), tgt.get("label"), tgt_name):
-            if nm:
-                symbol_to_purl.setdefault(nm, vpurl)
-        # Index by packagePath
-        pp = tgt.get("packagePath")
-        if pp:
-            pkgpath_to_purl.setdefault(pp, vpurl)
 
     flows: List[dict] = []
 

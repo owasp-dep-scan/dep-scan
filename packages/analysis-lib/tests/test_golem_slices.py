@@ -607,6 +607,56 @@ def test_converter_init_edge_kept_when_package_has_reachable_code(bom_index):
     assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" in reached
 
 
+def test_converter_method_named_init_counts_as_reachable_code(bom_index):
+    """A dependency METHOD called ``init`` -- ``(*gin.Engine).init`` -- is
+    ordinary code, not the package initializer: it must mark its package as
+    genuinely used, unlike the blank-import package init."""
+    report = _with_reachability(
+        _golem_report_fixture(),
+        {
+            "cg-app-main": True,
+            "cg-pgx-connect": True,
+            "cg-gin-handle": False,
+            "cg-stdlib-fmt": True,
+        },
+    )
+    report = _with_gin_init_edge(
+        report, gin_init_reachable=True, gin_code_reachable=False
+    )
+    # The reachable non-initializer is a method that happens to be named init.
+    report["callGraph"]["nodes"].append(
+        {
+            "id": "(*github.com/gin-gonic/gin.Engine).init",
+            "name": "init",
+            "label": "(*gin.Engine).init",
+            "kind": "function",
+            "packagePath": "github.com/gin-gonic/gin",
+            "purl": "pkg:golang/github.com/gin-gonic/gin@v1.9.1",
+            "standard": False,
+            "external": True,
+            "local": False,
+        }
+    )
+    report["callGraph"]["reachability"]["nodes"].append(
+        {"nodeId": "(*github.com/gin-gonic/gin.Engine).init", "reachableFromRoots": True}
+    )
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert "pkg:golang/github.com/gin-gonic/gin@v1.9.1" in reached
+
+
+def test_is_init_function_classifies_ssa_ids():
+    """Package inits and their numbered clones only; never methods."""
+    from analysis_lib.golem_slices import _is_init_function
+
+    assert _is_init_function("github.com/gorilla/mux.init")
+    assert _is_init_function("github.com/gorilla/mux.init#1")
+    assert _is_init_function("example.com/pkg/dir.init#12")
+    assert not _is_init_function("(*github.com/gorilla/mux.Router).init")
+    assert not _is_init_function("github.com/gorilla/mux.newRouteRegexp")
+    assert not _is_init_function("")
+    assert not _is_init_function("github.com/pkg.initializer")
+
+
 def test_converter_without_reachability_section_keeps_everything(bom_index):
     """No reachability section (older golem / --callgraph none): the converter
     must behave exactly as before -- both external edges flow."""
