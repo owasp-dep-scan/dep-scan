@@ -461,6 +461,165 @@ def test_converter_unused_dep_not_reached(bom_index):
     assert not any("github.com/unused/dep" in p for p in reached), "unused dep must not be reached"
 
 
+# ---------------------------------------------------------------------------
+# root-reachability gating (dataFlow.sliceReachability, computed on RTA)
+# ---------------------------------------------------------------------------
+
+GIN = "pkg:golang/github.com/gin-gonic/gin@v1.9.1"
+PGX = "pkg:golang/github.com/jackc/pgx/v4@v4.18.1"
+
+
+def _reached_purls(flows):
+    reached = set()
+    for f in flows:
+        reached.update(f["purls"])
+    return reached
+
+
+def _with_slice_reachability(
+    report, *, algorithm="rta", status="computed", packages=None, rooted=None
+):
+    """Attach golem's dataFlow.sliceReachability and stamp the fixture slice."""
+    report = json.loads(json.dumps(report))  # deep copy
+    sr = {"status": status, "algorithm": algorithm, "rootKinds": ["init", "main"]}
+    if packages is not None:
+        sr["reachablePackages"] = packages
+    report["dataFlow"]["sliceReachability"] = sr
+    if rooted is not None:
+        report["dataFlow"]["slices"][0]["reachableFromRoots"] = rooted
+    return report
+
+
+def _slice_flows(flows):
+    return [f for f in flows if any(n.get("id") == "df-pgx" for n in f["flows"])]
+
+
+def test_converter_skips_unrooted_slice_on_sound_graph(bom_index):
+    """A slice golem stamped ``reachableFromRoots: false`` on RTA lives entirely
+    in code the application never drives into; it must not become a flow."""
+    report = _with_slice_reachability(_golem_report_fixture(), rooted=False)
+    assert not _slice_flows(convert_golem_report(report, bom_index))
+
+
+def test_converter_trusts_cha_fallback(bom_index):
+    """golem falls back to CHA only when RTA panics; CHA over-approximates, so
+    its "unreachable" is still safe to act on."""
+    report = _with_slice_reachability(_golem_report_fixture(), algorithm="cha", rooted=False)
+    assert not _slice_flows(convert_golem_report(report, bom_index))
+
+
+def test_converter_keeps_unrooted_slice_from_unsound_graph(bom_index):
+    """A verdict from a static (or VTA) graph misses interface and func-value
+    dispatch: acting on its "false" would drop real application flows."""
+    for algorithm in ("static", "vta", "rta,static", ""):
+        report = _with_slice_reachability(
+            _golem_report_fixture(), algorithm=algorithm, rooted=False
+        )
+        assert _slice_flows(convert_golem_report(report, bom_index)), algorithm
+
+
+def test_converter_keeps_unrooted_slice_without_section(bom_index):
+    """An older golem stamped reachableFromRoots from whatever --callgraph
+    built and wrote no sliceReachability: the flag must be ignored."""
+    report = _golem_report_fixture()
+    report["dataFlow"]["slices"][0]["reachableFromRoots"] = False
+    assert _slice_flows(convert_golem_report(report, bom_index))
+
+
+def test_converter_keeps_slices_when_verdict_skipped(bom_index):
+    """A library (only initializer roots) gets status=skipped and no verdicts;
+    nothing may be gated, slices or edges."""
+    report = _with_slice_reachability(
+        _golem_report_fixture(), status="skipped", algorithm="", packages=[]
+    )
+    report["dataFlow"]["sliceReachability"]["reason"] = "no-entry-roots"
+    flows = convert_golem_report(report, bom_index)
+    assert _slice_flows(flows)
+    assert GIN in _reached_purls(flows)
+
+
+def test_converter_rooted_slice_is_kept(bom_index):
+    report = _with_slice_reachability(_golem_report_fixture(), rooted=True)
+    assert _slice_flows(convert_golem_report(report, bom_index))
+
+
+def _edges_only(report):
+    """Drop the data-flow slices so call-graph edges are the only purl
+    carriers, keeping sliceReachability."""
+    report["dataFlow"]["slices"] = []
+    return report
+
+
+def test_converter_gates_edges_on_reachable_packages(bom_index):
+    """Edges into a package golem's sound graph never reaches through non-init
+    code -- a blank import, or a never-called dependency's self-calls -- are
+    not usage evidence; gin is that package here, pgx is used."""
+    report = _edges_only(
+        _with_slice_reachability(_golem_report_fixture(), packages=["github.com/jackc/pgx/v4"])
+    )
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert GIN not in reached
+    assert PGX in reached
+
+
+def test_converter_keeps_registered_driver_reached(bom_index):
+    """A blank-imported database/sql driver is reached only through its init
+    and the driver.Driver dispatch. golem lists it in reachablePackages, so its
+    edges -- including the one into init -- must stay usage evidence."""
+    report = _with_slice_reachability(
+        _golem_report_fixture(),
+        packages=["github.com/gin-gonic/gin", "github.com/jackc/pgx/v4"],
+    )
+    report = _edges_only(report)
+    report["callGraph"]["nodes"][1]["id"] = "github.com/gin-gonic/gin.init"
+    report["callGraph"]["nodes"][1]["name"] = "init"
+    report["callGraph"]["edges"][1]["targetId"] = "github.com/gin-gonic/gin.init"
+    assert GIN in _reached_purls(convert_golem_report(report, bom_index))
+
+
+def test_converter_empty_reachable_packages_is_not_unknown(bom_index):
+    """golem omits an empty reachablePackages; with status=computed that means
+    no dependency is reached, not "not computed"."""
+    report = _edges_only(_with_slice_reachability(_golem_report_fixture()))
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert GIN not in reached and PGX not in reached
+
+
+def test_converter_does_not_gate_edges_on_partial_merge(bom_index):
+    """A multi-module merge with a skipped (library) child has an incomplete
+    package list; gating on it would drop that child's real dependencies."""
+    report = _edges_only(
+        _with_slice_reachability(_golem_report_fixture(), status="partial", packages=[])
+    )
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert GIN in reached and PGX in reached
+
+
+def test_converter_ignores_unsound_call_graph_reachability(bom_index):
+    """callGraph.reachability follows --callgraph (static by default), which
+    misses dynamic dispatch; without a sound sliceReachability the converter
+    must not gate edges on it."""
+    report = _golem_report_fixture()
+    report["callGraph"]["reachability"] = {
+        "nodes": [
+            {"nodeId": "cg-app-main", "reachableFromRoots": True},
+            {"nodeId": "cg-gin-handle", "reachableFromRoots": False},
+        ]
+    }
+    report = _edges_only(report)
+    assert GIN in _reached_purls(convert_golem_report(report, bom_index))
+
+
+def test_converter_without_reachability_section_keeps_everything(bom_index):
+    """No reachability data at all (older golem / no data flow): both external
+    edges flow exactly as before."""
+    report = _golem_report_fixture()
+    assert "sliceReachability" not in report["dataFlow"]
+    reached = _reached_purls(convert_golem_report(report, bom_index))
+    assert GIN in reached
+    assert PGX in reached
+
+
 def test_converter_is_deterministic(bom_index):
     """Two conversions of the same report produce byte-identical output."""
     a = convert_golem_report(_golem_report_fixture(), bom_index)

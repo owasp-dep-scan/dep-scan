@@ -32,7 +32,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 
 # golem reports are detected by SHAPE, not ``schemaVersion``. A golem report is
@@ -163,6 +163,52 @@ def reconcile_purls(golem_purls: Iterable[str], bom_index: Dict[str, str]) -> Li
             seen.add(vp)
             out.append(vp)
     return sorted(out)
+
+
+# ---------------------------------------------------------------------------
+# Root-reachability helpers
+# ---------------------------------------------------------------------------
+
+
+# Call graphs whose "unreachable" a converter may act on. golem computes the
+# slice verdicts on RTA and falls back to CHA only when RTA panics; both follow
+# interface and func-value dispatch. Static and VTA graphs miss that dispatch,
+# so a "false" from them is not evidence that code is unused.
+SOUND_REACHABILITY_ALGORITHMS = frozenset({"rta", "cha"})
+
+
+def _slice_reachability(df: dict) -> Optional[dict]:
+    """golem's ``dataFlow.sliceReachability`` when its verdicts are usable.
+
+    Returns the section only when it says the verdicts were computed on a
+    graph in :data:`SOUND_REACHABILITY_ALGORITHMS`. Anything else -- an older
+    golem that stamped ``reachableFromRoots`` from whatever ``--callgraph``
+    built, a library whose only roots are initializers (``skipped``), an
+    unknown algorithm -- yields ``None`` and the historical keep-everything
+    behaviour.
+    """
+    sr = df.get("sliceReachability") if isinstance(df, dict) else None
+    if not isinstance(sr, dict) or sr.get("status") not in ("computed", "partial"):
+        return None
+    algorithms = {a for a in str(sr.get("algorithm") or "").split(",") if a}
+    if not algorithms or not algorithms <= SOUND_REACHABILITY_ALGORITHMS:
+        return None
+    return sr
+
+
+def _reachable_package_set(sr: Optional[dict]) -> Optional[Set[str]]:
+    """Packages golem's sound graph reaches through non-init code, or ``None``
+    when call-graph evidence must not be gated.
+
+    Only a fully ``computed`` section qualifies: in a ``partial`` multi-module
+    merge a skipped child (a library module) contributed no packages, and
+    gating on the union would mark its genuinely used dependencies unreached.
+    golem omits the list when it is empty, so a computed section without it
+    is an empty set, not "unknown".
+    """
+    if not sr or sr.get("status") != "computed":
+        return None
+    return {p for p in (sr.get("reachablePackages") or []) if isinstance(p, str)}
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +357,15 @@ def convert_golem_report(
     df = report.get("dataFlow") or {}
     df_nodes = {n.get("id"): n for n in df.get("nodes", []) if isinstance(n, dict)}
 
+    # Root reachability, when golem reported it on a dispatch-aware graph.
+    # Absent or unsound keeps the historical behaviour: everything golem
+    # observed is kept. Present, it separates application-driven evidence from
+    # module-internal flows -- exactly the distinction a blank-imported,
+    # never-called dependency needs to stay unreached -- while a registered
+    # driver the program dispatches into stays reached.
+    slice_reach = _slice_reachability(df)
+    reachable_packages = _reachable_package_set(slice_reach)
+
     # --- Build symbol -> reconciled purl map from call-graph nodes ---------
     # golem callgraph nodes have NO qualifiedName. We index by name AND by
     # packagePath so dataflow nodes can be attributed to the owning dependency
@@ -339,9 +394,27 @@ def convert_golem_report(
         # Skip stdlib and main module targets
         if tgt.get("standard") or _is_main_module(tgt):
             continue
+        # Attribution indexes are built from every external edge, reachable or
+        # not: a KEPT slice can traverse an unreachable intermediate function,
+        # and its nodes still need purl attribution. Only the usage evidence
+        # below is gated on reachability.
+        # Index by name for dataflow node matching
+        tgt_name = e.get("targetName") or tgt.get("label") or tgt.get("name") or ""
+        for nm in (tgt.get("name"), tgt.get("label"), tgt_name):
+            if nm:
+                symbol_to_purl.setdefault(nm, vpurl)
+        # Index by packagePath
+        pp = tgt.get("packagePath")
+        if pp:
+            pkgpath_to_purl.setdefault(pp, vpurl)
+        # Skip targets in packages golem's sound graph never reaches through
+        # non-init code: an edge into a blank-imported package's init, or
+        # between two functions of a never-called dependency, is import
+        # plumbing or library self-analysis, not reachability evidence.
+        if reachable_packages is not None and pp and pp not in reachable_packages:
+            continue
         # Skip edges rooted entirely in local (app) code targeting local code
         # (those are intra-app calls, not dependency reachability)
-        tgt_name = e.get("targetName") or tgt.get("label") or tgt.get("name") or ""
         pos = tgt.get("position") or e.get("position") or {}
         rec = {
             "callee": tgt_name,
@@ -351,20 +424,18 @@ def convert_golem_report(
             "rule_name": "call-graph",
         }
         external_call_records.append(rec)
-        # Index by name for dataflow node matching
-        for nm in (tgt.get("name"), tgt.get("label"), tgt_name):
-            if nm:
-                symbol_to_purl.setdefault(nm, vpurl)
-        # Index by packagePath
-        pp = tgt.get("packagePath")
-        if pp:
-            pkgpath_to_purl.setdefault(pp, vpurl)
 
     flows: List[dict] = []
 
     # --- 1. dataflow slice flows -----------------------------------------
     for sl in df.get("slices", []) or []:
         if not isinstance(sl, dict):
+            continue
+        # reachableFromRoots is False only for slices that live entirely in
+        # code the application never drives into -- trusted only when
+        # sliceReachability says a dispatch-aware graph produced it. Absent
+        # keeps the slice: the flag is a filter, not a requirement.
+        if slice_reach is not None and sl.get("reachableFromRoots") is False:
             continue
         flow_purls: set = set()
         flow_nodes: List[dict] = []
