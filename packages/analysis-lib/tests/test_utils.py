@@ -4,7 +4,13 @@ from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
+
 from analysis_lib import utils
+from analysis_lib.config import REF_MAP
+from vdb.lib.cve_model import CVE
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
 
 def _make_vdr(
@@ -200,6 +206,253 @@ def test_refs_to_vdr_skips_malformed_references_without_crashing():
         }
     ]
     assert source == {"url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1234", "name": "NVD"}
+
+
+def _references(urls):
+    return SimpleNamespace(root=[SimpleNamespace(url=SimpleNamespace(root=u)) for u in urls])
+
+
+# The references of OSV's record for GHSA-86w9-cpqp-85rv (node-forge through
+# 1.4.0, CVE-2026-85393). osv.dev merged its alias group with the
+# incomplete-fix sibling advisory GHSA-ppp5-5v6c-4jwp (CVE-2026-33894), so
+# the references link the sibling's advisory. Issue #540.
+VULNCHECK_SLUG = (
+    "node-forge-through-1.4.0-rsa-pkcs-1-1.5-signature-forgery-via-nested-digestalgorithm-padding"
+)
+NODE_FORGE_URLS = [
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-85393",
+    "https://github.com/digitalbazaar/forge/issues/1149",
+    "https://github.com/digitalbazaar/forge/pull/1152",
+    "https://github.com/advisories/GHSA-ppp5-5v6c-4jwp",
+    f"https://www.vulncheck.com/advisories/{VULNCHECK_SLUG}",
+]
+
+
+def test_refs_to_vdr_keeps_stored_reference_order_and_dedupes():
+    urls = [
+        "https://github.com/advisories/GHSA-7q4w-2rr3-4q9p",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-1234",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-1234",
+        "https://www.vulncheck.com/advisories/node-forge-through-1.4.0-rsa-pkcs-1-1.5-signature-forgery-via-nested-digestalgorithm-padding",
+    ]
+
+    advisories, refs, *_rest, source = utils.refs_to_vdr(_references(urls), "cve-2026-1234")
+
+    # First-seen order, duplicates dropped: a set would iterate in the
+    # per-process hash order and reshuffle the VDR between runs (#540).
+    assert [r["id"] for r in refs] == [
+        "GHSA-7q4w-2rr3-4q9p",
+        "CVE-2026-1234",
+        VULNCHECK_SLUG,
+    ]
+    assert [a["url"] for a in advisories] == [urls[0], urls[1], urls[3]]
+
+
+def test_refs_to_vdr_drops_other_vulnerability_ids_from_references():
+    alias_ids = ["CVE-2026-33894", "CVE-2026-85393", "GHSA-ppp5-5v6c-4jwp"]
+
+    advisories, refs, *_rest, source = utils.refs_to_vdr(
+        _references(NODE_FORGE_URLS), "cve-2026-85393", alias_ids
+    )
+
+    # GHSA-ppp5-5v6c-4jwp is the advisory of CVE-2026-33894, another member
+    # of osv.dev's merged group: not an equivalent. The vulncheck advisory
+    # (VulnCheck is the CNA of CVE-2026-85393) is the record's own.
+    assert [r["id"] for r in refs] == ["CVE-2026-85393", VULNCHECK_SLUG]
+    # The sibling's URL stays reachable as an advisory.
+    assert any("GHSA-ppp5-5v6c-4jwp" in a["url"] for a in advisories)
+
+
+def test_refs_to_vdr_keeps_own_ghsa_in_merged_group():
+    """vdb >= 6.7.4 links a renamed record's own advisory page. osv.dev never
+    lists a record's own id in its aliases, so that GHSA is not a group
+    member and survives the filter, while the sibling GHSA does not."""
+    urls = [*NODE_FORGE_URLS, "https://github.com/advisories/GHSA-86w9-cpqp-85rv"]
+    alias_ids = ["CVE-2026-33894", "CVE-2026-85393", "GHSA-ppp5-5v6c-4jwp"]
+
+    _advisories, refs, *_rest = utils.refs_to_vdr(_references(urls), "cve-2026-85393", alias_ids)
+
+    assert [r["id"] for r in refs] == [
+        "CVE-2026-85393",
+        VULNCHECK_SLUG,
+        "GHSA-86w9-cpqp-85rv",
+    ]
+
+
+def test_refs_to_vdr_merged_group_filter_covers_every_reference_kind():
+    """The filter is applied to the finished list, so an id of another group
+    member is dropped whichever branch produced it (NVD, cve.org, a repository
+    advisory page)."""
+    urls = [
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-33894",
+        "https://www.cve.org/CVERecord?id=CVE-2026-33894",
+        "https://github.com/digitalbazaar/forge/security/advisories/GHSA-ppp5-5v6c-4jwp",
+        "https://github.com/digitalbazaar/forge/security/advisories/GHSA-86w9-cpqp-85rv",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-85393",
+    ]
+    alias_ids = ["CVE-2026-33894", "CVE-2026-85393", "GHSA-ppp5-5v6c-4jwp"]
+
+    _advisories, refs, *_rest = utils.refs_to_vdr(_references(urls), "cve-2026-85393", alias_ids)
+
+    assert [r["id"] for r in refs] == ["GHSA-86w9-cpqp-85rv", "CVE-2026-85393"]
+
+
+def test_refs_to_vdr_dedupes_reference_ids_across_hosts():
+    urls = [
+        "https://github.com/digitalbazaar/forge/security/advisories/GHSA-ppp5-5v6c-4jwp",
+        "https://github.com/advisories/GHSA-ppp5-5v6c-4jwp",
+    ]
+
+    advisories, refs, *_rest = utils.refs_to_vdr(_references(urls), "cve-2026-33894")
+
+    assert [r["id"] for r in refs] == ["GHSA-ppp5-5v6c-4jwp"]
+    assert [r["source"]["url"] for r in refs] == [urls[0]]
+    # Both URLs are still listed as advisories.
+    assert [a["url"] for a in advisories] == urls
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        (f"https://www.vulncheck.com/advisories/{VULNCHECK_SLUG}", VULNCHECK_SLUG),
+        # A file extension is not part of the id.
+        (
+            "https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-00123.html",
+            "intel-sa-00123",
+        ),
+        ("https://www.rfc-editor.org/rfc/rfc8017.html", "rfc8017"),
+    ],
+)
+def test_advisory_id_keeps_version_dots_and_drops_extensions(url, expected):
+    _category, match, _system = utils.get_ref_summary_helper(url, REF_MAP)
+    assert match["id"] == expected
+
+
+def test_refs_to_vdr_keeps_own_advisory_for_single_cve_group():
+    urls = [
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-1234",
+        "https://github.com/advisories/GHSA-7q4w-2rr3-4q9p",
+    ]
+
+    for alias_ids in (["CVE-2026-1234", "GHSA-7q4w-2rr3-4q9p"], None):
+        advisories, refs, *_rest, source = utils.refs_to_vdr(
+            _references(urls), "cve-2026-1234", alias_ids
+        )
+        # One CVE in the group: the advisory is the record's own, an
+        # equivalent vulnerability. alias_ids=None is the NVD-record case
+        # (no Aliases block in the description).
+        assert [r["id"] for r in refs] == ["CVE-2026-1234", "GHSA-7q4w-2rr3-4q9p"]
+
+
+def test_parse_alias_ids_reads_only_the_aliases_block():
+    detail = (
+        "# node-forge summary\n"
+        "Details about the vulnerability.\n"
+        "\n"
+        "## Aliases\n"
+        "CVE-2026-33894, CVE-2026-85393, GHSA-ppp5-5v6c-4jwp\n"
+        "\n"
+        "## Related\n"
+        "GHSA-cfm4-qjh2-4765\n"
+    )
+
+    assert utils.parse_alias_ids(detail) == [
+        "CVE-2026-33894",
+        "CVE-2026-85393",
+        "GHSA-ppp5-5v6c-4jwp",
+    ]
+    assert utils.parse_alias_ids("no aliases block") == []
+    assert utils.parse_alias_ids("") == []
+
+
+def test_cve_to_vdr_uses_alias_group_from_description():
+    cve_record: Any = SimpleNamespace(
+        root=SimpleNamespace(
+            containers=SimpleNamespace(
+                cna=SimpleNamespace(
+                    references=_references(NODE_FORGE_URLS),
+                    descriptions=(
+                        "# node-forge RSA PKCS#1 v1.5 signature verification\n"
+                        "node-forge through 1.4.0 fails to validate element count.\n"
+                        "\n"
+                        "## Aliases\n"
+                        "CVE-2026-33894, CVE-2026-85393, GHSA-ppp5-5v6c-4jwp\n"
+                    ),
+                    metrics=None,
+                    problemTypes=None,
+                    affected=None,
+                )
+            ),
+            cveMetadata=None,
+        )
+    )
+
+    source, references, advisories, *_rest = utils.cve_to_vdr(cve_record, "CVE-2026-85393")
+
+    assert [r["id"] for r in references] == ["CVE-2026-85393", VULNCHECK_SLUG]
+    assert source == {
+        "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-85393",
+        "name": "NVD",
+    }
+    assert any("GHSA-ppp5-5v6c-4jwp" in a["url"] for a in advisories)
+
+
+def test_parse_alias_ids_reads_long_descriptions_from_supporting_media():
+    """vdb moves descriptions over 4096 characters into a base64
+    supportingMedia item; the Aliases block must still be found there."""
+    with open(
+        os.path.join(DATA_DIR, "vdb6-node-forge-alias-group-cve5.json"), encoding="utf-8"
+    ) as fp:
+        records = {r["cveMetadata"]["cveId"]: CVE.model_validate(r) for r in json.load(fp)}
+    descriptions = records["CVE-2026-33894"].root.containers.cna.descriptions
+    assert descriptions.root[0].value == "Refer to the supporting media"
+
+    assert utils.parse_alias_ids(utils.description_full_text(descriptions)) == [
+        "CVE-2026-33894",
+        "CVE-2026-85393",
+        "GHSA-86w9-cpqp-85rv",
+    ]
+
+
+@pytest.mark.parametrize(
+    "cve_id, expected_refs, foreign_advisory",
+    [
+        # Short description: the Aliases block is inline.
+        (
+            "CVE-2026-85393",
+            ["CVE-2026-85393", VULNCHECK_SLUG, "GHSA-86w9-cpqp-85rv"],
+            "GHSA-ppp5-5v6c-4jwp",
+        ),
+        # Long description: the Aliases block is in supportingMedia. The
+        # record's own GHSA is kept, deduped across its two links.
+        (
+            "CVE-2026-33894",
+            [
+                "GHSA-cfm4-qjh2-4765",
+                "GHSA-ppp5-5v6c-4jwp",
+                "CVE-2026-33894",
+                "rfc2313",
+                "ietf-msg-5rnE9ZRN1AokBVj3VqblGlP63QE",
+                "rfc8017",
+            ],
+            None,
+        ),
+    ],
+)
+def test_cve_to_vdr_on_stored_vdb6_records(cve_id, expected_refs, foreign_advisory):
+    """Issue #540 against the CVE 5 records vdb 6 stores for osv.dev's merged
+    node-forge group (generated with the vulnerability-db own-id fix). Runs
+    on any vdb 6.7.x: only the CVE 5 model is needed."""
+    with open(
+        os.path.join(DATA_DIR, "vdb6-node-forge-alias-group-cve5.json"), encoding="utf-8"
+    ) as fp:
+        records = {r["cveMetadata"]["cveId"]: CVE.model_validate(r) for r in json.load(fp)}
+
+    _source, references, advisories, *_rest = utils.cve_to_vdr(records[cve_id], cve_id)
+
+    assert [r["id"] for r in references] == expected_refs
+    if foreign_advisory:
+        assert any(foreign_advisory in a["url"] for a in advisories)
 
 
 def test_analyze_cve_vuln_handles_missing_cve_metadata_and_affected(monkeypatch):

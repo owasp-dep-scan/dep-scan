@@ -325,7 +325,10 @@ TIME_FMT = "%Y-%m-%dT%H:%M:%S"
 CWE_SPLITTER = re.compile(r"(?<=CWE-)[0-9]\d{0,5}", re.IGNORECASE)
 JFROG_ADVISORY = re.compile(r"(?P<id>jfsa\S+)", re.IGNORECASE)
 ADVISORY = re.compile(
-    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]{5,})",
+    # A dot is part of the id only before a digit, so version numbers in a
+    # slug survive (vulncheck's node-forge-through-1.4.0-rsa-...) while a
+    # file extension does not (intel-sa-00123.html -> intel-sa-00123).
+    r"(?P<org>[^\s./]+).(?:com|org)/(?:[\S]+)?/(?P<id>(?:(?:ghsa|ntap|rhsa|rhba|zdi|dsa|cisco|intel|usn)-)?[\w\d\-:]{5,}(?:\.\d[\w\d\-:]*)*)",
     re.IGNORECASE,
 )
 
