@@ -1,3 +1,4 @@
+import base64
 import contextlib
 import encodings.utf_8
 import json
@@ -289,6 +290,62 @@ def get_description_detail(data: Descriptions | str | None) -> Tuple[str, str]:
     detail = bytes.decode(encodings.utf_8.encode(detail)[0], errors="replace")
     description = description.lstrip("# ")
     return description, detail
+
+
+_ALIASES_SECTION_RE = re.compile(r"## Aliases\s*\n\s*([^\n\r]+)")
+
+
+def description_full_text(data: Descriptions | str | None) -> str:
+    """The complete description text vdb stored for a record.
+
+    vdb stores descriptions longer than 4096 characters as the placeholder
+    "Refer to the supporting media" and moves the real text into a base64
+    ``supportingMedia`` item, so the value alone can miss the Aliases block.
+    """
+    if not data:
+        return ""
+    if not isinstance(data, Descriptions):
+        return str(data)
+    parts = []
+    for desc in data.root or []:
+        if not isinstance(desc, Description):
+            continue
+        if desc.value:
+            parts.append(desc.value)
+        for media in desc.supportingMedia or []:
+            value = getattr(media, "value", None)
+            if not value:
+                continue
+            if getattr(media, "base64", False):
+                try:
+                    value = base64.b64decode(value).decode("utf-8", errors="replace")
+                except (ValueError, TypeError):
+                    continue
+            parts.append(str(value))
+    return "\n".join(parts)
+
+
+def parse_alias_ids(detail: str) -> List[str]:
+    """Ids from the Aliases block vdb bakes into OSV and errata descriptions.
+
+    vdb appends ``## Aliases`` followed by one comma-separated line of ids to
+    the descriptions it stores (see vulnerability-db osv.py). The line is
+    osv.dev's alias group as published, which never contains the record's
+    own id. The Related block that may follow lists ids of *other*
+    vulnerabilities, so only the Aliases line is read here.
+    """
+    if not detail:
+        return []
+    # vdb stores the description with escaped newlines
+    detail = detail.replace("\\r\\n", "\n").replace("\\n", "\n")
+    match = _ALIASES_SECTION_RE.search(detail)
+    if not match:
+        return []
+    return [
+        alias.strip()
+        for alias in match.group(1).split(",")
+        if re.match(r"^(CVE|GHSA)-", alias.strip())
+    ]
 
 
 def choose_date(d1, d2, choice):
@@ -792,14 +849,18 @@ def cve_to_vdr(cve: CVE, vid: str):
     root = getattr(cve, "root", None)
     cna = getattr(getattr(root, "containers", None), "cna", None)
     metadata = getattr(root, "cveMetadata", None)
-    advisories, references, bug_bounties, pocs, exploits, vendors, source = refs_to_vdr(
-        getattr(cna, "references", None), vid.lower()
-    )
-    vector, method, severity, score = parse_metrics(getattr(cna, "metrics", None))
     try:
         description, detail = get_description_detail(getattr(cna, "descriptions", None))
     except AttributeError:
         description, detail = "", ""
+    try:
+        alias_ids = parse_alias_ids(description_full_text(getattr(cna, "descriptions", None)))
+    except AttributeError:
+        alias_ids = []
+    advisories, references, bug_bounties, pocs, exploits, vendors, source = refs_to_vdr(
+        getattr(cna, "references", None), vid.lower(), alias_ids
+    )
+    vector, method, severity, score = parse_metrics(getattr(cna, "metrics", None))
     if not source:
         assigner_short_name = getattr(metadata, "assignerShortName", None)
         assigner_name = ""
@@ -1055,24 +1116,45 @@ def get_ref_summary_helper(url, patterns):
 
 
 def refs_to_vdr(
-    references: References | None, vid
+    references: References | None, vid, alias_ids: List[str] | None = None
 ) -> Tuple[List, List, List, List, List, List, Dict]:
     """
     Parses the reference list provided by VDB and converts to VDR objects
 
     :param references: List of dictionaries of references
     :param vid: str of vulnerability id
+    :param alias_ids: ids from the record's Aliases block, when the source
+        provides one (vdb bakes it into OSV and errata descriptions)
 
     :return: Tuple of advisories, references for VDR
     :rtype: tuple[list, list]
     """
     if not references:
         return [], [], [], [], [], [], {}
-    ref = set()
+    # Dedupe while keeping the stored order so the same BOM always renders
+    # the same VDR (a set would iterate in per-process hash order). See #540.
+    ref = []
+    seen_urls = set()
     for reference in getattr(references, "root", None) or []:
         url = getattr(getattr(reference, "url", None), "root", None)
-        if url:
-            ref.add(str(url))
+        if url and str(url) not in seen_urls:
+            seen_urls.add(str(url))
+            ref.append(str(url))
+    # osv.dev merges the aliases of a whole advisory group, so a group
+    # holding a CVE other than this record's id means the group also names
+    # a *different* vulnerability (an incomplete-fix sibling) and its
+    # advisory, and the record's references can link them. CycloneDX
+    # defines references as pointers to equivalent vulnerabilities, so in
+    # that case the group's ids other than the record's own are dropped
+    # from references; their URLs stay in the advisories list. osv.dev
+    # never lists a record's own id in its aliases, so the record's own
+    # GHSA (linked by vdb >= 6.7.4 as github.com/advisories/<GHSA>) is
+    # kept. See #540.
+    foreign_ids = set()
+    vid_upper = str(vid).upper()
+    group = {alias.upper() for alias in alias_ids or []}
+    if any(a.startswith("CVE-") and a != vid_upper for a in group):
+        foreign_ids = group - {vid_upper}
     advisories = []
     refs = []
     bug_bounty = []
@@ -1168,9 +1250,19 @@ def refs_to_vdr(
                     },
                 }
             )
+    # One entry per id: a record can link the same advisory on several hosts
+    # (github.com/advisories/<GHSA> and the repository's advisory page).
+    kept_refs = []
+    seen_ref_ids = set()
+    for aref in refs:
+        ref_id = str(aref.get("id", "")).upper()
+        if ref_id in foreign_ids or ref_id in seen_ref_ids:
+            continue
+        seen_ref_ids.add(ref_id)
+        kept_refs.append(aref)
     return (
         combine_references(advisories, []),
-        combine_references(refs, []),
+        combine_references(kept_refs, []),
         bug_bounty,
         poc,
         exploit,

@@ -1,0 +1,282 @@
+[
+  {
+    "dataType": "CVE_RECORD",
+    "dataVersion": "5.2",
+    "cveMetadata": {
+      "cveId": "CVE-2026-85393",
+      "assignerOrgId": "8254265b-2729-46b6-b9e3-3dfca2d5bfca",
+      "assignerShortName": "mitre",
+      "dateUpdated": "2026-10-01T21:40:55.016251Z",
+      "datePublished": "2026-09-03T21:31:15Z",
+      "state": "PUBLISHED"
+    },
+    "containers": {
+      "cna": {
+        "providerMetadata": {
+          "orgId": "8254265b-2729-46b6-b9e3-3dfca2d5bfca",
+          "dateUpdated": "2026-10-01T21:40:55.016251Z"
+        },
+        "dateAssigned": "2026-09-03T21:31:15Z",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "# node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements\\nnode-forge through 1.4.0 fails to validate element count in nested DigestAlgorithm sequences during RSA PKCS#1 v1.5 signature verification. Attackers can embed garbage bytes inside the DigestAlgorithm sequence to forge valid signatures for arbitrary messages using low-exponent RSA keys. This is an incomplete fix for CVE-2026-33894.\\n\\n## Aliases\\nCVE-2026-33894, CVE-2026-85393, GHSA-ppp5-5v6c-4jwp"
+          }
+        ],
+        "affected": [
+          {
+            "vendor": "npm",
+            "packageName": "node-forge",
+            "cpes": [
+              "cpe:2.3:a:npm:node-forge:*:*:*:*:*:*:*:*"
+            ],
+            "defaultStatus": "unknown",
+            "versions": [
+              {
+                "version": "0.0.0",
+                "status": "affected",
+                "versionType": "npm",
+                "lessThanOrEqual": "1.4.0"
+              },
+              {
+                "version": "0.0.0",
+                "status": "affected",
+                "versionType": "npm",
+                "lessThanOrEqual": "1.4.0"
+              }
+            ],
+            "packageURL": "pkg:npm/node-forge"
+          }
+        ],
+        "problemTypes": [
+          {
+            "descriptions": [
+              {
+                "lang": "en",
+                "description": "CWE-347",
+                "cweId": "CWE-347",
+                "type": "CWE"
+              }
+            ]
+          }
+        ],
+        "references": [
+          {
+            "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-85393"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge/issues/1149"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge/pull/1152"
+          },
+          {
+            "url": "https://github.com/advisories/GHSA-ppp5-5v6c-4jwp"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge/blob/v1.4.0/lib/asn1.js"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge/blob/v1.4.0/lib/rsa.js"
+          },
+          {
+            "url": "https://www.vulncheck.com/advisories/node-forge-through-1.4.0-rsa-pkcs-1-1.5-signature-forgery-via-nested-digestalgorithm-padding"
+          },
+          {
+            "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv"
+          }
+        ],
+        "metrics": [
+          {
+            "cvssV4_0": {
+              "version": "4.0",
+              "vectorString": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:N/SC:N/SI:N/SA:N",
+              "baseScore": 8.7,
+              "baseSeverity": "HIGH",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "vulnConfidentialityImpact": "NONE",
+              "vulnIntegrityImpact": "NONE",
+              "vulnAvailabilityImpact": "NONE",
+              "subConfidentialityImpact": "NONE",
+              "subIntegrityImpact": "NONE",
+              "subAvailabilityImpact": "NONE",
+              "exploitMaturity": "NOT_DEFINED",
+              "modifiedAttackVector": "NETWORK",
+              "modifiedAttackComplexity": "LOW",
+              "modifiedPrivilegesRequired": "NONE",
+              "modifiedUserInteraction": "NONE",
+              "modifiedVulnConfidentialityImpact": "NONE",
+              "modifiedVulnIntegrityImpact": "NONE",
+              "modifiedVulnAvailabilityImpact": "NONE",
+              "modifiedSubConfidentialityImpact": "NONE",
+              "modifiedSubIntegrityImpact": "NONE",
+              "modifiedSubAvailabilityImpact": "NONE",
+              "Safety": "NOT_DEFINED",
+              "Automatable": "NOT_DEFINED",
+              "Recovery": "NOT_DEFINED",
+              "valueDensity": "NOT_DEFINED",
+              "vulnerabilityResponseEffort": "NOT_DEFINED",
+              "providerUrgency": "NOT_DEFINED"
+            }
+          },
+          {
+            "cvssV3_1": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH",
+              "baseScore": 8.7,
+              "baseSeverity": "HIGH",
+              "confidentialityRequirement": "NOT_DEFINED",
+              "integrityRequirement": "NOT_DEFINED",
+              "availabilityRequirement": "NOT_DEFINED",
+              "modifiedAttackComplexity": "NOT_DEFINED",
+              "modifiedPrivilegesRequired": "NOT_DEFINED"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "dataType": "CVE_RECORD",
+    "dataVersion": "5.2",
+    "cveMetadata": {
+      "cveId": "CVE-2026-33894",
+      "assignerOrgId": "8254265b-2729-46b6-b9e3-3dfca2d5bfca",
+      "assignerShortName": "mitre",
+      "dateUpdated": "2026-10-01T21:40:55.016251Z",
+      "datePublished": "2026-03-26T22:02:35Z",
+      "state": "PUBLISHED"
+    },
+    "containers": {
+      "cna": {
+        "providerMetadata": {
+          "orgId": "8254265b-2729-46b6-b9e3-3dfca2d5bfca",
+          "dateUpdated": "2026-10-01T21:40:55.016251Z"
+        },
+        "dateAssigned": "2026-03-26T22:02:35Z",
+        "descriptions": [
+          {
+            "lang": "en",
+            "value": "Refer to the supporting media",
+            "supportingMedia": [
+              {
+                "type": "text/markdown",
+                "base64": true,
+                "value": "IyBGb3JnZSBoYXMgc2lnbmF0dXJlIGZvcmdlcnkgaW4gUlNBLVBLQ1MgZHVlIHRvIEFTTi4xIGV4dHJhIGZpZWxkXHRcbiMjIFN1bW1hcnlcblJTQVNTQSBQS0NTIzEgdjEuNSBzaWduYXR1cmUgdmVyaWZpY2F0aW9uIGFjY2VwdHMgZm9yZ2VkIHNpZ25hdHVyZXMgZm9yIGxvdyBwdWJsaWMgZXhwb25lbnQga2V5cyAoZT0zKS4gQXR0YWNrZXJzIGNhbiBmb3JnZSBzaWduYXR1cmVzIGJ5IHN0dWZmaW5nIOKAnGdhcmJhZ2XigJ0gYnl0ZXMgd2l0aGluIHRoZSBBU04gc3RydWN0dXJlIGluIG9yZGVyIHRvIGNvbnN0cnVjdCBhIHNpZ25hdHVyZSB0aGF0IHBhc3NlcyB2ZXJpZmljYXRpb24sIGVuYWJsaW5nIFtCbGVpY2hlbmJhY2hlciBzdHlsZSBmb3JnZXJ5XShodHRwczovL21haWxhcmNoaXZlLmlldGYub3JnL2FyY2gvbXNnL29wZW5wZ3AvNXJuRTlaUk4xQW9rQlZqM1ZxYmxHbFA2M1FFLykuIFRoaXMgaXNzdWUgaXMgc2ltaWxhciB0byBbQ1ZFLTIwMjItMjQ3NzFdKGh0dHBzOi8vZ2l0aHViLmNvbS9kaWdpdGFsYmF6YWFyL2ZvcmdlL3NlY3VyaXR5L2Fkdmlzb3JpZXMvR0hTQS1jZm00LXFqaDItNDc2NSksIGJ1dCBhZGRzIGJ5dGVzIGluIGFuIGFkZGl0aW9uIGZpZWxkIHdpdGhpbiB0aGUgQVNOIHN0cnVjdHVyZSwgcmF0aGVyIHRoYW4gb3V0c2lkZSBvZiBpdC4gXG5cbkFkZGl0aW9uYWxseSwgZm9yZ2UgZG9lcyBub3QgdmFsaWRhdGUgdGhhdCBzaWduYXR1cmVzIGluY2x1ZGUgYSBtaW5pbXVtIG9mIDggYnl0ZXMgb2YgcGFkZGluZyBhcyBbZGVmaW5lZCBieSB0aGUgc3BlY2lmaWNhdGlvbl0oaHR0cHM6Ly9kYXRhdHJhY2tlci5pZXRmLm9yZy9kb2MvaHRtbC9yZmMyMzEzI3NlY3Rpb24tOCksIHByb3ZpZGluZyBhdHRhY2tlcnMgYWRkaXRpb25hbCBzcGFjZSB0byBjb25zdHJ1Y3QgQmxlaWNoZW5iYWNoZXIgZm9yZ2VyaWVzLiBcblxuIyMgSW1wYWN0ZWQgRGVwbG95bWVudHNcbioqVGVzdGVkIGNvbW1pdDoqKiBgOGUxZDUyN2ZlOGVjMjY3MDQ5OTA2OGRiNzgzMTcyZDRmYjkwMTJlNWBcbioqQWZmZWN0ZWQgdmVyc2lvbnM6KiogdGVzdGVkIG9uIHYxLjMuMyAobGF0ZXN0IHJlbGVhc2UpIGFuZCByZWNlbnQgcHJpb3IgdmVyc2lvbnMuXG5cbioqQ29uZmlndXJhdGlvbiBhc3N1bXB0aW9uczoqKlxuLSBJbnZva2Uga2V5LnZlcmlmeSB3aXRoIGRlZmF1bHRzIChkZWZhdWx0IGBzY2hlbWVgIHVzZXMgUlNBU1NBLVBLQ1MxLXYxXzUpLlxuLSBgX3BhcnNlQWxsRGlnZXN0Qnl0ZXM6IHRydWVgIChkZWZhdWx0IHNldHRpbmcpLlxuXG4jIyBSb290IENhdXNlXG5cbkluIGBsaWIvcnNhLmpzYCwgYGtleS52ZXJpZnkoLi4uKWAsIGZvcmdlIGRlY3J5cHRzIHRoZSBzaWduYXR1cmUgYmxvY2ssIGRlY29kZXMgUEtDUyMxIHYxLjUgcGFkZGluZyAoYF9kZWNvZGVQa2NzMV92MV81YCksIHBhcnNlcyBBU04uMSwgYW5kIGNvbXBhcmVzIGBjYXB0dXJlLmRpZ2VzdGAgdG8gdGhlIHByb3ZpZGVkIGRpZ2VzdC5cblxuVHdvIGlzc3VlcyBhcmUgcHJlc2VudCB3aXRoIHRoaXMgbG9naWM6XG5cbjEuIFN0cmljdCBERVIgYnl0ZS1jb25zdW1wdGlvbiAoYF9wYXJzZUFsbERpZ2VzdEJ5dGVzYCkgb25seSBndWFyYW50ZWVzIGFsbCBieXRlcyBhcmUgcGFyc2VkLCBub3QgdGhhdCB0aGUgcGFyc2VkIHN0cnVjdHVyZSBpcyB0aGUgY2Fub25pY2FsIG1pbmltYWwgRGlnZXN0SW5mbyBzaGFwZSBleHBlY3RlZCBieSBSRkMgODAxNyB2ZXJpZmljYXRpb24gc2VtYW50aWNzLiBBIGZvcmdlZCBFTSB3aXRoIGF0dGFja2VyLWNvbnRyb2xsZWQgYWRkaXRpb25hbCBBU04uMSBjb250ZW50IGluc2lkZSB0aGUgcGFyc2VkIGNvbnRhaW5lciBjYW4gc3RpbGwgcGFzcyBmb3JnZSB2ZXJpZmljYXRpb24gd2hpbGUgT3BlblNTTCByZWplY3RzIGl0LlxuMi4gYF9kZWNvZGVQa2NzMV92MV81YCBjb21tZW50cyBtZW50aW9uIHRoYXQgUFMgPCA4IGJ5dGVzIHNob3VsZCBiZSByZWplY3RlZCwgYnV0IGRvZXMgbm90IGltcGxlbWVudCB0aGlzIGxvZ2ljLlxuXG4jIyBSZXByb2R1Y3Rpb24gU3RlcHNcbjEuIFVzZSBOb2RlLmpzICh0ZXN0ZWQgd2l0aCBgdjI0LjkuMGApIGFuZCBjbG9uZSBgZGlnaXRhbGJhemFhci9mb3JnZWAgYXQgY29tbWl0IGA4ZTFkNTI3ZmU4ZWMyNjcwNDk5MDY4ZGI3ODMxNzJkNGZiOTAxMmU1YC5cbjQuIFBsYWNlIGFuZCBydW4gdGhlIFBvQyBzY3JpcHQgKGByZXByb19taW4uanNgKSB3aXRoIGBub2RlIHJlcHJvX21pbi5qc2AgaW4gdGhlIHNhbWUgbGV2ZWwgYXMgdGhlIGBmb3JnZWAgZm9sZGVyLlxuNS4gVGhlIHNjcmlwdCBnZW5lcmF0ZXMgYSBmcmVzaCBSU0Ega2V5cGFpciAoYDQwOTZgIGJpdHMsIGBlPTNgKSwgY3JlYXRlcyBhIG5vcm1hbCBjb250cm9sIHNpZ25hdHVyZSwgdGhlbiBjb21wdXRlcyBhIGZvcmdlZCBjYW5kaWRhdGUgdXNpbmcgY3ViZS1yb290IGludGVydmFsIGNvbnN0cnVjdGlvbi5cbjYuIFRoZSBzY3JpcHQgdmVyaWZpZXMgYm90aCBzaWduYXR1cmVzIHdpdGg6XG5cdC0gZm9yZ2UgdmVyaWZ5IChgX3BhcnNlQWxsRGlnZXN0Qnl0ZXM6IHRydWVgKSwgYW5kXG5cdC0gTm9kZS9PcGVuU1NMIHZlcmlmeSAoYGNyeXB0by52ZXJpZnlgIHdpdGggYFJTQV9QS0NTMV9QQURESU5HYCkuXG43LiBDb25maXJtIG91dHB1dCBpbmNsdWRlczpcblx0LSBgY29udHJvbC1mb3JnZS1zdHJpY3Q6IHRydWVgXG5cdC0gYGNvbnRyb2wtbm9kZTogdHJ1ZWBcblx0LSBgZm9yZ2VyeSAoZm9yZ2UgbGlicmFyeSwgc3RyaWN0KTogdHJ1ZWBcblx0LSBgZm9yZ2VyeSAobm9kZS9PcGVuU1NMKTogZmFsc2VgXG5cbiMjIFByb29mIG9mIENvbmNlcHRcblxuKipPdmVydmlldzoqKlxuLSBEZW1vbnN0cmF0ZXMgYSB2YWxpZCBjb250cm9sIHNpZ25hdHVyZSBhbmQgYSBmb3JnZWQgc2lnbmF0dXJlIGluIG9uZSBydW4uXG4tIFVzZXMgc3RyaWN0IGZvcmdlIHBhcnNpbmcgbW9kZSBleHBsaWNpdGx5IChgX3BhcnNlQWxsRGlnZXN0Qnl0ZXM6IHRydWVgLCBhbHNvIGZvcmdlIGRlZmF1bHQpLlxuLSBVc2VzIE5vZGUvT3BlblNTTCBhcyBhbiBkaWZmZXJlbnRpYWwgdmVyaWZpY2F0aW9uIGJhc2VsaW5lLlxuLSBPYnNlcnZlZCBvdXRwdXQgb24gdGVzdGVkIGNvbW1pdDpcblxuYGBgdGV4dFxuY29udHJvbC1mb3JnZS1zdHJpY3Q6IHRydWVcbmNvbnRyb2wtbm9kZTogdHJ1ZVxuZm9yZ2VyeSAoZm9yZ2UgbGlicmFyeSwgc3RyaWN0KTogdHJ1ZVxuZm9yZ2VyeSAobm9kZS9PcGVuU1NMKTogZmFsc2VcbmBgYFxuXG48ZGV0YWlscz48c3VtbWFyeT5yZXByb19taW4uanM8L3N1bW1hcnk+XG5cbmBgYGphdmFzY3JpcHRcbiMhL3Vzci9iaW4vZW52IG5vZGVcbid1c2Ugc3RyaWN0JztcblxuY29uc3QgY3J5cHRvID0gcmVxdWlyZSgnY3J5cHRvJyk7XG5jb25zdCBmb3JnZSA9IHJlcXVpcmUoJy4vZm9yZ2UvbGliL2luZGV4Jyk7XG5cbi8vIERFUiBwcmVmaXggZm9yIFBLQ1MjMSB2MS41IFNIQS0yNTYgRGlnZXN0SW5mbywgd2l0aG91dCB0aGUgZGlnZXN0IGJ5dGVzOlxuLy8gU0VRVUVOQ0Uge1xuLy9cdCBTRVFVRU5DRSB7IE9JRCBzaGEyNTYsIE5VTEwgfSxcbi8vXHQgT0NURVQgU1RSSU5HIDwzMi1ieXRlIGRpZ2VzdD5cbi8vIH1cbi8vIEhleDogMzAgMGQgMDYgMDkgNjAgODYgNDggMDEgNjUgMDMgMDQgMDIgMDEgMDUgMDAgMDQgMjBcbmNvbnN0IERJR0VTVElORk9fU0hBMjU2X1BSRUZJWCA9IEJ1ZmZlci5mcm9tKFxuXHQnMzAwZDA2MDk2MDg2NDgwMTY1MDMwNDAyMDEwNTAwMDQyMCcsXG5cdCdoZXgnXG4pO1xuXG5jb25zdCB0b0JpZyA9IGIgPT4gQmlnSW50KCcweCcgKyAoYi50b1N0cmluZygnaGV4JykgfHwgJzAnKSk7XG5mdW5jdGlvbiB0b0J1ZihuLCBsZW4pIHtcblx0bGV0IGggPSBuLnRvU3RyaW5nKDE2KTtcblx0aWYgKGgubGVuZ3RoICUgMikgaCA9ICcwJyArIGg7XG5cdGNvbnN0IGIgPSBCdWZmZXIuZnJvbShoLCAnaGV4Jyk7XG5cdHJldHVybiBiLmxlbmd0aCA8IGxlbiA/IEJ1ZmZlci5jb25jYXQoW0J1ZmZlci5hbGxvYyhsZW4gLSBiLmxlbmd0aCksIGJdKSA6IGI7XG59XG5mdW5jdGlvbiBjYnJ0Rmxvb3Iobikge1xuXHRsZXQgbG8gPSAwbjtcblx0bGV0IGhpID0gMW47XG5cdHdoaWxlIChoaSAqIGhpICogaGkgPD0gbikgaGkgPDw9IDFuO1xuXHR3aGlsZSAobG8gKyAxbiA8IGhpKSB7XG5cdFx0Y29uc3QgbWlkID0gKGxvICsgaGkpID4+IDFuO1xuXHRcdGlmIChtaWQgKiBtaWQgKiBtaWQgPD0gbikgbG8gPSBtaWQ7XG5cdFx0ZWxzZSBoaSA9IG1pZDtcblx0fVxuXHRyZXR1cm4gbG87XG59XG5jb25zdCBjYnJ0Q2VpbCA9IG4gPT4ge1xuXHRjb25zdCBmID0gY2JydEZsb29yKG4pO1xuXHRyZXR1cm4gZiAqIGYgKiBmID09PSBuID8gZiA6IGYgKyAxbjtcbn07XG5mdW5jdGlvbiBkZXJMZW4obGVuKSB7XG5cdGlmIChsZW4gPCAweDgwKSByZXR1cm4gQnVmZmVyLmZyb20oW2xlbl0pO1xuXHRpZiAobGVuIDw9IDB4ZmYpIHJldHVybiBCdWZmZXIuZnJvbShbMHg4MSwgbGVuXSk7XG5cdHJldHVybiBCdWZmZXIuZnJvbShbMHg4MiwgKGxlbiA+PiA4KSAmIDB4ZmYsIGxlbiAmIDB4ZmZdKTtcbn1cblxuZnVuY3Rpb24gZm9yZ2VTdHJpY3RWZXJpZnkocHVibGljUGVtLCBtc2csIHNpZykge1xuXHRjb25zdCBrZXkgPSBmb3JnZS5wa2kucHVibGljS2V5RnJvbVBlbShwdWJsaWNQZW0pO1xuXHRjb25zdCBtZCA9IGZvcmdlLm1kLnNoYTI1Ni5jcmVhdGUoKTtcblx0bWQudXBkYXRlKG1zZy50b1N0cmluZygndXRmOCcpLCAndXRmOCcpO1xuXHR0cnkge1xuXHRcdC8vIHZlcmlmeShkaWdlc3RCeXRlcywgc2lnbmF0dXJlQnl0ZXMsIHNjaGVtZSwgb3B0aW9ucyk6XG5cdFx0Ly8gLSBkaWdlc3RCeXRlczogcmF3IFNIQS0yNTYgZGlnZXN0IGJ5dGVzIGZvciBgbXNnYFxuXHRcdC8vIC0gc2lnbmF0dXJlQnl0ZXM6IGJpbmFyeS1zdHJpbmcgcmVwcmVzZW50YXRpb24gb2YgdGhlIGNhbmRpZGF0ZSBzaWduYXR1cmVcblx0XHQvLyAtIHNjaGVtZTogdW5kZWZpbmVkID0+IGRlZmF1bHQgUlNBU1NBLVBLQ1MxLXYxXzVcblx0XHQvLyAtIG9wdGlvbnMuX3BhcnNlQWxsRGlnZXN0Qnl0ZXM6IHJlcXVpcmUgREVSIHBhcnNlciB0byBjb25zdW1lIGFsbCBieXRlc1xuXHRcdC8vXHQgKHRoaXMgaXMgZm9yZ2UncyBkZWZhdWx0IGZvciB2ZXJpZnk7IHNldCBleHBsaWNpdGx5IGhlcmUgZm9yIGNsYXJpdHkpXG5cdFx0cmV0dXJuIHsgb2s6IGtleS52ZXJpZnkobWQuZGlnZXN0KCkuZ2V0Qnl0ZXMoKSwgc2lnLnRvU3RyaW5nKCdiaW5hcnknKSwgdW5kZWZpbmVkLCB7IF9wYXJzZUFsbERpZ2VzdEJ5dGVzOiB0cnVlIH0pIH07XG5cdH0gY2F0Y2ggKGVycikge1xuXHRcdHJldHVybiB7IG9rOiBmYWxzZSwgZXJyOiBlcnIubWVzc2FnZSB9O1xuXHR9XG59XG5cbmZ1bmN0aW9uIG1haW4oKSB7XG5cdGNvbnN0IHsgcHJpdmF0ZUtleSwgcHVibGljS2V5IH0gPSBjcnlwdG8uZ2VuZXJhdGVLZXlQYWlyU3luYygncnNhJywge1xuXHRcdG1vZHVsdXNMZW5ndGg6IDQwOTYsXG5cdFx0cHVibGljRXhwb25lbnQ6IDMsXG5cdFx0cHJpdmF0ZUtleUVuY29kaW5nOiB7IHR5cGU6ICdwa2NzMScsIGZvcm1hdDogJ3BlbScgfSxcblx0XHRwdWJsaWNLZXlFbmNvZGluZzogeyB0eXBlOiAncGtjczEnLCBmb3JtYXQ6ICdwZW0nIH1cblx0fSk7XG5cblx0Y29uc3QgandrID0gY3J5cHRvLmNyZWF0ZVB1YmxpY0tleShwdWJsaWNLZXkpLmV4cG9ydCh7IGZvcm1hdDogJ2p3aycgfSk7XG5cdGNvbnN0IG5CeXRlcyA9IEJ1ZmZlci5mcm9tKGp3ay5uLCAnYmFzZTY0dXJsJyk7XG5cdGNvbnN0IG4gPSB0b0JpZyhuQnl0ZXMpO1xuXHRjb25zdCBlID0gdG9CaWcoQnVmZmVyLmZyb20oandrLmUsICdiYXNlNjR1cmwnKSk7XG5cdGlmIChlICE9PSAzbikgdGhyb3cgbmV3IEVycm9yKCdleHBlY3RlZCBlPTMnKTtcblxuXHRjb25zdCBtc2cgPSBCdWZmZXIuZnJvbSgnZm9yZ2VkLW1lc3NhZ2UtMCcsICd1dGY4Jyk7XG5cdGNvbnN0IGRpZ2VzdCA9IGNyeXB0by5jcmVhdGVIYXNoKCdzaGEyNTYnKS51cGRhdGUobXNnKS5kaWdlc3QoKTtcblx0Y29uc3QgYWxnQW5kRGlnZXN0ID0gQnVmZmVyLmNvbmNhdChbRElHRVNUSU5GT19TSEEyNTZfUFJFRklYLCBkaWdlc3RdKTtcblxuXHQvLyBNaW5pbWFsIHByZWZpeCB0aGF0IGZvcmdlIGN1cnJlbnRseSBhY2NlcHRzOiAwMCAwMSAwMCArIERpZ2VzdEluZm8gKyBleHRyYSBPQ1RFVCBTVFJJTkcuXG5cdGNvbnN0IGsgPSBuQnl0ZXMubGVuZ3RoO1xuXHQvLyBmZkNvdW50IGNhbiBiZSBzZXQgdG8gYW55IHZhbHVlIGF0IG9yIGJlbG93IDExMSBhbmQgcHJvZHVjZSBhIHZhbGlkIHNpZ25hdHVyZS5cblx0Ly8gZmZDb3VudCBzaG91bGQgYmUgcmVqZWN0ZWQgZm9yIHZhbHVlcyBiZWxvdyA4LCBzaW5jZSB0aGF0IHdvdWxkIGNvbnN0aXR1dGUgYSBtYWxmb3JtZWQgUEtDUzEgcGFja2FnZS5cblx0Ly8gSG93ZXZlciwgY3VycmVudCB2ZXJzaW9ucyBvZiBub2RlIGZvcmdlIGRvIG5vdCBjaGVjayBmb3IgdGhpcy5cblx0Ly8gUmVqZWN0aW9uIG9mIHBhY2thZ2VzIHdpdGggbGVzcyB0aGFuIDggYnl0ZXMgb2YgcGFkZGluZyBpcyBiYWQgYnV0IGRvZXMgbm90IGNvbnN0aXR1dGUgYSB2dWxuZXJhYmlsaXR5IGJ5IGl0c2VsZi5cblx0Y29uc3QgZmZDb3VudCA9IDA7IFxuXHQvLyBgZ2FyYmFnZUxlbmAgYWZmZWN0cyBERVIgbGVuZ3RoIGZpZWxkIHNpemVzLCB3aGljaCBpbiB0dXJuIGFmZmVjdCBob3dcblx0Ly8gbWFueSBieXRlcyByZW1haW4gZm9yIGdhcmJhZ2UuIEl0ZXJhdGUgdG8gYSBmaXhlZCBwb2ludCBzbyB0b3RhbCBFTSBzaXplIGlzIGV4YWN0bHkgYGtgLlxuXHQvLyBBIHNtYWxsIGNhcCAoOCkgaXMgZW5vdWdoIGhlcmU6IERFUiBsZW5ndGgtc2l6ZSB0cmFuc2l0aW9ucyBhcmUgZGlzY3JldGVcblx0Ly8gYW5kIGZldyAoPDEyOCwgPD0yNTUsIDw9NjU1MzUsIC4uLiksIHNvIHRoaXMgc3RhYmlsaXplcyBxdWlja2x5LlxuXHRsZXQgZ2FyYmFnZUxlbiA9IDA7XG5cdGZvciAobGV0IGkgPSAwOyBpIDwgODsgaSArPSAxKSB7XG5cdFx0Y29uc3QgZ0xlbkVuYyA9IGRlckxlbihnYXJiYWdlTGVuKS5sZW5ndGg7XG5cdFx0Y29uc3Qgc2VxTGVuID0gYWxnQW5kRGlnZXN0Lmxlbmd0aCArIDEgKyBnTGVuRW5jICsgZ2FyYmFnZUxlbjtcblx0XHRjb25zdCBzZXFMZW5FbmMgPSBkZXJMZW4oc2VxTGVuKS5sZW5ndGg7XG5cdFx0Y29uc3QgZml4ZWQgPSAyICsgZmZDb3VudCArIDEgKyAxICsgc2VxTGVuRW5jICsgYWxnQW5kRGlnZXN0Lmxlbmd0aCArIDEgKyBnTGVuRW5jO1xuXHRcdGNvbnN0IG5leHQgPSBrIC0gZml4ZWQ7XG5cdFx0aWYgKG5leHQgPT09IGdhcmJhZ2VMZW4pIGJyZWFrO1xuXHRcdGdhcmJhZ2VMZW4gPSBuZXh0O1xuXHR9XG5cdGNvbnN0IHNlcUxlbiA9IGFsZ0FuZERpZ2VzdC5sZW5ndGggKyAxICsgZGVyTGVuKGdhcmJhZ2VMZW4pLmxlbmd0aCArIGdhcmJhZ2VMZW47XG5cdGNvbnN0IHByZWZpeCA9IEJ1ZmZlci5jb25jYXQoW1xuXHRcdEJ1ZmZlci5mcm9tKFsweDAwLCAweDAxXSksXG5cdFx0QnVmZmVyLmFsbG9jKGZmQ291bnQsIDB4ZmYpLFxuXHRcdEJ1ZmZlci5mcm9tKFsweDAwXSksXG5cdFx0QnVmZmVyLmZyb20oWzB4MzBdKSwgZGVyTGVuKHNlcUxlbiksXG5cdFx0YWxnQW5kRGlnZXN0LFxuXHRcdEJ1ZmZlci5mcm9tKFsweDA0XSksIGRlckxlbihnYXJiYWdlTGVuKVxuXHRdKTtcblxuXHQvLyBCdWlsZCB0aGUgbnVtZXJpYyBpbnRlcnZhbCBvZiBhbGwgRU0gdmFsdWVzIHRoYXQgc3RhcnQgd2l0aCBgcHJlZml4YDpcblx0Ly8gLSBgbG93YFx0PSBwcmVmaXggfHwgMDAuLjAwXG5cdC8vIC0gYGhpZ2hgID0gb25lIHBhc3QgKHByZWZpeCB8fCBmZi4uZmYpXG5cdC8vIFRoZW4gZmluZCBgc2Agc3VjaCB0aGF0IHNeMyBpcyBpbnNpZGUgW2xvdywgaGlnaCksIHNvIEVNIGhhcyBvdXIgcHJlZml4LlxuXHRjb25zdCBzdWZmaXhMZW4gPSBrIC0gcHJlZml4Lmxlbmd0aDtcblx0Y29uc3QgbG93ID0gdG9CaWcoQnVmZmVyLmNvbmNhdChbcHJlZml4LCBCdWZmZXIuYWxsb2Moc3VmZml4TGVuKV0pKTtcblx0Y29uc3QgaGlnaCA9IGxvdyArICgxbiA8PCBCaWdJbnQoOCAqIHN1ZmZpeExlbikpO1xuXHRjb25zdCBzID0gY2JydENlaWwobG93KTtcblx0aWYgKHMgPiBjYnJ0Rmxvb3IoaGlnaCAtIDFuKSB8fCBzID49IG4pIHRocm93IG5ldyBFcnJvcignbm8gY2FuZGlkYXRlIGluIGludGVydmFsJyk7XG5cblx0Y29uc3Qgc2lnID0gdG9CdWYocywgayk7XG5cblx0Y29uc3QgY29udHJvbE1zZyA9IEJ1ZmZlci5mcm9tKCdjb250cm9sLW1lc3NhZ2UnLCAndXRmOCcpO1xuXHRjb25zdCBjb250cm9sU2lnID0gY3J5cHRvLnNpZ24oJ3NoYTI1NicsIGNvbnRyb2xNc2csIHtcblx0XHRrZXk6IHByaXZhdGVLZXksXG5cdFx0cGFkZGluZzogY3J5cHRvLmNvbnN0YW50cy5SU0FfUEtDUzFfUEFERElOR1xuXHR9KTtcblxuXHQvLyBmb3JnZSB2ZXJpZmljYXRpb24gY2FsbHMgKGxpYnJhcnkgdW5kZXIgdGVzdClcblx0Y29uc3QgY29udHJvbEZvcmdlID0gZm9yZ2VTdHJpY3RWZXJpZnkocHVibGljS2V5LCBjb250cm9sTXNnLCBjb250cm9sU2lnKTtcblx0Y29uc3QgZm9yZ2VkRm9yZ2UgPSBmb3JnZVN0cmljdFZlcmlmeShwdWJsaWNLZXksIG1zZywgc2lnKTtcblxuXHQvLyBOb2RlLmpzIHZlcmlmaWNhdGlvbiBjYWxscyAoT3BlblNTTC1iYWNrZWQgcmVmZXJlbmNlIGJlaGF2aW9yKVxuXHRjb25zdCBjb250cm9sTm9kZSA9IGNyeXB0by52ZXJpZnkoJ3NoYTI1NicsIGNvbnRyb2xNc2csIHtcblx0XHRrZXk6IHB1YmxpY0tleSxcblx0XHRwYWRkaW5nOiBjcnlwdG8uY29uc3RhbnRzLlJTQV9QS0NTMV9QQURESU5HXG5cdH0sIGNvbnRyb2xTaWcpO1xuXHRjb25zdCBmb3JnZWROb2RlID0gY3J5cHRvLnZlcmlmeSgnc2hhMjU2JywgbXNnLCB7XG5cdFx0a2V5OiBwdWJsaWNLZXksXG5cdFx0cGFkZGluZzogY3J5cHRvLmNvbnN0YW50cy5SU0FfUEtDUzFfUEFERElOR1xuXHR9LCBzaWcpO1xuXG5cdGNvbnNvbGUubG9nKCdjb250cm9sLWZvcmdlLXN0cmljdDonLCBjb250cm9sRm9yZ2Uub2ssIGNvbnRyb2xGb3JnZS5lcnIgfHwgJycpO1xuXHRjb25zb2xlLmxvZygnY29udHJvbC1ub2RlOicsIGNvbnRyb2xOb2RlKTtcblx0Y29uc29sZS5sb2coJ2ZvcmdlcnkgKGZvcmdlIGxpYnJhcnksIHN0cmljdCk6JywgZm9yZ2VkRm9yZ2Uub2ssIGZvcmdlZEZvcmdlLmVyciB8fCAnJyk7XG5cdGNvbnNvbGUubG9nKCdmb3JnZXJ5IChub2RlL09wZW5TU0wpOicsIGZvcmdlZE5vZGUpO1xufVxuXG5tYWluKCk7XG5gYGBcbjwvZGV0YWlscz5cblxuIyMgU3VnZ2VzdGVkIFBhdGNoXG4tIEVuZm9yY2UgUEtDUyMxIHYxLjUgQlQ9MHgwMSBtaW5pbXVtIHBhZGRpbmcgbGVuZ3RoIChgUFMgPj0gOGApIGluIGBfZGVjb2RlUGtjczFfdjFfNWAgYmVmb3JlIGFjY2VwdGluZyB0aGUgYmxvY2suXG4tIFVwZGF0ZSB0aGUgUlNBU1NBLVBLQ1MxLXYxXzUgdmVyaWZpZXIgdG8gcmVxdWlyZSBjYW5vbmljYWwgRGlnZXN0SW5mbyBzdHJ1Y3R1cmUgb25seSAobm8gZXh0cmEgYXR0YWNrZXItY29udHJvbGxlZCBBU04uMSBjb250ZW50IGJleW9uZCBleHBlY3RlZCBmaWVsZHMpLlxuXG5IZXJlIGlzIGEgRm9yZ2UtdGVzdGVkIHBhdGNoIHRvIHJlc29sdmUgdGhlIGlzc3VlLCB0aG91Z2ggaXQgc2hvdWxkIGJlIHZlcmlmaWVkIGZvciBjb25zdW1lciBwcm9qZWN0czpcblxuYGBgZGlmZlxuaW5kZXggYjIwN2E2My4uZWM4YTljMSAxMDA2NDRcbi0tLSBhL2xpYi9yc2EuanNcbisrKyBiL2xpYi9yc2EuanNcbkBAIC0xMTcxLDYgKzExNzEsMTQgQEAgcGtpLnNldFJzYVB1YmxpY0tleSA9IHBraS5yc2Euc2V0UHVibGljS2V5ID0gZnVuY3Rpb24obiwgZSkge1xuXHRcdFx0XHRcdFx0IGVycm9yLmVycm9ycyA9IGVycm9ycztcblx0XHRcdFx0XHRcdCB0aHJvdyBlcnJvcjtcblx0XHRcdFx0XHQgfVxuK1xuK1x0XHRcdFx0XHRpZihvYmoudmFsdWUubGVuZ3RoICE9IDIpIHtcbitcdFx0XHRcdFx0XHR2YXIgZXJyb3IgPSBuZXcgRXJyb3IoXG4rXHRcdFx0XHRcdFx0XHQnRGlnZXN0SW5mbyBBU04uMSBvYmplY3QgbXVzdCBjb250YWluIGV4YWN0bHkgMiBmaWVsZHMgZm9yICcgK1xuK1x0XHRcdFx0XHRcdFx0J2EgdmFsaWQgUlNBU1NBLVBLQ1MxLXYxXzUgcGFja2FnZS4nKTtcbitcdFx0XHRcdFx0XHRlcnJvci5lcnJvcnMgPSBlcnJvcnM7XG4rXHRcdFx0XHRcdFx0dGhyb3cgZXJyb3I7XG4rXHRcdFx0XHRcdH1cblx0XHRcdFx0XHQgLy8gY2hlY2sgaGFzaCBhbGdvcml0aG0gaWRlbnRpZmllclxuXHRcdFx0XHRcdCAvLyBzZWUgUEtDUzEtdjEtNURpZ2VzdEFsZ29yaXRobXMgaW4gUkZDIDgwMTdcblx0XHRcdFx0XHQgLy8gRklYTUU6IGFkZCBzdXBwb3J0IHRvIHZhbGlkYXRvciBmb3Igc3RyaWN0IHZhbHVlIGNob2ljZXNcbkBAIC0xNjczLDYgKzE2ODEsMTAgQEAgZnVuY3Rpb24gX2RlY29kZVBrY3MxX3YxXzUoZW0sIGtleSwgcHViLCBtbCkge1xuXHRcdFx0IH1cblx0XHRcdCArK3BhZE51bTtcblx0XHQgfVxuK1xuK1x0XHRpZiAocGFkTnVtIDwgOCkge1xuK1x0XHRcdHRocm93IG5ldyBFcnJvcignRW5jcnlwdGlvbiBibG9jayBpcyBpbnZhbGlkLicpO1xuK1x0XHR9XG5cdCB9IGVsc2UgaWYoYnQgPT09IDB4MDIpIHtcblx0XHQgLy8gbG9vayBmb3IgMHgwMCBieXRlXG5cdFx0IHBhZE51bSA9IDA7XG5gYGBcbiMjIFJlc291cmNlc1xuLSBSRkMgMjMxMyAoUEtDUyB2MS41KTogaHR0cHM6Ly9kYXRhdHJhY2tlci5pZXRmLm9yZy9kb2MvaHRtbC9yZmMyMzEzI3NlY3Rpb24tOFxuXHQtID4gVGhpcyBsaW1pdGF0aW9uIGd1YXJhbnRlZXMgdGhhdCB0aGUgbGVuZ3RoIG9mIHRoZSBwYWRkaW5nIHN0cmluZyBQUyBpcyBhdCBsZWFzdCBlaWdodCBvY3RldHMsIHdoaWNoIGlzIGEgc2VjdXJpdHkgY29uZGl0aW9uLiBcbi0gUkZDIDgwMTc6IGh0dHBzOi8vd3d3LnJmYy1lZGl0b3Iub3JnL3JmYy9yZmM4MDE3Lmh0bWxcbi0gYGxpYi9yc2EuanNgIGBrZXkudmVyaWZ5KC4uLilgIGF0IGxpbmVzIH4xMTM5LTEyMjMuXG4tIGBsaWIvcnNhLmpzYCBgX2RlY29kZVBrY3MxX3YxXzUoLi4uKWAgYXQgbGluZXMgfjE2MzItMTY5NS5cblxuIyMgQ3JlZGl0XG5cblRoaXMgdnVsbmVyYWJpbGl0eSB3YXMgZGlzY292ZXJlZCBhcyBwYXJ0IG9mIGEgVS5DLiBCZXJrZWxleSBzZWN1cml0eSByZXNlYXJjaCBwcm9qZWN0IGJ5OiBBdXN0aW4gQ2h1LCBTb2hlZSBLaW0sIGFuZCBDb3JiYW4gVmlsbGEuXG5cbiMjIEFsaWFzZXNcbkNWRS0yMDI2LTMzODk0LCBDVkUtMjAyNi04NTM5MywgR0hTQS04Nnc5LWNwcXAtODVydg=="
+              }
+            ]
+          }
+        ],
+        "affected": [
+          {
+            "vendor": "npm",
+            "packageName": "node-forge",
+            "cpes": [
+              "cpe:2.3:a:npm:node-forge:*:*:*:*:*:*:*:*"
+            ],
+            "defaultStatus": "unknown",
+            "versions": [
+              {
+                "version": "0.0.0",
+                "status": "affected",
+                "versionType": "npm",
+                "lessThan": "1.4.0"
+              },
+              {
+                "version": "1.4.0",
+                "status": "unaffected",
+                "versionType": "npm"
+              }
+            ],
+            "packageURL": "pkg:npm/node-forge"
+          }
+        ],
+        "problemTypes": [
+          {
+            "descriptions": [
+              {
+                "lang": "en",
+                "description": "CWE-20",
+                "cweId": "CWE-20",
+                "type": "CWE"
+              }
+            ]
+          },
+          {
+            "descriptions": [
+              {
+                "lang": "en",
+                "description": "CWE-347",
+                "cweId": "CWE-347",
+                "type": "CWE"
+              }
+            ]
+          }
+        ],
+        "references": [
+          {
+            "url": "https://github.com/digitalbazaar/forge/security/advisories/GHSA-cfm4-qjh2-4765"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge/security/advisories/GHSA-ppp5-5v6c-4jwp"
+          },
+          {
+            "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-33894"
+          },
+          {
+            "url": "https://datatracker.ietf.org/doc/html/rfc2313#section-8"
+          },
+          {
+            "url": "https://github.com/digitalbazaar/forge"
+          },
+          {
+            "url": "https://mailarchive.ietf.org/arch/msg/openpgp/5rnE9ZRN1AokBVj3VqblGlP63QE"
+          },
+          {
+            "url": "https://www.rfc-editor.org/rfc/rfc8017.html"
+          },
+          {
+            "url": "https://github.com/advisories/GHSA-ppp5-5v6c-4jwp"
+          }
+        ],
+        "metrics": [
+          {
+            "cvssV3_1": {
+              "version": "3.1",
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+              "attackVector": "NETWORK",
+              "attackComplexity": "LOW",
+              "privilegesRequired": "NONE",
+              "userInteraction": "NONE",
+              "scope": "UNCHANGED",
+              "confidentialityImpact": "HIGH",
+              "integrityImpact": "HIGH",
+              "availabilityImpact": "HIGH",
+              "baseScore": 7.5,
+              "baseSeverity": "HIGH",
+              "confidentialityRequirement": "NOT_DEFINED",
+              "integrityRequirement": "NOT_DEFINED",
+              "availabilityRequirement": "NOT_DEFINED",
+              "modifiedAttackComplexity": "NOT_DEFINED",
+              "modifiedPrivilegesRequired": "NOT_DEFINED"
+            }
+          }
+        ]
+      }
+    }
+  }
+]

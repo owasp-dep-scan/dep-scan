@@ -314,3 +314,127 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
     assert table.row_count == 2
     # Caption counts (id, affects) pairs plus the unique vulnerability count
     assert table.caption == "Vulnerabilities count: 2 (1 unique)"
+
+
+# ---------------------------------------------------------------------------
+# Issue #540: VDR references must only name equivalent vulnerabilities, in a
+# stable order, even when osv.dev merged the alias group of the matched
+# advisory with a sibling advisory of a *different* vulnerability.
+# ---------------------------------------------------------------------------
+
+
+def _vdb_keeps_own_advisory():
+    """True when the installed vdb stores OSV GHSA records under their own CVE
+    and links the GHSA's advisory page (vulnerability-db #282 plus the
+    dep-scan #540 follow-up)."""
+    try:
+        from vdb.lib.osv import OSVSource, own_cve_from_aliases  # noqa: F401
+    except ImportError:
+        return False
+    with open(os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"), encoding="utf-8") as fp:
+        record = next(d for d in json.load(fp) if d["id"] == "GHSA-86w9-cpqp-85rv")
+    from vdb.lib import config as vdb_config
+
+    previous_start_year = vdb_config.NVD_START_YEAR
+    vdb_config.NVD_START_YEAR = 2002
+    try:
+        vulns = OSVSource.to_vuln(record)
+    finally:
+        vdb_config.NVD_START_YEAR = previous_start_year
+    return bool(vulns) and (
+        "https://github.com/advisories/GHSA-86w9-cpqp-85rv" in vulns[0].related_urls
+    )
+
+
+VULNCHECK_SLUG = (
+    "node-forge-through-1.4.0-rsa-pkcs-1-1.5-signature-forgery-via-nested-digestalgorithm-padding"
+)
+# Expected references per matched CVE. GHSA-cfm4-qjh2-4765 is linked by the
+# CVE-2026-33894 advisory but is not part of osv.dev's alias group, so
+# nothing in the record marks it as another vulnerability's advisory.
+NODE_FORGE_EXPECTED_REFS = {
+    "CVE-2026-85393": ["CVE-2026-85393", VULNCHECK_SLUG, "GHSA-86w9-cpqp-85rv"],
+    "CVE-2026-33894": [
+        "GHSA-cfm4-qjh2-4765",
+        "GHSA-ppp5-5v6c-4jwp",
+        "CVE-2026-33894",
+        "rfc2313",
+        "ietf-msg-5rnE9ZRN1AokBVj3VqblGlP63QE",
+        "rfc8017",
+    ],
+}
+
+
+@pytest.mark.skipif(
+    not _vdb_keeps_own_advisory(),
+    reason="requires vdb with the OSV own-advisory fix (6.7.4+)",
+)
+@pytest.mark.parametrize(
+    "version, expected_ids",
+    [
+        # 1.4.0 fixes CVE-2026-33894 and is affected by CVE-2026-85393 only.
+        ("1.4.0", ["CVE-2026-85393"]),
+        # 1.3.1 matches both, including the record stored with a description
+        # long enough to move into supportingMedia.
+        ("1.3.1", ["CVE-2026-85393", "CVE-2026-33894"]),
+    ],
+)
+def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expected_ids):
+    """End to end against an in-memory vdb 6 database.
+
+    osv.dev merges the alias groups of GHSA-86w9-cpqp-85rv (CVE-2026-85393)
+    and its incomplete-fix sibling GHSA-ppp5-5v6c-4jwp (CVE-2026-33894), and
+    GHSA-86w9's references link GHSA-ppp5. Neither finding may list the
+    other's ids as equivalents; each keeps its own GHSA."""
+    from vdb.lib import config as vdb_config
+    from vdb.lib import db6 as vdb_db6
+    from vdb.lib.osv import OSVSource
+
+    with open(
+        os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"),
+        encoding="utf-8",
+    ) as fp:
+        records = {d["id"]: d for d in json.load(fp)}
+
+    previous_start_year = vdb_config.NVD_START_YEAR
+    vdb_config.NVD_START_YEAR = 2002
+    vdb_db6.reset_connections()
+    vdb_db6.get(":memory:", ":memory:")
+    vdb_db6.clear_all()
+    src = OSVSource()
+    src.db_conn, src.index_conn = vdb_db6.get()
+    for rid in ("GHSA-86w9-cpqp-85rv", "GHSA-ppp5-5v6c-4jwp"):
+        src.store(src.convert(records[rid]))
+    try:
+        options = VdrAnalysisKV(
+            project_type="js",
+            init_results=[],
+            pkg_aliases={},
+            purl_aliases={},
+            suggest_mode=False,
+            scoped_pkgs={"required": [], "optional": []},
+            no_vuln_table=True,
+            pkg_list=[
+                {
+                    "name": "node-forge",
+                    "vendor": "npm",
+                    "version": version,
+                    "purl": f"pkg:npm/node-forge@{version}",
+                }
+            ],
+        )
+        result = VDRAnalyzer(options).process()
+
+        assert result.success is True
+        vdrs = {v["id"]: v for v in result.pkg_vulnerabilities}
+        assert sorted(vdrs) == sorted(expected_ids)
+        for vid, vdr in vdrs.items():
+            assert [r["id"] for r in vdr["references"]] == NODE_FORGE_EXPECTED_REFS[vid]
+        if "CVE-2026-85393" in vdrs:
+            # The sibling's advisory URL is still reported as an advisory.
+            assert any(
+                "GHSA-ppp5-5v6c-4jwp" in a["url"] for a in vdrs["CVE-2026-85393"]["advisories"]
+            )
+    finally:
+        vdb_db6.reset_connections()
+        vdb_config.NVD_START_YEAR = previous_start_year
