@@ -3,6 +3,7 @@ from collections import OrderedDict, defaultdict
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import max_distro_vulnerabilities, risk_help_text
+from analysis_lib.helpers import is_malware_vuln, max_version
 from custom_json_diff.lib.utils import file_write
 from rich import box
 from rich.markdown import Markdown
@@ -286,8 +287,6 @@ def generate_console_output(
         # best (highest) fix across every CVE and affected component in the
         # group, since remediating a package is a single upgrade to the top
         # fix. See discussion #527 follow-up.
-        from analysis_lib.utils import max_version
-
         group_fixes = [table_rows[ridx][4] for ridx in row_indices if table_rows[ridx][4]]
         group_fix = max_version(group_fixes) if group_fixes else ""
         for i, ridx in enumerate(row_indices):
@@ -313,12 +312,9 @@ def generate_console_output(
 def check_malware_cve(cve_list):
     if not cve_list:
         return False
-    # Delegate to the single malware predicate in utils so the MAL- prefix
+    # Delegate to the single malware predicate in helpers so the MAL- prefix
     # fallback lives in one place. cve_list carries bare id strings, so each is
     # wrapped in a minimal dict to let is_malware_vuln apply its fallback path.
-    # Local import avoids a circular import (utils imports from this module).
-    from analysis_lib.utils import is_malware_vuln
-
     for c in cve_list:
         if is_malware_vuln({"id": c}):
             return True
