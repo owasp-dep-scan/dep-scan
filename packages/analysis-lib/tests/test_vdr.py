@@ -16,9 +16,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from vdb.lib import config as vdb_config
+from vdb.lib import db6 as vdb_db6
+from vdb.lib.osv import OSVSource
 
 from analysis_lib import VdrAnalysisKV, utils
 from analysis_lib import vdr as vdr_module
+from analysis_lib.output import generate_console_output as real_gco
 from analysis_lib.vdr import VDRAnalyzer
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -262,8 +266,6 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
     through generate_console_output (the #519 KeyError guard) unharmed. The
     table is rendered inside process() before remove_extra_metadata strips the
     transient fields, so capture it there via a wrapper."""
-    from analysis_lib.output import generate_console_output as real_gco
-
     captured = {}
 
     def _capture(pkg_vulnerabilities, bom_dependency_tree, include, options):
@@ -335,10 +337,6 @@ def test_prioritized_cve_shared_by_two_components_renders_console_output():
     duplicate filter, dedupe_vdrs merges them, and the merged entry must
     still render through generate_console_output (vuln table enabled) with a
     usable matched_by for the priority table."""
-    from vdb.lib import config as vdb_config
-    from vdb.lib import db6 as vdb_db6
-    from vdb.lib.osv import OSVSource
-
     bom_file = os.path.join(DATA_DIR, "bom-fastify-multiversion.json")
     with open(bom_file, encoding="utf-8") as f:
         bom = json.load(f)
@@ -413,13 +411,11 @@ def _vdb_keeps_own_advisory():
     and links the GHSA's advisory page (vulnerability-db #282 plus the
     dep-scan #540 follow-up)."""
     try:
-        from vdb.lib.osv import OSVSource, own_cve_from_aliases  # noqa: F401
+        from vdb.lib.osv import own_cve_from_aliases  # noqa: F401
     except ImportError:
         return False
     with open(os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"), encoding="utf-8") as fp:
         record = next(d for d in json.load(fp) if d["id"] == "GHSA-86w9-cpqp-85rv")
-    from vdb.lib import config as vdb_config
-
     previous_start_year = vdb_config.NVD_START_YEAR
     vdb_config.NVD_START_YEAR = 2002
     try:
@@ -471,10 +467,6 @@ def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expecte
     and its incomplete-fix sibling GHSA-ppp5-5v6c-4jwp (CVE-2026-33894), and
     GHSA-86w9's references link GHSA-ppp5. Neither finding may list the
     other's ids as equivalents; each keeps its own GHSA."""
-    from vdb.lib import config as vdb_config
-    from vdb.lib import db6 as vdb_db6
-    from vdb.lib.osv import OSVSource
-
     with open(
         os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"),
         encoding="utf-8",

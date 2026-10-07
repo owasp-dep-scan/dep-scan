@@ -15,7 +15,7 @@ import os
 from rich.console import Console
 
 from analysis_lib import VdrAnalysisKV
-from analysis_lib.output import generate_console_output
+from analysis_lib.output import generate_console_output, pkg_sub_tree
 from analysis_lib.utils import retrieve_bom_dependency_tree
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -257,8 +257,6 @@ def test_reporter_bom_fixture_shows_best_fix_per_group_on_top():
     assert sum(len(v["affects"]) for v in vdrs) == 19
     # Single-ref entries rely on the entry-level tree, which JSON cannot
     # carry; hydrate it exactly like analyze_cve_vuln does.
-    from analysis_lib.output import pkg_sub_tree
-
     for vdr in vdrs:
         if len(vdr.get("affects") or []) <= 1 and vdr.get("matched_by"):
             ref = vdr["affects"][0]["ref"]

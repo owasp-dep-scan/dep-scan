@@ -1,3 +1,8 @@
+import inspect
+
+import vdb.lib.db6 as vdb6
+import vdb.lib.search as vsearch
+
 from analysis_lib import search
 
 
@@ -127,9 +132,6 @@ def test_canonicalize_search_purl_noop_for_already_canonical():
 def test_find_vulns_batched_two_pass_hydration(monkeypatch):
     """Pass 1 (with_data=False) finds matches; pass 2 hydrates via
     get_cve_data_batched using the index hits from pass 1 (no re-query)."""
-    import vdb.lib.search as vsearch
-    import vdb.lib.db6 as vdb6
-
     hydrate_calls = []
 
     def fake_batched(locators, batch_size=50, with_data=False, **kwargs):
@@ -248,9 +250,6 @@ def test_build_search_filters_reads_attributes_from_object(monkeypatch):
 def test_filters_reach_search_packages_batched_not_hydration(monkeypatch):
     """filters must reach pass-1 search_packages_batched (and the custom-data
     search_by_purl_like) and must NEVER be passed to get_cve_data_batched."""
-    import vdb.lib.search as vsearch
-    import vdb.lib.db6 as vdb6
-
     batched_kwargs = {}
     hydrate_calls = []
 
@@ -282,8 +281,6 @@ def test_filters_reach_search_packages_batched_not_hydration(monkeypatch):
     assert batched_kwargs.get("filters") == filters
     # hydration was invoked without a filters argument (positional signature)
     assert hydrate_calls
-    import inspect
-
     sig = inspect.signature(fake_hydrate)
     assert "filters" not in sig.parameters
 
@@ -291,9 +288,6 @@ def test_filters_reach_search_packages_batched_not_hydration(monkeypatch):
 def test_exclude_malware_filter_drops_malware_rows(monkeypatch):
     """With exclude_malware pushed down, a term whose only hit is malware yields
     result_count 0 and is therefore not hydrated."""
-    import vdb.lib.search as vsearch
-    import vdb.lib.db6 as vdb6
-
     hydrate_calls = []
 
     def fake_batched(locators, batch_size=50, with_data=False, **kwargs):
@@ -321,9 +315,6 @@ def test_exclude_malware_filter_drops_malware_rows(monkeypatch):
 def test_no_filters_is_parity_with_none(monkeypatch):
     """An empty filters dict and None must behave identically (no kwargs reach
     get_cve_data_batched; pass 1 receives an empty/None filters value)."""
-    import vdb.lib.search as vsearch
-    import vdb.lib.db6 as vdb6
-
     seen_filters = []
 
     def fake_batched(locators, batch_size=50, with_data=False, **kwargs):
