@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 
+from analysis_lib import ReachabilityAnalysisKV
+from analysis_lib.config import SERVICE_TAGS
 from analysis_lib.golem_slices import (
     GOLEM_CATEGORY_TO_SERVICE_TAG,
     GOLEM_ENDPOINT_SERVICE_TAG,
@@ -31,6 +33,8 @@ from analysis_lib.golem_slices import (
     reconcile_purls,
     write_slices_file,
 )
+from analysis_lib.reachability import FrameworkReachability
+from analysis_lib.reachability import _flow_service_purls
 
 
 # ---------------------------------------------------------------------------
@@ -730,9 +734,6 @@ def test_slice_feeds_into_framework_reachability(tmp_path, bom_index):
     """The emitted slice + Go BOM, when read by FrameworkReachability, must
     mark pgx and gin as reached. This proves the integration works without
     touching the reachability engine or the golem binary."""
-    from analysis_lib import ReachabilityAnalysisKV
-    from analysis_lib.reachability import FrameworkReachability
-
     flows = convert_golem_report(_golem_report_fixture(), bom_index)
     slices_path = tmp_path / "go-reachables.slices.json"
     slices_path.write_text(json.dumps(flows), encoding="utf-8")
@@ -766,8 +767,6 @@ def test_dataflow_slice_attributes_service_to_dependency_purl(bom_index):
     not just the workspace app. This is the positional-association guarantee
     that makes ``reached_services`` attribute the service to the right module.
     """
-    from analysis_lib.reachability import _flow_service_purls
-
     flows = convert_golem_report(_golem_report_fixture(), bom_index)
     slice_flows = [
         f
@@ -785,15 +784,11 @@ def test_dataflow_slice_attributes_service_to_dependency_purl(bom_index):
 
 def test_endpoint_service_tag_in_service_tags():
     """The ``api`` endpoint service tag must be a valid SERVICE_TAG."""
-    from analysis_lib.config import SERVICE_TAGS
-
     assert GOLEM_ENDPOINT_SERVICE_TAG in SERVICE_TAGS
 
 
 def test_category_to_service_tag_mapping_is_conservative():
     """The category mapping only includes categories that clearly map to
     existing SERVICE_TAGS."""
-    from analysis_lib.config import SERVICE_TAGS
-
     for cat, tag in GOLEM_CATEGORY_TO_SERVICE_TAG.items():
         assert tag in SERVICE_TAGS, f"category {cat} maps to unknown tag {tag}"

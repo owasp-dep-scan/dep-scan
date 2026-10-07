@@ -16,9 +16,13 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from vdb.lib import config as vdb_config
+from vdb.lib import db6 as vdb_db6
+from vdb.lib.osv import OSVSource
 
 from analysis_lib import VdrAnalysisKV, utils
 from analysis_lib import vdr as vdr_module
+from analysis_lib.output import generate_console_output as real_gco
 from analysis_lib.vdr import VDRAnalyzer
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -262,8 +266,6 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
     through generate_console_output (the #519 KeyError guard) unharmed. The
     table is rendered inside process() before remove_extra_metadata strips the
     transient fields, so capture it there via a wrapper."""
-    from analysis_lib.output import generate_console_output as real_gco
-
     captured = {}
 
     def _capture(pkg_vulnerabilities, bom_dependency_tree, include, options):
@@ -317,6 +319,93 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
 
 
 # ---------------------------------------------------------------------------
+# Issue #543 — KeyError: 'matched_by' while generating the VDR console output.
+# A container scan (--profile research, so reachability data marks findings
+# prioritized) with two versions of the same npm package hit by one CVE hits
+# the dedupe merge inside process(). The merged entry keeps a bom-ref that
+# include_pkg_group_rows tracks, but pre-#520 combine_vdrs dropped matched_by,
+# so generate_console_output crashed before any report was written.
+# ---------------------------------------------------------------------------
+
+
+def test_prioritized_cve_shared_by_two_components_renders_console_output(monkeypatch):
+    """End to end against an in-memory vdb 6 database.
+
+    A BOM carrying fastify 5.2.0 and 4.29.0 matches CVE-2025-32442
+    (GHSA-mg2h-6x62-wpwc) once per component; dedupe_vdrs merges the two
+    occurrences, and the merged entry must still render through
+    generate_console_output (vuln table enabled) with a matched_by that
+    belongs to the same component as its bom-ref.
+
+    The advisory fixes 5.3.2 on the 5.x branch but 4.29.1 on 4.29.x. The
+    differing fix versions mirror the reported 6.3.0 conditions, where the
+    duplicate filter keyed on (id, fix version) only; since #527 the key also
+    carries the bom-ref, so distinct components survive it regardless."""
+    bom_file = os.path.join(DATA_DIR, "bom-fastify-multiversion.json")
+    with open(bom_file, encoding="utf-8") as f:
+        bom = json.load(f)
+    purls = [c["purl"] for c in bom["components"]]
+
+    with open(os.path.join(DATA_DIR, "osv-fastify-multibranch-fix.json"), encoding="utf-8") as fp:
+        records = {d["id"]: d for d in json.load(fp)}
+
+    # monkeypatch restores the start year even if the db setup below raises.
+    monkeypatch.setattr(vdb_config, "NVD_START_YEAR", 2002)
+    try:
+        vdb_db6.reset_connections()
+        vdb_db6.get(":memory:", ":memory:")
+        vdb_db6.clear_all()
+        src = OSVSource()
+        src.db_conn, src.index_conn = vdb_db6.get()
+        src.store(src.convert(records["GHSA-mg2h-6x62-wpwc"]))
+        options = VdrAnalysisKV(
+            project_type="js",
+            init_results=[],
+            pkg_aliases={},
+            purl_aliases={},
+            suggest_mode=False,
+            scoped_pkgs={"required": list(purls)},
+            no_vuln_table=False,
+            bom_file=bom_file,
+            pkg_list=[
+                {
+                    "name": "fastify",
+                    "vendor": "npm",
+                    "version": c["version"],
+                    "purl": c["purl"],
+                }
+                for c in bom["components"]
+            ],
+            # Reachability data as populated by --profile research: both
+            # components endpoint-reachable marks the CVE for the priority
+            # table (include_pkg_group_rows).
+            reached_purls={p: 1 for p in purls},
+            endpoint_reached_purls={p: 1 for p in purls},
+        )
+        # Pre-#520 this raised KeyError: 'matched_by' from
+        # generate_console_output before any VDR was written.
+        result = VDRAnalyzer(options).process()
+
+        assert result.success is True
+        vdrs = result.pkg_vulnerabilities
+        assert len(vdrs) == 1
+        assert vdrs[0]["id"] == "CVE-2025-32442"
+        assert _vdr_refs(vdrs[0]) == set(purls)
+        # The merged entry fed the priority table without crashing, and each
+        # row's matched_by names the same component as the bom-ref it is
+        # grouped under (bom-ref is "<id>/<matched purl>"), so combine_vdrs
+        # must take matched_by from the entry whose bom-ref it kept.
+        group_rows = result.prioritized_pkg_vuln_trees
+        assert group_rows
+        for bom_ref, rows in group_rows.items():
+            for row in rows:
+                assert row["matched_by"] in purls
+                assert bom_ref == f"{row['id']}/{row['matched_by']}"
+    finally:
+        vdb_db6.reset_connections()
+
+
+# ---------------------------------------------------------------------------
 # Issue #540: VDR references must only name equivalent vulnerabilities, in a
 # stable order, even when osv.dev merged the alias group of the matched
 # advisory with a sibling advisory of a *different* vulnerability.
@@ -328,13 +417,11 @@ def _vdb_keeps_own_advisory():
     and links the GHSA's advisory page (vulnerability-db #282 plus the
     dep-scan #540 follow-up)."""
     try:
-        from vdb.lib.osv import OSVSource, own_cve_from_aliases  # noqa: F401
+        from vdb.lib.osv import own_cve_from_aliases  # noqa: F401
     except ImportError:
         return False
     with open(os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"), encoding="utf-8") as fp:
         record = next(d for d in json.load(fp) if d["id"] == "GHSA-86w9-cpqp-85rv")
-    from vdb.lib import config as vdb_config
-
     previous_start_year = vdb_config.NVD_START_YEAR
     vdb_config.NVD_START_YEAR = 2002
     try:
@@ -386,10 +473,6 @@ def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expecte
     and its incomplete-fix sibling GHSA-ppp5-5v6c-4jwp (CVE-2026-33894), and
     GHSA-86w9's references link GHSA-ppp5. Neither finding may list the
     other's ids as equivalents; each keeps its own GHSA."""
-    from vdb.lib import config as vdb_config
-    from vdb.lib import db6 as vdb_db6
-    from vdb.lib.osv import OSVSource
-
     with open(
         os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"),
         encoding="utf-8",

@@ -1,0 +1,28 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "juice-shop-style-app",
+      "version": "15.0.0"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "fastify",
+      "version": "5.2.0",
+      "purl": "pkg:npm/fastify@5.2.0",
+      "bom-ref": "pkg:npm/fastify@5.2.0"
+    },
+    {
+      "type": "library",
+      "name": "fastify",
+      "version": "4.29.0",
+      "purl": "pkg:npm/fastify@4.29.0",
+      "bom-ref": "pkg:npm/fastify@4.29.0"
+    }
+  ]
+}

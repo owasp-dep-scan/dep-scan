@@ -8,6 +8,7 @@ import pytest
 
 from analysis_lib import utils
 from analysis_lib.config import REF_MAP
+from analysis_lib.output import check_malware_cve, generate_console_output
 from vdb.lib.cve_model import CVE
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -73,8 +74,6 @@ def test_is_malware_vuln_falls_back_to_mal_prefix_on_default_db():
 
 def test_check_malware_cve_delegates_to_helper():
     """check_malware_cve must detect MAL- ids via the is_malware_vuln helper."""
-    from analysis_lib.output import check_malware_cve
-
     assert check_malware_cve(["CVE-2024-1", "MAL-2024-1"]) is True
     assert check_malware_cve(["CVE-2024-1", "GHSA-aaaa"]) is False
     assert check_malware_cve([]) is False
@@ -661,8 +660,6 @@ def test_generate_console_output_survives_missing_matched_by():
     """generate_console_output must not crash when a VDR entry lacks
     matched_by (the pre-fix regression). The defensive .get() should
     degrade gracefully with an empty string."""
-    from analysis_lib.output import generate_console_output
-
     options = SimpleNamespace(project_type="java")
     # Simulate a merged VDR that lost matched_by (pre-fix combine_vdrs output)
     vdr_no_matched_by = {
@@ -699,8 +696,6 @@ def test_generate_console_output_with_deduped_duplicate_cves():
     """End-to-end regression: two components sharing a CVE are deduped, and
     generate_console_output should render without crashing even when one of
     them was added to include_pkg_group_rows before the merge."""
-    from analysis_lib.output import generate_console_output
-
     options = SimpleNamespace(project_type="java")
     v1 = _make_vdr(
         "CVE-2024-5005",

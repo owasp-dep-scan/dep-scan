@@ -15,8 +15,13 @@ from pathlib import Path
 
 import pytest
 
+from analysis_lib import ReachabilityAnalysisKV
+from analysis_lib.config import SERVICE_TAGS
+from analysis_lib.reachability import FrameworkReachability, SemanticReachability
+from analysis_lib.reachability import _flow_service_purls
 from analysis_lib.rusi_slices import (
     RUST_STDLIB_PSEUDO_CRATES,
+    RUSI_ENDPOINT_SERVICE_TAG,
     build_bom_purl_index,
     convert_rusi_report,
     is_rusi_report,
@@ -485,9 +490,6 @@ def test_slice_feeds_into_framework_reachability(tmp_path, bom_index):
     must mark sqlx/warp/reqwest as reached. This proves the integration works
     without touching the reachability engine.
     """
-    from analysis_lib import ReachabilityAnalysisKV
-    from analysis_lib.reachability import FrameworkReachability
-
     flows = convert_rusi_report(_rusi_report_fixture(), bom_index)
     slices_path = tmp_path / "rust-reachables.slices.json"
     slices_path.write_text(json.dumps(flows), encoding="utf-8")
@@ -521,8 +523,6 @@ def test_dataflow_slice_attributes_service_to_dependency_purl(bom_index):
     the positional-association guarantee that makes ``reached_services``
     attribute the service to the right crate.
     """
-    from analysis_lib.reachability import _flow_service_purls
-
     flows = convert_rusi_report(_rusi_report_fixture(), bom_index)
     slice_flows = [
         f for f in flows if any("file-to-sql-query" in n.get("tags", "") for n in f["flows"])
@@ -641,9 +641,6 @@ def test_converter_endpoint_node_carries_api_service_tag():
     """The endpoint framework node is tagged with the ``api`` service tag
     immediately after the framework purl so the service is positionally
     attributed to the framework crate."""
-    from analysis_lib.rusi_slices import RUSI_ENDPOINT_SERVICE_TAG
-    from analysis_lib.config import SERVICE_TAGS
-
     assert RUSI_ENDPOINT_SERVICE_TAG in SERVICE_TAGS
     idx = build_bom_purl_index(_endpoint_bom_components())
     flows = convert_rusi_report(_endpoint_report_fixture(), idx)
@@ -663,9 +660,6 @@ def test_semantic_reachability_lights_up_services_and_endpoints(tmp_path):
     ``endpoint_reached_purls`` for the framework crate. Phase 1 only proved up
     to reached_purls; this proves the phase-2 enrichment reaches the engine.
     """
-    from analysis_lib import ReachabilityAnalysisKV
-    from analysis_lib.reachability import SemanticReachability
-
     # --- sqlx dataflow fixture: reached_services ---
     sqlx_flows = convert_rusi_report(
         _rusi_report_fixture(), build_bom_purl_index(_cargo_bom_components())
