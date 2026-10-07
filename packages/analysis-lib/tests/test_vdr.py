@@ -317,6 +317,91 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
 
 
 # ---------------------------------------------------------------------------
+# Issue #543 — KeyError: 'matched_by' while generating the VDR console output.
+# A container scan (--profile research, so reachability data marks findings
+# prioritized) with two versions of the same npm package hit by one CVE hits
+# the dedupe merge inside process(). The merged entry keeps a bom-ref that
+# include_pkg_group_rows tracks, but pre-#520 combine_vdrs dropped matched_by,
+# so generate_console_output crashed before any report was written.
+# ---------------------------------------------------------------------------
+
+
+def test_prioritized_cve_shared_by_two_components_renders_console_output():
+    """End to end against an in-memory vdb 6 database.
+
+    GHSA-mg2h-6x62-wpwc fixes fastify 5.3.2 on the 5.x branch but 4.29.1 on
+    4.29.x, so a BOM carrying fastify 5.2.0 and 4.29.0 matches CVE-2025-32442
+    twice with different fix versions — both occurrences survive the
+    duplicate filter, dedupe_vdrs merges them, and the merged entry must
+    still render through generate_console_output (vuln table enabled) with a
+    usable matched_by for the priority table."""
+    from vdb.lib import config as vdb_config
+    from vdb.lib import db6 as vdb_db6
+    from vdb.lib.osv import OSVSource
+
+    bom_file = os.path.join(DATA_DIR, "bom-fastify-multiversion.json")
+    with open(bom_file, encoding="utf-8") as f:
+        bom = json.load(f)
+    purls = [c["purl"] for c in bom["components"]]
+
+    with open(os.path.join(DATA_DIR, "osv-fastify-multibranch-fix.json"), encoding="utf-8") as fp:
+        records = {d["id"]: d for d in json.load(fp)}
+
+    previous_start_year = vdb_config.NVD_START_YEAR
+    vdb_config.NVD_START_YEAR = 2002
+    vdb_db6.reset_connections()
+    vdb_db6.get(":memory:", ":memory:")
+    vdb_db6.clear_all()
+    src = OSVSource()
+    src.db_conn, src.index_conn = vdb_db6.get()
+    src.store(src.convert(records["GHSA-mg2h-6x62-wpwc"]))
+    try:
+        options = VdrAnalysisKV(
+            project_type="js",
+            init_results=[],
+            pkg_aliases={},
+            purl_aliases={},
+            suggest_mode=False,
+            scoped_pkgs={"required": list(purls)},
+            no_vuln_table=False,
+            bom_file=bom_file,
+            pkg_list=[
+                {
+                    "name": "fastify",
+                    "vendor": "npm",
+                    "version": c["version"],
+                    "purl": c["purl"],
+                }
+                for c in bom["components"]
+            ],
+            # Reachability data as populated by --profile research: both
+            # components endpoint-reachable marks the CVE for the priority
+            # table (include_pkg_group_rows).
+            reached_purls={p: 1 for p in purls},
+            endpoint_reached_purls={p: 1 for p in purls},
+        )
+        # Pre-#520 this raised KeyError: 'matched_by' from
+        # generate_console_output before any VDR was written.
+        result = VDRAnalyzer(options).process()
+
+        assert result.success is True
+        vdrs = result.pkg_vulnerabilities
+        assert len(vdrs) == 1
+        assert vdrs[0]["id"] == "CVE-2025-32442"
+        assert _vdr_refs(vdrs[0]) == set(purls)
+        # The merged entry fed the priority table without crashing, and its
+        # rows carry the matched_by that combine_vdrs must propagate.
+        group_rows = result.prioritized_pkg_vuln_trees
+        assert group_rows
+        for rows in group_rows.values():
+            for row in rows:
+                assert row["matched_by"] in purls
+    finally:
+        vdb_db6.reset_connections()
+        vdb_config.NVD_START_YEAR = previous_start_year
+
+
+# ---------------------------------------------------------------------------
 # Issue #540: VDR references must only name equivalent vulnerabilities, in a
 # stable order, even when osv.dev merged the alias group of the matched
 # advisory with a sibling advisory of a *different* vulnerability.
