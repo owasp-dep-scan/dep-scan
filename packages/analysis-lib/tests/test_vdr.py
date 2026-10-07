@@ -328,15 +328,19 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
 # ---------------------------------------------------------------------------
 
 
-def test_prioritized_cve_shared_by_two_components_renders_console_output():
+def test_prioritized_cve_shared_by_two_components_renders_console_output(monkeypatch):
     """End to end against an in-memory vdb 6 database.
 
-    GHSA-mg2h-6x62-wpwc fixes fastify 5.3.2 on the 5.x branch but 4.29.1 on
-    4.29.x, so a BOM carrying fastify 5.2.0 and 4.29.0 matches CVE-2025-32442
-    twice with different fix versions — both occurrences survive the
-    duplicate filter, dedupe_vdrs merges them, and the merged entry must
-    still render through generate_console_output (vuln table enabled) with a
-    usable matched_by for the priority table."""
+    A BOM carrying fastify 5.2.0 and 4.29.0 matches CVE-2025-32442
+    (GHSA-mg2h-6x62-wpwc) once per component; dedupe_vdrs merges the two
+    occurrences, and the merged entry must still render through
+    generate_console_output (vuln table enabled) with a matched_by that
+    belongs to the same component as its bom-ref.
+
+    The advisory fixes 5.3.2 on the 5.x branch but 4.29.1 on 4.29.x. The
+    differing fix versions mirror the reported 6.3.0 conditions, where the
+    duplicate filter keyed on (id, fix version) only; since #527 the key also
+    carries the bom-ref, so distinct components survive it regardless."""
     bom_file = os.path.join(DATA_DIR, "bom-fastify-multiversion.json")
     with open(bom_file, encoding="utf-8") as f:
         bom = json.load(f)
@@ -345,15 +349,15 @@ def test_prioritized_cve_shared_by_two_components_renders_console_output():
     with open(os.path.join(DATA_DIR, "osv-fastify-multibranch-fix.json"), encoding="utf-8") as fp:
         records = {d["id"]: d for d in json.load(fp)}
 
-    previous_start_year = vdb_config.NVD_START_YEAR
-    vdb_config.NVD_START_YEAR = 2002
-    vdb_db6.reset_connections()
-    vdb_db6.get(":memory:", ":memory:")
-    vdb_db6.clear_all()
-    src = OSVSource()
-    src.db_conn, src.index_conn = vdb_db6.get()
-    src.store(src.convert(records["GHSA-mg2h-6x62-wpwc"]))
+    # monkeypatch restores the start year even if the db setup below raises.
+    monkeypatch.setattr(vdb_config, "NVD_START_YEAR", 2002)
     try:
+        vdb_db6.reset_connections()
+        vdb_db6.get(":memory:", ":memory:")
+        vdb_db6.clear_all()
+        src = OSVSource()
+        src.db_conn, src.index_conn = vdb_db6.get()
+        src.store(src.convert(records["GHSA-mg2h-6x62-wpwc"]))
         options = VdrAnalysisKV(
             project_type="js",
             init_results=[],
@@ -387,16 +391,18 @@ def test_prioritized_cve_shared_by_two_components_renders_console_output():
         assert len(vdrs) == 1
         assert vdrs[0]["id"] == "CVE-2025-32442"
         assert _vdr_refs(vdrs[0]) == set(purls)
-        # The merged entry fed the priority table without crashing, and its
-        # rows carry the matched_by that combine_vdrs must propagate.
+        # The merged entry fed the priority table without crashing, and each
+        # row's matched_by names the same component as the bom-ref it is
+        # grouped under (bom-ref is "<id>/<matched purl>"), so combine_vdrs
+        # must take matched_by from the entry whose bom-ref it kept.
         group_rows = result.prioritized_pkg_vuln_trees
         assert group_rows
-        for rows in group_rows.values():
+        for bom_ref, rows in group_rows.items():
             for row in rows:
                 assert row["matched_by"] in purls
+                assert bom_ref == f"{row['id']}/{row['matched_by']}"
     finally:
         vdb_db6.reset_connections()
-        vdb_config.NVD_START_YEAR = previous_start_year
 
 
 # ---------------------------------------------------------------------------
