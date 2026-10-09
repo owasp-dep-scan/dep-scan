@@ -1,5 +1,6 @@
 import json
 from collections import OrderedDict, defaultdict
+from typing import Any, Dict, List
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import max_distro_vulnerabilities, risk_help_text
@@ -209,7 +210,8 @@ def generate_console_output(
     include_pkg_group_rows,
     options: VdrAnalysisKV,
 ):
-    table_rows = []
+    # Each row mixes str ids, rich Tree renderables and severity strings.
+    table_rows: List[List[Any]] = []
     purl_fixed_location = {}
     pkg_group_rows = defaultdict(list)
     for vdr in pkg_vulnerabilities:
@@ -334,7 +336,7 @@ def find_next_steps(
     setgid_executable_purls,
     purl_identities,
     oci_props,
-):
+) -> Dict[str, Any]:
     # Understand about the source manifest, detection techniques, and confidences.
     identity_evidences = purl_identities.get(matched_by) or []
     src_files = []

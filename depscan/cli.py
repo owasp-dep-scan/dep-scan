@@ -537,6 +537,18 @@ def run_depscan(args):
         LOG.setLevel(DEBUG)
     if args.server_mode:
         if SERVER_LIB:
+            # Flask compares the request content length against this value,
+            # so it must be an int (bytes); the raw env str would raise
+            # TypeError on every upload instead of returning 413.
+            max_content_length = None
+            if raw_max_length := os.getenv("DEPSCAN_SERVER_MAX_CONTENT_LENGTH", ""):
+                try:
+                    max_content_length = int(raw_max_length)
+                except ValueError:
+                    LOG.warning(
+                        "Ignoring non-numeric DEPSCAN_SERVER_MAX_CONTENT_LENGTH %r",
+                        raw_max_length,
+                    )
             server_options = ServerOptions(
                 server_host=args.server_host,
                 server_port=args.server_port,
@@ -547,7 +559,7 @@ def run_depscan(args):
                 logger=LOG,
                 debug=args.enable_debug or os.environ.get("SCAN_DEBUG_MODE") == "debug",
                 create_bom=create_bom,
-                max_content_length=os.getenv("DEPSCAN_SERVER_MAX_CONTENT_LENGTH"),
+                max_content_length=max_content_length,
                 custom_data_directory=args.custom_data,
             )
             return simple.run_server(server_options)

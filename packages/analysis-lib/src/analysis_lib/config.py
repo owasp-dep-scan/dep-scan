@@ -1482,4 +1482,19 @@ SAFE_ENDPOINT_REACHABLE_PURLS = (
     "pkg:npm/bootstrap",
 )
 
+# Rubygems version strings may carry a platform suffix (e.g. the x86_64-linux
+# build of a gem with native extensions). create_pkg_variations adds an alias
+# that strips the suffix so the platform-independent advisory still matches.
+RUBY_PLATFORM_MARKERS = [
+    "-x86_64",
+    "-x86",
+    "-x64",
+    "-aarch",
+    "-arm",
+    "-ruby",
+    "-universal",
+    "-java",
+    "-truffle",
+]
+
 MIN_POSTBUILD_CONFIDENCE = 0.5

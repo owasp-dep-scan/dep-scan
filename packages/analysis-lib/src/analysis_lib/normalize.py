@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.utils import parse_purl
@@ -30,13 +30,15 @@ COMMON_SUFFIXES = [
 ]
 
 
-def create_pkg_variations(pkg_dict):
+def create_pkg_variations(pkg_dict: Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Method to create variations of the given package by considering vendor
     and package aliases
 
     :param pkg_dict: Dict containing package vendor, name and version
-    :return: List of possible variations to the package
+    :return: List of possible variations to the package. Empty when the
+        package is not eligible for variations (e.g. a version-less generic
+        purl, issue #320); callers treat that the same as "no variations".
     """
     pkg_list = [{**pkg_dict}]
     vendor_aliases = set()
@@ -57,7 +59,7 @@ def create_pkg_variations(pkg_dict):
                 qualifiers = purl_obj.get("qualifiers", {})
                 # Issue #320. Mandate version number for generic packages to reduce FPs
                 if pkg_type in ("generic",) and not purl_obj.get("version"):
-                    return None
+                    return []
                 if pkg_type in ("npm",):
                     # vendorless package could have npm as the vendor name from sources such as osv
                     # So we need 1 more alias
@@ -70,16 +72,16 @@ def create_pkg_variations(pkg_dict):
                             }
                         )
                     return pkg_list
-                # For Rubygems, version string could include the plaform.
+                # For Rubygems, version string could include the platform.
                 # So we create an alias without the platform to improve the results
                 if pkg_type in ("gem",):
-                    for plaform_marker in config.RUBY_PLATFORM_MARKERS:
-                        if pkg_dict.get("version") and plaform_marker in pkg_dict["version"]:
+                    for platform_marker in config.RUBY_PLATFORM_MARKERS:
+                        if pkg_dict.get("version") and platform_marker in pkg_dict["version"]:
                             pkg_list.append(
                                 {
                                     "vendor": vendor,
                                     "name": pkg_dict.get("name"),
-                                    "version": pkg_dict["version"].split(plaform_marker)[0],
+                                    "version": pkg_dict["version"].split(platform_marker)[0],
                                 }
                             )
                             break
@@ -232,7 +234,9 @@ def create_pkg_variations(pkg_dict):
     return pkg_list
 
 
-def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
+def dealias_packages(
+    pkg_list: List[Dict[str, Any]], pkg_aliases: Dict[str, Any], purl_aliases: Dict[str, str]
+) -> Dict[str, str]:
     """
     Method to dealias package names by looking up vendor and name information
     in the aliases list
@@ -253,12 +257,10 @@ def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
             else:
                 version = v.split("@")[-1]
         package_issue = res.get("package_issue") or {}
-        full_pkg = package_issue.get("affected_location", {}).get("package", "")
-        if package_issue.get("affected_location", {}).get("vendor", ""):
-            full_pkg = (
-                f"{package_issue.affected_location.vendor}:"
-                f"{package_issue.affected_location.package}"
-            )
+        affected_location = package_issue.get("affected_location") or {}
+        full_pkg = affected_location.get("package", "")
+        if affected_location.get("vendor", ""):
+            full_pkg = f"{affected_location.get('vendor')}:{affected_location.get('package', '')}"
         if version:
             full_pkg = full_pkg + ":" + version
         if purl_aliases.get(full_pkg):
@@ -276,7 +278,7 @@ def dealias_packages(pkg_list, pkg_aliases, purl_aliases):
     return dealias_dict
 
 
-def dedup(project_type, pkg_list):
+def dedup(project_type: Optional[str], pkg_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Method to trim duplicates in the results based on the id. The logic
     should ideally be based on package alias but is kept simple for now.
 
@@ -301,11 +303,11 @@ def dedup(project_type, pkg_list):
                 version = version.split("@")[-1]
             full_pkg = matched_by
         else:
-            full_pkg = package_issue.get("affected_location", {}).get("package", "")
-            if package_issue.get("affected_location", {}).get("vendor", ""):
+            affected_location = package_issue.get("affected_location") or {}
+            full_pkg = affected_location.get("package", "")
+            if affected_location.get("vendor", ""):
                 full_pkg = (
-                    f"{package_issue.affected_location.vendor}:"
-                    f"{package_issue.affected_location.package}"
+                    f"{affected_location.get('vendor')}:{affected_location.get('package', '')}"
                 )
             if version:
                 full_pkg = full_pkg + ":" + version

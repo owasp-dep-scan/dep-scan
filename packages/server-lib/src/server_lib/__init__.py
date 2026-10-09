@@ -18,7 +18,10 @@ class ServerOptions:
     certfile: Optional[str] = None
     keyfile: Optional[str] = None
     debug: bool = False
-    max_content_length: int = 100 * 1024 * 1024  # 100MB
+    # Maximum request body size in bytes. None means no limit is configured
+    # (Flask leaves MAX_CONTENT_LENGTH unset); a non-int value such as the raw
+    # env string breaks Werkzeug's per-request size comparison.
+    max_content_length: Optional[int] = 100 * 1024 * 1024  # 100MB
     # Hack
     create_bom: Optional[Callable] = None
     custom_data_directory: Optional[str] = None

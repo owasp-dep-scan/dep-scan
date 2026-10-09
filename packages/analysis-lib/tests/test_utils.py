@@ -6,10 +6,10 @@ from typing import Any
 
 import pytest
 
-from analysis_lib import utils
+from analysis_lib import VdrAnalysisKV, utils
 from analysis_lib.config import REF_MAP
 from analysis_lib.output import check_malware_cve, generate_console_output
-from vdb.lib.cve_model import CVE
+from vdb.lib.cve_model import CVE, CnaPublishedContainer, Reference, References
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
@@ -208,7 +208,23 @@ def test_refs_to_vdr_skips_malformed_references_without_crashing():
 
 
 def _references(urls):
-    return SimpleNamespace(root=[SimpleNamespace(url=SimpleNamespace(root=u)) for u in urls])
+    # The real cve_model objects, matching what refs_to_vdr receives from
+    # vdb at runtime (SimpleNamespace stand-ins would not type-check).
+    return References(root=[Reference(url=u) for u in urls])
+
+
+def _console_output_options() -> VdrAnalysisKV:
+    """Minimal real options for generate_console_output, which only reads
+    project_type."""
+    return VdrAnalysisKV(
+        project_type="java",
+        init_results=[],
+        pkg_aliases={},
+        purl_aliases={},
+        suggest_mode=False,
+        scoped_pkgs={},
+        no_vuln_table=True,
+    )
 
 
 # The references of OSV's record for GHSA-86w9-cpqp-85rv (node-forge through
@@ -403,7 +419,10 @@ def test_parse_alias_ids_reads_long_descriptions_from_supporting_media():
         os.path.join(DATA_DIR, "vdb6-node-forge-alias-group-cve5.json"), encoding="utf-8"
     ) as fp:
         records = {r["cveMetadata"]["cveId"]: CVE.model_validate(r) for r in json.load(fp)}
-    descriptions = records["CVE-2026-33894"].root.containers.cna.descriptions
+    cna = records["CVE-2026-33894"].root.containers.cna
+    # Only the published container carries descriptions.
+    assert isinstance(cna, CnaPublishedContainer)
+    descriptions = cna.descriptions
     assert descriptions.root[0].value == "Refer to the supporting media"
 
     assert utils.parse_alias_ids(utils.description_full_text(descriptions)) == [
@@ -660,7 +679,7 @@ def test_generate_console_output_survives_missing_matched_by():
     """generate_console_output must not crash when a VDR entry lacks
     matched_by (the pre-fix regression). The defensive .get() should
     degrade gracefully with an empty string."""
-    options = SimpleNamespace(project_type="java")
+    options = _console_output_options()
     # Simulate a merged VDR that lost matched_by (pre-fix combine_vdrs output)
     vdr_no_matched_by = {
         "id": "CVE-2024-5004",
@@ -696,7 +715,7 @@ def test_generate_console_output_with_deduped_duplicate_cves():
     """End-to-end regression: two components sharing a CVE are deduped, and
     generate_console_output should render without crashing even when one of
     them was added to include_pkg_group_rows before the merge."""
-    options = SimpleNamespace(project_type="java")
+    options = _console_output_options()
     v1 = _make_vdr(
         "CVE-2024-5005",
         "pkg:maven/org.springframework/spring-web@5.3.22",

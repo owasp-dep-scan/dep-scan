@@ -454,18 +454,6 @@ max_sink_reachable_explanations = get_int_from_env("max_sink_reachable_explanati
 max_purl_per_flow = get_int_from_env("max_purl_per_flow", 8)
 max_flows_per_prompt = get_int_from_env("max_flows_per_prompt", 8)
 
-RUBY_PLATFORM_MARKERS = [
-    "-x86_64",
-    "-x86",
-    "-x64",
-    "-aarch",
-    "-arm",
-    "-ruby",
-    "-universal",
-    "-java",
-    "-truffle",
-]
-
 # List of suffixes used by npm packages to indicate binary versions.
 # This could be replaced with a better heuristics or lookup database in the future.
 NPM_BINARY_PACKAGES_SUFFIXES = ("-prebuilt",)

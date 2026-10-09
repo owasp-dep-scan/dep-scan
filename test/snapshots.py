@@ -5,7 +5,7 @@ import argparse
 import logging
 import os
 import re
-from typing import Set, List, Dict
+from typing import Set, List, Dict, cast
 
 from custom_json_diff.lib.custom_diff import (
     compare_dicts,
@@ -13,11 +13,11 @@ from custom_json_diff.lib.custom_diff import (
     report_results,
     perform_csaf_diff,
 )
-from custom_json_diff.lib.custom_diff_classes import Options
+from custom_json_diff.lib.custom_diff_classes import BomDicts, CsafDicts, Options
 from custom_json_diff.lib.utils import json_load, json_dump
 
+from analysis_lib.utils import get_description_detail
 from depscan.cli import build_parser, run_depscan
-from depscan.lib.utils import get_description_detail
 
 VERSION_REPLACE = re.compile(r"(?<=to version )\S+", re.IGNORECASE)
 
@@ -68,11 +68,13 @@ def compare_snapshots(options: Options, v5: bool, repo: str):
     options.file_1 = options.file_1.replace(".json", ".parsed.json")
     options.file_2 = options.file_2.replace(".json", ".parsed.json")
     _, j1, j2 = compare_dicts(options)
+    # compare_dicts is typed to return whichever dict flavour matches the
+    # configured preconfig_type; the casts narrow it for the diff helpers.
     if options.preconfig_type == "bom":
-        result, result_summary = perform_bom_diff(j1, j2)
+        result, result_summary = perform_bom_diff(cast(BomDicts, j1), cast(BomDicts, j2))
     else:
-        result, result_summary = perform_csaf_diff(j1, j2)
-    report_results(result, result_summary, options, j1, j2)
+        result, result_summary = perform_csaf_diff(cast(CsafDicts, j1), cast(CsafDicts, j2))
+    report_results(result, result_summary, options, cast(BomDicts, j1), cast(BomDicts, j2))
     if result:
         return f"{repo} {options.preconfig_type} diff failed.", result_summary
     else:

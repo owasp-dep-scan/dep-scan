@@ -1,5 +1,7 @@
 """Tests for the generic (CSAF + CycloneDX) document validator."""
 
+from typing import Any, Dict
+
 from analysis_lib.validation import (
     FORMAT_CSAF,
     FORMAT_CYCLONEDX,
@@ -9,7 +11,7 @@ from analysis_lib.validation import (
 )
 
 
-def _min_cyclonedx():
+def _min_cyclonedx() -> Dict[str, Any]:
     return {
         "bomFormat": "CycloneDX",
         "specVersion": "1.6",

@@ -10,12 +10,16 @@ arguments in a TOML file, in addition to the command line.
 # MIT license
 import argparse
 import os
-from typing import Any, Dict, List, MutableMapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 
 try:
     import tomllib
 except ImportError:
     import tomli as tomllib
+
+# Mirrors the typeshed pattern for ArgumentParser.parse_args: when a namespace
+# object is passed in, that same object (type included) is returned.
+_NamespaceT = TypeVar("_NamespaceT", bound=argparse.Namespace)
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -53,16 +57,21 @@ class ArgumentParser(argparse.ArgumentParser):
         )
 
     def extract_args(
-        self, args: Optional[List[str]] = None, namespace: Optional[object] = None
+        self,
+        args: Optional[Iterable[str]] = None,
+        namespace: Optional[argparse.Namespace] = None,
     ) -> Tuple[argparse.Namespace, argparse.Namespace]:
         """Find the default arguments of the argument parser if any and the
         ones that are passed through the command line"""
         default_args = super().parse_args([])
         cmdl_args = super().parse_args(args, namespace)
+        # parse_args either returns the passed-in namespace or constructs a
+        # fresh Namespace; it never returns None.
+        assert cmdl_args is not None
 
         return default_args, cmdl_args
 
-    def find_changed_args(self, args: Optional[List[str]] = None) -> List[str]:
+    def find_changed_args(self, args: Optional[Iterable[str]] = None) -> List[str]:
         """Find the dest names that were explicitly supplied on the command
         line so the TOML config does not override them.
 
@@ -93,7 +102,7 @@ class ArgumentParser(argparse.ArgumentParser):
             if getattr(parsed, dest, sentinel) is not sentinel
         ]
 
-    def load_toml(self, path: str) -> MutableMapping[str, Any]:
+    def load_toml(self, path: str) -> Dict[str, Any]:
         try:
             with open(path, "rb") as f:
                 config = tomllib.load(f)
@@ -108,9 +117,14 @@ class ArgumentParser(argparse.ArgumentParser):
                 new_dict[key] = value
         return new_dict
 
-    def parse_args(
-        self, args: Optional[List[str]] = None, namespace: Optional[object] = None
-    ) -> argparse.Namespace:
+    # pyrefly 1.3 flags every single-signature override of parse_args because
+    # the typeshed declaration is a TypeVar overload set; the signature below
+    # mirrors that contract, so the override is sound.
+    def parse_args(  # pyrefly: ignore[bad-override]
+        self,
+        args: Optional[Iterable[str]] = None,
+        namespace: Optional[_NamespaceT] = None,
+    ) -> Union[argparse.Namespace, _NamespaceT]:
         """Parse the arguments from the command line and the TOML file
         and return the updated arguments. Same functionality as the
         `argparse.ArgumentParser.parse_args` method."""

@@ -11,6 +11,7 @@ whether a BOM file / BOM directory happened to exist on disk:
 
 import json
 import os
+from typing import Any, Dict
 
 import pytest
 
@@ -125,7 +126,7 @@ class _FakeVdrResult:
 def harness(monkeypatch, tmp_path):
     """Stub every expensive/external call in run_depscan and record what the
     BOM-resolution logic decided."""
-    calls = {
+    calls: Dict[str, Any] = {
         "create_bom": [],
         "vdr": [],
         "csaf": [],

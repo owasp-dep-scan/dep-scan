@@ -6,10 +6,10 @@ import os
 import re
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import cvss
-from analysis_lib import get_all_bom_files
+from analysis_lib import Counts, get_all_bom_files
 from analysis_lib.config import (
     ADVISORY,
     CPE_FULL_REGEX,
@@ -626,7 +626,8 @@ def cvss_to_vdr_rating(vuln_occ_dict):
         cvss_score = float(cvss_score)
     if (pkg_severity := vuln_occ_dict.get("severity", "").lower()) not in SEVERITY_REF:
         pkg_severity = "unknown"
-    ratings = [
+    # CycloneDX ratings mix float scores and string severity/vector/method.
+    ratings: List[Dict[str, Any]] = [
         {
             "score": cvss_score,
             "severity": pkg_severity.lower(),
@@ -1248,7 +1249,13 @@ def process_vuln_occ(
     required_pkgs,
     vuln_occ_dict,
     counts,
-):
+) -> Tuple[Counts, bool, Dict[str, Any]]:
+    """Convert one vulnerability occurrence into a CycloneDX VDR dict.
+
+    :return: (counts, add_to_pkg_group_rows, vuln) where vuln maps
+        CycloneDX field names to heterogeneous values (strings, lists,
+        rich Tree renderables).
+    """
     vid = vuln_occ_dict.get("id") or ""
     package_issue = {}
     purl = ""
@@ -1320,7 +1327,8 @@ def process_vuln_occ(
     advisories = []
     for k, v in clinks.items():
         advisories.append({"title": k, "url": v})
-    vuln = {
+    # CycloneDX VDR entry: field values are heterogeneous by design.
+    vuln: Dict[str, Any] = {
         "advisories": advisories,
         "affects": affects,
         "analysis": get_analysis(clinks, pkg_tree_list),
@@ -1590,7 +1598,7 @@ def analyze_cve_vuln(
     purl_identities,
     bom_dependency_tree,
     counts,
-):
+) -> Tuple[Counts, Dict[str, Any], bool, bool]:
     insights = []
     plain_insights = []
     cve_requires_attn = False
@@ -1645,7 +1653,8 @@ def analyze_cve_vuln(
         as_tree=True,
         extra_text=f":left_arrow: {vid}",
     )
-    vdict = {
+    # CycloneDX VDR entry: field values are heterogeneous by design.
+    vdict: Dict[str, Any] = {
         "id": vuln.get("cve_id"),
         "matched_by": vuln.get("matched_by"),
         "bom-ref": f"{vuln.get('cve_id')}/{vuln.get('matched_by')}",
@@ -1883,7 +1892,9 @@ def analyze_cve_vuln(
     if package_usage:
         insights.append(package_usage)
         plain_insights.append(plain_package_usage)
-    add_to_pkg_group_rows = (
+    # bool() normalises the and-chain, whose value is purl (a str) when
+    # every other condition holds.
+    add_to_pkg_group_rows = bool(
         not likely_false_positive
         and cve_requires_attn
         and purl

@@ -416,6 +416,8 @@ def _skip_unless_slice_reachability(tmp_path: Path):
     report_path = tmp_path / "golem.json"
     report = json.loads(report_path.read_text()) if report_path.exists() else {}
     if _slice_reachability(report.get("dataFlow") or {}) is None:
+        # pytestmark skips the whole module when the golem binary is missing.
+        assert GOLEM_BIN is not None
         version = golem_mod.get_golem_version(GOLEM_BIN) or "unknown"
         pytest.skip(
             f"golem {version} reports no usable dataFlow.sliceReachability; "

@@ -112,7 +112,9 @@ def test_same_cve_and_fix_on_two_components_is_not_a_duplicate(dummy_cve, monkey
         ],
     )
 
-    vdrs = result.pkg_vulnerabilities
+    # pkg_vulnerabilities is None only on failure; the success assert
+    # below would flag that before anything indexes vdrs.
+    vdrs = result.pkg_vulnerabilities or []
     assert result.success is True
     assert len(vdrs) == 1
     assert _vdr_refs(vdrs[0]) == {"pkg:npm/postcss@8.4.31", "pkg:npm/postcss@8.4.49"}
@@ -141,7 +143,7 @@ def test_exact_duplicates_are_still_filtered(dummy_cve, monkeypatch):
         ],
     )
 
-    vdrs = result.pkg_vulnerabilities
+    vdrs = result.pkg_vulnerabilities or []
     assert len(vdrs) == 1
     assert _vdr_refs(vdrs[0]) == {"pkg:npm/postcss@8.4.31", "pkg:npm/postcss@8.4.49"}
     # No duplicate version rows for the twice-seen component
@@ -163,7 +165,7 @@ def test_mixed_fix_versions_across_components(dummy_cve, monkeypatch):
         ],
     )
 
-    vdrs = result.pkg_vulnerabilities
+    vdrs = result.pkg_vulnerabilities or []
     assert len(vdrs) == 1
     assert _vdr_refs(vdrs[0]) == {
         "pkg:npm/postcss@8.4.31",
@@ -187,7 +189,7 @@ def test_multiple_cves_across_multiple_packages(dummy_cve, monkeypatch):
 
     result = _run_analyzer(monkeypatch, raw)
 
-    vdrs = result.pkg_vulnerabilities
+    vdrs = result.pkg_vulnerabilities or []
     assert len(vdrs) == 2
     by_id = {v["id"]: v for v in vdrs}
     assert set(by_id) == {"CVE-2026-41305", "CVE-2026-41306"}
@@ -207,7 +209,7 @@ def test_fuzzy_search_surfaces_all_components(dummy_cve, monkeypatch):
         fuzzy_search=True,
     )
 
-    vdrs = result.pkg_vulnerabilities
+    vdrs = result.pkg_vulnerabilities or []
     assert len(vdrs) == 1
     assert _vdr_refs(vdrs[0]) == {"pkg:npm/postcss@8.4.31", "pkg:npm/postcss@8.4.49"}
 
@@ -232,7 +234,7 @@ def test_multiversion_bom_scan_reports_every_affected_component(dummy_cve, monke
 
     result = _run_analyzer(monkeypatch, raw, bom_file=bom_file, pkg_list=bom["components"])
 
-    vdrs = result.pkg_vulnerabilities
+    vdrs = result.pkg_vulnerabilities or []
     assert result.success is True
     by_id = {v["id"]: v for v in vdrs}
     assert set(by_id) == {"CVE-2026-41305", "CVE-2026-52001"}
@@ -387,7 +389,7 @@ def test_prioritized_cve_shared_by_two_components_renders_console_output(monkeyp
         result = VDRAnalyzer(options).process()
 
         assert result.success is True
-        vdrs = result.pkg_vulnerabilities
+        vdrs = result.pkg_vulnerabilities or []
         assert len(vdrs) == 1
         assert vdrs[0]["id"] == "CVE-2025-32442"
         assert _vdr_refs(vdrs[0]) == set(purls)
@@ -417,7 +419,9 @@ def _vdb_keeps_own_advisory():
     and links the GHSA's advisory page (vulnerability-db #282 plus the
     dep-scan #540 follow-up)."""
     try:
-        from vdb.lib.osv import own_cve_from_aliases  # noqa: F401
+        # Capability probe: the symbol only exists in newer vdb releases;
+        # the ImportError below is the intended "not supported" answer.
+        from vdb.lib.osv import own_cve_from_aliases  # noqa: F401  # pyrefly: ignore[missing-module-attribute]
     except ImportError:
         return False
     with open(os.path.join(DATA_DIR, "osv-node-forge-alias-group.json"), encoding="utf-8") as fp:
@@ -509,7 +513,7 @@ def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expecte
         result = VDRAnalyzer(options).process()
 
         assert result.success is True
-        vdrs = {v["id"]: v for v in result.pkg_vulnerabilities}
+        vdrs = {v["id"]: v for v in result.pkg_vulnerabilities or []}
         assert sorted(vdrs) == sorted(expected_ids)
         for vid, vdr in vdrs.items():
             assert [r["id"] for r in vdr["references"]] == NODE_FORGE_EXPECTED_REFS[vid]

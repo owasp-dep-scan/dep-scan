@@ -118,10 +118,9 @@ def resource_path(relative_path):
     :param relative_path: Relative path of the resource file.
     :return: Absolute path of the resource file
     """
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.dirname(__file__)
+    # sys._MEIPASS only exists inside a PyInstaller frozen bundle; fall back
+    # to this module's directory in a regular install.
+    base_path = getattr(sys, "_MEIPASS", None) or os.path.dirname(__file__)
     return os.path.join(base_path, relative_path)
 
 

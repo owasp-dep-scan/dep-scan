@@ -34,6 +34,20 @@ custom_theme = Theme(
 
 IS_CI = os.getenv("CI") or os.getenv("CONTINUOUS_INTEGRATION")
 
+# rich only accepts these color-system names (or None); anything else raises
+# KeyError while constructing the Console, i.e. at import time.
+VALID_COLOR_SYSTEMS = ("auto", "standard", "256", "truecolor", "windows")
+
+
+def _color_system():
+    """Translate CONSOLE_COLOR_SCHEME into a rich-acceptable value.
+
+    An unrecognized value (e.g. a typo) falls back to None so rich
+    auto-detects color support instead of crashing on startup.
+    """
+    scheme = os.getenv("CONSOLE_COLOR_SCHEME", "256")
+    return scheme if scheme in VALID_COLOR_SYSTEMS else None
+
 
 def _emoji_enabled():
     if os.getenv("DISABLE_CONSOLE_EMOJI", "") in ("true", "1"):
@@ -45,7 +59,7 @@ console = Console(
     log_time=False,
     log_path=False,
     theme=custom_theme,
-    color_system=os.getenv("CONSOLE_COLOR_SCHEME", "256"),
+    color_system=_color_system(),
     width=140 if IS_CI else None,
     highlight=not IS_CI,
     tab_size=2,
@@ -75,7 +89,10 @@ if os.getenv("SCAN_DEBUG_MODE") == "debug":
 
 DEBUG = logging.DEBUG
 for log_name, log_obj in logging.Logger.manager.loggerDict.items():
-    if not log_name.startswith("depscan"):
+    # loggerDict also contains PlaceHolder entries for intermediate dotted
+    # names (e.g. "depscan.lib" when only "depscan.lib.a" was ever created);
+    # those cannot be muted and must be skipped.
+    if not log_name.startswith("depscan") and isinstance(log_obj, logging.Logger):
         log_obj.disabled = True
 
 SPINNER = os.getenv(
