@@ -75,6 +75,36 @@ testpaths = [
     "packages/server-lib/tests"
 ]
 
+[tool.pyrefly]
+# Check against the oldest supported Python so accidental use of newer
+# stdlib/typing APIs is caught (requires-python = ">=3.10").
+python-version = "3.10"
+# Resolve third-party dependencies from the project venv.
+python-interpreter-path = ".venv/bin/python"
+# The repo is a uv workspace with multiple source roots: the flat depscan
+# package at the root plus one src/ layout per package under packages/.
+search-path = [
+    ".",
+    "packages/analysis-lib/src",
+    "packages/xbom-lib/src",
+    "packages/reporting-lib/src",
+    "packages/server-lib/src",
+]
+project-includes = [
+    "depscan/**",
+    "packages/**",
+    "test/**",
+    "vendor/__init__.py",
+]
+project-excludes = [
+    "**/__pycache__",
+    "**/.venv",
+    "build/**",
+]
+# tomli is only installed on Python <= 3.11 (tomllib fallback in
+# depscan/lib/tomlparse.py); the try/except guard handles it at runtime.
+ignore-missing-imports = ["tomli"]
+
 [tool.uv.sources]
 ds-xbom-lib = { workspace = true }
 ds-analysis-lib = { workspace = true }
@@ -86,6 +116,7 @@ members = ["packages/*"]
 
 [dependency-groups]
 dev = [
+    "pyrefly>=1.3.2",
     "ruff>=0.14.13",
 ]
 
