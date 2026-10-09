@@ -256,20 +256,26 @@ _V2 = "AV:N/AC:L/Au:N/C:P/I:P/A:P"
 
 
 def test_parse_one_v3():
-    family, body = parse_one({"vector": _V3})
+    parsed = parse_one({"vector": _V3})
+    assert parsed is not None
+    family, body = parsed
     assert family == "cvss_v3"
     assert body["baseScore"] == 9.8
     assert body["baseSeverity"] == "CRITICAL"
 
 
 def test_parse_one_v2():
-    family, body = parse_one({"vector": _V2})
+    parsed = parse_one({"vector": _V2})
+    assert parsed is not None
+    family, body = parsed
     assert family == "cvss_v2"
     assert body["baseScore"] == 7.5
 
 
 def test_parse_one_v4_minimal_valid_body():
-    family, body = parse_one({"vector": _V4})
+    parsed = parse_one({"vector": _V4})
+    assert parsed is not None
+    family, body = parsed
     assert family == "cvss_v4"
     # Only the core, schema-guaranteed fields are emitted; version is "4.0".
     assert set(body) == {"version", "vectorString", "baseScore", "baseSeverity"}
@@ -665,6 +671,7 @@ def test_export_csaf_writes_csaf_file_and_leaves_vdr_intact(tmp_path, version):
         bom=bom,
         csaf_version=version,
     )
+    assert outfile is not None
     assert outfile.endswith(".csaf.json")
     assert errors == []
     # The VDR file must be untouched.
@@ -753,6 +760,8 @@ def test_scores_deduped_per_cvss_version():
     }
     pid = "pkg:deb/debian/nghttp2@1.43.0-1"
     model = build_vulnerability(vuln, {pid: pid}, {pid: 1}, "2.1")
+    # The vuln references a known product, so a model must come back.
+    assert model is not None
     v3_scores = [s for s in model.scores if s.cvss_v3]
     assert len(v3_scores) == 1
 

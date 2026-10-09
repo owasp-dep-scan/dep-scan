@@ -71,7 +71,7 @@ class FullProductName:
             )
         if self.cpe:
             helper["cpe"] = self.cpe
-        out = {"name": self.name, "product_id": self.product_id}
+        out: Dict[str, Any] = {"name": self.name, "product_id": self.product_id}
         if helper:
             out["product_identification_helper"] = helper
         return out

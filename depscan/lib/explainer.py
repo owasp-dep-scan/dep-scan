@@ -472,7 +472,9 @@ def get_vulns_for_purls(purls, purl_vuln_map):
                 found_vulns.append(v_id)
 
             rank = severity_order.get(v_sev, 6)
-            current_rank = severity_order.get(current_max_severity, 100)
+            # current_max_severity starts as None before the first
+            # vulnerability is seen; the "" fallback maps it to the 100 rank.
+            current_rank = severity_order.get(current_max_severity or "", 100)
 
             if rank < current_rank:
                 current_max_severity = v_sev

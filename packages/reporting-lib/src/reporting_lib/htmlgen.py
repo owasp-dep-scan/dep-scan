@@ -1,6 +1,7 @@
 import json
 import html
 import re
+from typing import Any, Dict, List, Optional
 
 from reporting_lib.template import (
     PRIORITIZED_VULNERABILITIES,
@@ -123,11 +124,11 @@ class ReportGenerator:
 
     def __init__(
         self,
-        report_output_path,
-        input_vdr_json_path=None,
-        input_rich_html_path=None,
-        input_txt_path=None,
-        raw_content=False,
+        report_output_path: str,
+        input_vdr_json_path: Optional[str] = None,
+        input_rich_html_path: Optional[str] = None,
+        input_txt_path: Optional[str] = None,
+        raw_content: bool = False,
     ):
         input_counter = 0
 
@@ -150,8 +151,11 @@ class ReportGenerator:
         self.input_txt_path = input_txt_path
         self.raw_content = raw_content
 
-    def extract_depscan_reports_from_vdr_json(self):
+    def extract_depscan_reports_from_vdr_json(self) -> List[str]:
         depscan_reports = set()
+        # The constructor guarantees exactly one input path was supplied; the
+        # caller only reaches here for the VDR-JSON flavour.
+        assert self.input_vdr_json_path is not None
         with open(self.input_vdr_json_path, "r", encoding="utf-8") as file:
             data = json.load(file)
             if "annotations" not in data:
@@ -172,6 +176,7 @@ class ReportGenerator:
             return list(depscan_reports)
 
     def extract_depscan_report_from_rich_html(self):
+        assert self.input_rich_html_path is not None
         with open(self.input_rich_html_path, "r", encoding="utf-8") as file:
             data = file.read()
 
@@ -193,6 +198,7 @@ class ReportGenerator:
             return depscan_report, styles
 
     def extract_depscan_report_from_txt(self):
+        assert self.input_txt_path is not None
         with open(self.input_txt_path, "r", encoding="utf-8") as file:
             data = file.read()
             return data
@@ -284,13 +290,18 @@ class ReportGenerator:
         last_seen_reachable_flows = None
         current_location = None
         current_table_row = []
-        current_columns_count = None
+        # Set from the table's top border when a data section starts; the
+        # rsplit(maxsplit=...) sites below only run inside that state.
+        current_columns_count = 0
         summary_column = ""
         reachable_flow_column = ""
         reachable_packages_column = ""
         recommendation_column = ""
 
-        sections_tree = {
+        # Parsed report sections keyed by display name. The tree mixes leaf
+        # strings and nested dicts (per-section summary/headers/data), so the
+        # values are deliberately typed as Any.
+        sections_tree: Dict[str, Any] = {
             self.VULNERABILITY_DISCLOSURE_REPORT: {
                 self.DEPENDENCY_SCAN_RESULTS_BOM: {
                     self.TITLE: self.DEPENDENCY_SCAN_RESULTS_BOM,
@@ -2203,13 +2214,12 @@ class ReportGenerator:
         self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
         info = INFO
-        malware_alert = MALWARE_ALERT
         if piece_id is None:
             info = info.replace("<PIECE_ID_PLACEHOLDER>", "", 1)
         else:
             if tree_is_from_html is False:
                 piece_id = html.escape(piece_id)
-            info = malware_alert.info("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
+            info = info.replace("<PIECE_ID_PLACEHOLDER>", f"{piece_id} {SEPARATOR} ", 1)
 
         current_content = sections_tree[self.INFO][self.SUMMARY]
         if tree_is_from_html is False:
@@ -2228,13 +2238,15 @@ class ReportGenerator:
 
     def generate_html(
         self,
-        sections_tree=None,
-        sections_trees=None,
-        tree_is_from_html=False,
-        styles="",
+        sections_tree: Optional[Dict[str, Any]] = None,
+        sections_trees: Optional[Dict[Any, Dict[str, Any]]] = None,
+        tree_is_from_html: bool = False,
+        styles: str = "",
     ):
         if sections_tree is not None:
             sections_trees = {None: sections_tree}
+        if sections_trees is None:
+            raise ValueError("generate_html requires sections_tree or sections_trees")
 
         main_report = HTML_REPORT
 

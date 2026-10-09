@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any, Dict
 
 import pytest
 from analysis_lib.output import pkg_sub_tree
@@ -661,7 +662,7 @@ def test_split_cwe():
 
 
 def test_cvss_to_vdr_rating():
-    res = {
+    res: Dict[str, Any] = {
         "cvss_v3": {},
         "severity": "HIGH",
     }

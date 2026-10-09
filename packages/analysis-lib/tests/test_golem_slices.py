@@ -18,6 +18,7 @@ verify the converter reads camelCase, NOT rusi's snake_case.
 
 import json
 from pathlib import Path
+from typing import Any, Dict
 
 import pytest
 
@@ -183,7 +184,7 @@ def _golem_report_fixture():
         node's module purl / packagePath resolution.
       - Stdlib nodes (``standard:true``, empty purl) must be dropped.
     """
-    return {
+    report: Dict[str, Any] = {
         "schemaVersion": "0.1",
         "tool": {"name": "golem", "version": "2.5.2"},
         "runtime": {"goos": "linux", "goarch": "amd64", "goVersion": "go1.22.0"},
@@ -393,6 +394,7 @@ def _golem_report_fixture():
             }
         ],
     }
+    return report
 
 
 def test_converter_emits_atom_shape(bom_index):

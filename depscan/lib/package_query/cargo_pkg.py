@@ -1,26 +1,29 @@
 from datetime import datetime, timezone
+from typing import Any, Dict
 
 from depscan.lib import config
 from depscan.lib.package_query.pkg_query import compute_time_risks, calculate_risk_score
 from semver import Version
 
 
-def set_binary_risks(risk_metrics, current_version, latest_version):
+def set_binary_risks(risk_metrics: Dict[str, Any], current_version, latest_version):
     """
     If current version has bin_names. then we should set "pkg_includes_binary_risk" as True.
     and add the number of bin_names to the "pkg_includes_binary_value" key.
     """
     version = current_version if current_version else latest_version
     bin_names = version.get("bin_names", [])
-    risk_metrics["pkg_includes_binary_risk"] = True if len(bin_names) > 0 else False
+    risk_metrics["pkg_includes_binary_risk"] = len(bin_names) > 0
     risk_metrics["pkg_includes_binary_value"] = len(bin_names)
 
 
-def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
+def cargo_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg) -> Dict[str, Any]:
     """
     Calculate various package risks based on the metadata from cargo.
     """
-    risk_metrics = {
+    # Risk flags (bool), measured values (int) and human-readable notes (str)
+    # share this dict; calculate_risk_score reads them back by key suffix.
+    risk_metrics: Dict[str, Any] = {
         "pkg_deprecated_risk": False,
         "pkg_version_deprecated_risk": False,
         "pkg_version_missing_risk": False,

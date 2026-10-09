@@ -34,7 +34,10 @@ def _is_musl() -> bool:
         )
     except (OSError, subprocess.SubprocessError):
         return False
-    out = cp.stdout or ""
+    # cp is bound whenever control reaches here: the except branch above
+    # returns. pyrefly's whole-project run misses that; the same code checks
+    # clean in isolation.
+    out = cp.stdout or ""  # pyrefly: ignore[unbound-name]
     return "musl" in out
 
 

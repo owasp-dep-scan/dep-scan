@@ -5,6 +5,7 @@ import os
 import socket
 import tempfile
 from hmac import compare_digest
+from typing import cast
 from urllib.parse import urlparse
 
 from analysis_lib import VdrAnalysisKV
@@ -35,10 +36,21 @@ def get_allowed_git_schemes(default_schemes=None):
 allowed_git_schemes = get_allowed_git_schemes()
 
 
+def _color_system():
+    """Translate CONSOLE_COLOR_SCHEME into a rich-acceptable value.
+
+    rich only accepts its fixed color-system names (or None); anything else
+    raises KeyError while constructing the Console, so an unrecognized value
+    (e.g. a typo) falls back to None for auto-detection.
+    """
+    scheme = os.getenv("CONSOLE_COLOR_SCHEME", "256")
+    return scheme if scheme in ("auto", "standard", "256", "truecolor", "windows") else None
+
+
 console = Console(
     log_time=False,
     log_path=False,
-    color_system=os.getenv("CONSOLE_COLOR_SCHEME", "256"),
+    color_system=_color_system(),
     tab_size=2,
     emoji=os.getenv("DISABLE_CONSOLE_EMOJI", "") not in ("true", "1"),
 )
@@ -184,7 +196,10 @@ def _is_private_target(hostname: str | None) -> bool:
         addr_info = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
     except socket.gaierror:
         return True
-    resolved_ips = {entry[4][0] for entry in addr_info if entry[4]}
+    # The first sockaddr element is documented (and typed in getaddrinfo's
+    # docstring) as the resolved address string; typeshed widens it to
+    # int | str across the various family-specific overloads.
+    resolved_ips = {cast(str, entry[4][0]) for entry in addr_info if entry[4]}
     return not resolved_ips or any(_is_private_or_local_ip(ip_text) for ip_text in resolved_ips)
 
 

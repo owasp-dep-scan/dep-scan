@@ -60,8 +60,11 @@ _CYCLONEDX_REFS = (
 )
 
 
-def detect_format(doc: Dict[str, Any]) -> Optional[str]:
-    """Best-effort detection of a document's format from its contents."""
+def detect_format(doc: Any) -> Optional[str]:
+    """Best-effort detection of a document's format from its contents.
+
+    Callers may pass unparsed input, hence the isinstance guard below.
+    """
     if not isinstance(doc, dict):
         return None
     if str(doc.get("bomFormat", "")).lower() == "cyclonedx" or "specVersion" in doc:

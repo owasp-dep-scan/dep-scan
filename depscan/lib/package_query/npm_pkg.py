@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, Dict
 
 from depscan.lib import config
 from depscan.lib.package_query.pkg_query import (
@@ -73,7 +74,7 @@ def get_npm_download_stats(name, period="last-year"):
         return {}
 
 
-def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
+def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg) -> Dict[str, Any]:
     """
     Calculate various npm package risks based on the metadata from npm. The
     keys in the risk_metrics dict is based on the parameters specified in
@@ -87,8 +88,10 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
 
     :return: A dict containing the calculated risks and score.
     """
-    # Some default values to ensure the structure is non-empty
-    risk_metrics = {
+    # Some default values to ensure the structure is non-empty. Risk flags
+    # (bool), measured values (int) and human-readable notes (str) share this
+    # dict; calculate_risk_score reads them back by key suffix.
+    risk_metrics: Dict[str, Any] = {
         "pkg_deprecated_risk": False,
         "pkg_version_deprecated_risk": False,
         "pkg_version_missing_risk": False,
@@ -211,12 +214,11 @@ def npm_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
                     risk_metrics["pkg_includes_binary_risk"] = True
                     risk_metrics["pkg_includes_binary_value"] = 1
     is_deprecated = versions.get(latest_version, {}).get("deprecated", None) is not None
-    is_version_deprecated = True if theversion and theversion.get("deprecated") else False
     # Is the package deprecated
     if is_deprecated:
         risk_metrics["pkg_deprecated_risk"] = True
         risk_metrics["pkg_deprecated_value"] = 1
-    elif is_version_deprecated:
+    elif theversion and theversion.get("deprecated"):
         risk_metrics["pkg_version_deprecated_risk"] = True
         risk_metrics["pkg_version_deprecated_value"] = 1
         # The deprecation reason for a specific version are often useful

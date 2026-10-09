@@ -206,7 +206,8 @@ def get_pkg_list_json(jsonfile):
     Method to extract packages from a bom json file
 
     :param jsonfile: Path to a bom json file.
-    return List of dicts representing extracted packages
+    return List of dicts representing extracted packages. Empty when the
+    file is missing, unreadable or contains no components.
     """
     pkgs = []
     if bom_data := json_load(jsonfile, log=LOG):
@@ -214,7 +215,7 @@ def get_pkg_list_json(jsonfile):
             for comp in bom_data.get("components", []):
                 licenses, vendor, url = get_license_vendor_url(comp)
                 pkgs.append({**comp, "vendor": vendor, "licenses": licenses, "url": url})
-        return pkgs
+    return pkgs
 
 
 def get_license_vendor_url(comp):
@@ -249,7 +250,6 @@ def get_license_vendor_url(comp):
     return licenses, vendor, url
 
 
-# Unused
 def get_pkg_list(xmlfile):
     """Method to parse the bom xml file and convert into packages list
 

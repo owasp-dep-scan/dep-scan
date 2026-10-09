@@ -1,11 +1,12 @@
 from datetime import datetime
+from typing import Any, Dict
 
 from depscan.lib import config
 from semver import Version
 from depscan.lib.package_query.pkg_query import compute_time_risks, calculate_risk_score
 
 
-def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
+def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg) -> Dict[str, Any]:
     """
     Calculate various package risks based on the metadata from pypi.
 
@@ -16,7 +17,9 @@ def pypi_pkg_risk(pkg_metadata, is_private_pkg, scope, pkg):
 
     :return: Dict of risk metrics and corresponding PyPI values.
     """
-    risk_metrics = {
+    # Risk flags (bool), measured values (int) and human-readable notes (str)
+    # share this dict; calculate_risk_score reads them back by key suffix.
+    risk_metrics: Dict[str, Any] = {
         "pkg_deprecated_risk": False,
         "pkg_version_deprecated_risk": False,
         "pkg_version_missing_risk": False,

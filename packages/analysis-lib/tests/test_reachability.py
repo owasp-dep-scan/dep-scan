@@ -260,13 +260,13 @@ def test_semantic_reachability_populates_reached_services_from_node_tags(tmp_pat
 
     assert res.success
     # reached_purls: both packages were observed in the reachables slices.
-    assert set(res.reached_purls.keys()) == {
+    assert set((res.reached_purls or {}).keys()) == {
         "pkg:npm/express@4.22.2",
         "pkg:npm/lodash@4.17.21",
     }
     # reached_services: ONLY the flow whose node tags include a SERVICE_TAG.
-    assert set(res.reached_services.keys()) == {"pkg:npm/express@4.22.2"}
-    assert res.reached_services["pkg:npm/express@4.22.2"] >= 1
+    assert set((res.reached_services or {}).keys()) == {"pkg:npm/express@4.22.2"}
+    assert (res.reached_services or {})["pkg:npm/express@4.22.2"] >= 1
 
 
 def test_semantic_reachability_no_service_tags_keeps_reached_services_empty(tmp_path):
@@ -300,7 +300,7 @@ def test_semantic_reachability_no_service_tags_keeps_reached_services_empty(tmp_
     )
 
     res = SemanticReachability(_make_options(str(tmp_path))).process()
-    assert set(res.reached_purls.keys()) == {"pkg:npm/semver@7.8.5"}
+    assert set((res.reached_purls or {}).keys()) == {"pkg:npm/semver@7.8.5"}
     assert res.reached_services == {}
 
 
@@ -337,12 +337,12 @@ def test_semantic_reachability_r4a_no_cross_purl_service_leak(tmp_path):
     )
     res = SemanticReachability(_make_options(str(tmp_path))).process()
     # reached_purls: both purls are in the flow.
-    assert set(res.reached_purls.keys()) == {
+    assert set((res.reached_purls or {}).keys()) == {
         "pkg:npm/jsonwebtoken@0.4.0",
         "pkg:npm/%40codemirror/lang-json@6.0.2",
     }
     # reached_services: ONLY jsonwebtoken carries a positional SERVICE_TAG.
-    assert set(res.reached_services.keys()) == {"pkg:npm/jsonwebtoken@0.4.0"}
+    assert set((res.reached_services or {}).keys()) == {"pkg:npm/jsonwebtoken@0.4.0"}
 
 
 def test_framework_reachability_ignores_tags(tmp_path):
@@ -362,7 +362,7 @@ def test_framework_reachability_ignores_tags(tmp_path):
     )
 
     res = FrameworkReachability(_make_options(str(tmp_path))).process()
-    assert set(res.reached_purls.keys()) == {"pkg:npm/express@4.22.2"}
+    assert set((res.reached_purls or {}).keys()) == {"pkg:npm/express@4.22.2"}
     # FrameworkReachability does not return a services dict at all.
     assert res.reached_services is None or res.reached_services == {}
 
@@ -448,16 +448,16 @@ def test_reachability_dedups_flows_across_split_slice_files(tmp_path):
 
     res = FrameworkReachability(_make_options(str(tmp_path))).process()
     # Set is preserved: all three purls reached.
-    assert set(res.reached_purls.keys()) == {
+    assert set((res.reached_purls or {}).keys()) == {
         "pkg:npm/express@4.22.2",
         "pkg:npm/lodash@4.17.21",
         "pkg:npm/semver@7.8.5",
     }
     # Counts reflect dedup: each purl counted exactly once, even though
     # `express` appeared in two files.
-    assert res.reached_purls["pkg:npm/express@4.22.2"] == 1
-    assert res.reached_purls["pkg:npm/lodash@4.17.21"] == 1
-    assert res.reached_purls["pkg:npm/semver@7.8.5"] == 1
+    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 1
+    assert (res.reached_purls or {})["pkg:npm/lodash@4.17.21"] == 1
+    assert (res.reached_purls or {})["pkg:npm/semver@7.8.5"] == 1
 
 
 def test_semantic_reachability_dedups_service_counts(tmp_path):
@@ -473,10 +473,10 @@ def test_semantic_reachability_dedups_service_counts(tmp_path):
     _write(tmp_path / "bom.cdx.json", {"components": []})
 
     res = SemanticReachability(_make_options(str(tmp_path))).process()
-    assert set(res.reached_services.keys()) == {"pkg:npm/express@4.22.2"}
+    assert set((res.reached_services or {}).keys()) == {"pkg:npm/express@4.22.2"}
     # Counted exactly once despite the cross-file duplicate.
-    assert res.reached_services["pkg:npm/express@4.22.2"] == 1
-    assert res.reached_purls["pkg:npm/express@4.22.2"] == 1
+    assert (res.reached_services or {})["pkg:npm/express@4.22.2"] == 1
+    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 1
 
 
 def test_reachability_dedup_treats_distinct_flows_separately(tmp_path):
@@ -498,7 +498,7 @@ def test_reachability_dedup_treats_distinct_flows_separately(tmp_path):
     )
     _write(tmp_path / "bom.cdx.json", {"components": []})
     res = FrameworkReachability(_make_options(str(tmp_path))).process()
-    assert res.reached_purls["pkg:npm/express@4.22.2"] == 2
+    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 2
 
 
 # --- R3c: streaming JSON parser ---------------------------------------

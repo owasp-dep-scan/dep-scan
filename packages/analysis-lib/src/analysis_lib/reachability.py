@@ -330,9 +330,9 @@ class SemanticReachability(FrameworkReachability):
     @staticmethod
     def _track_binary_reachability(
         postbuild_purls: Dict,
-        interesting_postbuild_purls: Dict[str, int],
+        interesting_postbuild_purls: Dict[str, bool],
         reached_purls: Dict[str, int],
-        endpoint_reached_purls: Dict[str, int],
+        endpoint_reached_purls: Optional[Dict[str, int]],
         typed_components: Dict[str, list],
     ):
         # Return early in we don't have post-build or component type information

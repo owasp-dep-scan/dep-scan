@@ -18,7 +18,7 @@ import argparse
 import json
 import os
 import sys
-from typing import List
+from typing import List, Optional
 
 from analysis_lib.validation import (
     FORMAT_CSAF,
@@ -83,7 +83,7 @@ def _validate_file(path: str, doc_format: str, csaf_version, quiet: bool) -> boo
     return True
 
 
-def main(argv: List[str] = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
     all_valid = True
     for path in args.files:

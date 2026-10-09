@@ -525,16 +525,24 @@ def _check_cvss_body(body: Dict[str, Any], base: str, errors: List[str]) -> None
 
 
 def _recompute_base(vector: str, version: str) -> Optional[float]:
+    # cvss is a hard dependency; _cvss is None only in broken environments
+    # (see the guarded import at the top of this module).
+    if _cvss is None:
+        return None
     try:
         if version.startswith("4"):
-            return float(_cvss.CVSS4(vector).base_score)
-        if version.startswith("3"):
-            return float(_cvss.CVSS3(vector).base_score)
-        if version.startswith("2"):
-            return float(_cvss.CVSS2(vector).base_score)
+            score: Optional[float] = _cvss.CVSS4(vector).base_score
+        elif version.startswith("3"):
+            score = _cvss.CVSS3(vector).base_score
+        elif version.startswith("2"):
+            score = _cvss.CVSS2(vector).base_score
+        else:
+            return None
     except Exception:
         return None
-    return None
+    # base_score is Optional in the cvss API; None means the vector is
+    # malformed, which the caller treats the same as an exception.
+    return float(score) if score is not None else None
 
 
 def _check_cwes(vuln: Dict[str, Any], version: str, base: str, errors: List[str]) -> None:

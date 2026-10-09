@@ -391,7 +391,12 @@ Setup uv by following the official [documentation](https://docs.astral.sh/uv/).
 uv sync --all-extras --all-packages
 uv run depscan --help
 uv run pytest
+uv run pyrefly check
 ```
+
+Type checking uses [pyrefly](https://pyrefly.org) (configuration lives in
+`[tool.pyrefly]` in `pyproject.toml`); the check is expected to report zero
+errors.
 
 ### Local VDB setup
 

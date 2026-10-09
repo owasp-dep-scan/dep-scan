@@ -1,6 +1,7 @@
 import ast
 import os
 import re
+from typing import cast
 
 from custom_json_diff.lib.utils import file_read, file_write, json_load
 from jinja2 import Environment
@@ -241,7 +242,9 @@ def render_template_report(
         bom = json_load(bom_file, log=LOG)
     template = file_read(template_file, log=LOG)
     jinja_env = Environment(autoescape=True)
-    jinja_tmpl = jinja_env.from_string(template)
+    # file_read is typed str | bytes, but only returns bytes for binary=True
+    # which is never used here.
+    jinja_tmpl = jinja_env.from_string(cast(str, template))
     report_result = jinja_tmpl.render(
         metadata=bom.get("metadata"),
         vulnerabilities=bom.get("vulnerabilities"),
