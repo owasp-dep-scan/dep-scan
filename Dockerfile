@@ -79,7 +79,7 @@ RUN set -e; \
     && python3 -m pip install pipenv certifi \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && cd /opt/dep-scan \
-    && uv sync --all-extras --all-packages --no-dev \
+    && uv sync --python ${PYTHON_VERSION} --all-extras --all-packages --no-dev \
     && uv cache clean \
     && depscan --help \
     && cdxgen --help \
