@@ -1,7 +1,11 @@
 name: Repo tests
 
+# merge_group lets the merge queue re-run the required ukaina-boms check on
+# the speculative merge commit; the repo-test matrix and the self-hosted
+# semantics job skip those builds via their if:.
 on:
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -70,6 +74,7 @@ jobs:
           path: ukaina_boms
           if-no-files-found: error
   os-repo-tests:
+    if: github.event_name != 'merge_group'
     needs: ukaina-boms
     env:
       VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
@@ -285,6 +290,7 @@ jobs:
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
   os-semantics-tests:
+    if: github.event_name != 'merge_group'
     strategy:
       fail-fast: false
       matrix:
