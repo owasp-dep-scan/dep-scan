@@ -19,6 +19,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     - [Linux distros](#linux-distros)
 - [Quick Start](#quick-start)
     - [Scanning projects locally (Python version)](#scanning-projects-locally-python-version)
+    - [Homebrew (macOS and Linux)](#homebrew-macos-and-linux)
     - [Standalone binaries (no Python or Node.js required)](#standalone-binaries-no-python-or-nodejs-required)
     - [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     - [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
@@ -230,6 +231,17 @@ options:
                         Style of explanation needed. Defaults to Endpoints and Reachables.
   --annotate            Include the generated text VDR report as an annotation. Defaults to true when explain is enabled; false otherwise.
   -v, --version         Display the version
+```
+
+### Homebrew (macOS and Linux)
+
+Homebrew installs the [standalone binary](#standalone-binaries-no-python-or-nodejs-required) as `depscan` from the [OWASP dep-scan tap](https://github.com/owasp-dep-scan/homebrew-tap), with cdxgen bundled and no Python or Node.js needed. `brew trust` accepts the tap, which Homebrew requires before loading formulae from a third-party tap when `HOMEBREW_REQUIRE_TAP_TRUST` is set:
+
+```bash
+brew tap owasp-dep-scan/tap
+brew trust --tap owasp-dep-scan/tap
+brew install dep-scan
+depscan --src $PWD --reports-dir $PWD/reports
 ```
 
 ### Standalone binaries (no Python or Node.js required)
