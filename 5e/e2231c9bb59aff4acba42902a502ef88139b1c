@@ -1,0 +1,42 @@
+packages/server-lib/src/server_lib/simple.py
+  s_e8fde823affaf6::t_a42146d54c2098 498-503
+  s_e8fde823affaf6::t_b14132d67a6fe8 64
+THREAT_MODEL.md
+  s_e8fde823affaf6::t_f870ef2ce2a7ee 170
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_e8fde823affaf6::t_f045524fd4c743 66,217,220,269,272,342,347
+packages/server-lib/tests/test_simple.py
+  s_e8fde823affaf6::t_1a18a5cede4f6c 25,813-891
+  s_e8fde823affaf6::t_9a46f01a6fbfa7 892
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_e8fde823affaf6::t_f045524fd4c743 50,159,162,194,197,375,380
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_e8fde823affaf6::t_f045524fd4c743 40,154,157,312,317
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_e8fde823affaf6::t_f045524fd4c743 14,154,159
+packages/xbom-lib/src/xbom_lib/process.py
+  s_e8fde823affaf6::t_af45950d118730 210-215,221
+  s_e8fde823affaf6::t_3f2342ddaacdd8 216-219
+  s_e8fde823affaf6::t_7a31466d10ecd4 1-209,220,222-227
+test/test_process_launch.py
+  s_e8fde823affaf6::t_ad1af12108dbaa 108
+  s_e8fde823affaf6::t_7817c0e665cc66 216-232
+  s_e8fde823affaf6::t_316001abaa3089 185-187,320-322,358-360
+  s_e8fde823affaf6::t_8181b5bde59ca9 1-107,109-184,188-215,233-319,323-357,361-369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ee2231c9bb59aff4acba42902a502ef88139b1c",
+  "prompts": {},
+  "sessions": {
+    "s_e8fde823affaf6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c8b88eb-736e-490c-89e2-a991aa6c9726",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
