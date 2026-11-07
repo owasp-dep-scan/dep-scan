@@ -44,10 +44,15 @@ jobs:
         uv sync --all-extras --all-packages --dev
         npm install -g @cyclonedx/cdxgen
     - name: Test with pytest
+      # bash stops at the first failing command on every runner. The Windows
+      # default, pwsh, only reports the exit code of the last command, which
+      # hid pytest failures behind the depscan run below.
+      shell: bash
       run: |
-        # Run the top-level depscan tests and the analysis-lib tests (the
-        # latter includes the CSAF VEX generate-and-validate suite).
-        uv run pytest --cov=depscan test packages/analysis-lib/tests
+        # Run the top-level depscan tests, the analysis-lib tests (which
+        # include the CSAF VEX generate-and-validate suite) and the server
+        # tests.
+        uv run pytest --cov=depscan test packages/analysis-lib/tests packages/server-lib/tests
         uv run depscan --config .config/depscan-dev.toml
       env:
         SCAN_DEBUG_MODE: debug

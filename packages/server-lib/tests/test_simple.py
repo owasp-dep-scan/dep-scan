@@ -12,6 +12,14 @@ from server_lib.simple import app, run_server
 from werkzeug.datastructures import FileStorage
 
 
+def _symlink_or_skip(link: Path, target: Path) -> None:
+    """Create a symlink, or skip on Windows hosts that do not allow it."""
+    try:
+        link.symlink_to(target)
+    except OSError as exc:
+        pytest.skip(f"symlinks are not available here: {exc}")
+
+
 @pytest.fixture
 def client():
     app.config["TESTING"] = True
@@ -606,7 +614,7 @@ async def test_scan_path_is_revalidated_after_dispatch(client: QuartClient, tmp_
             return original_is_allowed(path, allowed_paths)
         # Simulate the path now resolving outside the allowed tree.
         bom_link.unlink()
-        bom_link.symlink_to(secret)
+        _symlink_or_skip(bom_link, secret)
         return original_is_allowed(path, allowed_paths)
 
     monkeypatch.setattr(simple_module, "_is_allowed_scan_path", swap_after_first_check)
@@ -665,7 +673,10 @@ def test_server_temp_dir_is_private_and_reused():
     try:
         assert os.path.isdir(temp_dir)
         assert os.path.basename(temp_dir).startswith(simple_module.SERVER_TEMP_DIR_PREFIX)
-        assert oct(os.stat(temp_dir).st_mode & 0o777) == oct(0o700)
+        if os.name != "nt":
+            # Windows reports 0o777 for every directory and protects the
+            # directory through the ACL it inherits from the user's TEMP.
+            assert oct(os.stat(temp_dir).st_mode & 0o777) == oct(0o700)
         assert simple_module._get_server_temp_dir() == temp_dir
     finally:
         app.config.pop("SERVER_TEMP_DIR", None)
@@ -775,7 +786,7 @@ def test_is_path_within_resolves_symlinks(tmp_path):
     inside = parent / "inside.txt"
     inside.write_text("data", encoding="utf-8")
     escaping_link = parent / "escape.txt"
-    escaping_link.symlink_to(outside)
+    _symlink_or_skip(escaping_link, outside)
 
     assert simple_module._is_path_within(str(inside), str(parent))
     assert not simple_module._is_path_within(str(escaping_link), str(parent))
