@@ -54,4 +54,5 @@ The environment variables below are advanced override knobs for automation and s
 - DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND - Set to `true` only if you intentionally want the dep-scan server to bind to a non-local address without built-in authentication.
 - DEPSCAN_SERVER_ALLOWED_GIT_SCHEMES - Comma-separated list of allowed URL schemes for server-side URL scans. Defaults to `http,https,git,git+http,git+https`.
 - DEPSCAN_SERVER_ALLOW_PRIVATE_URLS - Set to `true` to allow the server to scan URLs that resolve to private, loopback, or link-local addresses. Leave unset for the safer default.
+- DEPSCAN_SERVER_TRUSTED_HOST_NAMES - Comma-separated host names that clients may use in the `Host` header to reach a dep-scan server running without `DEPSCAN_SERVER_API_KEY`. `localhost`, `*.localhost` and IP addresses are always accepted. Other names are refused to stop DNS rebinding attacks. Not needed when an API key is set.
 - DEPSCAN_SERVER_MAX_CONTENT_LENGTH - Maximum accepted request body size in bytes for the built-in server, including uploaded BOM files. Defaults to `104857600` (100 MiB).

@@ -42,6 +42,18 @@ export DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true
 depscan --server --server-host 0.0.0.0 --server-port 7070
 ```
 
+### Browser and Host header checks
+
+The server refuses requests that a browser sends on behalf of another site, meaning requests whose `Sec-Fetch-Site` header is `cross-site` or `same-site`, or whose `Origin` does not match the `Host` header. Without this check, any web page open in the operator's browser could start scans on a local server. curl, CI jobs and other API clients do not send these headers and are not affected.
+
+Without an API key, the server also checks the `Host` header so that a DNS rebinding attack cannot read its responses. `localhost`, `*.localhost` and IP addresses are always accepted. To reach an unauthenticated server by another name, list that name:
+
+```bash
+export DEPSCAN_SERVER_TRUSTED_HOST_NAMES="depscan.internal"
+```
+
+With `DEPSCAN_SERVER_API_KEY` set, any host name is accepted, because a rebound page cannot supply the key.
+
 To scan git URLs, cdxgen server is mandatory. Use the argument `--cdxgen-server` to pass the url.
 
 ```bash

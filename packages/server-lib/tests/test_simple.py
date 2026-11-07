@@ -32,6 +32,7 @@ def client():
         "ALLOW_UNAUTHENTICATED_BIND",
         "CDXGEN_SERVER_URL",
         "MAX_BOM_FILE_SIZE",
+        "TRUSTED_HOST_NAMES",
         "create_bom",
     ):
         app.config.pop(config_key, None)
@@ -901,3 +902,152 @@ async def test_scan_with_cdxgen_server_still_forwards_the_path(client: QuartClie
         headers={"X-Test-Remote-Addr": "127.0.0.1"},
     )
     assert calls == ["/app/project"]
+
+
+# Cross-site requests and DNS rebinding. A page in the operator's browser can
+# send GET and simple POST requests to a loopback server, and a rebound domain
+# can read the responses, so both are refused when they would reach /scan.
+
+LOCAL = {"X-Test-Remote-Addr": "127.0.0.1"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {"Sec-Fetch-Site": "cross-site"},
+        {"Sec-Fetch-Site": "same-site"},
+        {"Sec-Fetch-Site": "Cross-Site"},
+        {"Origin": "https://evil.example"},
+        {"Origin": "http://localhost:3000"},
+        {"Origin": "null"},
+        {"Origin": ""},
+        {"Origin": "http://[::1"},
+        {"Sec-Fetch-Site": "same-origin", "Origin": "https://evil.example"},
+    ],
+)
+async def test_cross_site_requests_are_refused(client: QuartClient, tmp_path, headers):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    response = await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path)},
+        headers={**LOCAL, "Host": "localhost:7070", **headers},
+    )
+    assert response.status_code == 403
+    data = await response.get_json()
+    assert data["message"] == simple_module.CROSS_SITE_MESSAGE
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_cross_site_requests_are_refused_even_with_an_api_key(client: QuartClient):
+    app.config["API_KEY"] = "secret"
+    response = await client.get(
+        "/",
+        headers={**LOCAL, "X-API-Key": "secret", "Sec-Fetch-Site": "cross-site"},
+    )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "headers",
+    [
+        {},
+        {"Sec-Fetch-Site": "none"},
+        {"Sec-Fetch-Site": "same-origin"},
+        {"Origin": "http://localhost:7070"},
+        {"Origin": "http://LOCALHOST:7070", "Sec-Fetch-Site": "same-origin"},
+    ],
+)
+async def test_api_clients_and_same_origin_requests_are_allowed(client: QuartClient, headers):
+    response = await client.get("/", headers={**LOCAL, "Host": "localhost:7070", **headers})
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "host",
+    [
+        "localhost",
+        "localhost:7070",
+        "LOCALHOST.:7070",
+        "app.localhost:7070",
+        "127.0.0.1:7070",
+        "127.0.0.2",
+        "[::1]:7070",
+        "10.1.2.3:7070",
+    ],
+)
+async def test_loopback_names_and_ip_literals_are_trusted_hosts(client: QuartClient, host):
+    response = await client.get("/", headers={**LOCAL, "Host": host})
+    assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "host",
+    ["rebind.evil.example:7070", "evil.example", "localhost.evil.example", "a b"],
+)
+async def test_other_host_names_are_refused_without_an_api_key(
+    client: QuartClient, tmp_path, host
+):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    response = await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path)},
+        headers={**LOCAL, "Host": host},
+    )
+    assert response.status_code == 403
+    data = await response.get_json()
+    assert data["message"] == simple_module.UNTRUSTED_HOST_HEADER_MESSAGE
+    assert calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "configured",
+    ["depscan.internal, Scanner.Example.", ["depscan.internal", "scanner.example"]],
+)
+async def test_trusted_host_names_can_be_configured(client: QuartClient, configured):
+    app.config["TRUSTED_HOST_NAMES"] = configured
+    for host in ("depscan.internal:7070", "scanner.example"):
+        response = await client.get("/", headers={**LOCAL, "Host": host})
+        assert response.status_code == 200, host
+    response = await client.get("/", headers={**LOCAL, "Host": "other.example"})
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_any_host_name_is_accepted_with_an_api_key(client: QuartClient):
+    app.config["API_KEY"] = "secret"
+    response = await client.get(
+        "/", headers={**LOCAL, "Host": "depscan.example.com", "X-API-Key": "secret"}
+    )
+    assert response.status_code == 200
+    response = await client.get("/", headers={**LOCAL, "Host": "depscan.example.com"})
+    assert response.status_code == 401
+
+
+def test_run_server_reads_trusted_host_names_from_the_environment(monkeypatch):
+    monkeypatch.setenv("DEPSCAN_SERVER_TRUSTED_HOST_NAMES", "depscan.internal")
+    monkeypatch.setattr(app, "run", lambda **kwargs: None)
+    app.config.pop("TRUSTED_HOST_NAMES", None)
+    try:
+        run_server(ServerOptions(server_host="127.0.0.1"))
+        assert simple_module._trusted_host_names() == {"depscan.internal"}
+    finally:
+        app.config.pop("TRUSTED_HOST_NAMES", None)
+
+
+@pytest.mark.parametrize("host", ["[::1", "[not-an-ip]:80", ":7070", "  "])
+def test_malformed_host_headers_are_not_trusted(host):
+    assert not simple_module._is_trusted_host_header(host, set())
+
+
+def test_missing_host_header_is_accepted():
+    # HTTP/1.0 clients may leave Host out; browsers always send it.
+    assert simple_module._is_trusted_host_header(None, set())
+    assert simple_module._is_trusted_host_header("", set())

@@ -6,7 +6,7 @@ import socket
 import tempfile
 from hmac import compare_digest
 from typing import cast
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import SUPPORTED_BOM_PROFILES
@@ -62,6 +62,11 @@ DEFAULT_MAX_BOM_FILE_SIZE = 100 * 1024 * 1024
 UPLOAD_SIZE_LIMIT_MESSAGE = "BOM file exceeds the configured size limit."
 PATH_NOT_ALLOWED_MESSAGE = "Path not allowed"
 PATH_NOT_FOUND_MESSAGE = "path must be an existing directory or BOM file."
+CROSS_SITE_MESSAGE = "Cross-site requests are not allowed."
+UNTRUSTED_HOST_HEADER_MESSAGE = (
+    "Host header not allowed. Set DEPSCAN_SERVER_TRUSTED_HOST_NAMES to reach the "
+    "server by this name, or set DEPSCAN_SERVER_API_KEY."
+)
 SERVER_TEMP_DIR_PREFIX = "depscan-server-"
 
 
@@ -283,6 +288,73 @@ def _read_upload_with_limit(upload, max_bytes: int):
     return upload_content, ""
 
 
+def _is_cross_site_request(headers) -> bool:
+    """Tell whether a browser sent this request on behalf of another site.
+
+    A web page can make the operator's browser send GET requests and simple
+    POST requests to the server, so a page on any site could start scans on a
+    loopback server that has no API key. Browsers mark such requests with
+    ``Sec-Fetch-Site`` and, for POST and CORS requests, with ``Origin``.
+    ``same-site`` is refused as well, because every port on ``localhost`` is
+    the same site. curl, CI jobs and other API clients send neither header and
+    are not affected.
+    """
+    fetch_site = (headers.get("Sec-Fetch-Site") or "").strip().lower()
+    if fetch_site in ("cross-site", "same-site"):
+        return True
+    origin = headers.get("Origin")
+    if origin is None:
+        return False
+    origin = origin.strip()
+    # Sandboxed frames and file:// pages send the literal "null".
+    if not origin or origin.lower() == "null":
+        return True
+    try:
+        origin_netloc = urlsplit(origin).netloc.lower()
+    except ValueError:
+        return True
+    return origin_netloc != (headers.get("Host") or "").strip().lower()
+
+
+def _trusted_host_names() -> set[str]:
+    """Host names from DEPSCAN_SERVER_TRUSTED_HOST_NAMES (a list or comma-separated)."""
+    value = app.config.get("TRUSTED_HOST_NAMES")
+    if not value:
+        return set()
+    items = value if isinstance(value, (list, tuple, set)) else str(value).split(",")
+    return {str(item).strip().rstrip(".").lower() for item in items if str(item).strip()}
+
+
+def _is_trusted_host_header(host_header: str | None, trusted_names: set[str]) -> bool:
+    """Tell whether the Host header names this server rather than a rebound domain.
+
+    In a DNS rebinding attack, a page on a domain the attacker controls points
+    that domain at 127.0.0.1, so the browser treats requests to the server as
+    same-origin and lets the page read the responses. The Host header still
+    carries the attacker's domain. ``localhost``, ``*.localhost`` and IP
+    literals cannot be rebound, so they are always accepted; any other name
+    must be listed in DEPSCAN_SERVER_TRUSTED_HOST_NAMES.
+    """
+    if not host_header:
+        # Browsers always send Host; only HTTP/1.0 clients leave it out.
+        return True
+    try:
+        hostname = urlsplit(f"//{host_header.strip()}").hostname
+    except ValueError:
+        return False
+    if not hostname:
+        return False
+    hostname = hostname.rstrip(".").lower()
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return True
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        pass
+    return hostname in trusted_names
+
+
 def _get_request_api_key() -> str | None:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
@@ -302,6 +374,23 @@ async def index():
 async def enforce_allowlists():
     logger_instance = app.config.get("LOGGER_INSTANCE")
     configured_api_key = app.config.get("API_KEY")
+    if _is_cross_site_request(request.headers):
+        if logger_instance:
+            logger_instance.warning(
+                "Blocked cross-site request (Origin %r, Sec-Fetch-Site %r).",
+                request.headers.get("Origin"),
+                request.headers.get("Sec-Fetch-Site"),
+            )
+        return {"error": "true", "message": CROSS_SITE_MESSAGE}, 403
+    # An API key already stops a rebound page, which cannot know the key.
+    if not configured_api_key and not _is_trusted_host_header(
+        request.headers.get("Host"), _trusted_host_names()
+    ):
+        if logger_instance:
+            logger_instance.warning(
+                "Blocked request for untrusted Host header %r.", request.headers.get("Host")
+            )
+        return {"error": "true", "message": UNTRUSTED_HOST_HEADER_MESSAGE}, 403
     if configured_api_key:
         request_api_key = _get_request_api_key()
         if not request_api_key or not compare_digest(str(configured_api_key), request_api_key):
@@ -646,6 +735,7 @@ def run_server(options: ServerOptions):
     app.config["LOGGER_INSTANCE"] = options.logger
     app.config.setdefault("API_KEY", os.getenv("DEPSCAN_SERVER_API_KEY"))
     app.config.setdefault("ALLOW_PRIVATE_URLS", os.getenv("DEPSCAN_SERVER_ALLOW_PRIVATE_URLS"))
+    app.config.setdefault("TRUSTED_HOST_NAMES", os.getenv("DEPSCAN_SERVER_TRUSTED_HOST_NAMES"))
     app.config.setdefault(
         "ALLOW_UNAUTHENTICATED_BIND",
         os.getenv("DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND"),

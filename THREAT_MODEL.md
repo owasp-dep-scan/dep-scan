@@ -274,7 +274,7 @@ Release publishing uses trusted publishing for PyPI.
 
 The release workflow now pins the expected SHA-256 for the downloaded `nydus` archive instead of trusting a co-hosted checksum file.
 
-Server mode defaults are cautious. Non-local binds require an API key or an explicit opt-in. API key authentication supports both `X-API-Key` and bearer tokens. Path and host allowlisting are available. Private URL resolution is blocked by default. Request size and project type validation are present.
+Server mode defaults are cautious. Non-local binds require an API key or an explicit opt-in. Requests a browser sends on behalf of another site are refused, and without an API key the `Host` header must be `localhost`, an IP address or a name in `DEPSCAN_SERVER_TRUSTED_HOST_NAMES`, so a web page in the operator's browser can neither start scans on a loopback server nor read its responses through DNS rebinding. API key authentication supports both `X-API-Key` and bearer tokens. Path and host allowlisting are available. Private URL resolution is blocked by default. Request size and project type validation are present.
 
 XML parsing uses `defusedxml`.
 
