@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_reachability.py
+  s_e8fde823affaf6::t_04ecda7916d22f 513,516,523,525,529-530,532,535,538
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d01d4a5bd575402be279a2426e5deae47dd60870",
+  "prompts": {},
+  "sessions": {
+    "s_e8fde823affaf6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c8b88eb-736e-490c-89e2-a991aa6c9726",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
