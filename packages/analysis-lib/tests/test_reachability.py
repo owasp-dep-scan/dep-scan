@@ -510,32 +510,32 @@ def _write_raw(path, text):
     return path
 
 
-def test_iter_json_list_yields_each_element():
+def test_iter_json_list_yields_each_element(tmp_path):
     """A top-level JSON list is streamed one parsed element at a time."""
     text = '[{"id": 1}, {"id": 2}, {"id": 3}]'
-    assert list(_iter_json_list(_write_raw("/tmp/_r3c_test_1.json", text))) == [
+    assert list(_iter_json_list(_write_raw(tmp_path / "_r3c_test_1.json", text))) == [
         {"id": 1},
         {"id": 2},
         {"id": 3},
     ]
 
 
-def test_iter_json_list_tolerates_whitespace_between_elements():
+def test_iter_json_list_tolerates_whitespace_between_elements(tmp_path):
     text = '[\n  {"a": 1},\n  {"b": 2},\n\n  {"c": 3}\n]'
-    out = list(_iter_json_list(_write_raw("/tmp/_r3c_test_2.json", text)))
+    out = list(_iter_json_list(_write_raw(tmp_path / "_r3c_test_2.json", text)))
     assert out == [{"a": 1}, {"b": 2}, {"c": 3}]
 
 
-def test_iter_json_list_empty_list_yields_nothing():
-    assert list(_iter_json_list(_write_raw("/tmp/_r3c_test_3.json", "[]"))) == []
+def test_iter_json_list_empty_list_yields_nothing(tmp_path):
+    assert list(_iter_json_list(_write_raw(tmp_path / "_r3c_test_3.json", "[]"))) == []
     # With whitespace
-    assert list(_iter_json_list(_write_raw("/tmp/_r3c_test_4.json", "[  ]"))) == []
+    assert list(_iter_json_list(_write_raw(tmp_path / "_r3c_test_4.json", "[  ]"))) == []
 
 
-def test_iter_json_list_handles_nested_objects_and_strings_with_commas():
+def test_iter_json_list_handles_nested_objects_and_strings_with_commas(tmp_path):
     """Commas inside strings or nested objects must not break element scan."""
     text = '[{"tags": "a, b, c", "nested": {"x": 1, "y": [1, 2, 3]}}, {"id": 2}]'
-    out = list(_iter_json_list(_write_raw("/tmp/_r3c_test_5.json", text)))
+    out = list(_iter_json_list(_write_raw(tmp_path / "_r3c_test_5.json", text)))
     assert out == [
         {"tags": "a, b, c", "nested": {"x": 1, "y": [1, 2, 3]}},
         {"id": 2},

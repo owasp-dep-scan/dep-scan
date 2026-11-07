@@ -12,6 +12,12 @@ jobs:
     env:
       VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # bash stops at the first failing command on every runner. The Windows
+        # default, pwsh, only reports the exit code of the last command in a
+        # step, which hid failures behind the command that followed them.
+        shell: bash
     strategy:
       matrix:
         os: [ubuntu-latest, macos-26, windows-latest]
@@ -36,6 +42,8 @@ jobs:
         distribution: 'temurin'
         java-version: '21'
     - name: Trim CI agent
+      # The script removes apt packages and Linux directories.
+      if: ${{ runner.os == 'Linux' }}
       run: |
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
@@ -45,9 +53,10 @@ jobs:
         npm install -g @cyclonedx/cdxgen
     - name: Test with pytest
       run: |
-        # Run the top-level depscan tests and the analysis-lib tests (the
-        # latter includes the CSAF VEX generate-and-validate suite).
-        uv run pytest --cov=depscan test packages/analysis-lib/tests
+        # Run the top-level depscan tests, the analysis-lib tests (which
+        # include the CSAF VEX generate-and-validate suite) and the server
+        # tests.
+        uv run pytest --cov=depscan test packages/analysis-lib/tests packages/server-lib/tests
         uv run depscan --config .config/depscan-dev.toml
       env:
         SCAN_DEBUG_MODE: debug

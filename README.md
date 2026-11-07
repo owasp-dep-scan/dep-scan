@@ -360,6 +360,8 @@ depscan --server --server-host 0.0.0.0 --server-port 7070
 > [!IMPORTANT]
 > dep-scan refuses to bind to a non-local address without either `DEPSCAN_SERVER_API_KEY` or an explicit opt-in via `DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true`.
 
+The server refuses cross-site browser requests (a `Sec-Fetch-Site` of `cross-site` or `same-site`, or an `Origin` that does not match `Host`). Without an API key it also accepts only `localhost`, `*.localhost`, IP addresses and the names in `DEPSCAN_SERVER_TRUSTED_HOST_NAMES` as the `Host` header, which stops DNS rebinding, and when it is reached by a name or address other than `localhost` or loopback, `path` and `url` must be sent in a JSON body.
+
 Use the `/scan` endpoint to perform scans.
 
 > [!NOTE]

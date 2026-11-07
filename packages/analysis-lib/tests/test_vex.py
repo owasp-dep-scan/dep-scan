@@ -643,12 +643,13 @@ def test_build_csaf_2_1_has_schema_uri_2_0_does_not():
 
 def test_output_path_never_touches_vdr_or_bom():
     # A .vdr.json input must yield a standalone .csaf.json output.
+    expected = os.path.join("/proj/reports", "sbom-js-build.csaf.json")
     out = output_path("/proj/reports/sbom-js-build.vdr.json", "/proj/reports")
-    assert out == "/proj/reports/sbom-js-build.csaf.json"
+    assert out == expected
     assert out.endswith(".csaf.json")
     assert not out.endswith(".vdr.json")
     out_cdx = output_path("/proj/reports/sbom-js-build.cdx.json", "/proj/reports")
-    assert out_cdx == "/proj/reports/sbom-js-build.csaf.json"
+    assert out_cdx == expected
 
 
 @pytest.mark.parametrize("version", VERSIONS)
