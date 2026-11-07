@@ -125,7 +125,7 @@ def main() -> int:
     if git_tag:
         print(f"  git tag (GITHUB_REF)                   : {git_tag}")
     else:
-        print(f"  git tag (GITHUB_REF)                   : (not a tag push)")
+        print("  git tag (GITHUB_REF)                   : (not a tag push)")
     print(
         f"  CDXGEN_IMAGE_VERSION default (xbom_lib) : {cdxgen_image_version}"
     )
@@ -159,7 +159,16 @@ def main() -> int:
                 f"match pyproject.toml version {pyproject_version!r}"
             )
 
-    # Check 3: CDXGEN_SEA_VERSION (workflow) matches CDXGEN_IMAGE_VERSION
+    # Check 3: cdxgen publishes exact image versions as bare "X.Y.Z" tags; a
+    # "vX.Y.Z" image tag does not exist, so such a default could not be pulled.
+    if not re.fullmatch(r"\d+\.\d+\.\d+", cdxgen_image_version):
+        errors.append(
+            f"CDXGEN_IMAGE_VERSION default {cdxgen_image_version!r} in "
+            "packages/xbom-lib/src/xbom_lib/cdxgen.py must be a bare X.Y.Z "
+            "version such as '12.9.1', which is how cdxgen tags its images"
+        )
+
+    # Check 4: CDXGEN_SEA_VERSION (workflow) matches CDXGEN_IMAGE_VERSION
     # (source). The workflow env var is the source of truth for which cdxgen
     # SEA binary gets downloaded; xbom_lib is the source of truth for which
     # cdxgen container image gets used at runtime. They MUST agree, otherwise

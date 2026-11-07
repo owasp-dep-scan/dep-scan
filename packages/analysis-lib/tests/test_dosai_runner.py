@@ -105,7 +105,7 @@ def test_find_dosai_binary_prefers_dosai_cmd(monkeypatch, tmp_path):
     depscan_bin.write_text("")
     monkeypatch.setenv(dosai_mod.DOSAI_CMD_ENV, str(dosai_cmd))
     monkeypatch.setenv(dosai_mod.DOSAI_BINARY_ENV, str(depscan_bin))
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: None)
     assert find_dosai_binary() == str(dosai_cmd)
 
 
@@ -115,7 +115,7 @@ def test_find_dosai_binary_falls_back_to_depscan_env(monkeypatch, tmp_path):
     depscan_bin.write_text("")
     _clear_binary_env(monkeypatch)
     monkeypatch.setenv(dosai_mod.DOSAI_BINARY_ENV, str(depscan_bin))
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: None)
     assert find_dosai_binary() == str(depscan_bin)
 
 
@@ -125,7 +125,7 @@ def test_find_dosai_binary_uses_path_lookup_lowercase(monkeypatch, tmp_path):
     path_bin.write_text("")
     _clear_binary_env(monkeypatch)
     # only 'dosai' resolves on PATH
-    monkeypatch.setattr("shutil.which", lambda name: str(path_bin) if name == "dosai" else None)
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: str(path_bin) if name == "dosai" else None)
     assert find_dosai_binary() == str(path_bin)
 
 
@@ -135,7 +135,7 @@ def test_find_dosai_binary_uses_path_lookup_pascalcase(monkeypatch, tmp_path):
     path_bin = tmp_path / "Dosai-on-path"
     path_bin.write_text("")
     _clear_binary_env(monkeypatch)
-    monkeypatch.setattr("shutil.which", lambda name: str(path_bin) if name == "Dosai" else None)
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: str(path_bin) if name == "Dosai" else None)
     assert find_dosai_binary() == str(path_bin)
 
 
@@ -152,7 +152,7 @@ def test_find_dosai_binary_resolves_bundled_layout(monkeypatch, tmp_path):
     bin_path.parent.mkdir(parents=True)
     bin_path.write_text("")
     _clear_binary_env(monkeypatch)
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: None)
     monkeypatch.setenv("CDXGEN_PLUGINS_DIR", str(plugins_dir))
     assert find_dosai_binary() == str(bin_path)
 
@@ -165,13 +165,13 @@ def test_find_dosai_binary_missing_env_falls_through(monkeypatch, tmp_path):
     monkeypatch.setenv(dosai_mod.DOSAI_CMD_ENV, str(tmp_path / "no-such-binary"))
     monkeypatch.delenv(dosai_mod.DOSAI_BINARY_ENV, raising=False)
     monkeypatch.delenv("CDXGEN_PLUGINS_DIR", raising=False)
-    monkeypatch.setattr("shutil.which", lambda name: str(real_on_path))
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: str(real_on_path))
     assert find_dosai_binary() == str(real_on_path)
 
 
 def test_find_dosai_binary_returns_none_when_unresolvable(monkeypatch, tmp_path):
     _clear_binary_env(monkeypatch)
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: None)
     monkeypatch.setenv("CDXGEN_PLUGINS_DIR", str(tmp_path))
     assert find_dosai_binary() is None
 

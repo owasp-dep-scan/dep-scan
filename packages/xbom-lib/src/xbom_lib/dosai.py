@@ -23,7 +23,7 @@ fallback finds the SAME binary cdxgen uses):
   1. ``DOSAI_CMD`` env var (cdxgen's primary plugin override -- check FIRST so
      we use the same binary that produced the persisted report).
   2. ``DEPSCAN_DOSAI_BINARY`` env var (depscan convenience override).
-  3. ``shutil.which("dosai")`` / ``shutil.which("Dosai")`` (PATH lookup --
+  3. ``find_executable("dosai")`` / ``find_executable("Dosai")`` (PATH lookup --
      local installs / plugins-bin PATH entry).
   4. ``CDXGEN_PLUGINS_DIR`` bundled layout
      ``<pluginsDir>/dosai/dosai-<platform>-<arch><extn>`` using cdxgen's
@@ -56,14 +56,13 @@ reconciled where the SBOM carries them.
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
 from xbom_lib.plugins import get_plugins_bin_target
-from xbom_lib.process import build_command
+from xbom_lib.process import build_command, find_executable, tool_env
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +168,7 @@ def find_dosai_binary(logger: Optional[Logger] = None) -> Optional[str]:
     Resolution order:
       1. ``DOSAI_CMD`` env (cdxgen's primary plugin override).
       2. ``DEPSCAN_DOSAI_BINARY`` env (depscan convenience override).
-      3. ``shutil.which("dosai")`` / ``shutil.which("Dosai")`` (PATH).
+      3. ``find_executable("dosai")`` / ``find_executable("Dosai")`` (PATH).
       4. ``CDXGEN_PLUGINS_DIR`` bundled layout (see :func:`bundled_dosai_path`).
 
     Returns an absolute path string or ``None`` (graceful skip).
@@ -192,7 +191,7 @@ def find_dosai_binary(logger: Optional[Logger] = None) -> Optional[str]:
     #    entry. Try both lowercase ``dosai`` and PascalCase ``Dosai`` since the
     #    upstream binary is ``Dosai`` (Linux/macOS) / ``Dosai.exe`` (Windows).
     for name in ("dosai", "Dosai"):
-        found = shutil.which(name)
+        found = find_executable(name)
         if found:
             return found
 
@@ -217,6 +216,7 @@ def get_dosai_version(binary: str, logger: Optional[Logger] = None) -> Optional[
             build_command([binary, "--version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            env=tool_env(),
             shell=False,
             encoding="utf-8",
             check=False,
@@ -269,6 +269,7 @@ def dotnet_runtime_available(
             build_command(["dotnet", "--version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            env=tool_env(),
             shell=False,
             encoding="utf-8",
             check=False,
@@ -343,7 +344,7 @@ def _run_dosai_once(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=os.path.abspath(src_dir) if os.path.isdir(src_dir) else None,
-            env=os.environ.copy(),
+            env=tool_env(),
             shell=False,
             encoding="utf-8",
             check=False,

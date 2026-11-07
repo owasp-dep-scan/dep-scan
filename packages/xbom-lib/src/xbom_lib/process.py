@@ -16,11 +16,19 @@ started the process with ``shell=False``, so a directory named
 * On Linux and macOS the argument list is returned unchanged.
 * On Windows the program is looked up on ``PATH`` without the current
   directory, so a ``cdxgen.cmd`` planted in the scanned project is never
-  picked up.
+  picked up. :func:`find_executable` applies the same rule to the checks
+  that decide whether a tool is installed.
 * An npm shim such as ``cdxgen.cmd`` is replaced by the ``node`` command the
   shim would have run, so cmd.exe is not involved at all.
 * Any other batch file runs through cmd.exe with every argument quoted, and
-  an argument that cmd.exe would still interpret inside quotes is refused.
+  an argument containing a character that cmd.exe or the batch file itself
+  could interpret is refused, because a wrapper that expands ``%~1`` or
+  copies ``%*`` into a variable re-parses its arguments.
+* Only ``.exe``, ``.com``, ``.bat`` and ``.cmd`` files are started.
+
+:func:`tool_env` adds ``NoDefaultCurrentDirectoryInExePath`` to the child
+environment on Windows, so neither cmd.exe nor the tool itself runs a bare
+command name from the scanned project.
 """
 
 from __future__ import annotations
@@ -28,19 +36,23 @@ from __future__ import annotations
 import ntpath
 import os
 import re
+import shutil
 import subprocess
 import sys
 from typing import Callable, List, Optional, Sequence, Union
 
 WINDOWS_BATCH_SUFFIXES = (".bat", ".cmd")
 
+WINDOWS_EXECUTABLE_SUFFIXES = (".exe", ".com")
+
 DEFAULT_PATHEXT = ".COM;.EXE;.BAT;.CMD"
 
-# cmd.exe gives these characters a meaning even inside a double-quoted
-# argument: '"' ends the quoted region, '%' expands an environment variable,
-# '!' expands one when delayed expansion is on, and a line break or NUL ends
-# the command.
-UNSAFE_BATCH_ARG_CHARS = frozenset('"%!\r\n\x00')
+# Characters refused in arguments for a batch file that is not an npm shim.
+# cmd.exe gives '"', '%', '!', line breaks and NUL a meaning even inside a
+# double-quoted argument. '&', '|', '<', '>' and '^' are safe inside the quotes
+# this module adds, but a wrapper that uses %~1 or copies %* into a variable
+# strips those quotes and runs them, so they are refused as well.
+UNSAFE_BATCH_ARG_CHARS = frozenset('"%!\r\n\x00&|<>^')
 
 # The last line of the shim that npm's cmd-shim writes for a node program:
 #   endLocal & ... & "%_prog%"  "%dp0%\node_modules\<pkg>\bin\<script>.js" %*
@@ -58,7 +70,16 @@ class UnsafeCommandError(subprocess.SubprocessError):
 def _pathext_list(pathext: Optional[str]) -> List[str]:
     if pathext is None:
         pathext = os.environ.get("PATHEXT") or DEFAULT_PATHEXT
-    return [ext for ext in pathext.split(";") if ext]
+    return [ext.strip() for ext in pathext.split(";") if ext.strip()]
+
+
+def windows_suffix(path: str) -> str:
+    """Return the lower-case extension Windows uses for ``path``.
+
+    Windows ignores trailing dots and spaces in file names, so ``run.bat.``
+    and ``run.bat `` both start ``run.bat``.
+    """
+    return ntpath.splitext(path.rstrip(" ."))[1].lower()
 
 
 def windows_which(
@@ -84,15 +105,19 @@ def windows_which(
     if not command:
         return None
     exts = _pathext_list(pathext)
-    suffix = ntpath.splitext(command)[1].lower()
-    if suffix and suffix in (ext.lower() for ext in exts):
+    suffix = windows_suffix(command)
+    has_pathext_suffix = bool(suffix) and suffix in (ext.lower() for ext in exts)
+    if has_pathext_suffix:
         names = [command]
     else:
         names = [command + ext for ext in exts]
     if ntpath.dirname(command):
         # An explicit path is the caller's choice, so it is honoured as given.
-        # CreateProcess also accepts a path without its extension.
-        for candidate in [command, *names]:
+        # Names with a PATHEXT extension come first: npm writes an
+        # extensionless shell script next to cdxgen.cmd, which Windows cannot
+        # start. A name with some other extension is tried last, as given.
+        candidates = names if has_pathext_suffix or not suffix else [*names, command]
+        for candidate in candidates:
             if isfile(candidate):
                 return candidate if ntpath.isabs(candidate) else os.path.abspath(candidate)
         return None
@@ -107,6 +132,31 @@ def windows_which(
             if isfile(candidate):
                 return candidate
     return None
+
+
+def find_executable(name: str) -> Optional[str]:
+    """Find a program on ``PATH``, never in the current directory on Windows.
+
+    Use this instead of :func:`shutil.which` to decide whether a tool is
+    installed, so the check and :func:`build_command` agree on the program.
+    """
+    if sys.platform == "win32":
+        return windows_which(name)
+    return shutil.which(name)
+
+
+def tool_env(env: Optional[dict] = None) -> dict:
+    """Return the environment for a tool, ``os.environ`` when ``env`` is None.
+
+    On Windows ``NoDefaultCurrentDirectoryInExePath`` is set, so cmd.exe and
+    the tool's own child processes look up bare command names on ``PATH``
+    only. The tools run inside the scanned project, where a planted
+    ``node.bat`` or ``npm.cmd`` would otherwise run first.
+    """
+    result = dict(os.environ if env is None else env)
+    if sys.platform == "win32":
+        result["NoDefaultCurrentDirectoryInExePath"] = "1"
+    return result
 
 
 def parse_npm_shim(text: str) -> Optional[str]:
@@ -147,7 +197,7 @@ def npm_shim_command(
     node = ntpath.join(shim_dir, "node.exe")
     if not isfile(node):
         node = which("node")
-    if not node or ntpath.splitext(node)[1].lower() in WINDOWS_BATCH_SUFFIXES:
+    if not node or windows_suffix(node) not in WINDOWS_EXECUTABLE_SUFFIXES:
         return None
     return [node, script]
 
@@ -155,10 +205,9 @@ def npm_shim_command(
 def quote_batch_arg(arg: str) -> str:
     """Quote one argument for a batch file run through cmd.exe.
 
-    Inside double quotes cmd.exe leaves ``&``, ``|``, ``<``, ``>``, ``^``,
-    parentheses and spaces alone. The characters in
-    :data:`UNSAFE_BATCH_ARG_CHARS` cannot be made safe that way, so an
-    argument that contains one is refused.
+    Inside double quotes cmd.exe leaves parentheses and spaces alone. The
+    characters in :data:`UNSAFE_BATCH_ARG_CHARS` cannot be made safe for
+    every batch file, so an argument that contains one is refused.
 
     Backslashes are literal inside the quotes, except for a run right before
     the closing quote, which the program would read as an escaped quote. That
@@ -202,7 +251,8 @@ def build_command(args: Sequence[str]) -> Union[List[str], str]:
         npm shim.
     :raises FileNotFoundError: when the program is not found on Windows.
     :raises UnsafeCommandError: when a batch file would receive an argument
-        that cmd.exe would interpret.
+        that cmd.exe would interpret, or when the program is not an
+        executable or batch file.
     """
     argv = [str(a) for a in args]
     if sys.platform != "win32" or not argv:
@@ -219,8 +269,11 @@ def _build_windows_command(argv: List[str]) -> Union[List[str], str]:
             return argv
         raise FileNotFoundError(f"{argv[0]} was not found on PATH")
     program: str = found
-    if ntpath.splitext(program)[1].lower() not in WINDOWS_BATCH_SUFFIXES:
+    suffix = windows_suffix(program)
+    if suffix in WINDOWS_EXECUTABLE_SUFFIXES:
         return [program, *argv[1:]]
+    if suffix not in WINDOWS_BATCH_SUFFIXES:
+        raise UnsafeCommandError(f"Refusing to start {program}: not an executable or batch file")
     node_command = npm_shim_command(program)
     if node_command:
         return [*node_command, *argv[1:]]

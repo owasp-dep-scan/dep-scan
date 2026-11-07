@@ -6,22 +6,29 @@ unchanged, and that cmd.exe syntax inside an argument, such as the payloads
 from GHSA-xpgh-m7fj-jqq9, is never executed.
 """
 
+import ast
 import json
 import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from xbom_lib.cdxgen import CdxgenGenerator
 from xbom_lib.process import (
+    UNSAFE_BATCH_ARG_CHARS,
     UnsafeCommandError,
+    _build_windows_command,
     batch_command_line,
     build_command,
+    find_executable,
     npm_shim_command,
     parse_npm_shim,
     quote_batch_arg,
+    tool_env,
+    windows_suffix,
     windows_which,
 )
 
@@ -48,25 +55,30 @@ IF EXIST "%dp0%\node.exe" (
 endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\{script}" %*
 """
 
-# Arguments that are legal in Windows paths or tool options and that cmd.exe
-# would treat as syntax if they were not quoted.
+# Arguments that any batch file receives intact once quoted.
 ARGS_SAFE_FOR_ANY_BATCH = [
     "plain",
     "with space",
     "C:\\dir with space\\",
     "trailing\\",
     "",
+    "Program Files (x86)",
+    "unicode-\u00fc\u00f1\u00ef",
+]
+# Arguments that only the npm shim path delivers. cmd.exe cannot quote the
+# first group at all, and a batch wrapper that uses %~1 or copies %* into a
+# variable would run the second group, so plain batch files refuse both.
+ARGS_NEEDING_DIRECT_NODE = [
+    'say "hi"',
+    "100%",
+    "%PATH%",
+    "bang!",
     "a&b",
     "a|b",
     "a<b>c",
     "a^b",
-    "Program Files (x86)",
-    "unicode-\u00fc\u00f1\u00ef",
     "pwn&cd>marker.txt",
 ]
-# Arguments that only the npm shim path can deliver, because cmd.exe cannot
-# quote them.
-ARGS_NEEDING_DIRECT_NODE = ['say "hi"', "100%", "%PATH%", "bang!"]
 
 
 # ---------------------------------------------------------------- unit tests
@@ -172,7 +184,7 @@ def test_npm_shim_command_gives_up_without_a_usable_node(tmp_path):
         ("plain", '"plain"'),
         ("", '""'),
         ("with space", '"with space"'),
-        ("a&b|c<d>e^f(g)", '"a&b|c<d>e^f(g)"'),
+        ("proj (1) [x]", '"proj (1) [x]"'),
         ("C:\\dir\\", '"C:\\dir\\\\"'),
         ("C:\\a\\b", '"C:\\a\\b"'),
         ("x\\\\", '"x\\\\\\\\"'),
@@ -183,7 +195,9 @@ def test_quote_batch_arg(arg, quoted):
 
 
 @pytest.mark.parametrize(
-    "arg", ['x" & calc & "', "100%", "%PATH%", "bang!", "a\nb", "a\rb", "a\x00b"]
+    "arg",
+    ['x" & calc & "', "100%", "%PATH%", "bang!", "a\nb", "a\rb", "a\x00b"]
+    + ["a&b", "a|b", "a<b", "a>b", "a^b"],
 )
 def test_quote_batch_arg_refuses_characters_cmd_interprets_inside_quotes(arg):
     with pytest.raises(UnsafeCommandError):
@@ -198,12 +212,12 @@ def test_unsafe_command_error_is_caught_like_other_launch_failures():
 def test_batch_command_line_quotes_every_argument():
     line = batch_command_line(
         r"C:\Program Files (x86)\tools\run.bat",
-        ["-o", "C:\\out dir\\", "pwn&cd>x"],
+        ["-o", "C:\\out dir\\", "proj (1)"],
         r"C:\Windows\System32\cmd.exe",
     )
     assert line == (
         r'"C:\Windows\System32\cmd.exe" /d /v:off /s /c '
-        r'""C:\Program Files (x86)\tools\run.bat" "-o" "C:\out dir\\" "pwn&cd>x""'
+        r'""C:\Program Files (x86)\tools\run.bat" "-o" "C:\out dir\\" "proj (1)""'
     )
 
 
@@ -228,6 +242,125 @@ def test_windows_command_refuses_a_bare_name_missing_from_path(monkeypatch):
     monkeypatch.setenv("PATH", "")
     with pytest.raises(FileNotFoundError):
         _build_windows_command(["no-such-tool-xyz", "--version"])
+
+
+@pytest.mark.parametrize(
+    "name,suffix",
+    [
+        ("run.bat", ".bat"),
+        ("RUN.CMD", ".cmd"),
+        ("run.bat.", ".bat"),
+        ("run.bat ", ".bat"),
+        ("run.bat. .", ".bat"),
+        (r"C:\a.b\tool", ""),
+        ("tool.exe", ".exe"),
+    ],
+)
+def test_windows_suffix_ignores_trailing_dots_and_spaces(name, suffix):
+    assert windows_suffix(name) == suffix
+
+
+def test_windows_which_prefers_pathext_names_for_an_explicit_path():
+    # npm writes an extensionless shell script next to cdxgen.cmd.
+    files = {r"C:\npm\cdxgen", r"C:\npm\cdxgen.CMD"}
+    assert (
+        windows_which(r"C:\npm\cdxgen", pathext=".EXE;.CMD", isfile=lambda p: p in files)
+        == r"C:\npm\cdxgen.CMD"
+    )
+    # A name with another extension is still tried as given.
+    assert (
+        windows_which(r"C:\x\tool.v2", pathext=".EXE", isfile=lambda p: p == r"C:\x\tool.v2")
+        == r"C:\x\tool.v2"
+    )
+
+
+def test_windows_which_strips_whitespace_in_pathext():
+    files = {r"C:\b\run.BAT"}
+    assert (
+        windows_which("run", path_env=r"C:\b", pathext=".EXE; .BAT ", isfile=lambda p: p in files)
+        == r"C:\b\run.BAT"
+    )
+
+
+@pytest.mark.parametrize("name", ["run.bat.", "run.cmd "])
+def test_batch_file_with_trailing_dot_or_space_goes_through_quoting(tmp_path, name):
+    batch = tmp_path / name
+    batch.write_text("@echo off\r\n")
+    command = _build_windows_command([str(batch), "a b"])
+    assert isinstance(command, str)
+    assert " /d /v:off /s /c " in command
+    with pytest.raises(UnsafeCommandError):
+        _build_windows_command([str(batch), "a&mkdir,PWN"])
+
+
+def test_programs_that_are_not_executables_or_batch_files_are_refused(tmp_path):
+    script = tmp_path / "tool.ps1"
+    script.write_text("calc\n")
+    with pytest.raises(UnsafeCommandError):
+        _build_windows_command([str(script), "--version"])
+
+
+def test_tool_env_blocks_current_directory_lookups_on_windows(monkeypatch):
+    base = {"PATH": "x"}
+    monkeypatch.setattr(sys, "platform", "win32")
+    env = tool_env(base)
+    assert env["NoDefaultCurrentDirectoryInExePath"] == "1"
+    assert base == {"PATH": "x"}
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert "NoDefaultCurrentDirectoryInExePath" not in tool_env(base)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX lookup")
+def test_find_executable_uses_shutil_which_off_windows(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda name: f"/usr/bin/{name}")
+    assert find_executable("golem") == "/usr/bin/golem"
+
+
+XBOM_LIB_DIR = (
+    Path(__file__).resolve().parent.parent / "packages" / "xbom-lib" / "src" / "xbom_lib"
+)
+LAUNCH_FUNCTIONS = {"run", "Popen", "call", "check_call", "check_output"}
+
+
+def _launch_calls():
+    for module in sorted(XBOM_LIB_DIR.glob("*.py")):
+        source = module.read_text(encoding="utf-8")
+        if module.name != "process.py":
+            assert "shutil.which(" not in source, module.name
+        for node in ast.walk(ast.parse(source, filename=str(module))):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "subprocess"
+                and node.func.attr in LAUNCH_FUNCTIONS
+            ):
+                yield module.name, node
+
+
+def test_every_tool_launch_in_xbom_lib_goes_through_build_command():
+    calls = list(_launch_calls())
+    assert len(calls) >= 9
+    for module, call in calls:
+        where = f"{module}:{call.lineno}"
+        if module == "plugins.py":
+            # ldd --version, Linux only, fixed arguments.
+            continue
+        first = call.args[0] if call.args else None
+        assert (
+            isinstance(first, ast.Call)
+            and isinstance(first.func, ast.Name)
+            and first.func.id == "build_command"
+        ), where
+        keywords = {kw.arg: kw.value for kw in call.keywords}
+        assert isinstance(keywords.get("shell"), ast.Constant), where
+        assert keywords["shell"].value is False, where
+        env = keywords.get("env")
+        assert (
+            isinstance(env, ast.Call)
+            and isinstance(env.func, ast.Name)
+            and env.func.id == "tool_env"
+        ), where
 
 
 # ------------------------------------------------------ Windows integration
@@ -333,8 +466,8 @@ def test_cdxgen_generator_does_not_execute_advisory_payloads(
             source, str(work_dir / "bom.json"), options={"project_type": ["python"]}
         ).generate()
         assert not marker.exists(), f"payload executed: {source!r}"
-        if tool == "wrapper.bat" and '"' in source:
-            # cmd.exe cannot quote this argument, so the launch is refused.
+        if tool == "wrapper.bat" and set(source) & UNSAFE_BATCH_ARG_CHARS:
+            # A plain batch file never receives these characters.
             assert not result.success
             assert not argv_out.exists()
         else:
@@ -365,5 +498,60 @@ def test_cdxgen_in_the_scanned_project_is_not_picked_up(fake_tools, tmp_path, mo
         str(project), str(tmp_path / "bom.json"), options={"project_type": ["python"]}
     ).generate()
     assert not hijack_marker.exists()
+    assert result.success, result.command_output
+    assert _read_argv(argv_out)[-1] == str(project)
+
+
+def _clear_tool_env(monkeypatch):
+    for tool in ("RUSI", "GOLEM", "DOSAI"):
+        monkeypatch.delenv(f"{tool}_CMD", raising=False)
+        monkeypatch.delenv(f"DEPSCAN_{tool}_BINARY", raising=False)
+    monkeypatch.delenv("CDXGEN_PLUGINS_DIR", raising=False)
+
+
+@windows_only
+def test_plugins_in_the_current_directory_are_not_picked_up(tmp_path, monkeypatch):
+    from xbom_lib import dosai, golem, rusi
+
+    project = tmp_path / "untrusted go project"
+    project.mkdir()
+    for name in ("rusi.cmd", "golem.bat", "dosai.cmd", "Dosai.bat"):
+        (project / name).write_text(
+            f'@echo planted> "%~dp0PLANTED_{name}.txt"\r\n', encoding="utf-8"
+        )
+    _clear_tool_env(monkeypatch)
+    monkeypatch.setenv("PATH", os.environ.get("SystemRoot", r"C:\Windows") + r"\System32")
+    monkeypatch.chdir(project)
+    for find, version in (
+        (rusi.find_rusi_binary, rusi.get_rusi_version),
+        (golem.find_golem_binary, golem.get_golem_version),
+        (dosai.find_dosai_binary, dosai.get_dosai_version),
+    ):
+        binary = find()
+        assert binary is None or not os.path.abspath(binary).startswith(str(project)), binary
+        if binary:
+            version(binary)
+    assert not list(project.glob("PLANTED_*"))
+
+
+@windows_only
+def test_batch_wrapper_does_not_run_node_from_the_scanned_project(
+    fake_tools, tmp_path, monkeypatch
+):
+    _require_node()
+    bin_dir, argv_out = fake_tools
+    # A wrapper that runs a bare "node", as pnpm and older npm shims do.
+    wrapper = bin_dir / "barenode.cmd"
+    wrapper.write_text('@node "%~dp0node_modules\\fake\\bin\\argv.js" %*\r\n', encoding="utf-8")
+    project = tmp_path / "untrusted js project"
+    project.mkdir()
+    (project / "node.bat").write_text(
+        '@echo planted> "%~dp0PLANTED_node.txt"\r\n', encoding="utf-8"
+    )
+    monkeypatch.setenv("CDXGEN_CMD", str(wrapper))
+    result = CdxgenGenerator(
+        str(project), str(tmp_path / "bom.json"), options={"project_type": ["js"]}
+    ).generate()
+    assert not (project / "PLANTED_node.txt").exists()
     assert result.success, result.command_output
     assert _read_argv(argv_out)[-1] == str(project)

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from xbom_lib import BOMResult, XBOMGenerator
-from xbom_lib.process import build_command
+from xbom_lib.process import build_command, find_executable, tool_env
 
 cdxgen_server_headers = {
     "Content-Type": "application/json",
@@ -128,6 +128,14 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
+def _exec_timeout_seconds() -> Optional[float]:
+    """cdxgen's own CDXGEN_TIMEOUT_MS plus five minutes for it to wind down."""
+    try:
+        return int(CDXGEN_TIMEOUT_MS) / 1000 + 300
+    except (TypeError, ValueError):
+        return None
+
+
 def exec_tool(
     args: List[str],
     cwd: Optional[str] = None,
@@ -155,10 +163,11 @@ def exec_tool(
             stdout=stdout,
             stderr=subprocess.STDOUT,
             cwd=cwd,
-            env=env,
+            env=tool_env(env),
             shell=False,
             encoding="utf-8",
             check=False,
+            timeout=_exec_timeout_seconds(),
         )
         result.command_output = cp.stdout
         if logger and stdout != subprocess.DEVNULL:
@@ -193,7 +202,7 @@ def _set_plugins_dir_if_present(candidate: str) -> None:
 def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
     if use_bin:
         cdxgen_cmd = os.environ.get("CDXGEN_CMD", "cdxgen")
-        if not shutil.which(cdxgen_cmd):
+        if not find_executable(cdxgen_cmd):
             local_bin = resource_path(
                 os.path.join(
                     "local_bin",
@@ -265,10 +274,11 @@ def cdxgen_source_arg(source_dir: str) -> str:
     so a relative argument would be resolved a second time against it --
     ``<src>/<src>``, a directory that does not exist -- and the plugins
     (rusi, golem, kosi) would analyse nothing. A local directory is therefore
-    always passed absolute. Anything else (a git URL, a purl, an image name)
-    is passed through untouched.
+    always passed absolute, and so is a local file, so that a value such as
+    ``-x/../file`` cannot be read as an option. Anything else (a git URL, a
+    purl, an image name) is passed through untouched.
     """
-    if source_dir and os.path.isdir(source_dir):
+    if source_dir and os.path.exists(source_dir):
         return os.path.abspath(source_dir)
     return source_dir
 
@@ -545,7 +555,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         Generate the BOM with official container images.
         """
         container_command = get_env_options_value(self.options, "DOCKER_CMD", "docker")
-        if not shutil.which(container_command):
+        if not find_executable(container_command):
             return BOMResult(
                 success=False,
                 command_output=f"{container_command} command not found. Pass `--bom-engine CdxgenGenerator` to force depscan to use the local cdxgen CLI.",

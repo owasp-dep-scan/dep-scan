@@ -10,7 +10,7 @@ Binary resolution order (mirrors cdxgen's ``resolvePluginBinary`` so the
 fallback finds the SAME binary cdxgen uses):
   1. ``RUSI_CMD`` env var (cdxgen's primary plugin override).
   2. ``DEPSCAN_RUSI_BINARY`` env var (depscan convenience override).
-  3. ``shutil.which("rusi")`` (PATH lookup -- local installs / plugins-bin PATH).
+  3. ``find_executable("rusi")`` (PATH lookup -- local installs / plugins-bin PATH).
   4. ``CDXGEN_PLUGINS_DIR`` bundled layout
      ``<pluginsDir>/rusi/rusi-<platform>-<arch><extn>`` using cdxgen's
      platform/arch/musl tokens.
@@ -30,14 +30,13 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
 from xbom_lib.plugins import get_plugins_bin_target
-from xbom_lib.process import build_command
+from xbom_lib.process import build_command, find_executable, tool_env
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +112,7 @@ def find_rusi_binary(logger: Optional[Logger] = None) -> Optional[str]:
     Resolution order:
       1. ``RUSI_CMD`` env (cdxgen's primary plugin override).
       2. ``DEPSCAN_RUSI_BINARY`` env (depscan convenience override).
-      3. ``shutil.which("rusi")`` (PATH).
+      3. ``find_executable("rusi")`` (PATH).
       4. ``CDXGEN_PLUGINS_DIR`` bundled layout (see :func:`bundled_rusi_path`).
 
     Returns an absolute path string or ``None`` (graceful skip).
@@ -133,7 +132,7 @@ def find_rusi_binary(logger: Optional[Logger] = None) -> Optional[str]:
                 )
 
     # 2. PATH lookup -- covers local installs and the cdxgen-plugins-bin PATH entry
-    found = shutil.which("rusi")
+    found = find_executable("rusi")
     if found:
         return found
 
@@ -154,6 +153,7 @@ def get_rusi_version(binary: str, logger: Optional[Logger] = None) -> Optional[s
             build_command([binary, "--version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            env=tool_env(),
             shell=False,
             encoding="utf-8",
             check=False,
@@ -313,7 +313,7 @@ def _run_rusi_once(
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=abs_src_dir if os.path.isdir(abs_src_dir) else None,
-            env=env,
+            env=tool_env(env),
             shell=False,
             encoding="utf-8",
             check=False,

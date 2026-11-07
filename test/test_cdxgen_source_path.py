@@ -55,3 +55,11 @@ def test_generator_passes_absolute_source_with_project_cwd(monkeypatch, tmp_path
     assert captured["args"][-1] == str(project)
     assert os.path.isabs(captured["args"][-1])
     assert captured["cwd"] == "test/data/app"
+
+
+def test_existing_file_becomes_absolute(monkeypatch, tmp_path):
+    bom = tmp_path / "-o"
+    bom.write_text("{}")
+    monkeypatch.chdir(tmp_path)
+    # A relative "-o" would be read by cdxgen as its output option.
+    assert cdxgen_source_arg("-o") == str(bom)

@@ -2,7 +2,9 @@ import contextlib
 import ipaddress
 import json
 import os
+import re
 import socket
+import sys
 import tempfile
 from hmac import compare_digest
 from typing import cast
@@ -66,6 +68,18 @@ CROSS_SITE_MESSAGE = "Cross-site requests are not allowed."
 UNTRUSTED_HOST_HEADER_MESSAGE = (
     "Host header not allowed. Set DEPSCAN_SERVER_TRUSTED_HOST_NAMES to reach the "
     "server by this name, or set DEPSCAN_SERVER_API_KEY."
+)
+QUERY_SCAN_NEEDS_JSON_MESSAGE = (
+    "Send path and url in a JSON body, or set DEPSCAN_SERVER_API_KEY, when the server "
+    "is not reached through localhost or a loopback address."
+)
+PATH_NOT_STRING_MESSAGE = "path and url must be strings."
+# A value that cdxgen would read as an option, a URL, a package URL or an scp-style
+# git address rather than a file system path. One letter before ":" is a drive.
+NON_PATH_RE = re.compile(r"^(?:-|[A-Za-z][A-Za-z0-9+.-]+:|git@)")
+WINDOWS_RESERVED_NAMES = frozenset(
+    ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"]
+    + [f"{prefix}{n}" for prefix in ("COM", "LPT") for n in "123456789\u00b9\u00b2\u00b3"]
 )
 SERVER_TEMP_DIR_PREFIX = "depscan-server-"
 
@@ -233,6 +247,10 @@ def _parse_project_types(project_type_value: str) -> list[str]:
             raise ValueError("project type is too long")
         if not all(ch.isalnum() or ch in ("-", "_", ".", "+") for ch in project_type):
             raise ValueError("project type contains unsupported characters")
+        # Each type follows "-t" on the cdxgen command line, so a value such as
+        # "--server" would become an option of its own.
+        if not project_type[0].isalnum():
+            raise ValueError("project type must start with a letter or digit")
         project_types.append(project_type)
         if len(project_types) > MAX_PROJECT_TYPES:
             raise ValueError("too many project types were supplied")
@@ -300,8 +318,13 @@ def _is_cross_site_request(headers) -> bool:
     are not affected.
     """
     fetch_site = (headers.get("Sec-Fetch-Site") or "").strip().lower()
-    if fetch_site in ("cross-site", "same-site"):
-        return True
+    if fetch_site:
+        # The browser computes this header itself, so when it is present it
+        # decides. A reverse proxy that rewrites Host would otherwise make
+        # same-origin requests fail the Origin comparison below.
+        return fetch_site in ("cross-site", "same-site")
+    # Browsers send Sec-Fetch-* only to localhost, loopback and HTTPS
+    # addresses; for the rest, Origin is all there is.
     origin = headers.get("Origin")
     if origin is None:
         return False
@@ -325,6 +348,40 @@ def _trusted_host_names() -> set[str]:
     return {str(item).strip().rstrip(".").lower() for item in items if str(item).strip()}
 
 
+def _host_header_name(host_header: str) -> str | None:
+    """Return the lower-case host name from a Host header, without port or trailing dot."""
+    try:
+        hostname = urlsplit(f"//{host_header.strip()}").hostname
+    except ValueError:
+        return None
+    return hostname.rstrip(".").lower() if hostname else None
+
+
+def _is_loopback_host_name(hostname: str) -> bool:
+    if hostname == "localhost" or hostname.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return False
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+        address = address.ipv4_mapped
+    return address.is_loopback
+
+
+def _is_loopback_host_header(host_header: str | None) -> bool:
+    """Tell whether the request was addressed to localhost or a loopback address.
+
+    Browsers send ``Sec-Fetch-Site`` to such addresses, so the cross-site
+    check covers them. Requests without a Host header come from HTTP/1.0
+    clients, not browsers.
+    """
+    if not host_header:
+        return True
+    hostname = _host_header_name(host_header)
+    return bool(hostname) and _is_loopback_host_name(hostname)
+
+
 def _is_trusted_host_header(host_header: str | None, trusted_names: set[str]) -> bool:
     """Tell whether the Host header names this server rather than a rebound domain.
 
@@ -338,13 +395,9 @@ def _is_trusted_host_header(host_header: str | None, trusted_names: set[str]) ->
     if not host_header:
         # Browsers always send Host; only HTTP/1.0 clients leave it out.
         return True
-    try:
-        hostname = urlsplit(f"//{host_header.strip()}").hostname
-    except ValueError:
-        return False
+    hostname = _host_header_name(host_header)
     if not hostname:
         return False
-    hostname = hostname.rstrip(".").lower()
     if hostname == "localhost" or hostname.endswith(".localhost"):
         return True
     try:
@@ -353,6 +406,24 @@ def _is_trusted_host_header(host_header: str | None, trusted_names: set[str]) ->
     except ValueError:
         pass
     return hostname in trusted_names
+
+
+def _is_windows_remote_or_device_path(path: str) -> bool:
+    """Tell whether a Windows path names a network share or a device.
+
+    Checking whether ``\\\\host\\share`` exists makes Windows connect to that
+    host over SMB and offer the server account's credentials. Device names
+    such as ``CON`` or ``\\\\.\\pipe\\x`` are not files and can block reads.
+    """
+    # UNC shares, \\?\ and \\.\ device paths, and the NT \??\ prefix, in any
+    # mix of slashes.
+    if re.match(r"^[\\/]([\\/]|\?\?[\\/])", path):
+        return True
+    for part in re.split(r"[\\/]", path):
+        stem = part.split(".", 1)[0].split(":", 1)[0].rstrip(" ").upper()
+        if stem in WINDOWS_RESERVED_NAMES:
+            return True
+    return False
 
 
 def _get_request_api_key() -> str | None:
@@ -409,15 +480,29 @@ async def enforce_allowlists():
                 logger_instance.warning(f"Blocked request from unauthorized host: {client_host}")
             return {"error": "true", "message": "Host not allowed"}, 403
     if request.path == "/scan":
+        # A browser can put path or url in the query string of a cross-site GET
+        # or simple POST. Browsers send Sec-Fetch-Site only to loopback and
+        # HTTPS addresses, so elsewhere the cross-site check above cannot see
+        # such a request, while a JSON body needs a CORS preflight that this
+        # server never grants.
+        if (
+            not configured_api_key
+            and (request.args.get("path") or request.args.get("url"))
+            and not _is_loopback_host_header(request.headers.get("Host"))
+        ):
+            return {"error": "true", "message": QUERY_SCAN_NEEDS_JSON_MESSAGE}, 403
+        path = request.args.get("path") or None
+        if path is None and request.method == "POST":
+            json_data = await request.get_json(silent=True)
+            if isinstance(json_data, dict) and json_data.get("path"):
+                path = json_data["path"]
+        if path is not None and not isinstance(path, str):
+            return {"error": "true", "message": PATH_NOT_STRING_MESSAGE}, 400
+        # Checked before any file system access, including the allowlist below.
+        if path and sys.platform == "win32" and _is_windows_remote_or_device_path(path):
+            return {"error": "true", "message": PATH_NOT_ALLOWED_MESSAGE}, 403
         allowed_paths = app.config.get("ALLOWED_PATHS")
         if allowed_paths is not None:
-            path = None
-            if request.args.get("path"):
-                path = request.args.get("path")
-            elif request.method == "POST":
-                json_data = await request.get_json(silent=True)
-                if isinstance(json_data, dict) and "path" in json_data:
-                    path = json_data["path"]
             if path:
                 if not _is_allowed_scan_path(path, allowed_paths):
                     if logger_instance:
@@ -492,6 +577,12 @@ async def run_scan():
     if params.get("profile"):
         profile = params.get("profile")
 
+    if (path is not None and not isinstance(path, str)) or (
+        url is not None and not isinstance(url, str)
+    ):
+        return {"error": "true", "message": PATH_NOT_STRING_MESSAGE}, 400
+    if project_type is not None and not isinstance(project_type, str):
+        return {"error": "true", "message": "project type must be a string."}, 400
     if not path and not url and (uploaded_bom_file.get("file", None) is None):
         return {
             "error": "true",
@@ -512,6 +603,7 @@ async def run_scan():
         }, 400
     cdxgen_server = app.config.get("CDXGEN_SERVER_URL")
     bom_file_path = None
+    bom_is_caller_file = False
     if uploaded_bom_file.get("file", None) is not None:
         bom_file = uploaded_bom_file["file"]
         bom_file_suffix = str(bom_file.filename).rsplit(".", maxsplit=1)[-1]
@@ -588,8 +680,16 @@ async def run_scan():
     # must name an existing directory or BOM file. Any other value would reach
     # the local cdxgen as its source argument, where cdxgen could read it as a
     # git URL or package URL that the url checks above never saw.
-    if path and path_is_caller_supplied and not cdxgen_server and not os.path.exists(path):
-        return {"error": "true", "message": PATH_NOT_FOUND_MESSAGE}, 400
+    if path and path_is_caller_supplied:
+        if NON_PATH_RE.match(path):
+            return {"error": "true", "message": PATH_NOT_FOUND_MESSAGE}, 400
+        if os.path.exists(path):
+            # Windows resolves ".." in the text before touching the disk, so
+            # "x:y/../../file" exists even though "x:y" does not. Only the
+            # resolved path is passed on.
+            path = os.path.realpath(path)
+        elif not cdxgen_server:
+            return {"error": "true", "message": PATH_NOT_FOUND_MESSAGE}, 400
     # Path points to a project directory
     # Bug# 233. Path could be a url
     try:
@@ -659,10 +759,15 @@ async def run_scan():
         # Path points to a SBOM file
         elif path and os.path.exists(path):
             bom_file_path = path
+            # An uploaded BOM was staged in the server's temporary directory.
+            bom_is_caller_file = path_is_caller_supplied
         # Direct purl-based lookups are not supported yet.
         if bom_file_path is not None:
             # Final check before the BOM is opened and its contents returned.
-            if path_is_caller_supplied and not _revalidate_scan_path(bom_file_path):
+            # A generated BOM lives in the server's temporary directory, which
+            # was checked above; only a BOM file named by the caller is
+            # rechecked against the allowlist.
+            if bom_is_caller_file and not _revalidate_scan_path(bom_file_path):
                 if logger_instance:
                     logger_instance.warning("Blocked request for path: %s", bom_file_path)
                 return {"error": "true", "message": PATH_NOT_ALLOWED_MESSAGE}, 403

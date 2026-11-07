@@ -923,7 +923,6 @@ LOCAL = {"X-Test-Remote-Addr": "127.0.0.1"}
         {"Origin": "null"},
         {"Origin": ""},
         {"Origin": "http://[::1"},
-        {"Sec-Fetch-Site": "same-origin", "Origin": "https://evil.example"},
     ],
 )
 async def test_cross_site_requests_are_refused(client: QuartClient, tmp_path, headers):
@@ -959,6 +958,8 @@ async def test_cross_site_requests_are_refused_even_with_an_api_key(client: Quar
         {"Sec-Fetch-Site": "same-origin"},
         {"Origin": "http://localhost:7070"},
         {"Origin": "http://LOCALHOST:7070", "Sec-Fetch-Site": "same-origin"},
+        # A reverse proxy that rewrites Host: Sec-Fetch-Site decides.
+        {"Origin": "https://depscan.example", "Sec-Fetch-Site": "same-origin"},
     ],
 )
 async def test_api_clients_and_same_origin_requests_are_allowed(client: QuartClient, headers):
@@ -1051,3 +1052,231 @@ def test_missing_host_header_is_accepted():
     # HTTP/1.0 clients may leave Host out; browsers always send it.
     assert simple_module._is_trusted_host_header(None, set())
     assert simple_module._is_trusted_host_header("", set())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("project_type", ["--server", "-t", "--generate-key-and-sign", ".x", "+x"])
+async def test_project_types_cannot_become_cdxgen_options(
+    client: QuartClient, tmp_path, project_type
+):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    response = await client.get(
+        "/scan", query_string={"type": project_type, "path": str(tmp_path)}, headers=LOCAL
+    )
+    assert response.status_code == 400
+    assert calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"type": "python", "path": 3},
+        {"type": "python", "path": ["x"]},
+        {"type": "python", "path": {"a": 1}},
+        {"type": "python", "url": 5},
+        {"type": ["python"], "path": "/tmp"},
+    ],
+)
+async def test_non_string_scan_parameters_are_rejected(client: QuartClient, body):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    response = await client.post("/scan", json=body, headers=LOCAL)
+    assert response.status_code == 400
+    assert calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "path",
+    [
+        "--project-name=x",
+        "-o",
+        "pkg:npm/left-pad@1.3.0",
+        "https://127.0.0.1:9999/r.git",
+        "git+ssh://host/repo",
+        "git@github.com:owner/repo.git",
+    ],
+)
+async def test_paths_that_cdxgen_would_read_as_options_or_urls_are_rejected(
+    client: QuartClient, path
+):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    app.config["ALLOW_PRIVATE_URLS"] = True
+    for query in (
+        {"type": "python", "path": path},
+        {"type": "python", "path": path, "url": "http://127.0.0.1/internal/repo"},
+    ):
+        response = await client.get("/scan", query_string=query, headers=LOCAL)
+        assert response.status_code == 400, query
+        data = await response.get_json()
+        assert data["message"] == simple_module.PATH_NOT_FOUND_MESSAGE
+    # Not forwarded to a cdxgen server either.
+    app.config["CDXGEN_SERVER_URL"] = "http://cdxgen:9090"
+    response = await client.get(
+        "/scan",
+        query_string={"type": "python", "path": path, "url": "http://127.0.0.1/internal/repo"},
+        headers=LOCAL,
+    )
+    assert response.status_code == 400
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_existing_path_is_resolved_before_it_is_passed_on(client: QuartClient, tmp_path):
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    (tmp_path / "other").mkdir()
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path / "other" / ".." / "project")},
+        headers=LOCAL,
+    )
+    assert calls == [os.path.realpath(project_dir)]
+
+
+@pytest.mark.asyncio
+async def test_generated_bom_is_not_blocked_by_the_path_allowlist(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    """With ALLOWED_PATHS set, scans that generate a BOM used to fail with 403
+    because the BOM in the server's temporary directory was rechecked against
+    the allowlist."""
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    app.config["ALLOWED_PATHS"] = [str(tmp_path)]
+
+    def create_bom(bom_file, _source_dir, _options):
+        with open(bom_file, "w", encoding="utf-8") as fp:
+            json.dump({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": []}, fp)
+        return type("BOMStatus", (), {"success": True, "primary": bom_file})()
+
+    class DummyAnalyzer:
+        def __init__(self, vdr_options):
+            self.vdr_options = vdr_options
+
+        def process(self):
+            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
+
+    app.config["create_bom"] = create_bom
+    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+    response = await client.get(
+        "/scan", query_string={"type": "js", "path": str(project_dir)}, headers=LOCAL
+    )
+    assert response.status_code == 200
+    # A BOM file named by the caller is still checked.
+    outside = tmp_path.parent / f"{tmp_path.name}-outside.json"
+    outside.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.5"}))
+    try:
+        response = await client.get(
+            "/scan", query_string={"type": "js", "path": str(outside)}, headers=LOCAL
+        )
+        assert response.status_code == 403
+    finally:
+        outside.unlink()
+
+
+@pytest.mark.asyncio
+async def test_query_scans_need_json_when_not_on_loopback(client: QuartClient, tmp_path):
+    """Browsers do not send Sec-Fetch-Site to plain-HTTP names such as
+    depscan.internal, so an <img> pointing there carries no cross-site marker."""
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    app.config["TRUSTED_HOST_NAMES"] = "depscan.internal"
+    remote = {**LOCAL, "Host": "depscan.internal:7070"}
+    for query in (
+        {"type": "python", "path": str(tmp_path)},
+        {"type": "python", "url": "https://github.com/owasp-dep-scan/dep-scan"},
+    ):
+        response = await client.get("/scan", query_string=query, headers=remote)
+        assert response.status_code == 403
+        data = await response.get_json()
+        assert data["message"] == simple_module.QUERY_SCAN_NEEDS_JSON_MESSAGE
+    # An IP literal that is not loopback, as with an unauthenticated LAN bind.
+    response = await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path)},
+        headers={**LOCAL, "Host": "10.1.2.3:7070"},
+    )
+    assert response.status_code == 403
+    assert calls == []
+    # A JSON body needs a CORS preflight, which a cross-site page cannot get.
+    await client.post("/scan", json={"type": "python", "path": str(tmp_path)}, headers=remote)
+    assert calls == [os.path.realpath(tmp_path)]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "host", ["localhost:7070", "127.0.0.1:7070", "[::1]:7070", "[::ffff:127.0.0.1]"]
+)
+async def test_query_scans_still_work_on_loopback(client: QuartClient, tmp_path, host):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path)},
+        headers={**LOCAL, "Host": host},
+    )
+    assert calls == [os.path.realpath(tmp_path)]
+
+
+@pytest.mark.asyncio
+async def test_query_scans_work_on_any_host_with_an_api_key(client: QuartClient, tmp_path):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    app.config["API_KEY"] = "secret"
+    await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path)},
+        headers={**LOCAL, "Host": "depscan.example.com", "X-API-Key": "secret"},
+    )
+    assert calls == [os.path.realpath(tmp_path)]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"\\attacker\share\x",
+        "//attacker/share/x",
+        r"\\?\C:\Windows\win.ini",
+        r"\\.\pipe\x",
+        r"\??\UNC\attacker\share",
+        r"/\attacker\share",
+        "CON",
+        r"C:\work\nul.txt",
+        r"C:\work\COM1\x",
+        "LPT\u00b9",
+        r"C:\work\aux .json",
+    ],
+)
+def test_windows_network_and_device_paths_are_detected(path):
+    assert simple_module._is_windows_remote_or_device_path(path)
+
+
+@pytest.mark.parametrize(
+    "path", [r"C:\work\project", r"C:\work\console\x", r"\work\x", "relative\\dir", "COM10"]
+)
+def test_ordinary_windows_paths_are_not_flagged(path):
+    assert not simple_module._is_windows_remote_or_device_path(path)
+
+
+@pytest.mark.asyncio
+async def test_windows_network_paths_are_refused_before_any_file_access(
+    client: QuartClient, monkeypatch
+):
+    checked = []
+    monkeypatch.setattr(simple_module, "_is_windows_remote_or_device_path", lambda p: True)
+    monkeypatch.setattr(simple_module.sys, "platform", "win32")
+    monkeypatch.setattr(
+        simple_module, "_is_allowed_scan_path", lambda p, a: checked.append(p) or True
+    )
+    app.config["ALLOWED_PATHS"] = ["/allowed"]
+    response = await client.get(
+        "/scan", query_string={"type": "python", "path": "//attacker/share"}, headers=LOCAL
+    )
+    assert response.status_code == 403
+    assert checked == []

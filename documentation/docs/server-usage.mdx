@@ -44,13 +44,17 @@ depscan --server --server-host 0.0.0.0 --server-port 7070
 
 ### Browser and Host header checks
 
-The server refuses requests that a browser sends on behalf of another site, meaning requests whose `Sec-Fetch-Site` header is `cross-site` or `same-site`, or whose `Origin` does not match the `Host` header. Without this check, any web page open in the operator's browser could start scans on a local server. curl, CI jobs and other API clients do not send these headers and are not affected.
+The server refuses requests that a browser sends on behalf of another site, meaning requests whose `Sec-Fetch-Site` header is `cross-site` or `same-site`, or, when that header is missing, whose `Origin` does not match the `Host` header. Without this check, any web page open in the operator's browser could start scans on a local server. curl, CI jobs and other API clients do not send these headers and are not affected. A browser-based client therefore has to be served from the same origin as the server.
+
+Browsers send `Sec-Fetch-Site` only to `localhost`, loopback addresses and HTTPS sites. When an unauthenticated server is reached by any other name or address, `path` and `url` must be sent in a JSON body (`curl --json ...`) rather than in the query string, because a web page cannot send a JSON body to another site without a CORS preflight, which the server never grants. Uploads with `?type=` in the query string are not affected.
 
 Without an API key, the server also checks the `Host` header so that a DNS rebinding attack cannot read its responses. `localhost`, `*.localhost` and IP addresses are always accepted. To reach an unauthenticated server by another name, list that name:
 
 ```bash
 export DEPSCAN_SERVER_TRUSTED_HOST_NAMES="depscan.internal"
 ```
+
+List names without a port, and international names in their punycode (`xn--`) form.
 
 With `DEPSCAN_SERVER_API_KEY` set, any host name is accepted, because a rebound page cannot supply the key.
 
