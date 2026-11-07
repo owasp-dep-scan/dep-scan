@@ -61,6 +61,7 @@ DEFAULT_MAX_BOM_FILE_SIZE = 100 * 1024 * 1024
 
 UPLOAD_SIZE_LIMIT_MESSAGE = "BOM file exceeds the configured size limit."
 PATH_NOT_ALLOWED_MESSAGE = "Path not allowed"
+PATH_NOT_FOUND_MESSAGE = "path must be an existing directory or BOM file."
 SERVER_TEMP_DIR_PREFIX = "depscan-server-"
 
 
@@ -494,6 +495,12 @@ async def run_scan():
         )
         if not is_valid_url:
             return {"error": "true", "message": validation_message}, 400
+    # Without a cdxgen server, a caller-supplied path is scanned locally, so it
+    # must name an existing directory or BOM file. Any other value would reach
+    # the local cdxgen as its source argument, where cdxgen could read it as a
+    # git URL or package URL that the url checks above never saw.
+    if path and path_is_caller_supplied and not cdxgen_server and not os.path.exists(path):
+        return {"error": "true", "message": PATH_NOT_FOUND_MESSAGE}, 400
     # Path points to a project directory
     # Bug# 233. Path could be a url
     try:

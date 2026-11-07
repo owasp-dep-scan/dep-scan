@@ -167,7 +167,7 @@ BOM generation is a major trust boundary. `depscan/lib/bom.py` delegates work to
 
 This part of the system is powerful because it turns a broad range of inputs into machine-readable BOMs. It is also risky because it can execute external tools, depend on environment variables, and interact with source trees that may contain crafted manifests.
 
-A practical threat here is not necessarily classic command injection. The code largely builds subprocess arguments as a list, which helps. The deeper risks are delegated execution, unsafe defaults in downstream tools, surprising network access, and a widening of trust when remote cdxgen server mode is involved.
+A practical threat here is not necessarily classic command injection. The code largely builds subprocess arguments as a list, which helps on Linux and macOS. On Windows a list is not enough on its own: a batch file, which is how npm installs cdxgen, always runs through cmd.exe, so `&`, `|`, `<`, `>` and `"` in an argument act as shell syntax even with `shell=False`, and cmd.exe looks for the program in the current directory, which is the scanned project, before `PATH`. Every external tool should therefore start through `build_command` in `packages/xbom-lib/src/xbom_lib/process.py`, never with `shell=True`. The deeper risks are delegated execution, unsafe defaults in downstream tools, surprising network access, and a widening of trust when remote cdxgen server mode is involved.
 
 `cdxgen_args` deserves special attention during review because it is intentionally flexible. Flexibility is useful for operators, but it also means a caller can influence downstream tool behavior in ways that may bypass normal expectations.
 

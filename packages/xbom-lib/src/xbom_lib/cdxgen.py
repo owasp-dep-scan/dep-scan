@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from xbom_lib import BOMResult, XBOMGenerator
+from xbom_lib.process import build_command
 
 cdxgen_server_headers = {
     "Content-Type": "application/json",
@@ -150,12 +151,12 @@ def exec_tool(
         if logger and stdout != subprocess.DEVNULL:
             logger.debug("Executing '%s'", " ".join(args))
         cp = subprocess.run(
-            args,
+            build_command(args),
             stdout=stdout,
             stderr=subprocess.STDOUT,
             cwd=cwd,
             env=env,
-            shell=sys.platform == "win32",
+            shell=False,
             encoding="utf-8",
             check=False,
         )

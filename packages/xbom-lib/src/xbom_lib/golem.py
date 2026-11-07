@@ -42,12 +42,12 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
 from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.process import build_command
 
 
 # ---------------------------------------------------------------------------
@@ -156,10 +156,10 @@ def get_golem_version(binary: str, logger: Optional[Logger] = None) -> Optional[
     """Return the golem version string (``golem --version``), or ``None``."""
     try:
         cp = subprocess.run(
-            [binary, "--version"],
+            build_command([binary, "--version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            shell=sys.platform == "win32",
+            shell=False,
             encoding="utf-8",
             check=False,
             timeout=30,
@@ -191,10 +191,10 @@ def go_toolchain_available(logger: Optional[Logger] = None) -> bool:
     """
     try:
         cp = subprocess.run(
-            ["go", "version"],
+            build_command(["go", "version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            shell=sys.platform == "win32",
+            shell=False,
             encoding="utf-8",
             check=False,
             timeout=15,
@@ -372,12 +372,12 @@ def run_golem(
     env = _build_hardened_go_env(network_mode)
     try:
         cp = subprocess.run(
-            full_cmd,
+            build_command(full_cmd),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=abs_src_dir if os.path.isdir(abs_src_dir) else None,
             env=env,
-            shell=sys.platform == "win32",
+            shell=False,
             encoding="utf-8",
             check=False,
             timeout=timeout,

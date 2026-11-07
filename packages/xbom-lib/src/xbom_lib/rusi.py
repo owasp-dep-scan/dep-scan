@@ -32,12 +32,12 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
 from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.process import build_command
 
 
 # ---------------------------------------------------------------------------
@@ -151,10 +151,10 @@ def get_rusi_version(binary: str, logger: Optional[Logger] = None) -> Optional[s
     """Return the rusi version string (``rusi --version``), or ``None``."""
     try:
         cp = subprocess.run(
-            [binary, "--version"],
+            build_command([binary, "--version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            shell=sys.platform == "win32",
+            shell=False,
             encoding="utf-8",
             check=False,
             timeout=30,
@@ -309,12 +309,12 @@ def _run_rusi_once(
     env = os.environ.copy()
     try:
         cp = subprocess.run(
-            args,
+            build_command(args),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=abs_src_dir if os.path.isdir(abs_src_dir) else None,
             env=env,
-            shell=sys.platform == "win32",
+            shell=False,
             encoding="utf-8",
             check=False,
             timeout=timeout,

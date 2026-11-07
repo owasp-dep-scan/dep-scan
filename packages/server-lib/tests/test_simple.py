@@ -22,6 +22,7 @@ def client():
         "API_KEY",
         "ALLOW_PRIVATE_URLS",
         "ALLOW_UNAUTHENTICATED_BIND",
+        "CDXGEN_SERVER_URL",
         "MAX_BOM_FILE_SIZE",
         "create_bom",
     ):
@@ -809,3 +810,83 @@ async def test_index_endpoint(client: QuartClient):
     data = await response.get_json()
     assert data == {}
     assert response.headers.get("X-Content-Type-Options") == "nosniff"
+
+
+def _recording_create_bom(calls):
+    def create_bom(bom_file, source_dir, options):
+        calls.append(source_dir)
+        return type("BOMStatus", (), {"success": False, "primary": None})()
+
+    return create_bom
+
+
+@pytest.mark.asyncio
+async def test_scan_rejects_a_path_that_does_not_exist(client: QuartClient, tmp_path):
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    response = await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(tmp_path / "missing")},
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert data["message"] == simple_module.PATH_NOT_FOUND_MESSAGE
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_scan_with_url_does_not_hand_an_arbitrary_path_to_cdxgen(client: QuartClient):
+    """GHSA-xpgh-m7fj-jqq9: with a url, the path used to reach the local cdxgen
+    without being checked, and on Windows cmd.exe ran the text after '&'."""
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    app.config["ALLOW_PRIVATE_URLS"] = True
+    response = await client.get(
+        "/scan",
+        query_string={
+            "type": "python",
+            "url": "http://127.0.0.1/internal/repo",
+            "path": "pwn&cd>marker.txt",
+        },
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 400
+    data = await response.get_json()
+    assert data["message"] == simple_module.PATH_NOT_FOUND_MESSAGE
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_scan_of_an_existing_directory_still_reaches_create_bom(
+    client: QuartClient, tmp_path
+):
+    project_dir = tmp_path / "my project (1)"
+    project_dir.mkdir()
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    await client.get(
+        "/scan",
+        query_string={"type": "python", "path": str(project_dir)},
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert calls == [str(project_dir)]
+
+
+@pytest.mark.asyncio
+async def test_scan_with_cdxgen_server_still_forwards_the_path(client: QuartClient):
+    """A cdxgen server resolves the path on its own host, so it is not checked here."""
+    calls = []
+    app.config["create_bom"] = _recording_create_bom(calls)
+    app.config["CDXGEN_SERVER_URL"] = "http://cdxgen:9090"
+    app.config["ALLOW_PRIVATE_URLS"] = True
+    await client.get(
+        "/scan",
+        query_string={
+            "type": "python",
+            "url": "http://127.0.0.1/internal/repo",
+            "path": "/app/project",
+        },
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert calls == ["/app/project"]
