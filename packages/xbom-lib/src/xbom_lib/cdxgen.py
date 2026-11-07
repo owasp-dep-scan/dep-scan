@@ -20,8 +20,11 @@ cdxgen_server_headers = {
 # cdxgen timeout. Increased to 30 minutes
 CDXGEN_TIMEOUT_MS = os.getenv("CDXGEN_TIMEOUT_MS", str(int(30 * 60 * 1000)))
 
-# version of cdxgen to use
-CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "v12.8.0")
+# Version of the cdxgen container images to use. cdxgen publishes exact
+# versions as bare tags ("12.9.1") and the rolling major and minor tags with
+# a "v" prefix ("v12", "v12.9"); a "v12.9.1" image tag does not exist. The
+# SEA release assets, in contrast, live under the "v12.9.1" git tag.
+CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "12.9.1")
 CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v12")
 
 # cdxgen default image to use

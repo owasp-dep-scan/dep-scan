@@ -12,7 +12,9 @@ Sources checked:
   3. build/assets/Info.plist     :: CFBundleVersion
   4. git tag (on tag push only)  :: refs/tags/v6.3.0  -> 6.3.0
   5. CDXGEN_SEA_VERSION env var  :: must equal CDXGEN_IMAGE_VERSION default
-                                    in packages/xbom-lib/src/xbom_lib/cdxgen.py
+                                    in packages/xbom-lib/src/xbom_lib/cdxgen.py,
+                                    ignoring a leading "v" (the SEA release
+                                    tag is "v12.9.1", the image tag "12.9.1")
 
 Exits 0 on full agreement, 1 on any mismatch. Prints a clear diff-style
 report so the operator knows exactly what to update.
@@ -76,7 +78,7 @@ def _read_cdxgen_image_version_default() -> str:
     """Return the default value of CDXGEN_IMAGE_VERSION from xbom_lib/cdxgen.py.
 
     The line looks like:
-        CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "v12.8.0")
+        CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "12.9.1")
     We extract the second argument to os.getenv.
     """
     text = CDXGEN_PY_PATH.read_text(encoding="utf-8")
@@ -89,6 +91,11 @@ def _read_cdxgen_image_version_default() -> str:
             f"Could not find CDXGEN_IMAGE_VERSION default in {CDXGEN_PY_PATH}"
         )
     return m.group(1)
+
+
+def _strip_v(version: str) -> str:
+    """Drop a leading "v" so a git tag and a container image tag compare equal."""
+    return version[1:] if version.startswith("v") else version
 
 
 def _read_git_tag() -> str | None:
@@ -157,9 +164,10 @@ def main() -> int:
     # SEA binary gets downloaded; xbom_lib is the source of truth for which
     # cdxgen container image gets used at runtime. They MUST agree, otherwise
     # the bundled cdxgen and the fallback container would be different
-    # versions.
+    # versions. The SEA is downloaded from the "v12.9.1" release while the
+    # images are tagged "12.9.1", so the comparison ignores a leading "v".
     if cdxgen_sea_version:
-        if cdxgen_sea_version != cdxgen_image_version:
+        if _strip_v(cdxgen_sea_version) != _strip_v(cdxgen_image_version):
             errors.append(
                 f"CDXGEN_SEA_VERSION {cdxgen_sea_version!r} (workflow env) does "
                 f"not match CDXGEN_IMAGE_VERSION default {cdxgen_image_version!r} "

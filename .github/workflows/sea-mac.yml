@@ -52,7 +52,7 @@ jobs:
       PYTHON_VERSION: '3.14'
       # Keep the bundled cdxgen SEA version in sync with
       # CDXGEN_IMAGE_VERSION in packages/xbom-lib/src/xbom_lib/cdxgen.py.
-      CDXGEN_SEA_VERSION: 'v12.8.0'
+      CDXGEN_SEA_VERSION: 'v12.9.1'
       FORCE_COLOR: '1'
       PYTHONUTF8: '1'
       PYTHONIOENCODING: 'utf-8'
