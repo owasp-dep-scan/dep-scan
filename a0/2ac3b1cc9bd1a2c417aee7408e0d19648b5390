@@ -1,0 +1,24 @@
+packages/analysis-lib/tests/test_vex.py
+  s_e8fde823affaf6::t_7817c0e665cc66 646,648,652
+packages/server-lib/tests/test_simple.py
+  s_e8fde823affaf6::t_f870ef2ce2a7ee 15-22,617,676-679,789
+.github/workflows/pythonapp.yml
+  s_e8fde823affaf6::t_7817c0e665cc66 47-50
+  s_e8fde823affaf6::t_f870ef2ce2a7ee 52-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a02ac3b1cc9bd1a2c417aee7408e0d19648b5390",
+  "prompts": {},
+  "sessions": {
+    "s_e8fde823affaf6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c8b88eb-736e-490c-89e2-a991aa6c9726",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
