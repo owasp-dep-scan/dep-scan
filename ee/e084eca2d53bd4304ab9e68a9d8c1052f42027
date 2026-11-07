@@ -1,0 +1,29 @@
+.github/workflows/sea-linux.yml
+  s_e8fde823affaf6::t_ed668dcb0d2e10 51
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_e8fde823affaf6::t_3456e550ed4fe9 23-27
+build/sea-hooks/verify_versions.py
+  s_e8fde823affaf6::t_26e444921f42a0 15-17,81,96-100,167-168,170
+.github/workflows/sea-mac.yml
+  s_e8fde823affaf6::t_ed668dcb0d2e10 55
+.github/workflows/sea-alpine.yml
+  s_e8fde823affaf6::t_ed668dcb0d2e10 62
+.github/workflows/sea-win.yml
+  s_e8fde823affaf6::t_ed668dcb0d2e10 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eee084eca2d53bd4304ab9e68a9d8c1052f42027",
+  "prompts": {},
+  "sessions": {
+    "s_e8fde823affaf6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c8b88eb-736e-490c-89e2-a991aa6c9726",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
