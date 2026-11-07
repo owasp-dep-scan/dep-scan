@@ -1,0 +1,23 @@
+.github/workflows/repotests.yml
+  s_e8fde823affaf6::t_298ca2c537aff8 89-98
+.github/workflows/pythonapp.yml
+  s_e8fde823affaf6::t_298ca2c537aff8 5-6,27-36
+.github/workflows/dockertests.yml
+  s_e8fde823affaf6::t_298ca2c537aff8 169-178,227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64d45681cfa7504f76e3769624dd03c1dca2d362",
+  "prompts": {},
+  "sessions": {
+    "s_e8fde823affaf6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c8b88eb-736e-490c-89e2-a991aa6c9726",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
