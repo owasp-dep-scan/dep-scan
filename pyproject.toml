@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "6.3.1"
+version = "6.3.2"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -8,17 +8,17 @@ authors = [
 dependencies = [
     "appthreat-vulnerability-db[oras]~=6.7.7",
     "custom-json-diff~=2.1.6",
-    "defusedxml>=0.7.1",
-    "httpx>=0.27",
-    "PyYAML>=6.0.2",
+    "defusedxml~=0.7.1",
+    "httpx~=0.28.1",
+    "PyYAML~=6.0.2",
     "rich~=15.0.0",
-    "Jinja2>=3.1.6",
-    "packageurl-python>=0.16.0",
-    "cvss>=3.4",
-    "tomli>=2.2.1; python_full_version <= '3.11'",
-    "ds-xbom-lib>=6.3.1",
-    "ds-analysis-lib>=6.3.1",
-    "ds-reporting-lib>=6.3.1"
+    "Jinja2~=3.1.6",
+    "packageurl-python~=0.17.6",
+    "cvss~=3.6",
+    "tomli~=2.5.0; python_full_version <= '3.11'",
+    "ds-xbom-lib~=6.3.2",
+    "ds-analysis-lib~=6.3.2",
+    "ds-reporting-lib~=6.3.2"
 ]
 
 requires-python = ">=3.10"
@@ -50,13 +50,13 @@ depscan-validate = "depscan.validate_cli:main"
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.3.4",
-    "pytest-asyncio>=1.2.0",
-    "pytest-cov>=6.0.0"
+    "pytest~=9.2.0",
+    "pytest-asyncio~=1.4.1",
+    "pytest-cov~=7.1.0"
 ]
-server = ["ds-server-lib>=6.3.1"]
-ext = ["atom-tools>=0.7.8", "blint>=3.2.3"]
-all = ["atom-tools>=0.7.8", "blint>=3.2.3", "ds-server-lib>=6.3.1", "PyGithub>=2.6.1"]
+server = ["ds-server-lib~=6.3.2"]
+ext = ["atom-tools~=0.9.1", "blint~=3.2.3"]
+all = ["atom-tools~=0.9.1", "blint~=3.2.3", "ds-server-lib~=6.3.2", "PyGithub~=2.10.0"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -101,9 +101,18 @@ project-excludes = [
     "**/.venv",
     "build/**",
 ]
-# tomli is only installed on Python <= 3.11 (tomllib fallback in
-# depscan/lib/tomlparse.py); the try/except guard handles it at runtime.
-ignore-missing-imports = ["tomli"]
+# tomllib is stdlib only on Python >= 3.11, and tomli is only installed on
+# Python <= 3.11 (tomllib fallback in depscan/lib/tomlparse.py); the
+# try/except guard handles both at runtime.
+ignore-missing-imports = ["tomllib", "tomli"]
+
+[tool.uv]
+# blint 3.x was built and tested against wasm-tools 1.x and multi-demangle 1.x;
+# the 2.x lines arrive with blint 4.
+constraint-dependencies = [
+    "wasm-tools~=1.0",
+    "multi-demangle~=1.0",
+]
 
 [tool.uv.sources]
 ds-xbom-lib = { workspace = true }
@@ -116,8 +125,8 @@ members = ["packages/*"]
 
 [dependency-groups]
 dev = [
-    "pyrefly>=1.3.2",
-    "ruff>=0.14.13",
+    "pyrefly~=1.4.1",
+    "ruff~=0.17.4",
 ]
 
 [tool.ruff]

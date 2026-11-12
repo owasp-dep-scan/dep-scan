@@ -1,18 +1,18 @@
 [project]
 name = "ds-analysis-lib"
-version = "6.3.1"
+version = "6.3.2"
 description = "Analysis library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
 ]
 dependencies = [
     "appthreat-vulnerability-db[oras]~=6.7.7",
-    "custom-json-diff>=2.1.6",
-    "cvss>=3.4",
-    "jsonschema>=4.20",
-    "referencing>=0.31",
-    "rich>=13.9.4",
-    "toml>=0.10.2"
+    "custom-json-diff~=2.1.6",
+    "cvss~=3.6",
+    "jsonschema~=4.26.0",
+    "referencing~=0.37.0",
+    "rich~=15.0.0",
+    "toml~=0.10.2"
 ]
 
 requires-python = ">=3.10"
