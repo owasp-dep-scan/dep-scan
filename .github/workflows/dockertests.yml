@@ -22,7 +22,7 @@ jobs:
       with:
         persist-credentials: false
     - name: Install uv
-      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Trim CI agent
@@ -43,7 +43,7 @@ jobs:
         uv run depscan --no-banner --src redmine@sha256:a5c5f8a64a0d9a436a0a6941bc3fb156be0c89996add834fe33b66ebeed2439e -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}_python${{ matrix.python-version }}/redmine -t docker --no-vuln-table
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -61,7 +61,7 @@ jobs:
       with:
         persist-credentials: false
     - name: Install uv
-      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Trim CI agent
@@ -69,7 +69,7 @@ jobs:
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
     - name: Set up JDK
-      uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+      uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78  # v6.2.0
       with:
         distribution: 'zulu'
         java-version: '21'
@@ -93,7 +93,7 @@ jobs:
       env:
         PYTHONUTF8: 1
         SCAN_DEBUG_MODE: "debug"
-    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: rtests_ubuntu
         path: rtests_ubuntu
@@ -111,7 +111,7 @@ jobs:
       with:
         persist-credentials: false
     - name: Install uv
-      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Trim CI agent
@@ -119,7 +119,7 @@ jobs:
         chmod +x contrib/free_disk_space.sh
         ./contrib/free_disk_space.sh
     - name: Use Node.js
-      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
       with:
         node-version: '24.x'
         package-manager-cache: false
@@ -153,7 +153,7 @@ jobs:
         PYTHONUTF8: 1
         SCAN_DEBUG_MODE: debug
         CDXGEN_TEMP_DIR: /tmp/cdxgen-temp
-    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: containertests_${{ matrix.os }}
         path: containertests_${{ matrix.os }}
@@ -182,7 +182,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Trim CI agent
@@ -195,7 +195,7 @@ jobs:
           npm install -g @cyclonedx/cdxgen
           uv pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: containertests_ubuntu-latest_python3.11
           path: containertests_ubuntu-latest_python3.11
@@ -212,7 +212,7 @@ jobs:
           PYTHONUTF8: 1
           SCAN_DEBUG_MODE: "debug"
           CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
           path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
@@ -231,7 +231,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
       - name: Trim CI agent
@@ -245,7 +245,7 @@ jobs:
           uv sync --all-extras --all-packages --dev
           npm install -g @cyclonedx/cdxgen
       - name: Get boms generated earlier
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
           name: containertests_ubuntu-latest
           path: containertests_ubuntu-latest
@@ -267,7 +267,7 @@ jobs:
           PYTHONUTF8: 1
           SCAN_DEBUG_MODE: "debug"
           CDXGEN_TEMP_DIR: ${{ runner.temp }}/cdxgen-temp
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: containertests_${{ matrix.os }}
           path: containertests_${{ matrix.os }}

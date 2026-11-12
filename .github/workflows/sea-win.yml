@@ -62,7 +62,7 @@ jobs:
         run: python3 build/sea-hooks/verify_versions.py
 
       - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -250,7 +250,7 @@ jobs:
           Pop-Location
 
       - name: Upload artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ${{ env.BINARY_NAME }}
           path: |
@@ -259,7 +259,7 @@ jobs:
           if-no-files-found: error
 
       - name: Attach binaries to release on tag
-        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3  # v3.0.4
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
