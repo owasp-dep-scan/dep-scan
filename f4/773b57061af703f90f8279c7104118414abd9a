@@ -1,0 +1,25 @@
+packages/analysis-lib/pyproject.toml
+  s_4c65162ba5e929::t_05bf2d5393b7b2 9
+pyproject.toml
+  s_4c65162ba5e929::t_05bf2d5393b7b2 9
+packages/server-lib/pyproject.toml
+  s_4c65162ba5e929::t_05bf2d5393b7b2 9
+uv.lock
+  s_4c65162ba5e929::t_9c23e46bfb5c3a 70,83,85,833,869,1481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4773b57061af703f90f8279c7104118414abd9a",
+  "prompts": {},
+  "sessions": {
+    "s_4c65162ba5e929": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2891b7f8-5ab3-488f-8f1c-4fc7dd39ae78",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
