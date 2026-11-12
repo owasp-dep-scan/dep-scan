@@ -1,0 +1,76 @@
+.github/workflows/snapshot_tests.yml
+  s_a822354d242025::t_9921d75ec19a8c 21,57
+.github/workflows/csafdemo.yml
+  s_a822354d242025::t_9921d75ec19a8c 17-18,47
+packages/reporting-lib/pyproject.toml
+  s_a822354d242025::t_75bcc216271d59 3
+.github/workflows/repotests-lifecycle-java.yml
+  s_a822354d242025::t_9921d75ec19a8c 32,37,46
+.github/workflows/gobintests.yml
+  s_a822354d242025::t_9921d75ec19a8c 23,30
+.github/workflows/sea-linux.yml
+  s_a822354d242025::t_9921d75ec19a8c 75,212,221
+.github/workflows/repotests-lifecycle-go.yml
+  s_a822354d242025::t_9921d75ec19a8c 36,41
+.github/workflows/sea-mac.yml
+  s_a822354d242025::t_9921d75ec19a8c 74,364,373
+.github/workflows/pythonapp.yml
+  s_a822354d242025::t_9921d75ec19a8c 43,47,52
+.github/workflows/dockertests.yml
+  s_a822354d242025::t_9921d75ec19a8c 25,46,64,72,96,114,122,156,185,198,215,234,248,270
+packages/analysis-lib/pyproject.toml
+  s_a822354d242025::t_82c90fcb709fd0 10-15
+  s_a822354d242025::t_c2237a95723492 3
+.github/workflows/sea-win.yml
+  s_a822354d242025::t_9921d75ec19a8c 65,253,262
+packages/server-lib/pyproject.toml
+  s_a822354d242025::t_96d2d651ac4d91 3
+  s_a822354d242025::t_c76b9d5812da65 10-13
+  s_a822354d242025::t_e5d80172e49086 35-37
+.github/workflows/repotests-lifecycle-c.yml
+  s_a822354d242025::t_9921d75ec19a8c 32,37,43
+build/assets/Info.plist
+  s_a822354d242025::t_181931b91e71e8 12
+.github/workflows/pythonpublish.yml
+  s_a822354d242025::t_9921d75ec19a8c 42,47,52,109,111,113,125,159,176,195,200,204,206,225
+build/assets/file_version_info.txt
+  s_a822354d242025::t_f2c010241717ca 10-11
+  s_a822354d242025::t_adb568f3153bfb 35
+  s_a822354d242025::t_e59f341bfdf5bc 40
+.github/workflows/sea-alpine.yml
+  s_a822354d242025::t_9921d75ec19a8c 244,253
+packages/xbom-lib/pyproject.toml
+  s_a822354d242025::t_4afd13706a79d0 3
+.github/workflows/justbuild.yml
+  s_a822354d242025::t_9921d75ec19a8c 17,29
+pyproject.toml
+  s_a822354d242025::t_29085ab244084f 11-13,15-17,19-21
+  s_a822354d242025::t_93a6dba5888ed0 108-115
+  s_a822354d242025::t_60fd56ac14ee3c 18
+  s_a822354d242025::t_c202d6a0774e1f 53-55,57-59
+  s_a822354d242025::t_77d5f6963b1c7b 104-107
+  s_a822354d242025::t_382e04027ffab7 128-129
+  s_a822354d242025::t_c742e0fb8ee8ed 3
+.github/workflows/repotests-lifecycle-dotnet.yml
+  s_a822354d242025::t_9921d75ec19a8c 32,36,40
+.github/workflows/repotests.yml
+  s_a822354d242025::t_9921d75ec19a8c 30,71,123,128,134,137,141,144,157,314,353,357
+uv.lock
+  s_a822354d242025::t_4d7219d0c9b527 5-6,18-21,43,48,50,52,57,59,61,79-80,101-320,382-383,404,406,408,416-417,524-682,691-692,701,703,705,719-845,850-980,994,1000-1059,1100-1102,1108-1120,1123,1138-1143,1148,1153,1160-1161,1175,1177-1181,1187,1195-1196,1209,1327,1329,1331,1336,1338,1340,1391,1484,1489,1491,1496-1634,1727-1788,1793,1840-1843,1845-1846,1852-1859,1861,1867-1868,1891,1893,1895,1909,1911-1927,1929,1934,1942,1944,1954,1959-2099,2104,2113,2115,2120,2122,2124,2129,2134,2136,2181,2183,2185-2195,2200,2211,2213,2218,2225,2227,2235-2236,2317-2325,2334,2337,2340-2348,2350,2352-2375,2382-2384,2471-2584,2592,2755,2758-2889,2894-2914,2919,2921,2923,2931-2932,2944-2945,2963-3030,3044,3049,3051,3056,3058,3060,3074,3079,3081
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "92be453af3f90c4c71587b05374fe8d4d9b3efdc",
+  "prompts": {},
+  "sessions": {
+    "s_a822354d242025": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_bba21e02-6b9e-4238-b82a-324cdb46e4ad",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
