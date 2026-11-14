@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "6.3.2"
+version = "7.0.0.dev0"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -15,13 +15,12 @@ dependencies = [
     "Jinja2~=3.1.6",
     "packageurl-python~=0.17.6",
     "cvss~=3.6",
-    "tomli~=2.5.0; python_full_version <= '3.11'",
-    "ds-xbom-lib~=6.3.2",
-    "ds-analysis-lib~=6.3.2",
-    "ds-reporting-lib~=6.3.2"
+    "ds-xbom-lib~=7.0.0.dev0",
+    "ds-analysis-lib~=7.0.0.dev0",
+    "ds-reporting-lib~=7.0.0.dev0"
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "MIT"
 classifiers = [
@@ -29,7 +28,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -54,9 +52,9 @@ dev = [
     "pytest-asyncio~=1.4.1",
     "pytest-cov~=7.1.0"
 ]
-server = ["ds-server-lib~=6.3.2"]
+server = ["ds-server-lib~=7.0.0.dev0"]
 ext = ["atom-tools~=0.9.1", "blint~=3.2.3"]
-all = ["atom-tools~=0.9.1", "blint~=3.2.3", "ds-server-lib~=6.3.2", "PyGithub~=2.10.0"]
+all = ["atom-tools~=0.9.1", "blint~=3.2.3", "ds-server-lib~=7.0.0.dev0", "PyGithub~=2.10.0"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]
@@ -77,8 +75,8 @@ testpaths = [
 
 [tool.pyrefly]
 # Check against the oldest supported Python so accidental use of newer
-# stdlib/typing APIs is caught (requires-python = ">=3.10").
-python-version = "3.10"
+# stdlib/typing APIs is caught (requires-python = ">=3.11").
+python-version = "3.11"
 # Resolve third-party dependencies from the project venv.
 python-interpreter-path = ".venv/bin/python"
 # The repo is a uv workspace with multiple source roots: the flat depscan
@@ -101,10 +99,6 @@ project-excludes = [
     "**/.venv",
     "build/**",
 ]
-# tomllib is stdlib only on Python >= 3.11, and tomli is only installed on
-# Python <= 3.11 (tomllib fallback in depscan/lib/tomlparse.py); the
-# try/except guard handles both at runtime.
-ignore-missing-imports = ["tomllib", "tomli"]
 
 [tool.uv]
 # blint 3.x was built and tested against wasm-tools 1.x and multi-demangle 1.x;
@@ -138,7 +132,7 @@ exclude = [
     "test",
 ]
 line-length = 99
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F"]

@@ -1,6 +1,6 @@
 [project]
 name = "ds-analysis-lib"
-version = "6.3.2"
+version = "7.0.0.dev0"
 description = "Analysis library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -10,12 +10,13 @@ dependencies = [
     "custom-json-diff~=2.1.6",
     "cvss~=3.6",
     "jsonschema~=4.26.0",
+    "packageurl-python~=0.17.6",
     "referencing~=0.37.0",
     "rich~=15.0.0",
     "toml~=0.10.2"
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "MIT"
 classifiers = [
@@ -23,7 +24,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -45,6 +45,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.package-data]
 "analysis_lib.vex.data" = ["*.json", "cvss/*.json"]
 "analysis_lib.data" = ["cyclonedx/*.json"]
+"analysis_lib.findings" = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

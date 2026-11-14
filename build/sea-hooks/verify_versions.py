@@ -135,14 +135,20 @@ def main() -> int:
     )
     print("-" * 72)
 
-    # Check 1: all depscan version sources agree
+    # Check 1: all depscan version sources agree. The Windows resource holds
+    # only four numbers, so it is compared with the release segment of the
+    # pyproject version (7.0.0 for 7.0.0.dev0); the others match exactly.
     depscan_sources = {
         "pyproject.toml": pyproject_version,
         "file_version_info.txt": file_version_info_version,
         "Info.plist": info_plist_version,
     }
-    unique_depscan_versions = set(depscan_sources.values())
-    if len(unique_depscan_versions) > 1:
+    release_match = re.match(r"\d+\.\d+\.\d+", pyproject_version)
+    pyproject_release = release_match.group(0) if release_match else pyproject_version
+    if (
+        info_plist_version != pyproject_version
+        or file_version_info_version != pyproject_release
+    ):
         errors.append(
             "depscan version mismatch across sources:\n"
             + "\n".join(

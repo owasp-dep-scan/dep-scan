@@ -1,0 +1,15 @@
+{
+  "id": "dsf1:3facf37901c0f50ed6cde71d22e65e887c6219222013b6f3ccf094d2df3d6e13",
+  "category": "mobile",
+  "rule": "MOBI-DEBUG-001",
+  "title": "Application is compiled with the debuggable flag set",
+  "severity": "high",
+  "confidence": "high",
+  "cwes": [489],
+  "components": ["pkg:generic/shopapp@2.4.1"],
+  "locations": [
+    {"file": "AndroidManifest.xml"}
+  ],
+  "coverage": {"state": "assessed"},
+  "producer": {"name": "blint", "version": "4.0.2"}
+}

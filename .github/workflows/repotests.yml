@@ -85,11 +85,9 @@ jobs:
       fail-fast: false
       matrix:
         os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-26', 'windows-latest']
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
         # macOS runners are scarce, so macOS runs only the latest Python.
         exclude:
-          - os: macos-26
-            python-version: '3.10'
           - os: macos-26
             python-version: '3.11'
           - os: macos-26

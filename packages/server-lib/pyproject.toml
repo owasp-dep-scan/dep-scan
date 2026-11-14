@@ -1,6 +1,6 @@
 [project]
 name = "ds-server-lib"
-version = "6.3.2"
+version = "7.0.0.dev0"
 description = "Server library for owasp depscan"
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -10,10 +10,10 @@ dependencies = [
     "custom-json-diff~=2.1.6",
     "quart~=0.20",
     "rich~=15.0.0",
-    "ds-analysis-lib~=6.3.2"
+    "ds-analysis-lib~=7.0.0.dev0"
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "MIT"
 classifiers = [
@@ -21,7 +21,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: System Administrators",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

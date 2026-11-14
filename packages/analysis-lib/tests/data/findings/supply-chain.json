@@ -1,0 +1,13 @@
+{
+  "id": "dsf1:5704073545e65bf1d66cdeaedf1ee4b1e9bda9348c261d7b2f34ef4627f5998f",
+  "category": "supply-chain",
+  "rule": "CDX-AUDIT-001",
+  "title": "Package publishes no provenance for its release artifacts",
+  "severity": "medium",
+  "components": ["pkg:npm/left-pad@1.3.0"],
+  "locations": [
+    {"file": "package-lock.json"}
+  ],
+  "coverage": {"state": "assessed"},
+  "producer": {"name": "dep-scan", "version": "7.0.0.dev0"}
+}

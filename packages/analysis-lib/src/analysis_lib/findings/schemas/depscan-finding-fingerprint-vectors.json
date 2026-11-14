@@ -1,0 +1,591 @@
+[
+  {
+    "name": "category-vulnerability",
+    "input": {
+      "category": "vulnerability",
+      "rule": "cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:bd7a19e1486373bcdd3022bb59fccdb20bb93f8cff06e26ad7f4ec69858f26ed"
+  },
+  {
+    "name": "category-malware",
+    "input": {
+      "category": "malware",
+      "rule": "CVE-2024-3094",
+      "components": [
+        "pkg:generic/liblzma@5.6.1"
+      ],
+      "file": "docker/Dockerfile",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"malware\",\"CVE-2024-3094\",[\"pkg:generic/liblzma\"],\"docker/Dockerfile\",\"\",[]]",
+    "id": "dsf1:3336034045c0c4bb6a9156ef0b66a7f3636ca3e640b74b7cd3a4c610b0b5816d"
+  },
+  {
+    "name": "category-memory-safety",
+    "input": {
+      "category": "memory-safety",
+      "rule": "RUSI-MS-PANIC-001",
+      "components": [
+        "pkg:cargo/shopcart@0.1.0"
+      ],
+      "file": "src/cart/parse.rs",
+      "function": "parse_header",
+      "symbols": [
+        "ptr::read",
+        "slice::from_raw_parts"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"memory-safety\",\"RUSI-MS-PANIC-001\",[\"pkg:cargo/shopcart\"],\"src/cart/parse.rs\",\"parse_header\",[\"ptr::read\",\"slice::from_raw_parts\"]]",
+    "id": "dsf1:f318e1011c76726f6d7f4c3f0dc4c08aaf126e821e6a84725b80e4db824283da"
+  },
+  {
+    "name": "category-supply-chain",
+    "input": {
+      "category": "supply-chain",
+      "rule": "CDX-AUDIT-001",
+      "components": [
+        "pkg:npm/left-pad@1.3.0"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"supply-chain\",\"CDX-AUDIT-001\",[\"pkg:npm/left-pad\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:5704073545e65bf1d66cdeaedf1ee4b1e9bda9348c261d7b2f34ef4627f5998f"
+  },
+  {
+    "name": "category-binary-hardening",
+    "input": {
+      "category": "binary-hardening",
+      "rule": "BH-NX-001",
+      "components": [
+        "pkg:generic/hello@1.0.0"
+      ],
+      "file": "",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"binary-hardening\",\"BH-NX-001\",[\"pkg:generic/hello\"],\"\",\"\",[]]",
+    "id": "dsf1:66a1715b481702f2fdedd015abfa1993cf886a6ca75a0290c8c3fdaed20c2b05"
+  },
+  {
+    "name": "category-mobile",
+    "input": {
+      "category": "mobile",
+      "rule": "MOBI-DEBUG-001",
+      "components": [
+        "pkg:generic/shopapp@2.4.1"
+      ],
+      "file": "AndroidManifest.xml",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"mobile\",\"MOBI-DEBUG-001\",[\"pkg:generic/shopapp\"],\"AndroidManifest.xml\",\"\",[]]",
+    "id": "dsf1:3facf37901c0f50ed6cde71d22e65e887c6219222013b6f3ccf094d2df3d6e13"
+  },
+  {
+    "name": "category-code",
+    "input": {
+      "category": "code",
+      "rule": "CODE-UNSAFE-REFLECTION-001",
+      "components": [
+        "pkg:maven/com.example.shop/billing@3.2.0"
+      ],
+      "file": "src/main/java/com/example/shop/RouteController.java",
+      "function": "resolveView",
+      "symbols": [
+        "Class.forName"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"code\",\"CODE-UNSAFE-REFLECTION-001\",[\"pkg:maven/com.example.shop/billing\"],\"src/main/java/com/example/shop/RouteController.java\",\"resolveView\",[\"Class.forName\"]]",
+    "id": "dsf1:ec1dafca16a5485c84aa04689f0ee08bb9a0197f4a6208c5483dbe0baed5d6a3"
+  },
+  {
+    "name": "category-license",
+    "input": {
+      "category": "license",
+      "rule": "LICENSE-GPL-2.0-DETECTED",
+      "components": [
+        "pkg:maven/mysql/mysql-connector-java@8.0.33"
+      ],
+      "file": "pom.xml",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"license\",\"LICENSE-GPL-2.0-DETECTED\",[\"pkg:maven/mysql/mysql-connector-java\"],\"pom.xml\",\"\",[]]",
+    "id": "dsf1:dcbb2206cc581d48c26e5819164944b174787ff7addefabec56cc15f961e5969"
+  },
+  {
+    "name": "category-crypto",
+    "input": {
+      "category": "crypto",
+      "rule": "CVE-2024-0727",
+      "components": [
+        "pkg:pypi/cryptography@41.0.7"
+      ],
+      "file": "requirements.lock",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"crypto\",\"CVE-2024-0727\",[\"pkg:pypi/cryptography\"],\"requirements.lock\",\"\",[]]",
+    "id": "dsf1:19244cf51b8c068c35c8e043206ab0ffa75907ff06446ac62e53da2323ad1848"
+  },
+  {
+    "name": "category-health",
+    "input": {
+      "category": "health",
+      "rule": "HEALTH-MISSING-LOCKFILE",
+      "components": [
+        "pkg:npm/left-pad@1.3.0"
+      ],
+      "file": "package.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"health\",\"HEALTH-MISSING-LOCKFILE\",[\"pkg:npm/left-pad\"],\"package.json\",\"\",[]]",
+    "id": "dsf1:f2d585c4302138dfad42a202cc9b3d3a1cabee84ef453212501c84d7e5fa0b9e"
+  },
+  {
+    "name": "same-finding-different-line-42",
+    "input": {
+      "category": "memory-safety",
+      "rule": "RUSI-MS-PANIC-001",
+      "components": [
+        "pkg:cargo/shopcart@0.1.0"
+      ],
+      "file": "src/cart/parse.rs",
+      "function": "parse_header",
+      "line": 42,
+      "symbols": [
+        "ptr::read",
+        "slice::from_raw_parts"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"memory-safety\",\"RUSI-MS-PANIC-001\",[\"pkg:cargo/shopcart\"],\"src/cart/parse.rs\",\"parse_header\",[\"ptr::read\",\"slice::from_raw_parts\"]]",
+    "id": "dsf1:f318e1011c76726f6d7f4c3f0dc4c08aaf126e821e6a84725b80e4db824283da"
+  },
+  {
+    "name": "same-finding-different-line-9999",
+    "input": {
+      "category": "memory-safety",
+      "rule": "RUSI-MS-PANIC-001",
+      "components": [
+        "pkg:cargo/shopcart@0.1.0"
+      ],
+      "file": "src/cart/parse.rs",
+      "function": "parse_header",
+      "line": 9999,
+      "column": 7,
+      "symbols": [
+        "ptr::read",
+        "slice::from_raw_parts"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"memory-safety\",\"RUSI-MS-PANIC-001\",[\"pkg:cargo/shopcart\"],\"src/cart/parse.rs\",\"parse_header\",[\"ptr::read\",\"slice::from_raw_parts\"]]",
+    "id": "dsf1:f318e1011c76726f6d7f4c3f0dc4c08aaf126e821e6a84725b80e4db824283da"
+  },
+  {
+    "name": "component-version-4-17-20",
+    "input": {
+      "category": "vulnerability",
+      "rule": "cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:bd7a19e1486373bcdd3022bb59fccdb20bb93f8cff06e26ad7f4ec69858f26ed"
+  },
+  {
+    "name": "component-version-4-17-21-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.21"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:bd7a19e1486373bcdd3022bb59fccdb20bb93f8cff06e26ad7f4ec69858f26ed"
+  },
+  {
+    "name": "qualifier-type-jar",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2022-42889",
+      "components": [
+        "pkg:maven/org.apache.commons/commons-text@1.9?type=jar"
+      ],
+      "file": "pom.xml",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2022-42889\",[\"pkg:maven/org.apache.commons/commons-text\"],\"pom.xml\",\"\",[]]",
+    "id": "dsf1:337f39f2cc2a0b036ec31606b621ccf717df013f50d33a8a9c27690a2d86270a"
+  },
+  {
+    "name": "qualifier-and-subpath-stripped-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2022-42889",
+      "components": [
+        "pkg:maven/org.apache.commons/commons-text@1.9#/org/apache/commons/text"
+      ],
+      "file": "pom.xml",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2022-42889\",[\"pkg:maven/org.apache.commons/commons-text\"],\"pom.xml\",\"\",[]]",
+    "id": "dsf1:337f39f2cc2a0b036ec31606b621ccf717df013f50d33a8a9c27690a2d86270a"
+  },
+  {
+    "name": "monorepo-billing-manifest",
+    "input": {
+      "category": "vulnerability",
+      "rule": "cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "services/billing/package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"services/billing/package-lock.json\",\"\",[]]",
+    "id": "dsf1:3d5ba022948a2c6a77b2b8e03d2f5ed77b31b5d78ec6e77e0f478d93bb553259"
+  },
+  {
+    "name": "monorepo-web-manifest-different-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "services/web/package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"services/web/package-lock.json\",\"\",[]]",
+    "id": "dsf1:d74317a10596b4adcf19a9a74dc58840e8b8b38179ea1a90988ba29da00323b3"
+  },
+  {
+    "name": "unknown-manifest-empty-file",
+    "input": {
+      "category": "vulnerability",
+      "rule": "cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"\",\"\",[]]",
+    "id": "dsf1:f23237d0822bfd2d6dcff89d5c80f8c2747df73448d82420b38c7d1871c587bb"
+  },
+  {
+    "name": "windows-path-src-app-main-c",
+    "input": {
+      "category": "code",
+      "rule": "CODE-FMT-STRING-001",
+      "components": [
+        "pkg:generic/shopapp@2.4.1"
+      ],
+      "file": "src\\app\\main.c",
+      "function": "wmain",
+      "symbols": [
+        "printf"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"code\",\"CODE-FMT-STRING-001\",[\"pkg:generic/shopapp\"],\"src/app/main.c\",\"wmain\",[\"printf\"]]",
+    "id": "dsf1:e8a1f1468456090b9490664c47482b9a3efac9dcf291e38b416e487b8b9ce8ad"
+  },
+  {
+    "name": "forward-slash-path-same-id",
+    "input": {
+      "category": "code",
+      "rule": "CODE-FMT-STRING-001",
+      "components": [
+        "pkg:generic/shopapp@2.4.1"
+      ],
+      "file": "src/app/main.c",
+      "function": "wmain",
+      "symbols": [
+        "printf"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"code\",\"CODE-FMT-STRING-001\",[\"pkg:generic/shopapp\"],\"src/app/main.c\",\"wmain\",[\"printf\"]]",
+    "id": "dsf1:e8a1f1468456090b9490664c47482b9a3efac9dcf291e38b416e487b8b9ce8ad"
+  },
+  {
+    "name": "dot-slash-prefixed-path-same-id",
+    "input": {
+      "category": "code",
+      "rule": "CODE-FMT-STRING-001",
+      "components": [
+        "pkg:generic/shopapp@2.4.1"
+      ],
+      "file": "./src/app/main.c",
+      "function": "wmain",
+      "symbols": [
+        "printf"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"code\",\"CODE-FMT-STRING-001\",[\"pkg:generic/shopapp\"],\"src/app/main.c\",\"wmain\",[\"printf\"]]",
+    "id": "dsf1:e8a1f1468456090b9490664c47482b9a3efac9dcf291e38b416e487b8b9ce8ad"
+  },
+  {
+    "name": "cve-mixed-case",
+    "input": {
+      "category": "vulnerability",
+      "rule": "Cve-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:bd7a19e1486373bcdd3022bb59fccdb20bb93f8cff06e26ad7f4ec69858f26ed"
+  },
+  {
+    "name": "cve-upper-case-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:bd7a19e1486373bcdd3022bb59fccdb20bb93f8cff06e26ad7f4ec69858f26ed"
+  },
+  {
+    "name": "ghsa-lower-case-groups",
+    "input": {
+      "category": "vulnerability",
+      "rule": "ghsa-p6mc-m468-83gw",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"GHSA-p6mc-m468-83gw\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:76cd45520d8a62aadab784c6b7c088018694005d3f2ef4ae422763a9af424327"
+  },
+  {
+    "name": "ghsa-mixed-case-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "GHSA-P6MC-M468-83GW",
+      "components": [
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"GHSA-p6mc-m468-83gw\",[\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:76cd45520d8a62aadab784c6b7c088018694005d3f2ef4ae422763a9af424327"
+  },
+  {
+    "name": "rule-id-kept-as-given",
+    "input": {
+      "category": "supply-chain",
+      "rule": "  cdx-audit-001  ",
+      "components": [
+        "pkg:npm/left-pad@1.3.0"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"supply-chain\",\"cdx-audit-001\",[\"pkg:npm/left-pad\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:322052deb26e1b789507a95d9de631b5e8aa6cdd9ca2fce60637d32c0ee66cb3"
+  },
+  {
+    "name": "symbols-with-repeat",
+    "input": {
+      "category": "memory-safety",
+      "rule": "RUSI-MS-PANIC-001",
+      "components": [
+        "pkg:cargo/shopcart@0.1.0"
+      ],
+      "file": "src/cart/parse.rs",
+      "function": "parse_header",
+      "symbols": [
+        "ptr::read",
+        "slice::from_raw_parts",
+        "ptr::read",
+        "write_bytes",
+        "slice::from_raw_parts"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"memory-safety\",\"RUSI-MS-PANIC-001\",[\"pkg:cargo/shopcart\"],\"src/cart/parse.rs\",\"parse_header\",[\"ptr::read\",\"slice::from_raw_parts\",\"write_bytes\"]]",
+    "id": "dsf1:52eb802ecaeea86f5a44e9b2299c5a8aa636af69460fedcb53be9a5146a21ac9"
+  },
+  {
+    "name": "symbols-already-unique-same-id",
+    "input": {
+      "category": "memory-safety",
+      "rule": "RUSI-MS-PANIC-001",
+      "components": [
+        "pkg:cargo/shopcart@0.1.0"
+      ],
+      "file": "src/cart/parse.rs",
+      "function": "parse_header",
+      "symbols": [
+        "ptr::read",
+        "slice::from_raw_parts",
+        "write_bytes"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"memory-safety\",\"RUSI-MS-PANIC-001\",[\"pkg:cargo/shopcart\"],\"src/cart/parse.rs\",\"parse_header\",[\"ptr::read\",\"slice::from_raw_parts\",\"write_bytes\"]]",
+    "id": "dsf1:52eb802ecaeea86f5a44e9b2299c5a8aa636af69460fedcb53be9a5146a21ac9"
+  },
+  {
+    "name": "non-ascii-file-name",
+    "input": {
+      "category": "code",
+      "rule": "CODE-FMT-STRING-001",
+      "components": [
+        "pkg:generic/shopapp@2.4.1"
+      ],
+      "file": "src/menü/main.c",
+      "function": "wmain",
+      "symbols": [
+        "printf"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"code\",\"CODE-FMT-STRING-001\",[\"pkg:generic/shopapp\"],\"src/menü/main.c\",\"wmain\",[\"printf\"]]",
+    "id": "dsf1:64f6ea5d7ac5625f5ebb999a2842b405d6dbe5ad836ebd8291c0c83b042fbae4"
+  },
+  {
+    "name": "components-order-a-then-b",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2021-23337",
+      "components": [
+        "pkg:npm/lodash@4.17.20",
+        "pkg:npm/express@4.21.2"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/express\",\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:9033c0d00bc5148f6a6a03b51ff0c061464abc6e1bac50361a37b81e79743cf4"
+  },
+  {
+    "name": "components-order-b-then-a-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2021-23337",
+      "components": [
+        "pkg:npm/express@4.21.2",
+        "pkg:npm/lodash@4.17.20"
+      ],
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/express\",\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:9033c0d00bc5148f6a6a03b51ff0c061464abc6e1bac50361a37b81e79743cf4"
+  },
+  {
+    "name": "npm-scope-literal-at",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2024-4068",
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:npm/@angular/core@17.3.0"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2024-4068\",[\"pkg:npm/%40angular/core\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:e2a2d91a6525b7c45f6592504549be41c12282002b8e6edfd8b92b8368c535b0"
+  },
+  {
+    "name": "npm-scope-percent-encoded-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2024-4068",
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:npm/%40angular/core@17.3.1"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2024-4068\",[\"pkg:npm/%40angular/core\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:e2a2d91a6525b7c45f6592504549be41c12282002b8e6edfd8b92b8368c535b0"
+  },
+  {
+    "name": "pypi-name-case-and-underscore",
+    "input": {
+      "category": "vulnerability",
+      "rule": "ghsa-XXXX-yyyy-ZZZZ",
+      "file": "requirements.txt",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:pypi/Django_Rest_Framework@3.15.1"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"GHSA-xxxx-yyyy-zzzz\",[\"pkg:pypi/django-rest-framework\"],\"requirements.txt\",\"\",[]]",
+    "id": "dsf1:4a1e82f713d88e5724db1875e30e038866a6a236cb2e068bfe81c6536f8cb1f0"
+  },
+  {
+    "name": "pypi-name-normalised-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "GHSA-xxxx-yyyy-zzzz",
+      "file": "requirements.txt",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:pypi/django-rest-framework@3.15.2"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"GHSA-xxxx-yyyy-zzzz\",[\"pkg:pypi/django-rest-framework\"],\"requirements.txt\",\"\",[]]",
+    "id": "dsf1:4a1e82f713d88e5724db1875e30e038866a6a236cb2e068bfe81c6536f8cb1f0"
+  },
+  {
+    "name": "github-name-lower-cased",
+    "input": {
+      "category": "supply-chain",
+      "rule": "CI-PIN-001",
+      "components": [
+        "pkg:github/Actions/Checkout@v4"
+      ],
+      "file": ".github/workflows/ci.yml",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"supply-chain\",\"CI-PIN-001\",[\"pkg:github/actions/checkout\"],\".github/workflows/ci.yml\",\"\",[]]",
+    "id": "dsf1:294e3f13f8ec72f21ba21c0ee97da2177bd3935a6f82fe88d8bb8b68ffa5f91b"
+  }
+]
