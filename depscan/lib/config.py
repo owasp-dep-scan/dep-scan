@@ -140,11 +140,13 @@ PYPI_SERVER = "https://pypi.org/pypi"
 
 CARGO_SERVER = "https://crates.io/api/v1/crates"
 
-# --- vdb image resolver (T7) ----------------------------------------------
-# The published vdb images live at ``ghcr.io/appthreat/<name>:<tag>`` and are
-# refreshed every 12h. ``VDB_IMAGE_TAG`` lets users point at a different tag
-# (a pinned point release or a future ``stable`` tag) without code changes.
-VDB_IMAGE_TAG = os.getenv("VDB_IMAGE_TAG", "v6.7.x")
+# --- vdb image resolver ----------------------------------------------------
+# The published vdb 7 images live at ``ghcr.io/appthreat/vdb7-<flavor>:<tag>``
+# and are refreshed regularly. ``VDB_IMAGE_TAG`` lets users point at a
+# different release line (for example ``v7`` for the newest build) without
+# code changes. v7 publishes only encoding-suffixed tags, so the compression
+# choice (``xz``/``zst``) is appended to the tag here.
+VDB_IMAGE_TAG = os.getenv("VDB_IMAGE_TAG", "v7.0.x")
 
 VDB_REGISTRY = "ghcr.io/appthreat"
 
@@ -154,8 +156,22 @@ _VDB_TIMES = ("2y", "default", "10y")
 _VDB_COMPRESSIONS = ("xz", "zst")
 _VDB_DISTROS = ("alpine", "debian", "redhat", "alma", "rocky", "ubuntu")
 
-# Approximate uncompressed ``data.vdb6`` sizes (GiB) keyed by the repo name
-# (without registry prefix or tag). Numbers are from the vdb README.
+# The five complete databases the v7 build publishes, one per image repo
+# ``ghcr.io/appthreat/vdb7-<flavor>``. Every other combination of scope, time
+# window and tier (an app+OS 10-year window, a two-year window, OS-only or
+# per-distro images) has no v7 image and is rejected instead of being silently
+# mapped onto a bigger or smaller flavor.
+_VDB_FLAVORS = (
+    "full",
+    "app-only",
+    "app-extended",
+    "app-10y",
+    "app-10y-extended",
+)
+
+# Approximate uncompressed ``data.vdb6`` sizes (GiB) keyed by the v6 repo name
+# (without registry prefix or tag). v7 flavor names have no entry yet, so
+# vdb_image_size answers "unknown" for them.
 _VDB_IMAGE_SIZES_GIB = {
     "vdbxz-app-2y": "2.05",
     "vdbxz-app": "2.96",
@@ -180,29 +196,33 @@ def resolve_vdb_image(
     distro=None,
     tag=VDB_IMAGE_TAG,
 ):
-    """Resolve a published vdb OCI image reference.
+    """Resolve a published vdb 7 OCI image reference to one of its flavors.
 
-    See the naming rules in the vdb README ("Available Database Variations").
-    The naming has three irregularities the resolver must encode:
+    The v7 build publishes five complete databases (``_VDB_FLAVORS``). This
+    maps the legacy scope/time/extended triple onto them:
 
-    1. App-Only images carry the ``-app`` infix; App+OS images drop it
-       (``vdbxz``, not ``vdbxz-app-os``).
-    2. App+OS has no ``2y`` image.
-    3. ``default`` adds no time segment; ``2y``/``10y`` add ``-2y``/``-10y``.
-    4. ``extended`` appends ``-extended`` last.
-    5. Compression is the leading segment: ``vdbxz`` (tar.xz) or ``vdbzst``.
+    ============ ========= ========= ==========================
+    scope        time      extended  flavor
+    ============ ========= ========= ==========================
+    ``app+os``   default   no        ``full``
+    ``app``      default   no        ``app-only``
+    ``app``      default   yes       ``app-extended``
+    ``app``      10y       no        ``app-10y``
+    ``app``      10y       yes       ``app-10y-extended``
+    ============ ========= ========= ==========================
 
-    Distro images are ``vdbxz-<distro>`` / ``vdbzst-<distro>`` (2020+, no
-    time/extended variants) and are mutually exclusive with scope/time/extended.
+    Any other combination, including every distro selection, has no v7 image
+    (v7 publishes no two-year window, no OS-inclusive 10-year or extended
+    variant, and no per-distro complete database) and raises.
 
     :param scope: ``"app"`` or ``"app+os"``
     :param time: ``"2y"``, ``"default"``, or ``"10y"``
-    :param extended: select the ``*-extended`` variant
-    :param compression: ``"xz"`` or ``"zst"``
-    :param distro: a distro name or ``None``
-    :param tag: OCI tag (default ``VDB_IMAGE_TAG``)
-    :return: full image reference string like ``ghcr.io/appthreat/vdbxz:v6.7.x``
-    :raises ValueError: on an impossible combination
+    :param extended: select the metadata (``-extended``) variant
+    :param compression: ``"xz"`` or ``"zst"``, appended to the tag
+    :param distro: rejected; v7 has no per-distro complete database
+    :param tag: OCI release line (default ``VDB_IMAGE_TAG``)
+    :return: full image reference like ``ghcr.io/appthreat/vdb7-full:v7.0.x-xz``
+    :raises ValueError: on an impossible combination, naming the flavors
     """
     if scope not in _VDB_SCOPES:
         raise ValueError(f"Invalid scope '{scope}'. Use one of: {', '.join(_VDB_SCOPES)}.")
@@ -212,41 +232,43 @@ def resolve_vdb_image(
         raise ValueError(
             f"Invalid compression '{compression}'. Use one of: {', '.join(_VDB_COMPRESSIONS)}."
         )
-    comp_prefix = "vdbxz" if compression == "xz" else "vdbzst"
-
     if distro is not None:
         if distro not in _VDB_DISTROS:
             raise ValueError(f"Invalid distro '{distro}'. Use one of: {', '.join(_VDB_DISTROS)}.")
-        if scope != "app+os" or time != "default" or extended:
-            raise ValueError(
-                "Distro images are mutually exclusive with scope, time, and "
-                "extended. No time-windowed or extended distro image is published."
-            )
-        return f"{VDB_REGISTRY}/{comp_prefix}-{distro}:{tag}"
+        raise ValueError(
+            f"vdb 7 publishes no per-distro complete database for '{distro}'. "
+            f"Published flavors: {', '.join(_VDB_FLAVORS)}."
+        )
 
-    # App+OS has no 2y image.
-    if scope == "app+os" and time == "2y":
-        raise ValueError("App+OS has no 2y image. Use scope='app' with time='2y'.")
-
-    segments = [comp_prefix]
-    if scope == "app":
-        segments.append("app")
-    if time != "default":
-        segments.append(time)
-    if extended:
-        segments.append("extended")
-    return f"{VDB_REGISTRY}/{'-'.join(segments)}:{tag}"
+    flavor = None
+    if scope == "app+os":
+        if time == "default" and not extended:
+            flavor = "full"
+    elif time == "default":
+        flavor = "app-extended" if extended else "app-only"
+    elif time == "10y":
+        flavor = "app-10y-extended" if extended else "app-10y"
+    if flavor is None:
+        raise ValueError(
+            f"No published vdb 7 flavor for scope={scope!r}, time={time!r}, "
+            f"extended={extended!r}. Published flavors: {', '.join(_VDB_FLAVORS)}."
+        )
+    return f"{VDB_REGISTRY}/vdb7-{flavor}:{tag}-{compression}"
 
 
 def vdb_image_size(image):
-    """Return the approximate uncompressed ``data.vdb6`` size for *image*.
+    """Return the approximate uncompressed database size for *image*.
+
+    The table holds the last published v6-era figures and answers ``unknown``
+    for v7 flavor names, so the coarse "large database" warning stays quiet
+    until fresh v7 numbers are measured.
 
     :param image: a full image ref (``ghcr.io/appthreat/vdbxz:v6.7.x``) or
         just the repo name (``vdbxz``).
     :return: a size string like ``"42.36 GiB"`` or ``"unknown"``.
     """
     repo = image.split("/")[-1].split(":")[0]
-    # The uncompressed data.vdb6 size is identical across compression (xz/zst)
+    # The uncompressed data size is identical across compression (xz/zst)
     # and tier (standard/extended only differ in index size), so normalize the
     # key to the standard-xz base name before the lookup: map the zst prefix to
     # xz and drop a trailing -extended suffix.
@@ -293,16 +315,16 @@ def write_vdb_image_marker(image_ref, data_dir):
         pass
 
 
-# Use the env variable VDB_DATABASE_URL=ghcr.io/appthreat/vdbxz-app:v6.7.x for app-only database
+# Use the env variable VDB_DATABASE_URL=ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz for app-only database
 vdb_database_url = os.getenv(
     "VDB_DATABASE_URL",
     resolve_vdb_image(scope="app+os", time="default", compression="xz"),
 )
 
-# Larger 10 year database
+# Larger 10 year database. The v7 10-year flavor is app-scope only.
 vdb_10y_database_url = os.getenv(
     "VDB_10Y_DATABASE_URL",
-    resolve_vdb_image(scope="app+os", time="10y", compression="xz"),
+    resolve_vdb_image(scope="app", time="10y", compression="xz"),
 )
 
 if os.getenv("USE_VDB_10Y", "") in ("true", "1"):

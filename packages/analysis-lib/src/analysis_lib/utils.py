@@ -35,17 +35,7 @@ from analysis_lib.search import find_vulns
 from custom_json_diff.lib.utils import compare_versions, json_load
 from cvss import CVSSError
 from packageurl import PackageURL
-from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION, PLACEHOLDER_FIX_VERSION
-from vdb.lib.cve_model import (
-    CVE,
-    Description,
-    Descriptions,
-    ProblemTypes,
-    Product,
-    References,
-    Status,
-    Versions,
-)
+from vdb.lib.config import PLACEHOLDER_FIX_VERSION
 from vdb.lib.utils import parse_cpe, parse_purl
 
 CRITICAL_OR_HIGH = ("CRITICAL", "HIGH")
@@ -243,16 +233,21 @@ def format_system_name(system_name):
     return system_name
 
 
-def get_description_detail(data: Descriptions | str | None) -> Tuple[str, str]:
+def get_description_detail(data: List[Dict] | str | None) -> Tuple[str, str]:
+    """The summary and full text of a record's first description.
+
+    ``data`` is the plain CVE-5 dict list vdb 7 returns (``[{"lang": ...,
+    "value": ...}, ...]``); a bare string is accepted for callers holding
+    pre-extracted text.
+    """
     if not data:
         return "", ""
-    if isinstance(data, Descriptions):
-        if data.root and isinstance(data.root[0], Description):
-            detail = data.root[0].value or ""
-        else:
-            detail = ""
-    else:
+    if isinstance(data, str):
         detail = data
+    elif isinstance(data, list) and data and isinstance(data[0], dict):
+        detail = data[0].get("value") or ""
+    else:
+        detail = ""
     description = ""
     detail = (
         detail.replace("\\r\\n", "\n")
@@ -275,7 +270,7 @@ def get_description_detail(data: Descriptions | str | None) -> Tuple[str, str]:
 _ALIASES_SECTION_RE = re.compile(r"## Aliases\s*\n\s*([^\n\r]+)")
 
 
-def description_full_text(data: Descriptions | str | None) -> str:
+def description_full_text(data: List[Dict] | str | None) -> str:
     """The complete description text vdb stored for a record.
 
     vdb stores descriptions longer than 4096 characters as the placeholder
@@ -284,19 +279,19 @@ def description_full_text(data: Descriptions | str | None) -> str:
     """
     if not data:
         return ""
-    if not isinstance(data, Descriptions):
-        return str(data)
+    if isinstance(data, str):
+        return data
     parts = []
-    for desc in data.root or []:
-        if not isinstance(desc, Description):
+    for desc in data or []:
+        if not isinstance(desc, dict):
             continue
-        if desc.value:
-            parts.append(desc.value)
-        for media in desc.supportingMedia or []:
-            value = getattr(media, "value", None)
+        if desc.get("value"):
+            parts.append(desc["value"])
+        for media in desc.get("supportingMedia") or []:
+            value = media.get("value") if isinstance(media, dict) else None
             if not value:
                 continue
-            if getattr(media, "base64", False):
+            if media.get("base64"):
                 try:
                     value = base64.b64decode(value).decode("utf-8", errors="replace")
                 except (ValueError, TypeError):
@@ -341,6 +336,22 @@ def choose_date(d1, d2, choice):
     except TypeError:
         d3 = max(d1.date(), d2.date()) if choice == "max" else min(d1.date(), d2.date())
         return d3.strftime(TIME_FMT)
+
+
+def _iso_datetime(value):
+    """Normalise a CVE-5 date string to the VDR's ``TIME_FMT`` form.
+
+    The hydrated record carries ISO strings ("2024-03-10T23:15:00.000Z");
+    anything unparseable is returned verbatim rather than dropped.
+    """
+    if not value:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime(TIME_FMT)
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).strftime(TIME_FMT)
+    except ValueError:
+        return str(value)
 
 
 def combine_affects(v1, v2):
@@ -459,11 +470,7 @@ def get_suggested_version_map(pkg_vulnerabilities: List[Dict]) -> Dict[str, str]
     suggested_version_map = {}
     for i, v in enumerate(pkg_vulnerabilities):
         fixed_location = v.get("fixed_location")
-        if not fixed_location or fixed_location in (
-            PLACEHOLDER_FIX_VERSION,
-            PLACEHOLDER_EXCLUDE_VERSION,
-            "*",
-        ):
+        if not fixed_location or fixed_location in (PLACEHOLDER_FIX_VERSION, "*"):
             continue
         purl_prefix = v.get("purl_prefix") or ""
         # Don't go near certain packages
@@ -471,7 +478,7 @@ def get_suggested_version_map(pkg_vulnerabilities: List[Dict]) -> Dict[str, str]
             continue
         if purl_prefix in suggested_version_map:
             suggested_version_map[purl_prefix] = max_version(
-                [suggested_version_map[purl_prefix], fixed_location]
+                [suggested_version_map[purl_prefix], fixed_location], purl=purl_prefix
             )
         else:
             suggested_version_map[purl_prefix] = fixed_location
@@ -791,42 +798,36 @@ def classify_links(related_urls):
     return clinks
 
 
-def get_cwe_list(data: ProblemTypes | None) -> List:
+def get_cwe_list(data: List[Dict] | None) -> List:
+    """CWE numbers from a record's ``problemTypes`` block (plain CVE-5 dict)."""
     cwes = []
     if not data:
         return cwes
-    for i in data.root:
-        if record := i.descriptions:
-            for rec in record:
-                if rec.type == "CWE" and rec.cweId:
-                    cwes.append(int(rec.cweId.split("-")[1]))
+    for block in data:
+        for rec in (block.get("descriptions") if isinstance(block, dict) else None) or []:
+            if rec.get("type") == "CWE" and rec.get("cweId"):
+                cwes.append(int(rec["cweId"].split("-")[1]))
     return cwes
 
 
-def cve_to_vdr(cve: CVE, vid: str):
-    root = getattr(cve, "root", None)
-    cna = getattr(getattr(root, "containers", None), "cna", None)
-    metadata = getattr(root, "cveMetadata", None)
-    try:
-        description, detail = get_description_detail(getattr(cna, "descriptions", None))
-    except AttributeError:
-        description, detail = "", ""
-    try:
-        alias_ids = parse_alias_ids(description_full_text(getattr(cna, "descriptions", None)))
-    except AttributeError:
-        alias_ids = []
+def cve_to_vdr(cve: Dict, vid: str):
+    """Extract the VDR fields from a hydrated vdb record's CVE-5 dict.
+
+    ``cve`` is the plain ``source_data`` dict vdb 7 returns (the JSON form of
+    the CVE-5 record: ``containers.cna``, ``cveMetadata`` at the top level).
+    """
+    root = cve if isinstance(cve, dict) else {}
+    cna = root.get("containers", {}).get("cna") or {}
+    metadata = root.get("cveMetadata") or {}
+    description, detail = get_description_detail(cna.get("descriptions"))
+    alias_ids = parse_alias_ids(description_full_text(cna.get("descriptions")))
     advisories, references, bug_bounties, pocs, exploits, vendors, source = refs_to_vdr(
-        getattr(cna, "references", None), vid.lower(), alias_ids
+        cna.get("references"), vid.lower(), alias_ids
     )
-    vector, method, severity, score = parse_metrics(getattr(cna, "metrics", None))
+    vector, method, severity, score = parse_metrics(cna.get("metrics"))
     if not source:
-        assigner_short_name = getattr(metadata, "assignerShortName", None)
-        assigner_name = ""
-        if assigner_short_name:
-            if hasattr(assigner_short_name, "root"):
-                assigner_name = str(assigner_short_name.root)
-            else:
-                assigner_name = str(assigner_short_name)
+        assigner_short_name = metadata.get("assignerShortName")
+        assigner_name = str(assigner_short_name) if assigner_short_name else ""
 
         source = {"name": assigner_name.capitalize()}
         if source.get("name") == "Github_m":
@@ -840,12 +841,11 @@ def cve_to_vdr(cve: CVE, vid: str):
                     "url": f"https://github.com/advisories/{vid}",
                 }
             )
-    cwes = get_cwe_list(getattr(cna, "problemTypes", None))
+    cwes = get_cwe_list(cna.get("problemTypes"))
     vendor = ""
-    affected = getattr(cna, "affected", None)
-    affected_root = getattr(affected, "root", None) or []
+    affected_root = cna.get("affected") or []
     if affected_root:
-        vendor = getattr(affected_root[0], "vendor", "") or ""
+        vendor = affected_root[0].get("vendor", "") or ""
     ratings = {}
     if vector:
         ratings = {
@@ -871,34 +871,41 @@ def cve_to_vdr(cve: CVE, vid: str):
 
 
 def parse_metrics(metrics):
+    """Vector, method, severity and score from a record's ``metrics`` list.
+
+    The CVSS sub-objects are plain dicts in the CVE-5 JSON form; ``baseScore``
+    is a number there and reaches the VDR rating unchanged.
+    """
     vector = ""
     method = ""
     severity = "unknown"
-    score = ""
-    if not metrics or not getattr(metrics, "root", None):
+    score: Any = ""
+    if not metrics:
         return vector, method, severity, score
-    for metric in metrics.root:
-        cvss_v4 = getattr(metric, "cvssV4_0", None)
+    for metric in metrics:
+        if not isinstance(metric, dict):
+            continue
+        cvss_v4 = metric.get("cvssV4_0")
         if cvss_v4:
             return (
-                getattr(cvss_v4, "vectorString", "") or "",
+                cvss_v4.get("vectorString") or "",
                 "CVSSv4",
-                getattr(getattr(cvss_v4, "baseSeverity", None), "value", "unknown") or "unknown",
-                getattr(getattr(cvss_v4, "baseScore", None), "value", "") or "",
+                cvss_v4.get("baseSeverity") or "unknown",
+                cvss_v4.get("baseScore") or "",
             )
 
         if method == "CVSSv31":
             continue
 
-        cvss_v3 = getattr(metric, "cvssV3_1", None) or getattr(metric, "cvssV3_0", None)
+        cvss_v3 = metric.get("cvssV3_1") or metric.get("cvssV3_0")
         if not cvss_v3:
             continue
 
-        vector = getattr(cvss_v3, "vectorString", "") or ""
-        version = getattr(getattr(cvss_v3, "version", None), "value", "") or ""
+        vector = cvss_v3.get("vectorString") or ""
+        version = cvss_v3.get("version") or ""
         method = "CVSSv31" if version == "3.1" else "CVSSv3"
-        severity = getattr(getattr(cvss_v3, "baseSeverity", None), "value", "unknown") or "unknown"
-        score = getattr(getattr(cvss_v3, "baseScore", None), "root", "") or ""
+        severity = cvss_v3.get("baseSeverity") or "unknown"
+        score = cvss_v3.get("baseScore") or ""
     return vector, method, severity, score
 
 
@@ -953,21 +960,17 @@ def process_package_issue(options, vuln_occ_dict):
 
 
 def get_unaffected(vuln):
-    # Do we have a pre-computed fix_version from vdb already?
+    # Do we have a pre-computed fix_version from vdb already? vdb 7 computes
+    # it at hydration time, so this is the usual path.
     if vuln.get("fix_version"):
         return vuln.get("fix_version")
     source_data = vuln.get("source_data")
-    containers = getattr(getattr(source_data, "root", None), "containers", None)
-    affected = getattr(getattr(containers, "cna", None), "affected", None)
-    products: List[Product] = getattr(affected, "root", None) or []
-    if products:
-        for p in products:
-            versions: List[Versions] = getattr(p, "versions", None) or []
-            if versions:
-                for ver in versions:
-                    if getattr(ver, "status", None) == Status.unaffected:
-                        if getattr(ver, "version", None):
-                            return getattr(ver.version, "root", "") or ""
+    containers = source_data.get("containers") or {} if isinstance(source_data, dict) else {}
+    cna = containers.get("cna") or {}
+    for p in cna.get("affected") or []:
+        for ver in p.get("versions") or []:
+            if ver.get("status") == "unaffected" and ver.get("version"):
+                return ver.get("version") or ""
     vers = vuln.get("matching_vers", "")
     if "|" in vers:
         vers = vers.split("|")[-1]
@@ -975,8 +978,6 @@ def get_unaffected(vuln):
             return vers.replace("<", "").replace("!=", "")
     elif "/<" in vers and "/<=" not in vers:
         return vers.split("/<")[-1]
-    elif vers.endswith(f"<{PLACEHOLDER_EXCLUDE_VERSION}"):
-        return PLACEHOLDER_EXCLUDE_VERSION
     elif vers.endswith(f"<{PLACEHOLDER_FIX_VERSION}"):
         return PLACEHOLDER_FIX_VERSION
     return ""
@@ -1074,12 +1075,12 @@ def get_ref_summary_helper(url, patterns):
 
 
 def refs_to_vdr(
-    references: References | None, vid, alias_ids: List[str] | None = None
+    references: List[Dict] | None, vid, alias_ids: List[str] | None = None
 ) -> Tuple[List, List, List, List, List, List, Dict]:
     """
     Parses the reference list provided by VDB and converts to VDR objects
 
-    :param references: List of dictionaries of references
+    :param references: List of reference dicts (``{"url": ..., "tags": ...}``)
     :param vid: str of vulnerability id
     :param alias_ids: ids from the record's Aliases block, when the source
         provides one (vdb bakes it into OSV and errata descriptions)
@@ -1093,8 +1094,8 @@ def refs_to_vdr(
     # the same VDR (a set would iterate in per-process hash order). See #540.
     ref = []
     seen_urls = set()
-    for reference in getattr(references, "root", None) or []:
-        url = getattr(getattr(reference, "url", None), "root", None)
+    for reference in references:
+        url = reference.get("url") if isinstance(reference, dict) else None
         if url and str(url) not in seen_urls:
             seen_urls.add(str(url))
             ref.append(str(url))
@@ -1631,9 +1632,6 @@ def analyze_cve_vuln(
         affects[0]["versions"].append({"version": fixed_location, "status": "unaffected"})
         # This is a basic recommendation
         recommendation = f"Update to version {fixed_location}."
-        if fixed_location in (PLACEHOLDER_EXCLUDE_VERSION,):
-            likely_false_positive = True
-            return counts, {}, False, likely_false_positive
         if fixed_location in (PLACEHOLDER_FIX_VERSION, "*"):
             counts.wont_fix_version_count += 1
             recommendation = "Fix unavailable."
@@ -1676,14 +1674,8 @@ def analyze_cve_vuln(
         "p_rich_tree": p_rich_tree,
         "properties": [],
     }
-    try:
-        cve_record = vuln.get("source_data")
-        if not isinstance(cve_record, CVE):
-            return counts, vdict, add_to_pkg_group_rows, likely_false_positive
-    except KeyError:
-        return counts, vdict, add_to_pkg_group_rows, likely_false_positive
-
-    if not cve_record:
+    cve_record = vuln.get("source_data")
+    if not isinstance(cve_record, dict) or not cve_record:
         return counts, vdict, add_to_pkg_group_rows, likely_false_positive
 
     (
@@ -1718,9 +1710,9 @@ def analyze_cve_vuln(
         as_tree=True,
         extra_text=f":left_arrow: {vid}",
     )
-    metadata = getattr(getattr(cve_record, "root", None), "cveMetadata", None)
-    published = getattr(metadata, "datePublished", None)
-    updated = getattr(metadata, "dateUpdated", None)
+    metadata = cve_record.get("cveMetadata") or {}
+    published = metadata.get("datePublished")
+    updated = metadata.get("dateUpdated")
     vdict |= {
         "source": source,
         "references": references,
@@ -1729,8 +1721,8 @@ def analyze_cve_vuln(
         "description": description,
         "detail": detail,
         "ratings": [rating],
-        "published": published.strftime("%Y-%m-%dT%H:%M:%S") if published else "",
-        "updated": updated.strftime("%Y-%m-%dT%H:%M:%S") if updated else "",
+        "published": _iso_datetime(published),
+        "updated": _iso_datetime(updated),
         "p_rich_tree": p_rich_tree,
     }
     is_required = False
@@ -1876,15 +1868,10 @@ def analyze_cve_vuln(
             # Just known exploits without usage is not a priority
             if reached_purls or direct_purls:
                 cve_requires_attn = False
-    affected = getattr(
-        getattr(getattr(getattr(cve_record, "root", None), "containers", None), "cna", None),
-        "affected",
-        None,
-    )
-    affected_root = getattr(affected, "root", None) or []
-    if affected_root and (cpes := getattr(affected_root[0], "cpes", None)):
+    affected = (cve_record.get("containers", {}).get("cna") or {}).get("affected") or []
+    if affected and (cpes := affected[0].get("cpes")):
         # Distro-specific package
-        if all((distro_package(i.root) for i in cpes)):
+        if all((distro_package(cpe) for cpe in cpes)):
             insights.append("[spring_green4]:direct_hit: Distro specific[/spring_green4]")
             plain_insights.append("Distro specific")
             counts.distro_packages_count += 1

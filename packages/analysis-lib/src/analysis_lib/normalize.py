@@ -1,6 +1,5 @@
 from typing import Any, Dict, List, Optional
 
-from vdb.lib.config import PLACEHOLDER_EXCLUDE_VERSION
 from vdb.lib.utils import parse_purl
 
 from analysis_lib import config
@@ -312,11 +311,6 @@ def dedup(project_type: Optional[str], pkg_list: List[Dict[str, Any]]) -> List[D
             if version:
                 full_pkg = full_pkg + ":" + version
         full_pkg = vid + ":" + full_pkg
-        # Ignore any result with the exclude fix location
-        # Required for debian
-        if fixed_location and fixed_location == PLACEHOLDER_EXCLUDE_VERSION:
-            dedup_dict[full_pkg] = True
-            continue
         if full_pkg not in dedup_dict:
             ret_list.append(res)
             dedup_dict[full_pkg] = True

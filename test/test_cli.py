@@ -97,8 +97,84 @@ def test_positive_int_env(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Change C: variant marker + forced re-download on mismatch
+# Empty or unreadable database: the scan must stop, never report zero findings
 # ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def vdb_home(tmp_path, monkeypatch):
+    """An isolated VDB_HOME; vdb's config captured the import-time paths, so
+    they are patched alongside the environment.
+
+    The directory is resolved because vdb opens its databases with
+    SQLITE_OPEN_NOFOLLOW, which refuses a path that crosses a symlinked
+    directory (macOS keeps its temp dirs behind the /var -> /private/var
+    symlink).
+    """
+    home = tmp_path.resolve() / "vdb-home"
+    home.mkdir()
+    # Widen vdb's console so the directory path is not wrapped mid-token.
+    monkeypatch.setenv("COLUMNS", "4096")
+    monkeypatch.setenv("VDB_HOME", str(home))
+    monkeypatch.setattr(cli.config, "DATA_DIR", str(home))
+    monkeypatch.setattr(cli.config, "VDB_BIN_FILE", str(home / "data.vdb7"))
+    monkeypatch.setattr(cli.config, "VDB_BIN_INDEX", str(home / "data.index.vdb7"))
+    yield home
+    cli.db_lib.reset_connections()
+
+
+def test_ensure_vdb_usable_stops_on_missing_database(vdb_home, capsys):
+    """An unbuilt VDB_HOME must fail the scan with the directory named and a
+    way to get a database, not answer with zero findings."""
+    with pytest.raises(SystemExit) as exc:
+        cli.ensure_vdb_usable()
+    assert exc.value.code == 1
+    out = " ".join(capsys.readouterr().out.split())
+    assert str(vdb_home) in out
+    assert "vdb db refresh full" in out
+
+
+def test_ensure_vdb_usable_stops_on_v6_only_database(vdb_home, capsys):
+    """vdb 7 does not read .vdb6 files, so a directory holding only v6
+    artifacts is an empty database and the scan stops; vdb's guard names the
+    legacy files."""
+    (vdb_home / "data.vdb6").write_text("")
+    (vdb_home / "data.index.vdb6").write_text("")
+    with pytest.raises(SystemExit) as exc:
+        cli.ensure_vdb_usable()
+    assert exc.value.code == 1
+    out = " ".join(capsys.readouterr().out.split())
+    assert str(vdb_home) in out
+    assert "Found v6 database files (data.vdb6, data.index.vdb6)" in out
+
+
+def test_ensure_vdb_usable_stops_on_zero_row_database(vdb_home, capsys):
+    """A schema-valid v7 database with no rows answers nothing; the scan must
+    stop instead of looking like a clean result."""
+    cli.db_lib.get()  # create the v7 files with their schema
+    assert (vdb_home / "data.vdb7").is_file()
+    assert cli.db_lib.stats() == (0, 0)
+    cli.db_lib.reset_connections()
+    with pytest.raises(SystemExit) as exc:
+        cli.ensure_vdb_usable()
+    assert exc.value.code == 1
+    out = " ".join(capsys.readouterr().out.split())
+    assert str(vdb_home) in out
+    assert "is empty" in out
+
+
+def test_ensure_vdb_usable_passes_with_rows(vdb_home):
+    """Positive control: one index row is a usable database and the guard
+    returns without exiting."""
+    _, index_conn = cli.db_lib.get()
+    index_conn.execute(
+        "INSERT INTO cve_index(cve_id, type, namespace, name, vers, purl_prefix) "
+        "VALUES('CVE-2024-1', 'pypi', '', 'requests', 'vers:pypi/>=2.0', 'pkg:pypi/requests')"
+    )
+    assert cli.db_lib.stats()[1] == 1
+    cli.db_lib.reset_connections()
+    # No SystemExit: the guard returns None on a usable database.
+    assert cli.ensure_vdb_usable() is None
 
 
 def test_vdb_download_needed_stale(monkeypatch):
@@ -175,7 +251,7 @@ def test_resolve_scan_default_no_severity(monkeypatch):
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args()
     url, pinned = cli.resolve_scan_vdb_image(args)
-    assert url == "ghcr.io/appthreat/vdbxz:v6.7.x"
+    assert url == "ghcr.io/appthreat/vdb7-full:v7.0.x-xz"
     assert pinned is False
     assert os.getenv("VDB_INCLUDE_METADATA") is None
 
@@ -187,7 +263,8 @@ def test_resolve_scan_severity_auto_extended(monkeypatch):
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args(severity="high")
     url, pinned = cli.resolve_scan_vdb_image(args)
-    assert url == "ghcr.io/appthreat/vdbxz-extended:v6.7.x"
+    # The metadata flavor is app-scope only, so --severity selects app-extended.
+    assert url == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-xz"
     assert pinned is False
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
@@ -211,7 +288,8 @@ def test_resolve_scan_use_vdb_10y(monkeypatch):
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args()
     url, pinned = cli.resolve_scan_vdb_image(args)
-    assert url == "ghcr.io/appthreat/vdbxz-10y:v6.7.x"
+    # The 10-year flavor is app-scope only, so USE_VDB_10Y selects app-10y.
+    assert url == "ghcr.io/appthreat/vdb7-app-10y:v7.0.x-xz"
     assert pinned is False
 
 
@@ -222,7 +300,7 @@ def test_resolve_scan_use_vdb_10y_with_severity(monkeypatch):
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args(severity="critical")
     url, pinned = cli.resolve_scan_vdb_image(args)
-    assert url == "ghcr.io/appthreat/vdbxz-10y-extended:v6.7.x"
+    assert url == "ghcr.io/appthreat/vdb7-app-10y-extended:v7.0.x-xz"
     assert pinned is False
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
@@ -240,7 +318,7 @@ def test_resolve_scan_config_scope_app(monkeypatch):
     """A persisted vdb_scope=app resolves the app-only image."""
     _clean_vdb_env(monkeypatch)
     url, pinned = cli.resolve_scan_vdb_image(_make_args(vdb_scope="app"))
-    assert url == "ghcr.io/appthreat/vdbxz-app:v6.7.x"
+    assert url == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     assert pinned is False
 
 
@@ -250,24 +328,27 @@ def test_resolve_scan_config_extended_and_compression(monkeypatch):
     url, pinned = cli.resolve_scan_vdb_image(
         _make_args(vdb_scope="app", vdb_extended=True, vdb_compression="zst")
     )
-    assert url == "ghcr.io/appthreat/vdbzst-app-extended:v6.7.x"
+    assert url == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-zst"
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
 
 def test_resolve_scan_config_time_overrides_use_vdb_10y(monkeypatch):
-    """An explicit vdb_time wins over USE_VDB_10Y."""
+    """An explicit vdb_time wins over USE_VDB_10Y: with vdb_time=default the
+    resolver picks the full flavor, not the 10-year one the env var selects."""
     _clean_vdb_env(monkeypatch)
     monkeypatch.setenv("USE_VDB_10Y", "true")
-    url, _ = cli.resolve_scan_vdb_image(_make_args(vdb_time="2y", vdb_scope="app"))
-    assert url == "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+    url, _ = cli.resolve_scan_vdb_image(_make_args(vdb_time="default"))
+    assert url == "ghcr.io/appthreat/vdb7-full:v7.0.x-xz"
 
 
 def test_resolve_scan_config_distro(monkeypatch):
-    """A persisted vdb_distro resolves the distro-only image."""
+    """A persisted vdb_distro is rejected: v7 publishes no per-distro
+    complete database, and the error names the flavors."""
+    import pytest
+
     _clean_vdb_env(monkeypatch)
-    url, pinned = cli.resolve_scan_vdb_image(_make_args(vdb_distro="ubuntu"))
-    assert url == "ghcr.io/appthreat/vdbxz-ubuntu:v6.7.x"
-    assert pinned is False
+    with pytest.raises(ValueError, match="Published flavors"):
+        cli.resolve_scan_vdb_image(_make_args(vdb_distro="ubuntu"))
 
 
 def test_resolve_scan_vdb_image_pin_verbatim(monkeypatch):

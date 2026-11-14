@@ -19,7 +19,7 @@ from reporting_lib.htmlgen import ReportGenerator
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
-from vdb.lib import db6 as db_lib
+from vdb.lib import db as db_lib
 from vdb.lib import search
 from vdb.lib.utils import parse_purl
 
@@ -130,7 +130,7 @@ def vdb_download_needed(resolved_url, data_dir):
     """Decide whether the scan should (re-)download the vdb.
 
     The DB is re-downloaded when it is stale (time-based, via
-    ``db6.needs_update``) OR when the depscan-owned variant marker differs
+    ``vdb.lib.db.needs_update``) OR when the depscan-owned variant marker differs
     from the freshly resolved image ref. The marker check catches a
     scope/time/tier/distro switch that ``needs_update`` would otherwise miss
     for up to ``VDB_AGE_HOURS`` because vdb metadata does not record the
@@ -166,7 +166,7 @@ def vdb_download_needed(resolved_url, data_dir):
 
 
 def resolve_scan_vdb_image(args):
-    """Resolve the vdb image URL for the scan path (T7 Change D).
+    """Resolve the vdb image URL for the scan path.
 
     Precedence, highest first:
 
@@ -177,7 +177,9 @@ def resolve_scan_vdb_image(args):
        ``vdb_extended``/``vdb_compression``/``vdb_distro``), which may come from
        the command line or be persisted in the depscan config file. Unset
        options fall back to their defaults (app+os, default, standard, xz), and
-       ``USE_VDB_10Y`` still maps to ``time=10y`` when ``vdb_time`` is unset.
+       ``USE_VDB_10Y`` still maps to the 10-year flavor when ``vdb_time`` is
+       unset. Because the v7 10-year and extended flavors are app-scope only,
+       either selection moves the scope to ``app`` with a log line.
 
     When ``--severity`` is set and the user has NOT pinned an image (env or
     ``--vdb-image``), the ``-extended`` variant is auto-selected and
@@ -202,23 +204,34 @@ def resolve_scan_vdb_image(args):
     distro = getattr(args, "vdb_distro", None)
     compression = getattr(args, "vdb_compression", None) or "xz"
     if distro:
-        # Distro images are mutually exclusive with scope/time/extended and never
-        # carry metadata, so --severity cannot push down here.
-        resolved = resolve_vdb_image(distro=distro, compression=compression)
-        if args.severity:
-            LOG.info(
-                "--severity is set but a distro-only vdb image (%s) has no "
-                "metadata; the severity floor still applies to the final VDR.",
-                resolved,
-            )
-        return resolved, False
+        # v7 publishes no per-distro complete database; resolve_vdb_image
+        # raises and names the flavors, so the user is told rather than given
+        # a bigger or smaller database in silence.
+        resolve_vdb_image(distro=distro, compression=compression)
 
     scope = getattr(args, "vdb_scope", None) or "app+os"
     time_window = getattr(args, "vdb_time", None)
-    if not time_window:
-        time_window = "10y" if os.getenv("USE_VDB_10Y", "") in ("true", "1") else "default"
+    if not time_window and os.getenv("USE_VDB_10Y", "") in ("true", "1"):
+        # USE_VDB_10Y has no v7 constant; the v7 10-year databases are the
+        # app-scope app-10y flavors, so the scope moves with it.
+        time_window = "10y"
+        if scope == "app+os":
+            scope = "app"
+            LOG.info(
+                "USE_VDB_10Y selects the app-scope 10-year vdb flavor; OS distro "
+                "data is not part of it."
+            )
+    elif not time_window:
+        time_window = "default"
     extended = bool(getattr(args, "vdb_extended", None)) or bool(args.severity)
     if extended:
+        # The metadata (extended) v7 flavors are app-scope only.
+        if scope == "app+os":
+            scope = "app"
+            LOG.info(
+                "The extended vdb flavor carries application ecosystems only; "
+                "OS distro data is not part of it."
+            )
         os.environ["VDB_INCLUDE_METADATA"] = "true"
         resolved = resolve_vdb_image(
             scope=scope, time=time_window, extended=True, compression=compression
@@ -326,10 +339,62 @@ def configure_vdb_readonly():
     if os.getenv("VDB_SQLITE_IMMUTABLE", "").lower() not in ("false", "0"):
         os.environ["VDB_SQLITE_IMMUTABLE"] = "true"
         # config.VDB_SQLITE_IMMUTABLE was captured at import time; patch it so
-        # db6._sqlite_uri picks up immutable=1 on the first connection.
+        # vdb.lib.db._sqlite_uri picks up immutable=1 on the first connection.
         config.VDB_SQLITE_IMMUTABLE = True
     if not os.getenv("VDB_SQLITE_JOURNAL_MODE"):
         os.environ["VDB_SQLITE_JOURNAL_MODE"] = "WAL"
+
+
+def ensure_vdb_usable():
+    """Stop the scan when the local vulnerability database cannot answer.
+
+    A database with no rows, a missing database, or a directory holding only
+    v6 files (vdb 7 reads ``.vdb7`` databases and does not migrate v6
+    artifacts) must fail the scan loudly: a scan that reports zero findings
+    from zero data looks exactly like a clean result. vdb's own CLI refuses
+    to answer on an empty database for the same reason.
+
+    Reuses vdb's guard (``vdb.cli._warn_if_database_empty``, which prints the
+    directory, the remedies and the v6-files hint) after opening the
+    connections it needs; if the guard is not importable in a future vdb,
+    falls back to the row count through ``vdb.lib.db``. Exits with code 1
+    when the database cannot answer.
+    """
+    db_lib.reset_connections()
+    try:
+        db_lib.get(read_only=True)
+    except Exception as e:  # noqa: BLE001 - any driver error means unusable
+        LOG.error(
+            "The vulnerability database at %s could not be opened (%s). "
+            "Fetch one with `depscan-vdb download` or 'vdb db refresh full'.",
+            config.DATA_DIR,
+            e,
+        )
+        sys.exit(1)
+    try:
+        # vdb's guard prints the empty-database message (directory, remedies,
+        # v6-files paragraph) and returns True when the database is empty.
+        from vdb.cli import _warn_if_database_empty
+
+        if _warn_if_database_empty():
+            LOG.error(
+                "Cannot scan without a vulnerability database. Fetch one with "
+                "`depscan-vdb download` or 'vdb db refresh full'."
+            )
+            sys.exit(1)
+        return
+    except ImportError:
+        pass
+    except SystemExit:
+        raise
+    _, cve_index_count = db_lib.stats()
+    if not cve_index_count:
+        LOG.error(
+            "The vulnerability database at %s is empty; no search can return "
+            "results. Fetch one with `depscan-vdb download` or 'vdb db refresh full'.",
+            config.DATA_DIR,
+        )
+        sys.exit(1)
 
 
 def vdr_analyze_summarize(
@@ -633,7 +698,7 @@ def run_depscan(args):
         LOG.debug("Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis.")
         depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
-    # Resolve the vdb image for this scan (T7 Change D).
+    # Resolve the vdb image for this scan.
     scan_vdb_url, _user_pinned = resolve_scan_vdb_image(args)
     _warn_large_appos_for_source_scan(scan_vdb_url, args)
     # Should we download the latest vdb.
@@ -657,9 +722,12 @@ def run_depscan(args):
             LOG.warning(
                 "The latest vulnerability database is not found. Follow the documentation to manually download it."
             )
-    # Apply read-only SQLite tuning for the scan (T2). Done after the download
+    # Apply read-only SQLite tuning for the scan. Done after the download
     # so the vdb update path is never opened immutable.
     configure_vdb_readonly()
+    # A database with no rows answers nothing; a scan must not report zero
+    # findings from zero data.
+    ensure_vdb_usable()
     pkg_list, project_types_list = set_project_types(args, src_dir)
     if args.custom_data:
         LOG.info(f"Loading custom vulnerability data from {args.custom_data}")

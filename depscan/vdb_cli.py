@@ -14,7 +14,7 @@ import argparse
 import sys
 
 from vdb.lib import config as vdb_config
-from vdb.lib import db6 as db_lib
+from vdb.lib import db as db_lib
 
 from depscan import get_version
 from depscan.lib.config import (

@@ -12,15 +12,13 @@ which is the cross-BOM (--bom-dir) case it was written for.
 
 import json
 import os
-from types import SimpleNamespace
-from typing import Any
 
 import pytest
 from vdb.lib import config as vdb_config
-from vdb.lib import db6 as vdb_db6
+from vdb.lib import db as vdb_db
 from vdb.lib.osv import OSVSource
 
-from analysis_lib import VdrAnalysisKV, utils
+from analysis_lib import VdrAnalysisKV
 from analysis_lib import vdr as vdr_module
 from analysis_lib.output import generate_console_output as real_gco
 from analysis_lib.vdr import VDRAnalyzer
@@ -28,28 +26,21 @@ from analysis_lib.vdr import VDRAnalyzer
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
 
-class DummyCVE:
-    """Stands in for vdb.lib.cve_model.CVE so analyze_cve_vuln's isinstance
-    check takes the full enrichment path without a real vdb record."""
-
-    root: Any
-
-
 def _raw_vdb_result(cve_id, purl, fix_version=""):
     """Build a raw vdb search result shaped like search.py's output for one
-    matched component: matched_by carries the full component purl."""
-    cve_record = DummyCVE()
-    cve_record.root = SimpleNamespace(
-        containers=SimpleNamespace(
-            cna=SimpleNamespace(
-                references=None,
-                metrics=None,
-                descriptions=None,
-                problemTypes=None,
-                affected=None,
-            )
-        )
-    )
+    matched component: matched_by carries the full component purl. The
+    source_data dict is the plain CVE-5 form vdb 7 returns."""
+    cve_record = {
+        "containers": {
+            "cna": {
+                "references": None,
+                "metrics": None,
+                "descriptions": None,
+                "problemTypes": None,
+                "affected": None,
+            }
+        }
+    }
     return {
         "cve_id": cve_id,
         "matched_by": purl,
@@ -59,11 +50,6 @@ def _raw_vdb_result(cve_id, purl, fix_version=""):
         "fix_version": fix_version,
         "type": "npm",
     }
-
-
-@pytest.fixture
-def dummy_cve(monkeypatch):
-    monkeypatch.setattr(utils, "CVE", DummyCVE)
 
 
 def _run_analyzer(monkeypatch, raw_results, *, bom_file=None, pkg_list=None, fuzzy_search=False):
@@ -100,7 +86,7 @@ def _vdr_refs(vdr):
 # ---------------------------------------------------------------------------
 
 
-def test_same_cve_and_fix_on_two_components_is_not_a_duplicate(dummy_cve, monkeypatch):
+def test_same_cve_and_fix_on_two_components_is_not_a_duplicate(monkeypatch):
     """The exact trigger from the discussion: two versions of postcss share a
     CVE and its fix version. The old key (id|fixed_location) collapsed them;
     the fix must keep both so dedupe_vdrs merges their affects refs."""
@@ -129,7 +115,7 @@ def test_same_cve_and_fix_on_two_components_is_not_a_duplicate(dummy_cve, monkey
     }
 
 
-def test_exact_duplicates_are_still_filtered(dummy_cve, monkeypatch):
+def test_exact_duplicates_are_still_filtered(monkeypatch):
     """Cross-BOM (--bom-dir) scans surface the same component matched by the
     same CVE with the same fix version more than once. Those exact duplicates
     must still collapse — one affects entry per ref, no repeated versions."""
@@ -153,7 +139,7 @@ def test_exact_duplicates_are_still_filtered(dummy_cve, monkeypatch):
     assert len(versions_8431) == 2  # one affected range + one unaffected fix
 
 
-def test_mixed_fix_versions_across_components(dummy_cve, monkeypatch):
+def test_mixed_fix_versions_across_components(monkeypatch):
     """A CVE whose fix version differs per matched component already worked
     under the old key; it must keep working under the new one."""
     result = _run_analyzer(
@@ -174,7 +160,7 @@ def test_mixed_fix_versions_across_components(dummy_cve, monkeypatch):
     }
 
 
-def test_multiple_cves_across_multiple_packages(dummy_cve, monkeypatch):
+def test_multiple_cves_across_multiple_packages(monkeypatch):
     """Two packages, two versions each, both hit by two CVEs — the synthetic
     reproducer offered in the discussion. One merged entry per CVE, each
     carrying every affected component."""
@@ -197,7 +183,7 @@ def test_multiple_cves_across_multiple_packages(dummy_cve, monkeypatch):
         assert _vdr_refs(vdr) == set(postcss) | set(minimatch)
 
 
-def test_fuzzy_search_surfaces_all_components(dummy_cve, monkeypatch):
+def test_fuzzy_search_surfaces_all_components(monkeypatch):
     """In fuzzy mode likely-false-positive entries are surfaced rather than
     hidden; distinct components sharing a CVE must still merge to one entry."""
     result = _run_analyzer(
@@ -221,7 +207,7 @@ def test_fuzzy_search_surfaces_all_components(dummy_cve, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_multiversion_bom_scan_reports_every_affected_component(dummy_cve, monkeypatch):
+def test_multiversion_bom_scan_reports_every_affected_component(monkeypatch):
     bom_file = os.path.join(DATA_DIR, "bom-multiversion-npm.json")
     with open(bom_file, encoding="utf-8") as f:
         bom = json.load(f)
@@ -263,7 +249,7 @@ def test_multiversion_bom_fixture_shape():
     assert len({c["bom-ref"] for c in bom["components"]}) == 5
 
 
-def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch):
+def test_merged_multiref_entries_render_in_console_output(monkeypatch):
     """The merged multi-component entries produced after the fix must flow
     through generate_console_output (the #519 KeyError guard) unharmed. The
     table is rendered inside process() before remove_extra_metadata strips the
@@ -331,7 +317,7 @@ def test_merged_multiref_entries_render_in_console_output(dummy_cve, monkeypatch
 
 
 def test_prioritized_cve_shared_by_two_components_renders_console_output(monkeypatch):
-    """End to end against an in-memory vdb 6 database.
+    """End to end against an in-memory vdb database.
 
     A BOM carrying fastify 5.2.0 and 4.29.0 matches CVE-2025-32442
     (GHSA-mg2h-6x62-wpwc) once per component; dedupe_vdrs merges the two
@@ -354,11 +340,11 @@ def test_prioritized_cve_shared_by_two_components_renders_console_output(monkeyp
     # monkeypatch restores the start year even if the db setup below raises.
     monkeypatch.setattr(vdb_config, "NVD_START_YEAR", 2002)
     try:
-        vdb_db6.reset_connections()
-        vdb_db6.get(":memory:", ":memory:")
-        vdb_db6.clear_all()
+        vdb_db.reset_connections()
+        vdb_db.get(":memory:", ":memory:")
+        vdb_db.clear_all()
         src = OSVSource()
-        src.db_conn, src.index_conn = vdb_db6.get()
+        src.db_conn, src.index_conn = vdb_db.get()
         src.store(src.convert(records["GHSA-mg2h-6x62-wpwc"]))
         options = VdrAnalysisKV(
             project_type="js",
@@ -404,7 +390,7 @@ def test_prioritized_cve_shared_by_two_components_renders_console_output(monkeyp
                 assert row["matched_by"] in purls
                 assert bom_ref == f"{row['id']}/{row['matched_by']}"
     finally:
-        vdb_db6.reset_connections()
+        vdb_db.reset_connections()
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +457,7 @@ NODE_FORGE_EXPECTED_REFS = {
     ],
 )
 def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expected_ids):
-    """End to end against an in-memory vdb 6 database.
+    """End to end against an in-memory vdb database.
 
     osv.dev merges the alias groups of GHSA-86w9-cpqp-85rv (CVE-2026-85393)
     and its incomplete-fix sibling GHSA-ppp5-5v6c-4jwp (CVE-2026-33894), and
@@ -485,11 +471,11 @@ def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expecte
 
     previous_start_year = vdb_config.NVD_START_YEAR
     vdb_config.NVD_START_YEAR = 2002
-    vdb_db6.reset_connections()
-    vdb_db6.get(":memory:", ":memory:")
-    vdb_db6.clear_all()
+    vdb_db.reset_connections()
+    vdb_db.get(":memory:", ":memory:")
+    vdb_db.clear_all()
     src = OSVSource()
-    src.db_conn, src.index_conn = vdb_db6.get()
+    src.db_conn, src.index_conn = vdb_db.get()
     for rid in ("GHSA-86w9-cpqp-85rv", "GHSA-ppp5-5v6c-4jwp"):
         src.store(src.convert(records[rid]))
     try:
@@ -523,5 +509,101 @@ def test_vdr_references_stay_equivalent_for_merged_alias_groups(version, expecte
                 "GHSA-ppp5-5v6c-4jwp" in a["url"] for a in vdrs["CVE-2026-85393"]["advisories"]
             )
     finally:
-        vdb_db6.reset_connections()
+        vdb_db.reset_connections()
         vdb_config.NVD_START_YEAR = previous_start_year
+
+
+# ---------------------------------------------------------------------------
+# The v7 hydration contract: source_data is a plain dict, and every reader
+# that used to walk the pydantic model must still read the fields a scan
+# reports. A getattr chain on a dict answers None silently, so a lost field
+# would look like missing data, never like a crash.
+# ---------------------------------------------------------------------------
+
+
+def test_converted_readers_read_a_hydrated_v7_result():
+    """Run the dict-based readers on a real vdb 7 hydrated search result.
+
+    The result comes from the same hydration path a scan uses
+    (search_by_purl_like with_data=True) over an in-memory database built
+    from the committed OSV fixture, so source_data is exactly the plain
+    CVE-5 dict v7 returns: no model, no .root, no model_dump().
+    """
+    from types import SimpleNamespace
+
+    from vdb.lib.search import search_by_purl_like
+
+    from analysis_lib.utils import analyze_cve_vuln, cve_to_vdr, get_unaffected
+
+    with open(os.path.join(DATA_DIR, "osv-fastify-multibranch-fix.json"), encoding="utf-8") as fp:
+        records = {d["id"]: d for d in json.load(fp)}
+
+    monkeypatched_year = vdb_config.NVD_START_YEAR
+    vdb_config.NVD_START_YEAR = 2002
+    try:
+        vdb_db.reset_connections()
+        vdb_db.get(":memory:", ":memory:")
+        vdb_db.clear_all()
+        src = OSVSource()
+        src.db_conn, src.index_conn = vdb_db.get()
+        src.store(src.convert(records["GHSA-mg2h-6x62-wpwc"]))
+        results = list(search_by_purl_like("pkg:npm/fastify@5.2.0", with_data=True))
+        assert len(results) == 1
+        r = results[0]
+    finally:
+        vdb_db.reset_connections()
+        vdb_config.NVD_START_YEAR = monkeypatched_year
+
+    # v7 returns the CVE record as a plain dict.
+    assert isinstance(r["source_data"], dict)
+
+    # Fixed version: vdb computes it at hydration time and get_unaffected
+    # reads it (falling back to source_data's unaffected entry when absent).
+    assert r["fix_version"] == "5.3.2"
+    assert get_unaffected(r) == "5.3.2"
+
+    # References, CWE and ratings read from containers.cna.
+    source, references, advisories, cwes, description, detail, rating, *_ = cve_to_vdr(
+        r["source_data"], r["cve_id"]
+    )
+    assert any(ref["id"] == r["cve_id"] for ref in references)
+    assert cwes == [1287]
+    assert rating.get("severity") and rating.get("vector")
+
+    # Affected versions flow into the VDR entry: one affected range for the
+    # matched component plus the unaffected fix version.
+    counts = SimpleNamespace(
+        malicious_count=0,
+        pkg_attention_count=0,
+        fix_version_count=0,
+        critical_count=0,
+        has_reachable_poc_count=0,
+        has_reachable_exploit_count=0,
+        has_poc_count=0,
+        has_exploit_count=0,
+        wont_fix_version_count=0,
+        distro_packages_count=0,
+        has_os_packages=False,
+        ids_seen={},
+    )
+    _, vdict, _, _ = analyze_cve_vuln(
+        r,
+        reached_purls={},
+        direct_purls={},
+        reached_services={},
+        endpoint_reached_purls={},
+        optional_pkgs=[],
+        required_pkgs=[],
+        prebuild_purls={},
+        build_purls={},
+        postbuild_purls={},
+        purl_identities={},
+        bom_dependency_tree=[],
+        counts=counts,
+    )
+    versions = vdict["affects"][0]["versions"]
+    assert {"version": "5.3.2", "status": "unaffected"} in versions
+    assert any(v.get("status") == "affected" for v in versions)
+    # The VDR entry keeps what cve_to_vdr extracted.
+    assert vdict["references"]
+    assert vdict["cwes"] == [1287]

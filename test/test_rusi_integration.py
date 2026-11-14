@@ -578,9 +578,9 @@ def test_rustsec_exploitable_insight_gated_on_reached_purls():
     from types import SimpleNamespace
 
     from analysis_lib.utils import analyze_cve_vuln
-    from vdb.lib.cve_model import CVE
 
-    cve_model = CVE.model_validate(json.loads(RUSTSEC_TIME_VULN.read_text(encoding="utf-8")))
+    # vdb returns the CVE-5 record as a plain dict.
+    cve_model = json.loads(RUSTSEC_TIME_VULN.read_text(encoding="utf-8"))
 
     def _counts():
         return SimpleNamespace(

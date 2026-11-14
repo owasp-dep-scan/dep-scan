@@ -1,4 +1,4 @@
-"""Tests for the depscan-vdb command (T7 Change B)."""
+"""Tests for the depscan-vdb command."""
 
 from depscan.vdb_cli import (
     _build_parser,
@@ -34,19 +34,24 @@ def test_download_defaults():
 def test_resolve_default_download_image():
     parser = _build_parser()
     args = parser.parse_args(["download"])
-    assert _resolve_image_from_args(args) == "ghcr.io/appthreat/vdbxz:v6.7.x"
+    assert _resolve_image_from_args(args) == "ghcr.io/appthreat/vdb7-full:v7.0.x-xz"
 
 
 def test_resolve_distro_ubuntu():
+    """v7 publishes no per-distro complete database, so the request is
+    rejected with the flavors named rather than silently mapped."""
+    import pytest
+
     parser = _build_parser()
     args = parser.parse_args(["download", "--distro", "ubuntu"])
-    assert _resolve_image_from_args(args) == "ghcr.io/appthreat/vdbxz-ubuntu:v6.7.x"
+    with pytest.raises(ValueError, match="no per-distro complete database"):
+        _resolve_image_from_args(args)
 
 
 def test_resolve_app_extended():
     parser = _build_parser()
     args = parser.parse_args(["download", "--scope", "app", "--extended"])
-    assert _resolve_image_from_args(args) == "ghcr.io/appthreat/vdbxz-app-extended:v6.7.x"
+    assert _resolve_image_from_args(args) == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-xz"
 
 
 def test_resolve_image_override_verbatim():
@@ -70,7 +75,7 @@ def test_download_writes_marker(tmp_path, monkeypatch):
     monkeypatch.setattr("depscan.vdb_cli._ORAS_AVAILABLE", True)
 
     parser = _build_parser()
-    args = parser.parse_args(["download", "--distro", "ubuntu"])
+    args = parser.parse_args(["download", "--scope", "app"])
     # Redirect DATA_DIR to tmp_path
     from vdb.lib import config as vdb_config
 
@@ -79,12 +84,12 @@ def test_download_writes_marker(tmp_path, monkeypatch):
     rc = cmd_download(args)
     assert rc == 0
     assert len(calls) == 1
-    assert calls[0][0] == "ghcr.io/appthreat/vdbxz-ubuntu:v6.7.x"
+    assert calls[0][0] == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     # Marker should be written
     from depscan.lib.config import read_vdb_image_marker
 
     marker = read_vdb_image_marker(str(tmp_path))
-    assert marker == "ghcr.io/appthreat/vdbxz-ubuntu:v6.7.x"
+    assert marker == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
 
 
 def test_download_no_oras_reports_error(tmp_path, monkeypatch):
@@ -126,7 +131,7 @@ def test_cmd_info_with_marker(tmp_path, monkeypatch, capsys):
     from depscan.lib.config import write_vdb_image_marker
 
     monkeypatch.setattr(vdb_config, "DATA_DIR", str(tmp_path))
-    write_vdb_image_marker("ghcr.io/appthreat/vdbxz-app:v6.7.x", str(tmp_path))
+    write_vdb_image_marker("ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz", str(tmp_path))
     monkeypatch.setattr(
         "depscan.vdb_cli.db_lib.get_db_file_metadata",
         lambda: {"created_utc": "2025-01-01T00:00:00+00:00"},
@@ -136,7 +141,7 @@ def test_cmd_info_with_marker(tmp_path, monkeypatch, capsys):
     rc = cmd_info(None)
     assert rc == 0
     captured = capsys.readouterr()
-    assert "vdbxz-app" in captured.out
+    assert "vdb7-app-only" in captured.out
     assert "stale" in captured.out
 
 

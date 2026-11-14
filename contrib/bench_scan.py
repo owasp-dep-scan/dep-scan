@@ -165,9 +165,9 @@ def main():
 
     # Verify vdb is available
     try:
-        from vdb.lib import db6
+        from vdb.lib import db
 
-        db_conn, index_conn = db6.get(read_only=True)
+        db_conn, index_conn = db.get(read_only=True)
         count = index_conn.execute("SELECT count(*) FROM cve_index").fetchone()
         print(f"vdb index rows: {count[0] if count else 0}")
     except Exception as e:

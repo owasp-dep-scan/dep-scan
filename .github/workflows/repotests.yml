@@ -77,7 +77,7 @@ jobs:
     if: github.event_name != 'merge_group'
     needs: ukaina-boms
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
       PYTHONIOENCODING: ${{ matrix.os == 'windows-latest' && 'utf-8' || '' }}
       PYTHONUTF8: ${{ matrix.os == 'windows-latest' && '1' || '' }}
       DISABLE_CONSOLE_EMOJI: ${{ matrix.os == 'windows-latest' && '1' || '' }}
@@ -304,6 +304,11 @@ jobs:
       matrix:
         python-version: ['3.14']
     runs-on: ['self-hosted', 'ubuntu', 'amd64']
+    env:
+      # These scans are application projects; without a pin the runner pulls
+      # the multi-GB full database, which has repeatedly failed on the
+      # self-hosted runner with IncompleteRead.
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
-from vdb.lib import db6 as _vdb_db6
+from vdb.lib import db as _vdb_db
 from vdb.lib.search import (
     get_cve_data_batched,
     search_by_any,
@@ -350,7 +350,7 @@ def find_vulns_batched(
         return []
 
     has_custom = bool(CUSTOM_DATA_CACHE)
-    db_conn, _ = _vdb_db6.get(read_only=True)
+    db_conn, _ = _vdb_db.get(read_only=True)
     raw_results: List = []
     for term in matched_terms:
         hits = hits_by_term[term]

@@ -180,7 +180,7 @@ jobs:
         env:
           # Use the smaller 2-year app-only vuln DB image so the smoke test
           # doesn't pull the full (default) database.
-          VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+          VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
           SCAN_DEBUG_MODE: debug
           # Deliberately leave CDXGEN_CMD unset and assert cdxgen is NOT on
           # PATH so we know find_cdxgen_cmd() falls back to local_bin/cdxgen.exe

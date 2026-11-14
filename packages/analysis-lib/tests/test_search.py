@@ -1,6 +1,6 @@
 import inspect
 
-import vdb.lib.db6 as vdb6
+import vdb.lib.db as vdb_db
 import vdb.lib.search as vsearch
 
 from analysis_lib import search
@@ -152,7 +152,7 @@ def test_find_vulns_batched_two_pass_hydration(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     pkgs = [
         {"purl": "pkg:npm/matched@1.0.0", "version": "1.0.0"},
@@ -273,7 +273,7 @@ def test_filters_reach_search_packages_batched_not_hydration(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     filters = {"exclude_malware": True}
     search.find_vulns_batched([{"purl": "pkg:npm/a@1.0.0", "version": "1.0.0"}], filters)
@@ -303,7 +303,7 @@ def test_exclude_malware_filter_drops_malware_rows(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     results = search.find_vulns_batched(
         [{"purl": "pkg:npm/a@1.0.0", "version": "1.0.0"}], {"exclude_malware": True}
@@ -333,7 +333,7 @@ def test_no_filters_is_parity_with_none(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     pkgs = [{"purl": "pkg:npm/a@1.0.0", "version": "1.0.0"}]
     none_results = search.find_vulns_batched(pkgs)
