@@ -1,0 +1,19 @@
+uv.lock
+  s_6f7348d32e8361::t_acb6231a9573df 2-3,6,77,248,281,527,801,826,831,837,864,872,1050,1407,1811,1880,1883-1891,1906-1914,2037,2247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6dea5b4bc12f483f2d85c1570a06afa92e9f029c",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
