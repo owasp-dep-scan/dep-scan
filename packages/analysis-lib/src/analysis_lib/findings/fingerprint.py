@@ -42,8 +42,24 @@ FINGERPRINT_VERSION = 1
 
 _ID_PREFIX = f"dsf{FINGERPRINT_VERSION}:"
 
+# Mirrors the category enum in depscan-finding.schema.json; a test keeps the
+# two in step.
+CATEGORIES = (
+    "vulnerability",
+    "malware",
+    "memory-safety",
+    "supply-chain",
+    "binary-hardening",
+    "mobile",
+    "code",
+    "license",
+    "crypto",
+    "health",
+)
+
 _CVE_RULE = re.compile(r"^cve-", re.IGNORECASE)
 _GHSA_RULE = re.compile(r"^ghsa-", re.IGNORECASE)
+_DRIVE_PATH = re.compile(r"^[A-Za-z]:(/|$)")
 
 
 def normalise_rule(rule: str) -> str:
@@ -83,10 +99,14 @@ def normalise_file(file: str) -> str:
     """Normalize a path for hashing: forward slashes and no leading ./.
 
     Case is kept, because on case-sensitive filesystems two paths that differ
-    only in case are different files. Callers pass paths relative to the scan
-    root; an absolute path would be hashed as given.
+    only in case are different files. The path must be relative to the scan
+    root. An absolute path (POSIX, a Windows drive or a UNC share) raises
+    ValueError, because it would tie the id to one machine's checkout location
+    and carry that location into reports.
     """
     normalised = file.replace("\\", "/")
+    if normalised.startswith("/") or _DRIVE_PATH.match(normalised):
+        raise ValueError(f"file must be relative to the scan root, got {file!r}")
     while normalised.startswith("./"):
         normalised = normalised[2:]
     return normalised
@@ -107,8 +127,8 @@ def _canonical_payload(
     plain string would iterate one character at a time; the type checks below
     turn that mistake into an error instead of a silently wrong id.
     """
-    if not isinstance(category, str) or not category:
-        raise ValueError("category must be a non-empty string")
+    if category not in CATEGORIES:
+        raise ValueError(f"unknown finding category {category!r}")
     if not isinstance(rule, str) or not rule.strip():
         raise ValueError("rule must be a non-empty string")
     if isinstance(components, str):

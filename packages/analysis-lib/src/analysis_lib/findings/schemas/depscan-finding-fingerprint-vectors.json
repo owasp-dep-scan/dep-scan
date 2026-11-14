@@ -512,5 +512,80 @@
     },
     "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2021-23337\",[\"pkg:npm/express\",\"pkg:npm/lodash\"],\"package-lock.json\",\"\",[]]",
     "id": "dsf1:9033c0d00bc5148f6a6a03b51ff0c061464abc6e1bac50361a37b81e79743cf4"
+  },
+  {
+    "name": "npm-scope-literal-at",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2024-4068",
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:npm/@angular/core@17.3.0"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2024-4068\",[\"pkg:npm/%40angular/core\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:e2a2d91a6525b7c45f6592504549be41c12282002b8e6edfd8b92b8368c535b0"
+  },
+  {
+    "name": "npm-scope-percent-encoded-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "CVE-2024-4068",
+      "file": "package-lock.json",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:npm/%40angular/core@17.3.1"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"CVE-2024-4068\",[\"pkg:npm/%40angular/core\"],\"package-lock.json\",\"\",[]]",
+    "id": "dsf1:e2a2d91a6525b7c45f6592504549be41c12282002b8e6edfd8b92b8368c535b0"
+  },
+  {
+    "name": "pypi-name-case-and-underscore",
+    "input": {
+      "category": "vulnerability",
+      "rule": "ghsa-XXXX-yyyy-ZZZZ",
+      "file": "requirements.txt",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:pypi/Django_Rest_Framework@3.15.1"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"GHSA-xxxx-yyyy-zzzz\",[\"pkg:pypi/django-rest-framework\"],\"requirements.txt\",\"\",[]]",
+    "id": "dsf1:4a1e82f713d88e5724db1875e30e038866a6a236cb2e068bfe81c6536f8cb1f0"
+  },
+  {
+    "name": "pypi-name-normalised-same-id",
+    "input": {
+      "category": "vulnerability",
+      "rule": "GHSA-xxxx-yyyy-zzzz",
+      "file": "requirements.txt",
+      "function": "",
+      "symbols": [],
+      "components": [
+        "pkg:pypi/django-rest-framework@3.15.2"
+      ]
+    },
+    "canonical": "[\"dsf\",1,\"vulnerability\",\"GHSA-xxxx-yyyy-zzzz\",[\"pkg:pypi/django-rest-framework\"],\"requirements.txt\",\"\",[]]",
+    "id": "dsf1:4a1e82f713d88e5724db1875e30e038866a6a236cb2e068bfe81c6536f8cb1f0"
+  },
+  {
+    "name": "github-name-lower-cased",
+    "input": {
+      "category": "supply-chain",
+      "rule": "CI-PIN-001",
+      "components": [
+        "pkg:github/Actions/Checkout@v4"
+      ],
+      "file": ".github/workflows/ci.yml",
+      "function": "",
+      "symbols": []
+    },
+    "canonical": "[\"dsf\",1,\"supply-chain\",\"CI-PIN-001\",[\"pkg:github/actions/checkout\"],\".github/workflows/ci.yml\",\"\",[]]",
+    "id": "dsf1:294e3f13f8ec72f21ba21c0ee97da2177bd3935a6f82fe88d8bb8b68ffa5f91b"
   }
 ]

@@ -7,7 +7,9 @@ from typing import Any, Dict
 
 import pytest
 
+from analysis_lib.findings.schemas import load_schema
 from analysis_lib.findings.fingerprint import (
+    CATEGORIES,
     FINGERPRINT_VERSION,
     _canonical_payload,
     finding_fingerprint,
@@ -131,6 +133,30 @@ def test_single_string_inputs_raise():
             "memory-safety", "RUSI-MS-PANIC-001", ["pkg:cargo/shopcart@0.1.0"],
             symbols="memcpy",
         )
+
+
+def test_categories_match_the_schema_enum():
+    assert list(CATEGORIES) == load_schema("finding")["properties"]["category"]["enum"]
+
+
+@pytest.mark.parametrize("category", ["", "Vulnerability", "secret"])
+def test_unknown_category_raises(category):
+    with pytest.raises(ValueError, match="category"):
+        finding_fingerprint(category, "CVE-2021-23337", ["pkg:npm/lodash@4.17.20"])
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/home/user/app/package-lock.json", "C:\\work\\app\\main.c", "c:/work/main.c", "\\\\server\\share\\main.c"],
+)
+def test_absolute_paths_raise(path):
+    with pytest.raises(ValueError, match="relative to the scan root"):
+        finding_fingerprint("code", "RULE-1", [], file=path)
+
+
+def test_drive_letter_lookalikes_stay_relative():
+    assert normalise_file("c/main.c") == "c/main.c"
+    assert normalise_file("src/C:/odd") == "src/C:/odd"
 
 
 def test_empty_category_or_rule_raise():

@@ -68,7 +68,7 @@ def validate(name: str, document: Any) -> None:
     """
     schema = load_schema(name)
     validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
-    errors = sorted(validator.iter_errors(document), key=lambda e: list(e.path))
+    errors = sorted(validator.iter_errors(document), key=lambda e: [str(p) for p in e.path])
     if errors:
         lines = [
             f"{'/'.join(str(p) for p in error.path) or '<doc>'}: {error.message}"
