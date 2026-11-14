@@ -10,6 +10,7 @@ dependencies = [
     "custom-json-diff~=2.1.6",
     "cvss~=3.6",
     "jsonschema~=4.26.0",
+    "packageurl-python~=0.17.6",
     "referencing~=0.37.0",
     "rich~=15.0.0",
     "toml~=0.10.2"
