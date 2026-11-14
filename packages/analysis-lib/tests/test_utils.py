@@ -174,21 +174,40 @@ def test_version_in_range_uses_the_purl_scheme_not_generic():
     assert version_in_range("1.0.beta1", "1.0", "1.1", purl="pkg:gem/rails") is False
     assert version_in_range("1.0.beta1", "1.0", "1.1") is True
 
-    # A Debian epoch, ordered against epoch bounds the way dpkg orders them:
-    # 1:0.9 lies between 1:0.1 and 1:9.9.
-    assert version_in_range("1:0.9", "1:0.1", "1:9.9", purl="pkg:deb/debian/curl") is True
-    assert version_in_range("1:0.1", "1:0.9", "1:9.9", purl="pkg:deb/debian/curl") is False
-
-    # A PyPI post-release: 1.0.post1 sorts ABOVE 1.0. vdb's pypi scheme
-    # approximates PEP 440 through semver; against a higher patch release it
-    # keeps the suffix above, so the ecosystem answer for this pair is False.
-    assert version_in_range("1.0.post1", "1.0", "1.0", purl="pkg:pypi/django") is False
-    assert version_in_range("1.0.post1", "1.0.post1", "2.0", purl="pkg:pypi/django") is True
+    # A Debian revision: 1.0-1ubuntu1 sorts between 1.0-1 and 1.0-2 under
+    # dpkg rules, while the generic comparator places it outside.
+    assert version_in_range("1.0-1ubuntu1", "1.0-1", "1.0-2", purl="pkg:deb/debian/curl") is True
+    assert version_in_range("1.0-1ubuntu1", "1.0-1", "1.0-2") is False
+    # Debian epochs follow vdb's search-time rule: they are compared only
+    # when both sides carry one, because feeds often omit the epoch on range
+    # bounds. With epochs on both sides, dpkg order applies.
+    assert version_in_range("1:3.0", "1:1.0", "1:2.0", purl="pkg:deb/debian/curl") is False
+    assert version_in_range("2:0.1", "1:1.0", "3:0.1", purl="pkg:deb/debian/curl") is True
+    assert version_in_range("1:1.0", "0", "2.0", purl="pkg:deb/debian/curl") is True
 
     # A Maven qualifier: 1.0-sp1 sorts ABOVE 1.0 (a qualifier orders above the
     # bare release), which the generic comparator cannot see.
     assert version_in_range("1.0-sp1", "1.0", "1.1", purl="pkg:maven/org.apache/kafka") is True
     assert version_in_range("1.0-sp1", "1.0", "1.1") is False
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="vulnerability-db 7.0.5 orders pypi versions with a semver "
+    "approximation, not PEP 440: post-releases sort above the next patch "
+    "release and dev releases above their final release.",
+)
+@pytest.mark.parametrize(
+    ("version", "low", "high", "expected"),
+    [
+        ("1.0.post1", "1.0", "1.0.1", True),
+        ("1.0.dev1", "1.0", "1.1", False),
+    ],
+)
+def test_version_in_range_follows_pep_440_for_pypi(version, low, high, expected):
+    from analysis_lib.helpers import version_in_range
+
+    assert version_in_range(version, low, high, purl="pkg:pypi/django") is expected
 
 
 def test_max_version_orders_by_purl_scheme():

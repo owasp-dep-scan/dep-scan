@@ -56,7 +56,7 @@ def version_in_range(
     The interval is inclusive on both ends, matching the comparison this
     replaced. A ``*`` upper bound adds no restriction: vers_compare drops
     wildcard bounds, leaving the bare lower bound. The scheme segment comes
-    from the purl so Debian epochs, PyPI post-releases, Maven qualifiers and
+    from the purl so Debian revisions, RubyGems pre-releases, Maven qualifiers and
     the other ecosystem orderings apply; a missing or unrecognised purl
     degrades to ``generic``.
     """
@@ -70,7 +70,7 @@ def max_version(version_list, purl: Optional[str] = None):
 
     :param version_list: single version string or set of versions
     :param purl: a purl of the package the versions belong to, used to pick
-        the ecosystem ordering (Debian epochs, Maven qualifiers, ...). When
+        the ecosystem ordering (Debian revisions, Maven qualifiers, ...). When
         omitted the versions are ordered generically.
     :return: max version
     """
