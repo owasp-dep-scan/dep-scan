@@ -1,0 +1,19 @@
+{
+  "id": "dsf1:dcbb2206cc581d48c26e5819164944b174787ff7addefabec56cc15f961e5969",
+  "category": "license",
+  "rule": "LICENSE-GPL-2.0-DETECTED",
+  "title": "mysql-connector-java is licensed GPL-2.0-only and is linked into the distributed service",
+  "severity": "info",
+  "components": ["pkg:maven/mysql/mysql-connector-java@8.0.33"],
+  "locations": [
+    {"file": "pom.xml"}
+  ],
+  "coverage": {"state": "assessed"},
+  "producer": {"name": "dep-scan", "version": "7.0.0.dev0"},
+  "properties": [
+    {"name": "depscan:license-id", "value": "GPL-2.0-only"}
+  ],
+  "references": [
+    {"url": "https://spdx.org/licenses/GPL-2.0-only.html", "type": "license"}
+  ]
+}

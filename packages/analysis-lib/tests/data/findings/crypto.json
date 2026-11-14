@@ -1,0 +1,26 @@
+{
+  "id": "dsf1:19244cf51b8c068c35c8e043206ab0ffa75907ff06446ac62e53da2323ad1848",
+  "category": "crypto",
+  "rule": "CVE-2024-0727",
+  "title": "PKCS12 parsing can crash with a null dereference in cryptography before 42.0.4",
+  "severity": "medium",
+  "confidence": "high",
+  "cwes": [476],
+  "components": ["pkg:pypi/cryptography@41.0.7"],
+  "locations": [
+    {"file": "requirements.lock"}
+  ],
+  "coverage": {"state": "assessed"},
+  "triage": {
+    "state": "not_affected",
+    "justification": "code_not_present",
+    "responses": ["workaround_available"],
+    "detail": "The service never loads PKCS12 bundles"
+  },
+  "producer": {"name": "dep-scan", "version": "7.0.0.dev0"},
+  "fix": {
+    "fixed_versions": ["42.0.4"],
+    "upgrade_path": ["41.0.7", "42.0.0", "42.0.4"],
+    "recommendation": "Upgrade cryptography to 42.0.4 or later."
+  }
+}

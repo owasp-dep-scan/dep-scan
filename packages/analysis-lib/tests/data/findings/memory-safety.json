@@ -1,0 +1,28 @@
+{
+  "id": "dsf1:80badf95425e87a75cd8773030803b56f340a8d623888bd02de35475e911c936",
+  "category": "memory-safety",
+  "rule": "RUSI-MS-PANIC-001",
+  "title": "Array index taken from untrusted input can panic in parse_header",
+  "severity": "medium",
+  "confidence": "medium",
+  "cwes": [129],
+  "components": ["pkg:cargo/shopcart@0.1.0"],
+  "locations": [
+    {"file": "src/cart/parse.rs", "line": 42, "column": 9, "function": "parse_header"}
+  ],
+  "evidence": ["rusi-0001"],
+  "coverage": {"state": "assessed"},
+  "exploitability": {
+    "axes": {
+      "presence": "proven",
+      "reach": "likely",
+      "exposure": "unknown",
+      "barrier": "unlikely",
+      "pressure": "unknown"
+    },
+    "grade": "high",
+    "rule": "rusi-grade-v1",
+    "unassessed": ["exposure", "pressure"]
+  },
+  "producer": {"name": "rusi", "version": "2.5.2"}
+}
