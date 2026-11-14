@@ -99,10 +99,6 @@ project-excludes = [
     "**/.venv",
     "build/**",
 ]
-# tomllib is stdlib on Python 3.11 and later, which is what
-# depscan/lib/tomlparse.py imports; keep the entry so pyrefly resolves it
-# even when the project venv lacks a tomllib stub.
-ignore-missing-imports = ["tomllib"]
 
 [tool.uv]
 # blint 3.x was built and tested against wasm-tools 1.x and multi-demangle 1.x;
