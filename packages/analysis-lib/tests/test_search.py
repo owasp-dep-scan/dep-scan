@@ -359,3 +359,47 @@ def test_filters_reach_search_expanded_search_logic(monkeypatch):
     )
     assert logic_calls
     assert all(c["filters"] == {"exclude_malware": True} for c in logic_calls)
+
+
+def test_search_guarding_coverage_warns_instead_of_raising(monkeypatch, caplog):
+    """A shard coverage gap on a single-purl search must not abort the scan:
+    the guard warns naming the purl type and answers no results, which the
+    caller reports as not assessed."""
+    import logging
+
+    from vdb.lib.search import ShardCoverageError
+
+    from analysis_lib import search as search_mod
+
+    calls = []
+
+    def raising_logic(term, **kwargs):
+        calls.append(term)
+        raise ShardCoverageError(
+            f"no local shard serves purl type 'mysterytype': {term} cannot be "
+            "answered by this database."
+        )
+
+    with caplog.at_level(logging.WARNING, logger="depscan.analysis_lib"):
+        result = search_mod.search_guarding_coverage(
+            raising_logic, "pkg:mysterytype/mystery@1.0.0", with_data=True
+        )
+    # Positive control: the guarded search ran and raised inside the stub.
+    assert calls == ["pkg:mysterytype/mystery@1.0.0"]
+    assert result == []
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert "'mysterytype'" in messages
+    assert "NOT assessed" in messages
+    assert "this is not a clean result" in messages
+
+
+def test_search_guarding_coverage_passes_results_through():
+    from analysis_lib import search as search_mod
+
+    sentinel = [{"cve_id": "CVE-1"}]
+    assert (
+        search_mod.search_guarding_coverage(
+            lambda term, **kwargs: sentinel, "pkg:pypi/requests@2.32.1"
+        )
+        is sentinel
+    )

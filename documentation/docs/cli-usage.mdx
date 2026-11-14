@@ -227,15 +227,17 @@ options:
 Common download flags:
 
 ```bash
-# Default App+OS database
+# Default full (app+OS) flavor
 depscan-vdb download
 
-# Smaller app-only database
-depscan-vdb download --scope app
+# Smaller app-only flavor
+depscan-vdb download --flavor app-only
 
-# Extended variant (for severity and metadata search)
-depscan-vdb download --scope app --extended
+# Extended flavor (for severity and metadata search)
+depscan-vdb download --flavor app-extended
 
-# Distro-specific database
-depscan-vdb download --distro ubuntu
+# Type shards for a scoped workload
+depscan-vdb download --shards pypi npm
 ```
+
+The deprecated `--scope`/`--time`/`--extended` aliases still work with a warning naming the flavor they resolve to. There is no per-distro database on the v7 line; `--distro` is rejected with the five flavors listed.

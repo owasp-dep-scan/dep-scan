@@ -47,41 +47,51 @@ def test_spec_version_cli_rejects_bad(capsys):
 
 
 def test_download_vdb_succeeds_first_attempt(monkeypatch):
+    """The download goes through vdb's refresh_full_image with the resolved
+    image URL (positive control: one call, the right argument)."""
+    from vdb.lib import db_cmd
+
     calls = []
-    monkeypatch.setattr(cli, "download_image", lambda url, d: calls.append(url) or ["ok"])
+    monkeypatch.setattr(
+        db_cmd, "refresh_full_image", lambda image_url: calls.append(image_url) or {"ok": True}
+    )
     monkeypatch.setattr(cli.time, "sleep", lambda s: None)
-    result = cli.download_vdb_with_retries("oras://x", "/tmp/d", attempts=3)
-    assert result == ["ok"]
-    assert len(calls) == 1
+    result = cli.download_vdb_with_retries("ghcr.io/appthreat/vdb7-full:v7.0.x-xz", attempts=3)
+    assert result == {"ok": True}
+    assert calls == ["ghcr.io/appthreat/vdb7-full:v7.0.x-xz"]
 
 
 def test_download_vdb_retries_then_succeeds(monkeypatch):
+    from vdb.lib import db_cmd
+
     calls = []
 
-    def flaky(url, d):
-        calls.append(url)
+    def flaky(image_url):
+        calls.append(image_url)
         if len(calls) < 3:
             raise ConnectionError("Connection broken: IncompleteRead")
-        return ["ok"]
+        return {"ok": True}
 
-    monkeypatch.setattr(cli, "download_image", flaky)
+    monkeypatch.setattr(db_cmd, "refresh_full_image", flaky)
     monkeypatch.setattr(cli.time, "sleep", lambda s: None)
-    result = cli.download_vdb_with_retries("oras://x", "/tmp/d", attempts=3)
-    assert result == ["ok"]
+    result = cli.download_vdb_with_retries("oras://x", attempts=3)
+    assert result == {"ok": True}
     assert len(calls) == 3
 
 
 def test_download_vdb_reraises_after_exhausting_attempts(monkeypatch):
+    from vdb.lib import db_cmd
+
     calls = []
 
-    def always_fail(url, d):
-        calls.append(url)
+    def always_fail(image_url):
+        calls.append(image_url)
         raise ConnectionError("Connection broken")
 
-    monkeypatch.setattr(cli, "download_image", always_fail)
+    monkeypatch.setattr(db_cmd, "refresh_full_image", always_fail)
     monkeypatch.setattr(cli.time, "sleep", lambda s: None)
     with pytest.raises(ConnectionError):
-        cli.download_vdb_with_retries("oras://x", "/tmp/d", attempts=3)
+        cli.download_vdb_with_retries("oras://x", attempts=3)
     assert len(calls) == 3
 
 
@@ -233,6 +243,7 @@ def _make_args(severity=None, deep_scan=False, src_dir_image=".", bom_dir=None, 
         "deep_scan": deep_scan,
         "src_dir_image": src_dir_image,
         "bom_dir": bom_dir,
+        "vdb_flavor": None,
         "vdb_scope": None,
         "vdb_time": None,
         "vdb_extended": None,
@@ -250,9 +261,10 @@ def test_resolve_scan_default_no_severity(monkeypatch):
     monkeypatch.delenv("USE_VDB_10Y", raising=False)
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args()
-    url, pinned = cli.resolve_scan_vdb_image(args)
+    url, pinned, flavor = cli.resolve_scan_vdb_image(args)
     assert url == "ghcr.io/appthreat/vdb7-full:v7.0.x-xz"
     assert pinned is False
+    assert flavor == "full"
     assert os.getenv("VDB_INCLUDE_METADATA") is None
 
 
@@ -262,21 +274,23 @@ def test_resolve_scan_severity_auto_extended(monkeypatch):
     monkeypatch.delenv("USE_VDB_10Y", raising=False)
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args(severity="high")
-    url, pinned = cli.resolve_scan_vdb_image(args)
+    url, pinned, flavor = cli.resolve_scan_vdb_image(args)
     # The metadata flavor is app-scope only, so --severity selects app-extended.
     assert url == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-xz"
     assert pinned is False
+    assert flavor == "app-extended"
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
 
 def test_resolve_scan_explicit_url_not_overridden(monkeypatch):
     """VDB_DATABASE_URL pin is respected verbatim even with --severity."""
-    monkeypatch.setenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz-app:v6.7.x")
+    monkeypatch.setenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz")
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args(severity="high")
-    url, pinned = cli.resolve_scan_vdb_image(args)
-    assert url == "ghcr.io/appthreat/vdbxz-app:v6.7.x"
+    url, pinned, flavor = cli.resolve_scan_vdb_image(args)
+    assert url == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     assert pinned is True
+    assert flavor is None
     # VDB_INCLUDE_METADATA should NOT be set by depscan for a pinned image
     assert os.getenv("VDB_INCLUDE_METADATA") is None
 
@@ -287,10 +301,11 @@ def test_resolve_scan_use_vdb_10y(monkeypatch):
     monkeypatch.setenv("USE_VDB_10Y", "true")
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args()
-    url, pinned = cli.resolve_scan_vdb_image(args)
+    url, pinned, flavor = cli.resolve_scan_vdb_image(args)
     # The 10-year flavor is app-scope only, so USE_VDB_10Y selects app-10y.
     assert url == "ghcr.io/appthreat/vdb7-app-10y:v7.0.x-xz"
     assert pinned is False
+    assert flavor == "app-10y"
 
 
 def test_resolve_scan_use_vdb_10y_with_severity(monkeypatch):
@@ -299,9 +314,12 @@ def test_resolve_scan_use_vdb_10y_with_severity(monkeypatch):
     monkeypatch.setenv("USE_VDB_10Y", "true")
     monkeypatch.delenv("VDB_INCLUDE_METADATA", raising=False)
     args = _make_args(severity="critical")
-    url, pinned = cli.resolve_scan_vdb_image(args)
+    url, pinned, flavor = cli.resolve_scan_vdb_image(args)
+    # USE_VDB_10Y is not an explicit flavor choice, so --severity still adds
+    # the metadata tables.
     assert url == "ghcr.io/appthreat/vdb7-app-10y-extended:v7.0.x-xz"
     assert pinned is False
+    assert flavor == "app-10y-extended"
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
 
@@ -317,18 +335,20 @@ def _clean_vdb_env(monkeypatch):
 def test_resolve_scan_config_scope_app(monkeypatch):
     """A persisted vdb_scope=app resolves the app-only image."""
     _clean_vdb_env(monkeypatch)
-    url, pinned = cli.resolve_scan_vdb_image(_make_args(vdb_scope="app"))
+    url, pinned, flavor = cli.resolve_scan_vdb_image(_make_args(vdb_scope="app"))
     assert url == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     assert pinned is False
+    assert flavor == "app-only"
 
 
 def test_resolve_scan_config_extended_and_compression(monkeypatch):
     """Persisted vdb_extended + vdb_compression compose, and extended sets metadata."""
     _clean_vdb_env(monkeypatch)
-    url, pinned = cli.resolve_scan_vdb_image(
+    url, pinned, flavor = cli.resolve_scan_vdb_image(
         _make_args(vdb_scope="app", vdb_extended=True, vdb_compression="zst")
     )
     assert url == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-zst"
+    assert flavor == "app-extended"
     assert os.getenv("VDB_INCLUDE_METADATA") == "true"
 
 
@@ -337,8 +357,9 @@ def test_resolve_scan_config_time_overrides_use_vdb_10y(monkeypatch):
     resolver picks the full flavor, not the 10-year one the env var selects."""
     _clean_vdb_env(monkeypatch)
     monkeypatch.setenv("USE_VDB_10Y", "true")
-    url, _ = cli.resolve_scan_vdb_image(_make_args(vdb_time="default"))
+    url, _, flavor = cli.resolve_scan_vdb_image(_make_args(vdb_time="default"))
     assert url == "ghcr.io/appthreat/vdb7-full:v7.0.x-xz"
+    assert flavor == "full"
 
 
 def test_resolve_scan_config_distro(monkeypatch):
@@ -347,24 +368,91 @@ def test_resolve_scan_config_distro(monkeypatch):
     import pytest
 
     _clean_vdb_env(monkeypatch)
-    with pytest.raises(ValueError, match="Published flavors"):
+    with pytest.raises(ValueError, match="no per-distro complete database"):
         cli.resolve_scan_vdb_image(_make_args(vdb_distro="ubuntu"))
 
 
 def test_resolve_scan_vdb_image_pin_verbatim(monkeypatch):
     """--vdb-image (or config vdb_image) is used verbatim and marked pinned."""
     _clean_vdb_env(monkeypatch)
-    url, pinned = cli.resolve_scan_vdb_image(
+    url, pinned, flavor = cli.resolve_scan_vdb_image(
         _make_args(vdb_image="ghcr.io/me/custom:1", vdb_scope="app")
     )
     assert url == "ghcr.io/me/custom:1"
     assert pinned is True
+    assert flavor is None
 
 
 def test_resolve_scan_env_pin_beats_config(monkeypatch):
     """VDB_DATABASE_URL env pin wins over persisted vdb_scope."""
     _clean_vdb_env(monkeypatch)
-    monkeypatch.setenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdbxz-extended:v6.7.x")
-    url, pinned = cli.resolve_scan_vdb_image(_make_args(vdb_scope="app"))
-    assert url == "ghcr.io/appthreat/vdbxz-extended:v6.7.x"
+    monkeypatch.setenv("VDB_DATABASE_URL", "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-xz")
+    url, pinned, flavor = cli.resolve_scan_vdb_image(_make_args(vdb_scope="app"))
+    assert url == "ghcr.io/appthreat/vdb7-app-extended:v7.0.x-xz"
     assert pinned is True
+    assert flavor is None
+
+
+# ---------------------------------------------------------------------------
+# Deprecated --vdb-* options warn once and name the flavor
+# ---------------------------------------------------------------------------
+
+
+def test_each_deprecated_option_warns_naming_the_flavor(monkeypatch, caplog):
+    """One warning per deprecated option, each naming the flavor the whole
+    selection resolved to."""
+    _clean_vdb_env(monkeypatch)
+    with caplog.at_level("WARNING"):
+        url, _pinned, flavor = cli.resolve_scan_vdb_image(
+            _make_args(vdb_scope="app", vdb_time="10y", vdb_extended=True)
+        )
+    assert flavor == "app-10y-extended"
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 3
+    assert all("app-10y-extended" in w for w in warnings)
+    assert any("--vdb-scope" in w for w in warnings)
+    assert any("--vdb-time" in w for w in warnings)
+    assert any("--vdb-extended" in w for w in warnings)
+    assert all("--vdb-flavor" in w for w in warnings)
+
+
+def test_use_vdb_10y_env_warns_naming_the_flavor(monkeypatch, caplog):
+    _clean_vdb_env(monkeypatch)
+    monkeypatch.setenv("USE_VDB_10Y", "true")
+    with caplog.at_level("WARNING"):
+        _url, _pinned, flavor = cli.resolve_scan_vdb_image(_make_args())
+    assert flavor == "app-10y"
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "USE_VDB_10Y" in warnings[0]
+    assert "'app-10y'" in warnings[0]
+
+
+def test_vdb_flavor_direct_no_warning(monkeypatch, caplog):
+    _clean_vdb_env(monkeypatch)
+    with caplog.at_level("WARNING"):
+        url, _pinned, flavor = cli.resolve_scan_vdb_image(_make_args(vdb_flavor="app-only"))
+    assert (url, flavor) == ("ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz", "app-only")
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+
+def test_vdb_flavor_rejects_deprecated_mix(monkeypatch):
+    import pytest
+
+    _clean_vdb_env(monkeypatch)
+    with pytest.raises(ValueError, match="cannot be combined"):
+        cli.resolve_scan_vdb_image(_make_args(vdb_flavor="app-only", vdb_scope="app"))
+
+
+def test_severity_does_not_override_explicit_flavor(monkeypatch, caplog):
+    """A flavor the user chose explicitly is never narrowed by --severity; the
+    depscan-side severity floor still applies."""
+    _clean_vdb_env(monkeypatch)
+    with caplog.at_level("INFO"):
+        url, _pinned, flavor = cli.resolve_scan_vdb_image(
+            _make_args(vdb_flavor="full", severity="high")
+        )
+    assert flavor == "full"
+    assert os.getenv("VDB_INCLUDE_METADATA") is None
+    infos = [r.getMessage() for r in caplog.records]
+    assert any("severity floor is still applied" in w for w in infos)

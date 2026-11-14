@@ -134,8 +134,7 @@ def harness(monkeypatch, tmp_path):
         "template": [],
     }
 
-    monkeypatch.setattr(cli, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False))
-    monkeypatch.setattr(cli, "_warn_large_appos_for_source_scan", lambda url, args: None)
+    monkeypatch.setattr(cli, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False, "full"))
     monkeypatch.setattr(cli, "vdb_download_needed", lambda url, d: (False, ""))
     monkeypatch.setattr(cli, "configure_vdb_readonly", lambda: None)
     monkeypatch.setattr(cli.search, "load_custom_data", lambda d: None)
