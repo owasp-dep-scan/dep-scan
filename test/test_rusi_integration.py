@@ -529,6 +529,10 @@ def test_rustsec_time_reachable_in_vdr(tmp_path, rusi_env):
     )
 
     # --- reached_purls -> VDR insight (real VDRAnalyzer + real vdb) ---
+    from vdb.lib import config as vdb_config
+
+    if not os.path.isfile(vdb_config.VDB_BIN_FILE):
+        pytest.skip("no local vulnerability database to search")
     pkg_list, _lifecycles = get_pkg_list(str(bom_file))
     vopts = VdrAnalysisKV(
         project_type="rust",
