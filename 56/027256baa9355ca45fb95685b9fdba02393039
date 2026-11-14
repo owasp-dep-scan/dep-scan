@@ -1,0 +1,120 @@
+.github/workflows/sea-mac.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 214
+.github/workflows/gobintests.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 56
+packages/analysis-lib/tests/test_vdr.py
+  s_e9440a4ab2fa15::t_3ec5e8dd1572c4 514-609
+  s_e9440a4ab2fa15::t_655a27d691a03e 18,31-43,89,118,142,163,186,210,252,320,343-345,347,393,460,474-476,478,512
+  s_e9440a4ab2fa15::t_957787973514aa 21
+test/test_rusi_integration.py
+  s_e9440a4ab2fa15::t_e5dbffb6fee32e 582-583
+packages/analysis-lib/src/analysis_lib/output.py
+  s_e9440a4ab2fa15::t_1a031da6ad61c8 293
+test/test_cli.py
+  s_e9440a4ab2fa15::t_50964299ee1d2f 132,146,161
+  s_e9440a4ab2fa15::t_349ee0563edd0a 254,266-267,291-292,303,321,331,336-337,340-341,345-348,350-351
+  s_e9440a4ab2fa15::t_ed374de1f20fe7 100,104-115,118-131,133-145,147-160,162-179
+  s_e9440a4ab2fa15::t_2b528e83db9177 116-117
+.github/workflows/pythonapp.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 34
+.github/workflows/repotests.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 80
+  s_e9440a4ab2fa15::t_c1b5bd51b2d92d 307-311
+.github/workflows/sea-win.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 183
+.github/workflows/sea-linux.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 147
+.github/workflows/dockertests.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 13,52,102,162,219
+packages/analysis-lib/pyproject.toml
+  s_e9440a4ab2fa15::t_8ad83d461f9b12 9
+packages/analysis-lib/src/analysis_lib/helpers.py
+  s_e9440a4ab2fa15::t_171b4e7bca5760 34-67,72-74,85,88
+  s_e9440a4ab2fa15::t_04a929772de316 8
+  s_e9440a4ab2fa15::t_5b6fe9237916da 10
+.github/workflows/repotests-lifecycle-c.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 14
+packages/analysis-lib/src/analysis_lib/search.py
+  s_e9440a4ab2fa15::t_83db90057bb693 353
+  s_e9440a4ab2fa15::t_72fa7964c690f2 4
+packages/analysis-lib/src/analysis_lib/utils.py
+  s_e9440a4ab2fa15::t_204b2ed2cf2ba4 273,282-283,285-286,288-291,294
+  s_e9440a4ab2fa15::t_3dbfde38b85b12 341-356
+  s_e9440a4ab2fa15::t_39026eecfda788 1871-1872,1874
+  s_e9440a4ab2fa15::t_7719bfdede799f 813-823,825,827,829-830,844,846,848
+  s_e9440a4ab2fa15::t_3e4fcb9dbf9948 236-242,245,247-250
+  s_e9440a4ab2fa15::t_e6e676d51f4b17 877,882,894,908
+  s_e9440a4ab2fa15::t_adeba779eb134d 1078,1083,1097-1098
+  s_e9440a4ab2fa15::t_6a2f9bfe55b94f 1713-1715,1724-1725
+  s_e9440a4ab2fa15::t_48e029689f7a29 1677-1678
+  s_e9440a4ab2fa15::t_9110376cacb337 874-876,878,883,885-888,891,893,900,904-905,907
+  s_e9440a4ab2fa15::t_48ccaa6f9d7179 481
+  s_e9440a4ab2fa15::t_d53c20d3787180 963-964,968-973
+  s_e9440a4ab2fa15::t_5e217bd0f21f32 38
+  s_e9440a4ab2fa15::t_6d0c13ec5c4db4 801-802,806-809
+  s_e9440a4ab2fa15::t_b9d4868b626a04 473
+contrib/pkg-state-research/collect.py
+  s_e9440a4ab2fa15::t_01147168e40d93 12
+  s_e9440a4ab2fa15::t_674577c60bc029 79
+.github/workflows/repotests-lifecycle-go.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 15
+.github/workflows/repotests-lifecycle-java.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 15
+depscan/lib/config.py
+  s_e9440a4ab2fa15::t_e5b825f49ba8ee 318,324,327
+  s_e9440a4ab2fa15::t_9f8f4422803675 143-149,159-174,199,201-202,204-212,214-216,220-225,238-256,260-264,271
+contrib/bench_scan.py
+  s_e9440a4ab2fa15::t_920420127edbad 168,170
+depscan/cli.py
+  s_e9440a4ab2fa15::t_52edac7bcae679 133
+  s_e9440a4ab2fa15::t_1eefa828cfb171 348-399
+  s_e9440a4ab2fa15::t_68436f41cc38d3 207-210,214-225,228-234
+  s_e9440a4ab2fa15::t_23d15bf28c734f 22
+  s_e9440a4ab2fa15::t_3b66365b6a22b3 342
+  s_e9440a4ab2fa15::t_e5490607fbaeb1 169,180-182
+  s_e9440a4ab2fa15::t_4d417267c344db 701,725,728-730
+.github/workflows/sea-alpine.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 90
+test/test_vdb_config.py
+  s_e9440a4ab2fa15::t_2bea2f2c20c365 1,12,16,19-25,28-31,35-38,43,48,52-53,57,60-61,65,69-72,75-77,86-87,91,95,99-113,118,137,142,153-157,162,169
+  s_e9440a4ab2fa15::t_ba378114a1f11d 114-117
+test/test_vdb_cli.py
+  s_e9440a4ab2fa15::t_deca2ea295c4d8 1,37,41-44,47-48,54,78,87,92,134,144
+packages/analysis-lib/tests/test_utils.py
+  s_e9440a4ab2fa15::t_42de921adf93c9 546-557
+  s_e9440a4ab2fa15::t_30f60ed1dc2350 175-189,191-199,201-203
+  s_e9440a4ab2fa15::t_ba378114a1f11d 200
+  s_e9440a4ab2fa15::t_d85d958828c88a 456-473,491-492,494-496
+  s_e9440a4ab2fa15::t_fd1dc01038e045 118-174,190,204-205
+  s_e9440a4ab2fa15::t_c3c2fe97c4d9da 284-285
+  s_e9440a4ab2fa15::t_eac0ffc5e361f7 530-533,537
+  s_e9440a4ab2fa15::t_98d8f307f51978 216-225,236-253,264-267
+pyproject.toml
+  s_e9440a4ab2fa15::t_3bacb114d5bff6 9
+depscan/vdb_cli.py
+  s_e9440a4ab2fa15::t_efb93e36907783 17
+.github/workflows/repotests-lifecycle-dotnet.yml
+  s_e9440a4ab2fa15::t_9d4ea0b97dfa43 14
+packages/analysis-lib/tests/test_search.py
+  s_e9440a4ab2fa15::t_dcd9f79587505e 3,155,276,306,336
+packages/server-lib/pyproject.toml
+  s_e9440a4ab2fa15::t_421ca88b4152ed 9
+uv.lock
+  s_e9440a4ab2fa15::t_0a254400999a6c 73,85,87,798,810,847,1406,1448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "56027256baa9355ca45fb95685b9fdba02393039",
+  "prompts": {},
+  "sessions": {
+    "s_e9440a4ab2fa15": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9bf31947-fbaf-4f24-ab82-253386d98b1b",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
