@@ -1,0 +1,23 @@
+test/test_cli_inputs.py
+  s_7318da1b9edd46::t_fb8b39b33fe251 140-142
+test/conftest.py
+  s_7318da1b9edd46::t_17cfedc2e98454 1-25
+test/test_rusi_integration.py
+  s_7318da1b9edd46::t_fb8b39b33fe251 532-535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa709b7e5296df9e757d6fbf63d8927670d14a45",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
