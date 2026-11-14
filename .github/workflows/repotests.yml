@@ -305,9 +305,11 @@ jobs:
         python-version: ['3.14']
     runs-on: ['self-hosted', 'ubuntu', 'amd64']
     env:
-      # These scans are application projects; without a pin the runner pulls
-      # the multi-GB full database, which has repeatedly failed on the
-      # self-hosted runner with IncompleteRead.
+      # The full database (several GB) repeatedly failed to download on the
+      # self-hosted runner with IncompleteRead. This job checks that semantic
+      # analysis runs end to end, not OS advisory counts, so it uses the
+      # app-only database and the OS packages from the source images are not
+      # matched.
       VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
