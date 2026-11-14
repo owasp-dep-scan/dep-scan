@@ -6,3 +6,22 @@ fingerprint.py computes the line-free id the schema's id field carries, and
 model.py mirrors the schema as dataclasses. Tests check the schema and the
 model against each other so they cannot drift.
 """
+
+from analysis_lib.findings.fingerprint import FINGERPRINT_VERSION, finding_fingerprint
+from analysis_lib.findings.model import Finding
+from analysis_lib.findings.schemas import (
+    SchemaValidationError,
+    load_schema,
+    schema_names,
+    validate,
+)
+
+__all__ = [
+    "FINGERPRINT_VERSION",
+    "Finding",
+    "SchemaValidationError",
+    "finding_fingerprint",
+    "load_schema",
+    "schema_names",
+    "validate",
+]
