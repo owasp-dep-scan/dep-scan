@@ -1,0 +1,37 @@
+packages/reporting-lib/pyproject.toml
+  s_6f7348d32e8361::t_13b8b4b08ce4b4 3
+build/assets/Info.plist
+  s_6f7348d32e8361::t_9e3db1201f584e 12
+build/assets/file_version_info.txt
+  s_6f7348d32e8361::t_4549ecfefe8c96 40
+  s_6f7348d32e8361::t_a5ac7913be78b1 35
+  s_6f7348d32e8361::t_a742f952c5973c 10-11
+pyproject.toml
+  s_6f7348d32e8361::t_f90bac7e5da8df 59
+  s_6f7348d32e8361::t_ea5239ef3c2328 3
+  s_6f7348d32e8361::t_aaf33e722abe87 19-21
+  s_6f7348d32e8361::t_c2073cd6ef346f 57
+packages/analysis-lib/pyproject.toml
+  s_6f7348d32e8361::t_75c11ede5b45d3 3
+packages/xbom-lib/pyproject.toml
+  s_6f7348d32e8361::t_5b0ce4be0085a5 3
+packages/server-lib/pyproject.toml
+  s_6f7348d32e8361::t_e85bad05218476 13
+  s_6f7348d32e8361::t_be21eb1cc96b6a 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d851db6470924f2c0ab98f7b7e345c6a15113e6",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
