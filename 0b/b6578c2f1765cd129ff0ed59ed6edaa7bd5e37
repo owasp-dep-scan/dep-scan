@@ -1,0 +1,28 @@
+packages/analysis-lib/tests/data/findings/memory-safety.json
+  s_7318da1b9edd46::t_bf0ba5e975d2a3 19,21,23
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding-fingerprint-vectors.json
+  s_7318da1b9edd46::t_869cbd24b4e49d 515-589
+packages/analysis-lib/tests/test_findings_fingerprint.py
+  s_7318da1b9edd46::t_bf0ba5e975d2a3 10,12,138-159
+  s_7318da1b9edd46::t_f902fc6e8ba9ea 160-161
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_7318da1b9edd46::t_145ac448a61119 71
+packages/analysis-lib/src/analysis_lib/findings/fingerprint.py
+  s_7318da1b9edd46::t_145ac448a61119 45-59,62,102-105,108-109,130-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0bb6578c2f1765cd129ff0ed59ed6edaa7bd5e37",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

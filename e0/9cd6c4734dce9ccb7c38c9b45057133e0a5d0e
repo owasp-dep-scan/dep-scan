@@ -1,0 +1,25 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_6f7348d32e8361::t_c4820742446696 1-79
+packages/analysis-lib/src/analysis_lib/findings/__init__.py
+  s_6f7348d32e8361::t_ae79bae8d13b0b 1-8
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding.schema.json
+  s_6f7348d32e8361::t_ffb23d78589053 1-424
+packages/analysis-lib/pyproject.toml
+  s_6f7348d32e8361::t_3a46e36eee1000 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e09cd6c4734dce9ccb7c38c9b45057133e0a5d0e",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

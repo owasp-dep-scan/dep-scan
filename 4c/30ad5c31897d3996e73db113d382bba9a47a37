@@ -1,0 +1,25 @@
+packages/analysis-lib/src/analysis_lib/findings/fingerprint.py
+  s_6f7348d32e8361::t_8f6ed6297b1840 1-154
+packages/analysis-lib/pyproject.toml
+  s_6f7348d32e8361::t_707dc38d277769 13
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding-fingerprint-vectors.json
+  s_6f7348d32e8361::t_ec4384ca19dd81 1-516
+uv.lock
+  s_6f7348d32e8361::t_0c81be72789432 808,820
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4c30ad5c31897d3996e73db113d382bba9a47a37",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
