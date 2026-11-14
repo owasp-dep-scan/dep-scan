@@ -1,0 +1,21 @@
+documentation/docs/Lessons/01-java-semantic-analysis.mdx
+  s_6f7348d32e8361::t_96cb2f17fbf375 18
+documentation/docs/Lessons/02-dotnet-framework-analysis.mdx
+  s_6f7348d32e8361::t_26e9ad0ab6b8a4 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6acac6604d8c62df25796e338a3192b2bacf6b54",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

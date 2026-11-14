@@ -1,0 +1,21 @@
+packages/analysis-lib/src/analysis_lib/findings/__init__.py
+  s_6f7348d32e8361::t_e5999da503645d 9-27
+packages/analysis-lib/src/analysis_lib/findings/model.py
+  s_6f7348d32e8361::t_3454ebbcfbc34b 1-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32cebc076efd424a2501c767c7ee29fdcc22b64a",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

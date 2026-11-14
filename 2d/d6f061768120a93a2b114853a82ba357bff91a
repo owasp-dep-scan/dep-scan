@@ -1,0 +1,48 @@
+packages/analysis-lib/tests/data/findings/license.json
+  s_6f7348d32e8361::t_db76136f3790b2 1-19
+packages/analysis-lib/tests/data/findings/binary-hardening.json
+  s_6f7348d32e8361::t_c64be28f0031e0 1-13
+packages/analysis-lib/tests/data/findings/memory-safety.json
+  s_6f7348d32e8361::t_f76cf3840ad9be 1-28
+packages/analysis-lib/tests/data/findings/mobile.json
+  s_6f7348d32e8361::t_667b53037cbf42 1-15
+packages/analysis-lib/tests/test_findings_model.py
+  s_6f7348d32e8361::t_545a8e7b05a6e7 4
+  s_6f7348d32e8361::t_78c3317281723b 6
+  s_6f7348d32e8361::t_d46fa2fdba7111 44,46,49
+  s_6f7348d32e8361::t_1f1f6d8fc17072 74
+  s_6f7348d32e8361::t_6476e5eadd8ebe 1-3,5,7-43,45,47-48,50-73,75-101,103,105-113
+  s_6f7348d32e8361::t_24a6459195fccc 102,104,114-119
+packages/analysis-lib/tests/data/findings/health.json
+  s_6f7348d32e8361::t_9295c43bb3ecbf 1-22
+packages/analysis-lib/tests/data/findings/supply-chain.json
+  s_6f7348d32e8361::t_d8e56558df9f23 1-13
+packages/analysis-lib/tests/data/findings/vulnerability.json
+  s_6f7348d32e8361::t_5692d50b364123 1-28
+packages/analysis-lib/tests/data/findings/code.json
+  s_6f7348d32e8361::t_ff971b863dec6e 1-22
+packages/analysis-lib/tests/test_findings_schema.py
+  s_6f7348d32e8361::t_9e345756a4cefe 1-233
+packages/analysis-lib/tests/test_findings_fingerprint.py
+  s_6f7348d32e8361::t_45704b5232801a 1-140
+packages/analysis-lib/tests/data/findings/crypto.json
+  s_6f7348d32e8361::t_42bfa635e32566 1-26
+packages/analysis-lib/tests/data/findings/malware.json
+  s_6f7348d32e8361::t_b5f2031ecbf003 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2dd6f061768120a93a2b114853a82ba357bff91a",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
