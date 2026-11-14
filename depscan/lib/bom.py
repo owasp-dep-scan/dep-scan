@@ -1178,7 +1178,12 @@ def update_tools_metadata(tools, bom_data, ds_version, spec_version=None):
                 "bom-ref": ds_purl,
             }
         )
-    bom_data["metadata"]["tools"] = {"components": components}
+    # A source BOM may have no metadata block at all; CycloneDX makes it
+    # optional.
+    metadata = bom_data.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = bom_data["metadata"] = {}
+    metadata["tools"] = {"components": components}
     return bom_data
 
 
