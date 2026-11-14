@@ -1,0 +1,32 @@
+depscan/lib/tomlparse.py
+  s_6f7348d32e8361::t_6afe2da3cb7c3f 13
+packages/analysis-lib/pyproject.toml
+  s_6f7348d32e8361::t_cd9b5199fe889a 18
+packages/reporting-lib/pyproject.toml
+  s_6f7348d32e8361::t_2e53d9e14fb735 9
+pyproject.toml
+  s_6f7348d32e8361::t_2175ee14c8d80c 139
+  s_6f7348d32e8361::t_c7719f0c999511 102-105
+  s_6f7348d32e8361::t_a75503eff43689 23
+  s_6f7348d32e8361::t_3449a6e6484398 78-79
+packages/xbom-lib/pyproject.toml
+  s_6f7348d32e8361::t_b2eb35fe81a914 9
+packages/server-lib/pyproject.toml
+  s_6f7348d32e8361::t_7c9c28f31739d8 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "856b2f966b7f0e8a5df23ae865d2250217faaea3",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
