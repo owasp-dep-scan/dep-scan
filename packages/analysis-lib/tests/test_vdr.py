@@ -607,3 +607,18 @@ def test_converted_readers_read_a_hydrated_v7_result():
     # The VDR entry keeps what cve_to_vdr extracted.
     assert vdict["references"]
     assert vdict["cwes"] == [1287]
+
+
+@pytest.mark.parametrize(
+    "record",
+    [{}, {"containers": None}, {"containers": {"cna": None}}, {"containers": []}],
+)
+def test_converted_readers_tolerate_missing_cna_blocks(record):
+    """A record whose containers or cna block is missing or null reads as no
+    data instead of raising."""
+    from analysis_lib.utils import cve_to_vdr, get_unaffected
+
+    source, references, *_ = cve_to_vdr(record, "CVE-2024-0001")
+    assert references == []
+    assert source == {"name": ""}
+    assert get_unaffected({"source_data": record, "matching_vers": ""}) == ""

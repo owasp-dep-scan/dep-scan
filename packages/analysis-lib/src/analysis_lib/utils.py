@@ -810,6 +810,21 @@ def get_cwe_list(data: List[Dict] | None) -> List:
     return cwes
 
 
+def _cna(record) -> Dict:
+    """The ``containers.cna`` block of a CVE-5 record dict, or an empty dict.
+
+    Any level may be missing or null in a hydrated record, and a missing
+    block must read as "no data", not raise.
+    """
+    if not isinstance(record, dict):
+        return {}
+    containers = record.get("containers")
+    if not isinstance(containers, dict):
+        return {}
+    cna = containers.get("cna")
+    return cna if isinstance(cna, dict) else {}
+
+
 def cve_to_vdr(cve: Dict, vid: str):
     """Extract the VDR fields from a hydrated vdb record's CVE-5 dict.
 
@@ -817,7 +832,7 @@ def cve_to_vdr(cve: Dict, vid: str):
     the CVE-5 record: ``containers.cna``, ``cveMetadata`` at the top level).
     """
     root = cve if isinstance(cve, dict) else {}
-    cna = root.get("containers", {}).get("cna") or {}
+    cna = _cna(root)
     metadata = root.get("cveMetadata") or {}
     description, detail = get_description_detail(cna.get("descriptions"))
     alias_ids = parse_alias_ids(description_full_text(cna.get("descriptions")))
@@ -965,8 +980,7 @@ def get_unaffected(vuln):
     if vuln.get("fix_version"):
         return vuln.get("fix_version")
     source_data = vuln.get("source_data")
-    containers = source_data.get("containers") or {} if isinstance(source_data, dict) else {}
-    cna = containers.get("cna") or {}
+    cna = _cna(source_data)
     for p in cna.get("affected") or []:
         for ver in p.get("versions") or []:
             if ver.get("status") == "unaffected" and ver.get("version"):
@@ -1868,7 +1882,7 @@ def analyze_cve_vuln(
             # Just known exploits without usage is not a priority
             if reached_purls or direct_purls:
                 cve_requires_attn = False
-    affected = (cve_record.get("containers", {}).get("cna") or {}).get("affected") or []
+    affected = _cna(cve_record).get("affected") or []
     if affected and (cpes := affected[0].get("cpes")):
         # Distro-specific package
         if all((distro_package(cpe) for cpe in cpes)):
