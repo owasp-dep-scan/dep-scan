@@ -1,0 +1,19 @@
+build/sea-hooks/verify_versions.py
+  s_7318da1b9edd46::t_6964e163192d0a 138-140,146-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b76e7c7b86031a5ce88db1794ba779a35829ab2d",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
