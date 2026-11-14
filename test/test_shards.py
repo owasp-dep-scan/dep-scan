@@ -8,6 +8,7 @@ fetching.
 """
 
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -170,7 +171,7 @@ def test_setup_shards_refreshes_canonical_shards(vdb_home, monkeypatch):
     # first shard was connected as the main database, and coverage was
     # reported for the requested types.
     assert refresh_calls == [(["pypi", "npm"], store)]
-    assert connect_calls == [(f"{store}/pypi", store)]
+    assert connect_calls == [(os.path.join(store, "pypi"), store)]
     assert coverage_calls == [(["npm", "pypi"], store)]
     assert connected == ["pypi", "npm"]
     from depscan.lib.config import read_vdb_image_marker
@@ -327,10 +328,9 @@ def test_connect_shard_as_main_points_everything_at_the_shard(vdb_home, monkeypa
     store_dir = str(tmp_path.resolve() / "shards")
     cli.connect_shard_as_main(shard_dir, store_dir)
     assert cli.config.DATA_DIR == shard_dir
-    assert cli.config.VDB_BIN_FILE == f"{shard_dir}/data.vdb7"
-    assert cli.config.VDB_BIN_INDEX == f"{shard_dir}/data.index.vdb7"
+    assert cli.config.VDB_BIN_FILE == os.path.join(shard_dir, "data.vdb7")
+    assert cli.config.VDB_BIN_INDEX == os.path.join(shard_dir, "data.index.vdb7")
     assert cli.config.VDB_SHARDS_DIR == store_dir
-    import os
 
     assert os.environ["VDB_HOME"] == shard_dir
     assert os.environ["VDB_SHARDS_DIR"] == store_dir
