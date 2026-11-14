@@ -1,0 +1,27 @@
+.github/workflows/dockertests.yml
+  s_6f7348d32e8361::t_f08780794ee801 18
+  s_6f7348d32e8361::t_882b1e461f1230 168
+.github/workflows/repotests.yml
+  s_6f7348d32e8361::t_789b191c103c6a 88
+.github/workflows/pythonapp.yml
+  s_6f7348d32e8361::t_c12a972c0188d6 45
+  s_6f7348d32e8361::t_19ce250f631641 13-31
+.github/workflows/gobintests.yml
+  s_6f7348d32e8361::t_dedf5b85203655 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0486738ed9cfad927e3931b85c545c925c6d8a3",
+  "prompts": {},
+  "sessions": {
+    "s_6f7348d32e8361": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_d8ee65ee-0433-47bf-8771-4756ea34a91a",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
