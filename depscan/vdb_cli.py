@@ -1,47 +1,55 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""depscan-vdb: select, download, and inspect vdb vulnerability database images.
+"""depscan-vdb: download and inspect the vdb vulnerability database.
 
-This is the dedicated vdb management command added in T7. It lets users pick
-any published vdb image variant (scope, time window, extended tier, compression,
-distro) without hand-editing ``VDB_DATABASE_URL``. The scan path reuses the
-same resolver; this command is for explicit, out-of-band downloads and
-inspection.
+The heavy lifting belongs to vdb's ``vdb db`` command: the full-database
+flavors are downloaded through its staged, validated and atomically swapped
+refresh, type shards through its atomic per-shard placement, and the local
+state report comes from its store status. This command adds dep-scan's
+variant selection (the legacy ``--scope``/``--time``/``--extended`` aliases
+mapped onto the five published flavors), its download retries, its
+``VDB_AGE_HOURS`` freshness policy and its variant marker.
 """
 
 import argparse
 import sys
 
 from vdb.lib import config as vdb_config
-from vdb.lib import db6 as db_lib
+from vdb.lib import db as db_lib
+from vdb.lib import db_cmd
 
 from depscan import get_version
 from depscan.lib.config import (
     VDB_AGE_HOURS,
+    VDB_FLAVORS,
+    VDB_SHARDS_MARKER_PREFIX,
     read_vdb_image_marker,
-    resolve_vdb_image,
+    resolve_vdb_flavor,
+    resolve_vdb_image_url,
     vdb_image_marker_path,
-    vdb_image_size,
+    vdb_shards_marker,
     write_vdb_image_marker,
 )
 from depscan.lib.logger import LOG
 
-_ORAS_AVAILABLE = False
-try:
-    from vdb.lib.orasclient import download_image  # noqa: F401
 
-    _ORAS_AVAILABLE = True
-except ImportError:
-    pass
+def _flavor_from_image(image):
+    """The flavor name of a vdb 7 image reference, when it carries one."""
+    repo = image.split("/")[-1].split(":")[0]
+    if repo.startswith("vdb7-"):
+        flavor = repo[len("vdb7-") :]
+        if flavor in VDB_FLAVORS:
+            return flavor
+    return None
 
 
 def _build_parser():
     parser = argparse.ArgumentParser(
         prog="depscan-vdb",
         description=(
-            "Select, download, and inspect any published vdb vulnerability "
-            "database image (scope, time, extended tier, compression, distro)."
+            "Download and inspect the published vdb vulnerability database "
+            "flavors and type shards."
         ),
         epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more",
     )
@@ -50,53 +58,67 @@ def _build_parser():
     # --- download (default) ------------------------------------------------
     dl = subparsers.add_parser(
         "download",
-        help="Download a vdb image into VDB_HOME (default action).",
+        help="Download a database flavor or a set of type shards into the local store.",
+    )
+    dl.add_argument(
+        "--flavor",
+        choices=VDB_FLAVORS,
+        default=None,
+        help="Which published database flavor to download: full (app+OS), "
+        "app-only, app-extended (metadata tables), app-10y (NVD 2016+), "
+        "app-10y-extended. Default: full.",
+    )
+    dl.add_argument(
+        "--shards",
+        nargs="+",
+        default=None,
+        metavar="SHARD",
+        help="Fetch type shards (shard names or purl types such as npm, pypi) "
+        "into the shard store instead of a complete database.",
     )
     dl.add_argument(
         "--scope",
         choices=("app", "app+os"),
-        default="app+os",
-        help="Database scope. 'app' carries only application vulnerabilities; "
-        "'app+os' adds OS distro data. Default: app+os.",
+        default=None,
+        help="Deprecated alias for --flavor. 'app' resolves to app-only (or a "
+        "10y/extended flavor with the other aliases), 'app+os' to full.",
     )
     dl.add_argument(
         "--time",
         choices=("2y", "default", "10y"),
-        default="default",
-        help="Time window. '2y' covers 2024+, 'default' covers 2020+, "
-        "'10y' covers 2016+. Default: default.",
+        default=None,
+        help="Deprecated alias for --flavor. '10y' selects a 10-year flavor; "
+        "'2y' has no v7 equivalent and is rejected.",
     )
     dl.add_argument(
         "--extended",
         action="store_true",
         default=False,
-        help="Download the extended variant with metadata tables populated "
-        "(needed for severity, text, alias, reference, symbol, and date search).",
+        help="Deprecated alias selecting the metadata flavor (app-extended or app-10y-extended).",
     )
     dl.add_argument(
         "--compression",
         choices=("xz", "zst"),
         default="xz",
-        help="Compression format. 'xz' (tar.xz) is smaller; 'zst' (zstd) is "
-        "faster to decompress. Default: xz.",
+        help="Compression format. 'xz' always works; 'zst' needs a zstd "
+        "decompressor. Default: xz.",
     )
     dl.add_argument(
         "--distro",
         choices=("alpine", "debian", "redhat", "alma", "rocky", "ubuntu"),
         default=None,
-        help="Download a distro-only database. Mutually exclusive with "
-        "--scope, --time, and --extended.",
+        help="Rejected: vdb 7 publishes no per-distro complete database.",
     )
     dl.add_argument(
         "--image",
         default=None,
-        help="Override the image URL verbatim (bypasses the resolver).",
+        help="Override the image URL verbatim (bypasses the flavor resolver).",
     )
 
     # --- info --------------------------------------------------------------
     subparsers.add_parser(
         "info",
-        help="Print information about the locally cached vdb.",
+        help="Print information about the local database and shard store.",
     )
 
     # --- path --------------------------------------------------------------
@@ -115,75 +137,165 @@ def _build_parser():
     return parser
 
 
-def _resolve_image_from_args(args):
-    """Resolve the image ref from parsed download args."""
-    if args.image:
-        return args.image
-    return resolve_vdb_image(
-        scope=args.scope,
-        time=args.time,
+def _resolve_flavor_from_args(args):
+    """Resolve the flavor from --flavor or the deprecated aliases.
+
+    Each deprecated alias in use prints one warning naming the flavor the
+    selection resolved to. Combinations with no published flavor raise.
+    """
+    if args.distro:
+        raise ValueError(
+            "vdb 7 publishes no per-distro complete database. Published "
+            f"flavors: {', '.join(VDB_FLAVORS)}."
+        )
+    legacy_flags = [
+        flag
+        for flag, value in (
+            ("--scope", args.scope),
+            ("--time", args.time),
+            ("--extended", args.extended),
+        )
+        if value
+    ]
+    if args.flavor and legacy_flags:
+        raise ValueError("--flavor cannot be combined with the deprecated aliases.")
+    if args.flavor:
+        return args.flavor, []
+    flavor = resolve_vdb_flavor(
+        scope=args.scope or "app+os",
+        time=args.time or "default",
         extended=args.extended,
-        compression=args.compression,
-        distro=args.distro,
     )
+    for flag in legacy_flags:
+        print(
+            f"warning: {flag} is deprecated; downloading the '{flavor}' flavor. "
+            f"Pass --flavor {flavor} to select it directly.",
+            file=sys.stderr,
+        )
+    return flavor, legacy_flags
 
 
 def cmd_download(args):
-    """Download the selected vdb image and write the variant marker."""
-    from depscan.cli import download_vdb_with_retries
+    """Download the selected database flavor or shard set and write the marker."""
+    from depscan.cli import download_vdb_with_retries, refresh_shards_with_retries
 
-    image_url = _resolve_image_from_args(args)
-    size = vdb_image_size(image_url)
     data_dir = vdb_config.DATA_DIR
-    LOG.info("vdb image: %s (approx %s uncompressed)", image_url, size)
-    LOG.info("Target directory: %s", data_dir)
-    if not _ORAS_AVAILABLE:
-        LOG.error(
-            "oras support is not installed. Reinstall with "
-            "`pip install owasp-depscan[all]` or "
-            "`pip install appthreat-vulnerability-db[oras]`."
+    if args.shards:
+        if args.flavor or args.image:
+            print(
+                "error: --shards cannot be combined with --flavor or --image.",
+                file=sys.stderr,
+            )
+            return 1
+        from vdb.lib.shard_store import canonical_shard_for_type
+
+        # Shard names or purl types (npm, pypi, ...), like `vdb db refresh`.
+        shard_names = []
+        for shard in args.shards:
+            name = canonical_shard_for_type(shard)
+            if name not in shard_names:
+                shard_names.append(name)
+        LOG.info(
+            "Refreshing vdb shard(s) %s into %s",
+            ", ".join(shard_names),
+            vdb_config.VDB_SHARDS_DIR,
         )
+        placed = (
+            refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
+        )
+        write_vdb_image_marker(vdb_shards_marker(shard_names), data_dir)
+        LOG.info(
+            "Refreshed shard(s): %s. Marker written to %s",
+            ", ".join(placed),
+            vdb_image_marker_path(data_dir),
+        )
+        return 0
+
+    try:
+        flavor, _legacy = _resolve_flavor_from_args(args)
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
         return 1
-    download_vdb_with_retries(image_url, data_dir)
+    image_url = resolve_vdb_image_url(
+        flavor=flavor, compression=args.compression, image=args.image
+    )
+    LOG.info("vdb image: %s", image_url)
+    LOG.info("Target directory: %s", data_dir)
+    download_vdb_with_retries(image_url)
     write_vdb_image_marker(image_url, data_dir)
     LOG.info("Download complete. Variant marker written to %s", vdb_image_marker_path(data_dir))
     return 0
 
 
 def cmd_info(args):
-    """Print details about the locally cached vdb."""
+    """Print the local database and shard store state.
+
+    Built on vdb's own reporting (``db_cmd.store_status`` and the main
+    database metadata); a partial store or a stale shard is printed as such,
+    never hidden.
+    """
     data_dir = vdb_config.DATA_DIR
     marker = read_vdb_image_marker(data_dir)
-    db_meta = db_lib.get_db_file_metadata()
     print(f"VDB_HOME: {data_dir}")
     if marker:
-        print(f"Last pulled image: {marker}")
-        print(f"Approximate size:  {vdb_image_size(marker)} uncompressed")
+        if marker.startswith(VDB_SHARDS_MARKER_PREFIX):
+            print(f"Last refresh:      shards {marker[len(VDB_SHARDS_MARKER_PREFIX) :]}")
+        else:
+            flavor = _flavor_from_image(marker)
+            print(f"Last pulled image: {marker}" + (f" ({flavor})" if flavor else ""))
     else:
         print("Last pulled image: (none recorded)")
-    if db_meta and db_meta.get("created_utc"):
-        created = db_meta["created_utc"]
-        print(f"Created (UTC):     {created}")
-        stale = db_lib.needs_update(
-            days=0,
-            hours=VDB_AGE_HOURS,
-            default_status=False,
+    db_lib.reset_connections()
+    db_meta = db_lib.get_db_file_metadata() or {}
+    if db_meta.get("created_utc"):
+        stale = db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False)
+        state = "stale (re-download recommended)" if stale else "fresh"
+        print(
+            f"Main DB built:     {db_meta.get('created_utc')} ({state}, threshold: {VDB_AGE_HOURS}h)"
         )
-        status = "stale (re-download recommended)" if stale else "fresh"
-        print(f"Freshness:         {status} (threshold: {VDB_AGE_HOURS}h)")
+        completeness = db_meta.get("completeness", "full")
+        if completeness == "partial":
+            print("Main DB type:      shard installed as the main database (partial)")
+        print(
+            f"Main DB rows:      {db_meta.get('cve_data_count', '?')} data / "
+            f"{db_meta.get('cve_index_count', '?')} index"
+        )
     else:
-        print("Created (UTC):     (no database found)")
-        print("Freshness:         no local database")
-    # Metadata rows (extended check)
-    meta_count = 0
-    try:
-        db_lib.get(read_only=True)
-        meta_count = db_lib.metadata_rows_count()
-    except Exception:  # noqa: BLE001
-        pass
-    extended_label = "yes" if meta_count and meta_count > 0 else "no"
-    print(f"Extended metadata: {extended_label}" + (f" ({meta_count} rows)" if meta_count else ""))
+        print("Main DB built:     (no database found)")
+    meta_rows = db_lib.metadata_rows_count() if db_meta.get("created_utc") else 0
+    print(f"Metadata rows:     {meta_rows}" + (" (extended flavor)" if meta_rows else ""))
+    store = db_cmd.store_status()
+    print(f"Shard store:       {store.get('store_dir')}")
+    shards = store.get("shards") or []
+    if not shards:
+        print("Shard store:       empty")
+    for shard in shards:
+        state = "STALE (much older than its siblings)" if shard["stale"] else "ok"
+        print(
+            f"  shard {shard['name']}: build {shard['build_id']}, "
+            f"built {shard.get('created_utc') or '?'}, "
+            f"{_fmt_age(shard.get('age_days'))} old, "
+            f"{shard['type_count']} type(s) ({', '.join(shard['types'])}) - {state}"
+        )
+    if shards:
+        mix = " (mixed builds)" if store.get("mixed_builds") else ""
+        print(f"Store coverage:    {store.get('coverage')}{mix}")
+        if store.get("missing_group_shards"):
+            print(
+                "note: purl types with no local shard are reported as coverage "
+                "gaps at search time, never silently skipped."
+            )
     return 0
+
+
+def _fmt_age(age_days):
+    if age_days is None:
+        return "unknown age"
+    if age_days < 1 / 24:
+        return "<1h"
+    if age_days < 1:
+        return f"{age_days * 24:.1f}h"
+    return f"{age_days:.1f}d"
 
 
 def cmd_path(args):

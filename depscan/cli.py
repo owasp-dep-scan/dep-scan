@@ -19,7 +19,7 @@ from reporting_lib.htmlgen import ReportGenerator
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config
-from vdb.lib import db6 as db_lib
+from vdb.lib import db as db_lib
 from vdb.lib import search
 from vdb.lib.utils import parse_purl
 
@@ -40,12 +40,15 @@ from depscan.lib.config import (
     DEPSCAN_DEFAULT_VDR_FILE,
     UNIVERSAL_SCAN_TYPE,
     VDB_AGE_HOURS,
+    VDB_FLAVORS,
+    VDB_USE_SHARDS,
     license_data_dir,
     pkg_max_risk_score,
     read_vdb_image_marker,
-    resolve_vdb_image,
+    resolve_vdb_flavor,
+    resolve_vdb_image_url,
     spdx_license_list,
-    vdb_image_size,
+    vdb_shards_marker,
     write_vdb_image_marker,
 )
 from depscan.lib.license import build_license_data, bulk_lookup
@@ -70,14 +73,6 @@ try:
 except ImportError:
     pass
 
-ORAS_AVAILABLE = False
-try:
-    from vdb.lib.orasclient import download_image
-
-    ORAS_AVAILABLE = True
-except ImportError:
-    pass
-
 
 def _positive_int_env(name: str, default: int) -> int:
     """Read a positive int from the environment, falling back to ``default``."""
@@ -88,25 +83,30 @@ def _positive_int_env(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-# The vdb image is a multi-GB oras pull; a dropped connection mid-stream raises
-# ChunkedEncodingError / urllib3 ProtocolError / IncompleteRead. These are
-# transient (common in CI), so retry a few times before giving up.
+# The database image is a multi-hundred-MB pull; a dropped connection
+# mid-stream raises ChunkedEncodingError / urllib3 ProtocolError /
+# IncompleteRead. These are transient (common in CI), so retry a few times
+# before giving up.
 VDB_DOWNLOAD_MAX_ATTEMPTS = _positive_int_env("VDB_DOWNLOAD_RETRIES", 3)
 VDB_DOWNLOAD_RETRY_BACKOFF_SEC = _positive_int_env("VDB_DOWNLOAD_RETRY_BACKOFF_SEC", 5)
 
 
-def download_vdb_with_retries(vdb_database_url, data_dir, attempts=VDB_DOWNLOAD_MAX_ATTEMPTS):
-    """Download the vulnerability database, retrying transient network errors.
+def download_vdb_with_retries(vdb_database_url, attempts=VDB_DOWNLOAD_MAX_ATTEMPTS):
+    """Install the vulnerability database image, retrying transient errors.
 
-    ``download_image`` streams large blobs and can fail partway through with a
-    variety of exceptions raised across the requests/urllib3/oras layers. We
-    retry with a linear backoff and re-raise the last error if every attempt
-    fails so the caller's existing error handling still applies.
+    vdb's ``refresh_full_image`` stages, validates and atomically swaps the
+    artifact, so the local database is untouched unless a usable image arrived
+    completely; depscan never unpacks into the database directory itself. The
+    download can still fail partway through with a variety of exceptions
+    raised across the requests/urllib3 layers, so we retry with a linear
+    backoff and re-raise the last error if every attempt fails.
     """
+    from vdb.lib import db_cmd
+
     last_exc = None
     for attempt in range(1, attempts + 1):
         try:
-            return download_image(vdb_database_url, data_dir)
+            return db_cmd.refresh_full_image(image_url=vdb_database_url)
         except Exception as e:  # noqa: BLE001 - transient failures vary by layer
             last_exc = e
             if attempt < attempts:
@@ -130,7 +130,7 @@ def vdb_download_needed(resolved_url, data_dir):
     """Decide whether the scan should (re-)download the vdb.
 
     The DB is re-downloaded when it is stale (time-based, via
-    ``db6.needs_update``) OR when the depscan-owned variant marker differs
+    ``vdb.lib.db.needs_update``) OR when the depscan-owned variant marker differs
     from the freshly resolved image ref. The marker check catches a
     scope/time/tier/distro switch that ``needs_update`` would otherwise miss
     for up to ``VDB_AGE_HOURS`` because vdb metadata does not record the
@@ -166,27 +166,30 @@ def vdb_download_needed(resolved_url, data_dir):
 
 
 def resolve_scan_vdb_image(args):
-    """Resolve the vdb image URL for the scan path (T7 Change D).
+    """Resolve the database image the scan should use, and its flavor.
 
     Precedence, highest first:
 
-    1. Explicit ``VDB_DATABASE_URL`` env pin -> used verbatim.
-    2. ``--vdb-image`` (also settable via the config file as ``vdb_image``) ->
-       used verbatim.
-    3. The ``--vdb-*`` selection options (``vdb_scope``/``vdb_time``/
-       ``vdb_extended``/``vdb_compression``/``vdb_distro``), which may come from
-       the command line or be persisted in the depscan config file. Unset
-       options fall back to their defaults (app+os, default, standard, xz), and
-       ``USE_VDB_10Y`` still maps to ``time=10y`` when ``vdb_time`` is unset.
+    1. ``VDB_DATABASE_URL`` or ``--vdb-image`` -> used verbatim (flavor None).
+    2. ``--vdb-flavor`` -> one of the five published flavors.
+    3. The legacy ``--vdb-scope``/``--vdb-time``/``--vdb-extended`` triple
+       (plus ``USE_VDB_10Y``), mapped through ``VDB_LEGACY_FLAVOR_MAP``. Each
+       legacy option in use logs one warning naming the flavor the selection
+       resolved to. Combinations with no v7 flavor (a two-year window in any
+       scope, an app+OS 10-year or extended variant, any per-distro selection)
+       raise, naming the flavors, instead of silently mapping onto a bigger or
+       smaller database.
+    4. Nothing given -> ``full``.
 
-    When ``--severity`` is set and the user has NOT pinned an image (env or
-    ``--vdb-image``), the ``-extended`` variant is auto-selected and
-    ``VDB_INCLUDE_METADATA=true`` is set so the severity push-down into the
-    search layer fires. If the user pinned a non-extended image, do not
-    override; the depscan-side severity floor
-    (``analysis_lib.utils.vuln_meets_severity``) still filters the final VDR.
+    ``--severity`` upgrades an automatic selection to the metadata flavor
+    (``app-extended``, or ``app-10y-extended`` under ``USE_VDB_10Y``) and sets
+    ``VDB_INCLUDE_METADATA=true`` so the severity push-down into the search
+    layer fires. A flavor the user chose explicitly is never overridden; the
+    depscan-side severity floor (``analysis_lib.utils.vuln_meets_severity``)
+    still filters the final VDR.
 
-    :return: ``(url, user_pinned)`` tuple.
+    :return: ``(url, user_pinned, flavor)``; *flavor* is ``None`` for a pinned
+        image.
     """
     pinned = os.getenv("VDB_DATABASE_URL") or getattr(args, "vdb_image", None)
     if pinned:
@@ -197,57 +200,79 @@ def resolve_scan_vdb_image(args):
                 "*-extended image (or clear the pin) to push the filter into "
                 "the search layer."
             )
-        return pinned, True
+        return pinned, True, None
 
-    distro = getattr(args, "vdb_distro", None)
-    compression = getattr(args, "vdb_compression", None) or "xz"
-    if distro:
-        # Distro images are mutually exclusive with scope/time/extended and never
-        # carry metadata, so --severity cannot push down here.
-        resolved = resolve_vdb_image(distro=distro, compression=compression)
-        if args.severity:
-            LOG.info(
-                "--severity is set but a distro-only vdb image (%s) has no "
-                "metadata; the severity floor still applies to the final VDR.",
-                resolved,
-            )
-        return resolved, False
-
-    scope = getattr(args, "vdb_scope", None) or "app+os"
-    time_window = getattr(args, "vdb_time", None)
-    if not time_window:
-        time_window = "10y" if os.getenv("USE_VDB_10Y", "") in ("true", "1") else "default"
-    extended = bool(getattr(args, "vdb_extended", None)) or bool(args.severity)
-    if extended:
-        os.environ["VDB_INCLUDE_METADATA"] = "true"
-        resolved = resolve_vdb_image(
-            scope=scope, time=time_window, extended=True, compression=compression
+    if getattr(args, "vdb_distro", None):
+        raise ValueError(
+            "vdb 7 publishes no per-distro complete database. Published "
+            f"flavors: {', '.join(VDB_FLAVORS)}."
         )
-        if args.severity:
-            LOG.info(
-                "--severity needs metadata search; using the extended vdb image (%s).",
-                resolved,
+
+    flavor = getattr(args, "vdb_flavor", None)
+    legacy_flags = [
+        flag
+        for flag, value in (
+            ("--vdb-scope", getattr(args, "vdb_scope", None)),
+            ("--vdb-time", getattr(args, "vdb_time", None)),
+            ("--vdb-extended", bool(getattr(args, "vdb_extended", None))),
+        )
+        if value
+    ]
+    if flavor is not None:
+        if legacy_flags:
+            raise ValueError(
+                "--vdb-flavor cannot be combined with the deprecated "
+                "--vdb-scope, --vdb-time or --vdb-extended options."
             )
-        return resolved, False
-    return resolve_vdb_image(scope=scope, time=time_window, compression=compression), False
+    else:
+        time_window = getattr(args, "vdb_time", None)
+        scope = getattr(args, "vdb_scope", None)
+        if not time_window and os.getenv("USE_VDB_10Y", "") in ("true", "1"):
+            # USE_VDB_10Y has no v7 constant; the v7 10-year flavors are
+            # app-scope, so the scope moves with it. The env var is not an
+            # explicit flavor choice, so --severity may still add metadata.
+            legacy_flags.append("USE_VDB_10Y")
+            time_window = "10y"
+            if scope is None:
+                scope = "app"
+        flavor = resolve_vdb_flavor(
+            scope=scope or "app+os",
+            time=time_window or "default",
+            extended=bool(getattr(args, "vdb_extended", None)),
+        )
+        for flag in legacy_flags:
+            LOG.warning(
+                "%s is deprecated; this scan uses the '%s' flavor. Pass "
+                "--vdb-flavor %s to select it directly.",
+                flag,
+                flavor,
+                flavor,
+            )
 
-
-def _warn_large_appos_for_source_scan(scan_vdb_url, args):
-    """Advisory warning before pulling a multi-GB App+OS image on a source-only scan."""
-    try:
-        size_gib = float(vdb_image_size(scan_vdb_url).split()[0])
-    except (ValueError, IndexError):
-        size_gib = 0.0
-    is_source_only = (
-        not args.deep_scan and os.path.isdir(str(args.src_dir_image)) and not args.bom_dir
+    # An explicit choice is a flag; the deprecated USE_VDB_10Y env var is not
+    # one, so --severity may still upgrade it to the metadata flavor.
+    explicit_choice = bool(getattr(args, "vdb_flavor", None)) or any(
+        flag != "USE_VDB_10Y" for flag in legacy_flags
     )
-    if size_gib > 10 and is_source_only:
-        LOG.warning(
-            "The selected vulnerability database is large (~%s GiB "
-            "uncompressed) for a source-only scan. For faster downloads, "
-            "consider an app-only image: `depscan-vdb download --scope app`.",
-            vdb_image_size(scan_vdb_url).split()[0],
+    if args.severity and not explicit_choice and "extended" not in flavor:
+        # The metadata flavors are the answer to --severity's push-down.
+        flavor = "app-10y-extended" if flavor == "app-10y" else "app-extended"
+    if "extended" in flavor:
+        os.environ["VDB_INCLUDE_METADATA"] = "true"
+    if args.severity and not explicit_choice:
+        LOG.info(
+            "--severity needs metadata search; using the extended vdb flavor (%s).",
+            flavor,
         )
+    elif args.severity and "extended" not in flavor:
+        LOG.info(
+            "--severity is set with an explicitly chosen vdb flavor without "
+            "metadata. The severity floor is still applied to the final VDR."
+        )
+    url = resolve_vdb_image_url(
+        flavor=flavor, compression=getattr(args, "vdb_compression", None) or "xz"
+    )
+    return url, False, flavor
 
 
 def build_args():
@@ -326,10 +351,251 @@ def configure_vdb_readonly():
     if os.getenv("VDB_SQLITE_IMMUTABLE", "").lower() not in ("false", "0"):
         os.environ["VDB_SQLITE_IMMUTABLE"] = "true"
         # config.VDB_SQLITE_IMMUTABLE was captured at import time; patch it so
-        # db6._sqlite_uri picks up immutable=1 on the first connection.
+        # vdb.lib.db._sqlite_uri picks up immutable=1 on the first connection.
         config.VDB_SQLITE_IMMUTABLE = True
     if not os.getenv("VDB_SQLITE_JOURNAL_MODE"):
         os.environ["VDB_SQLITE_JOURNAL_MODE"] = "WAL"
+
+
+def ensure_vdb_usable():
+    """Stop the scan when the local vulnerability database cannot answer.
+
+    A database with no rows, a missing database, or a directory holding only
+    v6 files (vdb 7 reads ``.vdb7`` databases and does not migrate v6
+    artifacts) must fail the scan loudly: a scan that reports zero findings
+    from zero data looks exactly like a clean result. vdb's own CLI refuses
+    to answer on an empty database for the same reason.
+
+    Reuses vdb's guard (``vdb.cli._warn_if_database_empty``, which prints the
+    directory, the remedies and the v6-files hint) after opening the
+    connections it needs; if the guard is not importable in a future vdb,
+    falls back to the row count through ``vdb.lib.db``. Exits with code 1
+    when the database cannot answer.
+    """
+    db_lib.reset_connections()
+    try:
+        db_lib.get(read_only=True)
+    except Exception as e:  # noqa: BLE001 - any driver error means unusable
+        LOG.error(
+            "The vulnerability database at %s could not be opened (%s). "
+            "Fetch one with `depscan-vdb download` or 'vdb db refresh full'.",
+            config.DATA_DIR,
+            e,
+        )
+        sys.exit(1)
+    try:
+        # vdb's guard prints the empty-database message (directory, remedies,
+        # v6-files paragraph) and returns True when the database is empty.
+        from vdb.cli import _warn_if_database_empty
+
+        if _warn_if_database_empty():
+            LOG.error(
+                "Cannot scan without a vulnerability database. Fetch one with "
+                "`depscan-vdb download` or 'vdb db refresh full'."
+            )
+            sys.exit(1)
+        return
+    except ImportError:
+        pass
+    except SystemExit:
+        raise
+    _, cve_index_count = db_lib.stats()
+    if not cve_index_count:
+        LOG.error(
+            "The vulnerability database at %s is empty; no search can return "
+            "results. Fetch one with `depscan-vdb download` or 'vdb db refresh full'.",
+            config.DATA_DIR,
+        )
+        sys.exit(1)
+
+
+# --- opt-in shard mode -------------------------------------------------------
+# With VDB_USE_SHARDS=true a scan refreshes the type shards serving its purl
+# types instead of a complete database. Searches fan out only when the
+# connected main database is itself a shard, so the first refreshed shard is
+# connected as the main database with the store beside it (the layout vdb
+# documents for shard deployments). Shards are opt-in: a mixed project whose
+# types no shard covers would otherwise read as clean.
+#
+# A scan never reaches for the network mid-run: VDB_AUTO_FETCH stays off (a
+# vdb opt-in), so an uncovered type stays a coverage gap to report, not a
+# download to trigger.
+
+
+def collect_purl_types(args, src_dir):
+    """The purl types a scan will search, when they are known before matching.
+
+    A single ``--purl`` knows its type from the argument; ``--bom`` and
+    ``--bom-dir`` read the type off every component purl. Returns an empty
+    list when the types are not known up front (depscan generating the BOM
+    itself), which callers treat as "cannot use shards this run".
+    """
+    purl_types = []
+    seen = set()
+    if args.search_purl:
+        purl_obj = parse_purl(args.search_purl)
+        purl_obj["purl"] = args.search_purl
+        pkg_list = [purl_obj]
+    elif args.bom and os.path.isfile(args.bom):
+        pkg_list, _lifecycles = get_pkg_list(args.bom)
+    elif args.bom_dir and os.path.isdir(args.bom_dir):
+        pkg_list = get_all_pkg_list(args.bom_dir)
+    else:
+        return []
+    for pkg in pkg_list:
+        purl = pkg.get("purl") or ""
+        if not purl.startswith("pkg:"):
+            continue
+        purl_type = purl.split("pkg:", 1)[1].split("/", 1)[0].lower()
+        if purl_type and purl_type not in seen:
+            seen.add(purl_type)
+            purl_types.append(purl_type)
+    return purl_types
+
+
+def report_shard_coverage(purl_types, store_dir=None):
+    """Record and print the purl types no local shard covers.
+
+    A type with no shard is NOT assessed; it must never read as clean. The
+    answer comes from vdb's own coverage reporting
+    (``shard_store.coverage_for_types``), never from a local type-to-shard
+    table. Stale shards warn separately: "no data for X" and "old data for X"
+    are different conditions. Everything a later task needs for the scan
+    manifest is collected here, in this one function.
+    """
+    from vdb.lib import shard_store
+
+    coverage, _records = shard_store.coverage_for_types(purl_types, store_dir=store_dir)
+    uncovered = sorted(coverage.uncovered_types)
+    if uncovered:
+        LOG.warning(
+            "purl type(s) %s have no local shard, so components of those types "
+            "were NOT assessed; this is not a clean result. Refresh the shards "
+            "(depscan-vdb download --shards %s ...) or use a complete database.",
+            ", ".join(uncovered),
+            ", ".join(uncovered),
+        )
+    for shard_name in coverage.stale_shards:
+        LOG.warning(
+            "shard %s is much older than its siblings; answers for the types it "
+            "serves may be out of date. Refresh it with `depscan-vdb download "
+            "--shards %s`.",
+            shard_name,
+            shard_name,
+        )
+    return coverage
+
+
+def shards_refresh_needed(shard_names, store_dir=None):
+    """Decide whether the shard store can serve *shard_names* as they are.
+
+    The store is the truth, not the marker: a scan whose types are a subset
+    of what was already fetched must not re-download. Refresh when a needed
+    shard is missing from the store, or when a stored shard is older than
+    ``VDB_AGE_HOURS`` (the same window the complete database uses).
+    """
+    from vdb.lib import db_cmd
+
+    status = db_cmd.store_status(store_dir)
+    shards = status.get("shards") or []
+    present = {shard.get("name") for shard in shards}
+    missing = [name for name in shard_names if name not in present]
+    if missing:
+        return True, f"missing shards: {', '.join(missing)}"
+    # Only the shards this scan reads decide; an old shard it does not need
+    # would otherwise force a refresh of the needed ones on every run.
+    for shard in shards:
+        if shard.get("name") not in shard_names:
+            continue
+        age_days = shard.get("age_days")
+        if age_days is None or age_days * 24 >= VDB_AGE_HOURS:
+            return True, "stale"
+    return False, None
+
+
+def refresh_shards_with_retries(shard_names, store_dir=None, attempts=VDB_DOWNLOAD_MAX_ATTEMPTS):
+    """Refresh the named shards through vdb, retrying transient network errors.
+
+    Each shard lands with an atomic directory rename, so an interruption
+    leaves every shard either refreshed or at its previous complete artifact;
+    depscan never unpacks into the store itself.
+    """
+    from vdb.lib import db_cmd
+
+    last_exc = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return db_cmd.refresh_shards(shard_names, store_dir=store_dir)
+        except Exception as e:  # noqa: BLE001 - transient failures vary by layer
+            last_exc = e
+            if attempt < attempts:
+                LOG.warning(
+                    "Shard refresh failed (attempt %d/%d): %s. Retrying ...",
+                    attempt,
+                    attempts,
+                    e,
+                )
+                time.sleep(VDB_DOWNLOAD_RETRY_BACKOFF_SEC * attempt)
+            else:
+                LOG.error("Shard refresh failed after %d attempt(s).", attempts)
+    if last_exc is not None:
+        raise last_exc
+
+
+def connect_shard_as_main(shard_dir, store_dir):
+    """Connect one shard as the main database so searches fan out.
+
+    vdb consults the shard store only when the main database is itself a
+    shard; this points the main-database paths (and the environment, for
+    subprocesses) at *shard_dir* and the store at *store_dir*, then reopens
+    the connections. The caller must refresh the shards first so the store
+    beside the main shard is complete.
+    """
+    from vdb.lib import shard_store
+
+    os.environ["VDB_HOME"] = shard_dir
+    os.environ["VDB_SHARDS_DIR"] = store_dir
+    config.DATA_DIR = shard_dir
+    config.VDB_BIN_FILE = os.path.join(shard_dir, "data.vdb7")
+    config.VDB_BIN_INDEX = os.path.join(shard_dir, "data.index.vdb7")
+    config.VDB_SHARDS_DIR = store_dir
+    db_lib.reset_connections()
+    shard_store.reset()
+
+
+def setup_shards_for_scan(purl_types):
+    """Opt-in shard mode: refresh and connect the shards serving *purl_types*.
+
+    Returns the connected shard names, or an empty list when the store cannot
+    serve the scan (no types, or a refresh that placed nothing).
+    """
+    from vdb.lib.shard_store import canonical_shard_for_type
+
+    shard_names = []
+    for purl_type in purl_types:
+        name = canonical_shard_for_type(purl_type)
+        if name not in shard_names:
+            shard_names.append(name)
+    if not shard_names:
+        return []
+    store_dir = config.VDB_SHARDS_DIR
+    marker_data_dir = config.DATA_DIR
+    needed, reason = shards_refresh_needed(shard_names, store_dir=store_dir)
+    if needed:
+        LOG.info(
+            "Refreshing vdb shard(s) %s into %s (%s). Please wait ...",
+            ", ".join(shard_names),
+            store_dir,
+            reason,
+        )
+        placed = refresh_shards_with_retries(shard_names, store_dir=store_dir)
+        if not placed:
+            LOG.error("No shard could be refreshed into %s.", store_dir)
+            sys.exit(1)
+        write_vdb_image_marker(vdb_shards_marker(shard_names), marker_data_dir)
+    connect_shard_as_main(os.path.join(store_dir, shard_names[0]), store_dir)
+    report_shard_coverage(purl_types, store_dir=store_dir)
+    return shard_names
 
 
 def vdr_analyze_summarize(
@@ -633,13 +899,29 @@ def run_depscan(args):
         LOG.debug("Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis.")
         depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
-    # Resolve the vdb image for this scan (T7 Change D).
-    scan_vdb_url, _user_pinned = resolve_scan_vdb_image(args)
-    _warn_large_appos_for_source_scan(scan_vdb_url, args)
-    # Should we download the latest vdb.
-    should_download, dl_reason = vdb_download_needed(scan_vdb_url, config.DATA_DIR)
-    if should_download:
-        if ORAS_AVAILABLE:
+    # Resolve the vdb image for this scan.
+    try:
+        scan_vdb_url, _user_pinned, _flavor = resolve_scan_vdb_image(args)
+    except ValueError as e:
+        LOG.error("%s", e)
+        sys.exit(1)
+    # Opt-in shard mode replaces the complete database with the type shards
+    # serving the scan's purl types, but only when those types are known
+    # before matching.
+    shards_connected = []
+    if VDB_USE_SHARDS:
+        shard_types = collect_purl_types(args, src_dir)
+        if shard_types:
+            shards_connected = setup_shards_for_scan(shard_types)
+        else:
+            LOG.warning(
+                "VDB_USE_SHARDS is set but this scan's purl types are not known "
+                "before matching; using a complete database instead."
+            )
+    if not shards_connected:
+        # Should we download the latest vdb.
+        should_download, dl_reason = vdb_download_needed(scan_vdb_url, config.DATA_DIR)
+        if should_download:
             with console.status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
                 spinner=SPINNER,
@@ -649,17 +931,16 @@ def run_depscan(args):
                 # This line may exit with an exception if the database cannot be
                 # downloaded even after retries.
                 # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
-                download_vdb_with_retries(scan_vdb_url, config.DATA_DIR)
+                download_vdb_with_retries(scan_vdb_url)
                 # Record the variant so a future switch forces a re-download
                 # even when the DB is still within the age window.
                 write_vdb_image_marker(scan_vdb_url, config.DATA_DIR)
-        else:
-            LOG.warning(
-                "The latest vulnerability database is not found. Follow the documentation to manually download it."
-            )
-    # Apply read-only SQLite tuning for the scan (T2). Done after the download
+    # Apply read-only SQLite tuning for the scan. Done after the download
     # so the vdb update path is never opened immutable.
     configure_vdb_readonly()
+    # A database with no rows answers nothing; a scan must not report zero
+    # findings from zero data.
+    ensure_vdb_usable()
     pkg_list, project_types_list = set_project_types(args, src_dir)
     if args.custom_data:
         LOG.info(f"Loading custom vulnerability data from {args.custom_data}")

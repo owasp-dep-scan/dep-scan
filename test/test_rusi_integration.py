@@ -529,6 +529,10 @@ def test_rustsec_time_reachable_in_vdr(tmp_path, rusi_env):
     )
 
     # --- reached_purls -> VDR insight (real VDRAnalyzer + real vdb) ---
+    from vdb.lib import config as vdb_config
+
+    if not os.path.isfile(vdb_config.VDB_BIN_FILE):
+        pytest.skip("no local vulnerability database to search")
     pkg_list, _lifecycles = get_pkg_list(str(bom_file))
     vopts = VdrAnalysisKV(
         project_type="rust",
@@ -578,9 +582,9 @@ def test_rustsec_exploitable_insight_gated_on_reached_purls():
     from types import SimpleNamespace
 
     from analysis_lib.utils import analyze_cve_vuln
-    from vdb.lib.cve_model import CVE
 
-    cve_model = CVE.model_validate(json.loads(RUSTSEC_TIME_VULN.read_text(encoding="utf-8")))
+    # vdb returns the CVE-5 record as a plain dict.
+    cve_model = json.loads(RUSTSEC_TIME_VULN.read_text(encoding="utf-8"))
 
     def _counts():
         return SimpleNamespace(

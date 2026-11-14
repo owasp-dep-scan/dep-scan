@@ -320,51 +320,64 @@ def build_parser():
     )
     vdb_group = parser.add_argument_group(
         "vulnerability database selection",
-        "Select which published vdb image the scan downloads. These can also be "
-        'persisted in the depscan config file (e.g. vdb_scope = "app"). An '
+        "Select which published vdb database the scan downloads. These can also be "
+        'persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An '
         "explicit VDB_DATABASE_URL env pin always wins. The dedicated "
         "`depscan-vdb` command shares the same options for pre-fetching.",
+    )
+    vdb_group.add_argument(
+        "--vdb-flavor",
+        choices=("full", "app-only", "app-extended", "app-10y", "app-10y-extended"),
+        default=None,
+        dest="vdb_flavor",
+        help="Which published database flavor to use: 'full' (app+OS), "
+        "'app-only' (application ecosystems, NVD 2020+), 'app-extended' "
+        "(adds metadata tables for severity, text, alias, reference, symbol "
+        "and date search), 'app-10y' (NVD 2016+), 'app-10y-extended' "
+        "(both). Default: full.",
     )
     vdb_group.add_argument(
         "--vdb-scope",
         choices=("app", "app+os"),
         default=None,
         dest="vdb_scope",
-        help="Database scope. 'app' carries only application vulnerabilities; "
-        "'app+os' adds OS distro data. Default: app+os.",
+        help="Deprecated alias for --vdb-flavor: 'app' maps to app-only (or "
+        "app-extended/app-10y/app-10y-extended with the other deprecated "
+        "options), 'app+os' to full. Default: app+os.",
     )
     vdb_group.add_argument(
         "--vdb-time",
         choices=("2y", "default", "10y"),
         default=None,
         dest="vdb_time",
-        help="Time window. '2y' covers 2024+, 'default' covers 2020+, '10y' "
-        "covers 2016+. Default: default.",
+        help="Deprecated alias for --vdb-flavor: '10y' selects a 10-year "
+        "flavor; '2y' has no v7 equivalent and is rejected. Default: default.",
     )
     vdb_group.add_argument(
         "--vdb-extended",
         action="store_true",
         default=None,
         dest="vdb_extended",
-        help="Download the extended variant with metadata tables populated "
-        "(needed for severity, text, alias, reference, symbol, and date search). "
-        "Auto-selected when --severity is set.",
+        help="Deprecated alias selecting the metadata flavor (app-extended or "
+        "app-10y-extended), needed for severity, text, alias, reference, "
+        "symbol, and date search. Auto-selected when --severity is set.",
     )
     vdb_group.add_argument(
         "--vdb-compression",
         choices=("xz", "zst"),
         default=None,
         dest="vdb_compression",
-        help="Compression format. 'xz' (tar.xz) is smaller; 'zst' (zstd) is "
-        "faster to decompress. Default: xz.",
+        help="Compression format. 'xz' (tar.xz) always works; 'zst' (zstd) is "
+        "faster to decompress but needs a zstd decompressor. Default: xz.",
     )
     vdb_group.add_argument(
         "--vdb-distro",
         choices=("alpine", "debian", "redhat", "alma", "rocky", "ubuntu"),
         default=None,
         dest="vdb_distro",
-        help="Use a distro-only database. Mutually exclusive with the scope, "
-        "time, and extended options.",
+        help="Rejected: vdb 7 publishes no per-distro complete database. Pass "
+        "--vdb-flavor full and scan the distro packages, or fetch type shards "
+        "with depscan-vdb.",
     )
     vdb_group.add_argument(
         "--vdb-image",
