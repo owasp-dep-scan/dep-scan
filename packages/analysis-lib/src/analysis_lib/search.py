@@ -19,6 +19,9 @@ from analysis_lib.normalize import create_pkg_variations, dealias_packages, dedu
 # library stays usable without depscan.
 LOG = logging.getLogger("depscan.analysis_lib")
 
+# purl types already warned about as uncovered in this process.
+_WARNED_UNCOVERED_TYPES: set = set()
+
 
 def search_guarding_coverage(search_logic, term, **kwargs):
     """Run a single-term vdb search, turning a shard coverage gap into a
@@ -34,6 +37,11 @@ def search_guarding_coverage(search_logic, term, **kwargs):
         return search_logic(term, **kwargs)
     except ShardCoverageError as e:
         purl_type = term.split("pkg:", 1)[-1].split("/", 1)[0] if term.startswith("pkg:") else term
+        # One warning per type: a BOM with hundreds of components of an
+        # uncovered type would otherwise repeat the same line for each.
+        if purl_type in _WARNED_UNCOVERED_TYPES:
+            return []
+        _WARNED_UNCOVERED_TYPES.add(purl_type)
         LOG.warning(
             "purl type '%s' has no local shard, so components of that type "
             "were NOT assessed; this is not a clean result. %s",

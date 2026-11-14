@@ -371,6 +371,7 @@ def test_search_guarding_coverage_warns_instead_of_raising(monkeypatch, caplog):
 
     from analysis_lib import search as search_mod
 
+    monkeypatch.setattr(search_mod, "_WARNED_UNCOVERED_TYPES", set())
     calls = []
 
     def raising_logic(term, **kwargs):
@@ -391,6 +392,16 @@ def test_search_guarding_coverage_warns_instead_of_raising(monkeypatch, caplog):
     assert "'mysterytype'" in messages
     assert "NOT assessed" in messages
     assert "this is not a clean result" in messages
+    # A second component of the same type is still left out, but the type is
+    # not warned about again.
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="depscan.analysis_lib"):
+        again = search_mod.search_guarding_coverage(
+            raising_logic, "pkg:mysterytype/other@2.0.0", with_data=True
+        )
+    assert again == []
+    assert len(calls) == 2
+    assert not caplog.records
 
 
 def test_search_guarding_coverage_passes_results_through():

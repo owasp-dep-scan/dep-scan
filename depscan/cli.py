@@ -502,7 +502,11 @@ def shards_refresh_needed(shard_names, store_dir=None):
     missing = [name for name in shard_names if name not in present]
     if missing:
         return True, f"missing shards: {', '.join(missing)}"
+    # Only the shards this scan reads decide; an old shard it does not need
+    # would otherwise force a refresh of the needed ones on every run.
     for shard in shards:
+        if shard.get("name") not in shard_names:
+            continue
         age_days = shard.get("age_days")
         if age_days is None or age_days * 24 >= VDB_AGE_HOURS:
             return True, "stale"

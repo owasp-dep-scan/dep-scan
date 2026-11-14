@@ -48,15 +48,22 @@ def test_depscan_never_enables_vdb_auto_fetch():
     reaching for the network mid-run is a behaviour users must opt into at
     the vdb level, never one depscan enables for them. Relaxing this test
     means changing that decision deliberately."""
+    import analysis_lib
     import depscan
+    import server_lib
 
-    package_root = Path(depscan.__file__).parent
     offenders = []
-    for path in package_root.rglob("*.py"):
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-            code = line.split("#", 1)[0]
-            if "VDB_AUTO_FETCH" in code:
-                offenders.append(f"{path.relative_to(package_root.parent)}:{lineno}")
+    scanned = 0
+    for package in (depscan, analysis_lib, server_lib):
+        package_root = Path(package.__file__).parent
+        for path in package_root.rglob("*.py"):
+            scanned += 1
+            for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+                code = line.split("#", 1)[0]
+                if "VDB_AUTO_FETCH" in code:
+                    offenders.append(f"{path.relative_to(package_root.parent)}:{lineno}")
+    # Positive control: the walk found the sources it is meant to check.
+    assert scanned > 20
     assert offenders == []
 
 
@@ -252,6 +259,15 @@ def test_shards_refresh_needed_policy(vdb_home, monkeypatch):
     # A shard older than the window refreshes.
     monkeypatch.setattr("vdb.lib.db_cmd.store_status", lambda store_dir=None: status_with(stale))
     needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    assert needed is True and reason == "stale"
+    # An old shard the scan does not read does not force a refresh.
+    stale_other = [{"name": "pypi", "age_days": 0.5}, {"name": "npm", "age_days": 30.0}]
+    monkeypatch.setattr(
+        "vdb.lib.db_cmd.store_status", lambda store_dir=None: status_with(stale_other)
+    )
+    needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    assert needed is False and reason is None
+    needed, reason = cli.shards_refresh_needed(["pypi", "npm"], store_dir=store)
     assert needed is True and reason == "stale"
     # So does a shard whose age cannot be determined.
     monkeypatch.setattr(
