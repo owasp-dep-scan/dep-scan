@@ -14,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from depscan import cli
+from depscan.lib import vdb_setup
 
 
 @pytest.fixture
@@ -31,12 +31,12 @@ def vdb_home(tmp_path, monkeypatch):
     store = home / "shards"
     store.mkdir()
     monkeypatch.setenv("VDB_HOME", str(home))
-    monkeypatch.setattr(cli.config, "DATA_DIR", str(home))
-    monkeypatch.setattr(cli.config, "VDB_BIN_FILE", str(home / "data.vdb7"))
-    monkeypatch.setattr(cli.config, "VDB_BIN_INDEX", str(home / "data.index.vdb7"))
-    monkeypatch.setattr(cli.config, "VDB_SHARDS_DIR", str(store))
+    monkeypatch.setattr(vdb_setup.config, "DATA_DIR", str(home))
+    monkeypatch.setattr(vdb_setup.config, "VDB_BIN_FILE", str(home / "data.vdb7"))
+    monkeypatch.setattr(vdb_setup.config, "VDB_BIN_INDEX", str(home / "data.index.vdb7"))
+    monkeypatch.setattr(vdb_setup.config, "VDB_SHARDS_DIR", str(store))
     yield home
-    cli.db_lib.reset_connections()
+    vdb_setup.db_lib.reset_connections()
 
 
 # ---------------------------------------------------------------------------
@@ -70,17 +70,21 @@ def test_depscan_never_enables_vdb_auto_fetch():
 
 def test_shard_setup_does_not_enable_auto_fetch(vdb_home, monkeypatch):
     """Running the shard-mode setup must leave the environment untouched."""
-    monkeypatch.setattr(cli, "refresh_shards_with_retries", lambda names, store_dir=None: names)
     monkeypatch.setattr(
-        cli,
+        vdb_setup, "refresh_shards_with_retries", lambda names, store_dir=None: names
+    )
+    monkeypatch.setattr(
+        vdb_setup,
         "report_shard_coverage",
         lambda types, store_dir=None: SimpleNamespace(
             uncovered_types=frozenset(), stale_shards=()
         ),
     )
-    monkeypatch.setattr(cli, "connect_shard_as_main", lambda shard_dir, store_dir: None)
-    monkeypatch.setattr(cli, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x"))
-    cli.setup_shards_for_scan(["pypi"])
+    monkeypatch.setattr(vdb_setup, "connect_shard_as_main", lambda shard_dir, store_dir: None)
+    monkeypatch.setattr(
+        vdb_setup, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x")
+    )
+    vdb_setup.setup_shards_for_scan(["pypi"])
     assert os_environ_truthy("VDB_AUTO_FETCH") is False
 
 
@@ -108,7 +112,9 @@ def _args(**kwargs):
 
 
 def test_collect_purl_types_from_single_purl():
-    assert cli.collect_purl_types(_args(search_purl="pkg:pypi/requests@2.32.1"), ".") == ["pypi"]
+    assert vdb_setup.collect_purl_types(_args(search_purl="pkg:pypi/requests@2.32.1"), ".") == [
+        "pypi"
+    ]
 
 
 def test_collect_purl_types_dedupes_and_lowercases(tmp_path):
@@ -125,14 +131,14 @@ def test_collect_purl_types_dedupes_and_lowercases(tmp_path):
             }
         )
     )
-    assert cli.collect_purl_types(_args(bom=str(bom)), ".") == ["npm", "pypi"]
+    assert vdb_setup.collect_purl_types(_args(bom=str(bom)), ".") == ["npm", "pypi"]
 
 
 def test_collect_purl_types_empty_without_known_types(tmp_path):
     """When depscan generates the BOM itself, the types are not known before
     matching and shard mode cannot apply."""
-    assert cli.collect_purl_types(_args(), str(tmp_path)) == []
-    assert cli.collect_purl_types(_args(bom=str(tmp_path / "missing.json")), ".") == []
+    assert vdb_setup.collect_purl_types(_args(), str(tmp_path)) == []
+    assert vdb_setup.collect_purl_types(_args(bom=str(tmp_path / "missing.json")), ".") == []
 
 
 # ---------------------------------------------------------------------------
@@ -148,7 +154,9 @@ def test_setup_shards_refreshes_canonical_shards(vdb_home, monkeypatch):
     connect_calls = []
     coverage_calls = []
 
-    monkeypatch.setattr(cli, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x"))
+    monkeypatch.setattr(
+        vdb_setup, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x")
+    )
 
     def fake_refresh(shard_names, store_dir=None, attempts=None):
         refresh_calls.append((list(shard_names), store_dir))
@@ -161,11 +169,11 @@ def test_setup_shards_refreshes_canonical_shards(vdb_home, monkeypatch):
         coverage_calls.append((sorted(purl_types), store_dir))
         return SimpleNamespace(uncovered_types=frozenset(), stale_shards=())
 
-    monkeypatch.setattr(cli, "refresh_shards_with_retries", fake_refresh)
-    monkeypatch.setattr(cli, "connect_shard_as_main", fake_connect)
-    monkeypatch.setattr(cli, "report_shard_coverage", fake_coverage)
+    monkeypatch.setattr(vdb_setup, "refresh_shards_with_retries", fake_refresh)
+    monkeypatch.setattr(vdb_setup, "connect_shard_as_main", fake_connect)
+    monkeypatch.setattr(vdb_setup, "report_shard_coverage", fake_coverage)
 
-    connected = cli.setup_shards_for_scan(["pypi", "npm"])
+    connected = vdb_setup.setup_shards_for_scan(["pypi", "npm"])
     store = str(vdb_home / "shards")
     # Positive controls: the canonical shard list reached vdb's refresh, the
     # first shard was connected as the main database, and coverage was
@@ -185,28 +193,32 @@ def test_setup_shards_skips_refresh_when_fresh(vdb_home, monkeypatch):
     from depscan.lib.config import write_vdb_image_marker
 
     write_vdb_image_marker("shards:pypi", str(vdb_home))
-    monkeypatch.setattr(cli, "shards_refresh_needed", lambda marker, store_dir=None: (False, None))
+    monkeypatch.setattr(
+        vdb_setup, "shards_refresh_needed", lambda marker, store_dir=None: (False, None)
+    )
     refresh_calls = []
     monkeypatch.setattr(
-        cli, "refresh_shards_with_retries", lambda *a, **k: refresh_calls.append(a)
+        vdb_setup, "refresh_shards_with_retries", lambda *a, **k: refresh_calls.append(a)
     )
-    monkeypatch.setattr(cli, "connect_shard_as_main", lambda shard_dir, store_dir: None)
+    monkeypatch.setattr(vdb_setup, "connect_shard_as_main", lambda shard_dir, store_dir: None)
     monkeypatch.setattr(
-        cli,
+        vdb_setup,
         "report_shard_coverage",
         lambda types, store_dir=None: SimpleNamespace(
             uncovered_types=frozenset(), stale_shards=()
         ),
     )
-    assert cli.setup_shards_for_scan(["pypi"]) == ["pypi"]
+    assert vdb_setup.setup_shards_for_scan(["pypi"]) == ["pypi"]
     assert refresh_calls == []
 
 
 def test_setup_shards_exits_when_nothing_lands(vdb_home, monkeypatch):
-    monkeypatch.setattr(cli, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x"))
-    monkeypatch.setattr(cli, "refresh_shards_with_retries", lambda names, store_dir=None: [])
+    monkeypatch.setattr(
+        vdb_setup, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x")
+    )
+    monkeypatch.setattr(vdb_setup, "refresh_shards_with_retries", lambda names, store_dir=None: [])
     with pytest.raises(SystemExit) as exc:
-        cli.setup_shards_for_scan(["pypi"])
+        vdb_setup.setup_shards_for_scan(["pypi"])
     assert exc.value.code == 1
 
 
@@ -214,21 +226,23 @@ def test_unknown_purl_type_maps_to_the_cpe_shard(vdb_home, monkeypatch):
     """Types without their own shard resolve to the cpe complement shard in
     vdb's table, so they are fetched rather than assumed uncovered."""
     refresh_calls = []
-    monkeypatch.setattr(cli, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x"))
     monkeypatch.setattr(
-        cli,
+        vdb_setup, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x")
+    )
+    monkeypatch.setattr(
+        vdb_setup,
         "refresh_shards_with_retries",
         lambda names, store_dir=None: refresh_calls.append(list(names)) or list(names),
     )
-    monkeypatch.setattr(cli, "connect_shard_as_main", lambda shard_dir, store_dir: None)
+    monkeypatch.setattr(vdb_setup, "connect_shard_as_main", lambda shard_dir, store_dir: None)
     monkeypatch.setattr(
-        cli,
+        vdb_setup,
         "report_shard_coverage",
         lambda types, store_dir=None: SimpleNamespace(
             uncovered_types=frozenset(), stale_shards=()
         ),
     )
-    cli.setup_shards_for_scan(["notarealtype"])
+    vdb_setup.setup_shards_for_scan(["notarealtype"])
     assert refresh_calls == [["cpe"]]
 
 
@@ -247,38 +261,38 @@ def test_shards_refresh_needed_policy(vdb_home, monkeypatch):
     stale = [{"name": "pypi", "age_days": 3.0}]
     unknown_age = [{"name": "pypi", "age_days": None}]
 
-    monkeypatch.setattr(cli.db_lib, "needs_update", lambda **kw: False)
+    monkeypatch.setattr(vdb_setup.db_lib, "needs_update", lambda **kw: False)
     # A store already holding fresh shards serves a subset without refreshing.
     monkeypatch.setattr(
         "vdb.lib.db_cmd.store_status", lambda store_dir=None: status_with(fresh_pair)
     )
-    needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi"], store_dir=store)
     assert needed is False and reason is None
     # A shard missing from the store refreshes, naming it.
-    needed, reason = cli.shards_refresh_needed(["pypi", "npm", "golang"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi", "npm", "golang"], store_dir=store)
     assert needed is True and reason == "missing shards: golang"
     # A shard older than the window refreshes.
     monkeypatch.setattr("vdb.lib.db_cmd.store_status", lambda store_dir=None: status_with(stale))
-    needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi"], store_dir=store)
     assert needed is True and reason == "stale"
     # An old shard the scan does not read does not force a refresh.
     stale_other = [{"name": "pypi", "age_days": 0.5}, {"name": "npm", "age_days": 30.0}]
     monkeypatch.setattr(
         "vdb.lib.db_cmd.store_status", lambda store_dir=None: status_with(stale_other)
     )
-    needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi"], store_dir=store)
     assert needed is False and reason is None
-    needed, reason = cli.shards_refresh_needed(["pypi", "npm"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi", "npm"], store_dir=store)
     assert needed is True and reason == "stale"
     # So does a shard whose age cannot be determined.
     monkeypatch.setattr(
         "vdb.lib.db_cmd.store_status", lambda store_dir=None: status_with(unknown_age)
     )
-    needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi"], store_dir=store)
     assert needed is True and reason == "stale"
     # An empty store refreshes too (everything is missing).
     monkeypatch.setattr("vdb.lib.db_cmd.store_status", lambda store_dir=None: {"shards": []})
-    needed, reason = cli.shards_refresh_needed(["pypi"], store_dir=store)
+    needed, reason = vdb_setup.shards_refresh_needed(["pypi"], store_dir=store)
     assert needed is True and reason == "missing shards: pypi"
 
 
@@ -303,7 +317,7 @@ def test_report_shard_coverage_warns_for_uncovered_types(vdb_home, monkeypatch, 
 
     monkeypatch.setattr(shard_store, "coverage_for_types", fake_coverage)
     with caplog.at_level("WARNING"):
-        coverage = cli.report_shard_coverage(["swift", "pub", "pypi"], store_dir="store-x")
+        coverage = vdb_setup.report_shard_coverage(["swift", "pub", "pypi"], store_dir="store-x")
     assert coverage.uncovered_types == frozenset({"swift", "pub"})
     # Positive control: vdb's coverage was asked about exactly these types.
     assert calls == [(["pub", "pypi", "swift"], "store-x")]
@@ -320,17 +334,17 @@ def test_report_shard_coverage_warns_for_uncovered_types(vdb_home, monkeypatch, 
 
 def test_connect_shard_as_main_points_everything_at_the_shard(vdb_home, monkeypatch, tmp_path):
     resets = []
-    monkeypatch.setattr(cli.db_lib, "reset_connections", lambda: resets.append("db"))
+    monkeypatch.setattr(vdb_setup.db_lib, "reset_connections", lambda: resets.append("db"))
     import vdb.lib.shard_store as shard_store
 
     monkeypatch.setattr(shard_store, "reset", lambda: resets.append("store"))
     shard_dir = str(tmp_path.resolve() / "shards" / "pypi")
     store_dir = str(tmp_path.resolve() / "shards")
-    cli.connect_shard_as_main(shard_dir, store_dir)
-    assert cli.config.DATA_DIR == shard_dir
-    assert cli.config.VDB_BIN_FILE == os.path.join(shard_dir, "data.vdb7")
-    assert cli.config.VDB_BIN_INDEX == os.path.join(shard_dir, "data.index.vdb7")
-    assert cli.config.VDB_SHARDS_DIR == store_dir
+    vdb_setup.connect_shard_as_main(shard_dir, store_dir)
+    assert vdb_setup.config.DATA_DIR == shard_dir
+    assert vdb_setup.config.VDB_BIN_FILE == os.path.join(shard_dir, "data.vdb7")
+    assert vdb_setup.config.VDB_BIN_INDEX == os.path.join(shard_dir, "data.index.vdb7")
+    assert vdb_setup.config.VDB_SHARDS_DIR == store_dir
 
     assert os.environ["VDB_HOME"] == shard_dir
     assert os.environ["VDB_SHARDS_DIR"] == store_dir
@@ -343,13 +357,13 @@ def test_connect_shard_as_main_points_everything_at_the_shard(vdb_home, monkeypa
 
 
 def _build_one_row_database(home):
-    cli.db_lib.reset_connections()
-    _, index_conn = cli.db_lib.get()
+    vdb_setup.db_lib.reset_connections()
+    _, index_conn = vdb_setup.db_lib.get()
     index_conn.execute(
         "INSERT INTO cve_index(cve_id, type, namespace, name, vers, purl_prefix) "
         "VALUES('CVE-2024-1', 'pypi', '', 'requests', 'vers:pypi/>=2.0', 'pkg:pypi/requests')"
     )
-    cli.db_lib.reset_connections()
+    vdb_setup.db_lib.reset_connections()
 
 
 def test_interrupted_refresh_leaves_previous_database_usable(vdb_home, monkeypatch):
@@ -377,9 +391,11 @@ def test_interrupted_refresh_leaves_previous_database_usable(vdb_home, monkeypat
         raise ConnectionError("simulated interruption mid-download")
 
     monkeypatch.setattr(orasclient, "download_image", exploding_download)
-    monkeypatch.setattr(cli.time, "sleep", lambda s: None)
+    monkeypatch.setattr(vdb_setup.time, "sleep", lambda s: None)
     with pytest.raises(VdbDbCommandError, match="left untouched"):
-        cli.download_vdb_with_retries("ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz", attempts=1)
+        vdb_setup.download_vdb_with_retries(
+            "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz", attempts=1
+        )
     # Positive control: the stubbed fetch ran, so the failure path is the one
     # under test.
     assert fetch_calls == ["ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"]
@@ -390,10 +406,10 @@ def test_interrupted_refresh_leaves_previous_database_usable(vdb_home, monkeypat
     # directory of this failed attempt may appear beside the database)...
     assert not (vdb_home / "vdb.meta").exists()
     # ...and the database still opens and answers.
-    _, index_conn = cli.db_lib.get(read_only=True)
+    _, index_conn = vdb_setup.db_lib.get(read_only=True)
     row = index_conn.execute("SELECT count(*) FROM cve_index").fetchone()
     assert row is not None and row[0] == 1
-    cli.db_lib.reset_connections()
+    vdb_setup.db_lib.reset_connections()
 
 
 def test_interrupted_shard_refresh_leaves_previous_shard_usable(vdb_home, monkeypatch):
@@ -411,7 +427,7 @@ def test_interrupted_shard_refresh_leaves_previous_shard_usable(vdb_home, monkey
         raise ShardFetchError("simulated fetch failure")
 
     monkeypatch.setattr(shard_store, "fetch_shards", failing_fetch)
-    monkeypatch.setattr(cli.time, "sleep", lambda s: None)
+    monkeypatch.setattr(vdb_setup.time, "sleep", lambda s: None)
     with pytest.raises(ShardFetchError):
-        cli.refresh_shards_with_retries(["npm", "pypi"], store_dir=str(store), attempts=1)
+        vdb_setup.refresh_shards_with_retries(["npm", "pypi"], store_dir=str(store), attempts=1)
     assert (existing / "marker").read_text() == "previous complete artifact"

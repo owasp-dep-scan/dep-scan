@@ -191,12 +191,6 @@ def test_version_in_range_uses_the_purl_scheme_not_generic():
     assert version_in_range("1.0-sp1", "1.0", "1.1") is False
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="vulnerability-db 7.0.5 orders pypi versions with a semver "
-    "approximation, not PEP 440: post-releases sort above the next patch "
-    "release and dev releases above their final release.",
-)
 @pytest.mark.parametrize(
     ("version", "low", "high", "expected"),
     [
@@ -205,6 +199,9 @@ def test_version_in_range_uses_the_purl_scheme_not_generic():
     ],
 )
 def test_version_in_range_follows_pep_440_for_pypi(version, low, high, expected):
+    """vulnerability-db orders pypi versions by PEP 440: a post-release sits
+    between its release and the next patch release, and a dev release below
+    its final release."""
     from analysis_lib.helpers import version_in_range
 
     assert version_in_range(version, low, high, purl="pkg:pypi/django") is expected

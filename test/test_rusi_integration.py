@@ -793,7 +793,10 @@ def test_cdxgen_to_depscan_rustsec_app_end_to_end(tmp_path, rusi_env):
     from analysis_lib import VdrAnalysisKV
     from analysis_lib.utils import get_pkg_list
     from analysis_lib.vdr import VDRAnalyzer
+    from vdb.lib import config as vdb_config
 
+    if not os.path.isfile(vdb_config.VDB_BIN_FILE):
+        pytest.skip("no local vulnerability database to search")
     pkg_list, _lifecycles = get_pkg_list(str(bom_file))
     vopts = VdrAnalysisKV(
         project_type="rust",

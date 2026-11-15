@@ -130,9 +130,9 @@ def test_download_flavor_calls_refresh_with_resolved_image(vdb_home, monkeypatch
         calls.append(url)
         return {"image": url, "meta": {}}
 
-    from depscan import cli
+    from depscan.lib import vdb_setup
 
-    monkeypatch.setattr(cli, "download_vdb_with_retries", fake_refresh)
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", fake_refresh)
     parser = _build_parser()
     args = parser.parse_args(["download", "--flavor", "app-only"])
     assert cmd_download(args) == 0
@@ -148,9 +148,9 @@ def test_download_zst_compression_passed_through(vdb_home, monkeypatch):
         calls.append(url)
         return {"image": url, "meta": {}}
 
-    from depscan import cli
+    from depscan.lib import vdb_setup
 
-    monkeypatch.setattr(cli, "download_vdb_with_retries", fake_refresh)
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", fake_refresh)
     parser = _build_parser()
     args = parser.parse_args(["download", "--flavor", "full", "--compression", "zst"])
     assert cmd_download(args) == 0
@@ -164,9 +164,9 @@ def test_download_image_override_verbatim(vdb_home, monkeypatch):
         calls.append(url)
         return {"image": url, "meta": {}}
 
-    from depscan import cli
+    from depscan.lib import vdb_setup
 
-    monkeypatch.setattr(cli, "download_vdb_with_retries", fake_refresh)
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", fake_refresh)
     parser = _build_parser()
     args = parser.parse_args(["download", "--image", "registry.example.com/vdb:v1"])
     assert cmd_download(args) == 0
@@ -184,9 +184,9 @@ def test_download_shards_calls_refresh_shards_with_names(vdb_home, monkeypatch):
         calls.append((list(shard_names), store_dir))
         return list(shard_names)
 
-    from depscan import cli
+    from depscan.lib import vdb_setup
 
-    monkeypatch.setattr(cli, "refresh_shards_with_retries", fake_refresh_shards)
+    monkeypatch.setattr(vdb_setup, "refresh_shards_with_retries", fake_refresh_shards)
     parser = _build_parser()
     args = parser.parse_args(["download", "--shards", "pypi", "npm"])
     assert cmd_download(args) == 0
