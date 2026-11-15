@@ -1,0 +1,27 @@
+packages/server-lib/pyproject.toml
+  s_d63e9c63bb6307::t_716ceb3a84e52b 9
+pyproject.toml
+  s_d63e9c63bb6307::t_716ceb3a84e52b 9
+packages/analysis-lib/tests/test_utils.py
+  s_d63e9c63bb6307::t_b851793fb27f0d 202-204
+packages/analysis-lib/pyproject.toml
+  s_d63e9c63bb6307::t_716ceb3a84e52b 9
+uv.lock
+  s_d63e9c63bb6307::t_793725d24ca172 73,82,86,88,811,848,1449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a0e064fcf491451ed5bac44c6006b5e6a1b37f93",
+  "prompts": {},
+  "sessions": {
+    "s_d63e9c63bb6307": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_4ce7d85d-f5e1-4c57-9400-ff4a186e48f3",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

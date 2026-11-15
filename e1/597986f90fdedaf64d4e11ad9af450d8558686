@@ -1,0 +1,50 @@
+depscan/api.py
+  s_17b3cbcaeffebd::t_df09f0cae20a01 240,255-257,317,325,370-373,397-399
+  s_17b3cbcaeffebd::t_2909a66f5f85fe 1-239,241-254,258-316,318-324,326-369,374-396,400-564
+depscan/lib/pipeline.py
+  s_17b3cbcaeffebd::t_d6cd64459d636d 507-510
+  s_17b3cbcaeffebd::t_ba5d013e5ee4ad 463
+  s_17b3cbcaeffebd::t_d8af337868c67e 772-774
+  s_17b3cbcaeffebd::t_452f647f9a4e49 96-98
+  s_17b3cbcaeffebd::t_0b293f31d1915e 3-7,29-30
+  s_17b3cbcaeffebd::t_d5c55b925061d4 385-388
+  s_17b3cbcaeffebd::t_37c7d85f03b10e 410
+  s_17b3cbcaeffebd::t_e9923f017bba5b 710
+  s_17b3cbcaeffebd::t_7f739bda6bc333 217-254,281
+  s_17b3cbcaeffebd::t_9fff7aa243927a 838-841
+packages/server-lib/src/server_lib/__init__.py
+  s_17b3cbcaeffebd::t_b9d1949d41dadf 27-32
+depscan/cli.py
+  s_17b3cbcaeffebd::t_f7ded0f1094ea0 7,30-32,35-36,39-40
+test/test_cli_inputs.py
+  s_17b3cbcaeffebd::t_171df38144c707 116,131-134
+  s_17b3cbcaeffebd::t_11ae6affb7aaef 121-123
+  s_17b3cbcaeffebd::t_8bcb0e593ef618 323
+  s_17b3cbcaeffebd::t_16227e104dbdf5 18
+  s_17b3cbcaeffebd::t_d2173dd2a088ce 256,276,295,307,332,349,369,396,411,428,446,470,484,507,548
+test/snapshots.py
+  s_17b3cbcaeffebd::t_9545f31c8480d5 20-21
+  s_17b3cbcaeffebd::t_4b25f09e60a73a 110
+test/test_api.py
+  s_17b3cbcaeffebd::t_41f3ea8c354a77 181
+  s_17b3cbcaeffebd::t_7222ea684f1c26 168-170
+  s_17b3cbcaeffebd::t_df09f0cae20a01 315
+  s_17b3cbcaeffebd::t_14608df006194e 1-157,159-167,171-180,182-314,316-471
+  s_17b3cbcaeffebd::t_67d0e69828c579 158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1597986f90fdedaf64d4e11ad9af450d8558686",
+  "prompts": {},
+  "sessions": {
+    "s_17b3cbcaeffebd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_02f85404-622b-40af-9422-f24d8ce37779",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

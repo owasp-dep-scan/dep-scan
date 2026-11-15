@@ -1,0 +1,20 @@
+packages/server-lib/tests/test_simple.py
+  s_17b3cbcaeffebd::t_21fcdc04a0fe31 757-759
+  s_17b3cbcaeffebd::t_1eb227453a7954 708
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8ec7aa17c1acac9c38e5f63ca6f1ccfc07970257",
+  "prompts": {},
+  "sessions": {
+    "s_17b3cbcaeffebd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_02f85404-622b-40af-9422-f24d8ce37779",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

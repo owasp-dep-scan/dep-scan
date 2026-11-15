@@ -1,0 +1,36 @@
+packages/server-lib/tests/test_simple.py
+  s_17b3cbcaeffebd::t_7744ebc5ab00b5 449-455,459-465,467-471,474-481,484,488-490,497-499,504,506-513,516,518-523,529,531-565
+  s_17b3cbcaeffebd::t_7dcf0b879ac834 52-77
+  s_17b3cbcaeffebd::t_a5ebd09ff1ffaa 594,689,738,800,1188
+  s_17b3cbcaeffebd::t_20f80875d84596 601
+  s_17b3cbcaeffebd::t_50fd1b75fb2294 379,388,407,417
+  s_17b3cbcaeffebd::t_df09f0cae20a01 517
+  s_17b3cbcaeffebd::t_e698121d0374fb 37
+  s_17b3cbcaeffebd::t_21fcdc04a0fe31 757-759
+  s_17b3cbcaeffebd::t_1eb227453a7954 708
+packages/server-lib/src/server_lib/simple.py
+  s_17b3cbcaeffebd::t_2af0c5b57fe018 858-859
+  s_17b3cbcaeffebd::t_b63db8aa3a1e35 533
+  s_17b3cbcaeffebd::t_86c080b23e9789 778-811,832-836
+  s_17b3cbcaeffebd::t_a24c96aef6545c 6
+documentation/sidebars.ts
+  s_17b3cbcaeffebd::t_0fe3e57a4de5c0 20
+documentation/docs/python-api.mdx
+  s_17b3cbcaeffebd::t_c9b48ae145aec6 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d47e1c0d2c082cb684a18c0f2f67a308e2889697",
+  "prompts": {},
+  "sessions": {
+    "s_17b3cbcaeffebd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_02f85404-622b-40af-9422-f24d8ce37779",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

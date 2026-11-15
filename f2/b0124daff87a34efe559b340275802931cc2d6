@@ -1,0 +1,21 @@
+documentation/sidebars.ts
+  s_17b3cbcaeffebd::t_0fe3e57a4de5c0 20
+documentation/docs/python-api.mdx
+  s_17b3cbcaeffebd::t_c9b48ae145aec6 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2b0124daff87a34efe559b340275802931cc2d6",
+  "prompts": {},
+  "sessions": {
+    "s_17b3cbcaeffebd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_02f85404-622b-40af-9422-f24d8ce37779",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

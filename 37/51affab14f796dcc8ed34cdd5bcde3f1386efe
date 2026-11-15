@@ -1,0 +1,19 @@
+test/test_bom.py
+  s_9ad4b69018bce0::t_f5bed3cacc0994 267-268,287,301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3751affab14f796dcc8ed34cdd5bcde3f1386efe",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

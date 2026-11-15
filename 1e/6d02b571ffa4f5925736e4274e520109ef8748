@@ -1,0 +1,64 @@
+THREAT_MODEL.md
+  s_9ad4b69018bce0::t_38ccd4dfd71ca1 257
+.github/workflows/dockertests.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 35,79,129,193,244
+.github/workflows/justbuild.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 23
+.github/workflows/sea-linux.yml
+  s_9ad4b69018bce0::t_fae5092c3af28b 51
+.github/workflows/repotests-lifecycle-c.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 53
+.github/workflows/gobintests.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 36
+.github/workflows/snapshot_tests.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 27
+contrib/lima/depscan-ubuntu.yaml
+  s_9ad4b69018bce0::t_38ccd4dfd71ca1 74
+.github/workflows/pythonapp.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 82
+Dockerfile
+  s_9ad4b69018bce0::t_3d6912cd016e96 69
+build/sea-hooks/verify_versions.py
+  s_9ad4b69018bce0::t_ec0e5bf2112eb5 17,81,174,182-183
+.github/workflows/csafdemo.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 28
+.github/workflows/repotests-lifecycle-java.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 52
+.github/workflows/sea-win.yml
+  s_9ad4b69018bce0::t_fae5092c3af28b 45
+.github/workflows/pythonpublish.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 213
+.github/workflows/repotests-lifecycle-dotnet.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 50
+.github/workflows/repotests-lifecycle-go.yml
+  s_9ad4b69018bce0::t_176f4e263cabbf 51
+Dockerfile.al9
+  s_9ad4b69018bce0::t_3d6912cd016e96 66
+README.md
+  s_9ad4b69018bce0::t_27159bbc3ac984 138
+.github/workflows/sea-mac.yml
+  s_9ad4b69018bce0::t_fae5092c3af28b 55
+test/test_process_launch.py
+  s_9ad4b69018bce0::t_8333aa81d1ba92 37
+.github/workflows/repotests.yml
+  s_9ad4b69018bce0::t_686a4b22ca6650 325
+  s_9ad4b69018bce0::t_176f4e263cabbf 153
+.github/workflows/sea-alpine.yml
+  s_9ad4b69018bce0::t_fae5092c3af28b 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e6d02b571ffa4f5925736e4274e520109ef8748",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

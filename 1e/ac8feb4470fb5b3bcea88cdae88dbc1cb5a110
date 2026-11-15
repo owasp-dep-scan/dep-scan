@@ -1,0 +1,28 @@
+test/test_cli.py
+  s_d63e9c63bb6307::t_3f2813df5ea98a 4,6,471-501,503-504
+  s_d63e9c63bb6307::t_897ceb3c0e8aff 502
+test/test_pipeline.py
+  s_d63e9c63bb6307::t_30859d774b932e 67-69
+  s_d63e9c63bb6307::t_a0239e32778cc3 431
+  s_d63e9c63bb6307::t_897ceb3c0e8aff 133,192
+  s_d63e9c63bb6307::t_ce0e3910cd0c11 232-234
+  s_d63e9c63bb6307::t_04fb11fecac72b 1-66,70-132,134-191,193-231,235-240,244-315,318-430,432-444
+  s_d63e9c63bb6307::t_b380761360174a 241-243
+  s_d63e9c63bb6307::t_88f05eff9deff4 316-317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1eac8feb4470fb5b3bcea88cdae88dbc1cb5a110",
+  "prompts": {},
+  "sessions": {
+    "s_d63e9c63bb6307": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_4ce7d85d-f5e1-4c57-9400-ff4a186e48f3",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

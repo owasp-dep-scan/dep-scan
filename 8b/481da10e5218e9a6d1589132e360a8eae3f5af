@@ -1,0 +1,42 @@
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_9ad4b69018bce0::t_8ee4998a2cb816 389-396,398-405,410-435
+  s_9ad4b69018bce0::t_4be98477aef263 134,136,138-139
+  s_9ad4b69018bce0::t_ce32b356112612 645-652
+  s_9ad4b69018bce0::t_13b54393ecd93e 174-237
+  s_9ad4b69018bce0::t_b52432aa215d93 26-51,55,61-73,76-80,91,99-106
+  s_9ad4b69018bce0::t_e265acde5ee29a 272
+  s_9ad4b69018bce0::t_d20b553c558e84 3
+  s_9ad4b69018bce0::t_469611b7c98320 316,318
+  s_9ad4b69018bce0::t_d04d7a382a1f51 350,352,364
+  s_9ad4b69018bce0::t_7f42e703b5db57 452-456,465,486-488
+  s_9ad4b69018bce0::t_769e30a95f3fcd 704-710
+  s_9ad4b69018bce0::t_97136a8eb018ec 436-437
+packages/xbom-lib/src/xbom_lib/__init__.py
+  s_9ad4b69018bce0::t_326febb9901670 17-20
+depscan/lib/bom.py
+  s_9ad4b69018bce0::t_e4d3f25dfc4a51 1097,1103-1121,1135,1153,1170
+  s_9ad4b69018bce0::t_ca3b4fb76a5e04 108,113,120
+  s_9ad4b69018bce0::t_31a222ad677aaa 1221-1225
+  s_9ad4b69018bce0::t_ff097194052fb0 501-505,514-524,546-551
+  s_9ad4b69018bce0::t_ca3ab52048a803 75-78,84-107,109-112,114-119,121-143,147-151,157-172,174-177
+  s_9ad4b69018bce0::t_95507262b22e5e 1
+  s_9ad4b69018bce0::t_16964683198c8d 399-430
+  s_9ad4b69018bce0::t_a20c1f0b0d24db 144-146,152-156,173
+  s_9ad4b69018bce0::t_be6256868ad919 14,18-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b481da10e5218e9a6d1589132e360a8eae3f5af",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
