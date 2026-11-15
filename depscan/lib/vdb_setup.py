@@ -7,7 +7,6 @@ empty database. The ``depscan-vdb`` command reuses the download helpers.
 """
 
 import os
-import sys
 import time
 
 from analysis_lib.utils import get_all_pkg_list, get_pkg_list
@@ -262,6 +261,10 @@ def configure_vdb_readonly():
         os.environ["VDB_SQLITE_JOURNAL_MODE"] = "WAL"
 
 
+class VdbUnusableError(RuntimeError):
+    """The vulnerability database cannot answer a scan; the message says why."""
+
+
 def ensure_vdb_usable():
     """Stop the scan when the local vulnerability database cannot answer.
 
@@ -274,44 +277,43 @@ def ensure_vdb_usable():
     Reuses vdb's guard (``vdb.cli._warn_if_database_empty``, which prints the
     directory, the remedies and the v6-files hint) after opening the
     connections it needs; if the guard is not importable in a future vdb,
-    falls back to the row count through ``vdb.lib.db``. Exits with code 1
-    when the database cannot answer.
+    falls back to the row count through ``vdb.lib.db``. Raises
+    :class:`VdbUnusableError`, after logging why, when the database cannot
+    answer.
     """
     db_lib.reset_connections()
     try:
         db_lib.get(read_only=True)
     except Exception as e:  # noqa: BLE001 - any driver error means unusable
-        LOG.error(
-            "The vulnerability database at %s could not be opened (%s). "
-            "Fetch one with `depscan-vdb download` or 'vdb db refresh full'.",
-            config.DATA_DIR,
-            e,
+        message = (
+            f"The vulnerability database at {config.DATA_DIR} could not be opened ({e}). "
+            "Fetch one with `depscan-vdb download` or 'vdb db refresh full'."
         )
-        sys.exit(1)
+        LOG.error(message)
+        raise VdbUnusableError(message) from e
     try:
         # vdb's guard prints the empty-database message (directory, remedies,
         # v6-files paragraph) and returns True when the database is empty.
         from vdb.cli import _warn_if_database_empty
 
         if _warn_if_database_empty():
-            LOG.error(
+            message = (
                 "Cannot scan without a vulnerability database. Fetch one with "
                 "`depscan-vdb download` or 'vdb db refresh full'."
             )
-            sys.exit(1)
+            LOG.error(message)
+            raise VdbUnusableError(message)
         return
     except ImportError:
         pass
-    except SystemExit:
-        raise
     _, cve_index_count = db_lib.stats()
     if not cve_index_count:
-        LOG.error(
-            "The vulnerability database at %s is empty; no search can return "
-            "results. Fetch one with `depscan-vdb download` or 'vdb db refresh full'.",
-            config.DATA_DIR,
+        message = (
+            f"The vulnerability database at {config.DATA_DIR} is empty; no search can "
+            "return results. Fetch one with `depscan-vdb download` or 'vdb db refresh full'."
         )
-        sys.exit(1)
+        LOG.error(message)
+        raise VdbUnusableError(message)
 
 
 # --- opt-in shard mode -------------------------------------------------------
@@ -495,8 +497,9 @@ def setup_shards_for_scan(purl_types):
         )
         placed = refresh_shards_with_retries(shard_names, store_dir=store_dir)
         if not placed:
-            LOG.error("No shard could be refreshed into %s.", store_dir)
-            sys.exit(1)
+            message = f"No shard could be refreshed into {store_dir}."
+            LOG.error(message)
+            raise VdbUnusableError(message)
         write_vdb_image_marker(vdb_shards_marker(shard_names), marker_data_dir)
     connect_shard_as_main(os.path.join(store_dir, shard_names[0]), store_dir)
     report_shard_coverage(purl_types, store_dir=store_dir)
@@ -508,6 +511,7 @@ __all__ = [
     "configure_vdb_readonly",
     "connect_shard_as_main",
     "download_vdb_with_retries",
+    "VdbUnusableError",
     "ensure_vdb_usable",
     "refresh_shards_with_retries",
     "report_shard_coverage",

@@ -15,7 +15,7 @@ from typing import Any, Dict
 
 import pytest
 
-from depscan import cli
+from depscan import api, cli
 from depscan.cli_options import build_parser
 from depscan.lib import pipeline, vdb_setup
 from depscan.lib.bom import BomResult
@@ -113,11 +113,14 @@ def test_validate_scan_inputs_rejects_purl_with_bom(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# run_depscan integration
+# Scans through depscan.api
 # ---------------------------------------------------------------------------
 
 
 class _FakeVdrResult:
+    # Shaped like analysis_lib.VDRResult, which the API result builder reads
+    # after the (faked) summary stage ran.
+    success = True
     pkg_vulnerabilities = []
     prioritized_pkg_vuln_trees = {}
     reached_purls = {}
@@ -125,8 +128,10 @@ class _FakeVdrResult:
 
 @pytest.fixture
 def harness(monkeypatch, tmp_path):
-    """Stub every expensive/external call in run_depscan and record what the
-    BOM-resolution logic decided."""
+    """Stub every expensive/external call in a scan and record what the
+    BOM-resolution logic decided. The tests drive the scan through
+    ``depscan.api.scan``; the exit-code tests at the end of this file drive
+    ``cli.run_depscan`` on top of it."""
     calls: Dict[str, Any] = {
         "create_bom": [],
         "vdr": [],
@@ -248,7 +253,7 @@ def test_csaf_falls_back_to_vdr_when_lifecycle_wrote_no_bom(harness, tmp_path):
     args = _args(
         _base_argv(tmp_path, ["--csaf", "--reachability-analyzer", "SemanticReachability"])
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["csaf"] == [vdr_file]
 
@@ -268,7 +273,7 @@ def test_csaf_prefers_the_reported_bom_file(harness, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "create_bom", create_and_report)
 
     args = _args(_base_argv(tmp_path, ["--csaf"]))
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["csaf"] == [str(reports / "sbom-rust.cdx.json")]
 
@@ -287,7 +292,7 @@ def test_unreported_bom_on_disk_is_not_used(harness, tmp_path):
     args = _args(
         _base_argv(tmp_path, ["--csaf", "--reachability-analyzer", "SemanticReachability"])
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert stale not in harness["csaf"]
     assert harness["csaf"] == [vdr_file]
@@ -299,7 +304,7 @@ def test_csaf_skipped_when_neither_bom_nor_vdr_exists(harness, tmp_path, caplog)
     args = _args(
         _base_argv(tmp_path, ["--csaf", "--reachability-analyzer", "SemanticReachability"])
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["csaf"] == []
 
@@ -315,7 +320,7 @@ def test_csaf_failure_is_reported(harness, tmp_path, monkeypatch, caplog):
         _base_argv(tmp_path, ["--csaf", "--reachability-analyzer", "SemanticReachability"])
     )
     with caplog.at_level("WARNING", logger=pipeline.LOG.name):
-        cli.run_depscan(args)
+        api.scan(args)
 
     assert any("CSAF export failed" in r.message for r in caplog.records)
 
@@ -324,7 +329,7 @@ def test_bom_file_is_dropped_when_not_written(harness, tmp_path):
     """A generator that reports success without producing the file must not
     leave a phantom path behind for the VDR analyzer."""
     args = _args(_base_argv(tmp_path, ["--reachability-analyzer", "SemanticReachability"]))
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["vdr"], "vdr_analyze_summarize was never reached"
     assert harness["vdr"][0]["bom_file"] is None
@@ -341,7 +346,7 @@ def test_bom_file_is_used_when_written(harness, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "create_bom", create_and_write)
 
     args = _args(_base_argv(tmp_path))
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["vdr"][0]["bom_file"] == str(reports / "sbom-rust.cdx.json")
 
@@ -361,7 +366,7 @@ def test_template_report_not_given_a_phantom_bom_path(harness, tmp_path):
             ],
         )
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["template"], "render_template_report was never called"
     assert harness["template"][0]["bom_file"] is None
@@ -388,7 +393,7 @@ def test_lifecycle_bom_dir_does_not_leak_across_project_types(harness, tmp_path,
     type then re-derived its state from the first type's output directory."""
     args = _args(_base_argv(tmp_path, ["--reachability-analyzer", "SemanticReachability"]))
     args.project_type = ["rust", "python"]
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert args.bom_dir is None, "args must not be mutated by lifecycle analysis"
     assert [c["project_type"] for c in harness["vdr"]] == ["rust", "python"]
@@ -403,7 +408,7 @@ def test_bom_dir_mode_is_honoured(harness, tmp_path):
     _write_bom(str(bom_dir / "sbom-rust.cdx.json"))
 
     args = _args(["--bom-dir", str(bom_dir), "--no-banner"])
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["create_bom"] == [], "BOM generation must be skipped in bom-dir mode"
     assert harness["get_all_pkg_list"] == [str(bom_dir)]
@@ -420,7 +425,7 @@ def test_purl_mode_does_not_touch_bom_paths(harness, tmp_path):
             "--no-banner",
         ]
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["create_bom"] == []
     assert harness["get_all_pkg_list"] == []
@@ -438,7 +443,7 @@ def test_lone_file_in_bom_dir_is_the_project_bom(harness, tmp_path):
     harness["_vdr_holder"]["file"] = vdr_file
 
     args = _args(["--bom-dir", str(bom_dir), "--csaf", "--no-banner"])
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["vdr"][0]["bom_file"] == only_bom
     assert harness["csaf"] == [only_bom]
@@ -462,7 +467,7 @@ def test_lone_lifecycle_document_is_the_project_bom(harness, tmp_path, monkeypat
     args = _args(
         _base_argv(tmp_path, ["--csaf", "--reachability-analyzer", "SemanticReachability"])
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     build_bom = str(reports / "sbom-build-rust.cdx.json")
     assert harness["vdr"][0]["bom_file"] == build_bom
@@ -476,7 +481,7 @@ def test_explicit_bom_is_the_project_bom(harness, tmp_path):
     args = _args(
         ["--bom", bom, "--reports-dir", str(tmp_path / "reports"), "--no-banner", "--csaf"]
     )
-    cli.run_depscan(args)
+    api.scan(args)
 
     assert harness["vdr"][0]["bom_file"] == bom
     assert harness["csaf"] == [bom]
@@ -499,7 +504,7 @@ def test_fail_on_error_exits_when_bom_creation_fails(harness, tmp_path, monkeypa
 def test_bom_creation_failure_continues_without_flag(harness, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "create_bom", lambda *a, **k: BomResult(success=False))
     args = _args(_base_argv(tmp_path))
-    cli.run_depscan(args)
+    api.scan(args)
     assert harness["vdr"] == [], "no BOM means nothing to analyze, but no exit either"
 
 
@@ -540,5 +545,5 @@ def test_empty_package_list_continues_without_flag(harness, tmp_path, monkeypatc
     monkeypatch.setattr(pipeline, "get_pkg_list", lambda f: ([], []))
     bom = _write_bom(str(tmp_path / "given.cdx.json"))
     args = _args(["--bom", bom, "--reports-dir", str(tmp_path / "reports"), "--no-banner"])
-    cli.run_depscan(args)
+    api.scan(args)
     assert harness["vdr"] == []

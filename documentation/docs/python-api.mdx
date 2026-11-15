@@ -1,0 +1,100 @@
+---
+sidebar_position: 5
+---
+
+# Python API
+
+dep-scan can be driven from Python through `depscan.api`. The `depscan` command itself goes through this module, so a scan run from Python produces the same files and the same console output as the command line.
+
+:::note
+The Python API is new in 7.0 and may change before the 7.0.0 release.
+:::
+
+## Scanning
+
+`depscan.api.scan(options, render=True)` runs a scan and returns a `ScanResult`. The options are an `argparse.Namespace` built by the `depscan` command line parser; `scan_options()` returns its defaults with your overrides applied, so every command line option can be set by name.
+
+```python
+from depscan import api
+
+options = api.scan_options(bom="sbom.json", reports_dir="reports")
+result = api.scan(options)
+print(result.reports_dir, result.project_types)
+```
+
+An override name that is not a command line option raises `TypeError` naming it. If you parse the command line yourself, pass that namespace to `scan` directly.
+
+The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
+
+```python
+result = api.scan(options, render=False)
+```
+
+When a stage stops the scan, for example a `--bom` file that does not exist or an unusable vulnerability database, `scan` raises `depscan.api.ScanError` carrying the message the scan logged. It never exits the process and never returns a result with zero vulnerabilities in place of a stopped scan. The console settings a scan applies, such as `quiet=True`, stay in effect for later scans in the same process.
+
+## The scan result
+
+`ScanResult` holds what one scan produced:
+
+| Field | Meaning |
+| --- | --- |
+| `reports_dir` | The directory the scan wrote its files to. |
+| `project_types` | Every project type the scan ran for, including types skipped after producing nothing. |
+| `types` | One `TypeScanResult` per type that produced results, in scan order. |
+| `vulnerabilities` | Property: every vulnerability of every type, in type then write order. |
+
+Each `TypeScanResult` carries the `project_type`, the `bom_file` the type was scanned from, the `vdr_file` written for it (either is `None` when the scan produced no such file: a single-purl scan writes neither, and a scan that found no vulnerabilities writes no VDR), and the `vulnerabilities` as written to that VDR.
+
+```python
+for tscan in result.types:
+    print(tscan.project_type, tscan.bom_file, tscan.vdr_file, len(tscan.vulnerabilities))
+```
+
+## Loading a saved scan
+
+`load_scan(reports_dir)` rebuilds a `ScanResult` from a reports directory a scan wrote, without running a scan. It reads the VDR files of today's layout: the BOM name with `.vdr.json` (or the BOM name itself when it does not end in `.cdx.json`) and `depscan-universal.vdr.json` for a BOM directory scan. A directory with no VDR file raises `ScanError` rather than returning an empty result, so the directory of a scan that found no vulnerabilities cannot be loaded. A directory that several scans wrote to gives the VDRs of all of them.
+
+```python
+result = api.load_scan("reports")
+print(len(result.vulnerabilities))
+```
+
+## Querying vulnerabilities
+
+`query(result, *, purl=None, vuln_id=None, severities=None)` returns the VDR vulnerability objects of a result that match every filter given:
+
+```python
+advisories = api.query(result, purl="pkg:npm/@babel/core")
+critical = api.query(result, severities={"critical"})
+```
+
+A `purl` without a version matches every version, and the purl comparison follows purl semantics, so `pkg:npm/@babel/core` and `pkg:npm/%40babel/core` are the same package. `vuln_id` matches the vulnerability `id` or an id under its `references`, ignoring case, so a GHSA id finds the CVE entry that references it. When `purl` carries qualifiers or a subpath, the affected ref must carry the same ones. `severities` takes a CycloneDX severity name or a set of them (`critical`, `high`, `medium`, `low`, `info`, `none`, `unknown`) and matches them against the vulnerability's highest rating: the most severe rating, and of those the one with the greatest score. An empty set raises `ValueError`.
+
+## Explaining a scan
+
+`explain(result, mode="EndpointsAndReachables", prompts_file=None)` runs the explanation the `--explain` option renders and returns its text, with colour codes stripped:
+
+```python
+text = api.explain(result)
+```
+
+The explanation reads the reachables slices (`*reachables.slices*.json`) and the OpenAPI specifications (`*openapi*.json`) from `result.reports_dir`. When they are missing, or when nothing can be explained, `explain` raises `ScanError` naming what is missing instead of returning empty text. The `mode` values are those of `--explanation-mode`; in the `LLMPrompts` mode the prompts are written to `prompts_file`.
+
+## Comparing two scans
+
+`diff(old, new)` compares two results and returns a `ScanDiff`. Every vulnerability is keyed by the pair of its `id` and the ref of each of its `affects` entries, so the same advisory hitting two components counts once per component. Each list holds `DiffEntry` objects with the `id` and `ref` of the pair and the `old` and `new` vulnerability objects carrying it (`old` is `None` for a new pair, `new` is `None` for a fixed one).
+
+| Field | Meaning |
+| --- | --- |
+| `new` | Pairs that exist only in the new result. |
+| `fixed` | Pairs that exist only in the old result. |
+| `changed` | Pairs on both sides whose highest rating differs in severity or score. |
+
+```python
+changes = api.diff(old_result, new_result)
+print([(entry.id, entry.ref) for entry in changes.new])
+```
+
+## Exceptions
+
+`depscan.api.ScanError` is raised by `scan` when a stage stops the scan, and by `load_scan` and `explain` when their input lacks what they need; the message always names the reason. `scan_options` raises `TypeError` for an unknown option name.

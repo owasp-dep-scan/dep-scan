@@ -212,14 +212,13 @@ def test_setup_shards_skips_refresh_when_fresh(vdb_home, monkeypatch):
     assert refresh_calls == []
 
 
-def test_setup_shards_exits_when_nothing_lands(vdb_home, monkeypatch):
+def test_setup_shards_stops_when_nothing_lands(vdb_home, monkeypatch):
     monkeypatch.setattr(
         vdb_setup, "shards_refresh_needed", lambda marker, store_dir=None: (True, "x")
     )
     monkeypatch.setattr(vdb_setup, "refresh_shards_with_retries", lambda names, store_dir=None: [])
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(vdb_setup.VdbUnusableError, match="No shard could be refreshed"):
         vdb_setup.setup_shards_for_scan(["pypi"])
-    assert exc.value.code == 1
 
 
 def test_unknown_purl_type_maps_to_the_cpe_shard(vdb_home, monkeypatch):

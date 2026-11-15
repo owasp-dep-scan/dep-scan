@@ -4,6 +4,7 @@
 import os
 import sys
 
+from depscan import api
 from depscan.cli_options import build_parser
 from depscan.lib import pipeline
 
@@ -26,37 +27,21 @@ def run_depscan(args):
     Detects the project type, performs various scans and audits,
     and generates reports based on the results.
 
-    The work itself lives in the stage functions in
-    :mod:`depscan.lib.pipeline`; this function builds the scan context, calls
-    the stages in order and turns a stage's decision to stop into the exit
-    code the scan has always used. Server mode starts the server and returns
-    before any scan stage runs.
+    The scan itself runs through :func:`depscan.api.scan`; this function
+    starts server mode (which is not a scan) and turns a scan that stopped
+    early into the exit code the scan has always used.
     """
-    ctx = pipeline.build_context(args)
-    pipeline.configure_output(ctx)
     if args.server_mode:
-        return pipeline.start_server_mode(ctx)
+        ctx = pipeline.build_context(args)
+        pipeline.configure_output(ctx)
+        try:
+            return pipeline.start_server_mode(ctx)
+        except pipeline.ScanStageError:
+            # The database stage already logged why the server cannot start.
+            sys.exit(1)
     try:
-        # We have everything needed to start the composition analysis. There are many approaches to implementing an SCA tool.
-        # Our style of analysis is comparable to that of an intelligent Hubble telescope or a rover—examining the same subject through multiple optics, colors, and depths to gain a deeper understanding.
-        # We begin by iterating over the project types provided or assumed.
-        pipeline.stage_setup(ctx)
-        pipeline.stage_database(ctx)
-        pipeline.finalize_setup(ctx)
-        for project_type in ctx.project_types:
-            scan = pipeline.TypeScan(project_type=project_type)
-            if not pipeline.stage_inventory(ctx, scan):
-                continue
-            ctx.scans.append(scan)
-            pipeline.stage_analysis_licenses(ctx, scan)
-            pipeline.stage_analysis_risk(ctx, scan)
-            pipeline.announce_scan_targets(ctx, scan)
-            pipeline.stage_enrichment(ctx, scan)
-            pipeline.stage_matching(ctx, scan)
-            pipeline.stage_analysis_vdr(ctx, scan)
-            pipeline.stage_render_explain(ctx, scan)
-        pipeline.stage_render_reports(ctx)
-    except pipeline.ScanStageError:
+        api.scan(args)
+    except api.ScanError:
         # The stage already logged why the scan stops; this keeps the exit
         # code the scan has always used for these conditions.
         sys.exit(1)
