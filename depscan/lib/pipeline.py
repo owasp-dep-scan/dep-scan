@@ -288,6 +288,8 @@ def validate_scan_inputs(args):
                 f"The path `{args.bom}` passed via `--bom` is not a file. "
                 "Use `--bom-dir` to scan a directory of BOM files."
             )
+        elif bom_error := _bom_format_error(args.bom):
+            errors.append(bom_error)
     if args.bom_dir:
         if not os.path.exists(args.bom_dir):
             errors.append(
@@ -299,6 +301,31 @@ def validate_scan_inputs(args):
                 "Use `--bom` to scan a single BOM file."
             )
     return errors
+
+
+def _bom_format_error(bom_path):
+    """Describe why ``bom_path`` cannot be read as a CycloneDX JSON BOM.
+
+    Only the start of the file is read. The package reader parses JSON only,
+    so an XML or other document would otherwise yield zero packages and a
+    scan that looks clean.
+
+    :returns: An error message, or None when the file starts like JSON.
+    """
+    try:
+        with open(bom_path, "rb") as fp:
+            head = fp.read(4096)
+    except OSError as e:
+        return f"The BOM file `{bom_path}` passed via `--bom` cannot be read: {e}"
+    head = head.removeprefix(b"\xef\xbb\xbf").lstrip()
+    if head.startswith(b"{"):
+        return None
+    if head.startswith(b"<"):
+        return (
+            f"The BOM file `{bom_path}` passed via `--bom` is XML. depscan reads "
+            "CycloneDX JSON only; generate a JSON BOM with cdxgen."
+        )
+    return f"The BOM file `{bom_path}` passed via `--bom` is not a CycloneDX JSON document."
 
 
 def _check_search_order(args):
@@ -701,6 +728,10 @@ def _produce_boms(ctx, scan):
     # documents were written.
     if scan.bom_dir:
         scan.bom_files = get_all_bom_files(scan.bom_dir)
+        # Lifecycle mode points bom_dir at the reports directory, which need
+        # not hold the BOM the user passed with --bom.
+        if args.bom and os.path.realpath(args.bom) not in scan.bom_files:
+            scan.bom_files.insert(0, args.bom)
     # The BOM document for this scan: whichever a producer nominated, or -
     # when only one document is available at all - that one, since a lone
     # document is the project's BOM however it got here. None only when
@@ -718,8 +749,8 @@ def _produce_boms(ctx, scan):
 def _load_packages(ctx, scan):
     """Load the package list for this type from its BOM documents.
 
-    :return: True when there are packages or a BOM directory to aggregate;
-        False when the loop should move on to the next type.
+    :return: True when the type has packages to scan; False when the loop
+        should move on to the next type.
     """
     scan.pkg_list = list(ctx.purl_pkg_list)
     # We have a BOM directory. Let’s aggregate all packages from every file within it.
@@ -729,6 +760,12 @@ def _load_packages(ctx, scan):
             scan.bom_dir,
         )
         scan.pkg_list = get_all_pkg_list(scan.bom_dir)
+        if ctx.args.bom and os.path.realpath(ctx.args.bom) not in get_all_bom_files(scan.bom_dir):
+            seen = {pkg.get("bom-ref") or pkg.get("purl") for pkg in scan.pkg_list}
+            user_pkgs, _ = get_pkg_list(ctx.args.bom)
+            scan.pkg_list += [
+                pkg for pkg in user_pkgs if (pkg.get("bom-ref") or pkg.get("purl")) not in seen
+            ]
     # We are working with a single BOM file and will collect all packages from it accordingly.
     elif scan.bom_file:
         LOG.debug("Scanning using the bom file %s", scan.bom_file)
@@ -739,7 +776,9 @@ def _load_packages(ctx, scan):
                 scan.bom_file,
             )
         scan.pkg_list, _ = get_pkg_list(scan.bom_file)
-    if not scan.pkg_list and not scan.bom_dir:
+    # An empty package list is reported whatever its source. Matching zero
+    # packages would print "No vulnerabilities found", which reads as clean.
+    if not scan.pkg_list:
         if ctx.args.fail_on_error:
             LOG.error(
                 "No packages were found in the project and --fail-on-error is set; "

@@ -114,7 +114,7 @@ def test_stage_setup_switches_to_lifecycle_analyzer_for_semantic(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_stage_database_resolves_guards_and_loads_custom_data(tmp_path, monkeypatch):
+def test_stage_database_resolves_and_guards_the_database(tmp_path, monkeypatch):
     calls = {}
 
     def fake_resolve(args):
@@ -131,14 +131,8 @@ def test_stage_database_resolves_guards_and_loads_custom_data(tmp_path, monkeypa
         vdb_setup, "configure_vdb_readonly", lambda: calls.setdefault("readonly", True)
     )
     monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", lambda: calls.setdefault("guard", True))
-    monkeypatch.setattr(
-        pipeline.search, "load_custom_data", lambda path: calls.setdefault("custom", path)
-    )
     monkeypatch.setattr(pipeline, "VDB_USE_SHARDS", False)
-    custom = tmp_path / "custom.json"
-    custom.write_text("{}")
     ctx = _ctx(tmp_path, ["--bom", _write_bom(tmp_path / "sbom.cdx.json")])
-    ctx.args.custom_data = str(custom)
 
     pipeline.stage_database(ctx)
 
@@ -150,7 +144,55 @@ def test_stage_database_resolves_guards_and_loads_custom_data(tmp_path, monkeypa
     assert calls["needed"] == "oras://vdb-img"
     assert calls["readonly"] is True
     assert calls["guard"] is True
-    assert calls["custom"] == str(custom)
+
+
+def test_stage_database_stops_cleanly_when_the_download_fails(tmp_path, monkeypatch, caplog):
+    calls = {}
+
+    def failing_download(url):
+        calls["download"] = url
+        raise ConnectionError("connection refused")
+
+    monkeypatch.setattr(
+        vdb_setup, "resolve_scan_vdb_image", lambda args: ("oras://vdb-img", False, "app-only")
+    )
+    monkeypatch.setattr(vdb_setup, "vdb_download_needed", lambda url, data_dir: (True, "stale"))
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", failing_download)
+    monkeypatch.setattr(pipeline, "VDB_USE_SHARDS", False)
+    ctx = _ctx(tmp_path, ["--bom", _write_bom(tmp_path / "sbom.cdx.json")])
+
+    with caplog.at_level("ERROR", logger=pipeline.LOG.name):
+        with pytest.raises(pipeline.ScanStageError):
+            pipeline.stage_database(ctx)
+    assert calls["download"] == "oras://vdb-img"
+    messages = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert any(
+        "Could not download the vulnerability database oras://vdb-img" in m
+        and "connection refused" in m
+        for m in messages
+    )
+
+
+def test_finalize_setup_loads_custom_data_after_detecting_types(tmp_path, monkeypatch):
+    order = []
+    real_set_project_types = pipeline.set_project_types
+
+    def recording_set_project_types(args, src_dir):
+        order.append("types")
+        return real_set_project_types(args, src_dir)
+
+    monkeypatch.setattr(pipeline, "set_project_types", recording_set_project_types)
+    monkeypatch.setattr(
+        pipeline.search, "load_custom_data", lambda path: order.append(("custom", path))
+    )
+    custom = tmp_path / "custom.json"
+    custom.write_text("{}")
+    ctx = _ctx(tmp_path, ["--bom", _write_bom(tmp_path / "sbom.cdx.json")])
+    ctx.args.custom_data = str(custom)
+
+    pipeline.finalize_setup(ctx)
+
+    assert order == ["types", ("custom", str(custom))]
 
 
 def test_stage_database_stops_when_image_selection_fails(tmp_path, monkeypatch):
@@ -178,6 +220,66 @@ def test_stage_inventory_loads_packages_from_a_bom_fixture(tmp_path):
     assert len(scan.pkg_list) > 100
     assert all("purl" in pkg for pkg in scan.pkg_list[:10])
     assert isinstance(scan.scoped_pkgs, dict)
+
+
+@pytest.mark.parametrize(
+    "content, expected",
+    [
+        (b'<?xml version="1.0"?><bom xmlns="http://cyclonedx.org/schema/bom/1.6"/>', "is XML"),
+        (b"\xef\xbb\xbf  <bom/>", "is XML"),
+        (b"name,version\n", "is not a CycloneDX JSON document"),
+        (b"", "is not a CycloneDX JSON document"),
+    ],
+)
+def test_validate_scan_inputs_rejects_a_bom_that_is_not_json(tmp_path, content, expected):
+    bom = tmp_path / "sbom.cdx.json"
+    bom.write_bytes(content)
+    errors = pipeline.validate_scan_inputs(_args(["--bom", str(bom)]))
+    assert len(errors) == 1
+    assert expected in errors[0]
+
+
+def test_validate_scan_inputs_rejects_the_xml_fixture_and_accepts_json():
+    errors = pipeline.validate_scan_inputs(_args(["--bom", str(DATA_DIR / "bom-py.xml")]))
+    assert errors and "is XML" in errors[0]
+    assert pipeline.validate_scan_inputs(_args(["--bom", str(DATA_DIR / "bom-js.json")])) == []
+
+
+def test_stage_inventory_reads_the_bom_argument_in_lifecycle_mode(tmp_path):
+    """Semantic reachability switches to lifecycle mode, which points the BOM
+    directory at the empty reports directory. The --bom packages must still
+    be scanned."""
+    bom = str(DATA_DIR / "bom-js.json")
+    ctx = _ctx(tmp_path, ["--bom", bom, "--reachability-analyzer", "SemanticReachability"])
+    scan = pipeline.TypeScan(project_type="bom")
+    assert pipeline.stage_inventory(ctx, scan) is True
+    assert scan.lifecycle_mode is True
+    assert scan.bom_dir == os.path.realpath(ctx.reports_dir)
+    assert scan.bom_files[0] == bom
+    assert scan.bom_file == bom
+    expected, _ = pipeline.get_pkg_list(bom)
+    assert len(scan.pkg_list) == len(expected) > 100
+
+
+def test_stage_inventory_skips_a_bom_dir_with_no_packages(tmp_path, caplog):
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "sbom.cdx.json", components=[])
+    ctx = _ctx(tmp_path, ["--bom-dir", str(bom_dir)])
+    scan = pipeline.TypeScan(project_type="bom")
+    with caplog.at_level("INFO", logger=pipeline.LOG.name):
+        assert pipeline.stage_inventory(ctx, scan) is False
+    assert any("No packages were found" in r.getMessage() for r in caplog.records)
+
+
+def test_stage_inventory_records_the_bom_for_the_report_template(tmp_path):
+    """The template receives the BOM of a type even when the type is skipped
+    for having no packages, as before the stage split."""
+    bom = _write_bom(tmp_path / "sbom.cdx.json", components=[])
+    ctx = _ctx(tmp_path, ["--bom", bom])
+    scan = pipeline.TypeScan(project_type="bom")
+    assert pipeline.stage_inventory(ctx, scan) is False
+    assert ctx.bom_file == bom
 
 
 def test_stage_inventory_skips_a_type_when_no_bom_is_produced(tmp_path, monkeypatch):
@@ -387,7 +489,6 @@ def test_stage_analysis_vdr_writes_the_vdr_and_aggregates(tmp_path):
     assert scan.summary.get("HIGH") == 1
     assert ctx.summary == scan.summary
     assert ctx.vdr_file == str(vdr_file)
-    assert ctx.bom_file == bom
     assert ctx.all_pkg_vulnerabilities == [vuln]
     assert ctx.all_pkg_group_rows == {"group": [vuln]}
 
