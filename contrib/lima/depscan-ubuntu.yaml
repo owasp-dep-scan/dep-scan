@@ -71,7 +71,7 @@ provision:
     bash nodesource_setup.sh
     apt install -y nodejs
     rm nodesource_setup.sh
-    npm install -g node-gyp @cyclonedx/cdxgen
+    npm install -g node-gyp @cdxgen/cdxgen@13.8.0
     npx node-gyp install
     node -v
     npm -v

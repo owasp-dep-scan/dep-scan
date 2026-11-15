@@ -50,7 +50,7 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cyclonedx/cdxgen
+          npm install -g @cdxgen/cdxgen@13.8.0
       # LifeCycleAnalyzer tests
       - name: lifecycle-test attestation-client-samples
         run: |

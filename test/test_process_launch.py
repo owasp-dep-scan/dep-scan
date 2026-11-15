@@ -34,7 +34,7 @@ from xbom_lib.process import (
 
 windows_only = pytest.mark.skipif(sys.platform != "win32", reason="Windows batch file behaviour")
 
-# The shim that `npm install -g @cyclonedx/cdxgen` writes on Windows, with the
+# The shim that `npm install -g @cdxgen/cdxgen` writes on Windows, with the
 # package path swapped for the test script.
 NPM_SHIM_TEMPLATE = r"""@ECHO off
 GOTO start

@@ -135,7 +135,7 @@ dep-scan is ideal for use during continuous integration (CI) and as a local deve
 ### Scanning projects locally (Python version)
 
 ```bash
-sudo npm install -g @cyclonedx/cdxgen
+sudo npm install -g @cdxgen/cdxgen@13.8.0
 # Normal version recommended for most users (MIT)
 pip install owasp-depscan
 
