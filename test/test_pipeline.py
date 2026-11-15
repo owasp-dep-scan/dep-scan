@@ -544,3 +544,69 @@ def test_stage_render_reports_writes_every_report_file(tmp_path):
     assert ctx.vdr_file, "the summary stage must have produced a VDR file"
     vdr = json.loads(Path(ctx.vdr_file).read_text())
     assert vdr.get("annotations"), "the text report must be annotated into the VDR"
+
+
+def _redirect_ctx(tmp_path, reports_inside):
+    """A context whose src is a project and whose reports dir is set up.
+
+    ``reports_inside`` puts the reports directory under the project, which is
+    what the CLI default ``<cwd>/reports`` produces when depscan runs from the
+    project it scans.
+    """
+    src = tmp_path / "proj"
+    src.mkdir()
+    reports = src / "reports" if reports_inside else tmp_path / "elsewhere"
+    reports.mkdir(parents=True)
+    args = _args(["--reports-dir", str(reports), "--no-banner"])
+    ctx = pipeline.build_context(args)
+    ctx.src_dir = str(src)
+    ctx.reports_dir = str(reports)
+    ctx.depscan_options = {"reports_dir": str(reports)}
+    ctx.html_report_file = os.path.join(str(reports), "depscan.html")
+    ctx.txt_report_file = os.path.join(str(reports), "depscan.txt")
+    ctx.llm_prompt_file = os.path.join(str(reports), "depscan-prompts.md")
+    sample = reports / "depscan.toml.sample"
+    sample.write_text("profile = 'generic'\n")
+    return ctx, src, reports
+
+
+def test_prepare_lifecycle_paths_moves_reports_out_of_the_scanned_tree(tmp_path):
+    ctx, src, reports = _redirect_ctx(tmp_path, reports_inside=True)
+    scan = pipeline.TypeScan(project_type="python")
+    pipeline._prepare_lifecycle_paths(ctx, scan)
+    new_dir = ctx.reports_dir
+    assert not new_dir.startswith(str(src) + os.sep)
+    assert os.path.basename(new_dir) == "proj-reports"
+    assert os.path.isdir(new_dir)
+    assert ctx.depscan_options["reports_dir"] == new_dir
+    assert ctx.html_report_file == os.path.join(new_dir, "depscan.html")
+    assert ctx.txt_report_file == os.path.join(new_dir, "depscan.txt")
+    assert ctx.llm_prompt_file == os.path.join(new_dir, "depscan-prompts.md")
+    # The sample config written into the old directory follows the move.
+    assert os.path.exists(os.path.join(new_dir, "depscan.toml.sample"))
+    # The second project type sees the moved directory and leaves it alone.
+    pipeline._prepare_lifecycle_paths(ctx, pipeline.TypeScan(project_type="java"))
+    assert ctx.reports_dir == new_dir
+
+
+def test_prepare_lifecycle_paths_keeps_an_outside_reports_dir(tmp_path):
+    ctx, src, reports = _redirect_ctx(tmp_path, reports_inside=False)
+    pipeline._prepare_lifecycle_paths(ctx, pipeline.TypeScan(project_type="python"))
+    assert ctx.reports_dir == str(reports)
+    assert ctx.html_report_file == os.path.join(str(reports), "depscan.html")
+
+
+def test_prepare_lifecycle_paths_falls_back_to_a_temp_dir(tmp_path, monkeypatch, caplog):
+    ctx, src, reports = _redirect_ctx(tmp_path, reports_inside=True)
+    real_makedirs = os.makedirs
+
+    def refuse_makedirs(name, *a, **k):
+        if str(name).endswith("-reports") and str(name) != str(reports):
+            raise OSError("read-only parent")
+        return real_makedirs(name, *a, **k)
+
+    monkeypatch.setattr(pipeline.os, "makedirs", refuse_makedirs)
+    with caplog.at_level("WARNING"):
+        pipeline._prepare_lifecycle_paths(ctx, pipeline.TypeScan(project_type="python"))
+    assert not ctx.reports_dir.startswith(str(src))
+    assert "temporary directory" in " ".join(r.message for r in caplog.records)
