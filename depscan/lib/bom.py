@@ -705,8 +705,6 @@ class ReachabilityTool:
     slice_file: str
     #: Lazy import of the slice converter behind the shared interface.
     import_converter: Callable
-    #: The artifact loader (see ``_load_tool_report``).
-    load_report: Callable
     #: Direct run when cdxgen produced no report.
     run_fallback: Callable
     #: Raised (under ``--fail-on-error``) or logged when no report was found.
@@ -765,7 +763,8 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     # available, and it reads the FULL original report (call graph + data-flow
     # slices), not the projected subset cdxgen embeds in the SBOM.
     cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
-    report = tool.load_report(
+    report = _load_tool_report(
+        tool.name,
         cdxgen_report_path,
         converter.is_report_ok,
         _json_load,
@@ -812,7 +811,6 @@ RUSI_TOOL = ReachabilityTool(
     default_prefix="rust",
     slice_file=RUSI_REACHABLES_SLICE_FILE,
     import_converter=_import_rusi_converter,
-    load_report=_load_rusi_report,
     run_fallback=_run_rusi_fallback,
     no_report_error=(
         "No rusi report was available for this Rust project; reachability "
@@ -826,7 +824,6 @@ GOLEM_TOOL = ReachabilityTool(
     default_prefix="go",
     slice_file=GOLEM_REACHABLES_SLICE_FILE,
     import_converter=_import_golem_converter,
-    load_report=_load_golem_report,
     run_fallback=_run_golem_fallback,
     no_report_error=(
         "No golem report was available for this Go project; reachability slices were not produced."
@@ -840,7 +837,6 @@ DOSAI_TOOL = ReachabilityTool(
     default_prefix="dotnet",
     slice_file=DOSAI_REACHABLES_SLICE_FILE,
     import_converter=_import_dosai_converter,
-    load_report=_load_dosai_report,
     run_fallback=_run_dosai_fallback,
     no_report_error=(
         "No dosai report was available for this .NET project; reachability "
