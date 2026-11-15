@@ -72,7 +72,7 @@ wheels = [
 
 [[package]]
 name = "appthreat-vulnerability-db"
-version = "6.7.7"
+version = "6.7.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "appdirs" },
@@ -82,13 +82,14 @@ dependencies = [
     { name = "httpx", extra = ["http2"] },
     { name = "orjson" },
     { name = "packageurl-python" },
+    { name = "packaging" },
     { name = "pydantic", extra = ["email"] },
     { name = "rich" },
     { name = "semver" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/06/a11fb38afa25fe72301b3f4397259b141d541b74073b9bebae4465ead86b/appthreat_vulnerability_db-6.7.7.tar.gz", hash = "sha256:3647041b5647f36aa33ad91869f12f4b6c644bd38b4c2d26998d49d120c31f7a", size = 231499, upload-time = "2026-11-12T12:57:02.599Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/a8/7d16e51874ced5a3a3e914e38319cd5304d52119ff64f7a5833096f6609b/appthreat_vulnerability_db-6.7.8.tar.gz", hash = "sha256:deea01856f1fd228e0466d108defd14787b9e85d527b2245d6c66702c3402027", size = 233726, upload-time = "2026-11-15T01:59:40.339Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/76/2b436565eca685e82ae852a4f9aae94bc672a2674841fe57b32953248a74/appthreat_vulnerability_db-6.7.7-py3-none-any.whl", hash = "sha256:ebf881117714aac7a77659c5ae42785af0300090b256b84521a20e38e24ec39d", size = 147337, upload-time = "2026-11-12T12:57:01.274Z" },
+    { url = "https://files.pythonhosted.org/packages/90/08/d8e886f150d3c85fd711f799f3806a5af43932511d091f578a50b6d7886a/appthreat_vulnerability_db-6.7.8-py3-none-any.whl", hash = "sha256:ba9e991460877e23bf7775ac53ffefc6a23fc1e4f2f7de06cff9e3fe2b9257f6", size = 147810, upload-time = "2026-11-15T01:59:38.793Z" },
 ]
 
 [package.optional-dependencies]
@@ -1134,7 +1135,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = "~=6.7.7" },
+    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = "~=6.7.8" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
     { name = "cvss", specifier = "~=3.6" },
     { name = "jsonschema", specifier = "~=4.26.0" },
@@ -1171,7 +1172,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", specifier = "~=6.7.7" },
+    { name = "appthreat-vulnerability-db", specifier = "~=6.7.8" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
     { name = "ds-analysis-lib", editable = "packages/analysis-lib" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "~=9.2.0" },
@@ -1836,7 +1837,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = "~=6.7.7" },
+    { name = "appthreat-vulnerability-db", extras = ["oras"], specifier = "~=6.7.8" },
     { name = "atom-tools", marker = "extra == 'all'", specifier = "~=0.9.1" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = "~=0.9.1" },
     { name = "blint", marker = "extra == 'all'", specifier = "~=3.2.3" },
