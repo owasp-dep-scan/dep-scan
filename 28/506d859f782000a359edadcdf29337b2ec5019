@@ -1,0 +1,20 @@
+depscan/lib/pipeline.py
+  s_9ad4b69018bce0::t_4b110e88789455 35-36
+  s_9ad4b69018bce0::t_03402f5437de14 650-714,721-723
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28506d859f782000a359edadcdf29337b2ec5019",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
