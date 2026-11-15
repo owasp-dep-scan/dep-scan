@@ -150,7 +150,7 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cyclonedx/cdxgen
+          npm install -g @cdxgen/cdxgen@13.8.0
       - name: Get ukaina boms
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:
@@ -322,7 +322,7 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages
-          sudo npm install -g @cyclonedx/cdxgen @appthreat/atom --omit=optional
+          sudo npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom --omit=optional
       - name: semantic analysis self
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan

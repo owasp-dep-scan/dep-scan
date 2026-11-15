@@ -382,3 +382,32 @@ def test_lifecycle_build_failure_degrades_by_default(tmp_path, monkeypatch):
         _failing_generator(), str(tmp_path), _lifecycle_options(tmp_path, False)
     )
     assert result.success is False
+
+
+def test_image_generator_forces_secure_mode_for_a_remote_source(monkeypatch, tmp_path):
+    monkeypatch.setenv("CDXGEN_TEMP_DIR", str(tmp_path))
+    # An operator setting cannot turn secure mode off for untrusted sources.
+    monkeypatch.setenv("CDXGEN_SECURE_MODE", "false")
+    gen = cdxgen_mod.CdxgenImageBasedGenerator(
+        "https://github.com/example/untrusted",
+        str(tmp_path / "bom.cdx.json"),
+        options={"project_type": ["java"]},
+    )
+    _, args = gen._container_run_cmd()
+    env_args = [args[i + 1] for i, arg in enumerate(args[:-1]) if arg == "-e"]
+    assert "CDXGEN_SECURE_MODE=true" in env_args
+    assert "CDXGEN_SECURE_MODE" not in env_args
+
+
+def test_image_generator_passes_secure_mode_through_for_a_local_source(monkeypatch, tmp_path):
+    monkeypatch.setenv("CDXGEN_TEMP_DIR", str(tmp_path))
+    monkeypatch.setenv("CDXGEN_SECURE_MODE", "false")
+    gen = cdxgen_mod.CdxgenImageBasedGenerator(
+        str(tmp_path),
+        str(tmp_path / "bom.cdx.json"),
+        options={"project_type": ["java"]},
+    )
+    _, args = gen._container_run_cmd()
+    env_args = [args[i + 1] for i, arg in enumerate(args[:-1]) if arg == "-e"]
+    assert "CDXGEN_SECURE_MODE" in env_args
+    assert "CDXGEN_SECURE_MODE=true" not in env_args

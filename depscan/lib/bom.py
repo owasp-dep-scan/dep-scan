@@ -1,4 +1,6 @@
+import json
 import os
+import re
 import shutil
 import sys
 import uuid
@@ -10,9 +12,14 @@ from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 from xbom_lib.blint import BlintGenerator
 from xbom_lib.cdxgen import (
+    CDXGEN_MIN_VERSION,
     CdxgenGenerator,
     CdxgenImageBasedGenerator,
     CdxgenServerGenerator,
+    as_command_list,
+    cdxgen_install_hint,
+    check_cdxgen_version,
+    find_cdxgen_cmd,
     resource_path as xbom_resource_path,
 )
 from depscan.cli_options import DEFAULT_SPEC_VERSION
@@ -66,11 +73,116 @@ class BomResult:
     :param primary: The single BOM representing the project, when the run
         produced one. ``None`` for lifecycle runs, which produce per-stage
         documents rather than one project BOM.
+    :param extractor_failures: cdxgen exit status 5 messages, one per
+        extractor that failed while the BOM was still written. Kept so a
+        later stage can record the affected parts as not assessed instead of
+        counting them as clean.
     """
 
     success: bool
     bom_files: List[str] = field(default_factory=list)
     primary: Optional[str] = None
+    extractor_failures: List[str] = field(default_factory=list)
+
+
+# cdxgen exit statuses that still deliver a usable BOM. 4 means the
+# introspection score missed the gate (the BOM and both reports exist).
+# 5 is not one of them: cdxgen only exits 5 when --fail-on-error was passed
+# and an extractor failed; the failure is deferred until the BOM and reports
+# are written (bin/cdxgen.js and lib/core/deferredExit.js, v13.8.0), but the
+# user asked for the scan to stop, so depscan treats it as a failed BOM.
+CDXGEN_PARTIAL_EXIT_CODES = (4,)
+# One line per deferred extractor failure, as cdxgen 13.8.0 prints it:
+# "fail-on-error: <detail> (tool: <tool>, exit <n>)." The closing summary
+# line has no "(tool: ...)" part.
+_EXTRACTOR_FAILURE_RE = re.compile(r"^fail-on-error: .* \(tool: [^)]*\)\.$")
+
+
+def _introspection_summary(bom_file: str) -> Optional[Dict]:
+    """The ``overall`` block of cdxgen's JSON introspection report, if any."""
+    path = f"{bom_file}.introspection.json"
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fp:
+            data = json.load(fp)
+    except (OSError, ValueError):
+        return None
+    overall = data.get("overall") if isinstance(data, dict) else None
+    return overall if isinstance(overall, dict) else None
+
+
+def _log_introspection_tier(bom_file: str) -> None:
+    """Log the fidelity tier and score recorded for ``bom_file``."""
+    overall = _introspection_summary(bom_file)
+    if overall:
+        LOG.warning(
+            "Introspection: overall tier %s, score %s/100 (report: %s).",
+            overall.get("tier"),
+            overall.get("score"),
+            f"{bom_file}.introspection.json",
+        )
+    else:
+        LOG.warning(
+            "Introspection report %s was missing or unreadable.",
+            f"{bom_file}.introspection.json",
+        )
+
+
+def _extractor_failures(command_output: Optional[str]) -> List[str]:
+    """The deferred extractor failures cdxgen printed for exit status 5.
+
+    cdxgen writes one ``fail-on-error: <detail> (tool: <tool>, exit N).``
+    line per failed extractor after the reports are written.
+    """
+    if not command_output:
+        return []
+    return [
+        line.strip()
+        for line in command_output.splitlines()
+        if _EXTRACTOR_FAILURE_RE.match(line.strip())
+    ]
+
+
+def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
+    """Interpret a finished cdxgen run from its exit status.
+
+    Returns the extractor failures to remember; logs everything the status
+    means. A status of 0 or 4 delivers a usable BOM. Status 5 (only returned
+    under --fail-on-error) and any other status are reported as a failed
+    generation, so the scan stops rather than continuing as if nothing was
+    found.
+    """
+    returncode = getattr(bom_result, "returncode", None)
+    if returncode in (None, 0):
+        return []
+    if returncode == 4:
+        LOG.warning(
+            "cdxgen exited 4 for the %s BOM: the introspection score is below the gate.",
+            stage,
+        )
+        _log_introspection_tier(bom_file)
+        return []
+    if returncode == 5:
+        failures = _extractor_failures(bom_result.command_output)
+        for failure in failures:
+            LOG.error(
+                "cdxgen exited 5 for the %s BOM under --fail-on-error: an extractor failed. %s",
+                stage,
+                failure,
+            )
+        if not failures:
+            LOG.error(
+                "cdxgen exited 5 for the %s BOM under --fail-on-error: an extractor failed, but cdxgen did not name it.",
+                stage,
+            )
+        return failures
+    LOG.error(
+        "cdxgen exited with status %s while generating the %s BOM. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output.",
+        returncode,
+        stage,
+    )
+    return []
 
 
 def _has_bundled_cdxgen() -> bool:
@@ -292,6 +404,39 @@ def get_pkg_by_type(pkg_list, pkg_type):
     return [pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)]
 
 
+def _refuse_old_cdxgen(logger=None) -> bool:
+    """Refuse a local cdxgen older than the pinned minimum.
+
+    Returns True when the command that would run is acceptable. The literal
+    ``cdxgen`` is what the generator executes when nothing else resolves, so
+    it is probed like any other command; a probe that cannot read a version
+    is a refusal. The container and server generators never call this: their
+    cdxgen is pinned at build time or runs elsewhere.
+    """
+    cdxgen_cmd = (
+        find_cdxgen_cmd(logger=logger) or find_cdxgen_cmd(False, logger=logger) or "cdxgen"
+    )
+    accepted, version = check_cdxgen_version(cdxgen_cmd, logger=logger)
+    if accepted:
+        return True
+    if version is None:
+        LOG.error(
+            "Could not read the cdxgen version from '%s'. dep-scan needs cdxgen %s or newer. "
+            "Install it with `%s` and, if needed, point CDXGEN_CMD at it.",
+            " ".join(as_command_list(cdxgen_cmd)),
+            CDXGEN_MIN_VERSION,
+            cdxgen_install_hint(),
+        )
+    else:
+        LOG.error(
+            "cdxgen %s was found, but dep-scan needs %s or newer. Install it with `%s` and, if needed, point CDXGEN_CMD at it.",
+            version,
+            CDXGEN_MIN_VERSION,
+            cdxgen_install_hint(),
+        )
+    return False
+
+
 def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     """
     Method to create BOM file by executing cdxgen command
@@ -362,6 +507,11 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             elif shutil.which(os.getenv("DOCKER_CMD", "docker")) and sys.platform != "win32":
                 cdxgen_lib = CdxgenImageBasedGenerator
     # We now have the cdxgen library to use.
+    # A local cdxgen CLI is the one binary whose version dep-scan does not
+    # control, so it is checked before the first run; the container image and
+    # the cdxgen server are pinned or remote and skip the check.
+    if cdxgen_lib is CdxgenGenerator and not _refuse_old_cdxgen(logger=LOG):
+        return BomResult(success=False)
     # For lifecycle analysis, we need to generate multiple BOM files
     if lifecycle_analysis_mode:
         return create_lifecycle_boms(cdxgen_lib, src_dir, options)
@@ -370,7 +520,17 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
         bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
-        if not bom_result.success:
+        extractor_failures: List[str] = []
+        if bom_result.success:
+            extractor_failures = _cdxgen_exit_verdict(bom_result, bom_file, "project")
+        # Exit status 4 still delivers the BOM; any other failure, 5 included,
+        # leaves nothing the user asked to scan.
+        partial_ok = getattr(bom_result, "returncode", None) in (
+            None,
+            0,
+            *CDXGEN_PARTIAL_EXIT_CODES,
+        )
+        if not bom_result.success or not partial_ok:
             LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
             return BomResult(success=False)
@@ -392,7 +552,12 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         # / dosai is absent. PRIMARY path consumes the cdxgen-persisted
         # combined native report; direct-spawn is only a fallback.
         run_dosai_reachability(bom_file, src_dir, options=options)
-        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+        return BomResult(
+            success=True,
+            bom_files=[bom_file],
+            primary=bom_file,
+            extractor_failures=extractor_failures,
+        )
 
 
 def _load_tool_report(
@@ -938,11 +1103,32 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         )
     # Every stage document actually written, in the order produced.
     written_bom_files = []
+    extractor_failures: List[str] = []
     prebuild_bom_file = options.get("prebuild_bom_file")
     build_bom_file = options.get("build_bom_file")
     postbuild_bom_file = options.get("postbuild_bom_file")
     container_bom_file = options.get("container_bom_file")
     reachability_analyzer = options.get("reachability_analyzer")
+
+    def stage_usable(bom_result, stage_file, stage) -> bool:
+        """Whether one lifecycle stage produced a document worth scanning.
+
+        Exit status 4 still counts: the BOM and its introspection reports are
+        written. Exit status 5 does not, because cdxgen only returns it under
+        --fail-on-error; the failures are logged and kept in
+        ``extractor_failures``.
+        """
+        if not bom_result.success:
+            return False
+        extractor_failures.extend(_cdxgen_exit_verdict(bom_result, stage_file, stage))
+        if getattr(bom_result, "returncode", None) not in (
+            None,
+            0,
+            *CDXGEN_PARTIAL_EXIT_CODES,
+        ):
+            return False
+        return os.path.exists(stage_file)
+
     with console.status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
     ) as status:
@@ -956,7 +1142,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         if reachability_analyzer != "off" and options.get("profile") != "research":
             coptions["profile"] = "research"
         bom_result = cdxgen_lib(src_dir, build_bom_file, logger=LOG, options=coptions).generate()
-        if not bom_result.success or not os.path.exists(build_bom_file):
+        if not stage_usable(bom_result, build_bom_file, "build"):
             if options.get("fail_on_error"):
                 # Falling back to the pre-build stage silently downgrades the
                 # lifecycle result, which is exactly what the flag forbids.
@@ -974,7 +1160,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         bom_result = cdxgen_lib(
             src_dir, prebuild_bom_file, logger=LOG, options=coptions
         ).generate()
-        if not bom_result.success or not os.path.exists(prebuild_bom_file):
+        if not stage_usable(bom_result, prebuild_bom_file, "pre-build"):
             LOG.debug("The cdxgen invocation was unsuccessful. Trying the build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:
@@ -991,7 +1177,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             bom_result = cdxgen_lib(
                 container_image_name, container_bom_file, logger=LOG, options=coptions
             ).generate()
-            if not bom_result.success or not os.path.exists(container_bom_file):
+            if not stage_usable(bom_result, container_bom_file, "container"):
                 LOG.debug("The cdxgen invocation was unsuccessful. Trying for the next lifecycle.")
                 LOG.debug(bom_result.command_output)
             else:
@@ -1042,7 +1228,11 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         run_dosai_reachability(build_bom_file, src_dir, options=options)
     # `primary` stays None: no single one of these documents represents the
     # project, so nothing downstream may treat one as "the" BOM.
-    return BomResult(success=any_success, bom_files=written_bom_files)
+    return BomResult(
+        success=any_success,
+        bom_files=written_bom_files,
+        extractor_failures=extractor_failures,
+    )
 
 
 def _spec_version_sort_key(spec_version):

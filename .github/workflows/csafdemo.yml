@@ -25,7 +25,7 @@ jobs:
         source venv/bin/activate
         pip install --upgrade pip setuptools
         uv sync --all-extras --all-packages --dev
-        npm install -g @cyclonedx/cdxgen
+        npm install -g @cdxgen/cdxgen@13.8.0
         pip install check-jsonschema
         mkdir -p vuln_spring
         cd vuln_spring

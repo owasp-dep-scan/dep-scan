@@ -14,7 +14,7 @@ Sources checked:
   5. CDXGEN_SEA_VERSION env var  :: must equal CDXGEN_IMAGE_VERSION default
                                     in packages/xbom-lib/src/xbom_lib/cdxgen.py,
                                     ignoring a leading "v" (the SEA release
-                                    tag is "v12.9.1", the image tag "12.9.1")
+                                    tag is "v13.8.0", the image tag "13.8.0")
 
 Exits 0 on full agreement, 1 on any mismatch. Prints a clear diff-style
 report so the operator knows exactly what to update.
@@ -78,7 +78,7 @@ def _read_cdxgen_image_version_default() -> str:
     """Return the default value of CDXGEN_IMAGE_VERSION from xbom_lib/cdxgen.py.
 
     The line looks like:
-        CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "12.9.1")
+        CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "13.8.0")
     We extract the second argument to os.getenv.
     """
     text = CDXGEN_PY_PATH.read_text(encoding="utf-8")
@@ -171,7 +171,7 @@ def main() -> int:
         errors.append(
             f"CDXGEN_IMAGE_VERSION default {cdxgen_image_version!r} in "
             "packages/xbom-lib/src/xbom_lib/cdxgen.py must be a bare X.Y.Z "
-            "version such as '12.9.1', which is how cdxgen tags its images"
+            "version such as '13.8.0', which is how cdxgen tags its images"
         )
 
     # Check 4: CDXGEN_SEA_VERSION (workflow) matches CDXGEN_IMAGE_VERSION
@@ -179,8 +179,8 @@ def main() -> int:
     # SEA binary gets downloaded; xbom_lib is the source of truth for which
     # cdxgen container image gets used at runtime. They MUST agree, otherwise
     # the bundled cdxgen and the fallback container would be different
-    # versions. The SEA is downloaded from the "v12.9.1" release while the
-    # images are tagged "12.9.1", so the comparison ignores a leading "v".
+    # versions. The SEA is downloaded from the "v13.8.0" release while the
+    # images are tagged "13.8.0", so the comparison ignores a leading "v".
     if cdxgen_sea_version:
         if _strip_v(cdxgen_sea_version) != _strip_v(cdxgen_image_version):
             errors.append(

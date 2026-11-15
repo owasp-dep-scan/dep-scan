@@ -48,6 +48,7 @@ from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
 from vdb.lib import config, search
 from vdb.lib.utils import parse_purl
+from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
 from depscan.lib import explainer, utils
@@ -714,6 +715,19 @@ def _generate_boms(ctx, scan):
     ``--fail-on-error`` turns a generator failure into a stopped scan; every
     other path keeps its degrade-and-continue behaviour.
     """
+    for bom_dir in {
+        os.path.dirname(path)
+        for path in (
+            scan.target_bom_file,
+            scan.prebuild_bom_file,
+            scan.build_bom_file,
+            scan.postbuild_bom_file,
+            scan.container_bom_file,
+            scan.operations_bom_file,
+        )
+        if path
+    }:
+        remove_stale_slices(scan.project_type, bom_dir, logger=LOG)
     try:
         return create_bom(
             scan.target_bom_file,

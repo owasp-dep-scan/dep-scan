@@ -544,3 +544,45 @@ def test_stage_render_reports_writes_every_report_file(tmp_path):
     assert ctx.vdr_file, "the summary stage must have produced a VDR file"
     vdr = json.loads(Path(ctx.vdr_file).read_text())
     assert vdr.get("annotations"), "the text report must be annotated into the VDR"
+
+
+def test_generate_boms_removes_slices_left_by_a_previous_run(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    stale = reports / "python-usages.slices.json"
+    stale.write_text("{}")
+    other_type = reports / "java-usages.slices.json"
+    other_type.write_text("{}")
+    seen = {}
+
+    def fake_create_bom(bom_file, src_dir, options):
+        # Positive control: the generator ran, and it ran after the cleanup.
+        seen["stale_present"] = stale.exists()
+        return True
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
+    args = _args(["--reports-dir", str(reports), "--no-banner"])
+    ctx = pipeline.build_context(args)
+    ctx.src_dir = str(tmp_path)
+    ctx.depscan_options = {"reports_dir": str(reports)}
+    scan = pipeline.TypeScan(project_type="python")
+    scan.target_bom_file = str(reports / "sbom-python.cdx.json")
+    pipeline._generate_boms(ctx, scan)
+    assert seen == {"stale_present": False}
+    # Only this type's slices are removed.
+    assert other_type.exists()
+
+
+def test_set_slices_args_and_stale_removal_use_the_same_paths(tmp_path):
+    from xbom_lib.cdxgen import remove_stale_slices, set_slices_args
+
+    args = []
+    set_slices_args(["python"], args, str(tmp_path))
+    paths = args[1::2]
+    assert len(paths) == 6
+    for path in paths:
+        Path(path).write_text("{}")
+    removed = remove_stale_slices("python", str(tmp_path))
+    assert sorted(removed) == sorted(paths)
+    assert not any(os.path.exists(path) for path in paths)
+
