@@ -32,6 +32,8 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 
 import contextlib
 import os
+import shutil
+import tempfile
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -645,12 +647,80 @@ def _write_sample_config(ctx, run_config_file):
         )
 
 
+def _redirect_reports_dir_outside_source(ctx):
+    """Move the reports directory out of the scanned tree when it is inside.
+
+    cdxgen's secure mode refuses to reuse a slices file that already exists
+    inside the scanned directory and writes its own to a temporary directory
+    instead, so a reports directory inside the source would hide every slice
+    from the scan that produced it. The default reports directory
+    (``<cwd>/reports``) lands exactly there when depscan is started from the
+    project it scans. The whole reports directory moves as one, so the BOMs,
+    slices and introspection reports stay next to each other; the html, text
+    and prompt reports follow because they are derived from the same
+    directory.
+    """
+    src_dir = ctx.src_dir or ""
+    reports_dir = ctx.reports_dir or ""
+    if not src_dir or not reports_dir or not os.path.isdir(src_dir):
+        return
+    real_src = os.path.realpath(src_dir)
+    real_reports = os.path.realpath(reports_dir)
+    try:
+        inside = os.path.commonpath((real_reports, real_src)) == real_src
+    except ValueError:
+        return
+    if not inside:
+        return
+    parent = os.path.dirname(real_src)
+    candidate = os.path.join(parent, os.path.basename(real_src) + "-reports")
+    try:
+        os.makedirs(candidate, exist_ok=True)
+        probe = os.path.join(candidate, ".depscan-writable")
+        with open(probe, "w", encoding="utf-8"):
+            pass
+        os.remove(probe)
+    except OSError:
+        candidate = tempfile.mkdtemp(prefix="depscan-reports-")
+        LOG.warning(
+            "The reports directory '%s' is inside the scanned directory '%s' and no "
+            "writable location beside it was available, so the reports were moved to "
+            "the temporary directory '%s'.",
+            real_reports,
+            real_src,
+            candidate,
+        )
+    else:
+        LOG.warning(
+            "The reports directory '%s' is inside the scanned directory '%s'. cdxgen "
+            "would treat slices written there as part of the project, so the reports "
+            "were moved to '%s'.",
+            real_reports,
+            real_src,
+            candidate,
+        )
+    ctx.reports_dir = candidate
+    ctx.depscan_options["reports_dir"] = candidate
+    ctx.html_report_file = os.path.join(candidate, "depscan.html")
+    ctx.txt_report_file = os.path.join(candidate, "depscan.txt")
+    ctx.llm_prompt_file = os.path.join(candidate, "depscan-prompts.md")
+    ctx.depscan_options["html_report_file"] = ctx.html_report_file
+    ctx.depscan_options["txt_report_file"] = ctx.txt_report_file
+    ctx.depscan_options["llm_prompt_file"] = ctx.llm_prompt_file
+    sample_config = os.path.join(real_reports, "depscan.toml.sample")
+    if os.path.exists(sample_config):
+        shutil.move(sample_config, os.path.join(candidate, "depscan.toml.sample"))
+
+
 def _prepare_lifecycle_paths(ctx, scan):
     """Decide whether this type runs lifecycle analysis and where its BOMs go.
 
     Lifecycle analysis writes up to five per-stage documents into the reports
     directory and repurposes an empty ``bom_dir`` as that directory.
     """
+    # Runs once per scan: after the first project type the reports directory
+    # is already outside the scanned tree and the check is a no-op.
+    _redirect_reports_dir_outside_source(ctx)
     args = ctx.args
     scan.vuln_analyzer = args.vuln_analyzer
     # Reset every per-iteration path. These used to leak from one project
