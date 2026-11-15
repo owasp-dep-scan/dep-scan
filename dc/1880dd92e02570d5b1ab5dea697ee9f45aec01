@@ -1,0 +1,25 @@
+test/test_pipeline.py
+  s_7318da1b9edd46::t_98ad85e3f604ff 549-563,566,569-587
+  s_7318da1b9edd46::t_6302b1d8c5e369 588
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_7318da1b9edd46::t_04a3d2052b61af 388-399,403-404,407-428
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_98ad85e3f604ff 50
+  s_7318da1b9edd46::t_14d98586b72b16 644-656
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc1880dd92e02570d5b1ab5dea697ee9f45aec01",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
