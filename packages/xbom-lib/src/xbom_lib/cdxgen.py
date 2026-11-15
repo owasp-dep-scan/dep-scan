@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -22,28 +23,61 @@ cdxgen_server_headers = {
 CDXGEN_TIMEOUT_MS = os.getenv("CDXGEN_TIMEOUT_MS", str(int(30 * 60 * 1000)))
 
 # Version of the cdxgen container images to use. cdxgen publishes exact
-# versions as bare tags ("12.9.1") and the rolling major and minor tags with
-# a "v" prefix ("v12", "v12.9"); a "v12.9.1" image tag does not exist. The
-# SEA release assets, in contrast, live under the "v12.9.1" git tag.
-CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "12.9.1")
-CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v12")
+# versions as bare tags ("13.8.0") and the rolling major and minor tags with
+# a "v" prefix ("v13", "v13.8"); a "v13.8.0" image tag does not exist. The
+# SEA release assets, in contrast, live under the "v13.8.0" git tag.
+CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "13.8.0")
 
-# cdxgen default image to use
-DEFAULT_IMAGE_NAME = (
-    "default-secure" if os.getenv("CDXGEN_SECURE_MODE", "") in ("true", "1") else "default"
-)
+# Oldest cdxgen this version of dep-scan works with. cdxgen 13.8 introduced
+# the callsites slice, build introspection and the 4/5 exit statuses that the
+# callers below rely on, so an older command is refused before it runs.
+CDXGEN_MIN_VERSION = os.getenv("CDXGEN_MIN_VERSION", "13.8.0")
+
+# The npm package that installs the cdxgen command, used in every install
+# hint. cdxgen publishes as @cdxgen/cdxgen since 13.0.
+CDXGEN_NPM_PACKAGE = "@cdxgen/cdxgen"
+
+
+def _version_tuple(version: str) -> Tuple[int, ...]:
+    return tuple(int(part) for part in version.split(".") if part.isdigit())
+
+
+def cdxgen_min_version_tuple() -> Tuple[int, ...]:
+    return _version_tuple(CDXGEN_MIN_VERSION)
+
+
+def cdxgen_install_hint() -> str:
+    return f"npm install -g {CDXGEN_NPM_PACKAGE}@{CDXGEN_MIN_VERSION}"
+
 
 # cdxgen official image namespaces
 OFFICIAL_IMAGE_NAMESPACES = (
+    "ghcr.io/cdxgen/",
     "ghcr.io/cyclonedx/",
     "ghcr.io/appthreat/",
     "ghcr.io/owasp-dep-scan/",
 )
 
+# cdxgen default image to use; read at call time so CDXGEN_SECURE_MODE set
+# for one scan changes the image choice of the same process.
+DEFAULT_IMAGE_NAME = "default"
+DEFAULT_SECURE_IMAGE_NAME = "default-secure"
+
+
+def default_image_name() -> str:
+    """The image family to use, honouring CDXGEN_SECURE_MODE right now."""
+    if os.getenv("CDXGEN_SECURE_MODE", "") in ("true", "1"):
+        return DEFAULT_SECURE_IMAGE_NAME
+    return DEFAULT_IMAGE_NAME
+
+
 PROJECT_TYPE_IMAGE = {
     "default": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
-    "deno": f"ghcr.io/cdxgen/cdxgen-deno:{CDXGEN_IMAGE_VERSION}",
-    "bun": f"ghcr.io/cdxgen/cdxgen-bun:{CDXGEN_IMAGE_VERSION}",
+    # The deno, bun, node20, dotnet6 and dotnet7 images stopped publishing
+    # release tags after 12.x, so no 13.8.0 tag exists for them. Those
+    # project types run the general image, which carries the same cdxgen.
+    "deno": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    "bun": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
     "default-secure": f"ghcr.io/cdxgen/cdxgen-secure:{CDXGEN_IMAGE_VERSION}",
     "java": f"ghcr.io/cdxgen/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
     "java24": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
@@ -54,7 +88,7 @@ PROJECT_TYPE_IMAGE = {
     "java17": f"ghcr.io/cdxgen/cdxgen-java17:{CDXGEN_IMAGE_VERSION}",
     "java17-slim": f"ghcr.io/cdxgen/cdxgen-java17-slim:{CDXGEN_IMAGE_VERSION}",
     "java21": f"ghcr.io/cdxgen/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
-    "node20": f"ghcr.io/cdxgen/cdxgen-node20:{CDXGEN_IMAGE_VERSION}",
+    "node20": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
     "python39": f"ghcr.io/cdxgen/cdxgen-python39:{CDXGEN_IMAGE_VERSION}",
     "python310": f"ghcr.io/cdxgen/cdxgen-python310:{CDXGEN_IMAGE_VERSION}",
     "python311": f"ghcr.io/cdxgen/cdxgen-python311:{CDXGEN_IMAGE_VERSION}",
@@ -62,14 +96,14 @@ PROJECT_TYPE_IMAGE = {
     "python": f"ghcr.io/cdxgen/cdxgen-python312:{CDXGEN_IMAGE_VERSION}",
     "swift": f"ghcr.io/cdxgen/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
     "swift6": f"ghcr.io/cdxgen/cdxgen-debian-swift6:{CDXGEN_IMAGE_VERSION}",
-    "ruby26": f"ghcr.io/cdxgen/cdxgen-debian-ruby26:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "ruby33": f"ghcr.io/cdxgen/cdxgen-debian-ruby33:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "ruby34": f"ghcr.io/cdxgen/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "ruby": f"ghcr.io/cdxgen/cdxgen-debian-ruby34:{CDXGEN_IMAGE_ROLLING_VERSION}",
-    "dotnet-core": f"ghcr.io/cdxgen/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
-    "dotnet-framework": f"ghcr.io/cdxgen/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
-    "dotnet6": f"ghcr.io/cdxgen/cdxgen-debian-dotnet6:{CDXGEN_IMAGE_VERSION}",
-    "dotnet7": f"ghcr.io/cdxgen/cdxgen-dotnet7:{CDXGEN_IMAGE_VERSION}",
+    "ruby26": f"ghcr.io/cdxgen/cdxgen-debian-ruby26:{CDXGEN_IMAGE_VERSION}",
+    "ruby33": f"ghcr.io/cdxgen/cdxgen-debian-ruby33:{CDXGEN_IMAGE_VERSION}",
+    "ruby34": f"ghcr.io/cdxgen/cdxgen-debian-ruby34:{CDXGEN_IMAGE_VERSION}",
+    "ruby": f"ghcr.io/cdxgen/cdxgen-debian-ruby34:{CDXGEN_IMAGE_VERSION}",
+    "dotnet-core": f"ghcr.io/cdxgen/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
+    "dotnet-framework": f"ghcr.io/cdxgen/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
+    "dotnet6": f"ghcr.io/cdxgen/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
+    "dotnet7": f"ghcr.io/cdxgen/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
     "dotnet8": f"ghcr.io/cdxgen/cdxgen-debian-dotnet8:{CDXGEN_IMAGE_VERSION}",
     "dotnet9": f"ghcr.io/cdxgen/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
     "dotnet": f"ghcr.io/cdxgen/cdxgen-debian-dotnet9:{CDXGEN_IMAGE_VERSION}",
@@ -97,11 +131,12 @@ def deep_enabled(options: Dict) -> bool:
 
 
 def get_image_for_type(options: Dict, project_type: str | list | None) -> str:
+    image_name = default_image_name()
     if not project_type:
-        return DEFAULT_IMAGE_NAME
+        return PROJECT_TYPE_IMAGE[image_name]
     project_types: list[str] = project_type if isinstance(project_type, list) else [project_type]
-    ptype = project_types[0] if len(project_types) == 1 else DEFAULT_IMAGE_NAME
-    default_img = PROJECT_TYPE_IMAGE.get(ptype, PROJECT_TYPE_IMAGE[DEFAULT_IMAGE_NAME])
+    ptype = project_types[0] if len(project_types) == 1 else image_name
+    default_img = PROJECT_TYPE_IMAGE.get(ptype, PROJECT_TYPE_IMAGE[image_name])
     return get_env_options_value(
         options,
         f"cdxgen_image_{ptype}",
@@ -134,6 +169,70 @@ def _exec_timeout_seconds() -> Optional[float]:
         return int(CDXGEN_TIMEOUT_MS) / 1000 + 300
     except (TypeError, ValueError):
         return None
+
+
+def as_command_list(cmd) -> List[str]:
+    """Normalize a resolved tool command to the argument list to execute.
+
+    ``find_cdxgen_cmd`` returns a single path, but tests and embedders may
+    hand back a full command such as ``[sys.executable, "fake_cdxgen.py"]``,
+    which is how a fake cdxgen runs on Windows without an execute bit.
+    """
+    if isinstance(cmd, (list, tuple)):
+        return [str(part) for part in cmd]
+    return [str(cmd)]
+
+
+# Version probes already run in this process, keyed by the command, so a
+# lifecycle scan asks cdxgen for its version once, not once per stage.
+_version_probe_cache: Dict[str, Optional[str]] = {}
+
+_VERSION_RE = re.compile(r"CycloneDX\s+Generator\s+v?(\d+(?:\.\d+)+)")
+
+
+def cdxgen_version(cmd, logger: Optional[Logger] = None) -> Optional[str]:
+    """Ask ``cmd`` for its version and return it as a string, or None.
+
+    cdxgen prints ``CycloneDX Generator 13.8.0`` on ``--version``; anything
+    that cannot be parsed (missing binary, crash, unexpected output) yields
+    None so the caller can refuse the command.
+    """
+    cmd_list = as_command_list(cmd)
+    key = " ".join(cmd_list)
+    if key in _version_probe_cache:
+        return _version_probe_cache[key]
+    try:
+        cp = subprocess.run(
+            build_command([*cmd_list, "--version"]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=tool_env(),
+            shell=False,
+            encoding="utf-8",
+            check=False,
+            timeout=60,
+        )
+        found = _VERSION_RE.search(cp.stdout or "")
+        version = found.group(1) if found else None
+    except (OSError, subprocess.SubprocessError) as e:
+        if logger:
+            logger.debug("Could not run %s --version: %s", key, e)
+        version = None
+    _version_probe_cache[key] = version
+    return version
+
+
+def check_cdxgen_version(cmd, logger: Optional[Logger] = None) -> Tuple[bool, Optional[str]]:
+    """Whether ``cmd`` is at least CDXGEN_MIN_VERSION.
+
+    Returns ``(accepted, version)``; ``version`` is None when the probe could
+    not read a version at all, which is refused like an old one. The caller
+    is expected to log the message that names the remedy.
+    """
+    version = cdxgen_version(cmd, logger=logger)
+    if version is None:
+        return False, None
+    return _version_tuple(version) >= cdxgen_min_version_tuple(), version
 
 
 def exec_tool(
@@ -170,6 +269,7 @@ def exec_tool(
             timeout=_exec_timeout_seconds(),
         )
         result.command_output = cp.stdout
+        result.returncode = cp.returncode
         if logger and stdout != subprocess.DEVNULL:
             logger.debug(cp.stdout)
     except Exception as e:
@@ -213,8 +313,9 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
                 if logger:
                     logger.info(
                         "%s command not found. Please install using npm install "
-                        "@cyclonedx/cdxgen or set PATH variable",
+                        "%s or set PATH variable",
                         cdxgen_cmd,
+                        CDXGEN_NPM_PACKAGE,
                     )
                 return False
             cdxgen_cmd = local_bin
@@ -246,8 +347,9 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
             if logger:
                 logger.info(
                     "%s command not found. Please install using npm install "
-                    "@cyclonedx/cdxgen or set PATH variable",
+                    "%s or set PATH variable",
                     local_bin,
+                    CDXGEN_NPM_PACKAGE,
                 )
             return None
         cdxgen_cmd = local_bin
@@ -259,7 +361,7 @@ def find_cdxgen_cmd(use_bin=True, logger: Optional[Logger] = None):
             else resource_path(
                 os.path.join(
                     lbin,
-                    "\\npm\\node_modules\\@cyclonedx\\cdxgen\\node_modules\\@cyclonedx\\cdxgen-plugins-bin\\plugins",
+                    "\\npm\\node_modules\\@cdxgen\\cdxgen\\node_modules\\@cdxgen\\cdxgen-plugins-bin\\plugins",
                 )
             )
         )
@@ -284,10 +386,53 @@ def cdxgen_source_arg(source_dir: str) -> str:
 
 
 def set_slices_args(project_type_list, args, dir):
+    """Add the ``--*-slices-file`` arguments for a single project type.
+
+    Every slices path stays outside the scanned tree because ``dir`` is the
+    directory holding the BOM: cdxgen's secure mode refuses to reuse a slices
+    file found inside the scanned directory and writes its own to a temporary
+    directory instead, which would hide the slice from the reports. The
+    callsites slice joins the others so the file is kept next to them.
+    """
     if len(project_type_list) == 1:
-        for s in ("deps", "usages", "data-flow", "reachables", "semantics"):
+        for s in (
+            "deps",
+            "usages",
+            "callsites",
+            "data-flow",
+            "reachables",
+            "semantics",
+        ):
             args.append(f"--{s}-slices-file")
             args.append(os.path.join(dir, f"{project_type_list[0]}-{s}.slices.json"))
+
+
+def is_remote_source(source_dir, options: Optional[Dict] = None) -> bool:
+    """Whether this scan hands cdxgen something it must fetch itself.
+
+    A git URL handed to cdxgen as the source, or a ``url`` option (the depscan
+    server always sends one), means cdxgen clones untrusted code; secure mode
+    is the contract for exactly that case.
+    """
+    options = options or {}
+    url = options.get("url") or ""
+    candidate = url if isinstance(url, str) and url else str(source_dir or "")
+    if os.path.exists(candidate):
+        return False
+    return candidate.startswith(
+        ("http://", "https://", "git://", "ssh://", "git@", "atom://")
+    )
+
+
+def is_server_scan(options: Optional[Dict] = None) -> bool:
+    """Whether the depscan server asked for this BOM.
+
+    The server sends the cdxgen-style ``multiProject``/``url`` options that
+    the CLI never sets; either marker is enough. Server input is caller
+    controlled, so those scans run cdxgen in secure mode.
+    """
+    options = options or {}
+    return "multiProject" in options or bool(options.get("url"))
 
 
 class CdxgenGenerator(XBOMGenerator):
@@ -304,6 +449,11 @@ class CdxgenGenerator(XBOMGenerator):
         techniques = self.options.get("techniques", []) or []
         lifecycles = self.options.get("lifecycles", []) or []
         env = os.environ.copy()
+        # Remote repositories and server-initiated scans hand cdxgen code it
+        # must clone or read from a caller-chosen path, so those runs use
+        # cdxgen's secure mode.
+        if is_remote_source(self.source_dir, options) or is_server_scan(options):
+            env["CDXGEN_SECURE_MODE"] = "true"
         # Implement the BOM generation logic using cdxgen.
         cdxgen_cmd = find_cdxgen_cmd(logger=self.logger)
         if not cdxgen_cmd:
@@ -312,7 +462,7 @@ class CdxgenGenerator(XBOMGenerator):
             cdxgen_cmd = "cdxgen"
         project_type_args: list[str] = [f"-t {item}" for item in project_type_list]
         technique_args: list[str] = [f"--technique {item}" for item in techniques]
-        args: list[str] = [cdxgen_cmd]
+        args: list[str] = as_command_list(cdxgen_cmd)
         args = args + (" ".join(project_type_args).split())
         args = args + ["-o", self.bom_file]
         if options.get("spec_version"):
@@ -333,6 +483,9 @@ class CdxgenGenerator(XBOMGenerator):
                 env["ATOM_TOOLS_OPENAPI_FILENAME"] = f"{project_type_list[0]}-openapi.json"
         if options.get("cdxgen_args"):
             args += shlex.split(options.get("cdxgen_args", ""))
+        # Build introspection: the JSON report is named after the BOM so it
+        # lands next to it, and every lifecycle stage keeps its own report.
+        args += ["--introspect", "--introspect-json", f"{self.bom_file}.introspection.json"]
         if len(lifecycles) == 1:
             args = args + ["--lifecycle", lifecycles[0]]
         # Bug #233 - Source directory could be None when working with url
@@ -489,6 +642,14 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
         run_command_args += ["-e", f"CDXGEN_TIMEOUT_MS={CDXGEN_TIMEOUT_MS}"]
+        # A remote repository or a server-initiated scan runs cdxgen in
+        # secure mode. The env var is cdxgen's own activation for it; the
+        # passthrough above only copies variables already in our environment.
+        if (
+            is_remote_source(self.source_dir, self.options)
+            or is_server_scan(self.options)
+        ) and not os.getenv("CDXGEN_SECURE_MODE"):
+            run_command_args += ["-e", "CDXGEN_SECURE_MODE=true"]
         # Enabling license fetch will improve metadata such as tags and description
         # These will help with semantic reachability analysis
         if self.options.get("profile") not in ("generic",):
@@ -540,6 +701,13 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             run_command_args.append("--profile")
             run_command_args.append(self.options.get("profile", ""))
             set_slices_args(project_type_list, run_command_args, image_output_dir)
+        # Build introspection report next to the BOM inside /reports, which
+        # the volume mount maps onto the host reports directory.
+        run_command_args += [
+            "--introspect",
+            "--introspect-json",
+            f"{image_output_dir}/{output_file}.introspection.json",
+        ]
         if len(lifecycles) == 1:
             run_command_args += ["--lifecycle", lifecycles[0]]
         if deep_enabled(self.options):
