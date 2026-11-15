@@ -1,0 +1,28 @@
+test/test_cdxgen_callsites_slice.py
+  s_9ad4b69018bce0::t_21e59665c4e1ca 1-82
+test/test_cdxgen_contract.py
+  s_9ad4b69018bce0::t_66d8daddd76bdc 281,293-294
+  s_9ad4b69018bce0::t_f6eaaadadec17b 162-163,165
+  s_9ad4b69018bce0::t_929d874527a8dd 217
+  s_9ad4b69018bce0::t_e6a3718f6f0481 237
+  s_9ad4b69018bce0::t_21ac3bcc716386 202
+  s_9ad4b69018bce0::t_1f1eeea1323447 1-161,164,166-201,203-216,218-236,238-280,282-292,295-403
+test/test_pipeline.py
+  s_9ad4b69018bce0::t_c19b7cba035dd5 547-612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a2d89b6403e4a529282c09d3ee2189d80ee668dc",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
