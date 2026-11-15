@@ -17,7 +17,7 @@ After this chapter you will be able to run dep-scan reachability on a Go project
 golem loads packages through `golang.org/x/tools/go/packages` with full type and SSA information, so it needs a local Go toolchain to operate.
 
 - Go toolchain (`go`) on `PATH`, so golem can load the module's packages.
-- cdxgen and dep-scan, installed by `npm install -g @cyclonedx/cdxgen` and `pip install owasp-depscan`.
+- cdxgen and dep-scan, installed by `npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`.
 - The golem binary, resolved automatically (see below) or supplied explicitly.
 - A warm module cache (`GOMODCACHE`) if you intend to run fully offline.
 

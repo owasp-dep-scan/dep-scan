@@ -27,6 +27,7 @@ CDXGEN_TIMEOUT_MS = os.getenv("CDXGEN_TIMEOUT_MS", str(int(30 * 60 * 1000)))
 # a "v" prefix ("v13", "v13.8"); a "v13.8.0" image tag does not exist. The
 # SEA release assets, in contrast, live under the "v13.8.0" git tag.
 CDXGEN_IMAGE_VERSION = os.getenv("CDXGEN_IMAGE_VERSION", "13.8.0")
+CDXGEN_IMAGE_ROLLING_VERSION = os.getenv("CDXGEN_IMAGE_ROLLING_VERSION", "v13")
 
 # Oldest cdxgen this version of dep-scan works with. cdxgen 13.8 introduced
 # the callsites slice, build introspection and the 4/5 exit statuses that the
@@ -39,7 +40,14 @@ CDXGEN_NPM_PACKAGE = "@cdxgen/cdxgen"
 
 
 def _version_tuple(version: str) -> Tuple[int, ...]:
-    return tuple(int(part) for part in version.split(".") if part.isdigit())
+    """Numeric parts of a version; a pre-release sorts below its release.
+
+    ``13.8.0`` becomes ``(13, 8, 0, 1)`` and ``13.8.0-beta.1`` becomes
+    ``(13, 8, 0, 0)``, so a pre-release of the minimum version is refused.
+    """
+    release, _, pre = version.partition("-")
+    parts = tuple(int(part) for part in release.split(".") if part.isdigit())
+    return (*parts, 0 if pre else 1)
 
 
 def cdxgen_min_version_tuple() -> Tuple[int, ...]:
@@ -73,11 +81,12 @@ def default_image_name() -> str:
 
 PROJECT_TYPE_IMAGE = {
     "default": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
-    # The deno, bun, node20, dotnet6 and dotnet7 images stopped publishing
-    # release tags after 12.x, so no 13.8.0 tag exists for them. Those
-    # project types run the general image, which carries the same cdxgen.
-    "deno": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
-    "bun": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
+    # The deno and bun images publish only the rolling "v13" tag in the 13.x
+    # line, so they use it to keep their runtimes. The node20, dotnet6 and
+    # dotnet7 images publish no 13.x tag at all; those types run the general
+    # and dotnet8 images below.
+    "deno": f"ghcr.io/cdxgen/cdxgen-deno:{CDXGEN_IMAGE_ROLLING_VERSION}",
+    "bun": f"ghcr.io/cdxgen/cdxgen-bun:{CDXGEN_IMAGE_ROLLING_VERSION}",
     "default-secure": f"ghcr.io/cdxgen/cdxgen-secure:{CDXGEN_IMAGE_VERSION}",
     "java": f"ghcr.io/cdxgen/cdxgen-temurin-java21:{CDXGEN_IMAGE_VERSION}",
     "java24": f"ghcr.io/cdxgen/cdxgen:{CDXGEN_IMAGE_VERSION}",
@@ -187,7 +196,7 @@ def as_command_list(cmd) -> List[str]:
 # lifecycle scan asks cdxgen for its version once, not once per stage.
 _version_probe_cache: Dict[str, Optional[str]] = {}
 
-_VERSION_RE = re.compile(r"CycloneDX\s+Generator\s+v?(\d+(?:\.\d+)+)")
+_VERSION_RE = re.compile(r"CycloneDX\s+Generator\s+v?(\d+(?:\.\d+)+(?:-[0-9A-Za-z.]+)?)")
 
 
 def cdxgen_version(cmd, logger: Optional[Logger] = None) -> Optional[str]:
@@ -659,17 +668,18 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         output_file = os.path.basename(self.bom_file)
         output_dir = os.path.realpath(os.path.dirname(self.bom_file))
         # Setup environment variables
+        # A remote repository or a server-initiated scan runs cdxgen in
+        # secure mode, whatever CDXGEN_SECURE_MODE says in this environment.
+        force_secure = is_remote_source(self.source_dir, self.options) or is_server_scan(
+            self.options
+        )
         for k, _ in os.environ.items():
+            if force_secure and k == "CDXGEN_SECURE_MODE":
+                continue
             if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
         run_command_args += ["-e", f"CDXGEN_TIMEOUT_MS={CDXGEN_TIMEOUT_MS}"]
-        # A remote repository or a server-initiated scan runs cdxgen in
-        # secure mode. The env var is cdxgen's own activation for it; the
-        # passthrough above only copies variables already in our environment.
-        if (
-            is_remote_source(self.source_dir, self.options)
-            or is_server_scan(self.options)
-        ) and not os.getenv("CDXGEN_SECURE_MODE"):
+        if force_secure:
             run_command_args += ["-e", "CDXGEN_SECURE_MODE=true"]
         # Enabling license fetch will improve metadata such as tags and description
         # These will help with semantic reachability analysis

@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import sys
 import uuid
@@ -85,10 +86,16 @@ class BomResult:
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
-# introspection score missed the gate (the BOM and both reports exist);
-# 5 means an extractor failed under --fail-on-error and the failure was
-# deferred until those outputs were written (bin/cdxgen.js, v13.8.0).
-CDXGEN_PARTIAL_EXIT_CODES = (4, 5)
+# introspection score missed the gate (the BOM and both reports exist).
+# 5 is not one of them: cdxgen only exits 5 when --fail-on-error was passed
+# and an extractor failed; the failure is deferred until the BOM and reports
+# are written (bin/cdxgen.js and lib/core/deferredExit.js, v13.8.0), but the
+# user asked for the scan to stop, so depscan treats it as a failed BOM.
+CDXGEN_PARTIAL_EXIT_CODES = (4,)
+# One line per deferred extractor failure, as cdxgen 13.8.0 prints it:
+# "fail-on-error: <detail> (tool: <tool>, exit <n>)." The closing summary
+# line has no "(tool: ...)" part.
+_EXTRACTOR_FAILURE_RE = re.compile(r"^fail-on-error: .* \(tool: [^)]*\)\.$")
 
 
 def _introspection_summary(bom_file: str) -> Optional[Dict]:
@@ -133,7 +140,7 @@ def _extractor_failures(command_output: Optional[str]) -> List[str]:
     return [
         line.strip()
         for line in command_output.splitlines()
-        if line.strip().startswith("fail-on-error:")
+        if _EXTRACTOR_FAILURE_RE.match(line.strip())
     ]
 
 
@@ -141,9 +148,10 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
     """Interpret a finished cdxgen run from its exit status.
 
     Returns the extractor failures to remember; logs everything the status
-    means. A status of 0, 4 or 5 can still deliver a written BOM; any other
-    status is reported as a failed generation so the scan stops rather than
-    continuing as if nothing was found.
+    means. A status of 0 or 4 delivers a usable BOM. Status 5 (only returned
+    under --fail-on-error) and any other status are reported as a failed
+    generation, so the scan stops rather than continuing as if nothing was
+    found.
     """
     returncode = getattr(bom_result, "returncode", None)
     if returncode in (None, 0):
@@ -158,14 +166,14 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
     if returncode == 5:
         failures = _extractor_failures(bom_result.command_output)
         for failure in failures:
-            LOG.warning(
-                "cdxgen exited 5 for the %s BOM: an extractor failed while the BOM was still written. %s",
+            LOG.error(
+                "cdxgen exited 5 for the %s BOM under --fail-on-error: an extractor failed. %s",
                 stage,
                 failure,
             )
         if not failures:
-            LOG.warning(
-                "cdxgen exited 5 for the %s BOM: an extractor failed while the BOM was still written, but cdxgen did not name it.",
+            LOG.error(
+                "cdxgen exited 5 for the %s BOM under --fail-on-error: an extractor failed, but cdxgen did not name it.",
                 stage,
             )
         return failures
@@ -515,8 +523,8 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         extractor_failures: List[str] = []
         if bom_result.success:
             extractor_failures = _cdxgen_exit_verdict(bom_result, bom_file, "project")
-        # cdxgen exit statuses 4 and 5 still deliver the BOM; anything else
-        # that failed to write it leaves nothing to scan.
+        # Exit status 4 still delivers the BOM; any other failure, 5 included,
+        # leaves nothing the user asked to scan.
         partial_ok = getattr(bom_result, "returncode", None) in (
             None,
             0,
@@ -1105,9 +1113,10 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     def stage_usable(bom_result, stage_file, stage) -> bool:
         """Whether one lifecycle stage produced a document worth scanning.
 
-        Exit statuses 4 and 5 still count: cdxgen defers them until the BOM
-        and its introspection reports are written, and the scan continues
-        with the extractor failures remembered in ``extractor_failures``.
+        Exit status 4 still counts: the BOM and its introspection reports are
+        written. Exit status 5 does not, because cdxgen only returns it under
+        --fail-on-error; the failures are logged and kept in
+        ``extractor_failures``.
         """
         if not bom_result.success:
             return False

@@ -60,7 +60,8 @@ def append(probe):
 
 
 if "--version" in argv:
-    print(f"CycloneDX Generator {version}")
+    # cdxgen 13.8.0 prints the name in bold.
+    print(f"\x1b[1mCycloneDX Generator {version}\x1b[0m")
     print("Runtime: Node.js, Version: 24.0.0")
     append(probe=True)
     sys.exit(0)
@@ -98,6 +99,10 @@ if exit_code == 5:
     print(
         "fail-on-error: the methods slice could not be read "
         "(tool: atom-py, exit 3)."
+    )
+    print(
+        "fail-on-error: 1 extractor failure(s) were deferred so the BOM and "
+        "the introspection report could be written; exiting 5."
     )
 append(probe=False)
 sys.exit(exit_code)
@@ -335,7 +340,7 @@ def test_version_is_probed_once_for_a_lifecycle_scan(fake_cdxgen, tmp_path, monk
 
 @pytest.mark.parametrize(
     "exit_code,expect_success",
-    [(0, True), (1, False), (2, False), (4, True), (5, True)],
+    [(0, True), (1, False), (2, False), (4, True), (5, False)],
 )
 def test_exit_status_mapping(fake_cdxgen, tmp_path, monkeypatch, exit_code, expect_success):
     monkeypatch.setenv("FAKE_CDXGEN_EXIT", str(exit_code))
@@ -362,18 +367,54 @@ def test_exit_four_logs_the_introspection_tier(fake_cdxgen, tmp_path, monkeypatc
     assert "72" in message
 
 
-def test_exit_five_keeps_the_bom_and_the_extractor_failures(
+def test_exit_five_stops_and_names_each_extractor_failure(
     fake_cdxgen, tmp_path, monkeypatch, caplog
 ):
+    # cdxgen 13.8.0 exits 5 only under --fail-on-error, so the scan stops.
     monkeypatch.setenv("FAKE_CDXGEN_EXIT", "5")
     src, reports = _make_project(tmp_path)
     bom_file = reports / "sbom-python.cdx.json"
-    options = _options("research", ["python"], [], bom_file)
-    with caplog.at_level("WARNING"):
+    options = {**_options("research", ["python"], [], bom_file), "fail_on_error": True}
+    with caplog.at_level("ERROR"):
         result = bom_mod.create_bom(str(bom_file), str(src), options)
-    assert result.success
-    assert any("atom-py" in failure for failure in result.extractor_failures)
-    assert any("exited 5" in r.message for r in caplog.records)
+    assert not result.success
+    failures = [r.message for r in caplog.records if "exited 5" in r.message]
+    # One record for the one extractor; the closing summary line is not a failure.
+    assert len(failures) == 1
+    assert "atom-py" in failures[0]
+
+
+def test_extractor_failures_skip_the_summary_line():
+    output = (
+        "fail-on-error: the methods slice could not be read (tool: atom-py, exit 3).\n"
+        "fail-on-error: pip install failed (tool: pip).\n"
+        "fail-on-error: 2 extractor failure(s) were deferred so the BOM and the "
+        "introspection report could be written; exiting 5.\n"
+    )
+    assert bom_mod._extractor_failures(output) == [
+        "fail-on-error: the methods slice could not be read (tool: atom-py, exit 3).",
+        "fail-on-error: pip install failed (tool: pip).",
+    ]
+
+
+@pytest.mark.parametrize(
+    "version,accepted",
+    [
+        ("13.8.0", True),
+        ("13.10.0", True),
+        ("14.0.0", True),
+        ("13.7.9", False),
+        ("13.8.0-beta.1", False),
+        ("13.8.1-rc.1", True),
+    ],
+)
+def test_cdxgen_version_comparison(fake_cdxgen, monkeypatch, version, accepted):
+    monkeypatch.setenv("FAKE_CDXGEN_VERSION", version)
+    cdxgen_mod._version_probe_cache.clear()
+    ok, found = cdxgen_mod.check_cdxgen_version(cdxgen_mod.find_cdxgen_cmd())
+    # Positive control: the ANSI-wrapped version line was read.
+    assert found == version
+    assert ok is accepted
 
 
 def test_other_exit_status_is_named_in_the_message(fake_cdxgen, tmp_path, monkeypatch, caplog):
