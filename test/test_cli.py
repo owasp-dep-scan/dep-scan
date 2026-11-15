@@ -481,7 +481,7 @@ def _function_lengths(source):
     lengths = {}
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            lengths[node.name] = node.end_lineno - node.lineno + 1
+            lengths[node.name] = (node.end_lineno or node.lineno) - node.lineno + 1
     return lengths
 
 

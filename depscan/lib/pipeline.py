@@ -32,7 +32,7 @@ exit code. Stages never call ``sys.exit`` themselves.
 import contextlib
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
@@ -143,9 +143,9 @@ class ScanContext:
     vulnerability lists aggregate every type.
     """
 
-    args: object
-    src_dir: Optional[str] = None
-    reports_dir: Optional[str] = None
+    args: Any
+    src_dir: str = ""
+    reports_dir: str = ""
     depscan_options: Dict = field(default_factory=dict)
     perform_risk_audit: bool = False
     user_bom_dir: Optional[str] = None

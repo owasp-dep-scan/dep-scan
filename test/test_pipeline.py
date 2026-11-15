@@ -436,9 +436,10 @@ def test_stage_render_reports_writes_every_report_file(tmp_path):
 
     pipeline.stage_render_reports(ctx)
 
-    assert Path(ctx.html_report_file).is_file()
-    assert Path(ctx.txt_report_file).is_file()
+    assert ctx.html_report_file and Path(ctx.html_report_file).is_file()
+    assert ctx.txt_report_file and Path(ctx.txt_report_file).is_file()
     rendered = Path(ctx.reports_dir) / ctx.args.report_name
     assert rendered.is_file()
+    assert ctx.vdr_file, "the summary stage must have produced a VDR file"
     vdr = json.loads(Path(ctx.vdr_file).read_text())
     assert vdr.get("annotations"), "the text report must be annotated into the VDR"
