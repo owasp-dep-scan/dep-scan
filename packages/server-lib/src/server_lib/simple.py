@@ -3,6 +3,7 @@ import ipaddress
 import json
 import os
 import re
+import shutil
 import socket
 import sys
 import tempfile
@@ -10,11 +11,7 @@ from hmac import compare_digest
 from typing import cast
 from urllib.parse import urlparse, urlsplit
 
-from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import SUPPORTED_BOM_PROFILES
-from analysis_lib.search import get_pkgs_by_scope
-from analysis_lib.utils import get_pkg_list
-from analysis_lib.vdr import VDRAnalyzer
 from custom_json_diff.lib.utils import file_write
 from quart import Quart, request
 from rich.console import Console
@@ -533,6 +530,7 @@ async def run_scan():
         params = {}
     uploaded_bom_file = await request.files
     create_bom = app.config.get("create_bom")
+    scan_bom = app.config.get("scan_bom")
     allow_private_urls = _is_truthy(app.config.get("ALLOW_PRIVATE_URLS"))
     max_bom_file_size = _get_config_int(
         app.config,
@@ -545,7 +543,6 @@ async def run_scan():
     path = None
     multi_project = None
     project_type = None
-    results = []
     profile = "generic"
     deep = False
     suggest_mode = _is_truthy(q.get("suggest"))
@@ -771,16 +768,6 @@ async def run_scan():
                 if logger_instance:
                     logger_instance.warning("Blocked request for path: %s", bom_file_path)
                 return {"error": "true", "message": PATH_NOT_ALLOWED_MESSAGE}, 403
-            pkg_list, _ = get_pkg_list(bom_file_path)
-            if not pkg_list:
-                if logger_instance:
-                    logger_instance.debug("Empty package search attempted!")
-            else:
-                if logger_instance:
-                    logger_instance.debug("Scanning %d oss dependencies for issues", len(pkg_list))
-            # Categorize packages by CycloneDX scope (required/optional/excluded)
-            # so scope-based prioritization works in server mode just like the CLI.
-            scoped_pkgs = get_pkgs_by_scope(pkg_list)
             bom_data, bom_error = _load_bom_data(bom_file_path, max_bom_file_size)
             if not bom_data:
                 return (
@@ -788,30 +775,40 @@ async def run_scan():
                     400,
                     {"Content-Type": "application/json"},
                 )
-            options = VdrAnalysisKV(
-                project_type,
-                results,
-                pkg_aliases={},
-                purl_aliases={},
-                suggest_mode=suggest_mode,
-                scoped_pkgs=scoped_pkgs,
-                no_vuln_table=True,
-                bom_file=bom_file_path,
-                pkg_list=pkg_list,
-                direct_purls={},
-                reached_purls={},
-                console=console,
-                logger=logger_instance,
-                fuzzy_search=fuzzy_search,
-            )
-            vdr_result = VDRAnalyzer(vdr_options=options).process()
-            if vdr_result.success:
-                pkg_vulnerabilities = vdr_result.pkg_vulnerabilities
-                if pkg_vulnerabilities:
-                    bom_data["vulnerabilities"] = pkg_vulnerabilities
-                return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
-            if bom_data:
-                return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
+            if scan_bom is not None:
+                # The scan runs through the injected callable. Its reports go
+                # under the server's temporary directory and are cleaned up
+                # with the request's other temporary files. A scan that stops
+                # early raises, and a failed request must not come back
+                # looking like a BOM with no vulnerabilities.
+                scan_reports_dir = tempfile.mkdtemp(
+                    prefix="depscan-scan-", dir=_get_server_temp_dir()
+                )
+                temp_paths.append(scan_reports_dir)
+                if logger_instance:
+                    logger_instance.debug("Scanning %s", bom_file_path)
+                try:
+                    vulnerabilities = scan_bom(
+                        bom_file_path,
+                        scan_reports_dir,
+                        project_type,
+                        suggest_mode=suggest_mode,
+                        fuzzy_search=fuzzy_search,
+                    )
+                except Exception as exc:  # noqa: BLE001 - the request fails, not the server
+                    if logger_instance:
+                        logger_instance.warning("Scan failed for %s: %s", bom_file_path, exc)
+                    return (
+                        {
+                            "error": "true",
+                            "message": "Unable to scan the BOM file. Check the server logs.",
+                        },
+                        500,
+                        {"Content-Type": "application/json"},
+                    )
+                if vulnerabilities:
+                    bom_data["vulnerabilities"] = vulnerabilities
+            return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
         return (
             {
                 "error": "true",
@@ -832,7 +829,11 @@ def cleanup_temp(*temp_files):
         if not candidate:
             continue
         with contextlib.suppress(FileNotFoundError, OSError, TypeError):
-            os.remove(candidate)
+            if os.path.isdir(candidate):
+                # A scan's reports directory holds everything the scan wrote.
+                shutil.rmtree(candidate, ignore_errors=True)
+            else:
+                os.remove(candidate)
 
 
 def run_server(options: ServerOptions):
@@ -854,6 +855,8 @@ def run_server(options: ServerOptions):
     # Dirty hack to get access to the create_bom function
     if options.create_bom:
         app.config["create_bom"] = options.create_bom
+    if options.scan_bom:
+        app.config["scan_bom"] = options.scan_bom
     if options.custom_data_directory:
         if options.logger:
             options.logger.info(

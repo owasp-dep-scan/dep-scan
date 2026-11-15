@@ -34,6 +34,7 @@ def client():
         "MAX_BOM_FILE_SIZE",
         "TRUSTED_HOST_NAMES",
         "create_bom",
+        "scan_bom",
     ):
         app.config.pop(config_key, None)
     app.config["MAX_CONTENT_LENGTH"] = None
@@ -46,6 +47,32 @@ def allowed_dirs():
         sub_dir = Path(safe_dir) / "sub"
         sub_dir.mkdir()
         yield str(safe_dir), str(sub_dir)
+
+
+def inject_scanner(monkeypatch=None, vulnerabilities=None, error=None):
+    """Inject a BOM scanner into the app config and record its calls.
+
+    The real scanner is injected by depscan (it cannot be imported here);
+    the recording doubles as the positive control that a request reached it.
+    """
+    calls = []
+
+    def scan_bom(bom_file, reports_dir, project_type, *, suggest_mode=False, fuzzy_search=False):
+        calls.append(
+            {
+                "bom_file": bom_file,
+                "reports_dir": reports_dir,
+                "project_type": project_type,
+                "suggest_mode": suggest_mode,
+                "fuzzy_search": fuzzy_search,
+            }
+        )
+        if error is not None:
+            raise error
+        return list(vulnerabilities or [])
+
+    app.config["scan_bom"] = scan_bom
+    return calls
 
 
 @pytest.mark.asyncio
@@ -349,20 +376,7 @@ async def test_scan_existing_bom_path(client: QuartClient, tmp_path, monkeypatch
         ),
         encoding="utf-8",
     )
-
-    class DummyAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type(
-                "DummyResult",
-                (),
-                {"success": True, "pkg_vulnerabilities": []},
-            )()
-
-    monkeypatch.setattr("server_lib.simple.get_pkg_list", lambda _: ([], None))
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     response = await client.get(
         f"/scan?type=python&path={bom_path}",
@@ -371,6 +385,7 @@ async def test_scan_existing_bom_path(client: QuartClient, tmp_path, monkeypatch
     assert response.status_code == 200
     data = await response.get_json()
     assert data["bomFormat"] == "CycloneDX"
+    assert calls, "the injected scanner was never called"
 
 
 @pytest.mark.asyncio
@@ -389,22 +404,9 @@ async def test_scan_existing_bom_path_with_invalid_max_content_length(
         ),
         encoding="utf-8",
     )
-
-    class DummyAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type(
-                "DummyResult",
-                (),
-                {"success": True, "pkg_vulnerabilities": []},
-            )()
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     app.config["MAX_CONTENT_LENGTH"] = "not-an-integer"
-    monkeypatch.setattr("server_lib.simple.get_pkg_list", lambda _: ([], None))
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
-
     response = await client.get(
         f"/scan?type=python&path={bom_path}",
         headers={"X-Test-Remote-Addr": "127.0.0.1"},
@@ -412,6 +414,7 @@ async def test_scan_existing_bom_path_with_invalid_max_content_length(
     assert response.status_code == 200
     data = await response.get_json()
     assert data["bomFormat"] == "CycloneDX"
+    assert calls, "the injected scanner was never called"
 
 
 def _write_bom_with_components(bom_path: Path):
@@ -443,26 +446,17 @@ def _write_bom_with_components(bom_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_scan_passes_parsed_pkg_list_to_analyzer(client: QuartClient, tmp_path, monkeypatch):
-    """Regression test for issue #515: the parsed pkg_list must reach the VDR
-    analyzer instead of being discarded in favor of a hardcoded empty list."""
+async def test_scan_passes_the_bom_path_to_the_injected_scanner(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    """The request hands the BOM it resolved to the injected scanner, which
+    runs depscan's own pipeline on it. (The parsing of the package list from
+    the BOM, which issue #515 was about, moved into that pipeline; the server
+    no longer parses packages itself.)"""
     bom_path = tmp_path / "sample.bom.json"
     _write_bom_with_components(bom_path)
 
-    captured = {}
-
-    class CapturingAnalyzer:
-        def __init__(self, vdr_options):
-            captured["options"] = vdr_options
-
-        def process(self):
-            return type(
-                "DummyResult",
-                (),
-                {"success": True, "pkg_vulnerabilities": []},
-            )()
-
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", CapturingAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     response = await client.get(
         f"/scan?type=js&path={bom_path}",
@@ -470,36 +464,44 @@ async def test_scan_passes_parsed_pkg_list_to_analyzer(client: QuartClient, tmp_
     )
     assert response.status_code == 200
 
-    options = captured["options"]
-    purls = [pkg.get("purl") for pkg in options.pkg_list]
-    assert "pkg:npm/lodash@4.17.20" in purls
-    assert "pkg:npm/axios@0.21.0" in purls
-    assert options.scoped_pkgs == {"required": ["pkg:npm/lodash@4.17.20"]}
+    assert calls, "the injected scanner was never called"
+    assert calls[0]["bom_file"] == str(bom_path)
+    assert calls[0]["project_type"] == "js"
+    assert calls[0]["suggest_mode"] is False
+    assert calls[0]["fuzzy_search"] is False
+
+
+@pytest.mark.asyncio
+async def test_scan_forwards_suggest_and_fuzzy_flags_to_the_scanner(
+    client: QuartClient, tmp_path, monkeypatch
+):
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
+
+    response = await client.get(
+        f"/scan?type=js&suggest=true&fuzzy_search=true&path={bom_path}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    assert calls, "the injected scanner was never called"
+    assert calls[0]["suggest_mode"] is True
+    assert calls[0]["fuzzy_search"] is True
 
 
 @pytest.mark.asyncio
 async def test_scan_attaches_vulnerabilities_to_response(
     client: QuartClient, tmp_path, monkeypatch
 ):
-    """When the VDR analyzer reports vulnerabilities, the /scan response BOM
-    must carry a vulnerabilities array instead of echoing the input unchanged."""
+    """When the injected scanner reports vulnerabilities, the /scan response
+    BOM must carry a vulnerabilities array instead of echoing the input
+    unchanged."""
     bom_path = tmp_path / "sample.bom.json"
     _write_bom_with_components(bom_path)
 
     sample_vulns = [{"id": "CVE-2021-23337", "ratings": [{"severity": "high"}]}]
-
-    class ReportingAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type(
-                "DummyResult",
-                (),
-                {"success": True, "pkg_vulnerabilities": sample_vulns},
-            )()
-
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", ReportingAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=sample_vulns)
 
     response = await client.get(
         f"/scan?type=js&path={bom_path}",
@@ -508,6 +510,59 @@ async def test_scan_attaches_vulnerabilities_to_response(
     assert response.status_code == 200
     data = await response.get_json()
     assert data["vulnerabilities"] == sample_vulns
+    assert calls, "the injected scanner was never called"
+
+
+@pytest.mark.asyncio
+async def test_scan_failure_returns_an_error_response(client: QuartClient, tmp_path, monkeypatch):
+    """A scan that stops early raises inside the injected scanner; the
+    request must fail instead of returning a BOM with no vulnerabilities."""
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+
+    calls = inject_scanner(monkeypatch, error=RuntimeError("database is unusable"))
+
+    response = await client.get(
+        f"/scan?type=js&path={bom_path}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 500
+    data = await response.get_json()
+    assert "Unable to scan the BOM file" in data["message"]
+    assert calls, "the injected scanner was never called"
+
+
+@pytest.mark.asyncio
+async def test_scan_reports_dir_lives_under_the_server_temp_dir_and_is_cleaned(
+    client: QuartClient, tmp_path
+):
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+
+    recorded = {}
+    original = app.config.get("scan_bom")
+
+    def scan_bom(bom_file, reports_dir, project_type, *, suggest_mode=False, fuzzy_search=False):
+        recorded["reports_dir"] = reports_dir
+        return []
+
+    app.config["scan_bom"] = scan_bom
+    try:
+        response = await client.get(
+            f"/scan?type=js&path={bom_path}",
+            headers={"X-Test-Remote-Addr": "127.0.0.1"},
+        )
+        assert response.status_code == 200
+        assert recorded, "the injected scanner was never called"
+        server_temp_dir = simple_module._get_server_temp_dir()
+        assert os.path.dirname(recorded["reports_dir"]) == server_temp_dir
+        # The request cleans the scan's reports directory up with its other
+        # temporary files.
+        assert not os.path.exists(recorded["reports_dir"])
+    finally:
+        app.config.pop("scan_bom", None)
+        if original is not None:
+            app.config["scan_bom"] = original
 
 
 @pytest.mark.asyncio
@@ -536,23 +591,14 @@ async def test_scan_rejects_unsupported_profile(client: QuartClient, tmp_path, p
 async def test_scan_accepts_supported_profile(client: QuartClient, tmp_path, monkeypatch):
     bom_path = tmp_path / "sample.bom.json"
     _write_bom_with_components(bom_path)
-    captured = {}
-
-    class CapturingAnalyzer:
-        def __init__(self, vdr_options):
-            captured["options"] = vdr_options
-
-        def process(self):
-            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
-
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", CapturingAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     response = await client.get(
         f"/scan?type=js&path={bom_path}&profile=appsec",
         headers={"X-Test-Remote-Addr": "127.0.0.1"},
     )
     assert response.status_code == 200
-    assert captured["options"] is not None
+    assert calls, "the injected scanner was never called"
 
 
 @pytest.mark.asyncio
@@ -640,14 +686,7 @@ async def test_uploaded_bom_is_not_blocked_by_path_allowlist(
     safe_dir.mkdir()
     app.config["ALLOWED_PATHS"] = [str(safe_dir)]
 
-    class DummyAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
-
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     payload = json.dumps(
         {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": []}
@@ -666,6 +705,7 @@ async def test_uploaded_bom_is_not_blocked_by_path_allowlist(
     assert response.status_code == 200
     data = await response.get_json()
     assert data["bomFormat"] == "CycloneDX"
+    assert calls, "the injected scanner was never called"
 
 
 def test_server_temp_dir_is_private_and_reused():
@@ -695,14 +735,7 @@ async def test_uploaded_bom_is_staged_in_private_temp_dir(client: QuartClient, m
 
     monkeypatch.setattr(simple_module, "file_write", tracking_file_write)
 
-    class DummyAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
-
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     payload = json.dumps(
         {"bomFormat": "CycloneDX", "specVersion": "1.5", "version": 1, "components": []}
@@ -721,6 +754,9 @@ async def test_uploaded_bom_is_staged_in_private_temp_dir(client: QuartClient, m
     assert response.status_code == 200
     assert staged_paths
     assert os.path.dirname(staged_paths[0]) == simple_module._get_server_temp_dir()
+    # The staged upload is what the scanner receives.
+    assert calls, "the injected scanner was never called"
+    assert calls[0]["bom_file"] == staged_paths[0]
 
 
 @pytest.mark.asyncio
@@ -760,15 +796,8 @@ async def test_generated_bom_inside_temp_dir_is_accepted(
             json.dump({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": []}, fp)
         return type("BOMStatus", (), {"success": True, "primary": bom_file})()
 
-    class DummyAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
-
     app.config["create_bom"] = create_bom
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
 
     response = await client.get(
         f"/scan?type=js&path={project_dir}",
@@ -1155,15 +1184,8 @@ async def test_generated_bom_is_not_blocked_by_the_path_allowlist(
             json.dump({"bomFormat": "CycloneDX", "specVersion": "1.5", "components": []}, fp)
         return type("BOMStatus", (), {"success": True, "primary": bom_file})()
 
-    class DummyAnalyzer:
-        def __init__(self, vdr_options):
-            self.vdr_options = vdr_options
-
-        def process(self):
-            return type("DummyResult", (), {"success": True, "pkg_vulnerabilities": []})()
-
     app.config["create_bom"] = create_bom
-    monkeypatch.setattr("server_lib.simple.VDRAnalyzer", DummyAnalyzer)
+    calls = inject_scanner(monkeypatch, vulnerabilities=[])
     response = await client.get(
         "/scan", query_string={"type": "js", "path": str(project_dir)}, headers=LOCAL
     )
