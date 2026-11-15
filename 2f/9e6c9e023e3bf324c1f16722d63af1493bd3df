@@ -1,0 +1,21 @@
+depscan/lib/bom.py
+  s_9ad4b69018bce0::t_3182a7169bf0f1 402-406,408-410
+test/test_cdxgen_contract.py
+  s_9ad4b69018bce0::t_8962281bb7af8b 281-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2f9e6c9e023e3bf324c1f16722d63af1493bd3df",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
