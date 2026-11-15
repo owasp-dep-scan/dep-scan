@@ -1,0 +1,19 @@
+contrib/dependency-track/docker-compose.yml
+  s_9ad4b69018bce0::t_a9543e0e6af501 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18ca6516bac47fd113300e5d20d8f91e595d2142",
+  "prompts": {},
+  "sessions": {
+    "s_9ad4b69018bce0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_12a91014-d26f-4d7d-91ff-08b33b4d2155",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
