@@ -183,7 +183,7 @@ def test_finalize_setup_loads_custom_data_after_detecting_types(tmp_path, monkey
 
     monkeypatch.setattr(pipeline, "set_project_types", recording_set_project_types)
     monkeypatch.setattr(
-        pipeline.search, "load_custom_data", lambda path: order.append(("custom", path))
+        pipeline.search, "load_custom_data", lambda path: order.append(f"custom:{path}")
     )
     custom = tmp_path / "custom.json"
     custom.write_text("{}")
@@ -192,7 +192,7 @@ def test_finalize_setup_loads_custom_data_after_detecting_types(tmp_path, monkey
 
     pipeline.finalize_setup(ctx)
 
-    assert order == ["types", ("custom", str(custom))]
+    assert order == ["types", f"custom:{custom}"]
 
 
 def test_stage_database_stops_when_image_selection_fails(tmp_path, monkeypatch):
