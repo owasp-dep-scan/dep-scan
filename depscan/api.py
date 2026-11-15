@@ -154,6 +154,16 @@ def scan(options, *, render: bool = True) -> ScanResult:
         stage logged. The function never calls ``sys.exit`` and never
         returns a result in place of a stopped scan.
     """
+    return _run_stages(options, render=render, database=True)
+
+
+def _run_stages(options, *, render: bool, database: bool) -> ScanResult:
+    """Run the scan stages; see :func:`scan`.
+
+    ``database=False`` skips the database stage. Only the server uses it: it
+    prepares the database once when it starts, so a request never downloads
+    or replaces the database the server is reading.
+    """
     if not render:
         options.no_vuln_table = True
     ctx = pipeline.build_context(options)
@@ -163,7 +173,8 @@ def scan(options, *, render: bool = True) -> ScanResult:
         # Our style of analysis is comparable to that of an intelligent Hubble telescope or a rover—examining the same subject through multiple optics, colors, and depths to gain a deeper understanding.
         # We begin by iterating over the project types provided or assumed.
         pipeline.stage_setup(ctx)
-        pipeline.stage_database(ctx)
+        if database:
+            pipeline.stage_database(ctx)
         pipeline.finalize_setup(ctx)
         for project_type in ctx.project_types:
             tscan = pipeline.TypeScan(project_type=project_type)

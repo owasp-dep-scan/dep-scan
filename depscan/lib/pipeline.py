@@ -219,10 +219,16 @@ def build_server_bom_scanner():
 
     The server package cannot import depscan (depscan depends on it), so it
     receives this callable through ``ServerOptions`` the same way it receives
-    ``create_bom``. It scans one BOM file through the public API with the
+    ``create_bom``. It scans one BOM file through the API with the
     rendering off and returns the VDR vulnerabilities for the response; a
     scan that stops early raises, so a failed request can never come back
     looking like a scan with no vulnerabilities.
+
+    Requests skip the database stage. :func:`start_server_mode` runs it once,
+    with the options the server was started with, before the server accepts
+    requests. Running it per request would download or replace the database
+    inside a request whenever it aged past ``VDB_AGE_HOURS``, or whenever the
+    server's database options differed from the defaults the request uses.
 
     ``depscan.api`` imports this module, so the import is done here at call
     time rather than at module level to keep the import graph acyclic.
@@ -246,16 +252,21 @@ def build_server_bom_scanner():
             suggest=suggest_mode,
             fuzzy_search=fuzzy_search,
         )
-        result = api.scan(options, render=False)
+        result = api._run_stages(options, render=False, database=False)
         return result.vulnerabilities
 
     return scan_bom
 
 
 def start_server_mode(ctx):
-    """Start the depscan server; a separate path no scan stage reaches."""
+    """Prepare the database once, then start the depscan server.
+
+    No other scan stage runs here. A database that cannot be prepared raises
+    :class:`ScanStageError`, so the server never starts without one.
+    """
     args = ctx.args
     if SERVER_LIB:
+        stage_database(ctx)
         # Flask compares the request content length against this value,
         # so it must be an int (bytes); the raw env str would raise
         # TypeError on every upload instead of returning 413.

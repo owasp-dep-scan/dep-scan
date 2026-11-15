@@ -34,7 +34,11 @@ def run_depscan(args):
     if args.server_mode:
         ctx = pipeline.build_context(args)
         pipeline.configure_output(ctx)
-        return pipeline.start_server_mode(ctx)
+        try:
+            return pipeline.start_server_mode(ctx)
+        except pipeline.ScanStageError:
+            # The database stage already logged why the server cannot start.
+            sys.exit(1)
     try:
         api.scan(args)
     except api.ScanError:

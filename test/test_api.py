@@ -445,18 +445,21 @@ def test_diff_keys_on_each_affected_ref():
 def test_build_server_bom_scanner_scans_through_the_api(monkeypatch, tmp_path):
     recorded = {}
 
-    def fake_scan(options, *, render=True):
+    def fake_run_stages(options, *, render, database):
         recorded["options"] = vars(options).copy()
         recorded["render"] = render
+        recorded["database"] = database
         return _result_with_vulns(tmp_path, [VULN_REQUESTS])
 
-    monkeypatch.setattr(api, "scan", fake_scan)
+    monkeypatch.setattr(api, "_run_stages", fake_run_stages)
     scanner = pipeline.build_server_bom_scanner()
     vulns = scanner("bom.json", str(tmp_path / "req-reports"), "js", suggest_mode=True)
 
     # Positive control: the scan went through the API, not around it.
     assert recorded, "depscan.api.scan was never called"
     assert recorded["render"] is False
+    # The server prepares the database once at start; a request never does.
+    assert recorded["database"] is False
     options = recorded["options"]
     assert options["bom"] == "bom.json"
     assert options["reports_dir"] == str(tmp_path / "req-reports")
@@ -469,3 +472,51 @@ def test_build_server_bom_scanner_scans_through_the_api(monkeypatch, tmp_path):
     assert options["fail_on_error"] is False
     assert options["search_order"] is None
     assert vulns == [VULN_REQUESTS]
+
+
+def test_requests_skip_the_database_stage(monkeypatch, tmp_path):
+    called = []
+    monkeypatch.setattr(pipeline, "stage_database", lambda ctx: called.append("database"))
+
+    def stop_after_setup(ctx):
+        called.append("finalize")
+        raise pipeline.ScanStageError("stop here")
+
+    monkeypatch.setattr(pipeline, "finalize_setup", stop_after_setup)
+    options = api.scan_options(bom=str(tmp_path / "missing.json"), no_banner=True)
+    monkeypatch.setattr(pipeline, "validate_scan_inputs", lambda args: [])
+    with pytest.raises(api.ScanError):
+        api._run_stages(options, render=False, database=False)
+    # Positive control: the stages after the database stage did run.
+    assert called == ["finalize"]
+    called.clear()
+    with pytest.raises(api.ScanError):
+        api.scan(options, render=False)
+    assert called == ["database", "finalize"]
+
+
+def test_server_start_prepares_the_database_before_serving(monkeypatch):
+    if not pipeline.SERVER_LIB:
+        pytest.skip("server-lib is not installed")
+    order = []
+    monkeypatch.setattr(pipeline, "stage_database", lambda ctx: order.append("database"))
+    monkeypatch.setattr(pipeline.simple, "run_server", lambda options: order.append("serve"))
+    ctx = pipeline.build_context(api.scan_options(server_mode=True))
+    pipeline.start_server_mode(ctx)
+    assert order == ["database", "serve"]
+
+
+def test_server_does_not_start_without_a_database(monkeypatch):
+    if not pipeline.SERVER_LIB:
+        pytest.skip("server-lib is not installed")
+    served = []
+
+    def no_database(ctx):
+        raise pipeline.ScanStageError("no database")
+
+    monkeypatch.setattr(pipeline, "stage_database", no_database)
+    monkeypatch.setattr(pipeline.simple, "run_server", lambda options: served.append(options))
+    ctx = pipeline.build_context(api.scan_options(server_mode=True))
+    with pytest.raises(pipeline.ScanStageError):
+        pipeline.start_server_mode(ctx)
+    assert served == []
