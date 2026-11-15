@@ -138,9 +138,10 @@ class ScanContext:
     """Plain data shared by the stages of one scan.
 
     ``scans`` holds one :class:`TypeScan` per project type that produced
-    results; the summary fields (``summary``, ``vdr_file``, ``bom_file``)
-    carry the last completed type's values for the report rendering, and the
-    vulnerability lists aggregate every type.
+    results. ``summary`` and ``vdr_file`` carry the last matched type's
+    values for the report rendering, ``bom_file`` the BOM of the last type
+    whose BOMs were produced, and the vulnerability lists aggregate every
+    type.
     """
 
     args: Any
@@ -416,10 +417,22 @@ def stage_database(ctx):
             ) as vdb_download_status:
                 if not IS_CI:
                     vdb_download_status.stop()
-                # This line may exit with an exception if the database cannot be
-                # downloaded even after retries.
-                # Example: urllib3.exceptions.IncompleteRead, urllib3.exceptions.ProtocolError, requests.exceptions.ChunkedEncodingError
-                vdb_setup.download_vdb_with_retries(scan_vdb_url)
+                # The download raises once every retry has failed. The layer
+                # that fails varies (vdb's own errors, urllib3 IncompleteRead,
+                # requests ChunkedEncodingError), so any exception stops the
+                # scan with a message instead of a traceback.
+                try:
+                    vdb_setup.download_vdb_with_retries(scan_vdb_url)
+                except Exception as e:  # noqa: BLE001
+                    LOG.error(
+                        "Could not download the vulnerability database %s into %s: %s. "
+                        "Check the network or proxy settings, or download it first "
+                        "with `depscan-vdb download` and run the scan again.",
+                        scan_vdb_url,
+                        config.DATA_DIR,
+                        e,
+                    )
+                    raise ScanStageError() from e
                 # Record the variant so a future switch forces a re-download
                 # even when the DB is still within the age window.
                 write_vdb_image_marker(scan_vdb_url, config.DATA_DIR)
@@ -429,9 +442,6 @@ def stage_database(ctx):
     # A database with no rows answers nothing; a scan must not report zero
     # findings from zero data.
     vdb_setup.ensure_vdb_usable()
-    if args.custom_data:
-        LOG.info(f"Loading custom vulnerability data from {args.custom_data}")
-        search.load_custom_data(args.custom_data)
 
 
 def set_project_types(args, src_dir):
@@ -473,6 +483,9 @@ def finalize_setup(ctx):
     """Finish setup once the database is ready: types, paths, sample config."""
     args = ctx.args
     pkg_list, project_types_list = set_project_types(args, ctx.src_dir)
+    if args.custom_data:
+        LOG.info(f"Loading custom vulnerability data from {args.custom_data}")
+        search.load_custom_data(args.custom_data)
     ctx.purl_pkg_list = pkg_list
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
@@ -696,6 +709,9 @@ def _produce_boms(ctx, scan):
     scan.bom_file = scan.nominated_bom_file or (
         scan.bom_files[0] if len(scan.bom_files) == 1 else None
     )
+    # The report template receives the BOM of the last type that got this
+    # far, even when that type is skipped later for having no packages.
+    ctx.bom_file = scan.bom_file
     return True
 
 
@@ -965,7 +981,6 @@ def stage_analysis_vdr(ctx, scan):
         ctx.all_pkg_group_rows.update(vdr_result.prioritized_pkg_vuln_trees)
     ctx.summary = summary
     ctx.vdr_file = vdr_file
-    ctx.bom_file = scan.bom_file
 
 
 def stage_render_explain(ctx, scan):
