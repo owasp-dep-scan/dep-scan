@@ -278,6 +278,39 @@ def test_required_cdxgen_version_runs_the_scan(fake_cdxgen, tmp_path):
     assert len(_scans(fake_cdxgen)) == 1
 
 
+def test_path_default_cdxgen_is_version_checked(tmp_path, monkeypatch, caplog):
+    """``cdxgen`` found on PATH is the command that runs, so it is probed.
+
+    The resolver returns the literal name both when PATH resolves it and as
+    its last-resort fallback; either way the version check must see it.
+    """
+    monkeypatch.setattr(bom_mod, "find_cdxgen_cmd", lambda *a, **k: "cdxgen")
+    monkeypatch.setattr(cdxgen_mod, "find_cdxgen_cmd", lambda *a, **k: "cdxgen")
+    monkeypatch.setattr(cdxgen_mod, "cdxgen_version", lambda cmd, logger=None: "13.3.0")
+    src, reports = _make_project(tmp_path)
+    bom_file = reports / "sbom-python.cdx.json"
+    options = _options("research", ["python"], [], bom_file)
+    with caplog.at_level("ERROR"):
+        result = bom_mod.create_bom(str(bom_file), str(src), options)
+    assert not result.success
+    assert "13.3.0" in " ".join(r.message for r in caplog.records)
+
+
+def test_unresolvable_cdxgen_is_refused_as_unreadable(tmp_path, monkeypatch, caplog):
+    monkeypatch.setattr(bom_mod, "find_cdxgen_cmd", lambda *a, **k: False)
+    monkeypatch.setattr(cdxgen_mod, "find_cdxgen_cmd", lambda *a, **k: False)
+    monkeypatch.setattr(cdxgen_mod, "cdxgen_version", lambda cmd, logger=None: None)
+    src, reports = _make_project(tmp_path)
+    bom_file = reports / "sbom-python.cdx.json"
+    options = _options("research", ["python"], [], bom_file)
+    with caplog.at_level("ERROR"):
+        result = bom_mod.create_bom(str(bom_file), str(src), options)
+    assert not result.success
+    assert "Could not read the cdxgen version" in " ".join(
+        r.message for r in caplog.records
+    )
+
+
 def test_version_is_probed_once_for_a_lifecycle_scan(fake_cdxgen, tmp_path, monkeypatch):
     src, reports = _make_project(tmp_path)
     options = _options("research", ["python"], [], reports / "sbom-build.cdx.json")

@@ -399,14 +399,15 @@ def get_pkg_by_type(pkg_list, pkg_type):
 def _refuse_old_cdxgen(logger=None) -> bool:
     """Refuse a local cdxgen older than the pinned minimum.
 
-    Returns True when the resolved command is acceptable (or absent, which
-    the generator reports in its own words). The container and server
-    generators never call this: their cdxgen is pinned at build time or run
-    elsewhere.
+    Returns True when the command that would run is acceptable. The literal
+    ``cdxgen`` is what the generator executes when nothing else resolves, so
+    it is probed like any other command; a probe that cannot read a version
+    is a refusal. The container and server generators never call this: their
+    cdxgen is pinned at build time or runs elsewhere.
     """
-    cdxgen_cmd = find_cdxgen_cmd(logger=logger) or find_cdxgen_cmd(False, logger=logger)
-    if not cdxgen_cmd or cdxgen_cmd == "cdxgen":
-        return True
+    cdxgen_cmd = (
+        find_cdxgen_cmd(logger=logger) or find_cdxgen_cmd(False, logger=logger) or "cdxgen"
+    )
     accepted, version = check_cdxgen_version(cdxgen_cmd, logger=logger)
     if accepted:
         return True
