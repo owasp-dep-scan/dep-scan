@@ -113,7 +113,7 @@ Component count: 230
 
 def test_configure_vdb_readonly_defaults(monkeypatch):
     """T2: immutable + WAL are the defaults for scan runs."""
-    from depscan.cli import configure_vdb_readonly
+    from depscan.lib.vdb_setup import configure_vdb_readonly
     from vdb.lib import config as vdb_config
 
     monkeypatch.delenv("VDB_SQLITE_IMMUTABLE", raising=False)
@@ -126,7 +126,7 @@ def test_configure_vdb_readonly_defaults(monkeypatch):
 
 def test_configure_vdb_readonly_respects_user_override(monkeypatch):
     """T2: explicit user overrides are not clobbered."""
-    from depscan.cli import configure_vdb_readonly
+    from depscan.lib.vdb_setup import configure_vdb_readonly
     from vdb.lib import config as vdb_config
 
     monkeypatch.setenv("VDB_SQLITE_IMMUTABLE", "false")

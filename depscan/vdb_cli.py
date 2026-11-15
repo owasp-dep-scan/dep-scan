@@ -177,7 +177,7 @@ def _resolve_flavor_from_args(args):
 
 def cmd_download(args):
     """Download the selected database flavor or shard set and write the marker."""
-    from depscan.cli import download_vdb_with_retries, refresh_shards_with_retries
+    from depscan.lib.vdb_setup import download_vdb_with_retries, refresh_shards_with_retries
 
     data_dir = vdb_config.DATA_DIR
     if args.shards:
