@@ -1,0 +1,25 @@
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_3842340db8cb8c 291-292,306-330,731-734,752-753,763-768
+  s_7318da1b9edd46::t_1ceaba7f1332e4 779-781
+test/test_pipeline.py
+  s_7318da1b9edd46::t_e456683070b3b8 117,147-163,167-195,225-241,243-269,272-282
+  s_7318da1b9edd46::t_3aadb61620624e 242
+  s_7318da1b9edd46::t_51c3c5404ada69 164-166,270-271
+  s_7318da1b9edd46::t_b68f48e7cee777 283-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6c3f56030e1384edf4bd9deb5077a7f19a76221",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
