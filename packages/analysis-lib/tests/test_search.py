@@ -1,6 +1,6 @@
 import inspect
 
-import vdb.lib.db6 as vdb6
+import vdb.lib.db as vdb_db
 import vdb.lib.search as vsearch
 
 from analysis_lib import search
@@ -152,7 +152,7 @@ def test_find_vulns_batched_two_pass_hydration(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     pkgs = [
         {"purl": "pkg:npm/matched@1.0.0", "version": "1.0.0"},
@@ -273,7 +273,7 @@ def test_filters_reach_search_packages_batched_not_hydration(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     filters = {"exclude_malware": True}
     search.find_vulns_batched([{"purl": "pkg:npm/a@1.0.0", "version": "1.0.0"}], filters)
@@ -303,7 +303,7 @@ def test_exclude_malware_filter_drops_malware_rows(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     results = search.find_vulns_batched(
         [{"purl": "pkg:npm/a@1.0.0", "version": "1.0.0"}], {"exclude_malware": True}
@@ -333,7 +333,7 @@ def test_no_filters_is_parity_with_none(monkeypatch):
     monkeypatch.setattr(search, "search_packages_batched", fake_batched)
     monkeypatch.setattr(search, "get_cve_data_batched", fake_hydrate)
     monkeypatch.setattr(vsearch, "CUSTOM_DATA_CACHE", [])
-    monkeypatch.setattr(vdb6, "get", lambda read_only=True: (None, None))
+    monkeypatch.setattr(vdb_db, "get", lambda read_only=True: (None, None))
 
     pkgs = [{"purl": "pkg:npm/a@1.0.0", "version": "1.0.0"}]
     none_results = search.find_vulns_batched(pkgs)
@@ -359,3 +359,58 @@ def test_filters_reach_search_expanded_search_logic(monkeypatch):
     )
     assert logic_calls
     assert all(c["filters"] == {"exclude_malware": True} for c in logic_calls)
+
+
+def test_search_guarding_coverage_warns_instead_of_raising(monkeypatch, caplog):
+    """A shard coverage gap on a single-purl search must not abort the scan:
+    the guard warns naming the purl type and answers no results, which the
+    caller reports as not assessed."""
+    import logging
+
+    from vdb.lib.search import ShardCoverageError
+
+    from analysis_lib import search as search_mod
+
+    monkeypatch.setattr(search_mod, "_WARNED_UNCOVERED_TYPES", set())
+    calls = []
+
+    def raising_logic(term, **kwargs):
+        calls.append(term)
+        raise ShardCoverageError(
+            f"no local shard serves purl type 'mysterytype': {term} cannot be "
+            "answered by this database."
+        )
+
+    with caplog.at_level(logging.WARNING, logger="depscan.analysis_lib"):
+        result = search_mod.search_guarding_coverage(
+            raising_logic, "pkg:mysterytype/mystery@1.0.0", with_data=True
+        )
+    # Positive control: the guarded search ran and raised inside the stub.
+    assert calls == ["pkg:mysterytype/mystery@1.0.0"]
+    assert result == []
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert "'mysterytype'" in messages
+    assert "NOT assessed" in messages
+    assert "this is not a clean result" in messages
+    # A second component of the same type is still left out, but the type is
+    # not warned about again.
+    caplog.clear()
+    with caplog.at_level(logging.WARNING, logger="depscan.analysis_lib"):
+        again = search_mod.search_guarding_coverage(
+            raising_logic, "pkg:mysterytype/other@2.0.0", with_data=True
+        )
+    assert again == []
+    assert len(calls) == 2
+    assert not caplog.records
+
+
+def test_search_guarding_coverage_passes_results_through():
+    from analysis_lib import search as search_mod
+
+    sentinel = [{"cve_id": "CVE-1"}]
+    assert (
+        search_mod.search_guarding_coverage(
+            lambda term, **kwargs: sentinel, "pkg:pypi/requests@2.32.1"
+        )
+        is sentinel
+    )

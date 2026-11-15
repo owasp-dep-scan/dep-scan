@@ -134,10 +134,12 @@ def harness(monkeypatch, tmp_path):
         "template": [],
     }
 
-    monkeypatch.setattr(cli, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False))
-    monkeypatch.setattr(cli, "_warn_large_appos_for_source_scan", lambda url, args: None)
+    monkeypatch.setattr(cli, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False, "full"))
     monkeypatch.setattr(cli, "vdb_download_needed", lambda url, d: (False, ""))
     monkeypatch.setattr(cli, "configure_vdb_readonly", lambda: None)
+    # The harness runs no searches, so no database is needed; the guard that
+    # stops a scan on an empty database is tested in test_cli.py.
+    monkeypatch.setattr(cli, "ensure_vdb_usable", lambda: None)
     monkeypatch.setattr(cli.search, "load_custom_data", lambda d: None)
     monkeypatch.setattr(cli, "get_pkgs_by_scope", lambda pkg_list: {})
     monkeypatch.setattr(cli, "annotate_vdr", lambda v, t: None)

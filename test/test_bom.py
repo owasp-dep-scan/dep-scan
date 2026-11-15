@@ -358,3 +358,13 @@ def test_lifecycle_boms_report_failure_when_every_stage_fails(tmp_path, monkeypa
     assert result.success is False
     assert result.bom_files == []
     assert result.primary is None
+
+
+def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
+    """CycloneDX makes metadata optional; a source BOM without it must not
+    crash the VDR export."""
+    bom = update_tools_metadata(
+        None, {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}, "7.0.0"
+    )
+    assert bom["metadata"]["tools"]["components"][0]["name"] == "owasp-depscan"
+    assert bom["specVersion"] == "1.6"

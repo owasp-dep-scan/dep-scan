@@ -87,7 +87,7 @@ jobs:
             -e BINARY_NAME='${{ matrix.binary_name }}' \
             -e CDXGEN_SEA_VERSION='${{ env.CDXGEN_SEA_VERSION }}' \
             -e CDXGEN_ASSET='${{ matrix.cdxgen_asset }}' \
-            -e VDB_DATABASE_URL='ghcr.io/appthreat/vdbxz-app-2y:v6.7.x' \
+            -e VDB_DATABASE_URL='ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz' \
             -e SCAN_DEBUG_MODE=debug \
             -e HOST_UID="$(id -u)" \
             -e HOST_GID="$(id -g)" \

@@ -9,7 +9,6 @@ import pytest
 from analysis_lib import VdrAnalysisKV, utils
 from analysis_lib.config import REF_MAP
 from analysis_lib.output import check_malware_cve, generate_console_output
-from vdb.lib.cve_model import CVE, CnaPublishedContainer, Reference, References
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
@@ -116,6 +115,113 @@ def test_max_version():
     assert ret == "2.9.10.4"
 
 
+# ---------------------------------------------------------------------------
+# Scheme-aware version comparison (vdb.lib.vers.vers_compare)
+# ---------------------------------------------------------------------------
+
+
+def test_vers_scheme_for_purl_uses_vdb_schemes():
+    """The scheme comes from vdb's own table; types without a comparator
+    degrade to generic, exactly where vers_compare would substitute it."""
+    from analysis_lib.helpers import vers_scheme_for_purl
+
+    for purl in (
+        "pkg:npm/lodash@4.17.21",
+        "pkg:pypi/django@5.0",
+        "pkg:maven/org.apache/kafka@3.7.0",
+        "pkg:golang/github.com/gin-gonic/gin@1.9.0",
+        "pkg:cargo/serde@1.0",
+        "pkg:gem/rails@7.0",
+        "pkg:nuget/newtonsoft.json@13.0",
+        "pkg:composer/monolog/monolog@3.0",
+        "pkg:deb/debian/curl@7.88",
+        "pkg:rpm/centos/curl@7.61",
+        "pkg:apk/alpine/curl@8.0",
+    ):
+        assert vers_scheme_for_purl(purl) == purl.split("pkg:", 1)[1].split("/", 1)[0]
+    # No comparator exists for these types, so they fall back to generic.
+    for purl in (
+        "pkg:swift/alamofire@5.0",
+        "pkg:pub/http@1.0",
+        "pkg:cocoapods/afnetworking@4.0",
+        None,
+        "",
+        "not-a-purl",
+    ):
+        assert vers_scheme_for_purl(purl) == "generic"
+
+
+def test_version_in_range_bounds_are_inclusive():
+    """The interval keeps the closed bounds of the comparison it replaced."""
+    from analysis_lib.helpers import version_in_range
+
+    assert version_in_range("2.0.0", "2.0.0", "2.7.9", purl="pkg:npm/lodash")
+    assert version_in_range("2.7.9", "2.0.0", "2.7.9", purl="pkg:npm/lodash")
+    assert not version_in_range("1.0.0", "2.0.0", "2.7.9", purl="pkg:npm/lodash")
+    assert not version_in_range("3.0.0", "2.0.0", "2.7.9", purl="pkg:npm/lodash")
+    # A '*' upper bound adds no restriction.
+    assert version_in_range("9.1.2", "2.0.0", "*", purl="pkg:npm/lodash")
+
+
+def test_version_in_range_uses_the_purl_scheme_not_generic():
+    """Versions that generic and the ecosystem order differently: the
+    ecosystem answer must win, because the purl says which one applies."""
+    from analysis_lib.helpers import vers_scheme_for_purl, version_in_range
+
+    # A pre-release (RubyGems): 1.0.beta1 sorts BELOW 1.0, while the generic
+    # comparator places the suffixed string above.
+    assert vers_scheme_for_purl("pkg:gem/rails") == "gem"
+    assert version_in_range("1.0.beta1", "1.0", "1.1", purl="pkg:gem/rails") is False
+    assert version_in_range("1.0.beta1", "1.0", "1.1") is True
+
+    # A Debian revision: 1.0-1ubuntu1 sorts between 1.0-1 and 1.0-2 under
+    # dpkg rules, while the generic comparator places it outside.
+    assert version_in_range("1.0-1ubuntu1", "1.0-1", "1.0-2", purl="pkg:deb/debian/curl") is True
+    assert version_in_range("1.0-1ubuntu1", "1.0-1", "1.0-2") is False
+    # Debian epochs follow vdb's search-time rule: they are compared only
+    # when both sides carry one, because feeds often omit the epoch on range
+    # bounds. With epochs on both sides, dpkg order applies.
+    assert version_in_range("1:3.0", "1:1.0", "1:2.0", purl="pkg:deb/debian/curl") is False
+    assert version_in_range("2:0.1", "1:1.0", "3:0.1", purl="pkg:deb/debian/curl") is True
+    assert version_in_range("1:1.0", "0", "2.0", purl="pkg:deb/debian/curl") is True
+
+    # A Maven qualifier: 1.0-sp1 sorts ABOVE 1.0 (a qualifier orders above the
+    # bare release), which the generic comparator cannot see.
+    assert version_in_range("1.0-sp1", "1.0", "1.1", purl="pkg:maven/org.apache/kafka") is True
+    assert version_in_range("1.0-sp1", "1.0", "1.1") is False
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="vulnerability-db 7.0.5 orders pypi versions with a semver "
+    "approximation, not PEP 440: post-releases sort above the next patch "
+    "release and dev releases above their final release.",
+)
+@pytest.mark.parametrize(
+    ("version", "low", "high", "expected"),
+    [
+        ("1.0.post1", "1.0", "1.0.1", True),
+        ("1.0.dev1", "1.0", "1.1", False),
+    ],
+)
+def test_version_in_range_follows_pep_440_for_pypi(version, low, high, expected):
+    from analysis_lib.helpers import version_in_range
+
+    assert version_in_range(version, low, high, purl="pkg:pypi/django") is expected
+
+
+def test_max_version_orders_by_purl_scheme():
+    """max_version with a purl uses the ecosystem ordering: a RubyGems
+    pre-release stays below its release and a Maven qualifier sits above it,
+    the opposite of the purl-less (generic) answers."""
+    assert utils.max_version(["1.0", "1.0.beta1"], purl="pkg:gem/rails") == "1.0"
+    assert utils.max_version(["1.0", "1.0.beta1"]) == "1.0.beta1"
+    assert utils.max_version(["1.0", "1.0-sp1"], purl="pkg:maven/org.apache/kafka") == "1.0-sp1"
+    assert utils.max_version(["1.0", "1.0-sp1"]) == "1.0"
+    # A post-release outranks its release under the pypi ordering.
+    assert utils.max_version(["1.0", "1.0.post1"], purl="pkg:pypi/django") == "1.0.post1"
+
+
 def test_get_description_detail_preserves_markdown_structure():
     description, detail = utils.get_description_detail(
         "## Impact\\n\\n- keeps list items\\n- supports \\`inline code\\`\n\nParagraph two"
@@ -126,20 +232,16 @@ def test_get_description_detail_preserves_markdown_structure():
 
 
 def test_parse_metrics_does_not_crash_on_missing_cvss_v3_fields():
-    metrics = SimpleNamespace(
-        root=[
-            SimpleNamespace(
-                cvssV4_0=None,
-                cvssV3_1=SimpleNamespace(
-                    vectorString="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
-                    version=None,
-                    baseSeverity=None,
-                    baseScore=None,
-                ),
-                cvssV3_0=None,
-            )
-        ]
-    )
+    metrics = [
+        {
+            "cvssV3_1": {
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                "version": None,
+                "baseSeverity": None,
+                "baseScore": None,
+            }
+        }
+    ]
 
     assert utils.parse_metrics(metrics) == (
         "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
@@ -150,30 +252,24 @@ def test_parse_metrics_does_not_crash_on_missing_cvss_v3_fields():
 
 
 def test_parse_metrics_prefers_cvss_v31_over_cvss_v30_until_v4_is_found():
-    metrics = SimpleNamespace(
-        root=[
-            SimpleNamespace(
-                cvssV4_0=None,
-                cvssV3_1=None,
-                cvssV3_0=SimpleNamespace(
-                    vectorString="CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L",
-                    version=SimpleNamespace(value="3.0"),
-                    baseSeverity=SimpleNamespace(value="MEDIUM"),
-                    baseScore=SimpleNamespace(root=6.5),
-                ),
-            ),
-            SimpleNamespace(
-                cvssV4_0=None,
-                cvssV3_1=SimpleNamespace(
-                    vectorString="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
-                    version=SimpleNamespace(value="3.1"),
-                    baseSeverity=SimpleNamespace(value="CRITICAL"),
-                    baseScore=SimpleNamespace(root=9.8),
-                ),
-                cvssV3_0=None,
-            ),
-        ]
-    )
+    metrics = [
+        {
+            "cvssV3_0": {
+                "vectorString": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L",
+                "version": "3.0",
+                "baseSeverity": "MEDIUM",
+                "baseScore": 6.5,
+            }
+        },
+        {
+            "cvssV3_1": {
+                "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                "version": "3.1",
+                "baseSeverity": "CRITICAL",
+                "baseScore": 9.8,
+            }
+        },
+    ]
 
     assert utils.parse_metrics(metrics) == (
         "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
@@ -184,14 +280,10 @@ def test_parse_metrics_prefers_cvss_v31_over_cvss_v30_until_v4_is_found():
 
 
 def test_refs_to_vdr_skips_malformed_references_without_crashing():
-    references: Any = SimpleNamespace(
-        root=[
-            SimpleNamespace(url=None),
-            SimpleNamespace(
-                url=SimpleNamespace(root="https://nvd.nist.gov/vuln/detail/CVE-2024-1234")
-            ),
-        ]
-    )
+    references: Any = [
+        {"url": None},
+        {"url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1234"},
+    ]
 
     advisories, refs, *_rest, source = utils.refs_to_vdr(references, "cve-2024-1234")
 
@@ -208,9 +300,8 @@ def test_refs_to_vdr_skips_malformed_references_without_crashing():
 
 
 def _references(urls):
-    # The real cve_model objects, matching what refs_to_vdr receives from
-    # vdb at runtime (SimpleNamespace stand-ins would not type-check).
-    return References(root=[Reference(url=u) for u in urls])
+    # Reference dicts in the CVE-5 JSON form vdb 7 returns for source_data.
+    return [{"url": u} for u in urls]
 
 
 def _console_output_options() -> VdrAnalysisKV:
@@ -381,26 +472,24 @@ def test_parse_alias_ids_reads_only_the_aliases_block():
 
 
 def test_cve_to_vdr_uses_alias_group_from_description():
-    cve_record: Any = SimpleNamespace(
-        root=SimpleNamespace(
-            containers=SimpleNamespace(
-                cna=SimpleNamespace(
-                    references=_references(NODE_FORGE_URLS),
-                    descriptions=(
-                        "# node-forge RSA PKCS#1 v1.5 signature verification\n"
-                        "node-forge through 1.4.0 fails to validate element count.\n"
-                        "\n"
-                        "## Aliases\n"
-                        "CVE-2026-33894, CVE-2026-85393, GHSA-ppp5-5v6c-4jwp\n"
-                    ),
-                    metrics=None,
-                    problemTypes=None,
-                    affected=None,
-                )
-            ),
-            cveMetadata=None,
-        )
-    )
+    cve_record: Any = {
+        "containers": {
+            "cna": {
+                "references": _references(NODE_FORGE_URLS),
+                "descriptions": (
+                    "# node-forge RSA PKCS#1 v1.5 signature verification\n"
+                    "node-forge through 1.4.0 fails to validate element count.\n"
+                    "\n"
+                    "## Aliases\n"
+                    "CVE-2026-33894, CVE-2026-85393, GHSA-ppp5-5v6c-4jwp\n"
+                ),
+                "metrics": None,
+                "problemTypes": None,
+                "affected": None,
+            }
+        },
+        "cveMetadata": None,
+    }
 
     source, references, advisories, *_rest = utils.cve_to_vdr(cve_record, "CVE-2026-85393")
 
@@ -418,12 +507,12 @@ def test_parse_alias_ids_reads_long_descriptions_from_supporting_media():
     with open(
         os.path.join(DATA_DIR, "vdb6-node-forge-alias-group-cve5.json"), encoding="utf-8"
     ) as fp:
-        records = {r["cveMetadata"]["cveId"]: CVE.model_validate(r) for r in json.load(fp)}
-    cna = records["CVE-2026-33894"].root.containers.cna
+        records = {r["cveMetadata"]["cveId"]: r for r in json.load(fp)}
+    cna = records["CVE-2026-33894"]["containers"]["cna"]
     # Only the published container carries descriptions.
-    assert isinstance(cna, CnaPublishedContainer)
-    descriptions = cna.descriptions
-    assert descriptions.root[0].value == "Refer to the supporting media"
+    descriptions = cna.get("descriptions")
+    assert descriptions
+    assert descriptions[0]["value"] == "Refer to the supporting media"
 
     assert utils.parse_alias_ids(utils.description_full_text(descriptions)) == [
         "CVE-2026-33894",
@@ -457,14 +546,14 @@ def test_parse_alias_ids_reads_long_descriptions_from_supporting_media():
         ),
     ],
 )
-def test_cve_to_vdr_on_stored_vdb6_records(cve_id, expected_refs, foreign_advisory):
-    """Issue #540 against the CVE 5 records vdb 6 stores for osv.dev's merged
-    node-forge group (generated with the vulnerability-db own-id fix). Runs
-    on any vdb 6.7.x: only the CVE 5 model is needed."""
+def test_cve_to_vdr_on_stored_cve5_records(cve_id, expected_refs, foreign_advisory):
+    """Issue #540 against the CVE 5 records vdb stores for osv.dev's merged
+    node-forge group (generated with the vulnerability-db own-id fix). The
+    records are the same CVE-5 JSON blobs vdb 7 returns as source_data."""
     with open(
         os.path.join(DATA_DIR, "vdb6-node-forge-alias-group-cve5.json"), encoding="utf-8"
     ) as fp:
-        records = {r["cveMetadata"]["cveId"]: CVE.model_validate(r) for r in json.load(fp)}
+        records = {r["cveMetadata"]["cveId"]: r for r in json.load(fp)}
 
     _source, references, advisories, *_rest = utils.cve_to_vdr(records[cve_id], cve_id)
 
@@ -473,24 +562,18 @@ def test_cve_to_vdr_on_stored_vdb6_records(cve_id, expected_refs, foreign_adviso
         assert any(foreign_advisory in a["url"] for a in advisories)
 
 
-def test_analyze_cve_vuln_handles_missing_cve_metadata_and_affected(monkeypatch):
-    class DummyCVE:
-        root: Any
-
-    monkeypatch.setattr(utils, "CVE", DummyCVE)
-
-    cve_record = DummyCVE()
-    cve_record.root = SimpleNamespace(
-        containers=SimpleNamespace(
-            cna=SimpleNamespace(
-                references=None,
-                metrics=None,
-                descriptions=None,
-                problemTypes=None,
-                affected=None,
-            )
-        )
-    )
+def test_analyze_cve_vuln_handles_missing_cve_metadata_and_affected():
+    cve_record = {
+        "containers": {
+            "cna": {
+                "references": None,
+                "metrics": None,
+                "descriptions": None,
+                "problemTypes": None,
+                "affected": None,
+            }
+        }
+    }
 
     counts = SimpleNamespace(
         malicious_count=0,
