@@ -1,7 +1,9 @@
 """Tests for the CLI parser and the database setup helpers."""
 
 import argparse
+import ast
 import os
+from pathlib import Path
 
 import pytest
 
@@ -466,3 +468,37 @@ def test_severity_does_not_override_explicit_flavor(monkeypatch, caplog):
     assert os.getenv("VDB_INCLUDE_METADATA") is None
     infos = [r.getMessage() for r in caplog.records]
     assert any("severity floor is still applied" in w for w in infos)
+
+
+# ---------------------------------------------------------------------------
+# No function in depscan/cli.py may exceed 80 lines
+# ---------------------------------------------------------------------------
+
+
+def _function_lengths(source):
+    """Map every function name in *source* to its length in lines, counted
+    from its ``def`` line to its last line."""
+    lengths = {}
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            lengths[node.name] = node.end_lineno - node.lineno + 1
+    return lengths
+
+
+def test_function_length_counter_reports_an_81_line_function():
+    """Positive control for the counter: a function that is exactly 81 lines
+    long is reported as 81, so the limit test below would fail on it."""
+    body = "\n".join(f"    x = {i}" for i in range(80))
+    lengths = _function_lengths(f"def too_long():\n{body}\n")
+    assert lengths["too_long"] == 81
+
+
+def test_no_cli_function_exceeds_80_lines():
+    """run_depscan orchestrates the pipeline stages; the stages themselves
+    live in depscan.lib.pipeline. Nothing in the CLI module may grow past 80
+    lines again."""
+    cli_source = (Path(__file__).parent.parent / "depscan" / "cli.py").read_text()
+    offenders = {
+        name: length for name, length in _function_lengths(cli_source).items() if length > 80
+    }
+    assert not offenders, f"functions longer than 80 lines: {offenders}"
