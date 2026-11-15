@@ -1,0 +1,26 @@
+test/test_pipeline.py
+  s_d63e9c63bb6307::t_a40970881223b0 439-440,443
+test/test_cli.py
+  s_d63e9c63bb6307::t_b2760f07e9feca 484
+depscan/lib/bom.py
+  s_d63e9c63bb6307::t_f065b1715fbd84 33-34,398-400,430,435,440,832
+  s_d63e9c63bb6307::t_801fcd01b8075a 401,403-408,416-417,424-429,431-434,436-439,441-488,571-573,619-626,628-633,636-731,736,742-744,746,749-753,757-758,760-766,768,770,773,777-778,782-784,786-788,793-794,799-805,808-831,833-901
+depscan/lib/pipeline.py
+  s_d63e9c63bb6307::t_b2760f07e9feca 35,146-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e519f8c17b5eabbf0c9b3022d0669a9c6627f18",
+  "prompts": {},
+  "sessions": {
+    "s_d63e9c63bb6307": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_4ce7d85d-f5e1-4c57-9400-ff4a186e48f3",
+        "model": "unknown"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
