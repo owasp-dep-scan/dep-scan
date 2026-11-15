@@ -775,39 +775,51 @@ async def run_scan():
                     400,
                     {"Content-Type": "application/json"},
                 )
-            if scan_bom is not None:
-                # The scan runs through the injected callable. Its reports go
-                # under the server's temporary directory and are cleaned up
-                # with the request's other temporary files. A scan that stops
-                # early raises, and a failed request must not come back
-                # looking like a BOM with no vulnerabilities.
-                scan_reports_dir = tempfile.mkdtemp(
-                    prefix="depscan-scan-", dir=_get_server_temp_dir()
-                )
-                temp_paths.append(scan_reports_dir)
+            if scan_bom is None:
+                # Without a scanner the server cannot look anything up, and a
+                # BOM returned without vulnerabilities would look clean.
                 if logger_instance:
-                    logger_instance.debug("Scanning %s", bom_file_path)
-                try:
-                    vulnerabilities = scan_bom(
-                        bom_file_path,
-                        scan_reports_dir,
-                        project_type,
-                        suggest_mode=suggest_mode,
-                        fuzzy_search=fuzzy_search,
-                    )
-                except Exception as exc:  # noqa: BLE001 - the request fails, not the server
-                    if logger_instance:
-                        logger_instance.warning("Scan failed for %s: %s", bom_file_path, exc)
-                    return (
-                        {
-                            "error": "true",
-                            "message": "Unable to scan the BOM file. Check the server logs.",
-                        },
-                        500,
-                        {"Content-Type": "application/json"},
-                    )
-                if vulnerabilities:
-                    bom_data["vulnerabilities"] = vulnerabilities
+                    logger_instance.error("The server was started without a BOM scanner.")
+                return (
+                    {
+                        "error": "true",
+                        "message": "The server cannot scan BOM files. Check the server logs.",
+                    },
+                    500,
+                    {"Content-Type": "application/json"},
+                )
+            # The scan runs through the injected callable. Its reports go
+            # under the server's temporary directory and are cleaned up
+            # with the request's other temporary files. A scan that stops
+            # early raises, and a failed request must not come back
+            # looking like a BOM with no vulnerabilities.
+            scan_reports_dir = tempfile.mkdtemp(
+                prefix="depscan-scan-", dir=_get_server_temp_dir()
+            )
+            temp_paths.append(scan_reports_dir)
+            if logger_instance:
+                logger_instance.debug("Scanning %s", bom_file_path)
+            try:
+                vulnerabilities = scan_bom(
+                    bom_file_path,
+                    scan_reports_dir,
+                    project_type,
+                    suggest_mode=suggest_mode,
+                    fuzzy_search=fuzzy_search,
+                )
+            except Exception as exc:  # noqa: BLE001 - the request fails, not the server
+                if logger_instance:
+                    logger_instance.warning("Scan failed for %s: %s", bom_file_path, exc)
+                return (
+                    {
+                        "error": "true",
+                        "message": "Unable to scan the BOM file. Check the server logs.",
+                    },
+                    500,
+                    {"Content-Type": "application/json"},
+                )
+            if vulnerabilities:
+                bom_data["vulnerabilities"] = vulnerabilities
             return json.dumps(bom_data), 200, {"Content-Type": "application/json"}
         return (
             {

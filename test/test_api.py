@@ -66,8 +66,9 @@ class _StubVdrResult:
     success = True
     prioritized_pkg_vuln_trees = {}
 
-    def __init__(self, pkg_vulnerabilities):
+    def __init__(self, pkg_vulnerabilities, success=True):
         self.pkg_vulnerabilities = pkg_vulnerabilities
+        self.success = success
 
 
 @pytest.fixture
@@ -384,8 +385,9 @@ def test_diff_reports_new_and_fixed():
     old = _result_with_vulns("reports", [_vuln("CVE-1", "pkg:pypi/a@1")])
     new = _result_with_vulns("reports", [_vuln("CVE-2", "pkg:pypi/b@1")])
     result = api.diff(old, new)
-    assert [v["id"] for v in result.new] == ["CVE-2"]
-    assert [v["id"] for v in result.fixed] == ["CVE-1"]
+    assert [(e.id, e.ref) for e in result.new] == [("CVE-2", "pkg:pypi/b@1")]
+    assert [(e.id, e.ref) for e in result.fixed] == [("CVE-1", "pkg:pypi/a@1")]
+    assert result.new[0].old is None and result.fixed[0].new is None
     assert result.changed == []
 
 
@@ -395,9 +397,10 @@ def test_diff_changed_pairs_carry_both_sides():
     result = api.diff(old, new)
     assert result.new == [] and result.fixed == []
     assert len(result.changed) == 1
-    old_vuln, new_vuln = result.changed[0]
-    assert old_vuln["ratings"][0]["score"] == 5.0
-    assert new_vuln["ratings"][0]["score"] == 9.9
+    entry = result.changed[0]
+    assert entry.old is not None and entry.new is not None
+    assert entry.old["ratings"][0]["score"] == 5.0
+    assert entry.new["ratings"][0]["score"] == 9.9
 
 
 def test_diff_changed_on_severity_alone():
@@ -417,13 +420,13 @@ def test_diff_keys_on_the_id_and_ref_pair_not_the_purl_alone():
     )
     new = _result_with_vulns("reports", [_vuln("CVE-1", "pkg:pypi/a@1")])
     result = api.diff(old, new)
-    assert [v["id"] for v in result.fixed] == ["CVE-2"]
+    assert [e.id for e in result.fixed] == ["CVE-2"]
     assert result.changed == []
 
 
 def test_diff_keys_on_each_affected_ref():
-    """One advisory affecting two components: only the disappeared component
-    counts as fixed, and the vulnerability object is reported once."""
+    """One advisory affecting two components: only the component it stopped
+    affecting is reported as fixed."""
     both = [
         {
             "id": "CVE-1",
@@ -433,7 +436,7 @@ def test_diff_keys_on_each_affected_ref():
     ]
     only_a = [_vuln("CVE-1", "pkg:pypi/a@1")]
     result = api.diff(_result_with_vulns("reports", both), _result_with_vulns("reports", only_a))
-    assert [v["id"] for v in result.fixed] == ["CVE-1"]
+    assert [(e.id, e.ref) for e in result.fixed] == [("CVE-1", "pkg:pypi/b@1")]
     assert result.new == [] and result.changed == []
 
 
@@ -520,3 +523,78 @@ def test_server_does_not_start_without_a_database(monkeypatch):
     with pytest.raises(pipeline.ScanStageError):
         pipeline.start_server_mode(ctx)
     assert served == []
+
+
+def test_query_takes_a_single_severity_name_and_refuses_an_empty_set():
+    result = _result_with_vulns("reports", [_vuln("CVE-1", "pkg:pypi/a@1", severity="high")])
+    assert [v["id"] for v in api.query(result, severities="high")] == ["CVE-1"]
+    assert api.query(result, severities="low") == []
+    with pytest.raises(ValueError):
+        api.query(result, severities=set())
+
+
+def test_query_ranks_severity_before_score():
+    vuln = {
+        "id": "CVE-1",
+        "affects": [{"ref": "pkg:pypi/a@1"}],
+        "ratings": [{"severity": "critical"}, {"severity": "low", "score": 2.0}],
+    }
+    result = _result_with_vulns("reports", [vuln])
+    assert api.query(result, severities={"critical"}) == [vuln]
+    assert api.query(result, severities={"low"}) == []
+
+
+def test_query_purl_qualifiers_must_match_when_given():
+    vuln = _vuln("CVE-1", "pkg:maven/org.a/b@1.0?type=jar")
+    result = _result_with_vulns("reports", [vuln])
+    assert api.query(result, purl="pkg:maven/org.a/b@1.0?type=jar") == [vuln]
+    assert api.query(result, purl="pkg:maven/org.a/b@1.0?type=pom") == []
+    # A purl without qualifiers matches any.
+    assert api.query(result, purl="pkg:maven/org.a/b@1.0") == [vuln]
+
+
+def test_unusable_database_raises_scan_error_not_system_exit(scan_calls, monkeypatch, tmp_path):
+    def unusable():
+        raise vdb_setup.VdbUnusableError("The vulnerability database is empty.")
+
+    monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", unusable)
+    bom = Path(__file__).parent / "data" / "bom-js.json"
+    options = api.scan_options(bom=str(bom), reports_dir=str(tmp_path), no_banner=True)
+    with pytest.raises(api.ScanError, match="database is empty"):
+        api.scan(options, render=False)
+
+
+def test_vdr_file_is_none_when_no_vdr_was_written(scan_calls, monkeypatch, tmp_path):
+    class NothingFound:
+        def __init__(self, vdr_options):
+            pass
+
+        def process(self):
+            return _StubVdrResult(None, success=False)
+
+    monkeypatch.setattr(pipeline, "VDRAnalyzer", NothingFound)
+    bom = Path(__file__).parent / "data" / "bom-js.json"
+    options = api.scan_options(bom=str(bom), reports_dir=str(tmp_path), no_banner=True)
+    result = api.scan(options, render=False)
+    assert result.types, "the type must still be reported"
+    assert all(t.vdr_file is None for t in result.types)
+    assert result.vulnerabilities == []
+
+
+def test_server_scanner_drops_the_console_recording(monkeypatch, tmp_path):
+    def records(options, *, render, database):
+        pipeline.console.record = True
+        pipeline.console.print("recorded during a request")
+        recorded.append(len(pipeline.console._record_buffer))
+        return _result_with_vulns(tmp_path, [])
+
+    recorded = []
+
+    monkeypatch.setattr(api, "_run_stages", records)
+    monkeypatch.setattr(pipeline.console, "record", False)
+    scanner = pipeline.build_server_bom_scanner()
+    scanner("bom.json", str(tmp_path), "js")
+    assert pipeline.console.record is False
+    # Positive control: the request did record, and the buffer was emptied.
+    assert recorded and recorded[0] > 0
+    assert pipeline.console._record_buffer == []

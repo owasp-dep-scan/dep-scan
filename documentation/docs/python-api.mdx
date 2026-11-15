@@ -24,13 +24,13 @@ print(result.reports_dir, result.project_types)
 
 An override name that is not a command line option raises `TypeError` naming it. If you parse the command line yourself, pass that namespace to `scan` directly.
 
-The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation and the CSAF export); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
+The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
 
 ```python
 result = api.scan(options, render=False)
 ```
 
-When a stage stops the scan, for example a `--bom` file that does not exist or an unusable vulnerability database, `scan` raises `depscan.api.ScanError` carrying the message the scan logged. It never exits the process and never returns a result with zero vulnerabilities in place of a stopped scan.
+When a stage stops the scan, for example a `--bom` file that does not exist or an unusable vulnerability database, `scan` raises `depscan.api.ScanError` carrying the message the scan logged. It never exits the process and never returns a result with zero vulnerabilities in place of a stopped scan. The console settings a scan applies, such as `quiet=True`, stay in effect for later scans in the same process.
 
 ## The scan result
 
@@ -43,7 +43,7 @@ When a stage stops the scan, for example a `--bom` file that does not exist or a
 | `types` | One `TypeScanResult` per type that produced results, in scan order. |
 | `vulnerabilities` | Property: every vulnerability of every type, in type then write order. |
 
-Each `TypeScanResult` carries the `project_type`, the `bom_file` the type was scanned from, the `vdr_file` written for it (either is `None` when the scan produced no such file, for example a single-purl scan writes neither), and the `vulnerabilities` as written to that VDR.
+Each `TypeScanResult` carries the `project_type`, the `bom_file` the type was scanned from, the `vdr_file` written for it (either is `None` when the scan produced no such file: a single-purl scan writes neither, and a scan that found no vulnerabilities writes no VDR), and the `vulnerabilities` as written to that VDR.
 
 ```python
 for tscan in result.types:
@@ -52,7 +52,7 @@ for tscan in result.types:
 
 ## Loading a saved scan
 
-`load_scan(reports_dir)` rebuilds a `ScanResult` from a reports directory a scan wrote, without running a scan. It reads the VDR files of today's layout: the BOM name with `.vdr.json` (or the BOM name itself when it does not end in `.cdx.json`) and `depscan-universal.vdr.json` for a BOM directory scan. A directory with no VDR file raises `ScanError` rather than returning an empty result.
+`load_scan(reports_dir)` rebuilds a `ScanResult` from a reports directory a scan wrote, without running a scan. It reads the VDR files of today's layout: the BOM name with `.vdr.json` (or the BOM name itself when it does not end in `.cdx.json`) and `depscan-universal.vdr.json` for a BOM directory scan. A directory with no VDR file raises `ScanError` rather than returning an empty result, so the directory of a scan that found no vulnerabilities cannot be loaded. A directory that several scans wrote to gives the VDRs of all of them.
 
 ```python
 result = api.load_scan("reports")
@@ -68,7 +68,7 @@ advisories = api.query(result, purl="pkg:npm/@babel/core")
 critical = api.query(result, severities={"critical"})
 ```
 
-A `purl` without a version matches every version, and the purl comparison follows purl semantics, so `pkg:npm/@babel/core` and `pkg:npm/%40babel/core` are the same package. `vuln_id` matches the vulnerability `id` or an id under its `references`, ignoring case, so a GHSA id finds the CVE entry that references it. `severities` takes CycloneDX severity names (`critical`, `high`, `medium`, `low`, `info`, `none`, `unknown`) and matches them against the vulnerability's highest rating, the rating with the greatest score.
+A `purl` without a version matches every version, and the purl comparison follows purl semantics, so `pkg:npm/@babel/core` and `pkg:npm/%40babel/core` are the same package. `vuln_id` matches the vulnerability `id` or an id under its `references`, ignoring case, so a GHSA id finds the CVE entry that references it. When `purl` carries qualifiers or a subpath, the affected ref must carry the same ones. `severities` takes a CycloneDX severity name or a set of them (`critical`, `high`, `medium`, `low`, `info`, `none`, `unknown`) and matches them against the vulnerability's highest rating: the most severe rating, and of those the one with the greatest score. An empty set raises `ValueError`.
 
 ## Explaining a scan
 
@@ -82,17 +82,17 @@ The explanation reads the reachables slices (`*reachables.slices*.json`) and the
 
 ## Comparing two scans
 
-`diff(old, new)` compares two results and returns a `ScanDiff`. Every vulnerability is keyed by the pair of its `id` and the ref of each of its `affects` entries, so the same advisory hitting two components counts once per component.
+`diff(old, new)` compares two results and returns a `ScanDiff`. Every vulnerability is keyed by the pair of its `id` and the ref of each of its `affects` entries, so the same advisory hitting two components counts once per component. Each list holds `DiffEntry` objects with the `id` and `ref` of the pair and the `old` and `new` vulnerability objects carrying it (`old` is `None` for a new pair, `new` is `None` for a fixed one).
 
 | Field | Meaning |
 | --- | --- |
-| `new` | Vulnerabilities whose key exists only in the new result. |
-| `fixed` | Vulnerabilities whose key exists only in the old result. |
-| `changed` | `(old, new)` pairs of the same vulnerability whose highest severity or score differs. |
+| `new` | Pairs that exist only in the new result. |
+| `fixed` | Pairs that exist only in the old result. |
+| `changed` | Pairs on both sides whose highest rating differs in severity or score. |
 
 ```python
 changes = api.diff(old_result, new_result)
-print([v["id"] for v in changes.new])
+print([(entry.id, entry.ref) for entry in changes.new])
 ```
 
 ## Exceptions

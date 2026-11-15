@@ -29,6 +29,7 @@ from depscan.lib.config import DEPSCAN_DEFAULT_VDR_FILE
 from depscan.lib.logger import console
 
 __all__ = [
+    "DiffEntry",
     "ScanDiff",
     "ScanError",
     "ScanResult",
@@ -91,18 +92,34 @@ class ScanResult:
 
 
 @dataclass
-class ScanDiff:
-    """The difference between two scan results.
+class DiffEntry:
+    """One (vulnerability id, affected ref) pair that differs between results.
 
-    ``new`` holds the vulnerability objects whose key exists only in the new
-    result, ``fixed`` those only in the old one. ``changed`` holds
-    ``(old, new)`` pairs of the same vulnerability whose highest severity or
-    score differs. See :func:`diff` for the key.
+    ``old`` and ``new`` are the vulnerability objects carrying the pair on
+    each side; ``old`` is None for a new pair and ``new`` is None for a
+    fixed one. ``ref`` is None for a vulnerability that names no affected
+    ref.
     """
 
-    new: List[Dict[str, Any]] = field(default_factory=list)
-    fixed: List[Dict[str, Any]] = field(default_factory=list)
-    changed: List[Tuple[Dict[str, Any], Dict[str, Any]]] = field(default_factory=list)
+    id: str
+    ref: Optional[str]
+    old: Optional[Dict[str, Any]] = None
+    new: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class ScanDiff:
+    """The difference between two scan results, one entry per pair.
+
+    ``new`` holds the pairs only in the new result and ``fixed`` those only
+    in the old one. ``changed`` holds the pairs present on both sides whose
+    highest rating differs in severity or score. See :func:`diff` for the
+    key.
+    """
+
+    new: List[DiffEntry] = field(default_factory=list)
+    fixed: List[DiffEntry] = field(default_factory=list)
+    changed: List[DiffEntry] = field(default_factory=list)
 
 
 def scan_options(**overrides) -> Any:
@@ -140,9 +157,10 @@ def scan(options, *, render: bool = True) -> ScanResult:
     files, the license and risk reports and ``depscan.toml.sample``.
 
     With ``render=False`` the rendering is skipped (the console tables, the
-    HTML and text reports, the template report, the explanation and the CSAF
-    export, which all live in the rendering stages); everything the other
-    stages write, the VDR and BOM files included, is still written. Skipping
+    HTML and text reports, the template report, the explanation, the CSAF
+    export and the ``--annotate`` annotations of the VDR, which all live in
+    the rendering stages); everything the other stages write, the VDR and
+    BOM files included, is still written. Skipping
     the console tables forces ``no_vuln_table`` on the given options, because
     the tables are part of the rendering.
 
@@ -214,7 +232,9 @@ def _result_from_context(ctx) -> ScanResult:
             TypeScanResult(
                 project_type=tscan.project_type,
                 bom_file=tscan.bom_file,
-                vdr_file=tscan.vdr_file,
+                vdr_file=tscan.vdr_file
+                if tscan.vdr_file and os.path.isfile(tscan.vdr_file)
+                else None,
                 vulnerabilities=vulnerabilities,
             )
         )
@@ -238,8 +258,11 @@ def load_scan(reports_dir: str) -> ScanResult:
     scan keeps its input BOM wherever the caller passed it, so no BOM file is
     recorded for it. The project type is ``sbom-<type>``'s type for generated
     BOMs, ``bom`` for the BOM directory VDR, and otherwise the file stem,
-    which is the best today's file names carry. The scan directory with its
-    manifest is a later addition and is not read.
+    which is the best today's file names carry.
+
+    A scan that found no vulnerabilities writes no VDR file, so its
+    directory cannot be loaded. A directory that several scans wrote to
+    gives the VDRs of all of them.
 
     :param reports_dir: A reports directory written by :func:`scan`.
     :returns: The rebuilt result.
@@ -251,7 +274,8 @@ def load_scan(reports_dir: str) -> ScanResult:
         raise ScanError(f"Cannot load a scan from '{reports_dir}': the directory does not exist.")
     types = []
     for entry in sorted(os.listdir(reports_dir)):
-        if not entry.endswith(".json"):
+        # Slices files can be large and are never VDRs.
+        if not entry.endswith(".json") or entry.endswith(".slices.json"):
             continue
         path = os.path.join(reports_dir, entry)
         if not os.path.isfile(path):
@@ -312,20 +336,31 @@ def query(
     follows purl semantics (``pkg:npm/@babel/core`` and
     ``pkg:npm/%40babel/core`` are the same package). ``vuln_id`` matches the
     vulnerability ``id`` or an id under ``references``, ignoring case.
-    ``severities`` is a set of CycloneDX severity names (``critical``,
-    ``high``, ``medium``, ``low``, ``info``, ``none``, ``unknown``) matched
-    against the vulnerability's highest rating: the rating with the greatest
-    score, or the most severe rating when no rating carries a score. A
-    vulnerability without ratings matches no severity filter.
+    ``severities`` is a CycloneDX severity name or a set of them
+    (``critical``, ``high``, ``medium``, ``low``, ``info``, ``none``,
+    ``unknown``) matched against the vulnerability's highest rating: the most
+    severe rating, and of those the one with the greatest score. A
+    vulnerability without ratings matches no severity filter, and an empty
+    set raises ``ValueError``.
+
+    When ``purl`` carries qualifiers or a subpath, the affected ref must carry
+    the same ones; a ``purl`` without them matches any.
 
     :param result: A result from :func:`scan` or :func:`load_scan`.
     :param purl: Package URL to match, with or without version.
     :param vuln_id: Vulnerability id to match, ignoring case.
-    :param severities: Severity names to match against the highest rating.
+    :param severities: A severity name or names to match against the highest
+        rating.
     :returns: The matching VDR vulnerability objects, in result order.
     """
     wanted_purl_obj = parse_purl(purl) if purl else None
-    wanted_severities = {str(name).strip().lower() for name in severities} if severities else None
+    if isinstance(severities, str):
+        severities = {severities}
+    wanted_severities = None
+    if severities is not None:
+        wanted_severities = {str(name).strip().lower() for name in severities}
+        if not wanted_severities:
+            raise ValueError("severities is empty; pass None to match every severity.")
     matches = []
     for tscan in result.types:
         for vuln in tscan.vulnerabilities:
@@ -365,10 +400,19 @@ def _affects_purl(vuln, wanted_purl: str, wanted_purl_obj) -> bool:
         if identity != wanted_identity:
             continue
         # A purl without a version matches every version of the package.
-        if wanted_purl_obj.get("version") is None or ref_obj.get("version") == wanted_purl_obj.get(
+        if wanted_purl_obj.get("version") is not None and ref_obj.get(
             "version"
+        ) != wanted_purl_obj.get("version"):
+            continue
+        wanted_qualifiers = wanted_purl_obj.get("qualifiers") or {}
+        ref_qualifiers = ref_obj.get("qualifiers") or {}
+        if any(ref_qualifiers.get(k) != v for k, v in wanted_qualifiers.items()):
+            continue
+        if wanted_purl_obj.get("subpath") and ref_obj.get("subpath") != wanted_purl_obj.get(
+            "subpath"
         ):
-            return True
+            continue
+        return True
     return False
 
 
@@ -395,9 +439,10 @@ def _severity_rank(name: str) -> int:
 
 
 def _highest_rating(vuln) -> Optional[Dict[str, Any]]:
-    """Return the rating with the greatest score, most severe on a tie.
+    """Return the most severe rating, the greatest score among equals.
 
-    Ratings without a numeric score rank below those with one.
+    A rating without a numeric score ranks below a scored one of the same
+    severity.
     """
     best = None
     best_key = None
@@ -410,9 +455,9 @@ def _highest_rating(vuln) -> Optional[Dict[str, Any]]:
         )
         severity = str(rating.get("severity") or "").strip().lower()
         key = (
+            -_severity_rank(severity),
             numeric is not None,
             numeric if numeric is not None else -1.0,
-            -_severity_rank(severity),
         )
         if best_key is None or key > best_key:
             best, best_key = rating, key
@@ -514,15 +559,16 @@ def _explain_missing_message(result: ScanResult, mode: str) -> str:
 
 
 def diff(old: ScanResult, new: ScanResult) -> ScanDiff:
-    """Compare two scan results by vulnerability.
+    """Compare two scan results by (vulnerability id, affected ref).
 
-    Every vulnerability is keyed by the pair (its ``id``, the ``ref`` of each
-    of its ``affects`` entries; a vulnerability naming no affected ref keys on
-    ``(id, None)``). A key only in ``new`` goes to :attr:`ScanDiff.new`, a key
-    only in ``old`` to :attr:`ScanDiff.fixed`, and a key on both sides whose
-    highest severity or score differs to :attr:`ScanDiff.changed` as an
-    ``(old, new)`` pair. One vulnerability object appears once per list no
-    matter how many components it affects.
+    Every vulnerability is keyed by the pair of its ``id`` and the ``ref`` of
+    each of its ``affects`` entries (``(id, None)`` when it names no affected
+    ref), so an advisory affecting two components gives two pairs. A pair
+    only in ``new`` goes to :attr:`ScanDiff.new`, a pair only in ``old`` to
+    :attr:`ScanDiff.fixed`, and a pair on both sides whose highest rating
+    differs in severity or score to :attr:`ScanDiff.changed`. An advisory
+    that stops affecting one of two components therefore shows one fixed
+    entry for that component and nothing for the other.
 
     :param old: The earlier result.
     :param new: The later result.
@@ -531,24 +577,15 @@ def diff(old: ScanResult, new: ScanResult) -> ScanDiff:
     old_map = _vulns_by_key(old)
     new_map = _vulns_by_key(new)
     result = ScanDiff()
-    added_new: set = set()
-    added_fixed: set = set()
-    added_changed: set = set()
     for key, vuln in new_map.items():
         previous = old_map.get(key)
         if previous is None:
-            if id(vuln) not in added_new:
-                result.new.append(vuln)
-                added_new.add(id(vuln))
+            result.new.append(DiffEntry(id=key[0], ref=key[1], new=vuln))
         elif _rating_signature(vuln) != _rating_signature(previous):
-            pair_id = (id(previous), id(vuln))
-            if pair_id not in added_changed:
-                result.changed.append((previous, vuln))
-                added_changed.add(pair_id)
+            result.changed.append(DiffEntry(id=key[0], ref=key[1], old=previous, new=vuln))
     for key, vuln in old_map.items():
-        if key not in new_map and id(vuln) not in added_fixed:
-            result.fixed.append(vuln)
-            added_fixed.add(id(vuln))
+        if key not in new_map:
+            result.fixed.append(DiffEntry(id=key[0], ref=key[1], old=vuln))
     return result
 
 

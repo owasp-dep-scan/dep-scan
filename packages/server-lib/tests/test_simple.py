@@ -566,6 +566,27 @@ async def test_scan_reports_dir_lives_under_the_server_temp_dir_and_is_cleaned(
 
 
 @pytest.mark.asyncio
+async def test_scan_without_a_scanner_fails_instead_of_returning_a_clean_bom(
+    client: QuartClient, tmp_path
+):
+    bom_path = tmp_path / "sample.bom.json"
+    _write_bom_with_components(bom_path)
+    original = app.config.pop("scan_bom", None)
+    try:
+        response = await client.get(
+            f"/scan?type=js&path={bom_path}",
+            headers={"X-Test-Remote-Addr": "127.0.0.1"},
+        )
+        assert response.status_code == 500
+        body = await response.get_json()
+        assert "vulnerabilities" not in body
+        assert body["error"] == "true"
+    finally:
+        if original is not None:
+            app.config["scan_bom"] = original
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("profile", ["--output", "generic; rm -rf /", "unknown-profile", ""])
 async def test_scan_rejects_unsupported_profile(client: QuartClient, tmp_path, profile):
     """The profile reaches cdxgen as a command line argument, so only the

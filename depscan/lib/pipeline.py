@@ -252,7 +252,16 @@ def build_server_bom_scanner():
             suggest=suggest_mode,
             fuzzy_search=fuzzy_search,
         )
-        result = api._run_stages(options, render=False, database=False)
+        recording = console.record
+        try:
+            result = api._run_stages(options, render=False, database=False)
+        finally:
+            # The enrichment stage turns on console recording for the text
+            # report, which a request never writes. Drop what was recorded so
+            # a long-running server does not keep every request's output.
+            if not recording and console.record:
+                console.export_text(clear=True)
+                console.record = False
         return result.vulnerabilities
 
     return scan_bom
@@ -484,7 +493,10 @@ def stage_database(ctx):
     if VDB_USE_SHARDS:
         shard_types = vdb_setup.collect_purl_types(args, ctx.src_dir)
         if shard_types:
-            ctx.shards_connected = vdb_setup.setup_shards_for_scan(shard_types)
+            try:
+                ctx.shards_connected = vdb_setup.setup_shards_for_scan(shard_types)
+            except vdb_setup.VdbUnusableError as e:
+                raise ScanStageError(str(e)) from e
         else:
             LOG.warning(
                 "VDB_USE_SHARDS is set but this scan's purl types are not known "
@@ -527,7 +539,10 @@ def stage_database(ctx):
     vdb_setup.configure_vdb_readonly()
     # A database with no rows answers nothing; a scan must not report zero
     # findings from zero data.
-    vdb_setup.ensure_vdb_usable()
+    try:
+        vdb_setup.ensure_vdb_usable()
+    except vdb_setup.VdbUnusableError as e:
+        raise ScanStageError(str(e)) from e
 
 
 def set_project_types(args, src_dir):

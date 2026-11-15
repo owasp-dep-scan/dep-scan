@@ -140,9 +140,8 @@ def vdb_home(tmp_path, monkeypatch):
 def test_ensure_vdb_usable_stops_on_missing_database(vdb_home, capsys):
     """An unbuilt VDB_HOME must fail the scan with the directory named and a
     way to get a database, not answer with zero findings."""
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(vdb_setup.VdbUnusableError):
         vdb_setup.ensure_vdb_usable()
-    assert exc.value.code == 1
     out = " ".join(capsys.readouterr().out.split())
     assert str(vdb_home) in out
     assert "vdb db refresh full" in out
@@ -154,9 +153,8 @@ def test_ensure_vdb_usable_stops_on_v6_only_database(vdb_home, capsys):
     legacy files."""
     (vdb_home / "data.vdb6").write_text("")
     (vdb_home / "data.index.vdb6").write_text("")
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(vdb_setup.VdbUnusableError):
         vdb_setup.ensure_vdb_usable()
-    assert exc.value.code == 1
     out = " ".join(capsys.readouterr().out.split())
     assert str(vdb_home) in out
     assert "Found v6 database files (data.vdb6, data.index.vdb6)" in out
@@ -169,9 +167,8 @@ def test_ensure_vdb_usable_stops_on_zero_row_database(vdb_home, capsys):
     assert (vdb_home / "data.vdb7").is_file()
     assert vdb_setup.db_lib.stats() == (0, 0)
     vdb_setup.db_lib.reset_connections()
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(vdb_setup.VdbUnusableError):
         vdb_setup.ensure_vdb_usable()
-    assert exc.value.code == 1
     out = " ".join(capsys.readouterr().out.split())
     assert str(vdb_home) in out
     assert "is empty" in out
