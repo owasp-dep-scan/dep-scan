@@ -24,4 +24,10 @@ class ServerOptions:
     max_content_length: Optional[int] = 100 * 1024 * 1024  # 100MB
     # Hack
     create_bom: Optional[Callable] = None
+    # Scans one BOM file for a request: takes the BOM path, a reports
+    # directory under the server's temporary directory, the requested project
+    # type and the suggest/fuzzy flags, and returns the list of VDR
+    # vulnerability objects for the response. Injected by depscan because
+    # this package cannot import it.
+    scan_bom: Optional[Callable] = None
     custom_data_directory: Optional[str] = None

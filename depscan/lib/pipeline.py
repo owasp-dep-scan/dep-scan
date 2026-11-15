@@ -1,9 +1,10 @@
 """The scan pipeline: one stage function per phase of a depscan run.
 
-``run_depscan`` builds a :class:`ScanContext` and calls the stages in order.
-Each stage is a plain function over the context (plus the per-project-type
-:class:`TypeScan` for the loop stages); the context is plain data with no
-stage methods on it, so a later task can persist and re-run single stages.
+``depscan.api.scan`` builds a :class:`ScanContext` and calls the stages in
+order. Each stage is a plain function over the context (plus the
+per-project-type :class:`TypeScan` for the loop stages); the context is plain
+data with no stage methods on it, so a later task can persist and re-run
+single stages.
 
 Stage order, which reproduces the order the previous single function used:
 
@@ -25,8 +26,8 @@ Stage order, which reproduces the order the previous single function used:
    and VDR annotations
 
 A stage that must stop the scan logs the message the scan always printed and
-raises :class:`ScanStageError`; ``run_depscan`` turns that into the same
-exit code. Stages never call ``sys.exit`` themselves.
+raises :class:`ScanStageError` with the same message; the caller turns that
+into the same exit code. Stages never call ``sys.exit`` themselves.
 """
 
 import contextlib
@@ -92,7 +93,9 @@ class ScanStageError(RuntimeError):
     """A stage decided the scan must stop.
 
     The stage has already logged every message the scan prints for this
-    condition; ``run_depscan`` catches this error and exits with code 1.
+    condition and passes the same message to this error, so the caller can
+    report why the scan stopped; ``run_depscan`` catches this error and exits
+    with code 1.
     """
 
 
@@ -211,6 +214,44 @@ def configure_output(ctx):
         LOG.setLevel(DEBUG)
 
 
+def build_server_bom_scanner():
+    """Build the BOM scanner the depscan server injects into its requests.
+
+    The server package cannot import depscan (depscan depends on it), so it
+    receives this callable through ``ServerOptions`` the same way it receives
+    ``create_bom``. It scans one BOM file through the public API with the
+    rendering off and returns the VDR vulnerabilities for the response; a
+    scan that stops early raises, so a failed request can never come back
+    looking like a scan with no vulnerabilities.
+
+    ``depscan.api`` imports this module, so the import is done here at call
+    time rather than at module level to keep the import graph acyclic.
+    """
+
+    from depscan import api
+
+    def scan_bom(bom_file, reports_dir, project_type, *, suggest_mode=False, fuzzy_search=False):
+        options = api.scan_options(
+            bom=bom_file,
+            reports_dir=reports_dir,
+            project_type=[project_type],
+            no_banner=True,
+            no_vuln_table=True,
+            reachability_analyzer="off",
+            risk_audit=False,
+            fail_on_error=False,
+            # The server always searched without an explicit order, which is
+            # the batched search path; the CLI default would switch it.
+            search_order=None,
+            suggest=suggest_mode,
+            fuzzy_search=fuzzy_search,
+        )
+        result = api.scan(options, render=False)
+        return result.vulnerabilities
+
+    return scan_bom
+
+
 def start_server_mode(ctx):
     """Start the depscan server; a separate path no scan stage reaches."""
     args = ctx.args
@@ -237,6 +278,7 @@ def start_server_mode(ctx):
             logger=LOG,
             debug=args.enable_debug or os.environ.get("SCAN_DEBUG_MODE") == "debug",
             create_bom=create_bom,
+            scan_bom=build_server_bom_scanner(),
             max_content_length=max_content_length,
             custom_data_directory=args.custom_data,
         )
@@ -340,7 +382,10 @@ def _check_search_order(args):
         LOG.info(
             "Alternatively, run depscan without the `--search-order` argument to perform PURL-based searches. This method is more accurate and recommended."
         )
-        raise ScanStageError()
+        raise ScanStageError(
+            "CPE-based searches need a BOM with CPE identifiers; pass --bom or "
+            "--bom-dir or drop the --search-order argument."
+        )
     if search_order.startswith("u") and not os.getenv("FETCH_LICENSE"):
         LOG.warning(
             "To perform URL-based searches, the SBOM must include externalReferences with a URL. Set the environment variable `FETCH_LICENSE=true` to force cdxgen to populate this attribute."
@@ -362,7 +407,7 @@ def stage_setup(ctx):
     if input_errors:
         for input_error in input_errors:
             LOG.error(input_error)
-        raise ScanStageError()
+        raise ScanStageError("\n".join(input_errors))
     _check_search_order(args)
     src_dir = args.src_dir_image
     if not src_dir or src_dir == ".":
@@ -415,7 +460,7 @@ def stage_database(ctx):
         scan_vdb_url, user_pinned, flavor = vdb_setup.resolve_scan_vdb_image(args)
     except ValueError as e:
         LOG.error("%s", e)
-        raise ScanStageError() from e
+        raise ScanStageError(str(e)) from e
     ctx.scan_vdb_url, ctx.vdb_user_pinned, ctx.vdb_flavor = (
         scan_vdb_url,
         user_pinned,
@@ -459,7 +504,10 @@ def stage_database(ctx):
                         config.DATA_DIR,
                         e,
                     )
-                    raise ScanStageError() from e
+                    raise ScanStageError(
+                        f"Could not download the vulnerability database "
+                        f"{scan_vdb_url} into {config.DATA_DIR}: {e}."
+                    ) from e
                 # Record the variant so a future switch forces a re-download
                 # even when the DB is still within the age window.
                 write_vdb_image_marker(scan_vdb_url, config.DATA_DIR)
@@ -659,7 +707,7 @@ def _generate_boms(ctx, scan):
         # Only raised when --fail-on-error is set; every other path keeps
         # its degrade-and-continue behaviour.
         LOG.error("%s --fail-on-error is set; aborting the scan.", e)
-        raise ScanStageError() from e
+        raise ScanStageError(f"{e} --fail-on-error is set; aborting the scan.") from e
 
 
 def _produce_boms(ctx, scan):
@@ -721,7 +769,9 @@ def _produce_boms(ctx, scan):
         )
         if ctx.args.fail_on_error:
             LOG.error("--fail-on-error is set; aborting the scan because BOM generation failed.")
-            raise ScanStageError()
+            raise ScanStageError(
+                "The BOM file was not created successfully and --fail-on-error is set."
+            )
         return False
     # A BOM directory supersedes whatever a single run produced: it is the
     # aggregate view, and in lifecycle mode it is where the per-stage
@@ -785,7 +835,10 @@ def _load_packages(ctx, scan):
                 "aborting the scan instead of skipping project type '%s'.",
                 scan.project_type,
             )
-            raise ScanStageError()
+            raise ScanStageError(
+                f"No packages were found for project type '{scan.project_type}' "
+                "and --fail-on-error is set."
+            )
         LOG.info(
             "No packages were found in the project. Try generating the BOM manually or use the `CdxgenImageBasedGenerator` engine."
         )
