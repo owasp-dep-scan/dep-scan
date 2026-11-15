@@ -546,67 +546,43 @@ def test_stage_render_reports_writes_every_report_file(tmp_path):
     assert vdr.get("annotations"), "the text report must be annotated into the VDR"
 
 
-def _redirect_ctx(tmp_path, reports_inside):
-    """A context whose src is a project and whose reports dir is set up.
+def test_generate_boms_removes_slices_left_by_a_previous_run(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    stale = reports / "python-usages.slices.json"
+    stale.write_text("{}")
+    other_type = reports / "java-usages.slices.json"
+    other_type.write_text("{}")
+    seen = {}
 
-    ``reports_inside`` puts the reports directory under the project, which is
-    what the CLI default ``<cwd>/reports`` produces when depscan runs from the
-    project it scans.
-    """
-    src = tmp_path / "proj"
-    src.mkdir()
-    reports = src / "reports" if reports_inside else tmp_path / "elsewhere"
-    reports.mkdir(parents=True)
+    def fake_create_bom(bom_file, src_dir, options):
+        # Positive control: the generator ran, and it ran after the cleanup.
+        seen["stale_present"] = stale.exists()
+        return True
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
     args = _args(["--reports-dir", str(reports), "--no-banner"])
     ctx = pipeline.build_context(args)
-    ctx.src_dir = str(src)
-    ctx.reports_dir = str(reports)
+    ctx.src_dir = str(tmp_path)
     ctx.depscan_options = {"reports_dir": str(reports)}
-    ctx.html_report_file = os.path.join(str(reports), "depscan.html")
-    ctx.txt_report_file = os.path.join(str(reports), "depscan.txt")
-    ctx.llm_prompt_file = os.path.join(str(reports), "depscan-prompts.md")
-    sample = reports / "depscan.toml.sample"
-    sample.write_text("profile = 'generic'\n")
-    return ctx, src, reports
-
-
-def test_prepare_lifecycle_paths_moves_reports_out_of_the_scanned_tree(tmp_path):
-    ctx, src, reports = _redirect_ctx(tmp_path, reports_inside=True)
     scan = pipeline.TypeScan(project_type="python")
-    pipeline._prepare_lifecycle_paths(ctx, scan)
-    new_dir = ctx.reports_dir
-    assert not new_dir.startswith(str(src) + os.sep)
-    assert os.path.basename(new_dir) == "proj-reports"
-    assert os.path.isdir(new_dir)
-    assert ctx.depscan_options["reports_dir"] == new_dir
-    assert ctx.html_report_file == os.path.join(new_dir, "depscan.html")
-    assert ctx.txt_report_file == os.path.join(new_dir, "depscan.txt")
-    assert ctx.llm_prompt_file == os.path.join(new_dir, "depscan-prompts.md")
-    # The sample config written into the old directory follows the move.
-    assert os.path.exists(os.path.join(new_dir, "depscan.toml.sample"))
-    # The second project type sees the moved directory and leaves it alone.
-    pipeline._prepare_lifecycle_paths(ctx, pipeline.TypeScan(project_type="java"))
-    assert ctx.reports_dir == new_dir
+    scan.target_bom_file = str(reports / "sbom-python.cdx.json")
+    pipeline._generate_boms(ctx, scan)
+    assert seen == {"stale_present": False}
+    # Only this type's slices are removed.
+    assert other_type.exists()
 
 
-def test_prepare_lifecycle_paths_keeps_an_outside_reports_dir(tmp_path):
-    ctx, src, reports = _redirect_ctx(tmp_path, reports_inside=False)
-    pipeline._prepare_lifecycle_paths(ctx, pipeline.TypeScan(project_type="python"))
-    assert ctx.reports_dir == str(reports)
-    assert ctx.html_report_file == os.path.join(str(reports), "depscan.html")
+def test_set_slices_args_and_stale_removal_use_the_same_paths(tmp_path):
+    from xbom_lib.cdxgen import remove_stale_slices, set_slices_args
 
+    args = []
+    set_slices_args(["python"], args, str(tmp_path))
+    paths = args[1::2]
+    assert len(paths) == 6
+    for path in paths:
+        Path(path).write_text("{}")
+    removed = remove_stale_slices("python", str(tmp_path))
+    assert sorted(removed) == sorted(paths)
+    assert not any(os.path.exists(path) for path in paths)
 
-def test_prepare_lifecycle_paths_falls_back_to_a_temp_dir(tmp_path, monkeypatch, caplog):
-    ctx, src, reports = _redirect_ctx(tmp_path, reports_inside=True)
-    real_makedirs = os.makedirs
-
-    def refuse_makedirs(name, *a, **k):
-        if str(name).endswith("-reports") and str(name) != str(reports):
-            raise OSError("read-only parent")
-        return real_makedirs(name, *a, **k)
-
-    monkeypatch.setattr(pipeline.os, "makedirs", refuse_makedirs)
-    with caplog.at_level("WARNING"):
-        pipeline._prepare_lifecycle_paths(ctx, pipeline.TypeScan(project_type="python"))
-    assert not ctx.reports_dir.startswith(str(src))
-    assert "temporary directory" in " ".join(r.message for r in caplog.records)

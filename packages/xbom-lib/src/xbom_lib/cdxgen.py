@@ -385,26 +385,47 @@ def cdxgen_source_arg(source_dir: str) -> str:
     return source_dir
 
 
+# The slices cdxgen writes for a single project type, in argument order.
+SLICE_KINDS = ("deps", "usages", "callsites", "data-flow", "reachables", "semantics")
+
+
+def slices_file_paths(project_type, dir):
+    """The ``(option, path)`` pairs of the slices files for one project type."""
+    return [
+        (f"--{kind}-slices-file", os.path.join(dir, f"{project_type}-{kind}.slices.json"))
+        for kind in SLICE_KINDS
+    ]
+
+
 def set_slices_args(project_type_list, args, dir):
     """Add the ``--*-slices-file`` arguments for a single project type.
 
-    Every slices path stays outside the scanned tree because ``dir`` is the
-    directory holding the BOM: cdxgen's secure mode refuses to reuse a slices
-    file found inside the scanned directory and writes its own to a temporary
-    directory instead, which would hide the slice from the reports. The
-    callsites slice joins the others so the file is kept next to them.
+    The slices are written next to the BOM in ``dir``. The callsites slice
+    joins the others so the file is kept next to them.
     """
     if len(project_type_list) == 1:
-        for s in (
-            "deps",
-            "usages",
-            "callsites",
-            "data-flow",
-            "reachables",
-            "semantics",
-        ):
-            args.append(f"--{s}-slices-file")
-            args.append(os.path.join(dir, f"{project_type_list[0]}-{s}.slices.json"))
+        for option, path in slices_file_paths(project_type_list[0], dir):
+            args.append(option)
+            args.append(path)
+
+
+def remove_stale_slices(project_type, dir, logger: Optional[Logger] = None):
+    """Delete slices files a previous run left at this run's slices paths.
+
+    cdxgen 13.8 does not regenerate a slices file that already exists: atom
+    reuses it, and in secure mode cdxgen writes this run's slices to a
+    temporary directory instead when the existing file is inside the scanned
+    tree. Either way the scan would read the previous run's slices. Returns
+    the removed paths.
+    """
+    removed = []
+    for _option, path in slices_file_paths(project_type, dir):
+        if os.path.isfile(path):
+            os.remove(path)
+            removed.append(path)
+            if logger:
+                logger.debug("Removed the slices file %s left by a previous run.", path)
+    return removed
 
 
 def is_remote_source(source_dir, options: Optional[Dict] = None) -> bool:
