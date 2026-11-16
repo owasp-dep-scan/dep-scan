@@ -106,22 +106,6 @@
       ]
     },
     {
-      "name": "biome",
-      "directory": "rust",
-      "git": "https://github.com/biomejs/biome",
-      "commit": "b26c4e3c96628863ba5ccaa5c9057ed8f7534387",
-      "types": [
-        "js"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
-      "minReachablePurls": 0,
-      "mustReach": [],
-      "notes": "Rust type not generated: the research profile runs cargo check --all-features on machines with a Rust toolchain, which compiles biome's whole workspace (tens of minutes, a 37 GB target tree, and the pinned commit fails to compile against schemars 1.2.3). The GitHub generate job has no Rust toolchain either, so the rust BOM would degrade there; the js type carries the reachability evidence."
-    },
-    {
       "name": "rustpad",
       "directory": "rust",
       "git": "https://github.com/ekzhang/rustpad",

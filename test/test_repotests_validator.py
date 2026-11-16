@@ -307,3 +307,98 @@ def test_main_rejects_an_unknown_project(validator, tmp_path):
     projects.write_text(json.dumps({"projects": []}), encoding="utf-8")
     code = validator.main(["staleness", str(tmp_path), "--projects", str(projects), "--name", "ghost"])
     assert code == 1
+
+
+def test_publish_pushes_every_project_and_writes_the_lock(tmp_path):
+    """publish.sh drives oras once per project and writes the lock file.
+
+    The oras on PATH is a stub that records its arguments and answers the
+    descriptor fetch; the recording is the positive control that the real
+    script reached oras with the provenance annotations.
+    """
+    import hashlib
+    import os
+    import subprocess
+
+    data_root = tmp_path / "out"
+    for name in ("rustpad", "depscan"):
+        project = data_root / name
+        project.mkdir(parents=True)
+        (project / "sbom-js.cdx.json").write_text("{}", encoding="utf-8")
+        (project / "js-reachables.slices.json").write_text("[]", encoding="utf-8")
+        (project / "generation.json").write_text(
+            json.dumps(
+                {
+                    "name": name,
+                    "git": f"https://example.invalid/{name}.git",
+                    "commit": "a" * 40,
+                    "types": ["js"],
+                    "cdxgenArgs": ["--profile", "research"],
+                    "cdxgenVersion": "13.8.0",
+                    "atomVersion": "4.0.2",
+                    "cdxgenPluginsVersion": "4.3.1",
+                    "generated": "2026-11-16T10:00:00Z",
+                    "tag": f"{name}-cdxgen13.8.0-20261116",
+                }
+            ),
+            encoding="utf-8",
+        )
+    stub_bin = tmp_path / "bin"
+    stub_bin.mkdir()
+    record = tmp_path / "oras-calls.txt"
+    stub = stub_bin / "oras"
+    stub.write_text(
+        "#!/usr/bin/env bash\n"
+        f'echo "$@" >> "{record}"\n'
+        'if [ "$1" = "manifest" ] && [ "$2" = "fetch" ]; then\n'
+        '  ref="$(echo "$@" | grep -o "ghcr.io[^ ]*")"\n'
+        '  digest="sha256:$(printf %s "$ref" | shasum -a 256 | cut -d" " -f1)"\n'
+        f'  printf \'{{"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": "%s", "size": 1024}}\\n\' "$digest"\n'
+        "fi\n",
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    env = dict(os.environ, PATH=f"{stub_bin}:{os.environ['PATH']}")
+    summary = tmp_path / "summary.md"
+    env["GITHUB_STEP_SUMMARY"] = str(summary)
+    lock_out = data_root / "testdata.lock.json"
+
+    result = subprocess.run(
+        [
+            str(REPO_ROOT / "contrib" / "repotests" / "publish.sh"),
+            str(data_root),
+            "ghcr.io/owasp-dep-scan/depscan-testdata",
+        ],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert result.returncode == 0, result.stderr
+
+    calls = record.read_text(encoding="utf-8").splitlines()
+    pushes = [c for c in calls if c.startswith("push")]
+    assert len(pushes) == 2
+    # Every provenance field of decision 1 rides along as an annotation.
+    for annotation in (
+        "org.opencontainers.image.source=https://example.invalid/rustpad.git",
+        "org.opencontainers.image.revision=" + "a" * 40,
+        "org.opencontainers.image.created=2026-11-16T10:00:00Z",
+        "io.owasp-dep-scan.testdata.project=rustpad",
+        "io.owasp-dep-scan.testdata.cdxgen-version=13.8.0",
+        "io.owasp-dep-scan.testdata.atom-version=4.0.2",
+        "io.owasp-dep-scan.testdata.cdxgen-plugins-version=4.3.1",
+        "io.owasp-dep-scan.testdata.cdxgen-args=--profile research",
+    ):
+        assert any(annotation in c for c in pushes), annotation
+    # Each file is its own layer; generation.json never becomes one.
+    rustpad_push = next(c for c in pushes if "rustpad" in c)
+    assert "./sbom-js.cdx.json:application/json" in rustpad_push
+    assert "./js-reachables.slices.json:application/json" in rustpad_push
+    assert "generation.json" not in rustpad_push
+
+    lock = json.loads(lock_out.read_text(encoding="utf-8"))
+    entry = lock["projects"]["rustpad"]
+    ref = "ghcr.io/owasp-dep-scan/depscan-testdata:rustpad-cdxgen13.8.0-20261116"
+    assert entry["manifestDigest"] == "sha256:" + hashlib.sha256(ref.encode()).hexdigest()
+    assert "| rustpad |" in summary.read_text(encoding="utf-8")
