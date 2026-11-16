@@ -1,0 +1,21 @@
+THREAT_MODEL.md
+  s_c6c2eef264b80a::t_78f98bae26e2c5 245
+  s_c6c2eef264b80a::t_bc994aca065f44 261
+  s_c6c2eef264b80a::t_33f9a290cbf66d 401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6b8270118ac9881b3a74d90b24dcce750338ea4",
+  "prompts": {},
+  "sessions": {
+    "s_c6c2eef264b80a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ca5a02be-9bad-4280-9f9f-602d6836ad7c",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
