@@ -19,15 +19,24 @@ fallback finds the SAME binary cdxgen uses):
 
 Safety gate (per golem THREAT_MODEL): golem has a single backend -- it loads
 packages via ``golang.org/x/tools/go/packages`` with full type/SSA info. It
-does NOT run the program and does NOT run ``go:generate``. BUT package
-loading uses the **local Go toolchain**, and module downloads **can occur**
-depending on the user's Go env (proxy/module cache). This is the analog of
-rusi's "compiler backend builds the target".
+does NOT run the program and does NOT run ``go:generate``. BUT package loading
+uses the **local Go toolchain**, and loading in this mode runs ``go list
+-compiled``, which compiles cgo packages: the machine's C compiler runs with
+flags taken from the scanned code (``#cgo`` directives, ``.syso`` files,
+``#cgo pkg-config:`` lines). Module downloads **can occur** depending on the
+user's Go env (proxy/module cache). This is the analog of rusi's "compiler
+backend builds the target".
 
 Plan:
   - Require a Go toolchain (``go version``) before invoking golem; skip
     gracefully with a diagnostic if absent (never crash).
   - Run golem with a hardened Go env by default: ``GOFLAGS=-mod=readonly``.
+  - Force cgo off: ``CGO_ENABLED=0`` and no ``CGO_*_ALLOW`` variables, even
+    when the caller's environment sets them (see :func:`apply_cgo_env`, which
+    the cdxgen generators share). Packages that need cgo are not loaded and
+    their reachability is missing. ``--go-analyzer-cgo`` opts in, keeps the
+    caller's cgo environment, and warns about the C compiler and about
+    toolchains older than go1.26.11 / go1.27.4.
   - ``--go-analyzer-network offline`` sets ``GOPROXY=off`` to forbid
     downloads entirely (requires a warm module cache). Default ``auto``.
   - ``--include-all-flows`` is ALWAYS passed: without it, golem drops
