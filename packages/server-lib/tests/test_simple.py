@@ -1323,3 +1323,130 @@ async def test_windows_network_paths_are_refused_before_any_file_access(
     )
     assert response.status_code == 403
     assert checked == []
+
+
+# ---------------------------------------------------------------------------
+# Server requests reach golem for Go projects, with cgo off
+# ---------------------------------------------------------------------------
+
+
+def _wire_real_create_bom(monkeypatch, project_dir):
+    """Wire the app to the real ``depscan.lib.bom.create_bom`` and stub the
+    cdxgen generator so the request reaches the reachability stage without
+    spawning cdxgen.
+
+    The real server wiring injects exactly this function (see
+    ``depscan.lib.pipeline.build_context``); the stub generator writes the
+    minimal BOM create_bom needs to consider the generation successful.
+    """
+    from depscan.lib import bom as bom_mod
+
+    class FakeCdxgenGenerator:
+        def __init__(self, source_dir, bom_file, logger=None, options=None):
+            self.bom_file = bom_file
+
+        def generate(self):
+            with open(self.bom_file, "w", encoding="utf-8") as fp:
+                json.dump(
+                    {
+                        "bomFormat": "CycloneDX",
+                        "specVersion": "1.6",
+                        "version": 1,
+                        "metadata": {
+                            "component": {
+                                "type": "application",
+                                "name": "github.com/example/app",
+                                "version": "v0.1.0",
+                            }
+                        },
+                        "components": [],
+                    },
+                    fp,
+                )
+            return bom_mod.BomResult(
+                success=True, bom_files=[self.bom_file], primary=self.bom_file
+            )
+
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", FakeCdxgenGenerator)
+    # Without this, create_bom probes the real cdxgen CLI for its version.
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    app.config["create_bom"] = bom_mod.create_bom
+
+
+@pytest.mark.asyncio
+async def test_go_scan_request_reaches_golem_without_a_cgo_opt_in(
+    client, monkeypatch, tmp_path
+):
+    """A request for a Go directory reaches run_golem through the real
+    create_bom, with no cgo opt-in in the options the server builds.
+
+    The server assembles its options from the request alone, so nothing in
+    them can carry go_analyzer_cgo; run_golem must be called with the hardened
+    default. The stubbed runner fails the run (it writes no report), which the
+    fallback degrades from without failing the request."""
+    from xbom_lib import golem as golem_mod
+
+    project_dir = tmp_path / "go-project"
+    project_dir.mkdir()
+    _wire_real_create_bom(monkeypatch, project_dir)
+    inject_scanner(monkeypatch, vulnerabilities=[])
+
+    calls = []
+
+    def fake_run_golem(src_dir, out_path, **kwargs):
+        calls.append({"src_dir": src_dir, "kwargs": kwargs})
+        return golem_mod.GolemResult(success=False, command_output="stubbed")
+
+    monkeypatch.setattr(golem_mod, "run_golem", fake_run_golem)
+
+    response = await client.get(
+        f"/scan?type=go&path={project_dir}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    assert len(calls) == 1, "the golem fallback was not reached for a Go request"
+    assert calls[0]["src_dir"] == str(project_dir)
+    # The opt-in is a CLI-level decision; the server never sets it.
+    assert calls[0]["kwargs"].get("allow_cgo") is False
+
+
+@pytest.mark.asyncio
+async def test_go_scan_request_runs_golem_with_cgo_disabled(
+    client, monkeypatch, tmp_path
+):
+    """The golem subprocess the server path ends up starting runs with
+    CGO_ENABLED=0 and without the host's CGO_*_ALLOW values, even when the
+    server process itself carries them."""
+    from xbom_lib import golem as golem_mod
+
+    project_dir = tmp_path / "go-project"
+    project_dir.mkdir()
+    _wire_real_create_bom(monkeypatch, project_dir)
+    inject_scanner(monkeypatch, vulnerabilities=[])
+    monkeypatch.setenv("CGO_ENABLED", "1")
+    monkeypatch.setenv("CGO_CFLAGS_ALLOW", ".*")
+
+    captured = {}
+
+    def fake_run(full_cmd, **kwargs):
+        captured["env"] = kwargs.get("env", {})
+        from subprocess import CompletedProcess
+
+        if "version" in [str(part) for part in full_cmd]:
+            return CompletedProcess(
+                args=full_cmd, returncode=0, stdout="go version go1.26.10 linux/amd64", stderr=""
+            )
+        return CompletedProcess(args=full_cmd, returncode=1, stdout="stubbed", stderr="")
+
+    monkeypatch.setattr(golem_mod, "find_golem_binary", lambda logger=None: "/tmp/golem")
+    monkeypatch.setattr(golem_mod, "go_toolchain_available", lambda logger=None: True)
+    monkeypatch.setattr(golem_mod, "get_golem_version", lambda binary, logger=None: "2.5.2")
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+    response = await client.get(
+        f"/scan?type=go&path={project_dir}",
+        headers={"X-Test-Remote-Addr": "127.0.0.1"},
+    )
+    assert response.status_code == 200
+    assert captured["env"]["CGO_ENABLED"] == "0"
+    assert "CGO_CFLAGS_ALLOW" not in captured["env"]
