@@ -1,0 +1,39 @@
+contrib/repotests/validate.py
+  s_2f99e298a82725::t_6fdf35606215f4 262-263
+  s_2f99e298a82725::t_6d8080fd50f60e 181,185-191,197
+  s_2f99e298a82725::t_3f59d57eb1e5f2 1-180,182-184,192-196,198-261,264-368
+contrib/repotests/projects.json
+  s_2f99e298a82725::t_e2bcd31abc1dd7 1-161
+test/test_repotests_validator.py
+  s_2f99e298a82725::t_e1e8fe252f0b0c 174-177,179-180,184-187,189,191-193,195
+  s_2f99e298a82725::t_ddcfe302f828d8 1-173,178,181-183,188,190,194,196-285
+contrib/repotests/testdata.lock.json
+  s_2f99e298a82725::t_aa2f36c36d10f3 1-5
+contrib/repotests/write_provenance.py
+  s_2f99e298a82725::t_041b2d1a3634d2 1-70
+contrib/repotests/README.md
+  s_2f99e298a82725::t_5ae1229251e6cb 1-101
+contrib/repotests/generate.sh
+  s_2f99e298a82725::t_2cb671e8c25bdb 100-107
+  s_2f99e298a82725::t_25d04992001422 41-42,54-56
+  s_2f99e298a82725::t_e13e45f24b1999 28-30
+  s_2f99e298a82725::t_90c0faf99b82e2 1-27,31-40,43-53,57-90,109-110
+  s_2f99e298a82725::t_b3c8be138469bb 93-99
+  s_2f99e298a82725::t_cb99d4a88838a0 91-92,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1a7968bfc378734b546a27571ce706712181971",
+  "prompts": {},
+  "sessions": {
+    "s_2f99e298a82725": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9a3879c1-6bea-491d-a95d-b7c82fc9b795",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
