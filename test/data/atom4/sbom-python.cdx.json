@@ -1,0 +1,898 @@
+{
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.7",
+ "serialNumber": "urn:uuid:c841bff5-e0a4-46bb-8c0f-01676623493c",
+ "version": 2,
+ "metadata": {
+  "timestamp": "2026-11-16T09:58:51Z",
+  "tools": {
+   "components": [
+    {
+     "type": "application",
+     "name": "atom"
+    },
+    {
+     "type": "application",
+     "name": "pnpm"
+    },
+    {
+     "group": "@cdxgen",
+     "name": "cdxgen",
+     "version": "13.8.0",
+     "purl": "pkg:npm/%40cdxgen/cdxgen@13.8.0",
+     "type": "application",
+     "bom-ref": "pkg:npm/@cdxgen/cdxgen@13.8.0",
+     "publisher": "OWASP Foundation",
+     "authors": [
+      {
+       "name": "OWASP Foundation"
+      }
+     ]
+    }
+   ]
+  },
+  "authors": [
+   {
+    "name": "OWASP Foundation"
+   }
+  ]
+ },
+ "components": [
+  {
+   "group": "",
+   "name": "custom-json-diff",
+   "version": "2.1.6",
+   "purl": "pkg:pypi/custom-json-diff@2.1.6",
+   "externalReferences": [
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/71/8a/7ec7e9d24c5fbc9238490cffa0f7dc0ac243ff16464be315c42e8a81c928/custom_json_diff-2.1.6-py3-none-any.whl",
+     "comment": "wheel"
+    },
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/b6/f9/670514efaceb028f739106231acfae1813638387742e130cd5561949c10e/custom_json_diff-2.1.6.tar.gz",
+     "comment": "sdist"
+    }
+   ],
+   "type": "library",
+   "bom-ref": "pkg:pypi/custom-json-diff@2.1.6",
+   "properties": [
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-analysis-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-analysis-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-analysis-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 1,
+        "value": "uv.lock"
+       }
+      ],
+      "concludedValue": "uv.lock"
+     }
+    ]
+   }
+  },
+  {
+   "group": "",
+   "name": "quart",
+   "version": "0.22.0",
+   "purl": "pkg:pypi/quart@0.22.0",
+   "externalReferences": [
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/81/80/0159d6fe2fc76915f2354e5b9187082987f7d648f0298d49770320c086ef/quart-0.22.0-py3-none-any.whl",
+     "comment": "wheel"
+    },
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/82/8a/13962df31309fa024b1811102981577b1702916779d3f17067bbf1f7691d/quart-0.22.0.tar.gz",
+     "comment": "sdist"
+    }
+   ],
+   "type": "framework",
+   "bom-ref": "pkg:pypi/quart@0.22.0",
+   "properties": [
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 1,
+        "value": "uv.lock"
+       }
+      ],
+      "concludedValue": "uv.lock"
+     }
+    ]
+   },
+   "tags": [
+    "framework"
+   ]
+  },
+  {
+   "group": "",
+   "name": "quart",
+   "version": "0.23.1",
+   "purl": "pkg:pypi/quart@0.23.1",
+   "externalReferences": [
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/5c/c1/26dca56249da1a889ebb946000ab272712476209234f714ad3e8013ee005/quart-0.23.1-py3-none-any.whl",
+     "comment": "wheel"
+    },
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/6b/81/34396f67e09e7a0609261f1ef0f43b26f5d67e8f2dc4d34b4953061560f2/quart-0.23.1.tar.gz",
+     "comment": "sdist"
+    }
+   ],
+   "type": "framework",
+   "bom-ref": "pkg:pypi/quart@0.23.1",
+   "properties": [
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 1,
+        "value": "uv.lock"
+       }
+      ],
+      "concludedValue": "uv.lock"
+     }
+    ]
+   },
+   "tags": [
+    "framework"
+   ]
+  },
+  {
+   "group": "",
+   "name": "rich",
+   "version": "15.0.0",
+   "purl": "pkg:pypi/rich@15.0.0",
+   "externalReferences": [
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl",
+     "comment": "wheel"
+    },
+    {
+     "type": "distribution",
+     "url": "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz",
+     "comment": "sdist"
+    }
+   ],
+   "type": "library",
+   "bom-ref": "pkg:pypi/rich@15.0.0",
+   "properties": [
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-analysis-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-analysis-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-analysis-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceRef",
+     "value": "pkg:pypi/ds-server-lib@7.0.0.dev0"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    },
+    {
+     "name": "internal:workspaceSrcFile"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 1,
+        "value": "uv.lock"
+       }
+      ],
+      "concludedValue": "uv.lock"
+     }
+    ]
+   }
+  }
+ ],
+ "dependencies": [
+  {
+   "ref": "pkg:pypi/aiofiles@25.1.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/annotated-types@0.8.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/anyio@4.16.0",
+   "dependsOn": [
+    "pkg:pypi/idna@3.20",
+    "pkg:pypi/typing-extensions@4.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/apkinspector@1.3.7",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/appdirs@1.4.4",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/appthreat-vulnerability-db@7.0.6",
+   "dependsOn": [
+    "pkg:pypi/appdirs@1.4.4",
+    "pkg:pypi/apsw@3.54.1.0",
+    "pkg:pypi/cvss@3.6",
+    "pkg:pypi/httpx@0.28.1",
+    "pkg:pypi/orjson@3.13.0",
+    "pkg:pypi/packageurl-python@0.17.6",
+    "pkg:pypi/packaging@26.3",
+    "pkg:pypi/rich@15.0.0",
+    "pkg:pypi/semver@3.1.1"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/ds-server-lib@7.0.0.dev0",
+   "dependsOn": [
+    "pkg:pypi/appthreat-vulnerability-db@7.0.6",
+    "pkg:pypi/custom-json-diff@2.1.6",
+    "pkg:pypi/ds-analysis-lib@7.0.0.dev0",
+    "pkg:pypi/pytest-asyncio@1.4.1.post1",
+    "pkg:pypi/pytest-cov@7.1.0",
+    "pkg:pypi/pytest@9.2.0",
+    "pkg:pypi/quart@0.22.0",
+    "pkg:pypi/quart@0.23.1",
+    "pkg:pypi/rich@15.0.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/ds-analysis-lib@7.0.0.dev0",
+   "dependsOn": [
+    "pkg:pypi/appthreat-vulnerability-db@7.0.6",
+    "pkg:pypi/custom-json-diff@2.1.6",
+    "pkg:pypi/cvss@3.6",
+    "pkg:pypi/jsonschema@4.26.0",
+    "pkg:pypi/packageurl-python@0.17.6",
+    "pkg:pypi/referencing@0.37.0",
+    "pkg:pypi/rich@15.0.0",
+    "pkg:pypi/toml@0.10.2"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/apsw@3.54.1.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/ar@1.0.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/atom-tools@0.9.1",
+   "dependsOn": [
+    "pkg:pypi/cleo@2.1.0",
+    "pkg:pypi/jmespath@1.1.0",
+    "pkg:pypi/json-flatten@0.3.1",
+    "pkg:pypi/rich@15.0.0",
+    "pkg:pypi/thefuzz@0.22.1"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/attrs@26.1.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/blinker@1.9.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/blint@3.2.4",
+   "dependsOn": [
+    "pkg:pypi/apkinspector@1.3.7",
+    "pkg:pypi/appdirs@1.4.4",
+    "pkg:pypi/apsw@3.54.1.0",
+    "pkg:pypi/ar@1.0.1",
+    "pkg:pypi/custom-json-diff@2.1.6",
+    "pkg:pypi/defusedxml@0.7.1",
+    "pkg:pypi/lief@1.0.0",
+    "pkg:pypi/multi-demangle@1.0.4",
+    "pkg:pypi/oras@0.2.43",
+    "pkg:pypi/orjson@3.13.0",
+    "pkg:pypi/packageurl-python@0.17.6",
+    "pkg:pypi/pydantic@2.14.3",
+    "pkg:pypi/pyyaml@6.0.3",
+    "pkg:pypi/rich@15.0.0",
+    "pkg:pypi/wasm-tools@1.0.3"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/certifi@2026.10.23",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/cffi@2.1.1",
+   "dependsOn": [
+    "pkg:pypi/pycparser@3.12"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/charset-normalizer@3.5.2",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/cleo@2.1.0",
+   "dependsOn": [
+    "pkg:pypi/crashtest@0.4.1",
+    "pkg:pypi/rapidfuzz@3.14.6"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/click@8.5.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/colorama@0.4.6",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/coverage@7.17.3",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/crashtest@0.4.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/cryptography@50.0.2",
+   "dependsOn": [
+    "pkg:pypi/cffi@2.1.1"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/custom-json-diff@2.1.6",
+   "dependsOn": [
+    "pkg:pypi/jinja2@3.1.6",
+    "pkg:pypi/json-flatten@0.3.1",
+    "pkg:pypi/packageurl-python@0.17.6",
+    "pkg:pypi/semver@3.1.1",
+    "pkg:pypi/toml@0.10.2"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/cvss@3.6",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/defusedxml@0.7.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/dnspython@2.9.2",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/ds-reporting-lib@7.0.0.dev0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/ds-xbom-lib@7.0.0.dev0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/email-validator@2.3.0",
+   "dependsOn": [
+    "pkg:pypi/dnspython@2.9.2",
+    "pkg:pypi/idna@3.20"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/flask@3.1.3",
+   "dependsOn": [
+    "pkg:pypi/blinker@1.9.0",
+    "pkg:pypi/click@8.5.1",
+    "pkg:pypi/itsdangerous@2.2.0",
+    "pkg:pypi/jinja2@3.1.6",
+    "pkg:pypi/markupsafe@3.0.4",
+    "pkg:pypi/werkzeug@3.1.9"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/h11@0.16.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/h2@4.4.1",
+   "dependsOn": [
+    "pkg:pypi/hpack@4.2.0",
+    "pkg:pypi/hyperframe@6.1.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/hpack@4.2.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/httpcore@1.0.9",
+   "dependsOn": [
+    "pkg:pypi/certifi@2026.10.23",
+    "pkg:pypi/h11@0.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/httpx@0.28.1",
+   "dependsOn": [
+    "pkg:pypi/anyio@4.16.0",
+    "pkg:pypi/certifi@2026.10.23",
+    "pkg:pypi/h2@4.4.1",
+    "pkg:pypi/httpcore@1.0.9",
+    "pkg:pypi/idna@3.20"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/hypercorn@0.18.0",
+   "dependsOn": [
+    "pkg:pypi/h11@0.16.0",
+    "pkg:pypi/h2@4.4.1",
+    "pkg:pypi/priority@2.0.0",
+    "pkg:pypi/wsproto@1.3.2"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/hyperframe@6.1.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/idna@3.20",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/iniconfig@2.3.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/itsdangerous@2.2.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/jinja2@3.1.6",
+   "dependsOn": [
+    "pkg:pypi/markupsafe@3.0.4"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/jmespath@1.1.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/json-flatten@0.3.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/jsonschema@4.26.0",
+   "dependsOn": [
+    "pkg:pypi/attrs@26.1.0",
+    "pkg:pypi/jsonschema-specifications@2025.9.1",
+    "pkg:pypi/referencing@0.37.0",
+    "pkg:pypi/rpds-py@2026.9.1"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/jsonschema-specifications@2025.9.1",
+   "dependsOn": [
+    "pkg:pypi/referencing@0.37.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/lief@1.0.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/markdown-it-py@4.3.0",
+   "dependsOn": [
+    "pkg:pypi/mdurl@0.1.2"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/markupsafe@3.0.4",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/mdurl@0.1.2",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/multi-demangle@1.0.4",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/oras@0.2.43",
+   "dependsOn": [
+    "pkg:pypi/jsonschema@4.26.0",
+    "pkg:pypi/requests@2.34.2"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/orjson@3.13.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/packageurl-python@0.17.6",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/packaging@26.3",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/pluggy@1.7.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/priority@2.0.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/pycparser@3.12",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/pydantic@2.14.3",
+   "dependsOn": [
+    "pkg:pypi/annotated-types@0.8.0",
+    "pkg:pypi/email-validator@2.3.0",
+    "pkg:pypi/pydantic-core@2.50.4",
+    "pkg:pypi/typing-extensions@4.16.0",
+    "pkg:pypi/typing-inspection@0.4.5"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pydantic-core@2.50.4",
+   "dependsOn": [
+    "pkg:pypi/typing-extensions@4.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pygithub@2.10.0",
+   "dependsOn": [
+    "pkg:pypi/pyjwt@2.15.1",
+    "pkg:pypi/pynacl@1.6.2",
+    "pkg:pypi/requests@2.34.2",
+    "pkg:pypi/typing-extensions@4.16.0",
+    "pkg:pypi/urllib3@2.8.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pygments@2.21.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/pyjwt@2.15.1",
+   "dependsOn": [
+    "pkg:pypi/cryptography@50.0.2"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pynacl@1.6.2",
+   "dependsOn": [
+    "pkg:pypi/cffi@2.1.1"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pyrefly@1.4.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/pytest@9.2.0",
+   "dependsOn": [
+    "pkg:pypi/colorama@0.4.6",
+    "pkg:pypi/iniconfig@2.3.1",
+    "pkg:pypi/packaging@26.3",
+    "pkg:pypi/pluggy@1.7.0",
+    "pkg:pypi/pygments@2.21.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pytest-asyncio@1.4.1.post1",
+   "dependsOn": [
+    "pkg:pypi/pytest@9.2.0",
+    "pkg:pypi/typing-extensions@4.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pytest-cov@7.1.0",
+   "dependsOn": [
+    "pkg:pypi/coverage@7.17.3",
+    "pkg:pypi/pluggy@1.7.0",
+    "pkg:pypi/pytest@9.2.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/pyyaml@6.0.3",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/quart@0.22.0",
+   "dependsOn": [
+    "pkg:pypi/aiofiles@25.1.0",
+    "pkg:pypi/blinker@1.9.0",
+    "pkg:pypi/click@8.5.1",
+    "pkg:pypi/flask@3.1.3",
+    "pkg:pypi/hypercorn@0.18.0",
+    "pkg:pypi/itsdangerous@2.2.0",
+    "pkg:pypi/jinja2@3.1.6",
+    "pkg:pypi/markupsafe@3.0.4",
+    "pkg:pypi/werkzeug@3.1.9"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/quart@0.23.1",
+   "dependsOn": [
+    "pkg:pypi/aiofiles@25.1.0",
+    "pkg:pypi/blinker@1.9.0",
+    "pkg:pypi/click@8.5.1",
+    "pkg:pypi/flask@3.1.3",
+    "pkg:pypi/hypercorn@0.18.0",
+    "pkg:pypi/itsdangerous@2.2.0",
+    "pkg:pypi/jinja2@3.1.6",
+    "pkg:pypi/markupsafe@3.0.4",
+    "pkg:pypi/werkzeug@3.1.9"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/rapidfuzz@3.14.6",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/referencing@0.37.0",
+   "dependsOn": [
+    "pkg:pypi/attrs@26.1.0",
+    "pkg:pypi/rpds-py@2026.9.1",
+    "pkg:pypi/typing-extensions@4.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/requests@2.34.2",
+   "dependsOn": [
+    "pkg:pypi/certifi@2026.10.23",
+    "pkg:pypi/charset-normalizer@3.5.2",
+    "pkg:pypi/idna@3.20",
+    "pkg:pypi/urllib3@2.8.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/rich@15.0.0",
+   "dependsOn": [
+    "pkg:pypi/markdown-it-py@4.3.0",
+    "pkg:pypi/pygments@2.21.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/rpds-py@2026.9.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/ruff@0.17.4",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/semver@3.1.1",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/thefuzz@0.22.1",
+   "dependsOn": [
+    "pkg:pypi/rapidfuzz@3.14.6"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/toml@0.10.2",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/typing-extensions@4.16.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/typing-inspection@0.4.5",
+   "dependsOn": [
+    "pkg:pypi/typing-extensions@4.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/urllib3@2.8.0",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/wasm-tools@1.0.3",
+   "dependsOn": []
+  },
+  {
+   "ref": "pkg:pypi/werkzeug@3.1.9",
+   "dependsOn": [
+    "pkg:pypi/markupsafe@3.0.4"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/wsproto@1.3.2",
+   "dependsOn": [
+    "pkg:pypi/h11@0.16.0"
+   ]
+  },
+  {
+   "ref": "pkg:pypi/owasp-depscan@7.0.0.dev0",
+   "dependsOn": [
+    "pkg:pypi/appthreat-vulnerability-db@7.0.6",
+    "pkg:pypi/custom-json-diff@2.1.6",
+    "pkg:pypi/cvss@3.6",
+    "pkg:pypi/defusedxml@0.7.1",
+    "pkg:pypi/ds-analysis-lib@7.0.0.dev0",
+    "pkg:pypi/ds-reporting-lib@7.0.0.dev0",
+    "pkg:pypi/ds-xbom-lib@7.0.0.dev0",
+    "pkg:pypi/httpx@0.28.1",
+    "pkg:pypi/jinja2@3.1.6",
+    "pkg:pypi/packageurl-python@0.17.6",
+    "pkg:pypi/pyyaml@6.0.3",
+    "pkg:pypi/rich@15.0.0"
+   ]
+  }
+ ]
+}
