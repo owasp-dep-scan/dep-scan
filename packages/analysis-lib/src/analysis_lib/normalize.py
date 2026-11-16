@@ -210,9 +210,12 @@ def create_pkg_variations(pkg_dict: Dict[str, Any]) -> List[Dict[str, Any]]:
                 for x in vendor_aliases
                 if x not in name_aliases or x == vendor or config.package_alias.get(x) is not None
             ]
+    # The aliases are collected in sets; walk them sorted so the variations,
+    # and the order of the results matched through them, do not depend on
+    # the interpreter's string hash seed.
     if len(vendor_aliases) > 1:
-        for vvar in list(vendor_aliases):
-            for nvar in list(name_aliases):
+        for vvar in sorted(vendor_aliases):
+            for nvar in sorted(name_aliases):
                 pkg_list.append(
                     {
                         "vendor": vvar,
@@ -221,7 +224,7 @@ def create_pkg_variations(pkg_dict: Dict[str, Any]) -> List[Dict[str, Any]]:
                     }
                 )
     elif len(name_aliases) > 1:
-        for nvar in list(name_aliases):
+        for nvar in sorted(name_aliases):
             # vendor could be none which is fine
             pkg_list.append(
                 {

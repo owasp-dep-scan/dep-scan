@@ -496,7 +496,7 @@ def test_rustsec_time_reachable_in_vdr(tmp_path, rusi_env):
     """
     from analysis_lib import VdrAnalysisKV
     from analysis_lib.reachability import FrameworkReachability
-    from analysis_lib.utils import get_pkg_list
+    from analysis_lib.packages import get_pkg_list
     from analysis_lib.vdr import VDRAnalyzer
 
     bom_file = tmp_path / "sbom-rust.cdx.json"
@@ -581,7 +581,7 @@ def test_rustsec_exploitable_insight_gated_on_reached_purls():
     """
     from types import SimpleNamespace
 
-    from analysis_lib.utils import analyze_cve_vuln
+    from analysis_lib.prioritize import analyze_cve_vuln
 
     # vdb returns the CVE-5 record as a plain dict.
     cve_model = json.loads(RUSTSEC_TIME_VULN.read_text(encoding="utf-8"))
@@ -791,7 +791,7 @@ def test_cdxgen_to_depscan_rustsec_app_end_to_end(tmp_path, rusi_env):
 
     # Close the loop to the VDR insight when the vdb has the advisory cached.
     from analysis_lib import VdrAnalysisKV
-    from analysis_lib.utils import get_pkg_list
+    from analysis_lib.packages import get_pkg_list
     from analysis_lib.vdr import VDRAnalyzer
     from vdb.lib import config as vdb_config
 

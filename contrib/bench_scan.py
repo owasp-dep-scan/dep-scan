@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages", "an
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "packages", "analysis-lib"))
 
 from analysis_lib.search import find_vulns  # noqa: E402
-from analysis_lib.utils import get_pkg_list  # noqa: E402
+from analysis_lib.packages import get_pkg_list  # noqa: E402
 
 DEFAULT_FIXTURE = os.path.join(
     os.path.dirname(__file__), "bench_fixtures", "large-bom.json"

@@ -9,7 +9,7 @@ empty database. The ``depscan-vdb`` command reuses the download helpers.
 import os
 import time
 
-from analysis_lib.utils import get_all_pkg_list, get_pkg_list
+from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from vdb.lib import config
 from vdb.lib import db as db_lib
 from vdb.lib.utils import parse_purl
@@ -190,7 +190,7 @@ def resolve_scan_vdb_image(args):
     (``app-extended``, or ``app-10y-extended`` under ``USE_VDB_10Y``) and sets
     ``VDB_INCLUDE_METADATA=true`` so the severity push-down into the search
     layer fires. A flavor the user chose explicitly is never overridden; the
-    depscan-side severity floor (``analysis_lib.utils.vuln_meets_severity``)
+    depscan-side severity floor (``analysis_lib.prioritize.vuln_meets_severity``)
     still filters the final VDR.
 
     :return: ``(url, user_pinned, flavor)``; *flavor* is ``None`` for a pinned

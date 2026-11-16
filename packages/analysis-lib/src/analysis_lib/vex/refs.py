@@ -1,6 +1,6 @@
 """Reference and id building for CSAF vulnerabilities.
 
-Reuses :func:`analysis_lib.utils.get_ref_summary_helper` so reference
+Reuses :func:`analysis_lib.advisory.get_ref_summary_helper` so reference
 classification lives in a single place in the codebase.
 
 Schema rules enforced here:
@@ -14,8 +14,8 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
+from analysis_lib.advisory import get_ref_summary_helper
 from analysis_lib.config import REF_MAP
-from analysis_lib.utils import get_ref_summary_helper
 
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,7}", re.IGNORECASE)
 # Advisory prefixes worth surfacing as CSAF ids, mapped to the issuing
