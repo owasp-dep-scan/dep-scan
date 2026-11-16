@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from xbom_lib import BOMResult, XBOMGenerator
+from xbom_lib.golem import CGO_ALLOW_ENV_VARS, apply_cgo_env
 from xbom_lib.process import build_command, find_executable, tool_env
 
 cdxgen_server_headers = {
@@ -304,6 +305,12 @@ class CdxgenGenerator(XBOMGenerator):
         techniques = self.options.get("techniques", []) or []
         lifecycles = self.options.get("lifecycles", []) or []
         env = os.environ.copy()
+        # cdxgen may run golem for a Go project, and golem's package loader
+        # compiles cgo packages, so this run gets cgo off unless the operator
+        # opted in with --go-analyzer-cgo. A cdxgen release before the
+        # matching golem fix passes its whole environment to golem, so the
+        # caller's CGO_ENABLED and CGO_*_ALLOW values must not reach it.
+        apply_cgo_env(env, bool(options.get("go_analyzer_cgo")))
         # Implement the BOM generation logic using cdxgen.
         cdxgen_cmd = find_cdxgen_cmd(logger=self.logger)
         if not cdxgen_cmd:
@@ -489,6 +496,23 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
         run_command_args += ["-e", f"CDXGEN_TIMEOUT_MS={CDXGEN_TIMEOUT_MS}"]
+        # Pass the cgo rule into the container: cdxgen inside the image may
+        # run golem for a Go project, and a cdxgen release before the
+        # matching golem fix passes its whole environment to golem. The loop
+        # above forwards only CDXGEN_*, GIT* and FETCH_LICENSE variables, so
+        # the host's CGO_*_ALLOW values do not travel with it; the opt-in
+        # forwards them by name, as that loop does, so their values stay off
+        # the command line.
+        if self.options.get("go_analyzer_cgo"):
+            if os.environ.get("CGO_ENABLED"):
+                run_command_args += ["-e", "CGO_ENABLED"]
+            else:
+                run_command_args += ["-e", "CGO_ENABLED=1"]
+            for var in CGO_ALLOW_ENV_VARS:
+                if os.environ.get(var) is not None:
+                    run_command_args += ["-e", var]
+        else:
+            run_command_args += ["-e", "CGO_ENABLED=0"]
         # Enabling license fetch will improve metadata such as tags and description
         # These will help with semantic reachability analysis
         if self.options.get("profile") not in ("generic",):

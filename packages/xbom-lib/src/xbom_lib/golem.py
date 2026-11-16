@@ -285,6 +285,27 @@ def go_toolchain_has_cgo_fixes(release: Optional[str]) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def apply_cgo_env(env: dict, allow_cgo: bool) -> dict:
+    """Apply the cgo rule to ``env`` in place and return it.
+
+    With ``allow_cgo`` the caller's ``CGO_ENABLED`` is kept, defaulting to 1.
+    Without it, ``CGO_ENABLED`` is forced to 0 and every ``CGO_*_ALLOW``
+    variable is removed even when the caller's environment sets them. This is
+    the one place that knows the rule; the golem runner and the cdxgen
+    generators both call it, because cdxgen can also end up running golem for
+    a Go project.
+    """
+    if allow_cgo:
+        # The operator opted in: keep their CGO_ENABLED, defaulting to 1 so a
+        # plain environment still loads cgo packages.
+        env.setdefault("CGO_ENABLED", "1")
+    else:
+        env["CGO_ENABLED"] = "0"
+        for var in CGO_ALLOW_ENV_VARS:
+            env.pop(var, None)
+    return env
+
+
 def _build_hardened_go_env(network_mode: str, allow_cgo: bool = False) -> dict:
     """Build a hardened Go environment for golem's subprocess.
 
@@ -296,16 +317,15 @@ def _build_hardened_go_env(network_mode: str, allow_cgo: bool = False) -> dict:
     - Respects the user's existing ``GOFLAGS``/``GOPROXY``/``GONOSUMCHECK``
       only when they are already set; our defaults do not override explicit
       user configuration.
-    - cgo is the exception to that rule and is always forced off: golem's
-      package loader compiles cgo packages, and a package's ``#cgo``
-      directives would otherwise run flags on the C compiler with the
-      caller's ``CGO_ENABLED`` and ``CGO_*_ALLOW`` values applied. Those are
-      removed even when the caller's environment sets them, because many CI
-      images export ``CGO_ENABLED=1`` for their own builds and that choice
-      must not silently turn cgo on for a scan of untrusted code. Pass
-      ``allow_cgo=True`` only for an explicit operator opt-in
-      (``--go-analyzer-cgo``), which keeps the caller's ``CGO_ENABLED``
-      (defaulting to 1) and the ``CGO_*_ALLOW`` variables.
+    - cgo is the exception to that rule and is always forced off (see
+      :func:`apply_cgo_env`): golem's package loader compiles cgo packages,
+      and a package's ``#cgo`` directives would otherwise run flags on the C
+      compiler with the caller's ``CGO_ENABLED`` and ``CGO_*_ALLOW`` values
+      applied. Those are removed even when the caller's environment sets
+      them, because many CI images export ``CGO_ENABLED=1`` for their own
+      builds and that choice must not silently turn cgo on for a scan of
+      untrusted code. Pass ``allow_cgo=True`` only for an explicit operator
+      opt-in (``--go-analyzer-cgo``).
     """
     env = os.environ.copy()
     # Harden module resolution: never let go rewrite go.mod on untrusted input
@@ -316,15 +336,7 @@ def _build_hardened_go_env(network_mode: str, allow_cgo: bool = False) -> dict:
         # GOPROXY=off forbids all module downloads. golem will fail rather
         # than silently fetch code from the network.
         env["GOPROXY"] = "off"
-    if allow_cgo:
-        # The operator opted in: keep their CGO_ENABLED, defaulting to 1 so a
-        # plain environment still loads cgo packages.
-        env.setdefault("CGO_ENABLED", "1")
-    else:
-        env["CGO_ENABLED"] = "0"
-        for var in CGO_ALLOW_ENV_VARS:
-            env.pop(var, None)
-    return env
+    return apply_cgo_env(env, allow_cgo)
 
 
 def _dataflow_worker_count() -> int:
