@@ -1,0 +1,26 @@
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_e736b6e641a790::t_8d593ea7a2b97c 22-28,34-39
+README.md
+  s_e736b6e641a790::t_a2b718bc99110b 70
+THREAT_MODEL.md
+  s_e736b6e641a790::t_4adb1a20fdd6f6 286-287
+  s_e736b6e641a790::t_84e6de10586966 174-175
+documentation/docs/languages/go-reachability.mdx
+  s_e736b6e641a790::t_a2b718bc99110b 99-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f06a12bbcca7b24321f54b63e1935d19f7e51bb",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
