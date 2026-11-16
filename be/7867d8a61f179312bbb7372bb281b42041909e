@@ -1,0 +1,19 @@
+packages/server-lib/tests/test_simple.py
+  s_e736b6e641a790::t_861f17bbd1103f 1326-1452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be7867d8a61f179312bbb7372bb281b42041909e",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
