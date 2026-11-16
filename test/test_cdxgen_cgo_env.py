@@ -34,7 +34,9 @@ def _generate_with_captured_env(monkeypatch, tmp_path, options):
         str(tmp_path), str(tmp_path / "bom.cdx.json"), options=options
     )
     gen.generate()
-    return captured["env"]
+    env = captured.get("env")
+    assert env is not None, "cdxgen was not started"
+    return env
 
 
 def _container_env_values(run_command_args):
