@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 import re
@@ -77,12 +78,19 @@ class BomResult:
         extractor that failed while the BOM was still written. Kept so a
         later stage can record the affected parts as not assessed instead of
         counting them as clean.
+    :param not_assessed: reasons parts of the analysis did not run, one per
+        reason: an atom run that ATOM_TIMEOUT stopped (exit 124), and every
+        file atom's ``--parse-report`` lists as unparsed, dropped or partial.
+        Reachability over an incomplete slice set is not a clean result, so
+        these are carried for the scan manifest instead of being logged and
+        forgotten.
     """
 
     success: bool
     bom_files: List[str] = field(default_factory=list)
     primary: Optional[str] = None
     extractor_failures: List[str] = field(default_factory=list)
+    not_assessed: List[str] = field(default_factory=list)
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
@@ -142,6 +150,69 @@ def _extractor_failures(command_output: Optional[str]) -> List[str]:
         for line in command_output.splitlines()
         if _EXTRACTOR_FAILURE_RE.match(line.strip())
     ]
+
+
+# The line cdxgen prints when the atom dispatcher exited 124 because
+# ATOM_TIMEOUT stopped the run (lib/inventory/atomUtils.js, v13.8.0). cdxgen
+# itself keeps going and exits 0 or 4, so this line in its output is the one
+# signal that crosses the boundary.
+_ATOM_TIMEOUT_LINE_RE = re.compile(r"^WARN: atom did not finish within .+ and was stopped")
+# The outcomes atom's --parse-report records per file (ParseReport.scala,
+# v4.0.2); each names a file the slices were built without.
+_ATOM_PARSE_OUTCOMES = ("unparsed", "dropped", "partial")
+
+
+def _atom_not_assessed(bom_result, bom_dir: Optional[str]) -> List[str]:
+    """The reasons atom's slice set must not be read as complete.
+
+    Two sources, both reported instead of a silent zero-reachable result:
+
+    - a run ATOM_TIMEOUT stopped. atom's dispatcher exits 124 for that, and
+      when the dispatcher ran under cdxgen, cdxgen maps it to a WARN line in
+      its output and exits 0; a wrapped ``CDXGEN_CMD`` may also surface the
+      124 directly, so both are checked.
+    - an atom ``--parse-report`` document next to the slices. It names every
+      file the frontends left out or only partly read. cdxgen 13.8.0 cannot
+      ask atom to write one, so it is read when present, for a run whose
+      toolchain or user produced it.
+    """
+    reasons: List[str] = []
+    returncode = getattr(bom_result, "returncode", None)
+    if returncode == 124:
+        reasons.append(
+            "atom was stopped by ATOM_TIMEOUT (exit 124); the slices are missing or incomplete"
+        )
+    command_output = getattr(bom_result, "command_output", None) or ""
+    for line in command_output.splitlines():
+        if _ATOM_TIMEOUT_LINE_RE.match(line.strip()):
+            reasons.append(
+                "atom did not finish within its timeout and was stopped; the slices are missing or incomplete"
+            )
+            break
+    for report_file in sorted(glob.glob(os.path.join(bom_dir or "", "*parse-report*.json"))):
+        try:
+            with open(report_file, encoding="utf-8") as fp:
+                report = json.load(fp)
+        except (OSError, ValueError):
+            LOG.warning("atom parse report %s exists but could not be read.", report_file)
+            continue
+        if not isinstance(report, dict):
+            continue
+        for record in report.get("records") or []:
+            if not isinstance(record, dict):
+                continue
+            outcome = record.get("outcome")
+            if outcome not in _ATOM_PARSE_OUTCOMES:
+                continue
+            reasons.append(
+                "atom {} {} (stage: {}): {}".format(
+                    outcome,
+                    record.get("file", ""),
+                    record.get("stage", ""),
+                    record.get("message", ""),
+                ).rstrip(": ")
+            )
+    return reasons
 
 
 def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
@@ -521,8 +592,14 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     ):
         bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
         extractor_failures: List[str] = []
+        not_assessed: List[str] = []
         if bom_result.success:
             extractor_failures = _cdxgen_exit_verdict(bom_result, bom_file, "project")
+            not_assessed = _atom_not_assessed(
+                bom_result, os.path.dirname(os.path.realpath(bom_file))
+            )
+            for reason in not_assessed:
+                LOG.warning("Not assessed: %s", reason)
         # Exit status 4 still delivers the BOM; any other failure, 5 included,
         # leaves nothing the user asked to scan.
         partial_ok = getattr(bom_result, "returncode", None) in (
@@ -557,6 +634,7 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             bom_files=[bom_file],
             primary=bom_file,
             extractor_failures=extractor_failures,
+            not_assessed=not_assessed,
         )
 
 
@@ -1104,6 +1182,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     # Every stage document actually written, in the order produced.
     written_bom_files = []
     extractor_failures: List[str] = []
+    not_assessed: List[str] = []
     prebuild_bom_file = options.get("prebuild_bom_file")
     build_bom_file = options.get("build_bom_file")
     postbuild_bom_file = options.get("postbuild_bom_file")
@@ -1116,11 +1195,16 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         Exit status 4 still counts: the BOM and its introspection reports are
         written. Exit status 5 does not, because cdxgen only returns it under
         --fail-on-error; the failures are logged and kept in
-        ``extractor_failures``.
+        ``extractor_failures``. Reasons the stage's slice set is incomplete
+        (an atom timeout, a parse report) are kept in ``not_assessed``.
         """
         if not bom_result.success:
             return False
         extractor_failures.extend(_cdxgen_exit_verdict(bom_result, stage_file, stage))
+        for reason in _atom_not_assessed(bom_result, os.path.dirname(os.path.realpath(stage_file))):
+            if reason not in not_assessed:
+                not_assessed.append(reason)
+                LOG.warning("Not assessed: %s", reason)
         if getattr(bom_result, "returncode", None) not in (
             None,
             0,
@@ -1232,6 +1316,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         success=any_success,
         bom_files=written_bom_files,
         extractor_failures=extractor_failures,
+        not_assessed=not_assessed,
     )
 
 
