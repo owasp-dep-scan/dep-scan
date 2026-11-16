@@ -167,6 +167,17 @@ def build_parser():
         "Set DEPSCAN_GOLEM_BINARY to point at a non-PATH golem binary.",
     )
     parser.add_argument(
+        "--go-analyzer-cgo",
+        action="store_true",
+        default=os.getenv("DEPSCAN_GO_ANALYZER_CGO", "") in ("true", "1"),
+        dest="go_analyzer_cgo",
+        help="Allow cgo while golem loads Go packages. Default is cgo off: "
+        "packages that need cgo are not loaded and their reachability is "
+        "missing. With this flag the C compiler runs with flags taken from "
+        "the scanned code and its dependencies, so use it only for input you "
+        "trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.",
+    )
+    parser.add_argument(
         "--dotnet-analyzer-mode",
         choices=("source", "assembly", "auto"),
         default=os.getenv("DEPSCAN_DOTNET_ANALYZER_MODE", "auto"),
