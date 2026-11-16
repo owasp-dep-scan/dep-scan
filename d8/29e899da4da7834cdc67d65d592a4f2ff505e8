@@ -1,0 +1,18 @@
+depscan/lib/explainer.py
+  h_6a4cc5cdf68def 136-138
+test/test_explainer.py
+  h_6a4cc5cdf68def 5,13-15,19-20,67,245,249-250,252-255,260,262,269-276,278,283-382
+test/test_pipeline.py
+  h_6a4cc5cdf68def 389-391,394,396-401,410-415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d829e899da4da7834cdc67d65d592a4f2ff505e8",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
