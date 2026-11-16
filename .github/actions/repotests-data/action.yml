@@ -1,0 +1,127 @@
+name: Repo test data
+description: >
+  Pull pre-generated repo-test data for the named projects from
+  ghcr.io/owasp-dep-scan/depscan-testdata by the manifest digests recorded in
+  contrib/repotests/testdata.lock.json, verify every file against its layer
+  digest, and run the staleness checks of contrib/repotests/validate.py.
+  A digest from the lock file is the only thing honoured; tags are never
+  pulled, so a new generation reaches the tests only through a pull request
+  that changes the lock file.
+inputs:
+  projects:
+    description: Comma-separated project names to pull, as named in contrib/repotests/projects.json.
+    required: true
+  lock-file:
+    description: Path of testdata.lock.json inside the checked out repository.
+    required: false
+    default: contrib/repotests/testdata.lock.json
+  projects-file:
+    description: Path of projects.json inside the checked out repository.
+    required: false
+    default: contrib/repotests/projects.json
+  dest:
+    description: Base directory the per-project data directories are pulled into.
+    required: false
+    default: ${{ github.workspace }}/repotests-data
+  python-executable:
+    description: Command running Python with the standard library (python3 on hosted runners, `uv run --no-sync python` inside an installed dep-scan checkout).
+    required: false
+    default: python3
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      name: Resolve project digests from the lock file
+      shell: bash
+      env:
+        LOCK_FILE: ${{ inputs.lock-file }}
+        WANTED: ${{ inputs.projects }}
+        PYTHON: ${{ inputs.python-executable }}
+      run: |
+        set -euo pipefail
+        # python-executable may be a command with arguments (`uv run --no-sync
+        # python`); read -ra splits it into words for every later call.
+        read -ra PYTHON_CMD <<< "$PYTHON"
+        # The digests asked for are the cache key: data moves only when the
+        # lock file moves. The heredoc is quoted, so the YAML block scalar
+        # hands Python the script verbatim regardless of indentation.
+        "${PYTHON_CMD[@]}" - <<'PY' >> "$GITHUB_OUTPUT"
+        import hashlib
+        import json
+        import os
+        import sys
+
+        wanted = [name.strip() for name in os.environ["WANTED"].split(",") if name.strip()]
+        with open(os.environ["LOCK_FILE"], encoding="utf-8") as fp:
+            lock = json.load(fp)
+        projects = lock.get("projects") or {}
+        missing = [name for name in wanted if name not in projects]
+        if missing:
+            sys.exit(
+                "testdata.lock.json pins no digest for: "
+                + ", ".join(missing)
+                + ". The lock file is written by the publish job of repotests-data.yml."
+            )
+        entries = sorted(f"{name}={projects[name]['manifestDigest']}" for name in wanted)
+        digest_material = "\n".join(entries).encode("utf-8")
+        print("cache-key=" + hashlib.sha256(digest_material).hexdigest())
+        print("data-dir-lines<<EOF")
+        for entry in entries:
+            print(entry)
+        print("EOF")
+        PY
+    - name: Install oras
+      uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63  # v2.0.3
+    - name: Restore cached test data
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ${{ inputs.dest }}
+        key: repotests-data-${{ steps.resolve.outputs.cache-key }}
+    - name: Pull missing data by digest and verify every file
+      shell: bash
+      env:
+        DEST: ${{ inputs.dest }}
+        LOCK_FILE: ${{ inputs.lock-file }}
+        DATA_DIR_LINES: ${{ steps.resolve.outputs.data-dir-lines }}
+        PYTHON: ${{ inputs.python-executable }}
+        VALIDATOR: ${{ github.workspace }}/contrib/repotests/validate.py
+      run: |
+        set -euo pipefail
+        read -ra PYTHON_CMD <<< "$PYTHON"
+        REGISTRY="$(jq -r '.registry' "$LOCK_FILE")"
+        # Manifest copies live inside DEST so the cache holds them too. The
+        # manifest is kept byte for byte (no --pretty), so it must hash to the
+        # digest the lock file pins before its layer digests are trusted; a
+        # tampered, stale or partial restore fails that check and re-pulls.
+        mkdir -p "$DEST/.manifests"
+        while IFS='=' read -r NAME DIGEST; do
+          PROJECT_DIR="$DEST/$NAME"
+          MANIFEST="$DEST/.manifests/$NAME.json"
+          if "${PYTHON_CMD[@]}" "$VALIDATOR" digests "$PROJECT_DIR" \
+              --manifest "$MANIFEST" --digest "$DIGEST" 2>/dev/null; then
+            echo "$NAME already present and verified"
+            continue
+          fi
+          echo "Pulling $NAME at $DIGEST"
+          rm -rf "$PROJECT_DIR"
+          mkdir -p "$PROJECT_DIR"
+          oras manifest fetch "$REGISTRY@$DIGEST" > "$MANIFEST"
+          (cd "$PROJECT_DIR" && oras pull "$REGISTRY@$DIGEST")
+          "${PYTHON_CMD[@]}" "$VALIDATOR" digests "$PROJECT_DIR" \
+            --manifest "$MANIFEST" --digest "$DIGEST"
+        done <<< "$DATA_DIR_LINES"
+    - name: Run the staleness checks
+      shell: bash
+      env:
+        DEST: ${{ inputs.dest }}
+        PROJECTS_FILE: ${{ inputs.projects-file }}
+        DATA_DIR_LINES: ${{ steps.resolve.outputs.data-dir-lines }}
+        PYTHON: ${{ inputs.python-executable }}
+        VALIDATOR: ${{ github.workspace }}/contrib/repotests/validate.py
+      run: |
+        set -euo pipefail
+        read -ra PYTHON_CMD <<< "$PYTHON"
+        while IFS='=' read -r NAME DIGEST; do
+          "${PYTHON_CMD[@]}" "$VALIDATOR" staleness "$DEST/$NAME" \
+            --projects "$PROJECTS_FILE" --name "$NAME"
+        done <<< "$DATA_DIR_LINES"
