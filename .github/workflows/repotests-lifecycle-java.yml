@@ -61,6 +61,18 @@ jobs:
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+      # The pre-generated Java project this job asserts reachable results
+      # over, pulled by digest like every other consumer of the test data.
+      - name: Get repo test data
+        uses: ./.github/actions/repotests-data
+        with:
+          projects: dependency-track
+          python-executable: uv run --no-sync python
+      - name: repotests dependency-track
+        run: |
+          .github/scripts/repotest-project.sh dependency-track \
+            -- --explanation-mode NonReachables
+        shell: bash
       # Kept so the lifecycle results can be compared between releases.
       - name: Upload java-sec-code lifecycle reports
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
