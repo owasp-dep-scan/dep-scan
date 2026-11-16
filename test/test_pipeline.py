@@ -386,16 +386,19 @@ def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch
 
 
 def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
-    """SemanticReachability over the evinse BOM and the reachables slices:
-    the direct purls come from the BOM's occurrences evidence and the reached
-    purls from the slices file."""
+    """SemanticReachability over the evinse BOM and the atom 4 reachables
+    slice: the direct purls come from the BOM's occurrences evidence and the
+    reached purls from the recorded slice file."""
     ctx = _ctx(
         tmp_path,
-        ["--reachability-analyzer", "SemanticReachability", "-t", "java"],
+        ["--reachability-analyzer", "SemanticReachability", "-t", "python"],
     )
-    for name in ("bom-evinse-java.json", "reachables.slices.json"):
-        shutil.copy2(DATA_DIR / name, Path(ctx.reports_dir) / name)
-    scan = pipeline.TypeScan(project_type="java")
+    shutil.copy2(DATA_DIR / "bom-evinse-java.json", Path(ctx.reports_dir) / "bom-evinse-java.json")
+    shutil.copy2(
+        DATA_DIR / "atom4" / "python-reachables.slices.json",
+        Path(ctx.reports_dir) / "python-reachables.slices.json",
+    )
+    scan = pipeline.TypeScan(project_type="python")
     scan.bom_dir = str(ctx.reports_dir)
 
     pipeline.stage_enrichment(ctx, scan)
@@ -404,7 +407,12 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
     assert scan.reachability_options is not None
     assert scan.direct_purls, "the BOM's occurrences evidence must produce direct purls"
     assert scan.reached_purls, "the reachables slices must produce reached purls"
-    assert all(purl.startswith("pkg:") for purl in scan.reached_purls)
+    assert set(scan.reached_purls) == {
+        "pkg:pypi/custom-json-diff@2.1.6",
+        "pkg:pypi/quart@0.22.0",
+        "pkg:pypi/quart@0.23.1",
+        "pkg:pypi/rich@15.0.0",
+    }
 
 
 def test_stage_enrichment_is_a_no_op_with_reachability_off(tmp_path):

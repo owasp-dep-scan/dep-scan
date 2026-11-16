@@ -90,9 +90,6 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
             section_label = f"# Explanations for {fn}"
             console.print(Markdown(section_label))
         if reachables_data := json_load(sf, log=LOG):
-            # Backwards compatibility
-            if isinstance(reachables_data, dict) and reachables_data.get("reachables"):
-                reachables_data = reachables_data.get("reachables")
             if explanation_mode in ("NonReachables",):
                 rsection = Markdown(
                     f"""## {section_title}
@@ -136,14 +133,12 @@ def _track_usage_targets(usage_targets, usages_object):
         if not isinstance(v, dict):
             continue
         for file, lines in v.items():
-            # x-atom-usages values are usually a list of line numbers, but the
-            # "target" sub-key has historically been a bare int (a single line).
-            # Handle both so those target lines are not silently dropped.
+            # x-atom-usages values are per-file lists of line numbers;
+            # atom-tools writes "call" and "target" in the same shape.
+            # Anything else is ignored rather than crashing the rendering.
             if isinstance(lines, (list, tuple, set)):
                 for aline in lines:
                     usage_targets.add(f"{file}#{aline}")
-            elif isinstance(lines, int):
-                usage_targets.add(f"{file}#{lines}")
 
 
 def print_endpoints(ospec, header_section=None):
@@ -268,9 +263,6 @@ def explain_reachables(
     has_cpp_flow = False
     purl_grouped_flows = defaultdict(list)
 
-    # Backwards compatibility
-    if isinstance(reachables, dict) and reachables.get("reachables"):
-        reachables = reachables.get("reachables")
     if not isinstance(reachables, list):
         return False, False, "## Secure Design Tips"
     for areach in reachables:
