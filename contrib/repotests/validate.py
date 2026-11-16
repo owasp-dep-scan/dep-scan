@@ -8,9 +8,11 @@ Four commands run in different places:
   slice must be in the atom 4 shape dep-scan reads: a bare JSON array of
   ``{"flows": [...], "purls": [...]}`` objects (atom 2 wrapped the same
   objects in a top-level ``{"reachables": [...]}``, which dep-scan silently
-  skips), with at least one flow carrying a ``pkg:`` purl. Uses only the
-  standard library so the composite action can run it on any runner before
-  the project is installed.
+  skips). The project's slices must hold at least one flow carrying a
+  ``pkg:`` purl; a project with ``minReachablePurls`` 0 records that its
+  slices carry no package identity (C and C++ code), and needs at least one
+  flow at all. Uses only the standard library so the composite action can
+  run it on any runner before the project is installed.
 * ``assert`` runs the reachability analyzers the repo tests use over the
   data directory and fails when fewer distinct purls are reached than the
   project's ``minReachablePurls`` in projects.json, or when a ``mustReach``
@@ -118,8 +120,14 @@ def cdxgen_tool_versions(bom):
     ]
 
 
-def check_staleness(data_dir):
-    """Decisions on staleness: current cdxgen, atom 4 shape, non-empty flows."""
+def check_staleness(data_dir, entry):
+    """Decisions on staleness: current cdxgen, atom 4 shape, non-empty flows.
+
+    A project whose ``minReachablePurls`` is 0 records that its slices carry
+    no package identity (C and C++ code has no purls to attach, in atom 2 as
+    in atom 4); for those, at least one flow must exist. Every other project
+    must have at least one flow carrying a ``pkg:`` purl.
+    """
     failures = []
     data_path = Path(data_dir)
     bom_files = sorted(data_path.glob(BOM_GLOB))
@@ -145,39 +153,48 @@ def check_staleness(data_dir):
     slice_files = sorted(data_path.glob(REACHABLES_GLOB))
     if not slice_files:
         failures.append(f"no reachables slice files matching {REACHABLES_GLOB} in {data_dir}")
+    flows = 0
     flows_with_purl = 0
     for slice_file in slice_files:
-        entries = list(iter_json_array(slice_file))
-        if not entries:
-            head = slice_file.read_text(encoding="utf-8")[:64].lstrip()
+        head = slice_file.read_text(encoding="utf-8")[:64].lstrip()
+        if not head.startswith("["):
             failures.append(
                 f"{slice_file.name}: not a bare JSON array (starts {head[:16]!r});"
                 " regenerate with atom 4"
             )
             continue
-        for entry in entries:
+        # The loop variable must not be called entry: that name holds the
+        # projects.json record the minimum-flow branch below reads.
+        for flow in iter_json_array(slice_file):
+            flows += 1
             if not (
-                isinstance(entry, dict)
-                and isinstance(entry.get("flows"), list)
-                and isinstance(entry.get("purls"), list)
+                isinstance(flow, dict)
+                and isinstance(flow.get("flows"), list)
+                and isinstance(flow.get("purls"), list)
             ):
                 failures.append(
                     f"{slice_file.name}: flow object without flows/purls lists,"
                     " not the atom 4 shape"
                 )
                 break
-            if any(isinstance(p, str) and p.startswith("pkg:") for p in entry["purls"]):
+            if any(isinstance(p, str) and p.startswith("pkg:") for p in flow["purls"]):
                 flows_with_purl += 1
-    if slice_files and not failures and flows_with_purl == 0:
-        failures.append(
-            "reachables slices carry no flow with a pkg: purl across "
-            f"{len(slice_files)} files"
-        )
+    if not failures and slice_files:
+        if entry.get("minReachablePurls", 0) > 0 and flows_with_purl == 0:
+            failures.append(
+                "reachables slices carry no flow with a pkg: purl across "
+                f"{len(slice_files)} files"
+            )
+        elif flows == 0:
+            failures.append(
+                f"reachables slices hold no flow at all across {len(slice_files)} files"
+            )
     if failures:
         raise ValidationFailure("\n".join(failures))
     return {
         "bomFiles": len(bom_files),
         "sliceFiles": len(slice_files),
+        "flows": flows,
         "flowsWithPurl": flows_with_purl,
     }
 
@@ -220,7 +237,7 @@ def run_reachability(data_dir, analyzer):
 
 
 def check_assert(data_dir, entry, analyzer):
-    summary = check_staleness(data_dir)
+    summary = check_staleness(data_dir, entry)
     result = run_reachability(data_dir, analyzer)
     reached = result.reached_purls or {}
     failures = []
@@ -348,8 +365,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         if args.command == "staleness":
-            load_projects(args.projects, args.name)
-            summary = check_staleness(args.data_dir)
+            entry = load_projects(args.projects, args.name)
+            summary = check_staleness(args.data_dir, entry)
         elif args.command == "assert":
             entry = load_projects(args.projects, args.name)
             summary = check_assert(args.data_dir, entry, args.analyzer)

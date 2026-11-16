@@ -100,7 +100,7 @@ jobs:
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
-          projects: signal-android,dependency-track,kafka-4.0.0,cdxgen,signal-desktop,forgejo,biome,rustdesk,rustpad,django-defectdojo,depscan,phpmyadmin,openssl-3.5.0,open5gs-2.7.5,curl-8.13.0
+          projects: signal-android,dependency-track,kafka-4.0.0,cdxgen,signal-desktop,forgejo,biome,rustpad,django-defectdojo,depscan,phpmyadmin,openssl-3.5.0,open5gs-2.7.5
           python-executable: uv run --no-sync python
       - name: repotests java-sec-code
         run: |
@@ -210,11 +210,6 @@ jobs:
       - name: repotests open5gs-2.7.5
         run: |
           .github/scripts/repotest-project.sh open5gs-2.7.5
-        shell: bash
-      - name: repotests curl-8.13.0
-        run: |
-          .github/scripts/repotest-project.sh curl-8.13.0 \
-            -- --explanation-mode NonReachables
         shell: bash
   os-semantics-tests:
     if: github.event_name != 'merge_group'

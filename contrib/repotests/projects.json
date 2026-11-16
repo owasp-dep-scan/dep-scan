@@ -14,9 +14,10 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": [],
-      "notes": "Android project; the generate job sets up the Android SDK only to satisfy gradle configuration, no build is run."
+      "minReachablePurls": 1,
+      "mustReach": [
+        "appcompat"
+      ]
     },
     {
       "name": "dependency-track",
@@ -61,8 +62,11 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 20,
+      "mustReach": [
+        "glob",
+        "cdx-purl"
+      ]
     },
     {
       "name": "signal-desktop",
@@ -76,8 +80,11 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 40,
+      "mustReach": [
+        "react",
+        "libsignal-client"
+      ]
     },
     {
       "name": "forgejo",
@@ -92,8 +99,11 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 5,
+      "mustReach": [
+        "jquery",
+        "vue"
+      ]
     },
     {
       "name": "biome",
@@ -124,8 +134,11 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 2,
+      "mustReach": [
+        "react",
+        "monaco-editor"
+      ]
     },
     {
       "name": "django-defectdojo",
@@ -139,8 +152,11 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 15,
+      "mustReach": [
+        "django",
+        "celery"
+      ]
     },
     {
       "name": "depscan",
@@ -154,8 +170,11 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 4,
+      "mustReach": [
+        "quart",
+        "rich"
+      ]
     },
     {
       "name": "phpmyadmin",
@@ -170,8 +189,10 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "minReachablePurls": 2,
+      "mustReach": [
+        "jquery"
+      ]
     },
     {
       "name": "openssl-3.5.0",
@@ -202,25 +223,12 @@
         "--profile",
         "research"
       ],
-      "minReachablePurls": 0,
-      "mustReach": [],
+      "minReachablePurls": 3,
+      "mustReach": [
+        "axios",
+        "passport"
+      ],
       "notes": "Pinned at the commit tag v2.7.5 points to."
-    },
-    {
-      "name": "curl-8.13.0",
-      "directory": "c",
-      "git": "https://github.com/curl/curl",
-      "commit": "1c3149881769e7bd79b072e48374e4c2b3678b2f",
-      "types": [
-        "c"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
-      "minReachablePurls": 0,
-      "mustReach": [],
-      "notes": "Pinned at the commit tag curl-8_13_0 points to."
     }
   ]
 }

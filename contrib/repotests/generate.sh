@@ -29,6 +29,10 @@ CDXGEN_BIN="${CDXGEN_BIN:-cdxgen}"
 # versions are read from its node_modules. Defaults to the global prefix.
 CDXGEN_NPM_PREFIX="${CDXGEN_NPM_PREFIX:-$(npm prefix -g)}"
 GENERATE_TIMEOUT_SECS="${GENERATE_TIMEOUT_SECS:-5400}"
+# cdxgen stops atom after ~19.5 minutes by default, which large JVM and C
+# projects do not fit; give atom the same budget the outer timeout gives
+# the whole run. ATOM_TIMEOUT is milliseconds.
+export ATOM_TIMEOUT="${ATOM_TIMEOUT:-$((GENERATE_TIMEOUT_SECS * 1000))}"
 
 # timeout(1) is GNU coreutils; macOS ships it as gtimeout when coreutils is
 # installed through Homebrew.

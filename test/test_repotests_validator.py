@@ -70,17 +70,23 @@ def flow(purls=None):
 
 
 def test_staleness_accepts_the_atom4_fixture(validator):
-    summary = validator.check_staleness(ATOM4_FIXTURE)
+    entry = {"name": "fixture", "minReachablePurls": 4, "mustReach": []}
+    summary = validator.check_staleness(ATOM4_FIXTURE, entry)
     # The fixture keeps five flows, four of which carry pkg: purls (its README
     # lists them: quart at two versions, rich, custom-json-diff).
-    assert summary == {"bomFiles": 1, "sliceFiles": 1, "flowsWithPurl": 4}
+    assert summary == {
+        "bomFiles": 1,
+        "sliceFiles": 1,
+        "flows": 5,
+        "flowsWithPurl": 4,
+    }
 
 
 def test_staleness_rejects_an_old_cdxgen(validator, tmp_path):
     write_bom(tmp_path / "sbom-java.cdx.json", cdxgen_version="11.2.7")
     write_reachables(tmp_path / "java-reachables.slices.json", [flow(["pkg:maven/org.junit/junit@4.13"])])
     with pytest.raises(validator.ValidationFailure, match=r"11\.2\.7.*13\.8"):
-        validator.check_staleness(tmp_path)
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
 
 
 def test_staleness_names_cdxgen_version_from_a_legacy_tools_list(validator, tmp_path):
@@ -93,7 +99,7 @@ def test_staleness_names_cdxgen_version_from_a_legacy_tools_list(validator, tmp_
     (tmp_path / "sbom-js.cdx.json").write_text(json.dumps(bom), encoding="utf-8")
     write_reachables(tmp_path / "js-reachables.slices.json", [flow(["pkg:npm/left-pad@1.3.0"])])
     with pytest.raises(validator.ValidationFailure, match="11.2.6"):
-        validator.check_staleness(tmp_path)
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
 
 
 def test_staleness_rejects_atom2_slices(validator, tmp_path):
@@ -105,24 +111,42 @@ def test_staleness_rejects_atom2_slices(validator, tmp_path):
         json.dumps({"reachables": [flow(["pkg:npm/left-pad@1.3.0"])]}), encoding="utf-8"
     )
     with pytest.raises(validator.ValidationFailure, match="not a bare JSON array"):
-        validator.check_staleness(tmp_path)
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
 
 
 def test_staleness_rejects_flows_without_purl_evidence(validator, tmp_path):
     write_bom(tmp_path / "sbom-js.cdx.json")
     write_reachables(tmp_path / "js-reachables.slices.json", [flow(), flow(["not-a-purl"])])
     with pytest.raises(validator.ValidationFailure, match="no flow with a pkg: purl"):
-        validator.check_staleness(tmp_path)
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
+
+
+def test_staleness_accepts_purl_free_slices_of_a_c_project(validator, tmp_path):
+    # C and C++ slices carry no purls in any atom version; a project with
+    # minReachablePurls 0 records that and needs flows, not purls.
+    write_bom(tmp_path / "sbom-c.cdx.json")
+    write_reachables(tmp_path / "c-reachables.slices.json", [flow(), flow()])
+    summary = validator.check_staleness(tmp_path, {"minReachablePurls": 0})
+    assert summary["flows"] == 2
+    assert summary["flowsWithPurl"] == 0
+
+
+def test_staleness_rejects_slices_without_any_flow(validator, tmp_path):
+    write_bom(tmp_path / "sbom-c.cdx.json")
+    # An empty array is a valid atom 4 file; it just holds no flow.
+    write_reachables(tmp_path / "c-reachables.slices.json", [])
+    with pytest.raises(validator.ValidationFailure, match="no flow at all"):
+        validator.check_staleness(tmp_path, {"minReachablePurls": 0})
 
 
 def test_staleness_rejects_missing_boms_and_slices(validator, tmp_path):
     write_bom(tmp_path / "sbom-js.cdx.json")
     with pytest.raises(validator.ValidationFailure, match="no reachables slice"):
-        validator.check_staleness(tmp_path)
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
     empty = tmp_path / "empty"
     empty.mkdir()
     with pytest.raises(validator.ValidationFailure, match="no BOM files"):
-        validator.check_staleness(empty)
+        validator.check_staleness(empty, {"minReachablePurls": 1})
 
 
 def test_assert_counts_reached_purls_of_the_atom4_fixture(validator, tmp_path):
