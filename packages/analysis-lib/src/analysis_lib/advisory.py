@@ -444,26 +444,6 @@ def parse_metrics(metrics):
     return vector, method, severity, score
 
 
-def process_affected(options, vuln_occ_dict):
-    # package_issue = vuln_occ_dict.get("package_issue") or {}
-    matched_by = vuln_occ_dict.get("matched_by") or ""
-    full_pkg = ""
-    if affected := vuln_occ_dict.get("affected"):
-        full_pkg = affected[0].get("ref")
-    project_type_pkg = f"{options.project_type}:{full_pkg}"
-    if matched_by:
-        version = matched_by.split("|")[-1]
-        full_pkg = f"{full_pkg}:{version}"
-    # De-alias package names
-    if options.pkg_aliases.get(full_pkg):
-        full_pkg = options.pkg_aliases.get(full_pkg)
-    else:
-        full_pkg = options.pkg_aliases.get(full_pkg.lower(), full_pkg)
-    version_used = vuln_occ_dict.get("matched_by")
-    purl = options.purl_aliases.get(full_pkg, full_pkg)
-    return full_pkg, {}, project_type_pkg, purl, version_used
-
-
 def process_package_issue(options, vuln_occ_dict):
     package_issue = vuln_occ_dict.get("package_issue") or {}
     matched_by = vuln_occ_dict.get("matched_by") or ""

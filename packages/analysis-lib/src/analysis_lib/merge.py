@@ -177,8 +177,3 @@ def combine_vdrs(v1, v2):
         "fixed_location": v1.get("fixed_location") or v2.get("fixed_location"),
     }
 
-
-def choose_source(v1, v2):
-    if v1.get("name", "") >= v2.get("name", ""):
-        return v1
-    return v2
