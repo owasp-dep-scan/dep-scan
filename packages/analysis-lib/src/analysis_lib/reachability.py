@@ -18,12 +18,12 @@ import json
 def _flow_tags(flow: dict) -> List[str]:
     """Collect tags for a reachables flow.
 
-    atom 2.5.x reachables slices put ``tags`` on each NODE inside
+    atom reachables slices put ``tags`` on each NODE inside
     ``flow["flows"]`` as a comma-separated string (e.g.
-    ``"pkg:npm/express@4.22.2, framework, web"``); the flow-level ``tags``
-    key does not exist. Older/newer envelopes that put a list (or a single
-    comma-string) at the flow level are still accepted so the analyzer keeps
-    working across slice formats.
+    ``"pkg:npm/express@4.22.2, framework, web"``); the flow object itself
+    carries only ``flows`` and ``purls``
+    (``ReachableFlows`` in atom's ``slicing/package.scala``), so no
+    flow-level ``tags`` key is read.
     """
     tags: List[str] = []
     seen = set()
@@ -44,15 +44,13 @@ def _flow_tags(flow: dict) -> List[str]:
         for node in nodes:
             if isinstance(node, dict):
                 _add(node.get("tags"))
-    # Fall back to flow-level tags for slices that carry them at the top.
-    _add(flow.get("tags"))
     return tags
 
 
 def _split_tag_pieces(value) -> List[str]:
-    """Flatten a node/flow ``tags`` value (comma-string or list) into stripped
-    non-empty pieces, preserving order. Atom 2.5.x stores a comma-string; some
-    envelopes use a list — both are accepted."""
+    """Flatten a node ``tags`` value (comma-string or list) into stripped
+    non-empty pieces, preserving order. Atom stores a comma-string; a list is
+    accepted too."""
     pieces: List[str] = []
 
     def _walk(v) -> None:
@@ -69,30 +67,58 @@ def _split_tag_pieces(value) -> List[str]:
     return pieces
 
 
+def _node_service_purls(pieces: List[str], flow_purls) -> set:
+    """The purls a node's tag string marks as services.
+
+    A node's ``tags`` string interleaves purls and free-form tags in discovery
+    order, e.g. ``"pkg:npm/jsonwebtoken@0.4.0, token, web,
+    pkg:npm/%40codemirror/lang-json@6.0.2"``: the free-form tags describe the
+    NEAREST preceding purl in that string, so ``token``/``web`` belong to
+    ``jsonwebtoken`` and ``codemirror`` gets none. Flattening every node tag
+    across the whole flow and applying it to EVERY flow purl leaks service
+    tags onto unrelated packages, so tags are associated per node.
+
+    Atom 4 adds one order this positional walk must also cover: for a call
+    whose own tags name no purl, the callee's package URLs are appended AFTER
+    them (``withPurls`` in ``ReachableSlicing.scala``), so a service tag can
+    PRECEDE every purl in the string (``"web, pkg:npm/express@4.22.2"``). Such
+    a tag describes the call, and the purls appended right after it are the
+    callee's packages (often two versions of one library), so it applies to
+    each purl in the run that directly follows it and to nothing after the
+    next free-form tag.
+
+    A node that carries a SERVICE_TAG but names no purl at all keeps the
+    fallback to the flow-level ``purls`` so the signal is never lost.
+    """
+    node_purl_is_service: dict = {}
+    current_purl = None
+    pending_service = False
+    for piece in pieces:
+        if piece.startswith("pkg:"):
+            node_purl_is_service.setdefault(piece, False)
+            current_purl = piece
+            if pending_service:
+                node_purl_is_service[piece] = True
+            continue
+        # A free-form tag ends the run of purls a leading service tag covers.
+        pending_service = False
+        if piece in SERVICE_TAGS:
+            # Attribute to the nearest preceding purl; if none came yet, the
+            # pending flag hands the tag to the purls that directly follow.
+            if current_purl is not None:
+                node_purl_is_service[current_purl] = True
+            else:
+                pending_service = True
+    if any(node_purl_is_service.values()):
+        return {p for p, has_svc in node_purl_is_service.items() if has_svc}
+    if not node_purl_is_service and any(p in SERVICE_TAGS for p in pieces):
+        return set(flow_purls)
+    return set()
+
+
 def _flow_service_purls(flow: dict) -> set:
     """Return the set of purls in ``flow`` that carry a SERVICE_TAG on their
-    OWN node via positional association.
-
-    In atom reachables slices a node's ``tags`` string interleaves purls and
-    free-form tags in discovery order, e.g.
-    ``"pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2"``.
-    The free-form tags describe the NEAREST preceding purl in that string — so
-    ``token``/``web`` belong to ``jsonwebtoken``, and ``codemirror`` gets none.
-
-    Flattening every node tag across the whole flow into one list and applying
-    it to EVERY flow purl leaks service tags onto unrelated packages (e.g. a
-    ``web`` tag on ``jsonwebtoken`` landing on a ``codemirror`` in the same
-    flow), so we associate tags per node instead.
-
-    Per-node rules:
-      * if the node's tag string names >=1 purl, a SERVICE_TAG is associated
-        with the nearest preceding purl in the SAME string (positional);
-      * if the node's tag string names NO purl but carries a SERVICE_TAG, the
-        service signal falls back to the flow-level ``purls`` list so it is
-        never lost (for that node alone).
-
-    A flow-level ``tags`` string (older envelope) applies to all flow purls.
-    """
+    OWN node. See :func:`_node_service_purls` for the association rules."""
     flow_purls = flow.get("purls") or []
     service_purls: set = set()
     nodes = flow.get("flows")
@@ -103,31 +129,7 @@ def _flow_service_purls(flow: dict) -> set:
             pieces = _split_tag_pieces(node.get("tags"))
             if not pieces:
                 continue
-            # Walk positionally: a free-form tag is attributed to the nearest
-            # preceding purl in this node's tag string.
-            current_purl = None
-            node_purl_is_service: dict = {}
-            for piece in pieces:
-                if piece.startswith("pkg:"):
-                    current_purl = piece
-                    node_purl_is_service.setdefault(current_purl, False)
-                elif current_purl is not None:
-                    if piece in SERVICE_TAGS:
-                        node_purl_is_service[current_purl] = True
-            if any(node_purl_is_service.values()):
-                for p, has_svc in node_purl_is_service.items():
-                    if has_svc:
-                        service_purls.add(p)
-            elif current_purl is None:
-                # Node named no purl. If it still carries a service tag, fall
-                # back to the flow-level purls (scoped to this
-                # one node) so a service signal is never lost.
-                if any(p in SERVICE_TAGS for p in pieces):
-                    service_purls.update(flow_purls)
-    # Flow-level tags (older envelope): apply to all flow purls if any service.
-    flow_pieces = _split_tag_pieces(flow.get("tags"))
-    if flow_pieces and any(p in SERVICE_TAGS for p in flow_pieces):
-        service_purls.update(flow_purls)
+            service_purls.update(_node_service_purls(pieces, flow_purls))
     return service_purls
 
 
@@ -155,9 +157,8 @@ def _iter_json_list(file_path: str):
     ``JSONDecoder.raw_decode``: peak RSS is roughly ``file_text_size`` plus
     ONE parsed element instead of the full tree.
 
-    If the file is not a JSON list (e.g. an older envelope like
-    ``{"reachables": [...]}``), the iterator yields nothing and the caller
-    falls back to ``json_load``.
+    If the file is not a JSON list, the iterator yields nothing; atom
+    reachables slices are always bare JSON arrays.
     """
     decoder = json.JSONDecoder()
     try:
@@ -196,47 +197,25 @@ def _iter_unique_reachable_flows(
 ) -> Iterator[dict]:
     """Yield each unique reachables flow across all slice files.
 
-    atom 2.5.x reachables slices are split into one ``slices.json`` plus
-    ``slices_1..N.json`` files capped at 1000 flow objects each. The
-    unsplit file is NOT simply a prefix of the numbered splits (it is
-    14-33% disjoint), so every file must be read for a complete reached
-    SET. But intra-set duplication is heavy (25-40%), and counting a flow
-    twice inflates ``reached_purls[purl] += 1`` without changing which
-    purls are reached. This iterator yields each flow once (identity ==
-    canonical JSON of the whole flow object), so callers can count
-    freely.
+    atom reachables slices are bare JSON arrays, split into one
+    ``slices.json`` plus ``slices_1..N.json`` files capped at 1000 flow
+    objects each (``calculateReachableSliceAndPersist`` in atom's
+    ``ReachableSlicing.scala``). The unsplit file is NOT simply a prefix of
+    the numbered splits, so every file must be read for a complete reached
+    SET. But intra-set duplication is heavy, and counting a flow twice
+    inflates ``reached_purls[purl] += 1`` without changing which purls are
+    reached. This iterator yields each flow once (identity == canonical
+    JSON of the whole flow object), so callers can count freely.
 
     Memory: slices are streamed via ``_iter_json_list`` so the full parsed
     tree is never materialized; only the file text + one flow at a time.
+    A file that is not a bare JSON array yields nothing.
     """
     seen: set = set()
     for slice_file in slices_files or []:
         if not slice_file or "reachables" not in slice_file:
             continue
-        # Peek the first non-whitespace byte to pick the right reader: most
-        # atom 2.5.x files are bare JSON arrays; older envelopes wrapped the
-        # list under {"reachables": [...]}.
-        first_char = ""
-        try:
-            with open(slice_file, encoding="utf-8") as fp:
-                while True:
-                    ch = fp.read(1)
-                    if not ch:
-                        break
-                    if ch not in " \t\n\r":
-                        first_char = ch
-                        break
-        except OSError:
-            continue
-        if first_char == "[":
-            flows_iter = _iter_json_list(slice_file)
-        else:
-            data = json_load(slice_file)
-            if isinstance(data, dict):
-                flows_iter = data.get("reachables") or []
-            else:
-                flows_iter = data or []
-        for flow in flows_iter:
+        for flow in _iter_json_list(slice_file):
             if not isinstance(flow, dict):
                 continue
             identity = _flow_identity(flow)
@@ -310,10 +289,10 @@ class SemanticReachability(FrameworkReachability):
 
     @staticmethod
     def _track_usage_targets(usage_targets, usages_object):
-        # x-atom-usages shape varies across atom versions: the per-file value
-        # is usually a list of line numbers, but newer slices may emit a bare
-        # int (a single line) — guard both so a format change never crashes the
-        # analyzer. See AppThreat/atom#221 and dep-scan#459.
+        # x-atom-usages values are per-file lists of line numbers: atom-tools
+        # writes ``call`` and ``target`` in the same shape ("call": {file:
+        # [lines]}, "target": {file: [lines]}). Anything else is ignored
+        # rather than crashing the analyzer.
         if not isinstance(usages_object, dict):
             return
         for k, v in usages_object.items():
@@ -324,8 +303,6 @@ class SemanticReachability(FrameworkReachability):
                 if isinstance(lines, (list, tuple, set)):
                     for aline in lines:
                         usage_targets[f"{file}#{aline}"] = True
-                elif isinstance(lines, int):
-                    usage_targets[f"{file}#{lines}"] = True
 
     @staticmethod
     def _track_binary_reachability(
