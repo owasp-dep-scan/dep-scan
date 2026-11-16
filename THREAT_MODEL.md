@@ -242,7 +242,7 @@ A reviewer should treat the Dockerfiles as a supply chain program, not just an i
 
 The workflow surface is large and deserves first-class threat modeling.
 
-There are read-oriented assurance workflows like `pythonapp.yml`, `pre-commit.yml`, `dockertests.yml`, `gobintests.yml`, and `repotests.yml`.
+There are read-oriented assurance workflows like `pythonapp.yml`, `dockertests.yml`, `gobintests.yml`, and `repotests.yml`. The `repotests-lifecycle-*.yml` workflows check out named third-party repositories and analyze them, and the `sea-*.yml` workflows build single-executable dep-scan bundles that download a cdxgen release binary at runtime and verify it against the `.sha256` file published with that same release.
 
 There is a stronger authority release workflow in `pythonpublish.yml` which can build packages, push container images, attach SBOMs, and publish to PyPI on tags.
 
@@ -258,6 +258,7 @@ At the same time, many workflows download and execute third-party tools or inspe
 - `uv sync --all-extras --all-packages --dev`
 - direct `curl` downloads of tools such as `nydus`
 - `soar` binary installation in binary tests
+- cdxgen release binaries downloaded by the `sea-*.yml` workflows and verified against a checksum file hosted with the same release, a weaker guarantee than the pinned digest the publish workflow uses for `nydus`
 - Hugging Face dataset downloads in repo tests
 - checkout of external repositories for sample scans
 - use of a self-hosted runner in part of `repotests.yml`
@@ -397,7 +398,7 @@ Questions to ask:
 
 ### Other workflows
 
-`pythonapp.yml`, `dockertests.yml`, `gobintests.yml`, and `repotests.yml` are lower authority than the publish workflow, but they still matter.
+`pythonapp.yml`, `dockertests.yml`, `gobintests.yml`, `repotests.yml`, the `sea-*.yml` bundles and the `repotests-lifecycle-*.yml` scans are lower authority than the publish workflow, but they still matter.
 
 Questions to ask:
 
