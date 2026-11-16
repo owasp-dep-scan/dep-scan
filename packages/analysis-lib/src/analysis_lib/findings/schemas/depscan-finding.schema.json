@@ -1,0 +1,424 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:finding:1",
+  "title": "dep-scan finding",
+  "description": "One result reported by dep-scan. Every category dep-scan writes, from classic vulnerabilities through memory-safety defects, binary hardening and license issues, uses this one shape. The id field carries the line-free fingerprint (dsf1) that baselines and suppressions key on; locations and evidence carry the reasons; coverage says whether the analysis that owns the finding actually ran. Extensions go in the properties array, which is why the objects stay closed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "category", "rule", "title", "severity", "coverage", "producer"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^dsf1:[0-9a-f]{64}$",
+      "description": "The finding fingerprint: dsf1 followed by the SHA-256 hex digest of the canonical payload described in analysis_lib.findings.fingerprint. The id never contains line or column numbers, so baselines and suppressions survive unrelated edits. A future change to the algorithm would produce dsf2 ids and never alter a dsf1 id."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "vulnerability",
+        "malware",
+        "memory-safety",
+        "supply-chain",
+        "binary-hardening",
+        "mobile",
+        "code",
+        "license",
+        "crypto",
+        "health"
+      ],
+      "description": "The kind of result. vulnerability covers advisory-backed findings; the other categories come from analyzers, binary analysis, code review and project health checks."
+    },
+    "rule": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The advisory id or the analyzer rule id that fired, for example CVE-2021-23337, GHSA-p6mc-m468-83gw or RUSI-MS-PANIC-001. Advisory ids keep their canonical case; other rule ids are kept as given."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A short human-readable statement of the finding. Titles never copy source text, argument values or environment values."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info", "unknown"],
+      "description": "The severity the producer assigned to this finding."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "How sure the producer is that the finding is real. Absent when the producer does not express confidence."
+    },
+    "cwes": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "The CWE numbers that classify the defect, for example 77 for command injection or 476 for a null pointer dereference."
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "The affected components as package URLs. Versions are allowed here; the fingerprint that the id is built from strips them."
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/location",
+        "description": "One place the finding applies to."
+      },
+      "description": "Where the finding lives. Findings without a source location, such as a vulnerable package or a binary hardening gap, point at the manifest, lockfile or binary that declares the affected component."
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Ids of the records in the scan's evidence file that back this finding. The evidence schema is published separately."
+    },
+    "coverage": {
+      "$ref": "#/$defs/coverage",
+      "description": "Whether the analysis that owns this finding ran, and why not when it did not."
+    },
+    "exploitability": {
+      "$ref": "#/$defs/exploitability",
+      "description": "The exploitability assessment across the five axes, filled by the exploitability grading rules."
+    },
+    "triage": {
+      "$ref": "#/$defs/triage",
+      "description": "The human decision about this finding, using the CycloneDX 1.7 impact analysis vocabulary."
+    },
+    "fix": {
+      "$ref": "#/$defs/fix",
+      "description": "How to move past the finding, when the producer knows a way."
+    },
+    "producer": {
+      "$ref": "#/$defs/producer",
+      "description": "The tool that produced this finding."
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/reference",
+        "description": "One link a reader of the finding may follow."
+      },
+      "description": "Links to advisories, upstream reports or documentation for this finding."
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding-property",
+        "description": "One extension property."
+      },
+      "description": "Producer-specific extensions, carried as name and value pairs the way CycloneDX does. Keeping extensions here lets the rest of the object stay closed."
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One place a finding applies to: a source position, a function, or a binary file and offset. Every field is optional because binary and manifest findings carry a different subset than source findings do.",
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Path relative to the scan root with forward slashes. For findings without source code, the manifest or lockfile that declared the component."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Line number in file, counting from 1."
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Column number on the line, counting from 1."
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Last line of the range, when the finding spans lines."
+        },
+        "end_column": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Last column of the range, when the finding spans columns."
+        },
+        "function": {
+          "type": "string",
+          "description": "Name of the enclosing function, when the producer resolved one."
+        },
+        "binary": {
+          "type": "string",
+          "description": "Name of the binary the finding applies to, for example usr/bin/hello."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Offset inside the binary, counting from 0."
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "description": "Whether the relevant analysis ran. A state of not_assessed means the analyzer did not run, failed, hit a budget or lacked data; it is a different state from assessed and nothing found, and a policy gate or VEX statement must never treat one as the other.",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["assessed", "not_assessed"],
+          "description": "assessed when the analysis that owns this finding ran to completion; not_assessed when it did not."
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/coverage-reason",
+            "description": "One reason the capability did not assess what it was asked to."
+          },
+          "description": "Why coverage stopped. Required, with at least one entry, whenever state is not_assessed."
+        }
+      },
+      "if": {
+        "properties": {
+          "state": {
+            "const": "not_assessed"
+          }
+        },
+        "required": ["state"]
+      },
+      "then": {
+        "required": ["reasons"],
+        "properties": {
+          "reasons": {
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "coverage-reason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability", "reason"],
+      "description": "One concrete reason a capability did not assess what it was asked to.",
+      "properties": {
+        "capability": {
+          "type": "string",
+          "description": "The capability that could not run, named the way depscan doctor names them, for example memory-safety:c or reachability:dotnet."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Short machine-readable reason the capability did not run, for example tool-missing, budget-exceeded, data-missing or data-stale."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Human-readable detail, for example the tool version that was found or the path of the stale shard."
+        }
+      }
+    },
+    "exploitability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axes"],
+      "description": "The exploitability assessment. The five axes say how confident the analysis is about each property of the finding, and the grade summarises them.",
+      "properties": {
+        "axes": {
+          "$ref": "#/$defs/exploitability-axes",
+          "description": "The five exploitability axes."
+        },
+        "grade": {
+          "type": "string",
+          "enum": ["critical", "high", "moderate", "low", "shielded", "unassessed"],
+          "description": "The overall exploitability grade derived from the axes."
+        },
+        "rule": {
+          "type": "string",
+          "description": "The grading rule or policy that produced the grade, so a reader can see why the axes map to it."
+        },
+        "unassessed": {
+          "type": "array",
+          "items": {
+            "enum": ["presence", "reach", "exposure", "barrier", "pressure"],
+            "description": "One axis that could not be assessed."
+          },
+          "description": "The axes that could not be assessed for this finding."
+        },
+        "witness": {
+          "type": "string",
+          "description": "Id of the evidence record that decided the grade."
+        }
+      }
+    },
+    "exploitability-axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["presence", "reach", "exposure", "barrier", "pressure"],
+      "description": "The five exploitability axes, each graded on the same scale.",
+      "properties": {
+        "presence": {
+          "type": "string",
+          "enum": ["proven", "likely", "unknown", "unlikely", "refuted", "not_assessed"],
+          "description": "Whether the defect the finding describes is present in the assessed code."
+        },
+        "reach": {
+          "type": "string",
+          "enum": ["proven", "likely", "unknown", "unlikely", "refuted", "not_assessed"],
+          "description": "Whether the defect is reachable from code or interfaces an attacker controls."
+        },
+        "exposure": {
+          "type": "string",
+          "enum": ["proven", "likely", "unknown", "unlikely", "refuted", "not_assessed"],
+          "description": "Whether the component or code carrying the defect is exposed where it runs."
+        },
+        "barrier": {
+          "type": "string",
+          "enum": ["proven", "likely", "unknown", "unlikely", "refuted", "not_assessed"],
+          "description": "Whether a mitigation stands between the attacker and the defect. proven or likely means a barrier exists; unlikely or refuted means none does."
+        },
+        "pressure": {
+          "type": "string",
+          "enum": ["proven", "likely", "unknown", "unlikely", "refuted", "not_assessed"],
+          "description": "Whether attackers have motive or precedent for exploiting this defect, for example public exploit availability."
+        }
+      }
+    },
+    "triage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The human decision about the finding. The state, justification and response values are copied from the CycloneDX 1.7 schema bundled in analysis_lib.data.cyclonedx.",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "resolved",
+            "resolved_with_pedigree",
+            "exploitable",
+            "in_triage",
+            "false_positive",
+            "not_affected"
+          ],
+          "description": "The impact analysis state, from the CycloneDX 1.7 impactAnalysisState enum."
+        },
+        "justification": {
+          "type": "string",
+          "enum": [
+            "code_not_present",
+            "code_not_reachable",
+            "requires_configuration",
+            "requires_dependency",
+            "requires_environment",
+            "protected_by_compiler",
+            "protected_at_runtime",
+            "protected_at_perimeter",
+            "protected_by_mitigating_control"
+          ],
+          "description": "The impact analysis justification, from the CycloneDX 1.7 impactAnalysisJustification enum. CycloneDX recommends a justification for every not_affected state."
+        },
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["can_not_fix", "will_not_fix", "update", "rollback", "workaround_available"],
+            "description": "One response to the finding, from the CycloneDX 1.7 response enum."
+          },
+          "description": "The responses chosen for this finding."
+        },
+        "detail": {
+          "type": "string",
+          "description": "Free-form detail about the triage decision, including why the component is not affected."
+        },
+        "author": {
+          "type": "string",
+          "description": "Who made the triage decision."
+        },
+        "expires": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the triage decision expires and the finding returns to triage, as an RFC 3339 date-time."
+        }
+      }
+    },
+    "fix": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How to move past the finding.",
+      "properties": {
+        "fixed_versions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Versions of the affected component that resolve the finding."
+        },
+        "upgrade_path": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Ordered steps or intermediate versions that take the project from its current state to the fix, when a single bump is not possible."
+        },
+        "recommendation": {
+          "type": "string",
+          "description": "The recommended action, in one human-readable sentence."
+        }
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "description": "The analyzer that produced the finding. The version lets results be traced to a release.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Producer name, for example dep-scan, rusi or blint."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Version of the producer that wrote the finding."
+        }
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "type"],
+      "description": "One link a reader of the finding may follow.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The link target."
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the link is, for example advisory, documentation or upstream-issue."
+        }
+      }
+    },
+    "finding-property": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "value"],
+      "description": "One extension property, carried as a name and value pair the way CycloneDX does.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Property name. Producers namespace theirs, for example depscan:priority."
+        },
+        "value": {
+          "type": "string",
+          "description": "Property value, always a string."
+        }
+      }
+    }
+  }
+}

@@ -10,12 +10,8 @@ arguments in a TOML file, in addition to the command line.
 # MIT license
 import argparse
 import os
+import tomllib
 from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
-
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib
 
 # Mirrors the typeshed pattern for ArgumentParser.parse_args: when a namespace
 # object is passed in, that same object (type included) is returned.

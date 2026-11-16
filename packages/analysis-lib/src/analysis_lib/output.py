@@ -290,7 +290,7 @@ def generate_console_output(
         # group, since remediating a package is a single upgrade to the top
         # fix. See discussion #527 follow-up.
         group_fixes = [table_rows[ridx][4] for ridx in row_indices if table_rows[ridx][4]]
-        group_fix = max_version(group_fixes) if group_fixes else ""
+        group_fix = max_version(group_fixes, purl=purl) if group_fixes else ""
         for i, ridx in enumerate(row_indices):
             arow = table_rows[ridx]
             # Reduce insights repetition

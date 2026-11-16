@@ -1,0 +1,13 @@
+{
+  "id": "dsf1:66a1715b481702f2fdedd015abfa1993cf886a6ca75a0290c8c3fdaed20c2b05",
+  "category": "binary-hardening",
+  "rule": "BH-NX-001",
+  "title": "Stack is executable in usr/bin/hello because the NX bit is not set",
+  "severity": "medium",
+  "components": ["pkg:generic/hello@1.0.0"],
+  "locations": [
+    {"binary": "usr/bin/hello", "offset": 4096}
+  ],
+  "coverage": {"state": "assessed"},
+  "producer": {"name": "blint", "version": "4.0.2"}
+}

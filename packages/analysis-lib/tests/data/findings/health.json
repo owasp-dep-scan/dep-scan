@@ -1,0 +1,22 @@
+{
+  "id": "dsf1:f2d585c4302138dfad42a202cc9b3d3a1cabee84ef453212501c84d7e5fa0b9e",
+  "category": "health",
+  "rule": "HEALTH-MISSING-LOCKFILE",
+  "title": "No lockfile was found, so the resolved versions could not be pinned",
+  "severity": "low",
+  "components": ["pkg:npm/left-pad@1.3.0"],
+  "locations": [
+    {"file": "package.json"}
+  ],
+  "coverage": {
+    "state": "not_assessed",
+    "reasons": [
+      {
+        "capability": "inventory:lockfile",
+        "reason": "data-missing",
+        "detail": "No package-lock.json or npm-shrinkwrap.json under the scan root"
+      }
+    ]
+  },
+  "producer": {"name": "dep-scan", "version": "7.0.0.dev0"}
+}

@@ -254,7 +254,7 @@ Pull request workflows use read-only contents permission. That lowers direct rep
 
 At the same time, many workflows download and execute third-party tools or inspect third-party repositories and datasets. For example:
 
-- npm global install of `@cyclonedx/cdxgen`
+- npm global install of `@cdxgen/cdxgen`
 - `uv sync --all-extras --all-packages --dev`
 - direct `curl` downloads of tools such as `nydus`
 - `soar` binary installation in binary tests

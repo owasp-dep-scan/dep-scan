@@ -1,0 +1,22 @@
+{
+  "id": "dsf1:38e0d9849b7f5e03d53f4ca38b10df91ecd14f3d3cb4218b9884e2d89357599c",
+  "category": "code",
+  "rule": "CODE-UNSAFE-REFLECTION-001",
+  "title": "Class name taken from a request parameter is passed to Class.forName",
+  "severity": "low",
+  "confidence": "low",
+  "cwes": [470],
+  "components": ["pkg:maven/com.example.shop/billing@3.2.0"],
+  "locations": [
+    {
+      "file": "src/main/java/com/example/shop/RouteController.java",
+      "line": 88,
+      "column": 13,
+      "end_line": 92,
+      "end_column": 5,
+      "function": "resolveView"
+    }
+  ],
+  "coverage": {"state": "assessed"},
+  "producer": {"name": "kosi", "version": "1.0.0"}
+}

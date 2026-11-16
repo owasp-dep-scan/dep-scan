@@ -1,4 +1,6 @@
+import json
 import os
+import re
 import shutil
 import sys
 import uuid
@@ -10,9 +12,14 @@ from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 from xbom_lib.blint import BlintGenerator
 from xbom_lib.cdxgen import (
+    CDXGEN_MIN_VERSION,
     CdxgenGenerator,
     CdxgenImageBasedGenerator,
     CdxgenServerGenerator,
+    as_command_list,
+    cdxgen_install_hint,
+    check_cdxgen_version,
+    find_cdxgen_cmd,
     resource_path as xbom_resource_path,
 )
 from depscan.cli_options import DEFAULT_SPEC_VERSION
@@ -30,7 +37,8 @@ from depscan.lib.config import (
 from depscan.lib.logger import LOG, SPINNER, console
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from types import SimpleNamespace
+from typing import Callable, Dict, List, Optional
 
 
 class ScanFailureError(RuntimeError):
@@ -65,11 +73,116 @@ class BomResult:
     :param primary: The single BOM representing the project, when the run
         produced one. ``None`` for lifecycle runs, which produce per-stage
         documents rather than one project BOM.
+    :param extractor_failures: cdxgen exit status 5 messages, one per
+        extractor that failed while the BOM was still written. Kept so a
+        later stage can record the affected parts as not assessed instead of
+        counting them as clean.
     """
 
     success: bool
     bom_files: List[str] = field(default_factory=list)
     primary: Optional[str] = None
+    extractor_failures: List[str] = field(default_factory=list)
+
+
+# cdxgen exit statuses that still deliver a usable BOM. 4 means the
+# introspection score missed the gate (the BOM and both reports exist).
+# 5 is not one of them: cdxgen only exits 5 when --fail-on-error was passed
+# and an extractor failed; the failure is deferred until the BOM and reports
+# are written (bin/cdxgen.js and lib/core/deferredExit.js, v13.8.0), but the
+# user asked for the scan to stop, so depscan treats it as a failed BOM.
+CDXGEN_PARTIAL_EXIT_CODES = (4,)
+# One line per deferred extractor failure, as cdxgen 13.8.0 prints it:
+# "fail-on-error: <detail> (tool: <tool>, exit <n>)." The closing summary
+# line has no "(tool: ...)" part.
+_EXTRACTOR_FAILURE_RE = re.compile(r"^fail-on-error: .* \(tool: [^)]*\)\.$")
+
+
+def _introspection_summary(bom_file: str) -> Optional[Dict]:
+    """The ``overall`` block of cdxgen's JSON introspection report, if any."""
+    path = f"{bom_file}.introspection.json"
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fp:
+            data = json.load(fp)
+    except (OSError, ValueError):
+        return None
+    overall = data.get("overall") if isinstance(data, dict) else None
+    return overall if isinstance(overall, dict) else None
+
+
+def _log_introspection_tier(bom_file: str) -> None:
+    """Log the fidelity tier and score recorded for ``bom_file``."""
+    overall = _introspection_summary(bom_file)
+    if overall:
+        LOG.warning(
+            "Introspection: overall tier %s, score %s/100 (report: %s).",
+            overall.get("tier"),
+            overall.get("score"),
+            f"{bom_file}.introspection.json",
+        )
+    else:
+        LOG.warning(
+            "Introspection report %s was missing or unreadable.",
+            f"{bom_file}.introspection.json",
+        )
+
+
+def _extractor_failures(command_output: Optional[str]) -> List[str]:
+    """The deferred extractor failures cdxgen printed for exit status 5.
+
+    cdxgen writes one ``fail-on-error: <detail> (tool: <tool>, exit N).``
+    line per failed extractor after the reports are written.
+    """
+    if not command_output:
+        return []
+    return [
+        line.strip()
+        for line in command_output.splitlines()
+        if _EXTRACTOR_FAILURE_RE.match(line.strip())
+    ]
+
+
+def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
+    """Interpret a finished cdxgen run from its exit status.
+
+    Returns the extractor failures to remember; logs everything the status
+    means. A status of 0 or 4 delivers a usable BOM. Status 5 (only returned
+    under --fail-on-error) and any other status are reported as a failed
+    generation, so the scan stops rather than continuing as if nothing was
+    found.
+    """
+    returncode = getattr(bom_result, "returncode", None)
+    if returncode in (None, 0):
+        return []
+    if returncode == 4:
+        LOG.warning(
+            "cdxgen exited 4 for the %s BOM: the introspection score is below the gate.",
+            stage,
+        )
+        _log_introspection_tier(bom_file)
+        return []
+    if returncode == 5:
+        failures = _extractor_failures(bom_result.command_output)
+        for failure in failures:
+            LOG.error(
+                "cdxgen exited 5 for the %s BOM under --fail-on-error: an extractor failed. %s",
+                stage,
+                failure,
+            )
+        if not failures:
+            LOG.error(
+                "cdxgen exited 5 for the %s BOM under --fail-on-error: an extractor failed, but cdxgen did not name it.",
+                stage,
+            )
+        return failures
+    LOG.error(
+        "cdxgen exited with status %s while generating the %s BOM. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output.",
+        returncode,
+        stage,
+    )
+    return []
 
 
 def _has_bundled_cdxgen() -> bool:
@@ -291,6 +404,39 @@ def get_pkg_by_type(pkg_list, pkg_type):
     return [pkg for pkg in pkg_list if pkg.get("purl", "").startswith("pkg:" + pkg_type)]
 
 
+def _refuse_old_cdxgen(logger=None) -> bool:
+    """Refuse a local cdxgen older than the pinned minimum.
+
+    Returns True when the command that would run is acceptable. The literal
+    ``cdxgen`` is what the generator executes when nothing else resolves, so
+    it is probed like any other command; a probe that cannot read a version
+    is a refusal. The container and server generators never call this: their
+    cdxgen is pinned at build time or runs elsewhere.
+    """
+    cdxgen_cmd = (
+        find_cdxgen_cmd(logger=logger) or find_cdxgen_cmd(False, logger=logger) or "cdxgen"
+    )
+    accepted, version = check_cdxgen_version(cdxgen_cmd, logger=logger)
+    if accepted:
+        return True
+    if version is None:
+        LOG.error(
+            "Could not read the cdxgen version from '%s'. dep-scan needs cdxgen %s or newer. "
+            "Install it with `%s` and, if needed, point CDXGEN_CMD at it.",
+            " ".join(as_command_list(cdxgen_cmd)),
+            CDXGEN_MIN_VERSION,
+            cdxgen_install_hint(),
+        )
+    else:
+        LOG.error(
+            "cdxgen %s was found, but dep-scan needs %s or newer. Install it with `%s` and, if needed, point CDXGEN_CMD at it.",
+            version,
+            CDXGEN_MIN_VERSION,
+            cdxgen_install_hint(),
+        )
+    return False
+
+
 def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     """
     Method to create BOM file by executing cdxgen command
@@ -361,6 +507,11 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             elif shutil.which(os.getenv("DOCKER_CMD", "docker")) and sys.platform != "win32":
                 cdxgen_lib = CdxgenImageBasedGenerator
     # We now have the cdxgen library to use.
+    # A local cdxgen CLI is the one binary whose version dep-scan does not
+    # control, so it is checked before the first run; the container image and
+    # the cdxgen server are pinned or remote and skip the check.
+    if cdxgen_lib is CdxgenGenerator and not _refuse_old_cdxgen(logger=LOG):
+        return BomResult(success=False)
     # For lifecycle analysis, we need to generate multiple BOM files
     if lifecycle_analysis_mode:
         return create_lifecycle_boms(cdxgen_lib, src_dir, options)
@@ -369,7 +520,17 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
         bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
-        if not bom_result.success:
+        extractor_failures: List[str] = []
+        if bom_result.success:
+            extractor_failures = _cdxgen_exit_verdict(bom_result, bom_file, "project")
+        # Exit status 4 still delivers the BOM; any other failure, 5 included,
+        # leaves nothing the user asked to scan.
+        partial_ok = getattr(bom_result, "returncode", None) in (
+            None,
+            0,
+            *CDXGEN_PARTIAL_EXIT_CODES,
+        )
+        if not bom_result.success or not partial_ok:
             LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
             return BomResult(success=False)
@@ -391,17 +552,25 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         # / dosai is absent. PRIMARY path consumes the cdxgen-persisted
         # combined native report; direct-spawn is only a fallback.
         run_dosai_reachability(bom_file, src_dir, options=options)
-        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+        return BomResult(
+            success=True,
+            bom_files=[bom_file],
+            primary=bom_file,
+            extractor_failures=extractor_failures,
+        )
 
 
-def _load_rusi_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
-    """Load a rusi report JSON, or return None.
+def _load_tool_report(
+    tool, path, is_report_ok, json_load, require_report=False, fail_on_error=False
+):
+    """Load a reachability tool's report JSON, or return None.
 
-    When ``require_report`` is set, a file that is not a rusi report (e.g. an
-    atom-produced semantics slice that happens to share the path) is rejected
-    by validating its structural SHAPE -- this is how we tell cdxgen's
-    persisted rusi report apart from any other ``*-semantics.slices.json``.
-    When not required (direct-rusi fallback), a shape mismatch only warns.
+    When ``require_report`` is set, a file that is not a *tool* report (e.g.
+    an atom-produced semantics slice that happens to share the path) is
+    rejected by validating its structural shape -- this is how we tell
+    cdxgen's persisted report apart from any other
+    ``*-semantics.slices.json``. When not required (the direct-run
+    fallback), a shape mismatch only warns.
     """
     if not path or not os.path.exists(path):
         return None
@@ -409,15 +578,79 @@ def _load_rusi_report(path, is_report_ok, json_load, require_report=False, fail_
         data = json_load(path, log=LOG)
     except Exception as e:
         if fail_on_error:
-            raise ScanFailureError(f"Could not read rusi report {path}: {e}") from e
-        LOG.debug("Could not read rusi report %s: %s", path, e)
+            raise ScanFailureError(f"Could not read {tool} report {path}: {e}") from e
+        LOG.debug("Could not read %s report %s: %s", tool, path, e)
         return None
     if not isinstance(data, dict):
         return None
     if not is_report_ok(data):
         if require_report:
             return None
-        LOG.warning("rusi report shape was not recognized; conversion may be incomplete.")
+        LOG.warning("%s report shape was not recognized; conversion may be incomplete.", tool)
+    return data
+
+
+def _load_rusi_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
+    """Load a rusi report JSON, or return None."""
+    return _load_tool_report("rusi", path, is_report_ok, json_load, require_report, fail_on_error)
+
+
+def _load_golem_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
+    """Load a golem report JSON, or return None."""
+    return _load_tool_report("golem", path, is_report_ok, json_load, require_report, fail_on_error)
+
+
+def _load_dosai_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
+    """Load a dosai report JSON, or return None."""
+    return _load_tool_report("dosai", path, is_report_ok, json_load, require_report, fail_on_error)
+
+
+def _load_dosai_artifact(path, label, json_load, fail_on_error):
+    """Read one raw dosai artifact (methods or dataflows), or return None.
+
+    ``json_load`` swallows ``JSONDecodeError`` and returns ``{}`` (issue #523),
+    so a corrupt artifact looks exactly like an empty one. A file with bytes on
+    disk that parses to nothing is therefore treated as unreadable, which under
+    ``fail_on_error`` aborts the scan instead of quietly downgrading the VDR.
+    A genuinely empty artifact stays soft: the caller fails only when both
+    artifacts are missing. Every degraded outcome is warned about, since the
+    scan then continues with less reachability data than the user asked for.
+    """
+    if not path or not os.path.exists(path):
+        LOG.warning(
+            "dosai did not produce a %s report. Reachability analysis will be incomplete.",
+            label,
+        )
+        return None
+    try:
+        data = json_load(path, log=LOG)
+    except Exception as e:
+        if fail_on_error:
+            raise ScanFailureError(f"Could not read dosai {label} report {path}: {e}") from e
+        LOG.warning(
+            "Could not read the dosai %s report %s: %s. Reachability analysis will be incomplete.",
+            label,
+            path,
+            e,
+        )
+        return None
+    if not data:
+        if fail_on_error and os.path.getsize(path) > 0:
+            raise ScanFailureError(f"dosai {label} report {path} was unreadable or empty.")
+        LOG.warning(
+            "The dosai %s report %s is empty or unreadable. Reachability analysis will be incomplete.",
+            label,
+            path,
+        )
+    return data
+
+
+def _load_dosai_report_value(data, is_report_ok):
+    """Validate an already-parsed combined dosai report dict (no file read)."""
+    if not isinstance(data, dict):
+        return None
+    if not is_report_ok(data):
+        LOG.warning("dosai report shape was not recognized; conversion may be incomplete.")
     return data
 
 
@@ -461,133 +694,6 @@ def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     )
 
 
-def run_rusi_reachability(
-    bom_file: str,
-    src_dir: str,
-    options: Optional[Dict] = None,
-) -> bool:
-    """Run rusi + the slice converter for a Rust project and drop the
-    atom-shaped reachables slice next to the BOM.
-
-    No-op (returns False) unless the project is Rust AND reachability is on.
-    Gracefully degrades when the rusi binary is missing (warns, returns False,
-    never raises) so non-Rust and binary-less environments are unaffected.
-
-    This is the ONLY wiring point for rusi reachability: the existing
-    purl-keyed reachability pipeline discovers ``*reachables.slices*.json``
-    files by glob, so emitting ``rust-reachables.slices.json`` in the BOM dir
-    lights up FrameworkReachability/SemanticReachability with zero engine
-    changes.
-    """
-    if not options:
-        return False
-    project_type_list: List[str] = options.get("project_type") or []
-    # cdxgen labels Cargo projects "rust"; accept the "cargo"/"crates" aliases
-    # too so an alternate project-type token never silently skips reachability
-    # (mirrors the "go"/"golang" acceptance in run_golem_reachability).
-    if not any(pt in ("rust", "cargo", "crates") for pt in project_type_list):
-        return False
-    if options.get("reachability_analyzer") == "off":
-        return False
-    if not bom_file or not os.path.exists(bom_file):
-        return False
-    # Lazy imports so non-Rust scans never pay the import cost and tests that
-    # monkeypatch the binary can run in isolation.
-    try:
-        from analysis_lib.rusi_slices import (
-            build_bom_purl_index,
-            convert_rusi_report,
-            is_rusi_report,
-            write_slices_file,
-        )
-        from custom_json_diff.lib.utils import json_load as _json_load
-    except ImportError as e:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(f"rusi reachability dependencies unavailable: {e}") from e
-        LOG.debug("rusi reachability dependencies unavailable: %s", e)
-        return False
-
-    bom_dir = os.path.dirname(os.path.abspath(bom_file))
-    slice_path = os.path.join(bom_dir, RUSI_REACHABLES_SLICE_FILE)
-    prefix = project_type_list[0] if project_type_list else "rust"
-
-    # Prefer the rusi report cdxgen already produced. Under ``--profile
-    # research`` cdxgen runs rusi via evinse for rust and (cdxgen >= 12.5.1)
-    # persists the full raw rusi report to the ``--semantics-slices-file`` path
-    # -- which depscan's set_slices_args passes as
-    # ``<bomdir>/<type>-semantics.slices.json``. Consuming that means depscan
-    # need NOT invoke rusi itself when cdxgen + plugins are available, and it
-    # reads the FULL original report (call graph + data-flow slices), not the
-    # projected subset cdxgen embeds in the SBOM.
-    cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
-    report = _load_rusi_report(
-        cdxgen_report_path,
-        is_rusi_report,
-        _json_load,
-        require_report=True,
-        fail_on_error=bool(options.get("fail_on_error")),
-    )
-    if report is not None:
-        LOG.debug(
-            "rusi reachability: using cdxgen-produced report at %s",
-            cdxgen_report_path,
-        )
-    else:
-        # Fallback: cdxgen did not produce a rusi report (plugins unavailable,
-        # or reachability invoked without cdxgen). Invoke rusi directly.
-        report = _run_rusi_fallback(src_dir, bom_dir, options, is_rusi_report, _json_load)
-    if report is None:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(
-                "No rusi report was available for this Rust project; reachability "
-                "slices were not produced."
-            )
-        LOG.debug("No rusi report available; reachability via rusi skipped.")
-        return False
-
-    bom_data = _json_load(bom_file, log=LOG) or {}
-    components = bom_data.get("components", []) or []
-    # Include the metadata.component (workspace root) so the versioned
-    # workspace purl is always in the reconciliation index.
-    extra = []
-    meta_comp = (bom_data.get("metadata") or {}).get("component")
-    if isinstance(meta_comp, dict):
-        extra.append(meta_comp)
-    bom_index = build_bom_purl_index(components, extra_components=extra)
-    flows = convert_rusi_report(report, bom_index)
-    write_slices_file(slice_path, flows)
-    LOG.debug("rusi reachability: wrote %d flows to %s", len(flows), slice_path)
-    return True
-
-
-def _load_golem_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
-    """Load a golem report JSON, or return None.
-
-    When ``require_report`` is set, a file that is not a golem report (e.g. an
-    atom-produced semantics slice that happens to share the path) is rejected
-    by validating its structural SHAPE (``callGraph``/``dataFlow`` +
-    ``tool``/``runtime``) -- this is how we tell cdxgen's persisted golem report
-    apart from any other ``*-semantics.slices.json``. When not required (direct-
-    golem fallback), a shape mismatch only warns.
-    """
-    if not path or not os.path.exists(path):
-        return None
-    try:
-        data = json_load(path, log=LOG)
-    except Exception as e:
-        if fail_on_error:
-            raise ScanFailureError(f"Could not read golem report {path}: {e}") from e
-        LOG.debug("Could not read golem report %s: %s", path, e)
-        return None
-    if not isinstance(data, dict):
-        return None
-    if not is_report_ok(data):
-        if require_report:
-            return None
-        LOG.warning("golem report shape was not recognized; conversion may be incomplete.")
-    return data
-
-
 def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke golem directly when cdxgen did not produce a report. Returns the
     parsed report or None. Kept as a fallback so reachability still works when
@@ -625,169 +731,11 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     )
 
 
-def run_golem_reachability(
-    bom_file: str,
-    src_dir: str,
-    options: Optional[Dict] = None,
-) -> bool:
-    """Run golem + the slice converter for a Go project and drop the
-    atom-shaped reachables slice next to the BOM.
-
-    No-op (returns False) unless the project is Go AND reachability is on.
-    Gracefully degrades when the golem binary or Go toolchain is missing
-    (warns, returns False, never raises) so non-Go and binary-less
-    environments are unaffected.
-
-    This is the ONLY wiring point for golem reachability: the existing
-    purl-keyed reachability pipeline discovers ``*reachables.slices*.json``
-    files by glob, so emitting ``go-reachables.slices.json`` in the BOM dir
-    lights up FrameworkReachability/SemanticReachability with zero engine
-    changes.
-    """
-    if not options:
-        return False
-    project_type_list: List[str] = options.get("project_type") or []
-    if not any(pt in ("go", "golang") for pt in project_type_list):
-        return False
-    if options.get("reachability_analyzer") == "off":
-        return False
-    if not bom_file or not os.path.exists(bom_file):
-        return False
-    try:
-        from analysis_lib.golem_slices import (
-            build_bom_purl_index,
-            convert_golem_report,
-            is_golem_report,
-            write_slices_file,
-        )
-        from custom_json_diff.lib.utils import json_load as _json_load
-    except ImportError as e:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(f"golem reachability dependencies unavailable: {e}") from e
-        LOG.debug("golem reachability dependencies unavailable: %s", e)
-        return False
-
-    bom_dir = os.path.dirname(os.path.abspath(bom_file))
-    slice_path = os.path.join(bom_dir, GOLEM_REACHABLES_SLICE_FILE)
-    prefix = project_type_list[0] if project_type_list else "go"
-
-    # Prefer the golem report cdxgen already produced. Under ``--profile
-    # research`` cdxgen runs golem and (when the sibling cdxgen persistence
-    # change lands) persists the full raw golem report to the
-    # ``--semantics-slices-file`` path -- which depscan's set_slices_args
-    # passes as ``<bomdir>/<type>-semantics.slices.json``.
-    cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
-    report = _load_golem_report(
-        cdxgen_report_path,
-        is_golem_report,
-        _json_load,
-        require_report=True,
-        fail_on_error=bool(options.get("fail_on_error")),
-    )
-    if report is not None:
-        LOG.debug(
-            "golem reachability: using cdxgen-produced report at %s",
-            cdxgen_report_path,
-        )
-    else:
-        # Fallback: cdxgen did not produce a golem report (plugins unavailable,
-        # or reachability invoked without cdxgen). Invoke golem directly.
-        report = _run_golem_fallback(src_dir, bom_dir, options, is_golem_report, _json_load)
-    if report is None:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(
-                "No golem report was available for this Go project; reachability "
-                "slices were not produced."
-            )
-        LOG.debug("No golem report available; reachability via golem skipped.")
-        return False
-
-    bom_data = _json_load(bom_file, log=LOG) or {}
-    components = bom_data.get("components", []) or []
-    extra = []
-    meta_comp = (bom_data.get("metadata") or {}).get("component")
-    if isinstance(meta_comp, dict):
-        extra.append(meta_comp)
-    bom_index = build_bom_purl_index(components, extra_components=extra)
-    flows = convert_golem_report(report, bom_index)
-    write_slices_file(slice_path, flows)
-    LOG.debug("golem reachability: wrote %d flows to %s", len(flows), slice_path)
-    return True
-
-
-def _load_dosai_report(path, is_report_ok, json_load, require_report=False, fail_on_error=False):
-    """Load a dosai report JSON, or return None.
-
-    When ``require_report`` is set, a file that is not a dosai report (e.g. an
-    atom-produced semantics slice that happens to share the path) is rejected
-    by validating its structural SHAPE (``Metadata.Tool == "Dosai"`` plus a
-    ``methods``/``dataflows`` OR ``Slices``/``PackageReachability`` key) -- this
-    is how we tell cdxgen's persisted combined dosai report apart from any other
-    ``*-semantics.slices.json``. When not required (direct-dosai fallback), a
-    shape mismatch only warns.
-    """
-    if not path or not os.path.exists(path):
-        return None
-    try:
-        data = json_load(path, log=LOG)
-    except Exception as e:
-        if fail_on_error:
-            raise ScanFailureError(f"Could not read dosai report {path}: {e}") from e
-        LOG.debug("Could not read dosai report %s: %s", path, e)
-        return None
-    if not isinstance(data, dict):
-        return None
-    if not is_report_ok(data):
-        if require_report:
-            return None
-        LOG.warning("dosai report shape was not recognized; conversion may be incomplete.")
-    return data
-
-
-def _load_dosai_artifact(path, label, json_load, fail_on_error):
-    """Read one raw dosai artifact (methods or dataflows), or return None.
-
-    ``json_load`` swallows ``JSONDecodeError`` and returns ``{}`` (issue #523),
-    so a corrupt artifact looks exactly like an empty one. A file with bytes on
-    disk that parses to nothing is therefore treated as unreadable, which under
-    ``fail_on_error`` aborts the scan instead of quietly downgrading the VDR.
-    A genuinely empty artifact stays soft: the caller fails only when both
-    artifacts are missing. Every degraded outcome is warned about, since the
-    scan then continues with less reachability data than the user asked for.
-    """
-    if not path or not os.path.exists(path):
-        LOG.warning(
-            "dosai did not produce a %s report. Reachability analysis will be incomplete.",
-            label,
-        )
-        return None
-    try:
-        data = json_load(path, log=LOG)
-    except Exception as e:
-        if fail_on_error:
-            raise ScanFailureError(f"Could not read dosai {label} report {path}: {e}") from e
-        LOG.warning(
-            "Could not read the dosai %s report %s: %s. Reachability analysis will be incomplete.",
-            label,
-            path,
-            e,
-        )
-        return None
-    if not data:
-        if fail_on_error and os.path.getsize(path) > 0:
-            raise ScanFailureError(f"dosai {label} report {path} was unreadable or empty.")
-        LOG.warning(
-            "The dosai %s report %s is empty or unreadable. Reachability analysis will be incomplete.",
-            label,
-            path,
-        )
-    return data
-
-
 def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke dosai directly when cdxgen did not produce a report. Returns the
-    parsed combined report ``{Metadata, methods, dataflows}`` or None. Kept as a
-    fallback so reachability still works when cdxgen/plugins are unavailable."""
+    parsed combined report ``{Metadata, methods, dataflows}`` or None. Kept as
+    a fallback so reachability still works when cdxgen/plugins are
+    unavailable."""
     fail_on_error = bool(options.get("fail_on_error"))
     try:
         from xbom_lib.dosai import run_dosai
@@ -833,13 +781,266 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     return _load_dosai_report_value(combined, is_report_ok)
 
 
-def _load_dosai_report_value(data, is_report_ok):
-    """Validate an already-parsed combined dosai report dict (no file read)."""
-    if not isinstance(data, dict):
-        return None
-    if not is_report_ok(data):
-        LOG.warning("dosai report shape was not recognized; conversion may be incomplete.")
-    return data
+def _import_rusi_converter():
+    """Lazily import the rusi slice converter behind the shared interface."""
+    from analysis_lib.rusi_slices import (
+        build_bom_purl_index,
+        convert_rusi_report,
+        is_rusi_report,
+        write_slices_file,
+    )
+
+    return SimpleNamespace(
+        is_report_ok=is_rusi_report,
+        build_index=build_bom_purl_index,
+        convert=convert_rusi_report,
+        write_slices=write_slices_file,
+    )
+
+
+def _import_golem_converter():
+    """Lazily import the golem slice converter behind the shared interface."""
+    from analysis_lib.golem_slices import (
+        build_bom_purl_index,
+        convert_golem_report,
+        is_golem_report,
+        write_slices_file,
+    )
+
+    return SimpleNamespace(
+        is_report_ok=is_golem_report,
+        build_index=build_bom_purl_index,
+        convert=convert_golem_report,
+        write_slices=write_slices_file,
+    )
+
+
+def _import_dosai_converter():
+    """Lazily import the dosai slice converter behind the shared interface."""
+    from analysis_lib.dosai_slices import (
+        build_bom_purl_index,
+        convert_dosai_report,
+        extract_native_reachability,
+        is_dosai_report,
+        write_slices_file,
+    )
+
+    return SimpleNamespace(
+        is_report_ok=is_dosai_report,
+        build_index=build_bom_purl_index,
+        convert=convert_dosai_report,
+        write_slices=write_slices_file,
+        extract_native=extract_native_reachability,
+    )
+
+
+def _persist_dosai_facts(report, converter, bom_index, bom_dir, options):
+    """Stash the native dosai reachability facts (the truth) as a sidecar for
+    VEX/advanced analysis. The verdict itself flows through the atom
+    projection below via the existing purl-keyed engine loop."""
+    facts_path = os.path.join(bom_dir, "dotnet-reachability.facts.json")
+    try:
+        facts = converter.extract_native(report, bom_index)
+        json_dump(facts_path, facts, compact=True)
+    except Exception as e:
+        if options.get("fail_on_error"):
+            raise ScanFailureError(
+                f"Could not persist dosai native reachability facts to {facts_path}: {e}"
+            ) from e
+        LOG.debug("Could not persist dosai native reachability facts: %s", e)
+
+
+@dataclass(frozen=True)
+class ReachabilityTool:
+    """The parts of a reachability analyzer that differ per language tool.
+
+    :func:`_run_reachability_tool` walks the same steps for every tool: find
+    the tool's report (the one cdxgen persisted, else a direct run through
+    the fallback), reconcile it against the BOM's purls and write the
+    atom-shaped reachables slice next to the BOM. Everything specific to one
+    tool is described here and nowhere else.
+    """
+
+    name: str
+    #: Project-type tokens that select this tool; cdxgen's label plus the
+    #: aliases depscan accepts, so an alternate token never silently skips
+    #: reachability.
+    project_types: tuple
+    default_prefix: str
+    slice_file: str
+    #: Lazy import of the slice converter behind the shared interface.
+    import_converter: Callable
+    #: Direct run when cdxgen produced no report.
+    run_fallback: Callable
+    #: Raised (under ``--fail-on-error``) or logged when no report was found.
+    no_report_error: str
+    #: Optional extra persistence step after a report was found (dosai's
+    #: native-reachability facts sidecar).
+    persist_report: Optional[Callable] = None
+
+
+def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
+    """Run one reachability tool and drop its reachables slice next to the BOM.
+
+    No-op (returns False) unless the project type matches the tool AND
+    reachability is on. Gracefully degrades when the tool is missing (warns
+    or returns False, never raises) so other languages and binary-less
+    environments are unaffected; ``--fail-on-error`` turns every degradation
+    into a :class:`ScanFailureError`.
+
+    This is the wiring point for tool reachability: the existing purl-keyed
+    pipeline discovers ``*reachables.slices*.json`` files by glob, so emitting
+    the slice in the BOM dir lights up FrameworkReachability and
+    SemanticReachability with zero engine changes.
+    """
+    if not options:
+        return False
+    project_type_list: List[str] = options.get("project_type") or []
+    if not any(pt in tool.project_types for pt in project_type_list):
+        return False
+    if options.get("reachability_analyzer") == "off":
+        return False
+    if not bom_file or not os.path.exists(bom_file):
+        return False
+    fail_on_error = bool(options.get("fail_on_error"))
+    # Lazy imports so other-language scans never pay the import cost and
+    # tests that monkeypatch the tool can run in isolation.
+    try:
+        converter = tool.import_converter()
+        from custom_json_diff.lib.utils import json_load as _json_load
+    except ImportError as e:
+        if fail_on_error:
+            raise ScanFailureError(
+                f"{tool.name} reachability dependencies unavailable: {e}"
+            ) from e
+        LOG.debug("%s reachability dependencies unavailable: %s", tool.name, e)
+        return False
+
+    bom_dir = os.path.dirname(os.path.abspath(bom_file))
+    slice_path = os.path.join(bom_dir, tool.slice_file)
+    prefix = project_type_list[0] if project_type_list else tool.default_prefix
+
+    # PRIMARY: prefer the report cdxgen already produced. Under ``--profile
+    # research`` cdxgen runs the tool and persists the FULL raw report to the
+    # ``--semantics-slices-file`` path -- which depscan's set_slices_args
+    # passes as ``<bomdir>/<type>-semantics.slices.json``. Consuming that
+    # means depscan need NOT re-spawn the tool when cdxgen + plugins are
+    # available, and it reads the FULL original report (call graph + data-flow
+    # slices), not the projected subset cdxgen embeds in the SBOM.
+    cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
+    report = _load_tool_report(
+        tool.name,
+        cdxgen_report_path,
+        converter.is_report_ok,
+        _json_load,
+        require_report=True,
+        fail_on_error=fail_on_error,
+    )
+    if report is not None:
+        LOG.debug(
+            "%s reachability: using cdxgen-produced report at %s",
+            tool.name,
+            cdxgen_report_path,
+        )
+    else:
+        # FALLBACK: cdxgen did not produce a report (plugins unavailable, or
+        # reachability invoked without cdxgen). Run the tool directly.
+        report = tool.run_fallback(src_dir, bom_dir, options, converter.is_report_ok, _json_load)
+    if report is None:
+        if fail_on_error:
+            raise ScanFailureError(tool.no_report_error)
+        LOG.debug("No %s report available; reachability via %s skipped.", tool.name, tool.name)
+        return False
+
+    bom_data = _json_load(bom_file, log=LOG) or {}
+    components = bom_data.get("components", []) or []
+    # Include the metadata.component (workspace root) so the versioned
+    # workspace purl is always in the reconciliation index.
+    extra = []
+    meta_comp = (bom_data.get("metadata") or {}).get("component")
+    if isinstance(meta_comp, dict):
+        extra.append(meta_comp)
+    bom_index = converter.build_index(components, extra_components=extra)
+    if tool.persist_report:
+        tool.persist_report(report, converter, bom_index, bom_dir, options)
+    flows = converter.convert(report, bom_index)
+    converter.write_slices(slice_path, flows)
+    LOG.debug("%s reachability: wrote %d flows to %s", tool.name, len(flows), slice_path)
+    return True
+
+
+RUSI_TOOL = ReachabilityTool(
+    name="rusi",
+    # cdxgen labels Cargo projects "rust"; accept "cargo"/"crates" aliases.
+    project_types=("rust", "cargo", "crates"),
+    default_prefix="rust",
+    slice_file=RUSI_REACHABLES_SLICE_FILE,
+    import_converter=_import_rusi_converter,
+    run_fallback=_run_rusi_fallback,
+    no_report_error=(
+        "No rusi report was available for this Rust project; reachability "
+        "slices were not produced."
+    ),
+)
+
+GOLEM_TOOL = ReachabilityTool(
+    name="golem",
+    project_types=("go", "golang"),
+    default_prefix="go",
+    slice_file=GOLEM_REACHABLES_SLICE_FILE,
+    import_converter=_import_golem_converter,
+    run_fallback=_run_golem_fallback,
+    no_report_error=(
+        "No golem report was available for this Go project; reachability slices were not produced."
+    ),
+)
+
+DOSAI_TOOL = ReachabilityTool(
+    name="dosai",
+    # cdxgen labels .csproj projects "dotnet"; accept csharp/nuget aliases.
+    project_types=("dotnet", "csharp", "nuget"),
+    default_prefix="dotnet",
+    slice_file=DOSAI_REACHABLES_SLICE_FILE,
+    import_converter=_import_dosai_converter,
+    run_fallback=_run_dosai_fallback,
+    no_report_error=(
+        "No dosai report was available for this .NET project; reachability "
+        "slices were not produced and the VDR would silently downgrade "
+        "(issue #523)."
+    ),
+    persist_report=_persist_dosai_facts,
+)
+
+
+def run_rusi_reachability(
+    bom_file: str,
+    src_dir: str,
+    options: Optional[Dict] = None,
+) -> bool:
+    """Run rusi + the slice converter for a Rust project and drop the
+    atom-shaped reachables slice next to the BOM.
+
+    No-op (returns False) unless the project is Rust AND reachability is on.
+    Gracefully degrades when the rusi binary is missing (warns, returns False,
+    never raises) so non-Rust and binary-less environments are unaffected.
+    """
+    return _run_reachability_tool(bom_file, src_dir, options, RUSI_TOOL)
+
+
+def run_golem_reachability(
+    bom_file: str,
+    src_dir: str,
+    options: Optional[Dict] = None,
+) -> bool:
+    """Run golem + the slice converter for a Go project and drop the
+    atom-shaped reachables slice next to the BOM.
+
+    No-op (returns False) unless the project is Go AND reachability is on.
+    Gracefully degrades when the golem binary or Go toolchain is missing
+    (warns, returns False, never raises) so non-Go and binary-less
+    environments are unaffected.
+    """
+    return _run_reachability_tool(bom_file, src_dir, options, GOLEM_TOOL)
 
 
 def run_dosai_reachability(
@@ -853,109 +1054,12 @@ def run_dosai_reachability(
     No-op (returns False) unless the project is .NET AND reachability is on.
     Gracefully degrades when the dosai binary or .NET runtime is missing (warns,
     returns False, never raises) so non-.NET and binary-less environments are
-    unaffected.
-
-    PRIMARY path: consume the combined native dosai report cdxgen already
-    persisted at ``<bomdir>/<prefix>-semantics.slices.json`` (validated by
-    ``is_dosai_report``). Under ``--profile research`` cdxgen runs dosai and
-    persists ``{Metadata, methods, dataflows}`` there, so depscan need NOT
-    re-spawn dosai when cdxgen + plugins are available, and reads the FULL
-    native report, not the projected subset cdxgen embeds in the SBOM.
-
-    FALLBACK path: if the persisted report is absent/invalid, spawn dosai
-    directly via :func:`xbom_lib.dosai.run_dosai` (dataflows + methods) and
-    persist the raw artifacts.
-
-    Reachability verdict: the atom projection (:func:`convert_dosai_report`)
-    faithfully carries every native-reachable purl in its flows' ``purls``, so
-    the existing purl-keyed engine picks them up unchanged. The native facts
-    (:func:`extract_native_reachability`) are also stashed for VEX/advanced
-    analysis. This is the ONLY wiring point for dosai reachability.
+    unaffected. The native reachability facts are stashed as a sidecar for
+    VEX/advanced analysis; the verdict flows through the atom projection,
+    which faithfully carries every native-reachable purl in its flows'
+    ``purls``, so the existing purl-keyed engine picks them up unchanged.
     """
-    if not options:
-        return False
-    project_type_list: List[str] = options.get("project_type") or []
-    # cdxgen labels .csproj projects "dotnet"; accept csharp/nuget aliases too
-    # so an alternate project-type token never silently skips reachability.
-    if not any(pt in ("dotnet", "csharp", "nuget") for pt in project_type_list):
-        return False
-    if options.get("reachability_analyzer") == "off":
-        return False
-    if not bom_file or not os.path.exists(bom_file):
-        return False
-    try:
-        from analysis_lib.dosai_slices import (
-            build_bom_purl_index,
-            convert_dosai_report,
-            extract_native_reachability,
-            is_dosai_report,
-            write_slices_file,
-        )
-        from custom_json_diff.lib.utils import json_load as _json_load
-    except ImportError as e:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(f"dosai reachability dependencies unavailable: {e}") from e
-        LOG.debug("dosai reachability dependencies unavailable: %s", e)
-        return False
-
-    bom_dir = os.path.dirname(os.path.abspath(bom_file))
-    slice_path = os.path.join(bom_dir, DOSAI_REACHABLES_SLICE_FILE)
-    prefix = project_type_list[0] if project_type_list else "dotnet"
-
-    # PRIMARY: prefer the combined dosai report cdxgen already produced.
-    cdxgen_report_path = os.path.join(bom_dir, f"{prefix}-semantics.slices.json")
-    report = _load_dosai_report(
-        cdxgen_report_path,
-        is_dosai_report,
-        _json_load,
-        require_report=True,
-        fail_on_error=bool(options.get("fail_on_error")),
-    )
-    if report is not None:
-        LOG.debug(
-            "dosai reachability: using cdxgen-produced report at %s",
-            cdxgen_report_path,
-        )
-    else:
-        # FALLBACK: cdxgen did not produce a dosai report (plugins unavailable,
-        # or reachability invoked without cdxgen). Invoke dosai directly.
-        report = _run_dosai_fallback(src_dir, bom_dir, options, is_dosai_report, _json_load)
-    if report is None:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(
-                "No dosai report was available for this .NET project; reachability "
-                "slices were not produced and the VDR would silently downgrade "
-                "(issue #523)."
-            )
-        LOG.debug("No dosai report available; reachability via dosai skipped.")
-        return False
-
-    bom_data = _json_load(bom_file, log=LOG) or {}
-    components = bom_data.get("components", []) or []
-    extra = []
-    meta_comp = (bom_data.get("metadata") or {}).get("component")
-    if isinstance(meta_comp, dict):
-        extra.append(meta_comp)
-    bom_index = build_bom_purl_index(components, extra_components=extra)
-
-    # Stash the native reachability facts (the truth) as a sidecar for
-    # VEX/advanced analysis. The verdict itself flows through the atom
-    # projection below via the existing purl-keyed engine loop.
-    facts_path = os.path.join(bom_dir, "dotnet-reachability.facts.json")
-    try:
-        facts = extract_native_reachability(report, bom_index)
-        json_dump(facts_path, facts, compact=True)
-    except Exception as e:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(
-                f"Could not persist dosai native reachability facts to {facts_path}: {e}"
-            ) from e
-        LOG.debug("Could not persist dosai native reachability facts: %s", e)
-
-    flows = convert_dosai_report(report, bom_index)
-    write_slices_file(slice_path, flows)
-    LOG.debug("dosai reachability: wrote %d flows to %s", len(flows), slice_path)
-    return True
+    return _run_reachability_tool(bom_file, src_dir, options, DOSAI_TOOL)
 
 
 def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] = None) -> bool:
@@ -999,11 +1103,32 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         )
     # Every stage document actually written, in the order produced.
     written_bom_files = []
+    extractor_failures: List[str] = []
     prebuild_bom_file = options.get("prebuild_bom_file")
     build_bom_file = options.get("build_bom_file")
     postbuild_bom_file = options.get("postbuild_bom_file")
     container_bom_file = options.get("container_bom_file")
     reachability_analyzer = options.get("reachability_analyzer")
+
+    def stage_usable(bom_result, stage_file, stage) -> bool:
+        """Whether one lifecycle stage produced a document worth scanning.
+
+        Exit status 4 still counts: the BOM and its introspection reports are
+        written. Exit status 5 does not, because cdxgen only returns it under
+        --fail-on-error; the failures are logged and kept in
+        ``extractor_failures``.
+        """
+        if not bom_result.success:
+            return False
+        extractor_failures.extend(_cdxgen_exit_verdict(bom_result, stage_file, stage))
+        if getattr(bom_result, "returncode", None) not in (
+            None,
+            0,
+            *CDXGEN_PARTIAL_EXIT_CODES,
+        ):
+            return False
+        return os.path.exists(stage_file)
+
     with console.status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
     ) as status:
@@ -1017,7 +1142,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         if reachability_analyzer != "off" and options.get("profile") != "research":
             coptions["profile"] = "research"
         bom_result = cdxgen_lib(src_dir, build_bom_file, logger=LOG, options=coptions).generate()
-        if not bom_result.success or not os.path.exists(build_bom_file):
+        if not stage_usable(bom_result, build_bom_file, "build"):
             if options.get("fail_on_error"):
                 # Falling back to the pre-build stage silently downgrades the
                 # lifecycle result, which is exactly what the flag forbids.
@@ -1035,7 +1160,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         bom_result = cdxgen_lib(
             src_dir, prebuild_bom_file, logger=LOG, options=coptions
         ).generate()
-        if not bom_result.success or not os.path.exists(prebuild_bom_file):
+        if not stage_usable(bom_result, prebuild_bom_file, "pre-build"):
             LOG.debug("The cdxgen invocation was unsuccessful. Trying the build lifecycle.")
             LOG.debug(bom_result.command_output)
         else:
@@ -1052,7 +1177,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             bom_result = cdxgen_lib(
                 container_image_name, container_bom_file, logger=LOG, options=coptions
             ).generate()
-            if not bom_result.success or not os.path.exists(container_bom_file):
+            if not stage_usable(bom_result, container_bom_file, "container"):
                 LOG.debug("The cdxgen invocation was unsuccessful. Trying for the next lifecycle.")
                 LOG.debug(bom_result.command_output)
             else:
@@ -1103,7 +1228,11 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         run_dosai_reachability(build_bom_file, src_dir, options=options)
     # `primary` stays None: no single one of these documents represents the
     # project, so nothing downstream may treat one as "the" BOM.
-    return BomResult(success=any_success, bom_files=written_bom_files)
+    return BomResult(
+        success=any_success,
+        bom_files=written_bom_files,
+        extractor_failures=extractor_failures,
+    )
 
 
 def _spec_version_sort_key(spec_version):
@@ -1178,7 +1307,12 @@ def update_tools_metadata(tools, bom_data, ds_version, spec_version=None):
                 "bom-ref": ds_purl,
             }
         )
-    bom_data["metadata"]["tools"] = {"components": components}
+    # A source BOM may have no metadata block at all; CycloneDX makes it
+    # optional.
+    metadata = bom_data.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = bom_data["metadata"] = {}
+    metadata["tools"] = {"components": components}
     return bom_data
 
 

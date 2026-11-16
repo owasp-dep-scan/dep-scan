@@ -21,7 +21,7 @@ The prerequisites are per-language because atom loads and slices real source.
 - Python projects need Python 3.10 or newer; cdxgen resolves `pkg:pypi` purls from requirements, Poetry, uv, and Pipfile inputs.
 - PHP projects need PHP 7.4 or newer installed locally, though dep-scan supports scanning PHP 5.2 through 8.3. Alternatively, use the dep-scan container image, which carries the PHP runtime.
 
-Across all four, you need cdxgen and dep-scan (`npm install -g @cyclonedx/cdxgen` and `pip install owasp-depscan`), and the `--profile research` setting so cdxgen persists the atom slices.
+Across all four, you need cdxgen and dep-scan (`npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`), and the `--profile research` setting so cdxgen persists the atom slices.
 
 ## Turning reachability on
 

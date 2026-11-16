@@ -19,7 +19,7 @@ The practical effect is the same reachable-versus-present semantics every other 
 dosai needs a .NET runtime to load, and the quality of purl attribution depends on the tree state.
 
 - A .NET runtime, verified by `dotnet --version`. A self-contained `-full` dosai binary (from the [dosai releases](https://github.com/owasp-dep-scan/dosai/releases)) bundles the runtime and needs no SDK.
-- cdxgen and dep-scan, installed by `npm install -g @cyclonedx/cdxgen` and `pip install owasp-depscan`.
+- cdxgen and dep-scan, installed by `npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`.
 - The dosai binary, resolved automatically (see below) or supplied explicitly.
 - A restored tree for the best versioned NuGet purls: `project.assets.json` and `*.deps.json` present. dosai falls back to versionless `System.*` framework purls otherwise.
 

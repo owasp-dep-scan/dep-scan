@@ -1,8 +1,10 @@
+import logging
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple
 
-from vdb.lib import db6 as _vdb_db6
+from vdb.lib import db as _vdb_db
 from vdb.lib.search import (
+    ShardCoverageError,
     get_cve_data_batched,
     search_by_any,
     search_by_cpe_like,
@@ -12,6 +14,41 @@ from vdb.lib.search import (
 )
 
 from analysis_lib.normalize import create_pkg_variations, dealias_packages, dedup
+
+# Named under the "depscan" tree so depscan's logging setup keeps it; the
+# library stays usable without depscan.
+LOG = logging.getLogger("depscan.analysis_lib")
+
+# purl types already warned about as uncovered in this process.
+_WARNED_UNCOVERED_TYPES: set = set()
+
+
+def search_guarding_coverage(search_logic, term, **kwargs):
+    """Run a single-term vdb search, turning a shard coverage gap into a
+    warning instead of an abort.
+
+    On a shard store, vdb raises ``ShardCoverageError`` from single-purl
+    searches whose purl type no local shard serves, because a bare empty
+    answer cannot say "not checked". The component is left out of the
+    results and the gap is warned with the type named; treating it as clean
+    is exactly what must not happen.
+    """
+    try:
+        return search_logic(term, **kwargs)
+    except ShardCoverageError as e:
+        purl_type = term.split("pkg:", 1)[-1].split("/", 1)[0] if term.startswith("pkg:") else term
+        # One warning per type: a BOM with hundreds of components of an
+        # uncovered type would otherwise repeat the same line for each.
+        if purl_type in _WARNED_UNCOVERED_TYPES:
+            return []
+        _WARNED_UNCOVERED_TYPES.add(purl_type)
+        LOG.warning(
+            "purl type '%s' has no local shard, so components of that type "
+            "were NOT assessed; this is not a clean result. %s",
+            purl_type,
+            e,
+        )
+        return []
 
 
 def _extended_metadata_available() -> bool:
@@ -350,7 +387,7 @@ def find_vulns_batched(
         return []
 
     has_custom = bool(CUSTOM_DATA_CACHE)
-    db_conn, _ = _vdb_db6.get(read_only=True)
+    db_conn, _ = _vdb_db.get(read_only=True)
     raw_results: List = []
     for term in matched_terms:
         hits = hits_by_term[term]
@@ -358,7 +395,11 @@ def find_vulns_batched(
         if has_custom:
             # Custom overlay may add or override results; re-search this term
             # with full data so DB + custom are merged by search_by_purl_like.
-            results = list(search_by_purl_like(term, with_data=True, filters=filters))
+            results = list(
+                search_guarding_coverage(
+                    search_by_purl_like, term, with_data=True, filters=filters
+                )
+            )
         else:
             # Direct hydration of the index hits from pass 1 — avoids
             # re-querying the cve_index for matched components. get_cve_data_batched
@@ -416,7 +457,9 @@ def search_expanded(
     if not fuzzy_search and search_term and pkg.get("purl") and not pkg.get("version"):
         return raw_results
     # Give preference to our search logic
-    if search_term and (res := search_logic(search_term, with_data=True, filters=filters)):
+    if search_term and (
+        res := search_guarding_coverage(search_logic, search_term, with_data=True, filters=filters)
+    ):
         _restore_matched_by(res, search_term, original_purl)
         raw_results.extend(res)
     elif fuzzy_search:

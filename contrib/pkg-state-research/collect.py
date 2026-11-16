@@ -7,10 +7,9 @@ from datetime import datetime, timezone
 
 from rich.progress import Progress
 from semver import Version
-from vdb.lib.cve_model import CVE
 from vdb.lib.search import search_by_purl_like
 
-from depscan.lib.analysis import cve_to_vdr
+from analysis_lib.utils import cve_to_vdr
 from depscan.lib.logger import LOG, console
 from depscan.lib.package_query.metadata import metadata_from_registry
 from depscan.lib.package_query.npm_pkg import search_npm, get_npm_download_stats
@@ -77,7 +76,7 @@ def get_vuln_stats(search_results, vuln_stats):
         # Filter duplicate rows from getting printed
         if added_row_keys.get(row_key):
             return
-        source_data: CVE = res.get("source_data")
+        source_data = res.get("source_data")
         (
             source,
             references,

@@ -264,6 +264,8 @@ def _fake_generator(success=True, writes=True):
 def test_create_bom_reports_the_document_it_wrote(tmp_path, monkeypatch):
     from depscan.lib import bom as bom_mod
 
+    # The version gate probes the real cdxgen; a fake generator replaces it.
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
     monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
     monkeypatch.setattr(bom_mod, "run_rusi_reachability", lambda *a, **k: None)
     monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: None)
@@ -282,6 +284,7 @@ def test_create_bom_reports_failure_when_nothing_was_written(tmp_path, monkeypat
     path must not be handed back as if it were a real document."""
     from depscan.lib import bom as bom_mod
 
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
     monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator(success=True, writes=False))
 
     target = str(tmp_path / "sbom-rust.cdx.json")
@@ -295,6 +298,7 @@ def test_create_bom_reports_failure_when_nothing_was_written(tmp_path, monkeypat
 def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
     from depscan.lib import bom as bom_mod
 
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
     monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator(success=False, writes=False))
 
     result = bom_mod.create_bom(str(tmp_path / "sbom.cdx.json"), str(tmp_path), {})
@@ -358,3 +362,13 @@ def test_lifecycle_boms_report_failure_when_every_stage_fails(tmp_path, monkeypa
     assert result.success is False
     assert result.bom_files == []
     assert result.primary is None
+
+
+def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
+    """CycloneDX makes metadata optional; a source BOM without it must not
+    crash the VDR export."""
+    bom = update_tools_metadata(
+        None, {"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}, "7.0.0"
+    )
+    assert bom["metadata"]["tools"]["components"][0]["name"] == "owasp-depscan"
+    assert bom["specVersion"] == "1.6"

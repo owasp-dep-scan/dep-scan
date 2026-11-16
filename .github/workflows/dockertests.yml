@@ -10,12 +10,12 @@ permissions:
 jobs:
   ubuntu_version_tests:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ['3.11', '3.12', '3.13', '3.14']
       fail-fast: false
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -32,7 +32,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cyclonedx/cdxgen
+        npm install -g @cdxgen/cdxgen@13.8.0
         mkdir -p repotests
         uv pip install -r contrib/requirements.txt
     - name: Test container images
@@ -49,7 +49,7 @@ jobs:
         path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
   reachable_tests:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -76,7 +76,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cyclonedx/cdxgen
+        npm install -g @cdxgen/cdxgen@13.8.0
         mkdir -p repotests
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -99,7 +99,7 @@ jobs:
         path: rtests_ubuntu
   ubuntu_version_tests2:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -126,7 +126,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync --all-extras --all-packages --dev
-        npm install -g @cyclonedx/cdxgen
+        npm install -g @cdxgen/cdxgen@13.8.0
         mkdir -p repotests
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -159,17 +159,15 @@ jobs:
         path: containertests_${{ matrix.os }}
   version_tests_mac_win:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     needs: ubuntu_version_tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ macos-26, windows-latest ]
-        python-version: [ '3.10', '3.11', '3.12', '3.13', '3.14' ]
+        python-version: [ '3.11', '3.12', '3.13', '3.14' ]
         # macOS runners are scarce, so macOS runs only the latest Python.
         exclude:
-          - os: macos-26
-            python-version: '3.10'
           - os: macos-26
             python-version: '3.11'
           - os: macos-26
@@ -192,7 +190,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cyclonedx/cdxgen
+          npm install -g @cdxgen/cdxgen@13.8.0
           uv pip install -r contrib/requirements.txt
       - name: Get boms generated earlier
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
@@ -218,7 +216,7 @@ jobs:
           path: containertests_${{ matrix.os }}_python${{ matrix.python-version }}
   version_tests2_mac_win:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     needs: ubuntu_version_tests2
     runs-on: ${{ matrix.os }}
     strategy:
@@ -243,7 +241,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cyclonedx/cdxgen
+          npm install -g @cdxgen/cdxgen@13.8.0
       - name: Get boms generated earlier
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
         with:

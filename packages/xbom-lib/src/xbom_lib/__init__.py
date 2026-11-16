@@ -14,6 +14,10 @@ class BOMResult:
     success: bool = False
     command_output: Optional[str] = None
     bom_obj: Optional[Any] = None
+    #: Process exit status when the generator ran and exited on its own.
+    #: cdxgen gives 4 and 5 distinct meanings while still writing a BOM, so
+    #: callers need the raw code and not just "did it fail".
+    returncode: Optional[int] = None
 
 
 class XBOMGenerator(ABC):

@@ -210,7 +210,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate SBOM with cdxgen
         run: |
-          npm install -g @cyclonedx/cdxgen
+          npm install -g @cdxgen/cdxgen@13.8.0
           cdxgen -t python -o bom.json . --profile research
           cdxgen -t docker -o depscan-oci-image.cdx.json ghcr.io/owasp-dep-scan/depscan:latest
       - name: Attach sbom to the image

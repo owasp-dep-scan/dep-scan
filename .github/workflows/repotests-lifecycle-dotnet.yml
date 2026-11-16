@@ -11,7 +11,7 @@ permissions:
 jobs:
   os-repo-tests:
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdbxz-app-2y:v6.7.x"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     strategy:
       fail-fast: false
       matrix:
@@ -47,7 +47,7 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages --dev
-          npm install -g @cyclonedx/cdxgen
+          npm install -g @cdxgen/cdxgen@13.8.0
           sudo apt install -y libssl-dev
       # LifeCycleAnalyzer tests
       - name: lifecycle-test Damm-Vulnerable-dotNet-Application
