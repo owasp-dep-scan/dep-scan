@@ -18,6 +18,7 @@ either is not available so CI without them does not fail.
 import json
 import os
 import shutil
+import sys
 from pathlib import Path
 
 import pytest
@@ -531,4 +532,119 @@ def test_real_cve_advisory_marked_reachable_in_vdr(tmp_path, golem_env):
     _skip_unless_slice_reachability(tmp_path)
     assert "Reachable" not in mux_insights.get("depscan:insights", ""), (
         "the unused module's advisory MUST NOT be marked Reachable in the VDR"
+    )
+
+
+# ---------------------------------------------------------------------------
+# cgo probe: a CC wrapper proves whether package loading runs the C compiler
+# ---------------------------------------------------------------------------
+
+# A one-file cgo module. The #cgo directive is what a malicious or careless
+# dependency would use to push flags onto the C compiler of the machine that
+# loads the package, so the probe compiles exactly this shape.
+CGO_PROBE_MAIN = """\
+package main
+
+// #cgo CFLAGS: -DPROBE_MARKER=1
+// #include <stdlib.h>
+import "C"
+
+import "fmt"
+
+func main() {
+	fmt.Println(int(C.rand()))
+}
+"""
+
+CGO_PROBE_GO_MOD = """\
+module probeapp
+
+go 1.21
+"""
+
+
+def _write_cgo_probe(tmp_path: Path):
+    """Write the one-file cgo module and return its directory."""
+    module_dir = tmp_path / "cgo-probe"
+    module_dir.mkdir()
+    (module_dir / "go.mod").write_text(CGO_PROBE_GO_MOD, encoding="utf-8")
+    (module_dir / "main.go").write_text(CGO_PROBE_MAIN, encoding="utf-8")
+    return module_dir
+
+
+def _write_cc_wrapper(tmp_path: Path):
+    """Write a CC stand-in that logs its arguments, and return both paths.
+
+    The script logs the arguments it was called with and then runs the real C
+    compiler, so the cgo build proceeds far enough to apply the package's
+    #cgo CFLAGS; the probe only needs to know whether golem's package loader
+    invoked the C compiler and with which flags.
+    """
+    import shlex
+
+    real_cc = shutil.which("cc") or shutil.which("gcc") or shutil.which("clang")
+    if not real_cc:
+        pytest.skip("no C compiler on PATH; the cgo opt-in probe expects a C toolchain")
+    wrapper = tmp_path / "cc-wrapper.sh"
+    log = tmp_path / "cc-invocations.log"
+    wrapper.write_text(
+        f"#!/bin/sh\nprintf '%s\\n' \"$@\" >> {shlex.quote(str(log))}\n"
+        f"exec {shlex.quote(real_cc)} \"$@\"\n",
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o755)
+    return str(wrapper), log
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the CC wrapper is a POSIX shell script")
+def test_golem_runs_no_c_compiler_by_default_and_cc_with_opt_in(
+    tmp_path, golem_env, monkeypatch
+):
+    """golem's package loader must not run the C compiler unless the operator
+    opted in with allow_cgo.
+
+    The probe writes a one-file cgo module whose #cgo directive asks for a
+    CFLAGS flag, points CC at a wrapper that logs its arguments, and runs
+    golem twice. Without the opt-in the log stays empty: cgo is off, packages
+    that need cgo are not loaded, and no flag from the scanned code reaches a
+    compiler. With the opt-in the loader compiles the cgo package and the log
+    fills up."""
+    import logging
+
+    if shutil.which("go") is None:
+        pytest.skip("Go toolchain not found; the cgo probe needs one to load packages")
+
+    module_dir = _write_cgo_probe(tmp_path)
+    wrapper, log = _write_cc_wrapper(tmp_path)
+    monkeypatch.setenv("CC", wrapper)
+    monkeypatch.delenv("CGO_ENABLED", raising=False)
+    for var in (
+        "CGO_CFLAGS_ALLOW",
+        "CGO_CPPFLAGS_ALLOW",
+        "CGO_CXXFLAGS_ALLOW",
+        "CGO_FFLAGS_ALLOW",
+        "CGO_LDFLAGS_ALLOW",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    out_path = str(tmp_path / "probe-golem.json")
+
+    # Default: cgo off. The log must stay empty whether or not golem can load
+    # the cgo package (without cgo it cannot), so the run result is not
+    # asserted here.
+    golem_mod.run_golem(str(module_dir), out_path, logger=logging.getLogger("golem-probe"))
+    if log.exists():
+        assert log.read_text(encoding="utf-8").strip() == "", (
+            "the C compiler ran although cgo is off by default"
+        )
+
+    # Opt-in: the C compiler runs with flags from the scanned code.
+    result = golem_mod.run_golem(
+        str(module_dir), out_path, allow_cgo=True, logger=logging.getLogger("golem-probe")
+    )
+    assert log.exists() and log.read_text(encoding="utf-8").strip() != "", (
+        "the opt-in run never invoked the C compiler; "
+        f"golem output was: {result.command_output[:2000]}"
+    )
+    assert "PROBE_MARKER" in log.read_text(encoding="utf-8"), (
+        "the #cgo CFLAGS flag from the scanned code reached the C compiler"
     )
