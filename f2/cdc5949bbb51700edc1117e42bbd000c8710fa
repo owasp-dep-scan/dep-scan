@@ -1,0 +1,35 @@
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_e736b6e641a790::t_f9ffb6bb0a72e2 14
+  s_e736b6e641a790::t_7fb3f6b1d71c2b 308-313
+  s_e736b6e641a790::t_804f4f3eca3db2 499-515
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_e736b6e641a790::t_3fd5643adbf913 288-308,320-328,339
+test/test_cdxgen_cgo_env.py
+  s_e736b6e641a790::t_68ace1f5dfa5b4 1-19,21-35,37,40,51-90,93-96,102-112,119-126
+  s_e736b6e641a790::t_2957d8bafbde75 20,36,38-39,41-50,91-92,97-101,113,127
+  s_7318da1b9edd46::t_e6f556aefef21c 114-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2cdc5949bbb51700edc1117e42bbd000c8710fa",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}
