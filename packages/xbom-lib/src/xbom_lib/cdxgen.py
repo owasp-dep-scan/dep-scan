@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from xbom_lib import BOMResult, XBOMGenerator
+from xbom_lib.golem import CGO_ALLOW_ENV_VARS, apply_cgo_env
 from xbom_lib.process import build_command, find_executable, tool_env
 
 cdxgen_server_headers = {
@@ -211,11 +212,14 @@ def cdxgen_version(cmd, logger: Optional[Logger] = None) -> Optional[str]:
     if key in _version_probe_cache:
         return _version_probe_cache[key]
     try:
+        # The probe never scans code, so cgo stays off here regardless of
+        # options; a cdxgen release before the matching golem fix would
+        # otherwise pass its whole environment to golem.
         cp = subprocess.run(
             build_command([*cmd_list, "--version"]),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            env=tool_env(),
+            env=tool_env(apply_cgo_env(os.environ.copy(), False)),
             shell=False,
             encoding="utf-8",
             check=False,
@@ -479,6 +483,12 @@ class CdxgenGenerator(XBOMGenerator):
         techniques = self.options.get("techniques", []) or []
         lifecycles = self.options.get("lifecycles", []) or []
         env = os.environ.copy()
+        # cdxgen may run golem for a Go project, and golem's package loader
+        # compiles cgo packages, so this run gets cgo off unless the operator
+        # opted in with --go-analyzer-cgo. A cdxgen release before the
+        # matching golem fix passes its whole environment to golem, so the
+        # caller's CGO_ENABLED and CGO_*_ALLOW values must not reach it.
+        apply_cgo_env(env, bool(options.get("go_analyzer_cgo")))
         # Remote repositories and server-initiated scans hand cdxgen code it
         # must clone or read from a caller-chosen path, so those runs use
         # cdxgen's secure mode.
@@ -679,6 +689,23 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
         run_command_args += ["-e", f"CDXGEN_TIMEOUT_MS={CDXGEN_TIMEOUT_MS}"]
+        # Pass the cgo rule into the container: cdxgen inside the image may
+        # run golem for a Go project, and a cdxgen release before the
+        # matching golem fix passes its whole environment to golem. The loop
+        # above forwards only CDXGEN_*, GIT* and FETCH_LICENSE variables, so
+        # the host's CGO_*_ALLOW values do not travel with it; the opt-in
+        # forwards them explicitly.
+        if self.options.get("go_analyzer_cgo"):
+            run_command_args += [
+                "-e",
+                f"CGO_ENABLED={os.environ.get('CGO_ENABLED') or '1'}",
+            ]
+            for var in CGO_ALLOW_ENV_VARS:
+                value = os.environ.get(var)
+                if value is not None:
+                    run_command_args += ["-e", f"{var}={value}"]
+        else:
+            run_command_args += ["-e", "CGO_ENABLED=0"]
         if force_secure:
             run_command_args += ["-e", "CDXGEN_SECURE_MODE=true"]
         # Enabling license fetch will improve metadata such as tags and description
