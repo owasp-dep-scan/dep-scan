@@ -414,13 +414,16 @@ def test_go_toolchain_version_none_when_missing(monkeypatch):
         ("go1.29beta1", True),
         ("go1.25.5", False),
         ("go1.24.0", False),
-        ("devel", True),
-        (None, True),
+        ("devel", False),
+        ("go1.x", False),
+        (None, False),
     ],
 )
 def test_go_toolchain_has_cgo_fixes(release, patched):
     """The 1.26 line needs 1.26.11, the 1.27 line needs 1.27.4, older lines
-    are unpatched, and release candidates of later lines count as fixed."""
+    are unpatched, release candidates of later lines count as fixed, and a
+    release that cannot be dated counts as unpatched so the operator is
+    warned."""
     assert go_toolchain_has_cgo_fixes(release) is patched
 
 

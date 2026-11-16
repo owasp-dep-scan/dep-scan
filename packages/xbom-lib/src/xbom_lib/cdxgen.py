@@ -694,16 +694,16 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         # matching golem fix passes its whole environment to golem. The loop
         # above forwards only CDXGEN_*, GIT* and FETCH_LICENSE variables, so
         # the host's CGO_*_ALLOW values do not travel with it; the opt-in
-        # forwards them explicitly.
+        # forwards them by name, as that loop does, so their values stay off
+        # the command line.
         if self.options.get("go_analyzer_cgo"):
-            run_command_args += [
-                "-e",
-                f"CGO_ENABLED={os.environ.get('CGO_ENABLED') or '1'}",
-            ]
+            if os.environ.get("CGO_ENABLED"):
+                run_command_args += ["-e", "CGO_ENABLED"]
+            else:
+                run_command_args += ["-e", "CGO_ENABLED=1"]
             for var in CGO_ALLOW_ENV_VARS:
-                value = os.environ.get(var)
-                if value is not None:
-                    run_command_args += ["-e", f"{var}={value}"]
+                if os.environ.get(var) is not None:
+                    run_command_args += ["-e", var]
         else:
             run_command_args += ["-e", "CGO_ENABLED=0"]
         if force_secure:

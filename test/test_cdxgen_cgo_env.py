@@ -126,7 +126,7 @@ def test_container_gets_cgo_disabled_by_default(monkeypatch, tmp_path):
 
 def test_container_cgo_opt_in_forwards_host_values(monkeypatch, tmp_path):
     """With --go-analyzer-cgo the container receives the host's CGO_ENABLED
-    (defaulting to 1) and its CGO_*_ALLOW values."""
+    and its CGO_*_ALLOW variables, forwarded by name."""
     _clear_cgo_env(monkeypatch)
     monkeypatch.setenv("CGO_ENABLED", "1")
     monkeypatch.setenv("CGO_CFLAGS_ALLOW", ".*")
@@ -134,8 +134,11 @@ def test_container_cgo_opt_in_forwards_host_values(monkeypatch, tmp_path):
         monkeypatch, tmp_path, {"project_type": ["go"], "go_analyzer_cgo": True}
     )
     values = _container_env_values(args)
-    assert "CGO_ENABLED=1" in values
-    assert "CGO_CFLAGS_ALLOW=.*" in values
+    # Forwarded by name, so docker reads the value from the environment and
+    # the value never appears on the command line.
+    assert "CGO_ENABLED" in values
+    assert "CGO_CFLAGS_ALLOW" in values
+    assert not any(".*" in v for v in values), values
 
 
 def test_container_cgo_opt_in_defaults_cgo_enabled(monkeypatch, tmp_path):
