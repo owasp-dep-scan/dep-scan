@@ -1,0 +1,66 @@
+packages/analysis-lib/src/analysis_lib/endpoints.py
+  s_75588d6b56efd0::t_7e4ea04cfe8408 1-30
+test/test_rusi_integration.py
+  s_75588d6b56efd0::t_4abe6c5339c708 499,584,794
+packages/analysis-lib/src/analysis_lib/prioritize.py
+  s_75588d6b56efd0::t_8a004af5d12ec3 39,44
+  s_75588d6b56efd0::t_9478b7f95ca45d 17
+  s_75588d6b56efd0::t_7e4ea04cfe8408 1-16,18-38,40-43,45-836
+packages/analysis-lib/src/analysis_lib/merge.py
+  s_75588d6b56efd0::t_6cff9c194cacb9 14-15
+  s_75588d6b56efd0::t_7e4ea04cfe8408 1-13,16-184
+test/snapshots.py
+  s_75588d6b56efd0::t_4abe6c5339c708 19
+packages/analysis-lib/src/analysis_lib/suggestions.py
+  s_75588d6b56efd0::t_7e4ea04cfe8408 1-165
+packages/analysis-lib/src/analysis_lib/packages.py
+  s_75588d6b56efd0::t_7e4ea04cfe8408 1-286
+packages/analysis-lib/src/analysis_lib/reachability.py
+  s_75588d6b56efd0::t_b0854211877b68 7
+contrib/pkg-state-research/collect.py
+  s_75588d6b56efd0::t_75670ab234c5ac 12
+test/test_golem_integration.py
+  s_75588d6b56efd0::t_4abe6c5339c708 28
+packages/analysis-lib/src/analysis_lib/vex/refs.py
+  s_75588d6b56efd0::t_b33c1901d2d430 3
+  s_75588d6b56efd0::t_9b7d99b2bf66aa 17
+packages/analysis-lib/tests/test_imports.py
+  s_75588d6b56efd0::t_c279f6d1240f86 3-6,20-32,44,52
+depscan/lib/pipeline.py
+  s_75588d6b56efd0::t_75670ab234c5ac 40
+packages/analysis-lib/tests/test_vdr.py
+  s_75588d6b56efd0::t_4abe6c5339c708 536-537,620
+packages/analysis-lib/tests/test_output.py
+  s_75588d6b56efd0::t_1e0e58aa686918 19
+contrib/bench_scan.py
+  s_75588d6b56efd0::t_75670ab234c5ac 29
+packages/analysis-lib/src/analysis_lib/advisory.py
+  s_75588d6b56efd0::t_7e4ea04cfe8408 1-31,33-774
+  s_75588d6b56efd0::t_1cc919e8f4d5b0 32
+packages/analysis-lib/tests/test_analysis.py
+  s_75588d6b56efd0::t_f91bc2a3e503cc 6,8
+documentation/docs/concepts/prioritization.mdx
+  s_75588d6b56efd0::t_b7033165d50b69 13,15
+depscan/lib/vdb_setup.py
+  s_75588d6b56efd0::t_75670ab234c5ac 12,193
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_75588d6b56efd0::t_015080ff5a737a 4,6,12-14
+packages/analysis-lib/tests/test_utils.py
+  s_75588d6b56efd0::t_0791c79b581ea2 9-10,12,60-61,63,69-73,89-90,92-94,97,102-104,108,110,112,114,116,216-219,221,225,245,273,287,344,359,378,400,411,432,443,464,469-470,493,516,557,592,636,649,679,716,733,753,815
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2314d5b3ed6428bfe98eaa3b38943600e7677b63",
+  "prompts": {},
+  "sessions": {
+    "s_75588d6b56efd0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_2e742ace-0f15-4dba-9414-585ede363416",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
