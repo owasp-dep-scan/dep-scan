@@ -1,0 +1,26 @@
+test/test_cdxgen_cgo_env.py
+  s_e736b6e641a790::t_68ace1f5dfa5b4 1-9,10-19,21-26,28-35,37,40,51-75,76-90,93-96,102-105,107-112,119-126
+  s_e736b6e641a790::t_2957d8bafbde75 20,36,38-39,41-50,91-92,97-101,113,127
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_e736b6e641a790::t_3fd5643adbf913 288-308,320-328,339
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_e736b6e641a790::t_804f4f3eca3db2 499-503,506,511,514-515
+  s_e736b6e641a790::t_f9ffb6bb0a72e2 14
+  s_e736b6e641a790::t_7fb3f6b1d71c2b 308-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5ecf363abe0066497c541cad82c8814a62e6e23",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}
