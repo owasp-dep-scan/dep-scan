@@ -1,3 +1,6 @@
+import json
+import os
+
 from analysis_lib.normalize import create_pkg_variations
 
 
@@ -190,3 +193,38 @@ def test_dedup_with_vendor():
 
     ret_list = dedup("pyproject", [occurrence("CVE-2021-1"), occurrence("CVE-2021-1")])
     assert len(ret_list) == 1
+
+
+def test_variations_do_not_depend_on_the_hash_seed():
+    """The aliases are gathered in sets. Two interpreters with different
+    string hash seeds must still produce the variations in the same order,
+    because the fuzzy search reports its matches in that order."""
+    import subprocess
+    import sys
+
+    script = (
+        "import json\n"
+        "from analysis_lib.normalize import create_pkg_variations\n"
+        "pkgs = [\n"
+        "  {'vendor': 'Microsoft', 'name': 'Microsoft.Diagnostics.Runtime', 'version': '2.0.1',"
+        " 'purl': 'pkg:nuget/Microsoft.Diagnostics.Runtime@2.0.1'},\n"
+        "  {'vendor': 'pypi', 'name': 'requests-oauthlib', 'version': '1.3.0',"
+        " 'purl': 'pkg:pypi/requests-oauthlib@1.3.0'},\n"
+        "]\n"
+        "print(json.dumps([create_pkg_variations(p) for p in pkgs]))\n"
+    )
+    outputs = []
+    for seed in ("1", "2", "3"):
+        completed = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            check=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+        )
+        outputs.append(completed.stdout)
+    variations = json.loads(outputs[0])
+    # Positive control: each package really has several variations, so an
+    # unordered walk would have had something to reorder.
+    assert all(len(v) > 3 for v in variations)
+    assert outputs[0] == outputs[1] == outputs[2]
