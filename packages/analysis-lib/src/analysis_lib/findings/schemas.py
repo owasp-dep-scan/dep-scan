@@ -17,6 +17,7 @@ _SCHEMA_PACKAGE = "analysis_lib.findings"
 _SCHEMA_DIR = "schemas"
 _SCHEMA_FILES = {
     "finding": "depscan-finding.schema.json",
+    "depscan-doctor": "depscan-doctor.schema.json",
 }
 
 # jsonschema checks format: date-time only when a checker for it is
