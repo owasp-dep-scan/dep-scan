@@ -27,6 +27,7 @@ ATOM4_FIXTURE = REPO_ROOT / "test" / "data" / "atom4"
 
 def load_validator():
     spec = importlib.util.spec_from_file_location("repotests_validate", VALIDATE_PATH)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
