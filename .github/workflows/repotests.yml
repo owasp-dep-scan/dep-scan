@@ -117,7 +117,6 @@ jobs:
         with:
           name: java-sec-code-reports
           path: depscan_reports
-          retention-days: 14
       - name: Remove java-sec-code reports
         if: ${{ always() }}
         run: rm -rf ${GITHUB_WORKSPACE}/depscan_reports

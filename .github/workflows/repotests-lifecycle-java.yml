@@ -79,4 +79,3 @@ jobs:
         with:
           name: java-sec-code-lifecycle-reports
           path: depscan_reports
-          retention-days: 14
