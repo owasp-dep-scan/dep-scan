@@ -62,8 +62,14 @@ print(
 PY
 )
 
-mapfile -t TYPES < <(python3 -c 'import json,sys; [print(t) for t in json.loads(sys.argv[1])]' "$TYPES_JSON")
-mapfile -t CDXGEN_ARGS < <(python3 -c 'import json,sys; [print(a) for a in json.loads(sys.argv[1])]' "$CDXGEN_ARGS_JSON")
+# A read loop rather than mapfile, so the script also runs on the bash 3.2
+# that macOS ships.
+TYPES=()
+while IFS= read -r item; do TYPES+=("$item"); done \
+  < <(python3 -c 'import json,sys; [print(t) for t in json.loads(sys.argv[1])]' "$TYPES_JSON")
+CDXGEN_ARGS=()
+while IFS= read -r item; do CDXGEN_ARGS+=("$item"); done \
+  < <(python3 -c 'import json,sys; [print(a) for a in json.loads(sys.argv[1])]' "$CDXGEN_ARGS_JSON")
 
 if [ ! -d "$SRC_DIR/.git" ]; then
   echo "Cloning $GIT_URL at $COMMIT"

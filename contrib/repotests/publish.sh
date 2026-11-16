@@ -32,12 +32,20 @@ for PROJECT_DIR in "$DATA_ROOT"/*/; do
   GENERATION_JSON="$PROJECT_DIR/generation.json"
   [ -f "$GENERATION_JSON" ] || continue
 
-  # Read every provenance field once; the mapfile keeps quoting intact for
-  # values with spaces (the cdxgen arguments).
-  declare -A GEN
-  while IFS='=' read -r KEY VALUE; do
-    GEN["$KEY"]="$VALUE"
-  done < <(python3 - "$GENERATION_JSON" <<'PY'
+  # One provenance field per line, in a fixed order. Plain variables keep
+  # the script working on the bash 3.2 that macOS ships, which has no
+  # associative arrays.
+  {
+    IFS= read -r GEN_NAME
+    IFS= read -r GEN_GIT
+    IFS= read -r GEN_COMMIT
+    IFS= read -r GEN_CDXGEN_VERSION
+    IFS= read -r GEN_ATOM_VERSION
+    IFS= read -r GEN_PLUGINS_VERSION
+    IFS= read -r GEN_GENERATED
+    IFS= read -r GEN_TAG
+    IFS= read -r GEN_CDXGEN_ARGS
+  } < <(python3 - "$GENERATION_JSON" <<'PY'
 import json
 import sys
 
@@ -53,13 +61,16 @@ for key in (
     "generated",
     "tag",
 ):
-    print(f"{key}={generation[key]}")
-print("cdxgenArgs=" + " ".join(generation["cdxgenArgs"]))
+    value = str(generation[key])
+    if "\n" in value:
+        sys.exit(f"{key} in {sys.argv[1]} spans several lines")
+    print(value)
+print(" ".join(generation["cdxgenArgs"]))
 PY
 )
 
-  NAME="${GEN[name]}"
-  TAG="${GEN[tag]}"
+  NAME="$GEN_NAME"
+  TAG="$GEN_TAG"
   REF="$REGISTRY:$TAG"
 
   LAYER_ARGS=()
@@ -77,14 +88,14 @@ PY
   echo "Pushing $NAME as $REF"
   (cd "$PROJECT_DIR" && "$ORAS_BIN" push "$REF" \
     --artifact-type application/vnd.owasp-dep-scan.repotests.v1 \
-    --annotation "org.opencontainers.image.source=${GEN[git]}" \
-    --annotation "org.opencontainers.image.revision=${GEN[commit]}" \
-    --annotation "org.opencontainers.image.created=${GEN[generated]}" \
-    --annotation "io.owasp-dep-scan.testdata.project=${GEN[name]}" \
-    --annotation "io.owasp-dep-scan.testdata.cdxgen-version=${GEN[cdxgenVersion]}" \
-    --annotation "io.owasp-dep-scan.testdata.atom-version=${GEN[atomVersion]}" \
-    --annotation "io.owasp-dep-scan.testdata.cdxgen-plugins-version=${GEN[cdxgenPluginsVersion]}" \
-    --annotation "io.owasp-dep-scan.testdata.cdxgen-args=${GEN[cdxgenArgs]}" \
+    --annotation "org.opencontainers.image.source=$GEN_GIT" \
+    --annotation "org.opencontainers.image.revision=$GEN_COMMIT" \
+    --annotation "org.opencontainers.image.created=$GEN_GENERATED" \
+    --annotation "io.owasp-dep-scan.testdata.project=$GEN_NAME" \
+    --annotation "io.owasp-dep-scan.testdata.cdxgen-version=$GEN_CDXGEN_VERSION" \
+    --annotation "io.owasp-dep-scan.testdata.atom-version=$GEN_ATOM_VERSION" \
+    --annotation "io.owasp-dep-scan.testdata.cdxgen-plugins-version=$GEN_PLUGINS_VERSION" \
+    --annotation "io.owasp-dep-scan.testdata.cdxgen-args=$GEN_CDXGEN_ARGS" \
     "${LAYER_ARGS[@]}")
 
   # The descriptor is the digest the lock file pins; fetching it through the
@@ -92,7 +103,6 @@ PY
   "$ORAS_BIN" manifest fetch --descriptor "$REF" > "$PROJECT_DIR/descriptor.json"
   DIGEST="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["digest"])' "$PROJECT_DIR/descriptor.json")"
   echo "| $NAME | $TAG | $DIGEST |" >> "$SUMMARY_FILE"
-  unset GEN
 done
 
 python3 "$SCRIPT_DIR/validate.py" lock \
