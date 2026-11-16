@@ -64,7 +64,7 @@
       "items": {
         "$ref": "#/$defs/capability"
       },
-      "description": "Every capability the dep-scan plans define, each with its own status. The list comes from one table in the code, which is the only place that knows which capability needs which tool or data."
+      "description": "Every capability dep-scan 7 defines, each with its own status. The list comes from one table in the code, which is the only place that knows which capability needs which tool or data."
     }
   },
   "$defs": {
@@ -110,7 +110,7 @@
         },
         "minVersion": {
           "type": "string",
-          "description": "The oldest version a scan accepts. Present only for cdxgen; a version below it, or no readable version, is explained in reason."
+          "description": "The oldest version a scan expects. For cdxgen a version below it, or no readable version, makes the tool unusable and is explained in reason. For rusi it is a soft minimum: the scan warns and still runs an older rusi."
         },
         "platform": {
           "type": "string",
@@ -225,7 +225,7 @@
         "status",
         "missing",
         "requirements",
-        "plan",
+        "issue",
         "description"
       ],
       "properties": {
@@ -236,7 +236,7 @@
         "status": {
           "type": "string",
           "enum": ["available", "unavailable", "not-implemented"],
-          "description": "available means every requirement is satisfied on this machine. unavailable names the missing requirements in missing. not-implemented means this dep-scan version does not contain the analysis; the plan field says where it is designed."
+          "description": "available means every requirement is satisfied on this machine. unavailable names the missing requirements in missing. not-implemented means this dep-scan version does not contain the analysis; the issue field links to where it is designed."
         },
         "missing": {
           "type": "array",
@@ -252,9 +252,10 @@
           },
           "description": "Everything the capability needs. Empty for a not-implemented capability, because requirements are not promised before the analysis exists."
         },
-        "plan": {
+        "issue": {
           "type": "string",
-          "description": "The plan section that designs the capability, for example depscan-v7-memory-safety.md D1."
+          "format": "uri",
+          "description": "The dep-scan issue that designs or tracks the capability, for example https://github.com/owasp-dep-scan/dep-scan/issues/613."
         },
         "description": {
           "type": "string",

@@ -19,10 +19,12 @@ import json
 import os
 import platform as platform_module
 import re
+import sqlite3
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from importlib import metadata, util
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -33,6 +35,7 @@ from depscan.lib.config import VDB_AGE_HOURS, read_vdb_image_marker
 from xbom_lib import dosai as dosai_mod
 from xbom_lib import golem as golem_mod
 from xbom_lib import rusi as rusi_mod
+from xbom_lib.cdxgen import _VERSION_RE as _CDXGEN_VERSION_RE
 from xbom_lib.cdxgen import (
     CDXGEN_MIN_VERSION,
     CDXGEN_NPM_PACKAGE,
@@ -50,11 +53,15 @@ PROBE_TIMEOUT_SEC = 10
 #: The version of the doctor report document itself.
 SCHEMA_VERSION = "1"
 
+#: Exit code for a ``--require`` capability that cannot run here. It is the
+#: "coverage requirement was not met" code of the v7 exit-code table.
+EXIT_REQUIREMENT_NOT_MET = 4
+
+#: Exit code for a usage error, such as an unknown ``--require`` name.
+EXIT_USAGE = 2
+
 # Version strings are read from the tool's own output; each parser mirrors
 # the parse the matching runner in xbom_lib uses.
-_CDXGEN_VERSION_RE = re.compile(
-    r"CycloneDX\s+Generator\s+v?(\d+(?:\.\d+)+(?:-[0-9A-Za-z.]+)?)"
-)
 _ATOM_VERSION_RE = re.compile(r"atom[,\s]+v?(\d+(?:\.\d+)+)", re.IGNORECASE)
 _ATOM_TOOLS_VERSION_RE = re.compile(
     r"atom[- ]tools\s+\(version\s+v?(\d+(?:\.\d+)+)\)|"
@@ -152,41 +159,20 @@ class ToolStatus:
         return bool(self.path) and self.reason is None
 
 
-def _looks_like_python_script(path: str) -> bool:
-    """Whether ``path`` is a Python script rather than a native binary.
-
-    An absolute ``.py`` path, or any absolute path whose first line is a
-    Python shebang, runs with the current interpreter. The test suite ships
-    its fake tools as Python scripts and on Windows a Python script cannot
-    be started directly, so the probe recognises them; an embedder can use
-    the same trick to point an override at a Python shim. Relative paths are
-    never inspected or run through the interpreter, because they resolve
-    against the working directory and that is the scanned project during a
-    scan.
-    """
-    if not os.path.isabs(path):
-        return False
-    if path.endswith(".py"):
-        return True
-    try:
-        with open(path, encoding="utf-8", errors="replace") as fp:
-            first = fp.readline(200)
-    except OSError:
-        return False
-    return first.startswith("#!") and "python" in first
-
-
 def _version_command(path: str, args: List[str]) -> List[str]:
-    if _looks_like_python_script(path):
-        return [sys.executable, path, *args]
+    """The command line that asks ``path`` for its version."""
     return [path, *args]
 
 
-def _run_version_probe(path: str, args: List[str]) -> Optional[str]:
+def _run_version_probe(path: str, args: List[str], require_success: bool = False) -> Optional[str]:
     """Run the tool's version option and return its combined output.
 
     Returns None when the command could not start, timed out or was refused
-    by :func:`build_command`; callers report a null version in that case.
+    by :func:`build_command`, and with ``require_success`` also when it
+    exited non-zero. The scan's own checks for go and dotnet
+    (``go_toolchain_available``, ``dotnet_runtime_available``) treat a
+    non-zero exit as "cannot run", while its cdxgen probe reads the output
+    whatever the exit code, so each caller picks the rule its scan uses.
     """
     path = str(path)
     try:
@@ -203,6 +189,8 @@ def _run_version_probe(path: str, args: List[str]) -> Optional[str]:
         )
     except (OSError, subprocess.SubprocessError):
         return None
+    if require_success and cp.returncode != 0:
+        return None
     return cp.stdout or ""
 
 
@@ -212,13 +200,22 @@ def _versioned_tool(
     parse: Callable[[str], Optional[str]],
     missing_reason: str,
     args: Optional[List[str]] = None,
+    must_run: bool = False,
 ) -> ToolStatus:
-    """Build the entry for a tool found on PATH: probe the version when found."""
+    """Build the entry for a tool found on PATH: probe the version when found.
+
+    With ``must_run``, a version command that fails or exits non-zero makes
+    the tool unusable, matching the scan checks that run the same command
+    before relying on the tool.
+    """
     status = ToolStatus(name=name, path=path, source="path" if path else None)
     if not path:
         status.reason = missing_reason
         return status
-    output = _run_version_probe(path, args or ["--version"])
+    probe_args = args or ["--version"]
+    output = _run_version_probe(path, probe_args, require_success=must_run)
+    if output is None and must_run:
+        status.reason = f"`{name} {' '.join(probe_args)}` failed, so a scan cannot use it"
     status.version = parse(output) if output else None
     return status
 
@@ -239,9 +236,7 @@ def _cdxgen_status() -> ToolStatus:
     env_cmd = os.environ.get("CDXGEN_CMD", "").strip()
     from_env = bool(env_cmd) and find_executable(env_cmd) is not None
     local_bin = resource_path(
-        os.path.join(
-            "local_bin", "cdxgen.exe" if sys.platform == "win32" else "cdxgen"
-        )
+        os.path.join("local_bin", "cdxgen.exe" if sys.platform == "win32" else "cdxgen")
     )
     cmd = find_cdxgen_cmd() or find_cdxgen_cmd(False)
     if not cmd:
@@ -269,14 +264,9 @@ def _cdxgen_status() -> ToolStatus:
     if found:
         status.version = found.group(1)
     if not status.version:
-        status.reason = (
-            f"its version could not be read; {CDXGEN_MIN_VERSION} is the minimum"
-        )
+        status.reason = f"its version could not be read; {CDXGEN_MIN_VERSION} is the minimum"
     elif _version_tuple(status.version) < cdxgen_min_version_tuple():
-        status.reason = (
-            f"cdxgen {status.version} is older than the "
-            f"{CDXGEN_MIN_VERSION} minimum"
-        )
+        status.reason = f"cdxgen {status.version} is older than the {CDXGEN_MIN_VERSION} minimum"
     return status
 
 
@@ -319,9 +309,11 @@ def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
         status.source = "path"
     output = _run_version_probe(path, ["--version"])
     if output:
-        status.version = (
-            _parse_dosai(output) if name == "dosai" else _parse_first_number(output)
-        )
+        status.version = _parse_dosai(output) if name == "dosai" else _parse_first_number(output)
+    if name == "rusi":
+        # A soft gate in the scan: an older rusi still runs, with a warning,
+        # so the minimum is reported without making the tool unusable.
+        status.min_version = rusi_mod.RUSI_MIN_VERSION
     return status
 
 
@@ -333,12 +325,13 @@ def _go_status() -> ToolStatus:
         _parse_regex(_GO_VERSION_RE),
         "the Go toolchain golem needs was not found on PATH",
         args=["version"],
+        must_run=True,
     )
 
 
 def _dotnet_status(dosai_path: Optional[str]) -> ToolStatus:
     """The .NET runtime dosai needs, or the one a self-contained dosai bundles."""
-    if dosai_path and dosai_mod._SELF_CONTAINED_HINT in os.path.basename(dosai_path):
+    if dosai_mod._is_self_contained_binary(dosai_path):
         return ToolStatus(
             name="dotnet",
             path=dosai_path,
@@ -350,6 +343,7 @@ def _dotnet_status(dosai_path: Optional[str]) -> ToolStatus:
         _parse_first_number,
         "the .NET runtime dosai needs was not found on PATH; a self-contained "
         "dosai binary (name containing '-full') would not need it",
+        must_run=True,
     )
 
 
@@ -444,9 +438,7 @@ _PLUGINS_DIR_TOOLS = (
 )
 
 
-def _candidate_plugins_dirs(
-    cdxgen_path: Optional[str], target: Dict[str, str]
-) -> List[str]:
+def _candidate_plugins_dirs(cdxgen_path: Optional[str], target: Dict[str, str]) -> List[str]:
     """Every plugins directory a scan could use, best candidate first.
 
     cdxgen honours ``CDXGEN_PLUGINS_DIR``, then a ``plugins`` directory next
@@ -490,18 +482,14 @@ def _usable_plugins_dir(path: str) -> bool:
 
 def _read_plugins_manifest(plugins_dir: str) -> Dict[str, Any]:
     try:
-        with open(
-            os.path.join(plugins_dir, "plugins-manifest.json"), encoding="utf-8"
-        ) as fp:
+        with open(os.path.join(plugins_dir, "plugins-manifest.json"), encoding="utf-8") as fp:
             manifest = json.load(fp)
     except (OSError, ValueError):
         return {}
     return manifest if isinstance(manifest, dict) else {}
 
 
-def _plugins_status(
-    cdxgen_path: Optional[str], target: Dict[str, str]
-) -> List[ToolStatus]:
+def _plugins_status(cdxgen_path: Optional[str], target: Dict[str, str]) -> List[ToolStatus]:
     """The plugins directory entry plus one entry per binary it ships.
 
     Versions come from ``plugins-manifest.json``, the record the plugins
@@ -595,36 +583,36 @@ def _vdb_flavor(marker: Optional[str]) -> Optional[str]:
 
 
 def _cve_metadata_rows() -> Optional[int]:
-    """Rows in ``cve_metadata`` through a read-only connection, or None.
+    """Rows in ``cve_metadata``, counted through a private read-only connection.
 
-    The database is opened read-only and only when both files exist, so this
-    inspection can never create or repair one. ``ensure_search_metadata`` is
-    deliberately not reused: it populates the table when it is empty, which
-    is a write this report must not make.
+    The index file is opened with ``mode=ro`` on a connection of its own, so
+    the inspection can never create, repair or populate the database and
+    never touches the connections vdb keeps for a scan running in the same
+    process. ``ensure_search_metadata`` is deliberately not reused: it fills
+    the table when it is empty, which is a write. Returns None when the file
+    is missing or cannot be read as a database with that table.
     """
-    if not (
-        os.path.exists(vdb_config.VDB_BIN_FILE)
-        and os.path.exists(vdb_config.VDB_BIN_INDEX)
-    ):
+    index_file = vdb_config.VDB_BIN_INDEX
+    if not os.path.isfile(index_file):
+        return None
+    uri = Path(index_file).resolve().as_uri() + "?mode=ro"
+    try:
+        conn = sqlite3.connect(uri, uri=True)
+    except sqlite3.Error:
         return None
     try:
-        # Rebind first: a caller may hold connections to another database,
-        # and this inspection must answer for the configured paths, read-only.
-        vdb_db.reset_connections()
-        vdb_db.get(read_only=True)
-        return vdb_db.metadata_rows_count()
-    except Exception:  # noqa: BLE001 - any driver error means unknown
+        row = conn.execute("SELECT count(*) FROM cve_metadata").fetchone()
+        return int(row[0]) if row else 0
+    except sqlite3.Error:
         return None
     finally:
-        vdb_db.reset_connections()
+        conn.close()
 
 
 def _vdb_status() -> Dict[str, Any]:
     """The vulnerability database as the report shows it: read-only."""
     data_dir = vdb_config.DATA_DIR
-    present = os.path.exists(vdb_config.VDB_BIN_FILE) or os.path.exists(
-        vdb_config.VDB_BIN_INDEX
-    )
+    present = os.path.exists(vdb_config.VDB_BIN_FILE) or os.path.exists(vdb_config.VDB_BIN_INDEX)
     marker = read_vdb_image_marker(data_dir) if os.path.isdir(data_dir) else None
     db_metadata = None
     if present:
@@ -638,9 +626,7 @@ def _vdb_status() -> Dict[str, Any]:
     if created_utc:
         try:
             created = datetime.fromisoformat(str(created_utc))
-            age_hours = round(
-                (datetime.now(tz=timezone.utc) - created).total_seconds() / 3600, 1
-            )
+            age_hours = round((datetime.now(tz=timezone.utc) - created).total_seconds() / 3600, 1)
             stale = age_hours > VDB_AGE_HOURS
         except ValueError:
             created_utc = None
@@ -682,6 +668,11 @@ def _vdb_status() -> Dict[str, Any]:
 # --- capabilities --------------------------------------------------------------
 
 
+def issue_url(number: int) -> str:
+    """The URL of a dep-scan issue."""
+    return f"https://github.com/owasp-dep-scan/dep-scan/issues/{number}"
+
+
 @dataclass(frozen=True)
 class CapabilitySpec:
     """One capability row of :data:`CAPABILITIES`.
@@ -689,12 +680,12 @@ class CapabilitySpec:
     A capability this dep-scan version does not implement carries no
     requirements: it cannot run here whatever tools are installed, and
     inventing requirements for it would promise checks that do not exist.
-    The plan section says where the capability is designed.
+    ``issue`` is the dep-scan issue that designs or tracks the capability.
     """
 
     name: str
     description: str
-    plan: str
+    issue: int
     requirements: Tuple[str, ...] = ()
     implemented: bool = False
 
@@ -707,84 +698,84 @@ CAPABILITIES: Tuple[CapabilitySpec, ...] = (
     CapabilitySpec(
         name="vulnerabilities",
         description="Match components against the vulnerability database.",
-        plan="depscan-v7-cli-policy.md D1",
+        issue=592,
         requirements=("data:vdb",),
         implemented=True,
     ),
     CapabilitySpec(
         name="reachability",
         description="Reachability from the slices cdxgen and atom produce.",
-        plan="depscan-v7-cli-policy.md D1",
+        issue=592,
         requirements=("tool:cdxgen",),
         implemented=True,
     ),
     CapabilitySpec(
         name="reachability:rust",
         description="Rust reachability through the rusi plugin.",
-        plan="depscan-v7-exploitability.md D7",
+        issue=603,
         requirements=("tool:cdxgen", "tool:rusi"),
         implemented=True,
     ),
     CapabilitySpec(
         name="reachability:go",
         description="Go reachability through the golem plugin and the Go toolchain.",
-        plan="depscan-v7-exploitability.md D7",
+        issue=603,
         requirements=("tool:cdxgen", "tool:golem", "tool:go"),
         implemented=True,
     ),
     CapabilitySpec(
         name="reachability:dotnet",
         description=".NET reachability through the dosai plugin and the .NET runtime.",
-        plan="depscan-v7-exploitability.md D5",
+        issue=601,
         requirements=("tool:cdxgen", "tool:dosai", "tool:dotnet"),
         implemented=True,
     ),
     CapabilitySpec(
         name="license",
         description="License risk from the licence data vendored with dep-scan.",
-        plan="depscan-v7-cli-policy.md D1",
+        issue=592,
         requirements=(),
         implemented=True,
     ),
     CapabilitySpec(
         name="memory-safety",
         description="Memory-safety findings for C and C++ sources.",
-        plan="depscan-v7-memory-safety.md D1",
+        issue=613,
     ),
     CapabilitySpec(
         name="memory-safety:c",
         description="Memory-safety analysis of C sources with atom memory-safety.",
-        plan="depscan-v7-memory-safety.md D1",
+        issue=613,
     ),
     CapabilitySpec(
         name="mobile",
         description="Android and iOS app analysis.",
-        plan="depscan-v7-mobile.md D1",
+        issue=625,
     ),
     CapabilitySpec(
         name="mobile:android",
         description="Android app analysis with blint, atom and kosi.",
-        plan="depscan-v7-mobile.md D1",
+        issue=625,
     ),
     CapabilitySpec(
         name="supply-chain",
         description="Audit rule packs, package risk, provenance and CI pipeline risk.",
-        plan="depscan-v7-supply-chain.md D1",
+        issue=606,
     ),
     CapabilitySpec(
         name="binary",
         description="Binary, installer, driver and container-image analysis with blint.",
-        plan="depscan-v7-binaries.md D1",
+        issue=620,
     ),
     CapabilitySpec(
         name="code",
         description="Findings from the analyzers' own code rules.",
-        plan="depscan-v7-exploitability.md D9",
+        issue=605,
     ),
     CapabilitySpec(
         name="crypto",
         description="Crypto findings from the cbom-security audit pack.",
-        plan="depscan-v7-supply-chain.md D1",
+        issue=606,
     ),
 )
 
@@ -796,7 +787,7 @@ class CapabilityStatus:
     name: str
     status: str
     requirements: Tuple[str, ...]
-    plan: str
+    issue: int
     description: str
     missing: List[str] = field(default_factory=list)
 
@@ -806,7 +797,7 @@ class CapabilityStatus:
             "status": self.status,
             "missing": self.missing,
             "requirements": list(self.requirements),
-            "plan": self.plan,
+            "issue": issue_url(self.issue),
             "description": self.description,
         }
 
@@ -845,7 +836,7 @@ def _evaluate_capabilities(
                     name=spec.name,
                     status="not-implemented",
                     requirements=spec.requirements,
-                    plan=spec.plan,
+                    issue=spec.issue,
                     description=spec.description,
                 )
             )
@@ -860,7 +851,7 @@ def _evaluate_capabilities(
                 name=spec.name,
                 status="unavailable" if missing else "available",
                 requirements=spec.requirements,
-                plan=spec.plan,
+                issue=spec.issue,
                 description=spec.description,
                 missing=missing,
             )
@@ -892,13 +883,9 @@ def _platform_status(target: Dict[str, str]) -> Dict[str, Any]:
 def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
     """Locate every tool; returns the entries in report order and by name."""
     cdxgen = _cdxgen_status()
-    golem = _plugin_tool_status(
-        "golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV)
-    )
+    golem = _plugin_tool_status("golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV))
     rusi = _plugin_tool_status("rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV))
-    dosai = _plugin_tool_status(
-        "dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV)
-    )
+    dosai = _plugin_tool_status("dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV))
     entries = [
         cdxgen,
         _versioned_tool(
@@ -913,8 +900,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
             "atom-tools",
             find_executable("atom-tools"),
             _parse_regex(_ATOM_TOOLS_VERSION_RE),
-            "atom-tools was not found on PATH; install it with "
-            "`pip install atom-tools`",
+            "atom-tools was not found on PATH; install it with `pip install atom-tools`",
         ),
         _versioned_tool(
             "edga",
@@ -927,8 +913,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
             "node",
             find_executable("node"),
             _parse_node,
-            "node was not found on PATH; cdxgen needs it unless it runs from "
-            "a bundled binary",
+            "node was not found on PATH; cdxgen needs it unless it runs from a bundled binary",
         ),
         _python_status(),
         *_plugins_status(cdxgen.path, get_plugins_bin_target()),
@@ -974,15 +959,24 @@ class DoctorReport:
             "",
             "Tools",
         ]
+        name_width = max(len(tool.name) for tool in self.tools)
+        version_width = max(len(tool.version or "version unknown") for tool in self.tools)
         for tool in self.tools:
             where = tool.source or "not found"
             if tool.source_env:
                 where = f"{where}, {tool.source_env}"
             version = tool.version or "version unknown"
             lines.append(
-                f"  {tool.name:<16} {version:<14} "
+                f"  {tool.name:<{name_width}}  {version:<{version_width}}  "
                 f"{tool.path or '-'} ({where})"
             )
+            if (
+                tool.version
+                and tool.min_version
+                and not tool.reason
+                and _version_tuple(tool.version) < _version_tuple(tool.min_version)
+            ):
+                lines.append(f"    older than {tool.min_version}; a scan warns and still runs it")
             if tool.reason:
                 lines.append(f"    {tool.reason}")
         vdb = self.data.get("vulnerabilityDatabase") or {}
@@ -1013,9 +1007,7 @@ class DoctorReport:
                 f"({vdb.get('cveMetadataRows')} rows in cve_metadata)"
             )
             shards = vdb.get("shards") or {}
-            names = ", ".join(
-                str(shard.get("name")) for shard in shards.get("present") or []
-            )
+            names = ", ".join(str(shard.get("name")) for shard in shards.get("present") or [])
             lines.append(
                 f"    shards: {'on' if shards.get('enabled') else 'off'}"
                 + (f"; present: {names}" if names else "")
@@ -1026,14 +1018,15 @@ class DoctorReport:
                 "with `depscan-vdb download` or 'vdb db refresh full'"
             )
         lines += ["", "Capabilities"]
+        capability_width = max(len(capability.name) for capability in self.capabilities)
         for capability in self.capabilities:
             if capability.status == "available":
                 note = "available"
             elif capability.status == "unavailable":
                 note = "unavailable: " + ", ".join(capability.missing)
             else:
-                note = f"not implemented ({capability.plan})"
-            lines.append(f"  {capability.name:<22} {note}")
+                note = f"not implemented yet ({issue_url(capability.issue)})"
+            lines.append(f"  {capability.name:<{capability_width}}  {note}")
         return "\n".join(lines)
 
 
@@ -1068,7 +1061,7 @@ def capability_table_markdown() -> str:
             if not needs:
                 needs = "nothing external"
         else:
-            needs = f"not implemented yet ({spec.plan})"
+            needs = f"not implemented yet ([dep-scan#{spec.issue}]({issue_url(spec.issue)}))"
         lines.append(f"| `{spec.name}` | {spec.description} | {needs} |")
     return "\n".join(lines)
 
@@ -1076,8 +1069,8 @@ def capability_table_markdown() -> str:
 # --- the command ---------------------------------------------------------------
 
 
-def parse_doctor_args(argv: List[str]) -> str:
-    """Parse the arguments after ``doctor``; returns the output format."""
+def parse_doctor_args(argv: List[str]) -> argparse.Namespace:
+    """Parse the arguments after ``doctor``."""
     parser = argparse.ArgumentParser(
         prog="depscan doctor",
         description="Report the tools, data and capabilities a scan can use here.",
@@ -1088,21 +1081,60 @@ def parse_doctor_args(argv: List[str]) -> str:
         default="text",
         help="text for people, json for scripts (default: text)",
     )
+    parser.add_argument(
+        "--require",
+        action="append",
+        default=[],
+        metavar="CAPABILITY",
+        help=(
+            "exit with code 4 unless these capabilities are available; "
+            "comma-separated or repeated, for example "
+            "--require vulnerabilities,reachability:go"
+        ),
+    )
     args = parser.parse_args(argv)
-    return args.format
+    args.require = [
+        name.strip() for value in args.require for name in value.split(",") if name.strip()
+    ]
+    return args
+
+
+def unmet_requirements(report: DoctorReport, required: List[str]) -> List[str]:
+    """The required capabilities that are not available in ``report``."""
+    status = {capability.name: capability.status for capability in report.capabilities}
+    return [name for name in required if status.get(name) != "available"]
 
 
 def run_doctor_command(argv: List[str]) -> int:
     """Run the doctor command; returns the process exit code.
 
-    The report goes to stdout in the chosen format and any logging goes to
-    stderr. The command never prompts and never downloads, and it exits 0
-    whenever it produced a report, even when tools are missing.
+    The report goes to stdout in the chosen format and messages go to
+    stderr. The command never prompts and never downloads. It exits 0
+    whenever it produced a report, even when tools are missing, unless
+    ``--require`` names a capability that is not available here (exit 4),
+    which lets an image build fail when it lacks a capability it is meant to
+    have. An unknown capability name is a usage error (exit 2).
     """
-    output_format = parse_doctor_args(argv)
+    args = parse_doctor_args(argv)
+    known = {spec.name for spec in CAPABILITIES}
+    unknown = [name for name in args.require if name not in known]
+    if unknown:
+        print(
+            f"depscan doctor: unknown capability {', '.join(unknown)}; "
+            f"known capabilities: {', '.join(sorted(known))}",
+            file=sys.stderr,
+        )
+        return EXIT_USAGE
     report = doctor()
-    if output_format == "json":
+    if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2))
     else:
         print(report.to_text())
+    unmet = unmet_requirements(report, args.require)
+    if unmet:
+        print(
+            f"depscan doctor: required capabilities not available: {', '.join(unmet)}",
+            file=sys.stderr,
+        )
+        return EXIT_REQUIREMENT_NOT_MET
     return 0
