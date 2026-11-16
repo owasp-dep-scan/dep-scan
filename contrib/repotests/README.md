@@ -51,6 +51,9 @@ date as annotations.
   oras, restores an `actions/cache` cache keyed by the digests it is asked
   for, pulls what is missing by digest, verifies every file's digest with
   `validate.py digests` and runs the staleness checks.
+  `.github/scripts/repotest-project.sh NAME` copies one project into the
+  reports layout, runs the depscan scan the repo tests use and asserts the
+  reachable purl floor and `mustReach`.
 
 ## Adding a project
 
