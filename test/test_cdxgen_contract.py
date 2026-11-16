@@ -31,6 +31,7 @@ argv = sys.argv[1:]
 record = os.environ.get("FAKE_CDXGEN_RECORD")
 version = os.environ.get("FAKE_CDXGEN_VERSION", "13.8.0")
 exit_code = int(os.environ.get("FAKE_CDXGEN_EXIT", "0"))
+stderr_text = os.environ.get("FAKE_CDXGEN_STDERR", "")
 
 
 def append(probe):
@@ -104,6 +105,8 @@ if exit_code == 5:
         "fail-on-error: 1 extractor failure(s) were deferred so the BOM and "
         "the introspection report could be written; exiting 5."
     )
+if stderr_text:
+    sys.stderr.write(stderr_text)
 append(probe=False)
 sys.exit(exit_code)
 '''
@@ -125,6 +128,7 @@ def fake_cdxgen(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("FAKE_CDXGEN_RECORD", str(record))
     monkeypatch.delenv("FAKE_CDXGEN_VERSION", raising=False)
     monkeypatch.delenv("FAKE_CDXGEN_EXIT", raising=False)
+    monkeypatch.delenv("FAKE_CDXGEN_STDERR", raising=False)
     monkeypatch.setattr(cdxgen_mod, "find_cdxgen_cmd", lambda *a, **k: command)
     monkeypatch.setattr(bom_mod, "find_cdxgen_cmd", lambda *a, **k: command)
     cdxgen_mod._version_probe_cache.clear()
@@ -281,6 +285,40 @@ def test_required_cdxgen_version_runs_the_scan(fake_cdxgen, tmp_path):
     options = _options("research", ["python"], [], bom_file)
     assert bom_mod.create_bom(str(bom_file), str(src), options).success
     assert len(_scans(fake_cdxgen)) == 1
+
+
+# cdxgen 13.8.0's report when ATOM_TIMEOUT stopped atom, printed to stderr
+# once per atom run (executeAtom in lib/inventory/atomUtils.js).
+ATOM_TIMEOUT_WARNING = (
+    "WARN: atom did not finish within 15 seconds and was stopped, so its "
+    "results are missing or incomplete. Allow more time with ATOM_TIMEOUT "
+    "(milliseconds, atom only) or CDXGEN_TIMEOUT_MS (every external command).\n"
+)
+
+
+def test_atom_timeout_is_kept_as_not_assessed(fake_cdxgen, tmp_path, monkeypatch, caplog):
+    """cdxgen exits 0 with a BOM after atom timed out; the warning on its
+    stderr is the only sign, so the BOM result must carry it."""
+    monkeypatch.setenv("FAKE_CDXGEN_STDERR", ATOM_TIMEOUT_WARNING * 2)
+    src, reports = _make_project(tmp_path)
+    bom_file = reports / "sbom-python.cdx.json"
+    options = _options("research", ["python"], [], bom_file)
+    with caplog.at_level("WARNING"):
+        result = bom_mod.create_bom(str(bom_file), str(src), options)
+    assert len(_scans(fake_cdxgen)) == 1
+    assert result.success
+    assert result.not_assessed == [bom_mod.ATOM_TIMEOUT_REASON]
+    assert "Not assessed: atom did not finish" in caplog.text
+
+
+def test_clean_cdxgen_run_has_nothing_not_assessed(fake_cdxgen, tmp_path):
+    src, reports = _make_project(tmp_path)
+    bom_file = reports / "sbom-python.cdx.json"
+    options = _options("research", ["python"], [], bom_file)
+    result = bom_mod.create_bom(str(bom_file), str(src), options)
+    assert len(_scans(fake_cdxgen)) == 1
+    assert result.success
+    assert result.not_assessed == []
 
 
 def test_path_default_cdxgen_is_version_checked(tmp_path, monkeypatch, caplog):

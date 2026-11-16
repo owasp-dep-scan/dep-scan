@@ -135,10 +135,9 @@ class TypeScan:
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
     summary: Dict = field(default_factory=dict)
-    #: Reasons parts of this type's analysis did not run (an atom run that
-    #: ATOM_TIMEOUT stopped, files atom's parse report lists as dropped or
-    #: partly read). Kept on the scan so a later stage can write them out
-    #: instead of counting the affected parts as clean.
+    #: Reasons parts of this type's analysis did not run, such as an atom run
+    #: that ATOM_TIMEOUT stopped. Kept on the scan so a later stage can write
+    #: them out instead of counting the affected parts as clean.
     not_assessed: List[str] = field(default_factory=list)
 
 
