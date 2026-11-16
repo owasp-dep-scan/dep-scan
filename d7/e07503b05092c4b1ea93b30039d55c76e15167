@@ -1,0 +1,38 @@
+test/test_doctor.py
+  s_7318da1b9edd46::t_801ad73865846a 394-395
+  s_7318da1b9edd46::t_06111896cc8dee 396-407
+  s_7318da1b9edd46::t_b76ab6cb282dd0 3-8,34-35,44,64,148,151-153,159-172,197-199,216,249,259,281,342,359-393,435-438,496-503,523,561-575,587,632-634,657-734,739-745
+  s_7318da1b9edd46::t_3c846451dda6ae 771-780
+documentation/docs/doctor.mdx
+  s_7318da1b9edd46::t_6db725fe741a51 34-35,37,58
+  s_7318da1b9edd46::t_5c597b227f668b 33,36,38-53,63-76,108-115
+  s_7318da1b9edd46::t_a06400c385dbdc 10,17,20-21,79,88,90,94
+depscan/lib/doctor.py
+  s_7318da1b9edd46::t_3ee6265e3fc87c 167,171-172,174-175,192,216
+  s_7318da1b9edd46::t_aea74b0e101b98 312
+  s_7318da1b9edd46::t_421e780d7c4f5d 313-316,973-979
+  s_7318da1b9edd46::t_c9501154360bd0 22,27,38,163,173,203,205-210,215,217,328,334,346,441,485,492,586-593,595-596,598,600-606,609
+  s_7318da1b9edd46::t_cf596ba966f2fa 56-62,962-963,970,1021,1029,1072-1073,1084-1094,1096-1105,1111-1116,1118-1127,1129,1133-1139
+  s_7318da1b9edd46::t_ffb601c4fa58d5 671-675,683,688,701,708,715,722,729,736,743,748,753,758,763,768,773,778,790,800,839,854,1028,1064
+  s_7318da1b9edd46::t_a16dbca425cd22 218
+  s_7318da1b9edd46::t_b9cb7186f40428 193
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor.schema.json
+  s_7318da1b9edd46::t_421e780d7c4f5d 113
+  s_7318da1b9edd46::t_ffb601c4fa58d5 67,228,239,255,257-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7e07503b05092c4b1ea93b30039d55c76e15167",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
