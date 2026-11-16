@@ -270,14 +270,15 @@ def go_toolchain_has_cgo_fixes(release: Optional[str]) -> bool:
 
     The fixes landed in go1.26.11 and go1.27.4, so anything newer on those
     lines and every release candidate of a later line counts as fixed. A
-    ``devel`` build or a release that cannot be parsed returns True: it cannot
-    be dated, and the operator who builds Go from source controls its vintage.
+    ``devel`` build or a release that cannot be parsed returns False: it
+    cannot be dated, so the operator who enabled cgo is warned rather than
+    reassured.
     """
     if not release or release == "devel":
-        return True
+        return False
     match = _GO_RELEASE_RE.match(release)
     if not match:
-        return True
+        return False
     major, minor = int(match.group(1)), int(match.group(2))
     # A release candidate carries no patch number and counts as patch 0.
     patch = int(match.group(3) or 0)
@@ -477,13 +478,13 @@ def run_golem(
             "dependencies. Use this only for input you trust."
         )
         release = go_toolchain_version(logger=logger)
-        if release and not go_toolchain_has_cgo_fixes(release):
+        if not go_toolchain_has_cgo_fixes(release):
             logger.warning(
-                "Go %s predates the releases that refuse unsafe cgo flags "
-                "(go1.26.11 and go1.27.4 fixed these). Upgrade the Go "
-                "toolchain to go1.26.11, go1.27.4 or newer before scanning "
-                "untrusted input with cgo enabled.",
-                release,
+                "Go %s is not known to refuse unsafe cgo flags (go1.26.11 "
+                "and go1.27.4 fixed these). Upgrade the Go toolchain to "
+                "go1.26.11, go1.27.4 or newer before scanning untrusted input "
+                "with cgo enabled.",
+                release or "(unrecognised release)",
             )
 
     version = get_golem_version(binary, logger=logger)
