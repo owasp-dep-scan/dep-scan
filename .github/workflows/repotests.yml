@@ -77,7 +77,7 @@ jobs:
     if: github.event_name != 'merge_group'
     needs: ukaina-boms
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-2y:v7.0.x-xz"
       PYTHONIOENCODING: ${{ matrix.os == 'windows-latest' && 'utf-8' || '' }}
       PYTHONUTF8: ${{ matrix.os == 'windows-latest' && '1' || '' }}
       DISABLE_CONSOLE_EMOJI: ${{ matrix.os == 'windows-latest' && '1' || '' }}
@@ -320,9 +320,9 @@ jobs:
       # The full database (several GB) repeatedly failed to download on the
       # self-hosted runner with IncompleteRead. This job checks that semantic
       # analysis runs end to end, not OS advisory counts, so it uses the
-      # app-only database and the OS packages from the source images are not
-      # matched.
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
+      # two-year app database, like the other test jobs, and the OS packages
+      # from the source images are not matched.
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-2y:v7.0.x-xz"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
