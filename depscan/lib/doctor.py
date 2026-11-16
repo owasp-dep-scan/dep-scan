@@ -1059,7 +1059,7 @@ def capability_table_markdown() -> str:
     published table cannot drift from the code.
     """
     lines = [
-        "| Capability | What it is | Status in this version |",
+        "| Capability | What it is | What it needs in this version |",
         "| --- | --- | --- |",
     ]
     for spec in CAPABILITIES:
