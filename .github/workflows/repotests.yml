@@ -77,7 +77,7 @@ jobs:
     if: github.event_name != 'merge_group'
     needs: ukaina-boms
     env:
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-2y:v7.0.x-xz"
       PYTHONIOENCODING: ${{ matrix.os == 'windows-latest' && 'utf-8' || '' }}
       PYTHONUTF8: ${{ matrix.os == 'windows-latest' && '1' || '' }}
       DISABLE_CONSOLE_EMOJI: ${{ matrix.os == 'windows-latest' && '1' || '' }}
@@ -162,10 +162,22 @@ jobs:
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
           uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
+      # The BOMs, slices and VDRs of the java-sec-code runs, kept so the
+      # reachable packages can be compared between releases.
+      - name: Upload java-sec-code reports
+        if: ${{ matrix.os == 'ubuntu-24.04' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: java-sec-code-reports
+          path: depscan_reports
+          retention-days: 14
+      - name: Remove java-sec-code reports
+        if: ${{ always() }}
+        run: rm -rf ${GITHUB_WORKSPACE}/depscan_reports
+        shell: bash
       - name: repotests dotnet-podcasts
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2
@@ -308,9 +320,9 @@ jobs:
       # The full database (several GB) repeatedly failed to download on the
       # self-hosted runner with IncompleteRead. This job checks that semantic
       # analysis runs end to end, not OS advisory counts, so it uses the
-      # app-only database and the OS packages from the source images are not
-      # matched.
-      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
+      # two-year app database, like the other test jobs, and the OS packages
+      # from the source images are not matched.
+      VDB_DATABASE_URL: "ghcr.io/appthreat/vdb7-app-2y:v7.0.x-xz"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:

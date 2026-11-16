@@ -1,0 +1,135 @@
+{
+ "info": {
+  "title": "reports-out OpenAPI Specification",
+  "version": "1.0.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/analysis_lib/output": {
+   "get": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "packages/analysis-lib/src/analysis_lib/output.py": [
+      985
+     ]
+    },
+    "target": {
+     "packages/analysis-lib/src/analysis_lib/output.py": [
+      1
+     ]
+    }
+   },
+   "x-third-party": true
+  },
+  "/analysis_lib/search": {
+   "get": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "packages/analysis-lib/src/analysis_lib/search.py": [
+      390
+     ]
+    },
+    "target": {
+     "packages/analysis-lib/src/analysis_lib/search.py": [
+      1
+     ]
+    }
+   },
+   "x-third-party": true
+  },
+  "/": {
+   "get": {
+    "responses": {}
+   },
+   "post": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "packages/server-lib/src/server_lib/simple.py": [
+      433
+     ]
+    }
+   }
+  },
+  "/./pipe/x": {
+   "get": {
+    "responses": {}
+   },
+   "post": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "packages/server-lib/tests/test_simple.py": [
+      1283
+     ]
+    }
+   }
+  },
+  "/LPT/u00b9": {
+   "get": {
+    "responses": {}
+   },
+   "post": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "packages/server-lib/tests/test_simple.py": [
+      1283
+     ]
+    }
+   }
+  },
+  "/a/nb": {
+   "get": {
+    "responses": {}
+   },
+   "post": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "test/test_process_launch.py": [
+      197
+     ]
+    }
+   }
+  },
+  "/a/rb": {
+   "get": {
+    "responses": {}
+   },
+   "post": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "test/test_process_launch.py": [
+      197
+     ]
+    }
+   }
+  },
+  "/a/x00b": {
+   "get": {
+    "responses": {}
+   },
+   "post": {
+    "responses": {}
+   },
+   "x-atom-usages": {
+    "call": {
+     "test/test_process_launch.py": [
+      197
+     ]
+    }
+   }
+  }
+ }
+}

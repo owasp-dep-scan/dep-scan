@@ -16,7 +16,7 @@ from rich.console import Console
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.output import generate_console_output, pkg_sub_tree
-from analysis_lib.utils import retrieve_bom_dependency_tree
+from analysis_lib.packages import retrieve_bom_dependency_tree
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 

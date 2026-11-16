@@ -37,9 +37,9 @@ from typing import Any, Dict, List, Optional
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
+from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
-from analysis_lib.utils import get_all_pkg_list, get_pkg_list
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.vex.emit import export_csaf
 from custom_json_diff.lib.utils import json_load
@@ -135,6 +135,10 @@ class TypeScan:
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
     summary: Dict = field(default_factory=dict)
+    #: Reasons parts of this type's analysis did not run, such as an atom run
+    #: that ATOM_TIMEOUT stopped. Kept on the scan so a later stage can write
+    #: them out instead of counting the affected parts as clean.
+    not_assessed: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -802,6 +806,7 @@ def _produce_boms(ctx, scan):
         creation_status = bom_result.success
         scan.bom_files = list(bom_result.bom_files)
         scan.nominated_bom_file = bom_result.primary
+        scan.not_assessed = list(getattr(bom_result, "not_assessed", None) or [])
     if not creation_status:
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",

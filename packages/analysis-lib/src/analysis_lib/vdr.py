@@ -1,20 +1,17 @@
 from vdb.lib import VulnerabilityOccurrence
 
 from analysis_lib import Counts, VdrAnalysisKV, VDRResult, XBOMAnalyzer
+from analysis_lib.merge import dedupe_vdrs, remove_extra_metadata
 from analysis_lib.output import generate_console_output, output_priority_suggestions
-from analysis_lib.search import build_search_filters, find_vulns
-from analysis_lib.utils import (
-    analyze_cve_vuln,
-    dedupe_vdrs,
+from analysis_lib.packages import (
     get_all_lifecycle_pkgs,
     get_lifecycle_pkgs,
-    make_version_suggestions,
-    process_vuln_occ,
-    remove_extra_metadata,
     retrieve_bom_dependency_tree,
     retrieve_oci_properties,
-    vuln_meets_severity,
 )
+from analysis_lib.prioritize import analyze_cve_vuln, process_vuln_occ, vuln_meets_severity
+from analysis_lib.search import build_search_filters, find_vulns
+from analysis_lib.suggestions import make_version_suggestions
 
 
 def predict_optionals(prebuild_purls, build_purls, postbuild_purls, optional_pkgs):

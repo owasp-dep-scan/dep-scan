@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:doctor:1",
+  "title": "dep-scan doctor report",
+  "description": "The document `depscan doctor --format json` prints and depscan.api.doctor().to_dict() returns. It names every tool a scan may call, where each was found, the vulnerability database as a read-only inspection sees it, and for every capability whether it can run on this machine and which missing requirement stops it. The report is produced without running a scan, prompting or downloading anything, and a missing tool or database is a reported state rather than an error.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "depscanVersion",
+    "platform",
+    "tools",
+    "data",
+    "capabilities"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1",
+      "description": "The version of this document shape. A later, incompatible report would carry 2 and leave this schema untouched."
+    },
+    "depscanVersion": {
+      "type": "string",
+      "description": "The version of the dep-scan installation that produced the report."
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "libc"],
+      "properties": {
+        "os": {
+          "type": "string",
+          "description": "The operating system as Python's sys.platform reports it, for example linux, darwin or win32."
+        },
+        "arch": {
+          "type": "string",
+          "description": "The machine architecture, for example arm64 or x86_64."
+        },
+        "libc": {
+          "type": ["string", "null"],
+          "enum": ["glibc", "musl", null],
+          "description": "The C library, which decides the cdxgen plugin binary token on Linux (linux or linuxmusl). Null outside Linux."
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tool"
+      },
+      "description": "One entry per tool, in report order. A tool depscan does not use yet, edga for example, is still listed so the capabilities table can name it."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vulnerabilityDatabase"],
+      "properties": {
+        "vulnerabilityDatabase": {
+          "$ref": "#/$defs/vulnerabilityDatabase"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capability"
+      },
+      "description": "Every capability dep-scan 7 defines, each with its own status. The list comes from one table in the code, which is the only place that knows which capability needs which tool or data."
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "path", "version", "source", "reason"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The tool name the capability table refers to, for example cdxgen, golem, dotnet or cdxgen-plugins."
+        },
+        "path": {
+          "type": ["string", "null"],
+          "description": "The path the tool was found at, or null when it was not found."
+        },
+        "version": {
+          "type": ["string", "null"],
+          "description": "The version read with the tool's own version option, the plugins manifest, or the installed Python distribution. Null when it could not be read; a null version alone does not make a tool unusable."
+        },
+        "source": {
+          "type": ["string", "null"],
+          "enum": [
+            "path",
+            "env",
+            "cdxgen-install",
+            "plugins-dir",
+            "bundled-sea",
+            "bundled-runtime",
+            "library",
+            "runtime",
+            null
+          ],
+          "description": "Where the tool came from: path is a PATH lookup, env an environment variable naming it (sourceEnv says which), cdxgen-install the plugins package installed next to cdxgen, plugins-dir the CDXGEN_PLUGINS_DIR directory, bundled-sea the binary bundled with the standalone packages, bundled-runtime a runtime inside a self-contained dosai binary, library an installed Python package, runtime the interpreter this report runs in. Null when the tool is missing."
+        },
+        "sourceEnv": {
+          "type": "string",
+          "description": "The environment variable that named the tool, present only when source is env."
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Why the tool is missing or unusable, naming the remedy or the version needed. Null when the tool satisfies its requirements."
+        },
+        "minVersion": {
+          "type": "string",
+          "description": "The oldest version a scan expects. For cdxgen a version below it, or no readable version, makes the tool unusable and is explained in reason. For rusi it is a soft minimum: the scan warns and still runs an older rusi."
+        },
+        "platform": {
+          "type": "string",
+          "description": "The platform-arch tokens of a cdxgen plugin binary or the plugins directory, for example darwin-arm64 or linuxmusl-amd64."
+        }
+      }
+    },
+    "vulnerabilityDatabase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "present",
+        "directory",
+        "image",
+        "flavor",
+        "shards",
+        "createdUtc",
+        "ageHours",
+        "stale",
+        "maxAgeHours",
+        "cveDataCount",
+        "cveIndexCount",
+        "extendedMetadataPresent",
+        "cveMetadataRows"
+      ],
+      "properties": {
+        "present": {
+          "type": "boolean",
+          "description": "Whether the database files exist. A missing database is a reported state; the doctor command never downloads or repairs one."
+        },
+        "directory": {
+          "type": ["string", "null"],
+          "description": "The directory vdb keeps the database in."
+        },
+        "image": {
+          "type": ["string", "null"],
+          "description": "The image reference recorded by the last download marker, or a shards marker. Null when no marker exists."
+        },
+        "flavor": {
+          "type": ["string", "null"],
+          "description": "The flavor of the recorded image (full, app-only, app-extended, app-10y, app-10y-extended) or shards for a shard-set marker. Null when the marker is missing or names no known flavor."
+        },
+        "shards": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "present"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether scans use the opt-in shard mode (VDB_USE_SHARDS)."
+            },
+            "present": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "ageDays"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "The shard name in the local store."
+                  },
+                  "ageDays": {
+                    "type": ["number", "null"],
+                    "description": "The age of the shard in days, or null when the store does not say."
+                  }
+                }
+              },
+              "description": "The shards present in the local store, as vdb's own status lists them."
+            }
+          }
+        },
+        "createdUtc": {
+          "type": ["string", "null"],
+          "description": "When the database was built, from vdb's metadata. Null when the metadata is missing or unreadable."
+        },
+        "ageHours": {
+          "type": ["number", "null"],
+          "description": "The age of the database in hours. Null when the build time is unknown."
+        },
+        "stale": {
+          "type": ["boolean", "null"],
+          "description": "Whether the database is past VDB_AGE_HOURS. Null when the age is unknown."
+        },
+        "maxAgeHours": {
+          "type": "number",
+          "description": "The VDB_AGE_HOURS window this installation uses."
+        },
+        "cveDataCount": {
+          "type": ["integer", "null"],
+          "description": "Rows in the cve_data tables at build time, from vdb's metadata. Null when unknown."
+        },
+        "cveIndexCount": {
+          "type": ["integer", "null"],
+          "description": "Rows in the cve_index tables at build time, from vdb's metadata. Null when unknown."
+        },
+        "extendedMetadataPresent": {
+          "type": ["boolean", "null"],
+          "description": "Whether the extended search-metadata tables are populated (the *-extended flavors). Null when neither a row count nor the build metadata could answer."
+        },
+        "cveMetadataRows": {
+          "type": ["integer", "null"],
+          "description": "Rows in cve_metadata, counted through a read-only connection. Null when the database could not be opened or the table does not exist."
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "status",
+        "missing",
+        "requirements",
+        "issue",
+        "description"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The capability name, a check name or a qualified name such as reachability:dotnet or memory-safety:c."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["available", "unavailable", "not-implemented"],
+          "description": "available means every requirement is satisfied on this machine. unavailable names the missing requirements in missing. not-implemented means this dep-scan version does not contain the analysis; the issue field links to where it is designed."
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The unsatisfied requirements, as tool:<name> or data:vdb. Empty unless the status is unavailable."
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Everything the capability needs. Empty for a not-implemented capability, because requirements are not promised before the analysis exists."
+        },
+        "issue": {
+          "type": "string",
+          "format": "uri",
+          "description": "The dep-scan issue that designs or tracks the capability, for example https://github.com/owasp-dep-scan/dep-scan/issues/613."
+        },
+        "description": {
+          "type": "string",
+          "description": "One sentence saying what the capability does."
+        }
+      }
+    }
+  }
+}

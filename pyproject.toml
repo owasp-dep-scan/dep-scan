@@ -53,8 +53,8 @@ dev = [
     "pytest-cov~=7.1.0"
 ]
 server = ["ds-server-lib~=7.0.0.dev0"]
-ext = ["atom-tools~=0.9.1", "blint~=3.2.3"]
-all = ["atom-tools~=0.9.1", "blint~=3.2.3", "ds-server-lib~=7.0.0.dev0", "PyGithub~=2.10.0"]
+ext = ["atom-tools~=1.0.5", "blint~=3.2.3"]
+all = ["atom-tools~=1.0.5", "blint~=3.2.3", "ds-server-lib~=7.0.0.dev0", "PyGithub~=2.10.0"]
 
 [build-system]
 requires = ["setuptools>=61", "wheel"]

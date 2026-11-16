@@ -1,16 +1,17 @@
 """Tests for the reachability analyzers.
 
 Covers:
-  - R3a (REACHABILITY_EVAL.md Finding 1): atom 2.5.x reachables slices store
-    ``tags`` as a comma-separated string on each NODE inside
-    ``flow["flows"]``, not at the flow level. The analyzers must split and
-    collect those tags so ``reached_services`` and the framework branch of
-    ``endpoint_reached_purls`` actually fire.
-  - R3b (Finding 2): flows are duplicated across the split slice files.
-    Counts (but not the reached SET) must reflect deduplication.
+  - the atom 4 slice shapes (recorded from atom 4.0.2 through cdxgen 13.8.0,
+    see ``test/data/atom4/README.md``): node-level ``tags`` strings that
+    interleave purls and free-form tags, including callee purls appended
+    AFTER a call's own tags; ``x-atom-usages`` values that are per-file lists
+    of line numbers; bare JSON array slice files.
+  - flows are duplicated across the split slice files. Counts (but not the
+    reached SET) must reflect deduplication.
 """
 
 import json
+from pathlib import Path
 
 from analysis_lib import ReachabilityAnalysisKV
 from analysis_lib.reachability import (
@@ -22,6 +23,8 @@ from analysis_lib.reachability import (
     _iter_json_list,
     _iter_unique_reachable_flows,
 )
+
+ATOM4_DIR = Path(__file__).resolve().parents[3] / "test" / "data" / "atom4"
 
 
 def _write(path, obj):
@@ -38,11 +41,23 @@ def _make_options(bom_dir):
     )
 
 
+def _atom4_options(bom_dir):
+    """Options pointing at the recorded atom 4 fixture set."""
+    return ReachabilityAnalysisKV(
+        project_types=["python"],
+        src_dir=str(bom_dir),
+        bom_dir=str(bom_dir),
+        bom_files=[str(Path(bom_dir) / "sbom-python.cdx.json")],
+        slices_files=[str(Path(bom_dir) / "python-reachables.slices.json")],
+        openapi_spec_files=[str(Path(bom_dir) / "python-openapi.json")],
+    )
+
+
 # --- _flow_tags unit tests ---------------------------------------------
 
 
 def test_flow_tags_splits_node_level_comma_string():
-    """The atom 2.5.x shape: tags live on each node as a comma string."""
+    """Atom puts tags on each node as a comma string."""
     flow = {
         "flows": [
             {"id": "n1", "tags": "pkg:npm/express@4.22.2, framework, web"},
@@ -70,15 +85,16 @@ def test_flow_tags_handles_empty_string_node_tags():
     assert _flow_tags(flow) == []
 
 
-def test_flow_tags_accepts_list_form_for_future_compat():
+def test_flow_tags_accepts_list_form():
     flow = {"flows": [{"tags": ["web", "api"]}, {"tags": "framework"}]}
     assert _flow_tags(flow) == ["web", "api", "framework"]
 
 
-def test_flow_tags_falls_back_to_flow_level_tags():
-    """Older/non-atom envelopes that put tags at the flow level still work."""
+def test_flow_tags_ignores_flow_level_tags():
+    """A flow object carries only ``flows`` and ``purls``; a stray top-level
+    ``tags`` key is not a flow signal and is not read."""
     flow = {"tags": "web, api", "flows": []}
-    assert _flow_tags(flow) == ["web", "api"]
+    assert _flow_tags(flow) == []
 
 
 def test_flow_tags_deduplicates_across_nodes():
@@ -97,7 +113,7 @@ def test_flow_tags_safe_on_non_dict_nodes():
     assert _flow_tags(flow) == ["web"]
 
 
-# --- _flow_service_purls (R4a: positional purl<->tag association) -----
+# --- _flow_service_purls (positional purl<->tag association) -----
 
 
 def test_flow_service_purls_single_purl_with_service_tag():
@@ -110,7 +126,7 @@ def test_flow_service_purls_single_purl_with_service_tag():
 
 
 def test_flow_service_purls_does_not_leak_across_purls_in_same_node():
-    """R4a regression (the measured bug): the real juice-shop node string
+    """The interleaved node string
     ``pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2``
     must NOT attribute ``web`` to codemirror — the service tags belong to the
     NEAREST preceding purl (jsonwebtoken)."""
@@ -130,7 +146,7 @@ def test_flow_service_purls_does_not_leak_across_purls_in_same_node():
 
 
 def test_flow_service_purls_express_ipfilter_pattern():
-    """R4a: the real pattern
+    """The interleaved pattern
     ``pkg:npm/express-ipfilter@1.4.0, framework, pkg:npm/express@4.22.2, web``
     attributes ``web`` only to express, NOT to express-ipfilter (which only has
     ``framework``)."""
@@ -145,6 +161,46 @@ def test_flow_service_purls_express_ipfilter_pattern():
             "pkg:npm/express-ipfilter@1.4.0",
             "pkg:npm/express@4.22.2",
         ],
+    }
+    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
+
+
+def test_flow_service_purls_service_tag_before_callee_purl():
+    """Atom 4 appends the callee's package URLs AFTER a tagged call's own
+    tags when the call site itself names no purl (withPurls in atom's
+    ReachableSlicing.scala), so the order ``web, pkg:npm/express@4.22.2``
+    occurs. The service tag belongs to the call's library and must reach the
+    purl that follows it, not vanish between the two orders."""
+    flow = {
+        "flows": [{"id": "n1", "tags": "web, pkg:npm/express@4.22.2"}],
+        "purls": ["pkg:npm/express@4.22.2"],
+    }
+    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
+
+
+def test_flow_service_purls_leading_tag_covers_the_purl_run_that_follows():
+    """withPurls appends every missing callee purl, sorted, so a call into a
+    library present at two versions reads ``web, pkg:pypi/quart@0.22.0,
+    pkg:pypi/quart@0.23.1``. Both are the callee's packages and both get the
+    tag."""
+    flow = {
+        "flows": [{"id": "n1", "tags": "web, pkg:pypi/quart@0.22.0, pkg:pypi/quart@0.23.1"}],
+        "purls": ["pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"],
+    }
+    assert _flow_service_purls(flow) == {"pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"}
+
+
+def test_flow_service_purls_leading_tag_stops_at_the_next_free_form_tag():
+    """In ``web, pkg:x, crypto, pkg:y`` the leading tag covers ``x`` only:
+    ``y`` follows another free-form tag, so ``web`` does not describe it."""
+    flow = {
+        "flows": [
+            {
+                "id": "n1",
+                "tags": "web, pkg:npm/express@4.22.2, crypto, pkg:npm/lodash@4.17.21",
+            }
+        ],
+        "purls": ["pkg:npm/express@4.22.2", "pkg:npm/lodash@4.17.21"],
     }
     assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
 
@@ -165,7 +221,7 @@ def test_flow_service_purls_node_with_purl_but_no_service_tag():
 
 def test_flow_service_purls_falls_back_to_flow_purls_for_purlless_service_node():
     """A node that carries a SERVICE_TAG but names NO purl falls back to the
-    flow-level purls (R3a behavior scoped to that one node)."""
+    flow-level purls (scoped to that one node)."""
     flow = {
         "flows": [
             {"id": "n1", "tags": "web"},
@@ -179,7 +235,8 @@ def test_flow_service_purls_falls_back_to_flow_purls_for_purlless_service_node()
 
 
 def test_flow_service_purls_empty_when_no_service_tags():
-    """No SERVICE_TAG anywhere -> empty set (mirrors cdxgen eval repo)."""
+    """No SERVICE_TAG anywhere -> empty set (mirrors the recorded python
+    slices, whose tags are framework-input/flow-summary/path-traversal)."""
     flow = {
         "flows": [
             {"id": "n1", "tags": "pkg:npm/semver@7.8.5, framework-input, flow-summary"},
@@ -189,10 +246,11 @@ def test_flow_service_purls_empty_when_no_service_tags():
     assert _flow_service_purls(flow) == set()
 
 
-def test_flow_service_purls_flow_level_tags_fallback():
-    """Older envelope with a flow-level ``tags`` string applies to all purls."""
+def test_flow_service_purls_ignores_flow_level_tags():
+    """Atom flow objects carry no top-level ``tags``; one that appears is not
+    applied to the flow purls."""
     flow = {"tags": "web, api", "flows": [], "purls": ["pkg:npm/x@1", "pkg:npm/y@2"]}
-    assert _flow_service_purls(flow) == {"pkg:npm/x@1", "pkg:npm/y@2"}
+    assert _flow_service_purls(flow) == set()
 
 
 def test_flow_service_purls_accepts_list_form():
@@ -212,12 +270,7 @@ def test_flow_service_purls_safe_on_garbage():
 
 
 def test_semantic_reachability_populates_reached_services_from_node_tags(tmp_path):
-    """R3a regression: node-level service tags must drive reached_services.
-
-    Mirrors the real atom 2.5.x reachables slice shape. Before R3a the
-    analyzer read flow.get("tags") which is always empty, so reached_services
-    was always 0 even though the data clearly contained "web" tags.
-    """
+    """Node-level service tags must drive reached_services."""
     # reachables slice: express has a service tag ("web"), lodash does not.
     _write(
         tmp_path / "js-reachables.slices.json",
@@ -272,8 +325,8 @@ def test_semantic_reachability_populates_reached_services_from_node_tags(tmp_pat
 def test_semantic_reachability_no_service_tags_keeps_reached_services_empty(tmp_path):
     """If no node carries a SERVICE_TAG, reached_services stays empty.
 
-    This mirrors the cdxgen eval repo where node tags are present but none are
-    in SERVICE_TAGS (e.g. "framework-input", "parse", "flow-summary").
+    This mirrors the recorded python slices, whose tags are
+    framework-input/flow-summary/path-traversal.
     """
     _write(
         tmp_path / "js-reachables.slices.json",
@@ -304,15 +357,11 @@ def test_semantic_reachability_no_service_tags_keeps_reached_services_empty(tmp_
     assert res.reached_services == {}
 
 
-def test_semantic_reachability_r4a_no_cross_purl_service_leak(tmp_path):
-    """R4a regression: the real juice-shop node string
+def test_semantic_reachability_no_cross_purl_service_leak(tmp_path):
+    """The interleaved node string
     ``pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2``
     must not leak ``web`` onto codemirror. Both purls are reached, but only
     jsonwebtoken is a service.
-
-    Before R4a, ``_flow_tags`` flattened all node tags and applied them to
-    every flow purl, producing false ``reached_services`` entries for
-    codemirror/tufjs and 8 others on juice-shop.
     """
     _write(
         tmp_path / "js-reachables.slices.json",
@@ -345,6 +394,31 @@ def test_semantic_reachability_r4a_no_cross_purl_service_leak(tmp_path):
     assert set((res.reached_services or {}).keys()) == {"pkg:npm/jsonwebtoken@0.4.0"}
 
 
+def test_semantic_reachability_service_tag_before_callee_purl(tmp_path):
+    """The atom 4 order for a tagged call whose purls come from the callee:
+    the call's own tag string first, the callee's package URLs appended
+    after it. The service tag must still mark the package as a reached
+    service. At the base commit this slice produced NO reached service,
+    because a tag with no preceding purl was dropped."""
+    _write(
+        tmp_path / "js-reachables.slices.json",
+        [
+            {
+                "flows": [
+                    {"id": "n1", "tags": "web, pkg:npm/express@4.22.2"},
+                ],
+                "purls": ["pkg:npm/express@4.22.2"],
+            }
+        ],
+    )
+    _write(
+        tmp_path / "bom.cdx.json",
+        {"components": []},
+    )
+    res = SemanticReachability(_make_options(str(tmp_path))).process()
+    assert set((res.reached_services or {}).keys()) == {"pkg:npm/express@4.22.2"}
+
+
 def test_framework_reachability_ignores_tags(tmp_path):
     """FrameworkReachability must keep its existing (tag-agnostic) behavior."""
     _write(
@@ -367,22 +441,92 @@ def test_framework_reachability_ignores_tags(tmp_path):
     assert res.reached_services is None or res.reached_services == {}
 
 
-# --- _track_usage_targets shape tolerance (AppThreat/atom#221) --------
+# --- the recorded atom 4 slices (test/data/atom4) ----------------------
+
+
+def test_recorded_atom4_reachables_reach_their_purls():
+    """FrameworkReachability on the recorded atom 4.0.2 slices.
+
+    The reached set is the four purls the five recorded flows carry; the
+    counts follow the deduplication of identical flows. The two quart flows
+    contribute one count each because their flow objects differ.
+    """
+    res = FrameworkReachability(_atom4_options(ATOM4_DIR)).process()
+    assert res.success
+    assert (res.reached_purls or {}) == {
+        "pkg:pypi/custom-json-diff@2.1.6": 2,
+        "pkg:pypi/quart@0.22.0": 2,
+        "pkg:pypi/quart@0.23.1": 2,
+        "pkg:pypi/rich@15.0.0": 1,
+    }
+
+
+def test_recorded_atom4_semantic_reachability():
+    """SemanticReachability on the recorded atom 4 fixture set.
+
+    The recorded BOM types both quart versions as framework, so they are
+    endpoint-reachable; the recorded tags carry no SERVICE_TAG, so no
+    package is a reached service. At the base commit this fixture produced
+    the same reached set, so this test pins the shape rather than a
+    behaviour change.
+    """
+    res = SemanticReachability(_atom4_options(ATOM4_DIR)).process()
+    assert res.success
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:pypi/custom-json-diff@2.1.6",
+        "pkg:pypi/quart@0.22.0",
+        "pkg:pypi/quart@0.23.1",
+        "pkg:pypi/rich@15.0.0",
+    }
+    assert res.reached_services == {}
+    assert set((res.endpoint_reached_purls or {}).keys()) == {
+        "pkg:pypi/quart@0.22.0",
+        "pkg:pypi/quart@0.23.1",
+    }
+
+
+def test_recorded_atom4_openapi_usage_targets():
+    """The recorded atom-tools 1.x OpenAPI document lights up usage targets.
+
+    ``x-atom-usages`` values are per-file lists for both ``call`` and
+    ``target`` (atom-tools 0.9.x wrote ``target`` as a bare int), and the
+    recorded server endpoint is the call at simple.py line 433.
+    """
+    kv = _atom4_options(ATOM4_DIR)
+    usage_targets = {}
+    for ospec in kv.openapi_spec_files or []:
+        spec_data = json.loads(Path(ospec).read_text())
+        for path_obj in (spec_data.get("paths") or {}).values():
+            if isinstance(path_obj, dict) and "x-atom-usages" in path_obj:
+                SemanticReachability._track_usage_targets(
+                    usage_targets, path_obj["x-atom-usages"]
+                )
+    assert "packages/server-lib/src/server_lib/simple.py" in usage_targets
+    assert usage_targets["packages/server-lib/src/server_lib/simple.py#433"]
+    # The target entries are lists; their lines are tracked the same way.
+    assert usage_targets["packages/analysis-lib/src/analysis_lib/output.py#985"]
+
+
+# --- _track_usage_targets shape tolerance ------------------------------
 
 
 def test_track_usage_targets_list_lines():
-    """The classic shape: per-file value is a list of line numbers."""
+    """The atom-tools 1.x shape: every per-file value is a list of line
+    numbers, ``call`` and ``target`` alike."""
     usage_targets = {}
-    SemanticReachability._track_usage_targets(usage_targets, {"GET /x": {"Foo.java": [10, 20]}})
-    assert usage_targets == {"Foo.java": True, "Foo.java#10": True, "Foo.java#20": True}
+    SemanticReachability._track_usage_targets(
+        usage_targets, {"call": {"Foo.java": [10, 20]}, "target": {"Foo.java": [15]}}
+    )
+    assert usage_targets == {"Foo.java": True, "Foo.java#10": True, "Foo.java#20": True, "Foo.java#15": True}
 
 
-def test_track_usage_targets_int_line_does_not_crash():
-    """Newer atom slices may emit a bare int for the lines value. This must
-    not raise ``TypeError: 'int' object is not iterable`` (dep-scan#459)."""
+def test_track_usage_targets_ignores_non_list_values():
+    """Values that are not lists (e.g. the bare int atom-tools 0.9.x wrote
+    for ``target``) mark the file but contribute no line: the shape is gone
+    and a guessed line would be a hotspot that is not one."""
     usage_targets = {}
-    SemanticReachability._track_usage_targets(usage_targets, {"GET /x": {"Foo.java": 42}})
-    assert usage_targets == {"Foo.java": True, "Foo.java#42": True}
+    SemanticReachability._track_usage_targets(usage_targets, {"target": {"Foo.java": 42}})
+    assert usage_targets == {"Foo.java": True}
 
 
 def test_track_usage_targets_ignores_non_dict_values():
@@ -393,7 +537,7 @@ def test_track_usage_targets_ignores_non_dict_values():
     assert usage_targets == {}
 
 
-# --- R3b: cross-file dedup --------------------------------------------
+# --- cross-file dedup --------------------------------------------------
 
 
 def test_flow_identity_is_stable_across_dict_order():
@@ -411,7 +555,7 @@ def test_flow_identity_differs_when_content_differs():
 
 
 def test_reachability_dedups_flows_across_split_slice_files(tmp_path):
-    """R3b regression: a flow that appears in both the unsplit slices.json and
+    """A flow that appears in both the unsplit slices.json and
     a numbered split must count ONCE per purl, not twice.
 
     The unsplit slices.json is NOT simply a prefix of the splits (14-33%
@@ -461,7 +605,7 @@ def test_reachability_dedups_flows_across_split_slice_files(tmp_path):
 
 
 def test_semantic_reachability_dedups_service_counts(tmp_path):
-    """R3b regression for SemanticReachability: reached_services[apurl] must
+    """SemanticReachability: reached_services[apurl] must
     not be double-counted when a service-tagged flow is duplicated across
     files."""
     dup_flow = {
@@ -480,7 +624,7 @@ def test_semantic_reachability_dedups_service_counts(tmp_path):
 
 
 def test_reachability_dedup_treats_distinct_flows_separately(tmp_path):
-    """R3b negative case: two flows with the same purls but different node
+    """Two flows with the same purls but different node
     tags are distinct evidence trails and must each count once.
     """
     _write(
@@ -501,7 +645,7 @@ def test_reachability_dedup_treats_distinct_flows_separately(tmp_path):
     assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 2
 
 
-# --- R3c: streaming JSON parser ---------------------------------------
+# --- streaming JSON parser ---------------------------------------------
 
 
 def _write_raw(path, text):
@@ -543,8 +687,8 @@ def test_iter_json_list_handles_nested_objects_and_strings_with_commas(tmp_path)
 
 
 def test_iter_json_list_returns_nothing_for_non_list_top_level(tmp_path):
-    """A wrapped envelope (e.g. {"reachables": [...]}) is not streamed by
-    _iter_json_list; the caller falls back to json_load for that shape."""
+    """A wrapped envelope (e.g. {"reachables": [...]}) is not a slice atom
+    writes; it is not streamed and yields nothing."""
     f = tmp_path / "wrapped.json"
     _write_raw(f, '{"reachables": [{"id": 1}]}')
     assert list(_iter_json_list(str(f))) == []
@@ -556,7 +700,7 @@ def test_iter_json_list_missing_file_yields_nothing():
 
 def test_iter_json_list_matches_json_load_on_real_slices(tmp_path):
     """Streaming parser must produce identical elements to json.load on a
-    realistic reachables slice (atom 2.5.x shape)."""
+    realistic reachables slice (atom shape)."""
     payload = [
         {
             "flows": [
@@ -591,7 +735,7 @@ def test_iter_json_list_matches_json_load_on_real_slices(tmp_path):
 
 def test_iter_unique_reachable_flows_streams_lazy(tmp_path):
     """The unique-flow iterator must work when the file is a bare JSON list
-    (R3c streaming path) and produce the same dedup behavior as the legacy
+    (streaming path) and produce the same dedup behavior as the legacy
     json_load path."""
     dup = {
         "flows": [{"id": "n1", "tags": "web"}],

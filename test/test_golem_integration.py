@@ -25,7 +25,7 @@ import pytest
 from analysis_lib import Counts, ReachabilityAnalysisKV
 from analysis_lib.golem_slices import _slice_reachability
 from analysis_lib.reachability import FrameworkReachability
-from analysis_lib.utils import process_vuln_occ
+from analysis_lib.prioritize import process_vuln_occ
 from depscan.lib.bom import run_golem_reachability
 from xbom_lib import golem as golem_mod
 

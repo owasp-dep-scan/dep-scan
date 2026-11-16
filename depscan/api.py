@@ -25,16 +25,20 @@ from vdb.lib.utils import parse_purl
 
 from depscan.cli_options import build_parser
 from depscan.lib import explainer, pipeline
+from depscan.lib import doctor as doctor_lib
 from depscan.lib.config import DEPSCAN_DEFAULT_VDR_FILE
+from depscan.lib.doctor import DoctorReport
 from depscan.lib.logger import console
 
 __all__ = [
     "DiffEntry",
+    "DoctorReport",
     "ScanDiff",
     "ScanError",
     "ScanResult",
     "TypeScanResult",
     "diff",
+    "doctor",
     "explain",
     "load_scan",
     "query",
@@ -146,6 +150,21 @@ def scan_options(**overrides) -> Any:
             )
         setattr(options, name, value)
     return options
+
+
+def doctor() -> DoctorReport:
+    """Collect the tools, data and capabilities report for this machine.
+
+    The report locates every tool a scan may call and reads each version
+    with the tool's own version option, inspects the vulnerability database
+    read-only and evaluates the capability table against what it found. It
+    never prompts and never downloads anything; a missing tool or database
+    is a reported state, so the call always returns a report.
+
+    :returns: The :class:`DoctorReport`; ``to_dict()`` produces the JSON
+        document and ``to_text()`` the text rendering the command prints.
+    """
+    return doctor_lib.doctor()
 
 
 def scan(options, *, render: bool = True) -> ScanResult:

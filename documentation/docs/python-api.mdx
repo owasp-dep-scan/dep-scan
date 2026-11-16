@@ -95,6 +95,18 @@ changes = api.diff(old_result, new_result)
 print([(entry.id, entry.ref) for entry in changes.new])
 ```
 
+## Doctoring the machine
+
+`doctor()` collects the report the `depscan doctor` command prints: every tool a scan may call with where it was found and its version, the vulnerability database as a read-only inspection sees it, and for every capability whether it can run on this machine. The call never prompts, never downloads anything and never writes to the database; a missing tool or database is a reported state, so it always returns a report.
+
+```python
+report = api.doctor()
+report.to_text()   # what `depscan doctor` prints
+report.to_dict()   # the JSON document, which validates against the depscan-doctor schema
+```
+
+The `DoctorReport` carries `platform`, `tools`, `data` and `capabilities`; the [doctor page](doctor.mdx) documents each field. The capability table the report evaluates is the one in `depscan/lib/doctor.py`, the single place that knows which capability needs which tool or data.
+
 ## Exceptions
 
 `depscan.api.ScanError` is raised by `scan` when a stage stops the scan, and by `load_scan` and `explain` when their input lacks what they need; the message always names the reason. `scan_options` raises `TypeError` for an unknown option name.
