@@ -89,23 +89,26 @@ runs:
         set -euo pipefail
         read -ra PYTHON_CMD <<< "$PYTHON"
         REGISTRY="$(jq -r '.registry' "$LOCK_FILE")"
-        # Manifest copies live inside DEST so the cache holds them too: a
-        # restored cache is verified against the same layer digests the pull
-        # would check, and any tampered or partial restore re-pulls.
+        # Manifest copies live inside DEST so the cache holds them too. The
+        # manifest is kept byte for byte (no --pretty), so it must hash to the
+        # digest the lock file pins before its layer digests are trusted; a
+        # tampered, stale or partial restore fails that check and re-pulls.
         mkdir -p "$DEST/.manifests"
         while IFS='=' read -r NAME DIGEST; do
           PROJECT_DIR="$DEST/$NAME"
           MANIFEST="$DEST/.manifests/$NAME.json"
-          if "${PYTHON_CMD[@]}" "$VALIDATOR" digests "$PROJECT_DIR" --manifest "$MANIFEST" 2>/dev/null; then
+          if "${PYTHON_CMD[@]}" "$VALIDATOR" digests "$PROJECT_DIR" \
+              --manifest "$MANIFEST" --digest "$DIGEST" 2>/dev/null; then
             echo "$NAME already present and verified"
             continue
           fi
           echo "Pulling $NAME at $DIGEST"
           rm -rf "$PROJECT_DIR"
           mkdir -p "$PROJECT_DIR"
-          oras manifest fetch --pretty "$REGISTRY@$DIGEST" > "$MANIFEST"
+          oras manifest fetch "$REGISTRY@$DIGEST" > "$MANIFEST"
           (cd "$PROJECT_DIR" && oras pull "$REGISTRY@$DIGEST")
-          "${PYTHON_CMD[@]}" "$VALIDATOR" digests "$PROJECT_DIR" --manifest "$MANIFEST"
+          "${PYTHON_CMD[@]}" "$VALIDATOR" digests "$PROJECT_DIR" \
+            --manifest "$MANIFEST" --digest "$DIGEST"
         done <<< "$DATA_DIR_LINES"
     - name: Run the staleness checks
       shell: bash

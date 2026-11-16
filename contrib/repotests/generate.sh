@@ -92,6 +92,11 @@ for project_type in "${TYPES[@]}"; do
     }
 done
 
+# Only the JSON files are test data. The atom databases (*.atom) and source
+# maps (*.json.map) cdxgen leaves beside them are large and read by nothing
+# downstream, so they are removed before the files are uploaded.
+find "$OUT_DIR" -maxdepth 1 -type f ! -name '*.json' -delete
+
 # Provenance of this generation, read by the publish job to annotate the OCI
 # artifact and to write testdata.lock.json. Written last: the file exists only
 # once every type ran successfully. The version is matched on the dotted

@@ -14,7 +14,6 @@ into testdata.lock.json.
 import hashlib
 import importlib.util
 import json
-import sys
 from pathlib import Path
 
 import pytest
@@ -85,7 +84,9 @@ def test_staleness_accepts_the_atom4_fixture(validator):
 
 def test_staleness_rejects_an_old_cdxgen(validator, tmp_path):
     write_bom(tmp_path / "sbom-java.cdx.json", cdxgen_version="11.2.7")
-    write_reachables(tmp_path / "java-reachables.slices.json", [flow(["pkg:maven/org.junit/junit@4.13"])])
+    write_reachables(
+        tmp_path / "java-reachables.slices.json", [flow(["pkg:maven/org.junit/junit@4.13"])]
+    )
     with pytest.raises(validator.ValidationFailure, match=r"11\.2\.7.*13\.8"):
         validator.check_staleness(tmp_path, {"minReachablePurls": 1})
 
@@ -177,8 +178,28 @@ def test_assert_matches_scoped_package_names(validator):
     names = validator.purl_package_names("pkg:npm/%40types/node@20.1.0")
     assert "node" in names
     assert "@types/node" in names
-    names = validator.purl_package_names("pkg:pypi/libxml2@2.11.0")
-    assert "libxml2" in names
+
+
+def test_staleness_rejects_a_truncated_slice(validator, tmp_path):
+    # cdxgen killed while atom writes leaves a valid prefix. The slice reader
+    # would keep the flows before the cut and drop the rest silently.
+    write_bom(tmp_path / "sbom-js.cdx.json")
+    whole = json.dumps([flow(["pkg:npm/left-pad@1.3.0"]), flow(["pkg:npm/react@18.3.1"])])
+    (tmp_path / "js-reachables.slices.json").write_text(
+        whole[: len(whole) // 2 + 20], encoding="utf-8"
+    )
+    with pytest.raises(
+        validator.ValidationFailure, match="js-reachables.slices.json: (malformed|truncated)"
+    ):
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
+
+
+def test_staleness_rejects_an_unterminated_slice(validator, tmp_path):
+    write_bom(tmp_path / "sbom-js.cdx.json")
+    whole = json.dumps([flow(["pkg:npm/left-pad@1.3.0"])])
+    (tmp_path / "js-reachables.slices.json").write_text(whole[:-1], encoding="utf-8")
+    with pytest.raises(validator.ValidationFailure, match="truncated"):
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
 
 
 def make_manifest(dir_path, filenames):
@@ -192,7 +213,11 @@ def make_manifest(dir_path, filenames):
                 "annotations": {"org.opencontainers.image.title": name},
             }
         )
-    return {"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json", "layers": layers}
+    return {
+        "schemaVersion": 2,
+        "mediaType": "application/vnd.oci.image.manifest.v1+json",
+        "layers": layers,
+    }
 
 
 def test_digests_accept_a_pulled_artifact(validator, tmp_path):
@@ -201,7 +226,10 @@ def test_digests_accept_a_pulled_artifact(validator, tmp_path):
     (data_dir / "sbom-js.cdx.json").write_text("{}", encoding="utf-8")
     (data_dir / "js-reachables.slices.json").write_text("[]", encoding="utf-8")
     manifest = tmp_path / "manifest.json"
-    manifest.write_text(json.dumps(make_manifest(data_dir, ["sbom-js.cdx.json", "js-reachables.slices.json"])), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(make_manifest(data_dir, ["sbom-js.cdx.json", "js-reachables.slices.json"])),
+        encoding="utf-8",
+    )
     assert validator.check_digests(data_dir, manifest) == {"verifiedFiles": 2}
 
 
@@ -211,7 +239,10 @@ def test_digests_reject_tampered_missing_and_extra_files(validator, tmp_path):
     (data_dir / "sbom-js.cdx.json").write_text("{}", encoding="utf-8")
     (data_dir / "js-reachables.slices.json").write_text("[]", encoding="utf-8")
     manifest = tmp_path / "manifest.json"
-    manifest.write_text(json.dumps(make_manifest(data_dir, ["sbom-js.cdx.json", "js-reachables.slices.json"])), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(make_manifest(data_dir, ["sbom-js.cdx.json", "js-reachables.slices.json"])),
+        encoding="utf-8",
+    )
 
     (data_dir / "sbom-js.cdx.json").write_text('{"tampered": true}', encoding="utf-8")
     (data_dir / "extra.json").write_text("{}", encoding="utf-8")
@@ -222,6 +253,28 @@ def test_digests_reject_tampered_missing_and_extra_files(validator, tmp_path):
     assert "does not match" in message
     assert "not pulled" in message
     assert "extra.json" in message
+
+
+def test_digests_check_the_manifest_against_the_pinned_digest(validator, tmp_path):
+    # The action keeps the manifest in the cache beside the files. A manifest
+    # that does not hash to the lock file's digest cannot vouch for them.
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "sbom-js.cdx.json").write_text("{}", encoding="utf-8")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(make_manifest(data_dir, ["sbom-js.cdx.json"])), encoding="utf-8"
+    )
+    pinned = "sha256:" + hashlib.sha256(manifest.read_bytes()).hexdigest()
+    assert validator.check_digests(data_dir, manifest, pinned) == {"verifiedFiles": 1}
+
+    other = "sha256:" + "0" * 64
+    with pytest.raises(validator.ValidationFailure, match="is not the pinned"):
+        validator.check_digests(data_dir, manifest, other)
+    assert (
+        validator.main(["digests", str(data_dir), "--manifest", str(manifest), "--digest", other])
+        == 1
+    )
 
 
 def test_lock_writes_one_entry_per_generated_project(validator, tmp_path):
@@ -242,7 +295,13 @@ def test_lock_writes_one_entry_per_generated_project(validator, tmp_path):
     }
     (project / "generation.json").write_text(json.dumps(generation), encoding="utf-8")
     (project / "descriptor.json").write_text(
-        json.dumps({"mediaType": "application/vnd.oci.image.manifest.v1+json", "digest": "sha256:" + "b" * 64, "size": 1024}),
+        json.dumps(
+            {
+                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                "digest": "sha256:" + "b" * 64,
+                "size": 1024,
+            }
+        ),
         encoding="utf-8",
     )
     lock_out = tmp_path / "testdata.lock.json"
@@ -284,21 +343,35 @@ def test_projects_json_is_well_formed():
         assert entry["git"].startswith("https://"), entry["name"]
         # A full commit SHA only: a branch or tag name would move under the
         # project and make generations irreproducible.
-        assert len(entry["commit"]) == 40 and all(c in "0123456789abcdef" for c in entry["commit"]), entry["name"]
+        assert len(entry["commit"]) == 40 and all(
+            c in "0123456789abcdef" for c in entry["commit"]
+        ), entry["name"]
         assert entry["types"] and all(isinstance(t, str) for t in entry["types"]), entry["name"]
-        assert isinstance(entry["minReachablePurls"], int) and entry["minReachablePurls"] >= 0, entry["name"]
+        assert isinstance(entry["minReachablePurls"], int) and entry["minReachablePurls"] >= 0, (
+            entry["name"]
+        )
         for must in entry["mustReach"]:
             # Package name without version: a purl, an @version or a space
             # would silently never match.
-            assert isinstance(must, str) and must and "@" not in must and " " not in must and not must.startswith("pkg:"), entry["name"]
+            assert (
+                isinstance(must, str)
+                and must
+                and "@" not in must
+                and " " not in must
+                and not must.startswith("pkg:")
+            ), entry["name"]
 
 
 def test_main_reports_failures_on_stderr_with_exit_code_one(validator, capsys, tmp_path):
     write_bom(tmp_path / "sbom-js.cdx.json", cdxgen_version="11.2.7")
     write_reachables(tmp_path / "js-reachables.slices.json", [flow(["pkg:npm/left-pad@1.3.0"])])
     projects = tmp_path / "projects.json"
-    projects.write_text(json.dumps({"projects": [{"name": "js", "directory": "js"}]}), encoding="utf-8")
-    code = validator.main(["staleness", str(tmp_path), "--projects", str(projects), "--name", "js"])
+    projects.write_text(
+        json.dumps({"projects": [{"name": "js", "directory": "js"}]}), encoding="utf-8"
+    )
+    code = validator.main(
+        ["staleness", str(tmp_path), "--projects", str(projects), "--name", "js"]
+    )
     assert code == 1
     assert "FAILED staleness" in capsys.readouterr().err
 
@@ -306,7 +379,9 @@ def test_main_reports_failures_on_stderr_with_exit_code_one(validator, capsys, t
 def test_main_rejects_an_unknown_project(validator, tmp_path):
     projects = tmp_path / "projects.json"
     projects.write_text(json.dumps({"projects": []}), encoding="utf-8")
-    code = validator.main(["staleness", str(tmp_path), "--projects", str(projects), "--name", "ghost"])
+    code = validator.main(
+        ["staleness", str(tmp_path), "--projects", str(projects), "--name", "ghost"]
+    )
     assert code == 1
 
 

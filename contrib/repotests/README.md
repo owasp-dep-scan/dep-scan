@@ -22,7 +22,7 @@ date as annotations.
   generation, then writes `generation.json` with the provenance of the run
   (`write_provenance.py`). It executes the project's build tooling, so it
   runs only in the generate job, which holds no write token, or
- deliberately on a workstation.
+  deliberately on a workstation.
 - `validate.py` is the validator; the same checks run in the producer and
   the consumers:
   - `staleness DATA_DIR --projects projects.json --name NAME` refuses BOMs
@@ -36,8 +36,9 @@ date as annotations.
   - `assert ... ` also runs the reachability analyzers over the data
     directory, exactly as a `depscan --bom-dir` scan does, and fails below
     `minReachablePurls` or when a `mustReach` package name is not reached.
-  - `digests DATA_DIR --manifest MANIFEST.json` verifies a pulled artifact
-    file by file against the manifest's layer digests.
+  - `digests DATA_DIR --manifest MANIFEST.json --digest sha256:...` checks
+    that the manifest hashes to the digest the lock file pins, then
+    verifies a pulled artifact file by file against its layer digests.
   - `lock --data-root DIR --lock-out FILE --registry REGISTRY` writes the
     lock file from the `generation.json` records and the OCI descriptors
     fetched after pushing.
@@ -50,9 +51,6 @@ date as annotations.
   oras, restores an `actions/cache` cache keyed by the digests it is asked
   for, pulls what is missing by digest, verifies every file's digest with
   `validate.py digests` and runs the staleness checks.
-  `.github/scripts/repotest-project.sh NAME` copies one project into the
-  reports layout, runs the depscan scan the repo tests use and asserts the
-  reachable purl floor and `mustReach`.
 
 ## Adding a project
 
@@ -77,12 +75,14 @@ one OCI artifact per project with `publish.sh`, writes
 `testdata.lock.json` into the run artifacts and the job summary, and
 changes nothing else. Opening the pull request that updates the lock file
 is a human step on purpose: every refresh is reviewed before the tests move
-to it. To move a project to a newer commit of its repository, change the
-`commit` in `projects.json` in the same pull request.
+to it.
 
-A dispatch from a feature branch stops after `validate`: the same scripts
-run, the artifacts stay on the run for inspection, and publishing needs one
-dispatch of the merged commit on `master`.
+The publish job generates from the `projects.json` on `master`, so moving a
+project to a newer commit, adding one or changing its arguments takes two
+pull requests: the first changes `projects.json` (a dispatch on its branch
+generates and validates without publishing), and after it merges and
+`master` is dispatched, the second updates `testdata.lock.json` and, when
+the counts moved, `minReachablePurls` and `mustReach`.
 
 ## Why the producer is split by privilege
 
@@ -91,8 +91,9 @@ package managers, compilers, setup scripts. The `generate` job therefore
 runs with `contents: read` and no secret, so nothing it executes can write
 anywhere. The `validate` job runs no project code at all, only dep-scan's
 analyzers over the produced files. Only `publish` can write, needs nothing
-but `packages: write` on GHCR, and pushes exactly the artifacts that passed
-validation, fetched from the workflow's own artifact store.
+but `packages: write` on GHCR, runs neither cdxgen nor project code, and
+pushes the same workflow artifacts the `validate` job checked; any failed
+generation or validation stops the run before it.
 
 ## Scope
 

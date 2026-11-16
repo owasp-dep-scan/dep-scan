@@ -49,11 +49,8 @@ def main():
         "cdxgenArgs": json.loads(args.cdxgen_args_json),
         "cdxgenVersion": args.cdxgen_version,
         "atomVersion": npm_package_version(args.npm_prefix, "@appthreat/atom"),
-        "cdxgenPluginsVersion": npm_package_version(
-            args.npm_prefix, "@cdxgen/cdxgen-plugins-bin"
-        ),
-        "generated": args.generated
-        or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "cdxgenPluginsVersion": npm_package_version(args.npm_prefix, "@cdxgen/cdxgen-plugins-bin"),
+        "generated": args.generated or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     entry["tag"] = "{}-cdxgen{}-{}".format(
         entry["name"], entry["cdxgenVersion"], entry["generated"][:10].replace("-", "")

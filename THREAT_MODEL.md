@@ -246,6 +246,8 @@ There are read-oriented assurance workflows like `pythonapp.yml`, `dockertests.y
 
 There is a stronger authority release workflow in `pythonpublish.yml` which can build packages, push container images, attach SBOMs, and publish to PyPI on tags.
 
+`repotests-data.yml` produces the repo-test data. It runs only when a maintainer dispatches it. Its `generate` job clones the pinned commits listed in `contrib/repotests/projects.json` and runs cdxgen research generation, which executes those projects' package managers and build scripts, so it holds `contents: read` and no secret. Its `publish` job holds `packages: write`, runs only on `master` after every generation passed `validate`, and pushes the generated JSON files to `ghcr.io/owasp-dep-scan/depscan-testdata` without running project code. The tests pull that data by the manifest digests in `contrib/repotests/testdata.lock.json`, so a published generation reaches them only through a reviewed change to that file. The remaining risk is test data shaped by a compromised upstream project or build tool, which can make a repo test pass or fail but cannot change what dep-scan publishes.
+
 A few observations matter here.
 
 Most actions are pinned by commit SHA. That is a strong control and worth preserving.
@@ -398,7 +400,7 @@ Questions to ask:
 
 ### Other workflows
 
-`pythonapp.yml`, `dockertests.yml`, `gobintests.yml`, `repotests.yml`, the `sea-*.yml` bundles and the `repotests-lifecycle-*.yml` scans are lower authority than the publish workflow, but they still matter.
+`pythonapp.yml`, `dockertests.yml`, `gobintests.yml`, `repotests.yml`, the `sea-*.yml` bundles, the `repotests-lifecycle-*.yml` scans and `repotests-data.yml` are lower authority than the publish workflow, but they still matter.
 
 Questions to ask:
 

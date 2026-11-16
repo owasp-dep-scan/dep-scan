@@ -54,8 +54,13 @@ jobs:
           java-version: '21'
       - name: Install the pinned cdxgen
         run: npm install -g @cdxgen/cdxgen@13.8.0
+      # The artifact holds one directory named after the project, so the
+      # validate and publish jobs, which merge every artifact into out/,
+      # find each project's files under out/<name>.
       - name: Generate
-        run: contrib/repotests/generate.sh '${{ matrix.project }}' src out
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: contrib/repotests/generate.sh "$PROJECT" "src/$PROJECT" "out/$PROJECT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: testdata-${{ matrix.project }}
@@ -93,11 +98,6 @@ jobs:
             uv run --no-sync python contrib/repotests/validate.py assert "out/$NAME" \
               --projects contrib/repotests/projects.json --name "$NAME"
           done
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: validated-testdata
-          path: out
-          retention-days: 14
 
   # A dispatch from a feature branch stops after validate: its generate and
   # validate jobs exercise the same scripts the master run publishes with,
@@ -124,7 +124,10 @@ jobs:
           path: out
           merge-multiple: true
       - name: Log in to GHCR
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u '${{ github.actor }}' --password-stdin
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | oras login ghcr.io -u "$GHCR_USER" --password-stdin
       - name: Push every generation and write the lock file
         run: contrib/repotests/publish.sh out ghcr.io/owasp-dep-scan/depscan-testdata
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2

@@ -26,7 +26,7 @@ Four commands run in different places:
 Usage:
   validate.py staleness DATA_DIR --projects projects.json --name rustpad
   validate.py assert DATA_DIR --projects projects.json --name rustpad
-  validate.py digests DATA_DIR --manifest manifest.json
+  validate.py digests DATA_DIR --manifest manifest.json [--digest sha256:...]
   validate.py lock --data-root OUT_ROOT --lock-out testdata.lock.json \
       --registry ghcr.io/owasp-dep-scan/depscan-testdata
 """
@@ -59,41 +59,44 @@ def load_projects(projects_path, name):
     return entry
 
 
-def iter_json_array(path):
-    """Stream a top-level JSON array from ``path``, one element at a time.
+def iter_json_array(text, name):
+    """Yield the elements of the top-level JSON array in ``text``.
 
-    Same contract as the reader in analysis_lib.reachability: a file that is
-    not a bare JSON array yields nothing, because only that shape is parsed.
+    The slice reader in analysis_lib.reachability parses only this shape, so
+    a file that is not a bare JSON array is reported here rather than
+    skipped. A truncated or malformed array raises too: the reader would
+    keep the flows before the damage and drop the rest without a word.
     Reimplemented with the standard library so ``staleness`` stays
     dependency-free for the composite action.
     """
     decoder = json.JSONDecoder()
-    try:
-        text = Path(path).read_text(encoding="utf-8")
-    except OSError:
-        return
+    whitespace = " \t\n\r"
     n = len(text)
     idx = 0
-    while idx < n and text[idx] in " \t\n\r":
+    while idx < n and text[idx] in whitespace:
         idx += 1
     if idx >= n or text[idx] != "[":
-        return
+        raise ValidationFailure(
+            f"{name}: not a bare JSON array (starts {text[idx : idx + 16]!r});"
+            " regenerate with atom 4"
+        )
     idx += 1
-    while idx < n:
-        while idx < n and text[idx] in " \t\n\r":
+    while True:
+        while idx < n and text[idx] in whitespace:
             idx += 1
-        if idx >= n or text[idx] == "]":
+        if idx < n and text[idx] == "]":
             return
         try:
-            obj, end = decoder.raw_decode(text, idx)
-        except json.JSONDecodeError:
-            return
+            obj, idx = decoder.raw_decode(text, idx)
+        except json.JSONDecodeError as exc:
+            raise ValidationFailure(f"{name}: malformed JSON array ({exc})") from exc
         yield obj
-        idx = end
-        while idx < n and text[idx] in " \t\n\r":
+        while idx < n and text[idx] in whitespace:
             idx += 1
         if idx < n and text[idx] == ",":
             idx += 1
+        elif idx >= n or text[idx] != "]":
+            raise ValidationFailure(f"{name}: truncated JSON array at offset {idx}")
 
 
 def parse_version(text):
@@ -156,34 +159,29 @@ def check_staleness(data_dir, entry):
     flows = 0
     flows_with_purl = 0
     for slice_file in slice_files:
-        head = slice_file.read_text(encoding="utf-8")[:64].lstrip()
-        if not head.startswith("["):
-            failures.append(
-                f"{slice_file.name}: not a bare JSON array (starts {head[:16]!r});"
-                " regenerate with atom 4"
-            )
-            continue
-        # The loop variable must not be called entry: that name holds the
-        # projects.json record the minimum-flow branch below reads.
-        for flow in iter_json_array(slice_file):
-            flows += 1
-            if not (
-                isinstance(flow, dict)
-                and isinstance(flow.get("flows"), list)
-                and isinstance(flow.get("purls"), list)
-            ):
-                failures.append(
-                    f"{slice_file.name}: flow object without flows/purls lists,"
-                    " not the atom 4 shape"
-                )
-                break
-            if any(isinstance(p, str) and p.startswith("pkg:") for p in flow["purls"]):
-                flows_with_purl += 1
+        try:
+            text = slice_file.read_text(encoding="utf-8")
+            for flow in iter_json_array(text, slice_file.name):
+                flows += 1
+                if not (
+                    isinstance(flow, dict)
+                    and isinstance(flow.get("flows"), list)
+                    and isinstance(flow.get("purls"), list)
+                ):
+                    raise ValidationFailure(
+                        f"{slice_file.name}: flow object without flows/purls lists,"
+                        " not the atom 4 shape"
+                    )
+                if any(isinstance(p, str) and p.startswith("pkg:") for p in flow["purls"]):
+                    flows_with_purl += 1
+        except (OSError, UnicodeDecodeError) as exc:
+            failures.append(f"{slice_file.name}: unreadable slice ({exc})")
+        except ValidationFailure as exc:
+            failures.append(str(exc))
     if not failures and slice_files:
         if entry.get("minReachablePurls", 0) > 0 and flows_with_purl == 0:
             failures.append(
-                "reachables slices carry no flow with a pkg: purl across "
-                f"{len(slice_files)} files"
+                f"reachables slices carry no flow with a pkg: purl across {len(slice_files)} files"
             )
         elif flows == 0:
             failures.append(
@@ -251,9 +249,7 @@ def check_assert(data_dir, entry, analyzer):
     for purl in reached:
         reached_names |= purl_package_names(purl)
     for must in entry.get("mustReach") or []:
-        if not any(
-            must == name or name.endswith(f"/{must}") for name in reached_names
-        ):
+        if not any(must == name or name.endswith(f"/{must}") for name in reached_names):
             failures.append(f"mustReach package {must} was not reached")
     summary["reachedPurls"] = len(reached)
     summary["analyzer"] = analyzer
@@ -263,10 +259,24 @@ def check_assert(data_dir, entry, analyzer):
     return summary
 
 
-def check_digests(data_dir, manifest_path):
-    """Verify the pulled files against the OCI manifest layer digests."""
-    with open(manifest_path, encoding="utf-8") as fp:
-        manifest = json.load(fp)
+def check_digests(data_dir, manifest_path, manifest_digest=None):
+    """Verify the pulled files against the OCI manifest layer digests.
+
+    With ``manifest_digest`` (the digest testdata.lock.json pins), the
+    manifest file itself must hash to it first, so a manifest restored from
+    a cache cannot vouch for files the pinned generation does not hold.
+    """
+    try:
+        manifest_bytes = Path(manifest_path).read_bytes()
+    except OSError as exc:
+        raise ValidationFailure(f"{manifest_path}: unreadable manifest ({exc})") from exc
+    if manifest_digest is not None:
+        actual = "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
+        if actual != manifest_digest:
+            raise ValidationFailure(
+                f"{manifest_path}: manifest digest {actual} is not the pinned {manifest_digest}"
+            )
+    manifest = json.loads(manifest_bytes)
     layers = {}
     for layer in manifest.get("layers") or []:
         title = (layer.get("annotations") or {}).get("org.opencontainers.image.title")
@@ -289,7 +299,9 @@ def check_digests(data_dir, manifest_path):
         if actual != digest:
             failures.append(f"{title}: digest {actual} does not match {digest}")
         if local.stat().st_size != layer.get("size"):
-            failures.append(f"{title}: size {local.stat().st_size} does not match {layer.get('size')}")
+            failures.append(
+                f"{title}: size {local.stat().st_size} does not match {layer.get('size')}"
+            )
     for extra in sorted(local_files - set(layers)):
         failures.append(f"{extra}: present in the data directory but not in the manifest")
     if failures:
@@ -356,6 +368,9 @@ def main(argv=None):
     p_dig = sub.add_parser("digests", help="verify pulled files against a manifest")
     p_dig.add_argument("data_dir")
     p_dig.add_argument("--manifest", required=True)
+    p_dig.add_argument(
+        "--digest", help="manifest digest the lock file pins; the manifest must hash to it"
+    )
 
     p_lock = sub.add_parser("lock", help="write testdata.lock.json")
     p_lock.add_argument("--data-root", required=True)
@@ -371,7 +386,7 @@ def main(argv=None):
             entry = load_projects(args.projects, args.name)
             summary = check_assert(args.data_dir, entry, args.analyzer)
         elif args.command == "digests":
-            summary = check_digests(args.data_dir, args.manifest)
+            summary = check_digests(args.data_dir, args.manifest, args.digest)
         else:
             summary = write_lock(args.data_root, args.lock_out, args.registry)
     except ValidationFailure as exc:
