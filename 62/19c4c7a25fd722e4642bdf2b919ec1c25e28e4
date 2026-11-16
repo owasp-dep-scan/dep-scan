@@ -1,0 +1,25 @@
+test/data/atom4/python-parse-report.json
+  s_dcd332e20cf893::t_630cb9038425df 1-30
+test/data/atom4/python-openapi.json
+  s_dcd332e20cf893::t_630cb9038425df 1-135
+test/data/atom4/README.md
+  s_dcd332e20cf893::t_aad4c6856c7f9e 1-53
+test/data/atom4/sbom-python.cdx.json
+  s_dcd332e20cf893::t_630cb9038425df 1-898
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6219c4c7a25fd722e4642bdf2b919ec1c25e28e4",
+  "prompts": {},
+  "sessions": {
+    "s_dcd332e20cf893": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_c72ed12a-3cb4-4d0a-aace-f877c81cebbe",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

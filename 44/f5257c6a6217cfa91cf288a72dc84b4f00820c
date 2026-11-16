@@ -1,0 +1,21 @@
+pyproject.toml
+  s_dcd332e20cf893::t_6499931d5a2ec8 56-57
+uv.lock
+  s_dcd332e20cf893::t_a29cade570212a 204,213,215,1450-1451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44f5257c6a6217cfa91cf288a72dc84b4f00820c",
+  "prompts": {},
+  "sessions": {
+    "s_dcd332e20cf893": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_c72ed12a-3cb4-4d0a-aace-f877c81cebbe",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
