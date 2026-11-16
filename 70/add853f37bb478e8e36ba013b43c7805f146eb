@@ -1,0 +1,26 @@
+documentation/docs/doctor.mdx
+  s_e8206cbe1a7d56::t_2ffbb5b905e513 1-18,20-112
+  s_e8206cbe1a7d56::t_847b59b3e7f041 19
+.github/workflows/pythonapp.yml
+  s_e8206cbe1a7d56::t_d17ec61456332a 137-151
+documentation/docs/python-api.mdx
+  s_e8206cbe1a7d56::t_ad9290b77dbbda 98-109
+documentation/sidebars.ts
+  s_e8206cbe1a7d56::t_a81081bb503866 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70add853f37bb478e8e36ba013b43c7805f146eb",
+  "prompts": {},
+  "sessions": {
+    "s_e8206cbe1a7d56": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_aac1597a-c9fa-457b-ad27-edd5dccc1c53",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
