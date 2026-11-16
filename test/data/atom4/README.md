@@ -19,9 +19,8 @@ cdxgen -t python -o <reports>/sbom-python.cdx.json --profile research \
 
 with `ATOM_TOOLS_WORK_DIR=<reports>` and `ATOM_TOOLS_OPENAPI_FILENAME=
 python-openapi.json` in the environment. The full run produced 295 reachable
-flows and 15,268 objectSlices; the parse report was recorded separately by
-running the same atom on a directory holding deliberately broken Python
-files (`atom usages -l python --parse-report <path>`).
+flows. dep-scan reads the reachables slice and the OpenAPI document; the
+usages slice goes only to cdxgen and atom-tools, so it is not kept here.
 
 ## How the files were cut
 
@@ -31,11 +30,6 @@ files (`atom usages -l python --parse-report <path>`).
   semantic tag last), one whose IDENTIFIER node interleaves a purl, a
   semantic tag and a second purl, one plain flow, and one flow with no
   purls at all.
-- `python-usages.slices.json`: two whole `objectSlices` kept verbatim. The
-  `__post_init__` one calls `pathlib.Path.__init__` at lines 141 and 145,
-  showing atom 4's one entry per external call site (a third entry covers
-  the second call on line 145 at a different column). `userDefinedTypes`
-  was emptied.
 - `python-openapi.json`: the document envelope kept verbatim with eight
   whole path objects, including two whose `x-atom-usages` carries both
   `call` and `target`; atom-tools 1.x writes `target` line numbers as a
@@ -45,8 +39,6 @@ files (`atom usages -l python --parse-report <path>`).
   components are verbatim except that `evidence.callstack` was dropped and
   `formulation`, `annotations`, `citations` and `services` were removed
   from the document; the metadata was cut back to its `tools` entry.
-- `python-parse-report.json`: verbatim except `inputRoot`, which named the
-  local recording directory and was replaced with `parseproj`.
 
 No absolute paths, usernames or hostnames remain in any of the files; file
 names inside the slices are repository-relative paths of the scanned

@@ -161,6 +161,8 @@ reports/
 .conda/
 .mise.toml
 *.slices.json
+# Recorded slices kept as test fixtures.
+!test/data/atom4/*.slices.json
 .idx/
 .theia/
 

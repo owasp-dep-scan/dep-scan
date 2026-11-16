@@ -82,8 +82,10 @@ def _node_service_purls(pieces: List[str], flow_purls) -> set:
     whose own tags name no purl, the callee's package URLs are appended AFTER
     them (``withPurls`` in ``ReachableSlicing.scala``), so a service tag can
     PRECEDE every purl in the string (``"web, pkg:npm/express@4.22.2"``). Such
-    a tag belongs to the call's library, so it applies to the first purl that
-    follows it.
+    a tag describes the call, and the purls appended right after it are the
+    callee's packages (often two versions of one library), so it applies to
+    each purl in the run that directly follows it and to nothing after the
+    next free-form tag.
 
     A node that carries a SERVICE_TAG but names no purl at all keeps the
     fallback to the flow-level ``purls`` so the signal is never lost.
@@ -97,10 +99,12 @@ def _node_service_purls(pieces: List[str], flow_purls) -> set:
             current_purl = piece
             if pending_service:
                 node_purl_is_service[piece] = True
-                pending_service = False
-        elif piece in SERVICE_TAGS:
+            continue
+        # A free-form tag ends the run of purls a leading service tag covers.
+        pending_service = False
+        if piece in SERVICE_TAGS:
             # Attribute to the nearest preceding purl; if none came yet, the
-            # pending flag hands the tag to the first purl that follows.
+            # pending flag hands the tag to the purls that directly follow.
             if current_purl is not None:
                 node_purl_is_service[current_purl] = True
             else:

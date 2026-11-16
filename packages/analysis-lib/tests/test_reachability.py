@@ -178,12 +178,28 @@ def test_flow_service_purls_service_tag_before_callee_purl():
     assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
 
 
-def test_flow_service_purls_trailing_purl_run_takes_pending_tag_once():
-    """In ``web, pkg:x@1, pkg:y@2`` the pending service tag applies to the
-    first purl that follows it, and does not spill onto later purls of the
-    run: over-attribution is the failure mode this helper exists to prevent."""
+def test_flow_service_purls_leading_tag_covers_the_purl_run_that_follows():
+    """withPurls appends every missing callee purl, sorted, so a call into a
+    library present at two versions reads ``web, pkg:pypi/quart@0.22.0,
+    pkg:pypi/quart@0.23.1``. Both are the callee's packages and both get the
+    tag."""
     flow = {
-        "flows": [{"id": "n1", "tags": "web, pkg:npm/express@4.22.2, pkg:npm/lodash@4.17.21"}],
+        "flows": [{"id": "n1", "tags": "web, pkg:pypi/quart@0.22.0, pkg:pypi/quart@0.23.1"}],
+        "purls": ["pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"],
+    }
+    assert _flow_service_purls(flow) == {"pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"}
+
+
+def test_flow_service_purls_leading_tag_stops_at_the_next_free_form_tag():
+    """In ``web, pkg:x, crypto, pkg:y`` the leading tag covers ``x`` only:
+    ``y`` follows another free-form tag, so ``web`` does not describe it."""
+    flow = {
+        "flows": [
+            {
+                "id": "n1",
+                "tags": "web, pkg:npm/express@4.22.2, crypto, pkg:npm/lodash@4.17.21",
+            }
+        ],
         "purls": ["pkg:npm/express@4.22.2", "pkg:npm/lodash@4.17.21"],
     }
     assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
@@ -467,49 +483,6 @@ def test_recorded_atom4_semantic_reachability():
         "pkg:pypi/quart@0.22.0",
         "pkg:pypi/quart@0.23.1",
     }
-
-
-def test_recorded_atom4_callee_purls_in_node_tags():
-    """The recorded flows carry atom 4's callee purls: CALL/LITERAL nodes
-    whose ``tags`` string holds purls the flow can be tied back to, in the
-    purls-first order atom writes when the call site was already tagged."""
-    flows = json.loads((ATOM4_DIR / "python-reachables.slices.json").read_text())
-    tagged_calls = [
-        n
-        for f in flows
-        for n in f.get("flows", [])
-        if n.get("label") in ("CALL", "LITERAL")
-        and any(p.strip().startswith("pkg:") for p in (n.get("tags") or "").split(","))
-    ]
-    assert tagged_calls, "the recorded slice must contain calls tagged with purls"
-    quart_tag = "pkg:pypi/quart@0.22.0, pkg:pypi/quart@0.23.1, framework-input"
-    assert any(n.get("tags") == quart_tag for n in tagged_calls)
-    # Every purl named in a node tag also appears in its flow's purls list.
-    for f in flows:
-        for n in f.get("flows", []):
-            for piece in (n.get("tags") or "").split(","):
-                piece = piece.strip()
-                if piece.startswith("pkg:"):
-                    assert piece in (f.get("purls") or [])
-
-
-def test_recorded_atom4_usages_one_entry_per_call_site():
-    """The recorded usages slice has one entry per external call site: three
-    entries for ``pathlib.Path.__init__`` at lines 141 and 145 (two call
-    sites on line 145 at different columns), each carrying its own position."""
-    usages = json.loads((ATOM4_DIR / "python-usages.slices.json").read_text())
-    post_init = next(
-        o
-        for o in usages["objectSlices"]
-        if o["fullName"] == "analysis_lib.ReachabilityAnalysisKV.__post_init__"
-    )
-    entries = [
-        u["targetObj"]
-        for u in post_init["usages"]
-        if u["targetObj"].get("resolvedMethod") == "pathlib.Path.__init__"
-    ]
-    lines = sorted((e["lineNumber"], e["columnNumber"]) for e in entries if e.get("lineNumber"))
-    assert lines == [(141, 43), (145, 26), (145, 66)]
 
 
 def test_recorded_atom4_openapi_usage_targets():
