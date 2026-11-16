@@ -1,0 +1,607 @@
+"""The doctor report, exercised through fakes on every platform.
+
+The fake tools are Python scripts started through ``sys.executable`` (the
+probe recognises a Python script by its shebang, so this also runs on
+Windows), and every fake appends to a record file, which gives each test its
+positive control that the probe really called it.
+
+Three groups of tests:
+
+- one per tool for missing, unreadable version and present. Library-sourced
+  tools (blint, blintdb) and the always-present python runtime have no
+  version probe, so they take only the cases that apply to them.
+- the plugin matrix: a fake plugins directory holding every plugin binary,
+  where removing one binary at a time must change exactly the capabilities
+  whose requirements name it and no others.
+- the command: the report validates against the published schema, and the
+  run never opens a socket, never calls a download or refresh and leaves the
+  database files untouched.
+"""
+
+import json
+import os
+import shutil
+import sys
+import types
+from types import SimpleNamespace
+
+import pytest
+
+from depscan.lib import doctor as doctor_mod
+
+# The fake tool records every call, prints the version line the test chose
+# and exits 0. The shebang on the first line is what makes the probe run it
+# with the interpreter.
+FAKE_TOOL_SOURCE = """#!/usr/bin/env python3
+import json
+import os
+import sys
+
+RECORD = {record!r}
+NAME = {name!r}
+OUTPUT = {output!r}
+
+
+def note():
+    if not RECORD:
+        return
+    entries = []
+    if os.path.exists(RECORD):
+        try:
+            with open(RECORD, encoding="utf-8") as fp:
+                entries = json.load(fp)
+        except ValueError:
+            entries = []
+    entries.append({{"tool": NAME, "argv": sys.argv[1:]}})
+    with open(RECORD, "w", encoding="utf-8") as fp:
+        json.dump(entries, fp)
+
+
+note()
+print(OUTPUT)
+"""
+
+# The tools resolved through an environment variable naming the binary.
+ENV_TOOLS = {
+    "cdxgen": ("CDXGEN_CMD", "CycloneDX Generator 13.8.0", "13.8.0"),
+    "golem": ("GOLEM_CMD", "golem 9.9.9", "9.9.9"),
+    "rusi": ("RUSI_CMD", "rusi 9.9.9", "9.9.9"),
+    "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef", "9.9.9"),
+}
+
+# The tools resolved through find_executable, with the output of their own
+# version option and the version the report must parse out of it.
+FIND_TOOLS = {
+    "atom": ("atom 4.0.2", "4.0.2", ["--version"]),
+    "atom-tools": ("Atom Tools (version 9.9.9)", "9.9.9", ["--version"]),
+    "edga": ("edga 0.2.0", "0.2.0", ["--version"]),
+    "node": ("v24.9.9", "24.9.9", ["--version"]),
+    "go": ("go version go9.9.9 darwin/arm64", "9.9.9", ["version"]),
+    "dotnet": ("9.9.100", "9.9.100", ["--version"]),
+}
+
+# golem, rusi and dosai also live in a plugins directory; the matrix test
+# needs their file name pattern next to the plugins-only ones.
+PLUGIN_FILENAMES = dict(doctor_mod._PLUGIN_BINARY_NAMES)
+for _tool in ("golem", "rusi", "dosai"):
+    PLUGIN_FILENAMES[_tool] = _tool + "-{platform}-{arch}{extn}"
+
+#: Every plugin binary a full plugins directory carries.
+ALL_PLUGIN_TOOLS = tuple(sorted(PLUGIN_FILENAMES))
+
+# A database entry that satisfies the data:vdb requirement.
+FULL_VDB_DATA = {
+    "present": True,
+    "directory": "/tmp/vdb",
+    "image": "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz",
+    "flavor": "app-only",
+    "shards": {"enabled": False, "present": []},
+    "createdUtc": "2026-11-01T00:00:00+00:00",
+    "ageHours": 10.0,
+    "stale": False,
+    "maxAgeHours": 48,
+    "cveDataCount": 100,
+    "cveIndexCount": 100,
+    "extendedMetadataPresent": False,
+    "cveMetadataRows": 0,
+}
+
+
+@pytest.fixture
+def clean_env(tmp_path, monkeypatch):
+    """Strip every tool override and the real PATH so only the fakes resolve.
+
+    PATH points at an empty directory, so the PATH lookup of a tool that no
+    fake serves finds nothing on any platform.
+    """
+    empty_path = tmp_path / "stripped-path"
+    empty_path.mkdir()
+    monkeypatch.setenv("PATH", str(empty_path))
+    for var in (
+        "CDXGEN_PLUGINS_DIR",
+        "CDXGEN_CMD",
+        "GOLEM_CMD",
+        "DEPSCAN_GOLEM_BINARY",
+        "RUSI_CMD",
+        "DEPSCAN_RUSI_BINARY",
+        "DOSAI_CMD",
+        "DEPSCAN_DOSAI_BINARY",
+    ):
+        monkeypatch.delenv(var, raising=False)
+    return tmp_path
+
+
+@pytest.fixture
+def fakes(tmp_path, monkeypatch, clean_env):
+    """Install fake tools and the find_executable registry doctor consults.
+
+    ``script(name, output)`` writes a fake tool and returns its path;
+    ``found`` maps a tool name to the path the PATH lookup answers with, and
+    a lookup nothing serves falls through to the real PATH (which the
+    stripped PATH keeps empty); ``record`` collects every fake invocation.
+    """
+    record = tmp_path / "record.json"
+
+    def script(name, output):
+        path = tmp_path / f"fake-{name}.py"
+        path.write_text(
+            FAKE_TOOL_SOURCE.format(record=str(record), name=name, output=output),
+            encoding="utf-8",
+        )
+        path.chmod(0o755)
+        return path
+
+    found = {}
+    real_find = doctor_mod.find_executable
+
+    def find(name):
+        return found.get(name) or real_find(name)
+
+    monkeypatch.setattr(doctor_mod, "find_executable", find)
+    return SimpleNamespace(script=script, record=record, found=found)
+
+
+def _tool_entries(report):
+    return {tool.name: tool for tool in report.tools}
+
+
+def _capability_signature(report):
+    return {
+        capability.name: (capability.status, tuple(capability.missing))
+        for capability in report.capabilities
+    }
+
+
+def _assert_probed(record, tool, argv):
+    """Positive control: the fake tool ran with exactly ``argv``."""
+    entries = json.loads(record.read_text(encoding="utf-8"))
+    assert any(
+        entry["tool"] == tool and entry["argv"] == argv for entry in entries
+    ), f"the {tool} fake was never called with {argv}: {entries}"
+
+
+# --- one tool at a time -------------------------------------------------------
+
+
+def _install_tool(fakes, monkeypatch, name):
+    """Install the present-case fake for ``name``; returns the expected version."""
+    if name in ENV_TOOLS:
+        env_name, output, version = ENV_TOOLS[name]
+        monkeypatch.setenv(env_name, str(fakes.script(name, output)))
+        return version
+    if name in FIND_TOOLS:
+        output, version, _argv = FIND_TOOLS[name]
+        fakes.found[name] = fakes.script(name, output)
+        return version
+    if name == "blint":
+        monkeypatch.setattr(
+            doctor_mod, "_python_package_version", lambda package: "4.0.1"
+        )
+        fake_init = fakes.record.parent / "fake-blint" / "blint" / "__init__.py"
+        fake_init.parent.mkdir(parents=True, exist_ok=True)
+        fake_init.write_text("", encoding="utf-8")
+        real_find_spec = doctor_mod.util.find_spec
+        monkeypatch.setattr(
+            doctor_mod.util,
+            "find_spec",
+            lambda module, *a, **k: (
+                types.SimpleNamespace(origin=str(fake_init))
+                if module == "blint"
+                else real_find_spec(module, *a, **k)
+            ),
+        )
+        return "4.0.1"
+    if name == "blintdb":
+        location = fakes.record.parent / "blint.db"
+        location.write_bytes(b"database")
+        monkeypatch.setitem(sys.modules, "blint", types.ModuleType("blint"))
+        monkeypatch.setitem(
+            sys.modules,
+            "blint.config",
+            types.SimpleNamespace(BLINTDB_LOC=str(location)),
+        )
+        return None
+    raise AssertionError(f"unknown tool {name}")
+
+
+def _uninstall_tool(fakes, monkeypatch, name):
+    """Make a library-sourced tool report missing deterministically."""
+    from importlib import metadata
+
+    if name == "blint":
+        def raise_missing(package):
+            raise metadata.PackageNotFoundError(package)
+
+        monkeypatch.setattr(doctor_mod, "_python_package_version", raise_missing)
+    elif name == "blintdb":
+        monkeypatch.setitem(sys.modules, "blint", types.ModuleType("blint"))
+        monkeypatch.setitem(
+            sys.modules,
+            "blint.config",
+            types.SimpleNamespace(
+                BLINTDB_LOC=str(fakes.record.parent / "absent-blint.db")
+            ),
+        )
+
+
+def _install_unreadable(fakes, monkeypatch, name):
+    """Install a fake whose version output no parser accepts."""
+    if name in ENV_TOOLS:
+        env_name = ENV_TOOLS[name][0]
+        monkeypatch.setenv(env_name, str(fakes.script(name, "garbage output")))
+        return
+    if name in FIND_TOOLS:
+        fakes.found[name] = fakes.script(name, "garbage output")
+    else:
+        pytest.skip("a library-sourced tool has no version probe to fail")
+
+
+def _probe_argv(name):
+    if name in FIND_TOOLS:
+        return FIND_TOOLS[name][2]
+    return ["--version"]
+
+
+@pytest.mark.parametrize(
+    "case", ["missing", "unreadable", "present"], ids=lambda case: case
+)
+@pytest.mark.parametrize(
+    "name",
+    [
+        "cdxgen",
+        "atom",
+        "atom-tools",
+        "edga",
+        "node",
+        "go",
+        "dotnet",
+        "golem",
+        "rusi",
+        "dosai",
+        "blint",
+        "blintdb",
+    ],
+    ids=lambda name: name,
+)
+def test_tool_states(case, name, fakes, monkeypatch):
+    """Each tool reports missing, present, and an unreadable version.
+
+    A version that cannot be parsed leaves the tool usable, except cdxgen,
+    which is refused without a readable version the same way a scan refuses
+    it. Every probed fake leaves a record entry, proving the probe ran.
+    """
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    expected_version = None
+    if case == "present":
+        expected_version = _install_tool(fakes, monkeypatch, name)
+    elif case == "unreadable":
+        _install_unreadable(fakes, monkeypatch, name)
+    else:
+        _uninstall_tool(fakes, monkeypatch, name)
+    entry = _tool_entries(doctor_mod.doctor())[name]
+    if case == "missing":
+        assert entry.path is None
+        assert entry.reason, f"{name} must say why it is missing"
+        assert entry.source is None
+        return
+    assert entry.path is not None
+    assert entry.version == expected_version, f"{name} version"
+    if name in ENV_TOOLS or name in FIND_TOOLS:
+        _assert_probed(fakes.record, name, _probe_argv(name))
+    if name == "cdxgen" and case == "unreadable":
+        # cdxgen without a readable version is unusable and says so.
+        assert "minimum" in entry.reason
+    else:
+        assert entry.reason is None, f"{name} stays usable: {entry.reason}"
+
+
+def test_python_runtime_is_always_reported(clean_env):
+    entry = _tool_entries(doctor_mod.doctor())["python"]
+    assert entry.path == sys.executable
+    assert entry.version
+    assert entry.reason is None
+
+
+def test_cdxgen_below_the_minimum_is_unusable(fakes, monkeypatch):
+    """A cdxgen older than the minimum is reported with the reason named."""
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    monkeypatch.setenv(
+        "CDXGEN_CMD", str(fakes.script("cdxgen", "CycloneDX Generator 13.3.0"))
+    )
+    entry = _tool_entries(doctor_mod.doctor())["cdxgen"]
+    assert entry.version == "13.3.0"
+    assert "13.8.0" in entry.reason
+    assert not entry.usable
+
+
+def test_dotnet_satisfied_by_self_contained_dosai(fakes, monkeypatch):
+    """A dosai binary whose name carries -full bundles the .NET runtime."""
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    binary = fakes.script("dosai-full", "dosai 9.9.9")
+    monkeypatch.setenv("DOSAI_CMD", str(binary))
+    entries = _tool_entries(doctor_mod.doctor())
+    assert entries["dotnet"].source == "bundled-runtime"
+    assert entries["dotnet"].usable
+
+
+# --- the plugin matrix ---------------------------------------------------------
+
+
+@pytest.fixture
+def plugins_env(fakes, monkeypatch):
+    """A fake plugins directory with every binary, plus a full toolchain.
+
+    The PATH is stripped and every override cleared, so golem, rusi and
+    dosai resolve from the plugins directory exactly as a scan would find
+    them there, and the go, dotnet, node and atom lookups answer from fakes.
+    """
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    target = doctor_mod.get_plugins_bin_target()
+    base = fakes.record.parent / "plugins-root"
+    plugins_dir = base / "plugins"
+    plugins_dir.mkdir(parents=True)
+    binaries = {}
+    manifest_plugins = []
+    for tool in ALL_PLUGIN_TOOLS:
+        filename = PLUGIN_FILENAMES[tool].format(**target)
+        path = plugins_dir / tool / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if filename.endswith(".app"):
+            path.mkdir()
+        elif tool in ("golem", "rusi", "dosai"):
+            path.write_text(
+                FAKE_TOOL_SOURCE.format(
+                    record=str(fakes.record), name=tool, output=f"{tool} 9.9.9"
+                ),
+                encoding="utf-8",
+            )
+            path.chmod(0o755)
+        else:
+            path.write_text("plugin binary placeholder", encoding="utf-8")
+        binaries[tool] = path
+        manifest_plugins.append(
+            {
+                "name": tool,
+                "version": "1.2.3",
+                "binaryPath": f"plugins/{tool}/{filename}",
+            }
+        )
+    (plugins_dir / "plugins-manifest.json").write_text(
+        json.dumps(
+            {
+                "package": {
+                    "name": "@cdxgen/cdxgen-plugins-bin",
+                    "version": "9.9.9",
+                },
+                "plugins": manifest_plugins,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CDXGEN_PLUGINS_DIR", str(plugins_dir))
+    monkeypatch.setenv(
+        "CDXGEN_CMD",
+        str(fakes.script("cdxgen", "CycloneDX Generator 13.8.0")),
+    )
+    for name in ("go", "dotnet", "node", "atom"):
+        output = FIND_TOOLS[name][0] if name in FIND_TOOLS else f"{name} 9.9.9"
+        fakes.found[name] = fakes.script(name, output)
+    return SimpleNamespace(plugins_dir=plugins_dir, binaries=binaries)
+
+
+def _remove(path):
+    """Move a plugin binary (or bundle directory) out of the way."""
+    away = path.with_name(path.name + ".removed")
+    path.rename(away)
+    return away
+
+
+def test_plugin_matrix_baseline(plugins_env, fakes):
+    """Every capability whose requirements the fakes satisfy is available."""
+    report = doctor_mod.doctor()
+    entries = _tool_entries(report)
+    for tool in ALL_PLUGIN_TOOLS:
+        assert entries[tool].path is not None, tool
+        assert entries[tool].usable, tool
+    for tool in ("golem", "rusi", "dosai"):
+        assert entries[tool].source == "plugins-dir"
+        assert entries[tool].version == "9.9.9"
+        _assert_probed(fakes.record, tool, ["--version"])
+    assert entries["cdxgen-plugins"].version == "9.9.9"
+    signature = _capability_signature(report)
+    for name in ("vulnerabilities", "reachability", "reachability:rust", "reachability:go", "reachability:dotnet", "license"):
+        assert signature[name] == ("available", ()), name
+
+
+@pytest.mark.parametrize("plugin", ALL_PLUGIN_TOOLS)
+def test_removing_one_plugin_changes_only_its_dependents(plugin, plugins_env):
+    """Removing one binary flips exactly the capabilities that need it.
+
+    The expected set comes from the capability table itself, so this checks
+    that the discovery wiring agrees with the table: whatever the table says
+    depends on the tool is what flips, and nothing else.
+    """
+    baseline = _capability_signature(doctor_mod.doctor())
+    binary = plugins_env.binaries[plugin]
+    away = _remove(binary)
+    try:
+        after_report = doctor_mod.doctor()
+    finally:
+        away.rename(binary)
+    changed = {
+        name
+        for name in baseline
+        if baseline[name] != _capability_signature(after_report)[name]
+    }
+    expected = {
+        spec.name
+        for spec in doctor_mod.CAPABILITIES
+        if spec.implemented and f"tool:{plugin}" in spec.requirements
+    }
+    assert changed == expected
+    entry = _tool_entries(after_report)[plugin]
+    assert entry.path is None
+    assert plugin in (entry.reason or "")
+
+
+# --- the command and the guarantees -------------------------------------------
+
+
+@pytest.fixture
+def no_network(monkeypatch):
+    """Any socket the report tries to open fails the test."""
+    import socket
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("depscan doctor must not open a network socket")
+
+    monkeypatch.setattr(socket, "socket", refuse)
+    monkeypatch.setattr(socket, "create_connection", refuse)
+
+
+def test_json_report_validates_against_the_schema(no_network, capsys):
+    """The command's JSON output satisfies the published schema."""
+    from analysis_lib.findings.schemas import validate
+
+    exit_code = doctor_mod.run_doctor_command(["--format", "json"])
+    assert exit_code == 0
+    document = json.loads(capsys.readouterr().out)
+    validate("depscan-doctor", document)
+    assert document["schemaVersion"] == "1"
+    names = {tool["name"] for tool in document["tools"]}
+    assert {"cdxgen", "atom", "edga", "atom-tools", "blint", "golem", "rusi",
+            "dosai", "dotnet", "go", "node", "python", "cdxgen-plugins"} <= names
+
+
+def test_text_report_names_every_capability(no_network, capsys):
+    exit_code = doctor_mod.run_doctor_command([])
+    assert exit_code == 0
+    text = capsys.readouterr().out
+    assert text.startswith("dep-scan doctor")
+    for spec in doctor_mod.CAPABILITIES:
+        assert spec.name in text
+
+
+def test_doctor_never_touches_the_network_or_the_database(
+    no_network, monkeypatch, tmp_path
+):
+    """No download or refresh runs and the database files are left alone.
+
+    The database is a garbage pair of files in a temporary home, so the
+    report must also cope with a present but unreadable one: it reports the
+    counts as unknown instead of answering from nothing.
+    """
+    from depscan.lib import vdb_setup
+    from vdb.lib import config as vdb_config
+    from vdb.lib import db_cmd
+
+    def fail(*args, **kwargs):
+        raise AssertionError("depscan doctor must not download or refresh")
+
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", fail)
+    monkeypatch.setattr(vdb_setup, "refresh_shards_with_retries", fail)
+    monkeypatch.setattr(db_cmd, "refresh_full_image", fail)
+    monkeypatch.setattr(db_cmd, "refresh_shards", fail)
+    home = tmp_path / "vdb-home"
+    home.mkdir()
+    (home / "data.vdb7").write_bytes(b"not a database")
+    (home / "data.index.vdb7").write_bytes(b"not a database")
+    (home / ".depscan-vdb-image").write_text(
+        "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz", encoding="utf-8"
+    )
+    monkeypatch.setattr(vdb_config, "DATA_DIR", str(home))
+    monkeypatch.setattr(vdb_config, "VDB_BIN_FILE", str(home / "data.vdb7"))
+    monkeypatch.setattr(vdb_config, "VDB_BIN_INDEX", str(home / "data.index.vdb7"))
+    monkeypatch.setattr(vdb_config, "VDB_SHARDS_DIR", str(home / "shards"))
+    monkeypatch.setattr(vdb_config, "VDB_METADATA_FILE", str(home / "data.vdb7-meta.json"))
+    before = {
+        entry.name: (entry.stat().st_mtime_ns, entry.stat().st_size)
+        for entry in sorted(home.iterdir())
+    }
+    report = doctor_mod.doctor()
+    after = {
+        entry.name: (entry.stat().st_mtime_ns, entry.stat().st_size)
+        for entry in sorted(home.iterdir())
+    }
+    assert after == before
+    vdb = report.data["vulnerabilityDatabase"]
+    assert vdb["present"] is True
+    assert vdb["flavor"] == "app-only"
+    assert vdb["cveDataCount"] is None
+    assert vdb["cveMetadataRows"] is None
+    vulnerabilities = {
+        capability.name: capability for capability in report.capabilities
+    }["vulnerabilities"]
+    assert vulnerabilities.status == "unavailable"
+    assert vulnerabilities.missing == ["data:vdb"]
+
+
+def test_missing_database_is_a_reported_state(no_network, monkeypatch, tmp_path):
+    """An absent database is reported, and never fetched, by the command."""
+    from vdb.lib import config as vdb_config
+
+    home = tmp_path / "empty-home"
+    home.mkdir()
+    monkeypatch.setattr(vdb_config, "DATA_DIR", str(home))
+    monkeypatch.setattr(vdb_config, "VDB_BIN_FILE", str(home / "data.vdb7"))
+    monkeypatch.setattr(vdb_config, "VDB_BIN_INDEX", str(home / "data.index.vdb7"))
+    monkeypatch.setattr(vdb_config, "VDB_SHARDS_DIR", str(home / "shards"))
+    monkeypatch.setattr(vdb_config, "VDB_METADATA_FILE", str(home / "data.vdb7-meta.json"))
+    report = doctor_mod.doctor()
+    vdb = report.data["vulnerabilityDatabase"]
+    assert vdb["present"] is False
+    assert vdb["flavor"] is None
+    assert list(home.iterdir()) == []
+
+
+# --- the command line ----------------------------------------------------------
+
+
+def test_doctor_format_defaults_to_text():
+    assert doctor_mod.parse_doctor_args([]) == "text"
+    assert doctor_mod.parse_doctor_args(["--format", "json"]) == "json"
+
+
+def test_doctor_rejects_an_unknown_format(capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        doctor_mod.parse_doctor_args(["--format", "yaml"])
+    assert excinfo.value.code == 2
+
+
+def test_main_routes_doctor_and_leaves_other_invocations_alone(monkeypatch, capsys):
+    """``doctor`` reaches the doctor command; everything else parses as before."""
+    from depscan import cli
+
+    monkeypatch.setattr(sys, "argv", ["depscan", "doctor", "--format", "json"])
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+    assert excinfo.value.code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["schemaVersion"] == "1"
+
+    parsed = []
+    monkeypatch.setattr(sys, "argv", ["depscan", "--purl", "pkg:pypi/requests@2.32.1"])
+    monkeypatch.setattr(cli, "build_args", lambda: parsed.append(sys.argv) or "--parsed--")
+    monkeypatch.setattr(cli, "run_depscan", lambda args: parsed.append(args))
+    cli.main()
+    assert parsed == [["depscan", "--purl", "pkg:pypi/requests@2.32.1"], "--parsed--"]

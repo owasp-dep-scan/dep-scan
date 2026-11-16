@@ -6,6 +6,7 @@ import sys
 
 from depscan import api
 from depscan.cli_options import build_parser
+from depscan.lib import doctor as doctor_lib
 from depscan.lib import pipeline
 
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
@@ -48,6 +49,11 @@ def run_depscan(args):
 
 
 def main():
+    # The full subcommand layout lands later; for now ``doctor`` is the one
+    # verb handled before the v6-style parser, which sees every other
+    # invocation unchanged.
+    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
+        sys.exit(doctor_lib.run_doctor_command(sys.argv[2:]))
     cli_args = build_args()
     run_depscan(cli_args)
 
