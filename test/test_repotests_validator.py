@@ -14,6 +14,7 @@ into testdata.lock.json.
 import hashlib
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -385,6 +386,10 @@ def test_main_rejects_an_unknown_project(validator, tmp_path):
     assert code == 1
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="publish.sh and its oras stub are bash scripts; the publish job runs on Linux only",
+)
 def test_publish_pushes_every_project_and_writes_the_lock(tmp_path):
     """publish.sh drives oras once per project and writes the lock file.
 
