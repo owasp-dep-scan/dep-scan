@@ -24,6 +24,17 @@
       "notes": "Pinned at the commit tag 4.0.0 points to. The reachables phase needs more than cdxgen's default atom timeout of 19.5 minutes, so generate.sh raises ATOM_TIMEOUT to the full budget."
     },
     {
+      "name": "spring-petclinic",
+      "directory": "java",
+      "git": "https://github.com/spring-projects/spring-petclinic",
+      "commit": "500158f732419217507c7656904b8e6aa1bcc0d6",
+      "types": ["java"],
+      "cdxgenArgs": ["--profile", "research"],
+      "minReachablePurls": 4,
+      "mustReach": ["spring-data-commons", "spring-web"],
+      "notes": "A small Spring Boot application in place of dependency-track, whose generation stalled atom. The first generation reached 5 purls."
+    },
+    {
       "name": "cdxgen",
       "directory": "js",
       "git": "https://github.com/CycloneDX/cdxgen",
@@ -116,6 +127,17 @@
       "minReachablePurls": 3,
       "mustReach": ["axios", "passport"],
       "notes": "Pinned at the commit tag v2.7.5 points to. The web UI of the c sources is a js project, which carries the reachability evidence."
+    },
+    {
+      "name": "curl-8.13.0",
+      "directory": "c",
+      "git": "https://github.com/curl/curl",
+      "commit": "1c3149881769e7bd79b072e48374e4c2b3678b2f",
+      "types": ["c"],
+      "cdxgenArgs": ["--profile", "research", "--no-include-formulation"],
+      "minReachablePurls": 0,
+      "mustReach": [],
+      "notes": "Pinned at the commit tag curl-8_13_0 points to. Formulation is off because cdxgen 13.8.0 writes a literal GitHub Actions if: condition as a boolean property value, which fails schema validation (cdxgen/cdxgen#4850). C slices carry no purls."
     }
   ]
 }
