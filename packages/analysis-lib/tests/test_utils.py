@@ -6,8 +6,10 @@ from typing import Any
 
 import pytest
 
-from analysis_lib import VdrAnalysisKV, utils
+from analysis_lib import VdrAnalysisKV
+from analysis_lib import advisory, merge, prioritize
 from analysis_lib.config import REF_MAP
+from analysis_lib.helpers import is_malware_vuln, max_version
 from analysis_lib.output import check_malware_cve, generate_console_output
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -55,20 +57,20 @@ def _make_vdr(
 
 def test_is_malware_vuln_uses_native_field_when_present():
     """When the vdb is_malware field is carried on the result, it is authoritative."""
-    assert utils.is_malware_vuln({"cve_id": "CVE-2024-1", "is_malware": True}) is True
-    assert utils.is_malware_vuln({"cve_id": "MAL-1234", "is_malware": False}) is False
+    assert is_malware_vuln({"cve_id": "CVE-2024-1", "is_malware": True}) is True
+    assert is_malware_vuln({"cve_id": "MAL-1234", "is_malware": False}) is False
     # is_malware=False wins even though the cve_id has the MAL- prefix
-    assert utils.is_malware_vuln({"id": "MAL-9999", "is_malware": False}) is False
+    assert is_malware_vuln({"id": "MAL-9999", "is_malware": False}) is False
 
 
 def test_is_malware_vuln_falls_back_to_mal_prefix_on_default_db():
     """On the default DB the is_malware key is absent, so the helper falls back
     to the MAL- prefix on whichever id field is present (cve_id or id)."""
-    assert utils.is_malware_vuln({"cve_id": "MAL-2024-1"}) is True
-    assert utils.is_malware_vuln({"id": "MAL-2024-1"}) is True
-    assert utils.is_malware_vuln({"cve_id": "CVE-2024-1"}) is False
-    assert utils.is_malware_vuln({"id": "CVE-2024-1"}) is False
-    assert utils.is_malware_vuln({}) is False
+    assert is_malware_vuln({"cve_id": "MAL-2024-1"}) is True
+    assert is_malware_vuln({"id": "MAL-2024-1"}) is True
+    assert is_malware_vuln({"cve_id": "CVE-2024-1"}) is False
+    assert is_malware_vuln({"id": "CVE-2024-1"}) is False
+    assert is_malware_vuln({}) is False
 
 
 def test_check_malware_cve_delegates_to_helper():
@@ -84,34 +86,34 @@ def test_vuln_meets_severity_floor():
     crit = {"ratings": [{"severity": "CRITICAL"}]}
     med = {"ratings": [{"severity": "MEDIUM"}]}
     # No threshold -> everything passes
-    assert utils.vuln_meets_severity(crit, None) is True
-    assert utils.vuln_meets_severity(med, "") is True
+    assert prioritize.vuln_meets_severity(crit, None) is True
+    assert prioritize.vuln_meets_severity(med, "") is True
     # At/above floor passes, below floor drops
-    assert utils.vuln_meets_severity(crit, "high") is True
-    assert utils.vuln_meets_severity(med, "high") is False
-    assert utils.vuln_meets_severity(med, "medium") is True
+    assert prioritize.vuln_meets_severity(crit, "high") is True
+    assert prioritize.vuln_meets_severity(med, "high") is False
+    assert prioritize.vuln_meets_severity(med, "medium") is True
     # Highest rating across the list wins
     mixed = {"ratings": [{"severity": "LOW"}, {"severity": "CRITICAL"}]}
-    assert utils.vuln_meets_severity(mixed, "critical") is True
+    assert prioritize.vuln_meets_severity(mixed, "critical") is True
 
 
 def test_vuln_meets_severity_keeps_unrated():
     """Unrated/unknown findings are kept rather than silently hidden."""
-    assert utils.vuln_meets_severity({"ratings": []}, "high") is True
-    assert utils.vuln_meets_severity({"ratings": [{"severity": "unknown"}]}, "high") is True
-    assert utils.vuln_meets_severity({}, "critical") is True
+    assert prioritize.vuln_meets_severity({"ratings": []}, "high") is True
+    assert prioritize.vuln_meets_severity({"ratings": [{"severity": "unknown"}]}, "high") is True
+    assert prioritize.vuln_meets_severity({}, "critical") is True
 
 
 def test_max_version():
-    ret = utils.max_version("1.0.0")
+    ret = max_version("1.0.0")
     assert ret == "1.0.0"
-    ret = utils.max_version(["1.0.0", "1.0.1", "2.0.0"])
+    ret = max_version(["1.0.0", "1.0.1", "2.0.0"])
     assert ret == "2.0.0"
-    ret = utils.max_version(["1.1.0", "2.1.1", "2.0.0"])
+    ret = max_version(["1.1.0", "2.1.1", "2.0.0"])
     assert ret == "2.1.1"
-    ret = utils.max_version(["2.9.10.1", "2.9.10.4", "2.9.10", "2.8.11.5", "2.8.11", "2.8.11.2"])
+    ret = max_version(["2.9.10.1", "2.9.10.4", "2.9.10", "2.8.11.5", "2.8.11", "2.8.11.2"])
     assert ret == "2.9.10.4"
-    ret = utils.max_version(["2.9.10", "2.9.10.4"])
+    ret = max_version(["2.9.10", "2.9.10.4"])
     assert ret == "2.9.10.4"
 
 
@@ -211,16 +213,16 @@ def test_max_version_orders_by_purl_scheme():
     """max_version with a purl uses the ecosystem ordering: a RubyGems
     pre-release stays below its release and a Maven qualifier sits above it,
     the opposite of the purl-less (generic) answers."""
-    assert utils.max_version(["1.0", "1.0.beta1"], purl="pkg:gem/rails") == "1.0"
-    assert utils.max_version(["1.0", "1.0.beta1"]) == "1.0.beta1"
-    assert utils.max_version(["1.0", "1.0-sp1"], purl="pkg:maven/org.apache/kafka") == "1.0-sp1"
-    assert utils.max_version(["1.0", "1.0-sp1"]) == "1.0"
+    assert max_version(["1.0", "1.0.beta1"], purl="pkg:gem/rails") == "1.0"
+    assert max_version(["1.0", "1.0.beta1"]) == "1.0.beta1"
+    assert max_version(["1.0", "1.0-sp1"], purl="pkg:maven/org.apache/kafka") == "1.0-sp1"
+    assert max_version(["1.0", "1.0-sp1"]) == "1.0"
     # A post-release outranks its release under the pypi ordering.
-    assert utils.max_version(["1.0", "1.0.post1"], purl="pkg:pypi/django") == "1.0.post1"
+    assert max_version(["1.0", "1.0.post1"], purl="pkg:pypi/django") == "1.0.post1"
 
 
 def test_get_description_detail_preserves_markdown_structure():
-    description, detail = utils.get_description_detail(
+    description, detail = advisory.get_description_detail(
         "## Impact\\n\\n- keeps list items\\n- supports \\`inline code\\`\n\nParagraph two"
     )
 
@@ -240,7 +242,7 @@ def test_parse_metrics_does_not_crash_on_missing_cvss_v3_fields():
         }
     ]
 
-    assert utils.parse_metrics(metrics) == (
+    assert advisory.parse_metrics(metrics) == (
         "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
         "CVSSv3",
         "unknown",
@@ -268,7 +270,7 @@ def test_parse_metrics_prefers_cvss_v31_over_cvss_v30_until_v4_is_found():
         },
     ]
 
-    assert utils.parse_metrics(metrics) == (
+    assert advisory.parse_metrics(metrics) == (
         "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
         "CVSSv31",
         "CRITICAL",
@@ -282,7 +284,7 @@ def test_refs_to_vdr_skips_malformed_references_without_crashing():
         {"url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1234"},
     ]
 
-    advisories, refs, *_rest, source = utils.refs_to_vdr(references, "cve-2024-1234")
+    advisories, refs, *_rest, source = advisory.refs_to_vdr(references, "cve-2024-1234")
 
     assert advisories == [
         {"title": "CVE-2024-1234", "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1234"}
@@ -339,7 +341,7 @@ def test_refs_to_vdr_keeps_stored_reference_order_and_dedupes():
         "https://www.vulncheck.com/advisories/node-forge-through-1.4.0-rsa-pkcs-1-1.5-signature-forgery-via-nested-digestalgorithm-padding",
     ]
 
-    advisories, refs, *_rest, source = utils.refs_to_vdr(_references(urls), "cve-2026-1234")
+    advisories, refs, *_rest, source = advisory.refs_to_vdr(_references(urls), "cve-2026-1234")
 
     # First-seen order, duplicates dropped: a set would iterate in the
     # per-process hash order and reshuffle the VDR between runs (#540).
@@ -354,7 +356,7 @@ def test_refs_to_vdr_keeps_stored_reference_order_and_dedupes():
 def test_refs_to_vdr_drops_other_vulnerability_ids_from_references():
     alias_ids = ["CVE-2026-33894", "CVE-2026-85393", "GHSA-ppp5-5v6c-4jwp"]
 
-    advisories, refs, *_rest, source = utils.refs_to_vdr(
+    advisories, refs, *_rest, source = advisory.refs_to_vdr(
         _references(NODE_FORGE_URLS), "cve-2026-85393", alias_ids
     )
 
@@ -373,7 +375,7 @@ def test_refs_to_vdr_keeps_own_ghsa_in_merged_group():
     urls = [*NODE_FORGE_URLS, "https://github.com/advisories/GHSA-86w9-cpqp-85rv"]
     alias_ids = ["CVE-2026-33894", "CVE-2026-85393", "GHSA-ppp5-5v6c-4jwp"]
 
-    _advisories, refs, *_rest = utils.refs_to_vdr(_references(urls), "cve-2026-85393", alias_ids)
+    _advisories, refs, *_rest = advisory.refs_to_vdr(_references(urls), "cve-2026-85393", alias_ids)
 
     assert [r["id"] for r in refs] == [
         "CVE-2026-85393",
@@ -395,7 +397,7 @@ def test_refs_to_vdr_merged_group_filter_covers_every_reference_kind():
     ]
     alias_ids = ["CVE-2026-33894", "CVE-2026-85393", "GHSA-ppp5-5v6c-4jwp"]
 
-    _advisories, refs, *_rest = utils.refs_to_vdr(_references(urls), "cve-2026-85393", alias_ids)
+    _advisories, refs, *_rest = advisory.refs_to_vdr(_references(urls), "cve-2026-85393", alias_ids)
 
     assert [r["id"] for r in refs] == ["GHSA-86w9-cpqp-85rv", "CVE-2026-85393"]
 
@@ -406,7 +408,7 @@ def test_refs_to_vdr_dedupes_reference_ids_across_hosts():
         "https://github.com/advisories/GHSA-ppp5-5v6c-4jwp",
     ]
 
-    advisories, refs, *_rest = utils.refs_to_vdr(_references(urls), "cve-2026-33894")
+    advisories, refs, *_rest = advisory.refs_to_vdr(_references(urls), "cve-2026-33894")
 
     assert [r["id"] for r in refs] == ["GHSA-ppp5-5v6c-4jwp"]
     assert [r["source"]["url"] for r in refs] == [urls[0]]
@@ -427,7 +429,7 @@ def test_refs_to_vdr_dedupes_reference_ids_across_hosts():
     ],
 )
 def test_advisory_id_keeps_version_dots_and_drops_extensions(url, expected):
-    _category, match, _system = utils.get_ref_summary_helper(url, REF_MAP)
+    _category, match, _system = advisory.get_ref_summary_helper(url, REF_MAP)
     assert match["id"] == expected
 
 
@@ -438,7 +440,7 @@ def test_refs_to_vdr_keeps_own_advisory_for_single_cve_group():
     ]
 
     for alias_ids in (["CVE-2026-1234", "GHSA-7q4w-2rr3-4q9p"], None):
-        advisories, refs, *_rest, source = utils.refs_to_vdr(
+        advisories, refs, *_rest, source = advisory.refs_to_vdr(
             _references(urls), "cve-2026-1234", alias_ids
         )
         # One CVE in the group: the advisory is the record's own, an
@@ -459,13 +461,13 @@ def test_parse_alias_ids_reads_only_the_aliases_block():
         "GHSA-cfm4-qjh2-4765\n"
     )
 
-    assert utils.parse_alias_ids(detail) == [
+    assert advisory.parse_alias_ids(detail) == [
         "CVE-2026-33894",
         "CVE-2026-85393",
         "GHSA-ppp5-5v6c-4jwp",
     ]
-    assert utils.parse_alias_ids("no aliases block") == []
-    assert utils.parse_alias_ids("") == []
+    assert advisory.parse_alias_ids("no aliases block") == []
+    assert advisory.parse_alias_ids("") == []
 
 
 def test_cve_to_vdr_uses_alias_group_from_description():
@@ -488,7 +490,7 @@ def test_cve_to_vdr_uses_alias_group_from_description():
         "cveMetadata": None,
     }
 
-    source, references, advisories, *_rest = utils.cve_to_vdr(cve_record, "CVE-2026-85393")
+    source, references, advisories, *_rest = advisory.cve_to_vdr(cve_record, "CVE-2026-85393")
 
     assert [r["id"] for r in references] == ["CVE-2026-85393", VULNCHECK_SLUG]
     assert source == {
@@ -511,7 +513,7 @@ def test_parse_alias_ids_reads_long_descriptions_from_supporting_media():
     assert descriptions
     assert descriptions[0]["value"] == "Refer to the supporting media"
 
-    assert utils.parse_alias_ids(utils.description_full_text(descriptions)) == [
+    assert advisory.parse_alias_ids(advisory.description_full_text(descriptions)) == [
         "CVE-2026-33894",
         "CVE-2026-85393",
         "GHSA-86w9-cpqp-85rv",
@@ -552,7 +554,7 @@ def test_cve_to_vdr_on_stored_cve5_records(cve_id, expected_refs, foreign_adviso
     ) as fp:
         records = {r["cveMetadata"]["cveId"]: r for r in json.load(fp)}
 
-    _source, references, advisories, *_rest = utils.cve_to_vdr(records[cve_id], cve_id)
+    _source, references, advisories, *_rest = advisory.cve_to_vdr(records[cve_id], cve_id)
 
     assert [r["id"] for r in references] == expected_refs
     if foreign_advisory:
@@ -587,7 +589,7 @@ def test_analyze_cve_vuln_handles_missing_cve_metadata_and_affected():
         ids_seen={},
     )
 
-    updated_counts, vdict, add_to_pkg_group_rows, likely_false_positive = utils.analyze_cve_vuln(
+    updated_counts, vdict, add_to_pkg_group_rows, likely_false_positive = prioritize.analyze_cve_vuln(
         {
             "cve_id": "CVE-2024-1234",
             "matched_by": "",
@@ -631,7 +633,7 @@ def test_dedupe_vdrs_merges_two_versions_of_same_cve():
     v1 = _make_vdr("CVE-2024-9999", "pkg:npm/postcss@8.4.31", fixed_location="8.4.50")
     v2 = _make_vdr("CVE-2024-9999", "pkg:npm/postcss@8.4.49", fixed_location="8.4.50")
 
-    result = utils.dedupe_vdrs([v1, v2])
+    result = merge.dedupe_vdrs([v1, v2])
 
     assert len(result) == 1
     refs = {a["ref"] for a in result[0]["affects"]}
@@ -644,7 +646,7 @@ def test_dedupe_vdrs_preserves_differing_fix_versions():
     v1 = _make_vdr("CVE-2024-8888", "pkg:npm/demo@1.0.0", fixed_location="2.0.0")
     v2 = _make_vdr("CVE-2024-8888", "pkg:npm/demo@1.5.0", fixed_location="3.0.0")
 
-    result = utils.dedupe_vdrs([v1, v2])
+    result = merge.dedupe_vdrs([v1, v2])
 
     assert len(result) == 1
     fix_by_ref = {}
@@ -674,7 +676,7 @@ def test_dedupe_vdrs_preserves_reachable_insight_and_bom_ref():
         properties=[{"name": "depscan:prioritized", "value": "true"}],
     )
 
-    result = utils.dedupe_vdrs([v1, v2])
+    result = merge.dedupe_vdrs([v1, v2])
 
     assert len(result) == 1
     merged = result[0]
@@ -711,7 +713,7 @@ def test_combine_vdrs_preserves_matched_by():
     v1 = _make_vdr("CVE-2024-5001", "pkg:maven/org.springframework/spring-web@5.3.22")
     v2 = _make_vdr("CVE-2024-5001", "pkg:maven/org.springframework/spring-web@5.0.5.RELEASE")
 
-    merged = utils.combine_vdrs(v1, v2)
+    merged = merge.combine_vdrs(v1, v2)
 
     assert "matched_by" in merged
     # preferred is v1 (neither is prioritized), so matched_by comes from v1
@@ -728,7 +730,7 @@ def test_combine_vdrs_matched_by_prefers_prioritized_entry():
         properties=[{"name": "depscan:prioritized", "value": "true"}],
     )
 
-    merged = utils.combine_vdrs(v1, v2)
+    merged = merge.combine_vdrs(v1, v2)
 
     assert merged["matched_by"] == "pkg:npm/demo@2.0.0"
 
@@ -748,7 +750,7 @@ def test_dedupe_vdrs_preserves_matched_after_merge():
         fixed_location="5.0.20",
     )
 
-    result = utils.dedupe_vdrs([v1, v2])
+    result = merge.dedupe_vdrs([v1, v2])
 
     assert len(result) == 1
     assert "matched_by" in result[0]
@@ -810,7 +812,7 @@ def test_generate_console_output_with_deduped_duplicate_cves():
     )
     # Both bom-refs are added to include_pkg_group_rows before dedup
     include = {v1["bom-ref"], v2["bom-ref"]}
-    deduped = utils.dedupe_vdrs([v1, v2])
+    deduped = merge.dedupe_vdrs([v1, v2])
 
     assert len(deduped) == 1
     # The merged entry carries matched_by and the preferred bom-ref

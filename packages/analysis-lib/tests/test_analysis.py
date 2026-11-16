@@ -3,13 +3,9 @@ import os
 from typing import Any, Dict
 
 import pytest
+from analysis_lib.advisory import cvss_to_vdr_rating, split_cwe
 from analysis_lib.output import pkg_sub_tree
-from analysis_lib.utils import (
-    cvss_to_vdr_rating,
-    get_suggested_version_map,
-    get_version_range,
-    split_cwe,
-)
+from analysis_lib.suggestions import get_suggested_version_map, get_version_range
 
 
 @pytest.fixture

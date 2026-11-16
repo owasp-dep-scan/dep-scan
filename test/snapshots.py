@@ -16,7 +16,7 @@ from custom_json_diff.lib.custom_diff import (
 from custom_json_diff.lib.custom_diff_classes import BomDicts, CsafDicts, Options
 from custom_json_diff.lib.utils import json_load, json_dump
 
-from analysis_lib.utils import get_description_detail
+from analysis_lib.advisory import get_description_detail
 from depscan import api
 from depscan.cli import build_parser
 

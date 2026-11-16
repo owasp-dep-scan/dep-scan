@@ -9,7 +9,7 @@ from rich.progress import Progress
 from semver import Version
 from vdb.lib.search import search_by_purl_like
 
-from analysis_lib.utils import cve_to_vdr
+from analysis_lib.advisory import cve_to_vdr
 from depscan.lib.logger import LOG, console
 from depscan.lib.package_query.metadata import metadata_from_registry
 from depscan.lib.package_query.npm_pkg import search_npm, get_npm_download_stats

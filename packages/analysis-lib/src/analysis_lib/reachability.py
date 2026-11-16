@@ -4,7 +4,7 @@ from analysis_lib import (
     ReachabilityResult,
 )
 from analysis_lib.config import MIN_POSTBUILD_CONFIDENCE, SERVICE_TAGS
-from analysis_lib.utils import (
+from analysis_lib.endpoints import (
     strip_version,
     is_endpoint_filterable,
 )

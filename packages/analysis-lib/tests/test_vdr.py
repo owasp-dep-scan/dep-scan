@@ -533,7 +533,8 @@ def test_converted_readers_read_a_hydrated_v7_result():
 
     from vdb.lib.search import search_by_purl_like
 
-    from analysis_lib.utils import analyze_cve_vuln, cve_to_vdr, get_unaffected
+    from analysis_lib.advisory import cve_to_vdr, get_unaffected
+    from analysis_lib.prioritize import analyze_cve_vuln
 
     with open(os.path.join(DATA_DIR, "osv-fastify-multibranch-fix.json"), encoding="utf-8") as fp:
         records = {d["id"]: d for d in json.load(fp)}
@@ -616,7 +617,7 @@ def test_converted_readers_read_a_hydrated_v7_result():
 def test_converted_readers_tolerate_missing_cna_blocks(record):
     """A record whose containers or cna block is missing or null reads as no
     data instead of raising."""
-    from analysis_lib.utils import cve_to_vdr, get_unaffected
+    from analysis_lib.advisory import cve_to_vdr, get_unaffected
 
     source, references, *_ = cve_to_vdr(record, "CVE-2024-0001")
     assert references == []

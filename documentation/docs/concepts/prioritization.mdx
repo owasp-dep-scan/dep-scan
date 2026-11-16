@@ -10,9 +10,9 @@ After this chapter you will be able to read a dep-scan Top Priority table and ex
 
 ## The prioritization property
 
-Every vulnerability dep-scan emits carries a CycloneDX property named `depscan:prioritized` whose value is `true` or `false`. The property is set in `get_vuln_properties` from `analysis_lib/utils.py`, and the decision is made by `analyze_cve_vuln`, which receives the four reachability maps described in the [reachability model](reachability-model): `reached_purls`, `direct_purls`, `reached_services`, and `endpoint_reached_purls`. When the analyzer decides a package requires attention, `depscan:prioritized` becomes `true`.
+Every vulnerability dep-scan emits carries a CycloneDX property named `depscan:prioritized` whose value is `true` or `false`. The property is set in `get_vuln_properties` from `analysis_lib/prioritize.py`, and the decision is made by `analyze_cve_vuln`, which receives the four reachability maps described in the [reachability model](reachability-model): `reached_purls`, `direct_purls`, `reached_services`, and `endpoint_reached_purls`. When the analyzer decides a package requires attention, `depscan:prioritized` becomes `true`.
 
-The property matters beyond the console. During deduplication, `combine_vdrs` in `utils.py` prefers the prioritized entry when two VDR records collide (via `_is_prioritized`), so a prioritized finding is never silently dropped by a merge. The `VDRResult` object exposes the result as `prioritized_pkg_vuln_trees`, which is exactly what the Top Priority table renders. If you ingest the VDR into an ASPM or vulnerability-management platform, filtering on `depscan:prioritized` is the fastest way to reproduce the console's focus list.
+The property matters beyond the console. During deduplication, `combine_vdrs` in `analysis_lib/merge.py` prefers the prioritized entry when two VDR records collide (via `_is_prioritized`), so a prioritized finding is never silently dropped by a merge. The `VDRResult` object exposes the result as `prioritized_pkg_vuln_trees`, which is exactly what the Top Priority table renders. If you ingest the VDR into an ASPM or vulnerability-management platform, filtering on `depscan:prioritized` is the fastest way to reproduce the console's focus list.
 
 ## What makes a CVE require attention
 

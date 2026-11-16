@@ -37,9 +37,9 @@ from typing import Any, Dict, List, Optional
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
+from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
-from analysis_lib.utils import get_all_pkg_list, get_pkg_list
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.vex.emit import export_csaf
 from custom_json_diff.lib.utils import json_load
