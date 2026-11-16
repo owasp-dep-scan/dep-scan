@@ -7,8 +7,13 @@
       "directory": "java",
       "git": "https://github.com/signalapp/Signal-Android",
       "commit": "90a6ddce46540f49a67852f94ea8c8c282854299",
-      "types": ["java"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "java"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": [],
       "notes": "Android project; the generate job sets up the Android SDK only to satisfy gradle configuration, no build is run."
@@ -18,8 +23,13 @@
       "directory": "java",
       "git": "https://github.com/DependencyTrack/dependency-track",
       "commit": "c8ff23dd9b3fd3ef95ae2442a2ef3e40b2a748e5",
-      "types": ["java"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "java"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -27,9 +37,14 @@
       "name": "kafka-4.0.0",
       "directory": "java",
       "git": "https://github.com/apache/kafka",
-      "commit": "8926e9a2e7443b739472c9eb1d81ad68cedfe73c",
-      "types": ["java"],
-      "cdxgenArgs": ["--profile", "research"],
+      "commit": "985bc99521dd22bbf620591b8db8613c54f596b2",
+      "types": [
+        "java"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": [],
       "notes": "Pinned at the commit tag 4.0.0 points to."
@@ -39,8 +54,13 @@
       "directory": "js",
       "git": "https://github.com/CycloneDX/cdxgen",
       "commit": "e6fbc357aad19ad139f1376dfbe0f34645b324fa",
-      "types": ["js"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "js"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -49,8 +69,13 @@
       "directory": "js",
       "git": "https://github.com/signalapp/Signal-Desktop",
       "commit": "848443afc3fcc74a0e127ba4f4d8554b95da856e",
-      "types": ["js"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "js"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -59,8 +84,14 @@
       "directory": "js",
       "git": "https://codeberg.org/forgejo/forgejo",
       "commit": "10615cce5019acefd625c1300cba85d228b045cc",
-      "types": ["js", "go"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "js",
+        "go"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -69,28 +100,30 @@
       "directory": "rust",
       "git": "https://github.com/biomejs/biome",
       "commit": "b26c4e3c96628863ba5ccaa5c9057ed8f7534387",
-      "types": ["rust", "js"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "js"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
-      "mustReach": []
-    },
-    {
-      "name": "rustdesk",
-      "directory": "rust",
-      "git": "https://github.com/rustdesk/rustdesk",
-      "commit": "3e953e886a874956d8351d6c25e340ea82dd2343",
-      "types": ["rust", "dart"],
-      "cdxgenArgs": ["--profile", "research"],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "mustReach": [],
+      "notes": "Rust type not generated: the research profile runs cargo check --all-features on machines with a Rust toolchain, which compiles biome's whole workspace (tens of minutes, a 37 GB target tree, and the pinned commit fails to compile against schemars 1.2.3). The GitHub generate job has no Rust toolchain either, so the rust BOM would degrade there; the js type carries the reachability evidence."
     },
     {
       "name": "rustpad",
       "directory": "rust",
       "git": "https://github.com/ekzhang/rustpad",
       "commit": "54e4a9383c84d7317af42a7ddb177ce8bcba058d",
-      "types": ["rust", "js"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "rust",
+        "js"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -99,8 +132,13 @@
       "directory": "python",
       "git": "https://github.com/DefectDojo/django-DefectDojo",
       "commit": "f6cee25f3e0fca85c8ccfc6e3764a4e69a2f0c0f",
-      "types": ["python"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "python"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -109,8 +147,13 @@
       "directory": "python",
       "git": "https://github.com/owasp-dep-scan/dep-scan",
       "commit": "55be3ff4fd7939fffb4ef803e5d673f116530531",
-      "types": ["python"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "python"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -119,8 +162,14 @@
       "directory": "php",
       "git": "https://github.com/phpmyadmin/phpmyadmin",
       "commit": "e68adb31b040e19f7b8cd7bb853430e136940118",
-      "types": ["php", "js"],
-      "cdxgenArgs": ["--profile", "research"],
+      "types": [
+        "php",
+        "js"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": []
     },
@@ -128,9 +177,14 @@
       "name": "openssl-3.5.0",
       "directory": "c",
       "git": "https://github.com/openssl/openssl",
-      "commit": "02192e014a72972a398eee3106f0ec369eabc1f1",
-      "types": ["c"],
-      "cdxgenArgs": ["--profile", "research"],
+      "commit": "636dfadc70ce26f2473870570bfd9ec352806b1d",
+      "types": [
+        "c"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": [],
       "notes": "Pinned at the commit tag openssl-3.5.0 points to."
@@ -139,9 +193,15 @@
       "name": "open5gs-2.7.5",
       "directory": "c",
       "git": "https://github.com/open5gs/open5gs",
-      "commit": "b729f1050eaf73f5478e2c240109958a41060604",
-      "types": ["c", "js"],
-      "cdxgenArgs": ["--profile", "research"],
+      "commit": "7dfd9a39649700c24c22f1978ed7a35541a72cca",
+      "types": [
+        "c",
+        "js"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": [],
       "notes": "Pinned at the commit tag v2.7.5 points to."
@@ -150,9 +210,14 @@
       "name": "curl-8.13.0",
       "directory": "c",
       "git": "https://github.com/curl/curl",
-      "commit": "ea9d0dd523e7b4e166e3d3325ca31def3359017c",
-      "types": ["c"],
-      "cdxgenArgs": ["--profile", "research"],
+      "commit": "1c3149881769e7bd79b072e48374e4c2b3678b2f",
+      "types": [
+        "c"
+      ],
+      "cdxgenArgs": [
+        "--profile",
+        "research"
+      ],
       "minReachablePurls": 0,
       "mustReach": [],
       "notes": "Pinned at the commit tag curl-8_13_0 points to."
