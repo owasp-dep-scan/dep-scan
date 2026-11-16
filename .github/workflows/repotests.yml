@@ -100,7 +100,7 @@ jobs:
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
-          projects: signal-android,dependency-track,kafka-4.0.0,cdxgen,signal-desktop,forgejo,rustpad,django-defectdojo,depscan,phpmyadmin,openssl-3.5.0,open5gs-2.7.5
+          projects: signal-android,kafka-4.0.0,cdxgen,signal-desktop,forgejo,rustpad,django-defectdojo,depscan,phpmyadmin,openssl-3.5.0,open5gs-2.7.5
           python-executable: uv run --no-sync python
       - name: repotests java-sec-code
         run: |
@@ -154,11 +154,6 @@ jobs:
       - name: repotests signal-android
         run: |
           .github/scripts/repotest-project.sh signal-android
-        shell: bash
-      - name: repotests dependency-track
-        run: |
-          .github/scripts/repotest-project.sh dependency-track \
-            -- --explanation-mode NonReachables
         shell: bash
       - name: repotests kafka-4.0.0
         run: |

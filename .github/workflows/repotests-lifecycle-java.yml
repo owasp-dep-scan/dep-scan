@@ -66,11 +66,11 @@ jobs:
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
-          projects: dependency-track
+          projects: kafka-4.0.0
           python-executable: uv run --no-sync python
-      - name: repotests dependency-track
+      - name: repotests kafka-4.0.0
         run: |
-          .github/scripts/repotest-project.sh dependency-track \
+          .github/scripts/repotest-project.sh kafka-4.0.0 \
             -- --explanation-mode NonReachables
         shell: bash
       # Kept so the lifecycle results can be compared between releases.

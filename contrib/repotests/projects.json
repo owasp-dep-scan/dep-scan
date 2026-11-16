@@ -1,218 +1,121 @@
 {
   "schema": 1,
-  "description": "Projects served as pre-generated repo-test data from ghcr.io/owasp-dep-scan/depscan-testdata. Each project is cloned at exactly the pinned commit (never a branch or a tag) by the generate job of repotests-data.yml, which runs cdxgen once per type in types with cdxgenArgs and collects every BOM, reachables and usages slice, and OpenAPI file. minReachablePurls is the smallest number of distinct reached purls dep-scan's reachability analyzers may report over a fresh generation, and mustReach names packages (purl without version) at least one reached purl must contain; consumer steps fail below either. The values were taken from the first validated generation of cdxgen 13.8.0, reading the slices themselves rather than copying analyzer output.",
+  "description": "Projects served as pre-generated repo-test data from ghcr.io/owasp-dep-scan/depscan-testdata. Each project is cloned at exactly the pinned commit (never a branch or a tag) by the generate job of repotests-data.yml, which runs cdxgen once per type in types with cdxgenArgs and collects every BOM, reachables and usages slice, callsites slice, and OpenAPI file the run produces. minReachablePurls is the smallest number of distinct reached purls dep-scan's SemanticReachability analyzer may report over a fresh generation, and mustReach names packages (purl without version) at least one reached purl must contain; consumer steps fail below either. The values were taken from the first validated generation of cdxgen 13.8.0 with atom 4.0.2, choosing packages by reading the reachables slices, not by copying analyzer output.",
   "projects": [
     {
       "name": "signal-android",
       "directory": "java",
       "git": "https://github.com/signalapp/Signal-Android",
       "commit": "90a6ddce46540f49a67852f94ea8c8c282854299",
-      "types": [
-        "java"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["java"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 1,
-      "mustReach": [
-        "appcompat"
-      ]
-    },
-    {
-      "name": "dependency-track",
-      "directory": "java",
-      "git": "https://github.com/DependencyTrack/dependency-track",
-      "commit": "c8ff23dd9b3fd3ef95ae2442a2ef3e40b2a748e5",
-      "types": [
-        "java"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
-      "minReachablePurls": 0,
-      "mustReach": []
+      "mustReach": ["appcompat"]
     },
     {
       "name": "kafka-4.0.0",
       "directory": "java",
       "git": "https://github.com/apache/kafka",
       "commit": "985bc99521dd22bbf620591b8db8613c54f596b2",
-      "types": [
-        "java"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
-      "minReachablePurls": 0,
-      "mustReach": [],
-      "notes": "Pinned at the commit tag 4.0.0 points to."
+      "types": ["java"],
+      "cdxgenArgs": ["--profile", "research"],
+      "minReachablePurls": 2,
+      "mustReach": ["kafka-streams"],
+      "notes": "Pinned at the commit tag 4.0.0 points to. The reachables phase needs more than cdxgen's default atom timeout of 19.5 minutes, so generate.sh raises ATOM_TIMEOUT to the full budget."
     },
     {
       "name": "cdxgen",
       "directory": "js",
       "git": "https://github.com/CycloneDX/cdxgen",
       "commit": "e6fbc357aad19ad139f1376dfbe0f34645b324fa",
-      "types": [
-        "js"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["js"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 20,
-      "mustReach": [
-        "glob",
-        "cdx-purl"
-      ]
+      "mustReach": ["glob", "cdx-purl"]
     },
     {
       "name": "signal-desktop",
       "directory": "js",
       "git": "https://github.com/signalapp/Signal-Desktop",
       "commit": "848443afc3fcc74a0e127ba4f4d8554b95da856e",
-      "types": [
-        "js"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["js"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 40,
-      "mustReach": [
-        "react",
-        "libsignal-client"
-      ]
+      "mustReach": ["react", "libsignal-client"]
     },
     {
       "name": "forgejo",
       "directory": "js",
       "git": "https://codeberg.org/forgejo/forgejo",
       "commit": "10615cce5019acefd625c1300cba85d228b045cc",
-      "types": [
-        "js",
-        "go"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["js", "go"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 5,
-      "mustReach": [
-        "jquery",
-        "vue"
-      ]
+      "mustReach": ["jquery", "vue"]
     },
     {
       "name": "rustpad",
       "directory": "rust",
       "git": "https://github.com/ekzhang/rustpad",
       "commit": "54e4a9383c84d7317af42a7ddb177ce8bcba058d",
-      "types": [
-        "rust",
-        "js"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["rust", "js"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 2,
-      "mustReach": [
-        "react",
-        "monaco-editor"
-      ]
+      "mustReach": ["react", "monaco-editor"],
+      "notes": "The rust type produces a BOM only; atom emits no reachables slice for rust, in atom 2 as in atom 4. The js type carries the reachability evidence."
     },
     {
       "name": "django-defectdojo",
       "directory": "python",
       "git": "https://github.com/DefectDojo/django-DefectDojo",
       "commit": "f6cee25f3e0fca85c8ccfc6e3764a4e69a2f0c0f",
-      "types": [
-        "python"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["python"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 15,
-      "mustReach": [
-        "django",
-        "celery"
-      ]
+      "mustReach": ["django", "celery"]
     },
     {
       "name": "depscan",
       "directory": "python",
       "git": "https://github.com/owasp-dep-scan/dep-scan",
       "commit": "55be3ff4fd7939fffb4ef803e5d673f116530531",
-      "types": [
-        "python"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["python"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 4,
-      "mustReach": [
-        "quart",
-        "rich"
-      ]
+      "mustReach": ["quart", "rich"]
     },
     {
       "name": "phpmyadmin",
       "directory": "php",
       "git": "https://github.com/phpmyadmin/phpmyadmin",
       "commit": "e68adb31b040e19f7b8cd7bb853430e136940118",
-      "types": [
-        "php",
-        "js"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["php", "js"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 2,
-      "mustReach": [
-        "jquery"
-      ]
+      "mustReach": ["jquery"],
+      "notes": "atom 4.0.2 returns an empty php reachables slice for phpmyadmin (cdxgen logs that it cannot identify component evidence from the slices); the js type carries the reachability evidence."
     },
     {
       "name": "openssl-3.5.0",
       "directory": "c",
       "git": "https://github.com/openssl/openssl",
       "commit": "636dfadc70ce26f2473870570bfd9ec352806b1d",
-      "types": [
-        "c"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["c"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 0,
       "mustReach": [],
-      "notes": "Pinned at the commit tag openssl-3.5.0 points to."
+      "notes": "Pinned at the commit tag openssl-3.5.0 points to. C slices carry no purls in any atom version, so the tests assert the scan runs and the explanation renders, with a minimum of zero reached purls."
     },
     {
       "name": "open5gs-2.7.5",
       "directory": "c",
       "git": "https://github.com/open5gs/open5gs",
       "commit": "7dfd9a39649700c24c22f1978ed7a35541a72cca",
-      "types": [
-        "c",
-        "js"
-      ],
-      "cdxgenArgs": [
-        "--profile",
-        "research"
-      ],
+      "types": ["c", "js"],
+      "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 3,
-      "mustReach": [
-        "axios",
-        "passport"
-      ],
-      "notes": "Pinned at the commit tag v2.7.5 points to."
+      "mustReach": ["axios", "passport"],
+      "notes": "Pinned at the commit tag v2.7.5 points to. The web UI of the c sources is a js project, which carries the reachability evidence."
     }
   ]
 }
