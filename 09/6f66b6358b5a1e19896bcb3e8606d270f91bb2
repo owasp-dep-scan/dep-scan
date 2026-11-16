@@ -1,0 +1,25 @@
+.github/actions/repotests-data/action.yml
+  s_2f99e298a82725::t_c3eb0f9f6aa4f0 1-41,45-47,49-89,91,96-97,102,109-119,121,123-124
+  s_2f99e298a82725::t_a25911d9fe8240 42-44,48
+  s_2f99e298a82725::t_4f0aac3168fd55 90,99,108
+  s_2f99e298a82725::t_f3c12a1ec2d484 120,122
+  s_2f99e298a82725::t_b9100dc92ddcb9 92-95,98,100-101,103-107
+.github/scripts/repotest-project.sh
+  s_2f99e298a82725::t_ad447e1e788ab9 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "096f66b6358b5a1e19896bcb3e8606d270f91bb2",
+  "prompts": {},
+  "sessions": {
+    "s_2f99e298a82725": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9a3879c1-6bea-491d-a95d-b7c82fc9b795",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

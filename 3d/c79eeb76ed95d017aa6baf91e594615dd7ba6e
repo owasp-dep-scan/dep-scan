@@ -1,0 +1,19 @@
+test/test_repotests_validator.py
+  s_2f99e298a82725::t_84231db5b8e1a5 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3dc79eeb76ed95d017aa6baf91e594615dd7ba6e",
+  "prompts": {},
+  "sessions": {
+    "s_2f99e298a82725": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9a3879c1-6bea-491d-a95d-b7c82fc9b795",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
