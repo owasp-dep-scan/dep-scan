@@ -201,7 +201,7 @@ wheels = [
 
 [[package]]
 name = "atom-tools"
-version = "0.9.1"
+version = "1.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cleo" },
@@ -210,9 +210,9 @@ dependencies = [
     { name = "rich" },
     { name = "thefuzz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a6/ac/ab6dc3f9c9ff71888d08184650d83a05fca792b73dbd6aa47d7d0a456270/atom_tools-0.9.1.tar.gz", hash = "sha256:a546286dfe1d1d960abc8767c0b271f370b053ae0fcaa301f155da82528ced5e", size = 94311, upload-time = "2026-06-18T08:43:04.205Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/a1/33321c50105fded6fedbe50d060752b2aea92e3d2e3aee57c55830ece516/atom_tools-1.0.5.tar.gz", hash = "sha256:06148eace876dab0c1964261b4487a11a2a80d7ccd7120c676e6b0c39feec92d", size = 337836, upload-time = "2026-10-07T15:59:27.326Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/80/a1e56b5f6ec662e0069071c697c8fda80eb2ce95972f3a42d2828171f7ff/atom_tools-0.9.1-py3-none-any.whl", hash = "sha256:17792fa7f3b7554bddee130ca06799fdf96ec25153250e793e110efeb32a7873", size = 72123, upload-time = "2026-06-18T08:43:02.731Z" },
+    { url = "https://files.pythonhosted.org/packages/39/a1/2cfa56eb2330ec24835674eccfd2b6a1020a916355bd033536e1d0b4c9dd/atom_tools-1.0.5-py3-none-any.whl", hash = "sha256:388dd3cd5d2475d4a2d3ddee993e1fce3ea7a5c17ea109e5b088a6c45cc2e745", size = 244975, upload-time = "2026-10-07T15:59:25.763Z" },
 ]
 
 [[package]]
@@ -1447,8 +1447,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "appthreat-vulnerability-db", specifier = ">=7.0.6,<8" },
-    { name = "atom-tools", marker = "extra == 'all'", specifier = "~=0.9.1" },
-    { name = "atom-tools", marker = "extra == 'ext'", specifier = "~=0.9.1" },
+    { name = "atom-tools", marker = "extra == 'all'", specifier = "~=1.0.5" },
+    { name = "atom-tools", marker = "extra == 'ext'", specifier = "~=1.0.5" },
     { name = "blint", marker = "extra == 'all'", specifier = "~=3.2.3" },
     { name = "blint", marker = "extra == 'ext'", specifier = "~=3.2.3" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
