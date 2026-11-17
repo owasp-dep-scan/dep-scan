@@ -626,6 +626,13 @@ def scan_namespace(args: argparse.Namespace, *, resolution=None) -> argparse.Nam
     apply_scan_options(args, internal)
     _apply_excluded_types(args, internal)
     _append_check_lists(internal, resolution)
+    if "license" in resolution.checks:
+        # The license analysis turns on through this environment variable,
+        # exactly as v6's ``-t license`` set it in finalize_setup. Appending
+        # the pseudo type alone reaches only source scans: a BOM, BOM
+        # directory or purl scan never reads the project types, and the
+        # licenses stage consults this variable directly.
+        os.environ["FETCH_LICENSE"] = "true"
     return internal
 
 

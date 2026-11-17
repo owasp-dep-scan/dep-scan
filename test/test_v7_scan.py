@@ -637,6 +637,76 @@ def test_checks_all_with_cdxgen_hidden_records_the_unavailable_checks(
 
 
 # ---------------------------------------------------------------------------
+# the license check on targets whose types never carry it
+# ---------------------------------------------------------------------------
+
+
+def _licensed_packages(monkeypatch):
+    """Point the package loader at one package with a conditional license."""
+    monkeypatch.setattr(
+        pipeline,
+        "get_pkg_list",
+        lambda f: (
+            [
+                {
+                    "purl": "pkg:pypi/requests@2.32.1",
+                    "name": "requests",
+                    "version": "2.32.1",
+                    "licenses": ["CC-BY-NC-4.0"],
+                }
+            ],
+            [],
+        ),
+    )
+
+
+def test_the_license_check_runs_the_license_analysis_for_a_bom_target(
+    scan_stubs, monkeypatch, tmp_path, no_license_env
+):
+    """--checks license turns the license analysis on for a BOM target too,
+    where the detected type is always ``bom`` and never carries the license
+    pseudo type."""
+    _licensed_packages(monkeypatch)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        ["scan", bom, "--checks", "license", "--reports-dir", str(reports), "--no-banner"],
+    )
+    assert code == 0
+    manifest = _manifest_of(reports)
+    stages = {stage["name"]: stage for stage in manifest["stages"]}
+    assert stages["licenses"]["status"] == "completed", (
+        f"the licenses stage was {stages['licenses']['status']}"
+    )
+    # Positive control: the analysis looked the package's license up and
+    # wrote the license report.
+    assert (reports / "license-bom.json").is_file()
+    assert os.environ.get("FETCH_LICENSE") == "true"
+
+
+def test_profile_deep_runs_the_license_analysis_for_a_bom_target(
+    scan_stubs, fake_tools, monkeypatch, tmp_path, no_license_env
+):
+    """The deep profile names the license check, so a BOM target gets the
+    license analysis the same way."""
+    _licensed_packages(monkeypatch)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        ["scan", bom, "--profile", "deep", "--reports-dir", str(reports), "--no-banner"],
+    )
+    assert code == 0
+    manifest = _manifest_of(reports)
+    stages = {stage["name"]: stage for stage in manifest["stages"]}
+    assert stages["licenses"]["status"] == "completed", (
+        f"the licenses stage was {stages['licenses']['status']}"
+    )
+    assert (reports / "license-bom.json").is_file()
+
+
+# ---------------------------------------------------------------------------
 # the json format
 # ---------------------------------------------------------------------------
 
