@@ -1,0 +1,16 @@
+depscan/commands/scan.py
+  h_6a4cc5cdf68def 712-717,720,724-725,729
+test/test_v7_scan.py
+  h_6a4cc5cdf68def 708-768
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4608c79b4b1f4089f5d93b252357db247795096",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
