@@ -545,6 +545,9 @@ depscan schema finding
 
 # Print the version, plus every tool version as JSON
 depscan version --format json
+
+# Show every scan option with its value and where it came from
+depscan config show --reports-dir reports
 ```
 
 `depscan doctor` reports the tools, database and capabilities a scan can use on this machine, and `depscan report` re-renders a saved scan directory. Both have their own pages: [depscan doctor](doctor) and [the scan directory](output/scan-directory).
