@@ -1,0 +1,20 @@
+depscan/lib/bom.py
+  h_6a4cc5cdf68def 37,549,711,751,788,1194,1251
+depscan/lib/logger.py
+  h_6a4cc5cdf68def 71-87,94
+depscan/lib/pipeline.py
+  h_6a4cc5cdf68def 77,209,224,574,706,1036
+test/test_scan_internals.py
+  h_6a4cc5cdf68def 15,21,294,317,344-451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47b07025c48c72aa5580d715c278908269d7af3d",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
