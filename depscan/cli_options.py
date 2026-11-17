@@ -418,9 +418,10 @@ def build_parser():
         default=False,
         dest="vdb_offline",
         help="Use the local vulnerability database as it is: the freshness "
-        "check, the download and the image marker are all skipped. A missing "
-        "or empty database still stops the scan with an error instead of "
-        "answering with zero findings.",
+        "check, the download and the image marker are all skipped, and shard "
+        "mode (VDB_USE_SHARDS) is ignored so the local complete database is "
+        "read as it is. A missing or empty database still stops the scan with "
+        "an error instead of answering with zero findings.",
     )
     parser.add_argument(
         "--no-universal",

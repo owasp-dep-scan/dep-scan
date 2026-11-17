@@ -237,6 +237,29 @@ def test_vdb_offline_skips_the_download_and_still_guards_the_database(
     assert result.project_types == ["python"]
 
 
+def test_vdb_offline_ignores_shard_mode(scan_stubs, tmp_path, monkeypatch):
+    """Offline mode skips the shard setup entirely when VDB_USE_SHARDS is on:
+    no freshness check, no refresh, no connect. The local complete database
+    is judged by the usability guard as usual."""
+    monkeypatch.setattr(pipeline, "VDB_USE_SHARDS", True)
+
+    def refused_setup(shard_types):
+        raise AssertionError("the offline scan must not set up shards")
+
+    def refused_refresh(shard_names, store_dir=None, attempts=None):
+        raise AssertionError("the offline scan must not refresh shards")
+
+    monkeypatch.setattr(vdb_setup, "setup_shards_for_scan", refused_setup)
+    monkeypatch.setattr(vdb_setup, "refresh_shards_with_retries", refused_refresh)
+
+    result = api.scan(_bom_scan_options(tmp_path, vdb_offline=True), render=False)
+
+    # Positive control: the database stage still ran to its guard, which
+    # judged the local complete database.
+    assert scan_stubs["database"], "the unusable-database guard never ran"
+    assert result.project_types == ["bom"]
+
+
 def test_vdb_offline_with_no_database_stops_the_scan(tmp_path, monkeypatch):
     """Offline mode never fetches a database, so a scan with no database
     present stops through the real unusable-database guard: the error the

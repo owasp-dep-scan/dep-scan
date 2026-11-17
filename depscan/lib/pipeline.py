@@ -550,9 +550,17 @@ def stage_database(ctx):
     )
     # Opt-in shard mode replaces the complete database with the type shards
     # serving the scan's purl types, but only when those types are known
-    # before matching.
+    # before matching. Offline mode never sets shards up: the setup does a
+    # freshness check, a refresh over the network and a marker write, none of
+    # which the offline promise allows, so the local complete database is
+    # used as it is.
     ctx.shards_connected = []
-    if VDB_USE_SHARDS:
+    if VDB_USE_SHARDS and args.vdb_offline:
+        LOG.warning(
+            "VDB_USE_SHARDS is set but the offline mode was requested; using "
+            "the local complete database as it is, without refreshing shards."
+        )
+    elif VDB_USE_SHARDS:
         shard_types = vdb_setup.collect_purl_types(args, ctx.src_dir)
         if shard_types:
             try:
