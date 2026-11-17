@@ -1,0 +1,14 @@
+documentation/docs/migrate-v6-to-v7.mdx
+  h_6a4cc5cdf68def 16-100,127-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca042960d385d62b7a1143043bb2531fc9e65311",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
