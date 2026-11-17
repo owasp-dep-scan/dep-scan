@@ -5,21 +5,27 @@ The v6 command line was one flat option list. This module turns a v6 argv
 into the v7 command that does the same job, and renders the option table
 the migration guide embeds.
 
-Emission order: the program name and the verb (``version`` when the v6
-version action fired, ``serve`` when ``--server`` was passed, otherwise
-``scan``), then the positional targets (``--src``, ``--bom``, ``--bom-dir``
-and ``--purl`` values, in that order), then the remaining flags in the
-order the v6
-options are registered, each under its long v7 name. ``--config``, which
-the TOML-aware parser wrapper registers before the v6 options, is emitted
-last. Values are emitted as given, an option that takes several values
-emits all of them, and boolean flags emit no value. ``--profile X`` is
-emitted as ``--bom-profile X`` and ``--risk-audit`` as
-``--checks supply-chain``. Unknown tokens are dropped. An argv that sets
-nothing translatable (for example ``-h``) translates to None.
+Emission order: the program name and the verb, then the positional
+targets (``--src``, ``--bom``, ``--bom-dir`` and ``--purl`` values, in
+that order), then the remaining flags in the order the v6 options are
+registered, each under its long v7 name. The verb is ``version`` when the
+v6 version action fired, in which case nothing else is emitted (v6 itself
+exits at the version flag), ``serve`` when ``--server`` was passed or any
+of the server-only options ``--server-host``, ``--server-port``,
+``--server-allowed-hosts`` or ``--server-allowed-paths`` was given, and
+``scan`` otherwise. ``--config``, which the TOML-aware parser wrapper
+registers before the v6 options, is emitted last. Values are emitted as
+given, an option that takes several values emits all of them, and boolean
+flags emit no value. ``--profile X`` is emitted as ``--bom-profile X``
+and ``--risk-audit`` as ``--checks supply-chain``. Unknown tokens are
+dropped. An argv that sets nothing translatable (for example ``-h``) or
+is not a valid v6 command line (a bad choice, a mutually exclusive
+conflict, an option without its value) translates to None.
 """
 
 import argparse
+import contextlib
+import io
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -499,6 +505,22 @@ _RECORDABLE_ACTIONS = {
     "--version": "recorded_version",
 }
 
+# v7-internal parser options with no v6 equivalent: they are internal
+# schema entries the pipeline reads, so they have no row and must not
+# appear in the option table.
+V7_INTERNAL_DESTS: frozenset[str] = frozenset({"exclude_types", "vdb_offline"})
+
+# Options that exist on the serve verb only; passing one of them without
+# --server is still a server invocation.
+_SERVER_ONLY_DESTS = frozenset(
+    {
+        "server_host",
+        "server_port",
+        "server_allowed_hosts",
+        "server_allowed_paths",
+    }
+)
+
 
 class _RecordAction(argparse.Action):
     """Stand-in for the help and version actions.
@@ -540,7 +562,7 @@ def _install_recorders(parser: argparse.ArgumentParser) -> None:
 
 def _parse_explicit(
     argv: Sequence[str],
-) -> tuple[argparse.Namespace, dict[str, Any]]:
+) -> tuple[argparse.Namespace, dict[str, Any]] | None:
     """Parse ``argv`` and return the namespace and the explicitly set dests.
 
     Every default is replaced by a unique sentinel for the parse, so a dest
@@ -550,6 +572,10 @@ def _parse_explicit(
     loaded. The parser's own ``find_changed_args`` cannot be used here
     because it parses strictly, so unknown tokens would fail the parse and
     the help and version actions would print and exit.
+
+    An argv the v6 parser rejects (a bad choice, a mutually exclusive
+    conflict, an option without its value) returns None; argparse's usage
+    and error text is discarded rather than printed.
     """
     parser = build_parser()
     _install_recorders(parser)
@@ -563,7 +589,10 @@ def _parse_explicit(
         sentinels[action.dest] = sentinel
         action.default = sentinel
     try:
-        parsed, _unknown = parser.parse_known_args(argv)
+        with contextlib.redirect_stderr(io.StringIO()):
+            parsed, _unknown = parser.parse_known_args(argv)
+    except SystemExit:
+        return None
     finally:
         for action in parser._actions:
             if id(action) in originals:
@@ -579,15 +608,21 @@ def _parse_explicit(
 def translate(argv: Sequence[str]) -> str | None:
     """Translate a v6 argv into the v7 command line.
 
-    Returns None for an argv that sets nothing translatable, for example
-    ``-h``/``--help`` or no options at all.
+    Returns None for an argv that is not a valid v6 command line or that
+    sets nothing translatable, for example ``-h``/``--help`` or no options
+    at all.
     """
-    parsed, explicit = _parse_explicit(argv)
+    parsed_explicit = _parse_explicit(argv)
+    if parsed_explicit is None:
+        return None
+    parsed, explicit = parsed_explicit
     if getattr(parsed, "recorded_help", False):
         return None
     if getattr(parsed, "recorded_version", False):
-        verb = "version"
-    elif explicit.get("server_mode") is True:
+        return "depscan version"
+    if explicit.get("server_mode") is True or any(
+        dest in explicit for dest in _SERVER_ONLY_DESTS
+    ):
         verb = "serve"
     else:
         verb = "scan"

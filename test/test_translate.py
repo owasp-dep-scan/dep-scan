@@ -5,34 +5,59 @@ import argparse
 from depscan.cli_options import build_parser
 from depscan.commands.translate import (
     OPTION_TABLE,
+    V7_INTERNAL_DESTS,
     option_table_markdown,
     translate,
 )
 
 
-def _parser_option_flags():
-    """Every option flag the v6 parser registers, except help."""
-    parser = build_parser()
+def _parser_option_flags(parser=None):
+    """Every option flag the v6 parser registers, except help and the
+    v7-internal options that have no v6 form."""
+    parser = parser or build_parser()
     flags = set()
     for action in parser._actions:
         if "-h" in action.option_strings or "--help" in action.option_strings:
+            continue
+        if action.dest in V7_INTERNAL_DESTS:
             continue
         flags.update(action.option_strings)
     return flags
 
 
+def _table_flags():
+    return {flag for row in OPTION_TABLE for flag in row.v6_flags}
+
+
 def test_every_parser_option_has_a_row():
-    table_flags = {flag for row in OPTION_TABLE for flag in row.v6_flags}
     parser_flags = _parser_option_flags()
     assert "--config" in parser_flags
-    missing = sorted(parser_flags - table_flags)
+    missing = sorted(parser_flags - _table_flags())
     assert not missing, f"v6 options with no translator row: {missing}"
 
 
 def test_table_rows_name_only_parser_options():
-    table_flags = {flag for row in OPTION_TABLE for flag in row.v6_flags}
-    stale = sorted(table_flags - _parser_option_flags())
+    stale = sorted(_table_flags() - _parser_option_flags())
     assert not stale, f"rows for options the parser does not register: {stale}"
+
+
+def test_sweep_flags_an_option_without_a_row():
+    parser = build_parser()
+    parser.add_argument("--not-a-v6-option", dest="not_a_v6_option")
+    missing = sorted(_parser_option_flags(parser) - _table_flags())
+    assert missing == ["--not-a-v6-option"]
+
+
+def test_v7_internal_options_are_the_only_ones_without_a_row():
+    parser = build_parser()
+    unmapped = set()
+    for action in parser._actions:
+        if "-h" in action.option_strings or "--help" in action.option_strings:
+            continue
+        if not set(action.option_strings) & _table_flags():
+            unmapped.add(action.dest)
+    assert unmapped <= V7_INTERNAL_DESTS
+    assert V7_INTERNAL_DESTS.isdisjoint(row.dest for row in OPTION_TABLE)
 
 
 def test_row_dests_match_the_parser():
@@ -70,6 +95,13 @@ def test_server_options_switch_the_verb_to_serve():
     )
 
 
+def test_server_only_option_without_server_switches_the_verb_to_serve():
+    assert translate(["--server-host", "0.0.0.0"]) == (
+        "depscan serve --server-host 0.0.0.0"
+    )
+    assert translate(["--server-port", "7071"]) == "depscan serve --server-port 7071"
+
+
 def test_server_alone_translates_to_the_serve_verb():
     assert translate(["--server"]) == "depscan serve"
 
@@ -87,6 +119,30 @@ def test_risk_audit_becomes_the_supply_chain_check():
 def test_version_flag_becomes_the_version_verb():
     assert translate(["-v"]) == "depscan version"
     assert translate(["--version"]) == "depscan version"
+
+
+def test_version_flag_drops_every_other_token():
+    assert translate(["-v", "--src", "/app"]) == "depscan version"
+
+
+def test_mutually_exclusive_targets_return_none(capsys):
+    assert translate(["--bom", "a.json", "--bom-dir", "b"]) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_mutually_exclusive_output_modes_return_none(capsys):
+    assert translate(["-q", "--explain"]) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_invalid_choice_returns_none(capsys):
+    assert translate(["--csaf-version", "1.9"]) is None
+    assert capsys.readouterr().err == ""
+
+
+def test_option_without_its_value_returns_none(capsys):
+    assert translate(["--src"]) is None
+    assert capsys.readouterr().err == ""
 
 
 def test_config_keeps_its_name_on_scan():
@@ -133,6 +189,8 @@ def test_option_table_markdown_lists_every_option():
     markdown = option_table_markdown()
     for flag in _parser_option_flags():
         assert f"`{flag}`" in markdown
+    assert "--exclude-types" not in markdown
+    assert "--vdb-offline" not in markdown
 
 
 def test_option_table_markdown_is_a_well_formed_table():
