@@ -49,7 +49,7 @@ Now, let's run `depscan` on the `dotnet-podcasts` source code. We will use the `
 Navigate to the `dotnet-podcasts` source directory (if you are not already there).
 
 ```shell
-depscan --src . --reports-dir ../reportsFR_dotnetpodcasts1 -t dotnet --reachability-analyzer FrameworkReachability
+depscan scan . --reports-dir ../reportsFR_dotnetpodcasts1 -t dotnet --reachability-analyzer FrameworkReachability
 ```
 
 You should see an output that lists vulnerabilities found in the project's dependencies:
@@ -102,7 +102,7 @@ The table below lists all vulnerabilities identified in this project. Review and
 Fuzzy searching can help identify vulnerabilities when package naming or versioning in the SBOM doesn't perfectly match the vulnerability database. However, it can also increase the number of findings, including less precise matches.
 
 ```shell
-depscan --src . --reports-dir ../reportsFR_dotnetpodcasts2 -t dotnet --reachability-analyzer FrameworkReachability --fuzzy-search
+depscan scan . --reports-dir ../reportsFR_dotnetpodcasts2 -t dotnet --reachability-analyzer FrameworkReachability --fuzzy-search
 ```
 
 This command will likely produce a much larger list of vulnerabilities:
@@ -161,7 +161,7 @@ The `dotnet-podcasts` application is a complex system with multiple projects tar
 
 * Try running `depscan` with the `--explain` flag for more detailed findings:
     ```shell
-    depscan --src . --reports-dir ../reportsFR_dotnetpodcasts3 -t dotnet --reachability-analyzer FrameworkReachability --fuzzy-search --explain
+    depscan scan . --reports-dir ../reportsFR_dotnetpodcasts3 -t dotnet --reachability-analyzer FrameworkReachability --fuzzy-search --explain
     ```
 * Inspect the generated SBOM (`sbom-dotnet.cdx.json` in your reports directory) to understand how components, especially the .NET framework itself, are represented. This can help clarify why certain broad matches occur.
 * For `dotnet-podcasts`, focus on the vulnerabilities within its actual dependencies (e.g., `Microsoft.Data.SqlClient`, `Azure.Identity`, etc.) and modern .NET 6/7/8 vulnerabilities rather than those attributed to much older framework versions like `asp.net_core@4.3.0` unless there's a clear and direct applicability.

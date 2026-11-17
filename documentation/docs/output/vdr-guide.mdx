@@ -10,7 +10,7 @@ After this chapter you will be able to read a dep-scan `.vdr.json` file and the 
 
 ## What the VDR is
 
-A Vulnerability Disclosure Report is a CycloneDX document that attaches vulnerability data to the components of a BOM. dep-scan writes the VDR alongside the BOM in the reports directory, deriving the filename from the BOM's base name. For a single-BOM scan of `sbom-dotnet.cdx.json`, the VDR is `sbom-dotnet.vdr.json`. For multi-BOM and lifecycle runs (invoked with `--bom-dir`), the consolidated output is `depscan-universal.vdr.json`. The VDR is the file to ingest into an ASPM or vulnerability-management platform, because every prioritization and reachability verdict dep-scan computes is encoded in it as CycloneDX properties.
+A Vulnerability Disclosure Report is a CycloneDX document that attaches vulnerability data to the components of a BOM. dep-scan writes the VDR alongside the BOM in the reports directory, deriving the filename from the BOM's base name. For a single-BOM scan of `sbom-dotnet.cdx.json`, the VDR is `sbom-dotnet.vdr.json`. For multi-BOM and lifecycle runs (a BOM directory target), the consolidated output is `depscan-universal.vdr.json`. The VDR is the file to ingest into an ASPM or vulnerability-management platform, because every prioritization and reachability verdict dep-scan computes is encoded in it as CycloneDX properties.
 
 ## Anatomy of a VDR entry
 

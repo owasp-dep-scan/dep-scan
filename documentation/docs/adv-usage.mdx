@@ -28,7 +28,7 @@ Pass `--no-suggest` to disable this behavior.
 
 ## Package Risk audit
 
-`--risk-audit` argument enables package risk audit. Currently, only npm and PyPI packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
+`--checks supply-chain` enables the package risk audit. Currently, only npm and PyPI packages are supported in this mode. Some risk factors are identified and assigned weights to compute a final risk score. Packages that then exceed a maximum risk score (`config.pkg_max_risk_score`) are presented in a table.
 
 Use `--private-ns` to specify the private package namespace that should be checked for dependency confusion type issues where a private package is available on the public npm/pypi registry.
 
@@ -71,13 +71,13 @@ By passing `-t os`, depscan can generate an SBOM for a live operating system or 
 All OS packages.
 
 ```bash
-depscan -t os -i . -o reports
+depscan scan . -t os -o reports
 ```
 
 All OS and application packages.
 
 ```bash
-depscan -t os --deep -i . -o reports
+depscan scan . -t os --deep -o reports
 ```
 
 ## License scan
@@ -153,13 +153,13 @@ Custom data must follow the **CVE 5.2 JSON Schema**. Supported file extensions a
 To use custom data, pass the directory path to the `--custom-data` argument.
 
 ```shell
-depscan --purl pkg:npm/my-lib@1.0.0 --custom-data /path/to/custom/vulns
+depscan scan pkg:npm/my-lib@1.0.0 --custom-data /path/to/custom/vulns
 ```
 
 Custom data is also supported in server mode.
 
 ```shell
-depscan --server --custom-data /path/to/custom/vulns
+depscan serve --custom-data /path/to/custom/vulns
 ```
 
 ### Example 1: Adding a Private Vulnerability

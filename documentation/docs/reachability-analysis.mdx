@@ -40,10 +40,10 @@ Each language chapter demonstrates a reachable finding and a present-but-unreach
 
 ## Turning reachability on
 
-The documented way to enable reachability is the `research` profile, which configures cdxgen to persist the per-language slice files the engine needs:
+The documented way to enable reachability is the cdxgen `research` BOM profile, which configures cdxgen to persist the per-language slice files the engine needs:
 
 ```shell
-depscan --profile research -t <language> -i <source directory> --reports-dir <reports directory> --explain
+depscan scan <source directory> --reports-dir <reports directory> -t <language> --bom-profile research --explain
 ```
 
 Reachability is on by default for every supported language once the slices are present, so the explicit `--reachability-analyzer` flag is only needed when you want `SemanticReachability` or `off`. The `--explain` flag adds a human-readable breakdown of the reachable flows to the report.
