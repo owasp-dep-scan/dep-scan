@@ -19,7 +19,7 @@ import sys
 import tomllib
 
 from depscan.cli_options import build_parser
-from depscan.commands.scan import add_scan_options
+from depscan.commands.scan import add_scan_options, apply_scan_options, internal_argv
 from depscan.lib import pipeline
 
 #: Maps an internal option dest to the environment variable that feeds its
@@ -49,13 +49,6 @@ SOURCE_COMMAND_LINE = "command line"
 SOURCE_CONFIG_FILE = "depscan.toml"
 SOURCE_ENVIRONMENT = "environment"
 SOURCE_DEFAULT = "default"
-
-#: Dests of the ``config show`` parse with no internal option to apply onto.
-_SHOW_ONLY_DESTS = ("verb", "subcommand", "format", "targets", "target_kind", "checks", "profile")
-
-#: The one scan flag whose dest differs from the internal option it sets:
-#: v6's ``--profile`` (the cdxgen BOM profile) is v7's ``--bom-profile``.
-_SCAN_TO_INTERNAL_DESTS = {"bom_profile": "profile"}
 
 
 def register(subparsers) -> None:
@@ -88,14 +81,8 @@ def run(args: argparse.Namespace) -> int:
 
 
 def _internal_argv(args: argparse.Namespace) -> list:
-    """The argv the internal parser gets: only ``--config`` when given.
-
-    Without it the internal parser falls back to its own default config path
-    (``DEPSCAN_CONFIG`` or ``$PWD/.config/depscan.toml``), exactly as a scan
-    does.
-    """
-    config = getattr(args, "config", None)
-    return ["--config", config] if config else []
+    """The argv the internal parser gets; the scan verb's shared helper."""
+    return internal_argv(args)
 
 
 def _internal_dests() -> list:
@@ -148,20 +135,13 @@ def _env_produced(argv: list, dest: str, env_var: str, internal) -> bool:
 def _apply_command_line(args: argparse.Namespace, internal) -> set:
     """Apply the options this invocation passed onto the internal namespace.
 
-    This is the same step the scan verb performs last: the internal namespace
-    carries the environment-backed defaults and the TOML file's values, and
-    the explicitly passed options win over both. Returns the internal dests
-    the command line set.
+    This is the same step the scan verb performs last (the shared
+    ``apply_scan_options``): the internal namespace carries the
+    environment-backed defaults and the TOML file's values, and the
+    explicitly passed options win over both. Returns the internal dests the
+    command line set.
     """
-    applied = set()
-    for dest, value in vars(args).items():
-        if dest in _SHOW_ONLY_DESTS:
-            continue
-        internal_dest = _SCAN_TO_INTERNAL_DESTS.get(dest, dest)
-        if hasattr(internal, internal_dest):
-            setattr(internal, internal_dest, value)
-            applied.add(internal_dest)
-    return applied
+    return apply_scan_options(args, internal)
 
 
 def _option_sources(args: argparse.Namespace, internal, command_line: set) -> dict:

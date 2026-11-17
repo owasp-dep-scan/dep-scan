@@ -654,9 +654,19 @@ def test_report_text_still_renders_the_tables(monkeypatch, capsys):
     assert "high: 1" in out
 
 
-# --- the scan stub ----------------------------------------------------------------
+# --- the scan verb ----------------------------------------------------------------
+# The scan verb's own tests live in test_v7_scan.py.
 
 
-def test_scan_stub_returns_two(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["scan", "."]) == 2
-    assert "the scan verb lands in the next piece" in capsys.readouterr().err
+def test_scan_unknown_check_is_a_usage_error(monkeypatch, capsys):
+    code = run_main(monkeypatch, ["scan", ".", "--checks", "bogus"])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "unknown check bogus" in err
+    assert "vulnerabilities" in err and "reachability" in err
+
+
+def test_scan_unknown_profile_is_a_usage_error(monkeypatch, capsys):
+    code = run_main(monkeypatch, ["scan", ".", "--profile", "bogus"])
+    assert code == 2
+    assert "invalid choice: 'bogus'" in capsys.readouterr().err
