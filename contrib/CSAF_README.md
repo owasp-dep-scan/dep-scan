@@ -24,11 +24,11 @@ This directory still ships the bundled schema (`csaf_2.0_schema.json`) and the
 starter `csaf.toml`.
 
 To validate an existing CSAF VEX or CycloneDX VDR/VEX document (from dep-scan or
-any other tool), use the bundled `depscan-validate` command — it auto-detects the
+any other tool), use the bundled `depscan validate` command — it auto-detects the
 format and runs fully offline:
 
 ```bash
-depscan-validate path/to/document.json
+depscan validate path/to/document.json
 ```
 
 See [Validating VEX and VDR documents](https://depscan.readthedocs.io/en/latest/output/validate-command/).

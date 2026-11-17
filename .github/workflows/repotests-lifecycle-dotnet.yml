@@ -54,7 +54,7 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application
           dotnet build ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application/WebGoat.NET.sln
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application\
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/Damm-Vulnerable-dotNet-Application\
                           --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/Damm-Vulnerable-dotNet-Application\
                           -t dotnet\
                           --vulnerability-analyzer LifecycleAnalyzer

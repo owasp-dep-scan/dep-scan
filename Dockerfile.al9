@@ -9,7 +9,7 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
       org.opencontainers.image.description="Fully open-source security audit tool for project dependencies based on known vulnerabilities and advisories" \
-      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan"
+      org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan scan"
 
 ARG TARGETPLATFORM
 ARG JAVA_VERSION=26.0.1-tem
@@ -93,4 +93,4 @@ RUN set -e; \
     && microdnf clean all
 USER owasp
 WORKDIR /app
-CMD [ "depscan" ]
+CMD [ "depscan", "scan" ]

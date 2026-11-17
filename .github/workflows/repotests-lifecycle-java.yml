@@ -54,7 +54,7 @@ jobs:
       - name: lifecycle-test java-sec-code
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code-lifecycle
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code\
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code\
                           --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code-lifecycle\
                           -t java\
                           --vulnerability-analyzer LifecycleAnalyzer

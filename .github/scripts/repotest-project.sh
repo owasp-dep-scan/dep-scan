@@ -46,8 +46,11 @@ mkdir -p "$PROJECT_DIR"
 cp -R "$DATA_DIR/$NAME/." "$PROJECT_DIR/"
 
 run_depscan() {
+  # The pulled data holds slices and provenance JSON next to the BOMs, so
+  # detection alone would classify the directory as source; the forced kind
+  # keeps every scan on the BOM-directory ingestion path.
   # shellcheck disable=SC2086
-  $DEPSCAN --src "$PROJECT_DIR" --bom-dir "$PROJECT_DIR" \
+  $DEPSCAN scan "$PROJECT_DIR" --target-kind bom-dir \
     --reports-dir "$PROJECT_DIR" --reachability-analyzer SemanticReachability \
     --explain "$@"
 }

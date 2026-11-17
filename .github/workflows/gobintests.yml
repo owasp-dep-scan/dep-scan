@@ -44,7 +44,7 @@ jobs:
         soar install altair
         soar install rclone
         soar install rustscan
-        uv run depscan --no-banner --src ${HOME}/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
+        uv run depscan scan --no-banner ${HOME}/.local/share/soar/bin --reports-dir ${GITHUB_WORKSPACE}/bintests -t binary
         ls -lh ${GITHUB_WORKSPACE}/bintests
         rm -rf ${HOME}/.local/share/soar ${VDB_HOME} ${RUNNER_TEMP}/cdxgen-temp
       env:
