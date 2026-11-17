@@ -1,0 +1,21 @@
+test/test_golem_integration.py
+  s_e736b6e641a790::t_ad7b3d9d2c90f3 578-581,585-587,591-592
+  s_e736b6e641a790::t_994548f512fb2d 536-577,582-584,588-590,593-650
+  s_e736b6e641a790::t_3d7ea60ed63627 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "744936aedd2730af266e20a7bbef470799a5d5d2",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,63 @@
+documentation/docs/output/scan-directory.mdx
+  s_7318da1b9edd46::t_385fc508633eaf 79,104,108,117-118
+  s_7318da1b9edd46::t_3a153565b3b99f 35,57,144
+packages/analysis-lib/tests/test_vdr_convert.py
+  s_7318da1b9edd46::t_7e485715f69890 84-93
+  s_7318da1b9edd46::t_26fe048cce87ce 24-26,46,143-145
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_e9a810d4b6c796 124-125,1033
+test/test_scan_directory.py
+  s_7318da1b9edd46::t_9d2e4cd7542481 11-14,341-346,354-361,401-407,412,414-416
+  s_7318da1b9edd46::t_d7dbdd330bf067 508-534,536,538-541,544-545,547-549,551-553,558-559,562,565-576,579-584,587-589,970,972-984,988-995
+  s_7318da1b9edd46::t_385fc508633eaf 1087-1091,1095
+  s_7318da1b9edd46::t_410950081c719a 1012-1086
+  s_7318da1b9edd46::t_26fe048cce87ce 96,176,616-621,717-719,880-887,889,1007,1092-1094
+  s_7318da1b9edd46::t_a86eca34d21685 948,950-951,953-958,961,967
+  s_7318da1b9edd46::t_81e6ec2b83a899 340,761-829
+test/data/scan-directory/depscan.manifest.json
+  s_7318da1b9edd46::t_008db944d43047 65-66
+  s_7318da1b9edd46::t_9d2e4cd7542481 78,84,231-237,244-250
+test/test_dosai_integration.py
+  s_7318da1b9edd46::t_26fe048cce87ce 327-329
+depscan/api.py
+  s_7318da1b9edd46::t_e9a810d4b6c796 31,398-401,403
+  s_7318da1b9edd46::t_9ccf00a754421a 269,283,316,318-326,347,359-361,382-383,385-388,395-397,402,404
+  s_7318da1b9edd46::t_834640d62c8cee 562-563,572,619-622,627,631
+  s_7318da1b9edd46::t_26fe048cce87ce 208-210
+  s_7318da1b9edd46::t_ce5c5439543ce5 405-406
+depscan/lib/scan_directory.py
+  s_7318da1b9edd46::t_3cde2fe514fecb 407,410,418
+  s_7318da1b9edd46::t_26fe048cce87ce 397-398
+  s_7318da1b9edd46::t_0d9e6d60c9f1c8 395-396,399,406,409
+  s_7318da1b9edd46::t_1930672eaf4db0 371-373,377-389,391,400-401,405,408,412-413,415-417,419
+  s_7318da1b9edd46::t_834640d62c8cee 630-631,633-636,638,640-645
+  s_7318da1b9edd46::t_330a27a91c6040 334-343,346-352
+documentation/docs/python-api.mdx
+  s_7318da1b9edd46::t_bbfd880d5dda7d 59
+depscan/lib/bom.py
+  s_7318da1b9edd46::t_1930672eaf4db0 1089-1093
+  s_7318da1b9edd46::t_26fe048cce87ce 881-883
+  s_7318da1b9edd46::t_42887eef1035ea 994-1001
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_7318da1b9edd46::t_d42654053e5528 90,233
+  s_7318da1b9edd46::t_b4fce4bfcdb96b 5,175,200,229
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  s_7318da1b9edd46::t_26fe048cce87ce 56-58
+  s_7318da1b9edd46::t_a3e0c58cb07161 176-180,202-204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cfcfb7b397fa9fd81662c63155420fffe3b498d",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

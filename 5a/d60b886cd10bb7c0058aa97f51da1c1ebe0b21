@@ -1,0 +1,21 @@
+Dockerfile.al9
+  s_e736b6e641a790::t_ff33a725828222 19
+Dockerfile
+  s_e736b6e641a790::t_ff33a725828222 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ad60b886cd10bb7c0058aa97f51da1c1ebe0b21",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

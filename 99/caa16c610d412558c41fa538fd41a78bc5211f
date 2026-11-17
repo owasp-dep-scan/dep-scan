@@ -1,0 +1,25 @@
+packages/analysis-lib/tests/test_golem_runner.py
+  s_0e34e16b6c9ad2::t_737d5da26cf66c 417-419,424-426
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_0e34e16b6c9ad2::t_061e6373f22115 697-698,700-703,705-706
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_0e34e16b6c9ad2::t_ec1488431b75d8 273-275,278,281,481,483-487
+test/test_cdxgen_cgo_env.py
+  s_0e34e16b6c9ad2::t_100ae00c90e4ee 129,137-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99caa16c610d412558c41fa538fd41a78bc5211f",
+  "prompts": {},
+  "sessions": {
+    "s_0e34e16b6c9ad2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e2522b4-2584-4dbf-98b0-7a09eb05d6d7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

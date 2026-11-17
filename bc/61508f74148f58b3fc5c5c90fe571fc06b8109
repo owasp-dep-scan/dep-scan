@@ -1,0 +1,21 @@
+.github/workflows/repotests.yml
+  s_7318da1b9edd46::t_b41f6931367287 87,170-182,315
+.github/workflows/repotests-lifecycle-java.yml
+  s_7318da1b9edd46::t_b41f6931367287 64-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bc61508f74148f58b3fc5c5c90fe571fc06b8109",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/analysis-lib/src/analysis_lib/endpoints.py
+  s_7318da1b9edd46::t_4fd225acea6e22 4-5,11
+packages/analysis-lib/tests/test_endpoints.py
+  s_7318da1b9edd46::t_9d2cd27193385a 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a9b57119ff249e707479e4e61338079611cbc4e",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

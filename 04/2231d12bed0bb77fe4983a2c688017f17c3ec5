@@ -1,0 +1,19 @@
+depscan/cli_options.py
+  s_e736b6e641a790::t_4e108ba437e406 163-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "042231d12bed0bb77fe4983a2c688017f17c3ec5",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

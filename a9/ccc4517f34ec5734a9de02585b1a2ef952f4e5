@@ -1,0 +1,24 @@
+.github/workflows/repotests.yml
+  s_2f99e298a82725::t_3dea45da972ccb 103
+.github/workflows/repotests-lifecycle-java.yml
+  s_2f99e298a82725::t_3dea45da972ccb 69,71,73
+contrib/repotests/projects.json
+  s_2f99e298a82725::t_392b2e56bab1f8 22
+  s_2f99e298a82725::t_7a18f7eb11db6a 3,10-11,13,20-21,23-24,31-32,34,41-42,44,51-52,54,61-62,64-65,72-73,75,82-83,85,92-93,95-96,103-104,107,114-115,117-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9ccc4517f34ec5734a9de02585b1a2ef952f4e5",
+  "prompts": {},
+  "sessions": {
+    "s_2f99e298a82725": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_9a3879c1-6bea-491d-a95d-b7c82fc9b795",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

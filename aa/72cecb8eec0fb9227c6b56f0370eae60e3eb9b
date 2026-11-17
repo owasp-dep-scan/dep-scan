@@ -1,0 +1,37 @@
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_e736b6e641a790::t_2c804b3b4ea4f2 217-227,242,246,248-250,253-255
+  s_e736b6e641a790::t_d7a422da1045ea 43
+  s_e736b6e641a790::t_f8505c7cff764f 411,425-432,452-466
+  s_e736b6e641a790::t_4c59e9477bae4c 485
+  s_e736b6e641a790::t_22aef464ec2e5c 247,251-252,256-271,275-280
+  s_e736b6e641a790::t_2132444ccf1538 81-104
+  s_e736b6e641a790::t_41f3d3c7434ba5 272-274
+  s_e736b6e641a790::t_de9d0dc1f7a587 288,299-308,319-326
+  s_e736b6e641a790::t_4003be90f5582d 467
+depscan/cli_options.py
+  s_e736b6e641a790::t_89fd451877cb4a 170-179
+  s_e736b6e641a790::t_d3b49298562e05 169
+packages/analysis-lib/tests/test_golem_runner.py
+  s_e736b6e641a790::t_5d25758ba0d7b9 430-431,435-437,446-447,451-453,460-461,463-469,472,476-488,491-493,498
+  s_e736b6e641a790::t_3ff4dbbd85791a 358,360-365,368-375
+  s_e736b6e641a790::t_bd406588957097 281-357,359,366-367,376-429,432-434,438-445,448-450,454-459,462,470-471,473-475,489-490,494-497,499-500
+  s_e736b6e641a790::t_ef0290a4753dab 14,20-21
+depscan/lib/bom.py
+  s_e736b6e641a790::t_71229322a428f4 606-609,618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa72cecb8eec0fb9227c6b56f0370eae60e3eb9b",
+  "prompts": {},
+  "sessions": {
+    "s_e736b6e641a790": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6c11d1ba-46c8-4b46-a778-7ec4c35d4389",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
