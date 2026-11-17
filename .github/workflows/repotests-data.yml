@@ -66,7 +66,6 @@ jobs:
           name: testdata-${{ matrix.project }}
           path: out
           if-no-files-found: error
-          retention-days: 14
 
   validate:
     needs: [projects, generate]
@@ -135,4 +134,3 @@ jobs:
           name: testdata-lock
           path: out/testdata.lock.json
           if-no-files-found: error
-          retention-days: 14
