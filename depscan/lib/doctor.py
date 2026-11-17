@@ -818,13 +818,16 @@ CAPABILITIES: Tuple[CapabilitySpec, ...] = (
     ),
     CapabilitySpec(
         name="supply-chain",
-        description="Audit rule packs, package risk, provenance and CI pipeline risk.",
+        description="Package risk audit and malware advisory reporting.",
         issue=606,
+        implemented=True,
     ),
     CapabilitySpec(
         name="binary",
-        description="Binary, installer, driver and container-image analysis with blint.",
+        description="Binary analysis with blint.",
         issue=620,
+        requirements=("tool:blint",),
+        implemented=True,
     ),
     CapabilitySpec(
         name="code",
