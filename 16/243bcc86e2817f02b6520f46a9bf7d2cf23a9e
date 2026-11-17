@@ -1,0 +1,18 @@
+documentation/docs/migrate-v6-to-v7.mdx
+  h_6a4cc5cdf68def 127
+documentation/docs/cli-usage.mdx
+  h_6a4cc5cdf68def 406,416
+documentation/docs/output/scan-directory.mdx
+  h_6a4cc5cdf68def 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "16243bcc86e2817f02b6520f46a9bf7d2cf23a9e",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
