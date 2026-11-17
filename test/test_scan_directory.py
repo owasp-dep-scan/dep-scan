@@ -584,6 +584,7 @@ def test_analyzers_are_not_listed_when_reachability_is_off(scan_stubs, fake_tool
         ),
         render=False,
     )
+    assert result.manifest is not None
     enrichment = next(s for s in result.manifest["stages"] if s["name"] == "enrichment")
     assert enrichment["status"] == "skipped"
     assert enrichment["analyzers"] == []
@@ -820,6 +821,7 @@ def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monk
         ),
         render=False,
     )
+    assert result.manifest is not None
     risk = next(stage for stage in result.manifest["stages"] if stage["name"] == "risk")
     assert risk["status"] == "failed"
     assert "the registry did not answer" in risk["reason"]
