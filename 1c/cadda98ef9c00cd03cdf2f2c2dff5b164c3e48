@@ -1,0 +1,20 @@
+documentation/docs/env-var.mdx
+  h_6a4cc5cdf68def 12,16,19,22,25,28,30,32,39,45,51
+documentation/docs/output/validate-command.mdx
+  h_6a4cc5cdf68def 5,9,13,19-20,22,29,35,41,44,47-55,60
+documentation/docs/server-usage.mdx
+  h_6a4cc5cdf68def 21,30,42,64,119
+documentation/docs/vulnerability-database.mdx
+  h_6a4cc5cdf68def 10,47,49,55,58,61,64,67,70,78,86,93,110,122,125,130,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ccadda98ef9c00cd03cdf2f2c2dff5b164c3e48",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
