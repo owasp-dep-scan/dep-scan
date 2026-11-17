@@ -535,6 +535,33 @@ def test_removing_one_plugin_changes_only_its_dependents(plugin, plugins_env):
     assert plugin in (entry.reason or "")
 
 
+# --- the supply-chain and binary rows -----------------------------------------
+
+
+def test_supply_chain_needs_nothing_and_binary_follows_blint(fakes, monkeypatch):
+    """supply-chain is the package risk audit and the malware advisory
+    reporting a scan already does, so it needs no tool or data and is
+    available on a machine with nothing installed. binary runs on blint, so
+    it is unavailable while the package is missing."""
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    _uninstall_tool(fakes, monkeypatch, "blint")
+    report = doctor_mod.doctor()
+    signature = _capability_signature(report)
+    assert signature["supply-chain"] == ("available", ())
+    assert signature["binary"] == ("unavailable", ("tool:blint",))
+    by_name = {capability.name: capability for capability in report.capabilities}
+    assert by_name["supply-chain"].description == (
+        "Package risk audit and malware advisory reporting."
+    )
+    assert by_name["binary"].description == "Binary analysis with blint."
+
+
+def test_binary_is_available_with_blint_installed(fakes, monkeypatch):
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    _install_tool(fakes, monkeypatch, "blint")
+    assert _capability_signature(doctor_mod.doctor())["binary"] == ("available", ())
+
+
 # --- the command and the guarantees -------------------------------------------
 
 
