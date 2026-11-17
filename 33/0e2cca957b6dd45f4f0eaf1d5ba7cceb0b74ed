@@ -1,0 +1,28 @@
+documentation/docs/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_fe81057e32023a 1-31,33-35,37-53
+  s_7318da1b9edd46::t_8bb1abc2efc643 32,36
+README.md
+  s_7318da1b9edd46::t_8bb1abc2efc643 419,421
+devenv.nix
+  s_7318da1b9edd46::t_08a4641d739546 113,118
+documentation/docs/Develop/getting-started-development.mdx
+  s_7318da1b9edd46::t_8bb1abc2efc643 45,47
+documentation/sidebars.ts
+  s_7318da1b9edd46::t_8bb1abc2efc643 68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "330e2cca957b6dd45f4f0eaf1d5ba7cceb0b74ed",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
