@@ -138,6 +138,18 @@ def test_finalize_setup_strips_a_detected_license_pseudo_type(tmp_path, monkeypa
     assert ctx.project_types == ["python"]
 
 
+def test_set_project_types_removes_the_excluded_types(tmp_path):
+    args = _args(["-t", "os", "python", "docker", "--exclude-types", "os", "docker"])
+    pkg_list, project_types = pipeline.set_project_types(args, str(tmp_path))
+    assert project_types == ["python"]
+
+
+def test_set_project_types_keeps_the_list_when_nothing_is_excluded(tmp_path):
+    args = _args(["-t", "python"])
+    pkg_list, project_types = pipeline.set_project_types(args, str(tmp_path))
+    assert project_types == ["python"]
+
+
 # ---------------------------------------------------------------------------
 # database
 # ---------------------------------------------------------------------------

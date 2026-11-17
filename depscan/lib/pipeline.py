@@ -33,7 +33,7 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 import contextlib
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
@@ -602,8 +602,24 @@ def stage_database(ctx):
         raise ScanStageError(str(e)) from e
 
 
+def _excluded_types(args) -> Set[str]:
+    """The excluded project types, whatever form the option carries.
+
+    A single comma-separated string is accepted next to the list so a caller
+    reusing the environment-variable spellings works unchanged.
+    """
+    raw = getattr(args, "exclude_types", None) or []
+    if isinstance(raw, str):
+        raw = raw.split(",")
+    return {item.strip() for item in raw if isinstance(item, str) and item.strip()}
+
+
 def set_project_types(args, src_dir):
     """Detect the project types and perform the right type of scan.
+
+    Types named in the ``exclude_types`` option are removed before the list
+    is returned, so no stage ever sees an excluded type: the per-type loop
+    scans nothing for it and cdxgen is never asked for its inventory.
 
     :param args: cli arguments
     :param src_dir: source directory
@@ -634,6 +650,9 @@ def set_project_types(args, src_dir):
         project_types_list = [UNIVERSAL_SCAN_TYPE]
     else:
         project_types_list = utils.detect_project_type(src_dir)
+    excluded = _excluded_types(args)
+    if excluded:
+        project_types_list = [ptype for ptype in project_types_list if ptype not in excluded]
     return pkg_list, project_types_list
 
 

@@ -252,6 +252,18 @@ def build_parser():
         default=os.getenv("DEPSCAN_PROJECT_TYPE", "universal").split(","),
         help="Override project types if auto-detection is incorrect. Multiple values supported.",
     )
+    parser.add_argument(
+        "--exclude-types",
+        nargs="+",
+        type=str,
+        dest="exclude_types",
+        default=[],
+        help="Project types dropped from the detected list before any stage "
+        "runs, so no inventory or scan runs for them (an excluded os or "
+        "docker type stops the OS and container scans), and passed to cdxgen "
+        "as repeated --exclude-type arguments so the BOM contents are "
+        "filtered the same way.",
+    )
     bom_group = parser.add_mutually_exclusive_group(required=False)
     bom_group.add_argument(
         "--bom",
