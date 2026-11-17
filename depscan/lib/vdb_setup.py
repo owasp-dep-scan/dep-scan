@@ -3,7 +3,7 @@
 Everything a scan needs before it can search: resolving which database image
 the run uses, downloading or refreshing it (with retries), the opt-in shard
 mode, read-only SQLite tuning and the guard that refuses to answer from an
-empty database. The ``depscan-vdb`` command reuses the download helpers.
+empty database. The ``depscan vdb`` command reuses the download helpers.
 """
 
 import os
@@ -287,7 +287,7 @@ def ensure_vdb_usable():
     except Exception as e:  # noqa: BLE001 - any driver error means unusable
         message = (
             f"The vulnerability database at {config.DATA_DIR} could not be opened ({e}). "
-            "Fetch one with `depscan-vdb download` or 'vdb db refresh full'."
+            "Fetch one with `depscan vdb download` or 'vdb db refresh full'."
         )
         LOG.error(message)
         raise VdbUnusableError(message) from e
@@ -299,7 +299,7 @@ def ensure_vdb_usable():
         if _warn_if_database_empty():
             message = (
                 "Cannot scan without a vulnerability database. Fetch one with "
-                "`depscan-vdb download` or 'vdb db refresh full'."
+                "`depscan vdb download` or 'vdb db refresh full'."
             )
             LOG.error(message)
             raise VdbUnusableError(message)
@@ -310,7 +310,7 @@ def ensure_vdb_usable():
     if not cve_index_count:
         message = (
             f"The vulnerability database at {config.DATA_DIR} is empty; no search can "
-            "return results. Fetch one with `depscan-vdb download` or 'vdb db refresh full'."
+            "return results. Fetch one with `depscan vdb download` or 'vdb db refresh full'."
         )
         LOG.error(message)
         raise VdbUnusableError(message)
@@ -378,14 +378,14 @@ def report_shard_coverage(purl_types, store_dir=None):
         LOG.warning(
             "purl type(s) %s have no local shard, so components of those types "
             "were NOT assessed; this is not a clean result. Refresh the shards "
-            "(depscan-vdb download --shards %s ...) or use a complete database.",
+            "(depscan vdb download --shards %s ...) or use a complete database.",
             ", ".join(uncovered),
             ", ".join(uncovered),
         )
     for shard_name in coverage.stale_shards:
         LOG.warning(
             "shard %s is much older than its siblings; answers for the types it "
-            "serves may be out of date. Refresh it with `depscan-vdb download "
+            "serves may be out of date. Refresh it with `depscan vdb download "
             "--shards %s`.",
             shard_name,
             shard_name,

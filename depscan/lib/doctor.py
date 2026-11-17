@@ -1081,7 +1081,7 @@ class DoctorReport:
         else:
             lines.append(
                 f"    not present at {vdb.get('directory')}; a scan fetches one "
-                "with `depscan-vdb download` or 'vdb db refresh full'"
+                "with `depscan vdb download` or 'vdb db refresh full'"
             )
         lines += ["", "Capabilities"]
         capability_width = max(len(capability.name) for capability in self.capabilities)

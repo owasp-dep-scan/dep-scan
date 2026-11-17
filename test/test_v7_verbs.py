@@ -15,9 +15,9 @@ from types import SimpleNamespace
 import pytest
 
 from analysis_lib.findings.schemas import load_schema, schema_names, validate
-from depscan import cli
+from depscan import api, cli
 from depscan.lib import doctor as doctor_mod
-from depscan.lib import pipeline
+from depscan.lib import pipeline, vdb_setup
 
 DATA_DIR = Path(__file__).parent / "data"
 FIXTURE_DIR = DATA_DIR / "scan-directory"
@@ -499,6 +499,36 @@ def test_vdb_download_json(monkeypatch, capsys, vdb_home):
     assert calls == ["ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"]
     assert read_vdb_image_marker(str(vdb_home)) == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
     assert document["marker"] == str(vdb_home / ".depscan-vdb-image")
+
+
+# --- the download hint names the v7 command --------------------------------------
+
+
+def test_download_failure_hint_names_the_v7_command(monkeypatch, caplog):
+    """The pipeline's download-failure log points at ``depscan vdb download``."""
+    calls = []
+
+    def failing_download(url):
+        calls.append(url)
+        raise ConnectionError("Connection broken")
+
+    monkeypatch.setattr(
+        vdb_setup, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False, "app-only")
+    )
+    monkeypatch.setattr(vdb_setup, "vdb_download_needed", lambda url, d: (True, "stale"))
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", failing_download)
+    monkeypatch.setattr(pipeline, "VDB_USE_SHARDS", False)
+    ctx = pipeline.build_context(api.scan_options(no_banner=True))
+    with caplog.at_level("ERROR", logger=pipeline.LOG.name):
+        with pytest.raises(pipeline.ScanStageError):
+            pipeline.stage_database(ctx)
+    # Positive control: the download was attempted once, with the resolved URL.
+    assert calls == ["oras://vdb"]
+    errors = [record.getMessage() for record in caplog.records if record.levelno == 40]
+    assert any(
+        "download it first with `depscan vdb download` and run the scan again" in message
+        for message in errors
+    )
 
 
 # --- validate --------------------------------------------------------------------

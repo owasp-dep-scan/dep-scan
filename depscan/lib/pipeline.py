@@ -96,8 +96,8 @@ class ScanStageError(RuntimeError):
 
     The stage has already logged every message the scan prints for this
     condition and passes the same message to this error, so the caller can
-    report why the scan stopped; ``run_depscan`` catches this error and exits
-    with code 1.
+    report why the scan stopped; the CLI verb dispatch catches this error and
+    exits with code 1.
     """
 
 
@@ -595,7 +595,7 @@ def stage_database(ctx):
                     LOG.error(
                         "Could not download the vulnerability database %s into %s: %s. "
                         "Check the network or proxy settings, or download it first "
-                        "with `depscan-vdb download` and run the scan again.",
+                        "with `depscan vdb download` and run the scan again.",
                         scan_vdb_url,
                         config.DATA_DIR,
                         e,
