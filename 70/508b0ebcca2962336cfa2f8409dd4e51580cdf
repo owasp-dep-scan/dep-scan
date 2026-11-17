@@ -1,0 +1,22 @@
+depscan/cli_options.py
+  h_6a4cc5cdf68def 255-266
+depscan/lib/pipeline.py
+  h_6a4cc5cdf68def 36,605-616,620-623,653-655
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  h_6a4cc5cdf68def 507-510,760-761
+test/test_pipeline.py
+  h_6a4cc5cdf68def 141-152
+test/test_scan_internals.py
+  h_6a4cc5cdf68def 1-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "70508b0ebcca2962336cfa2f8409dd4e51580cdf",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
