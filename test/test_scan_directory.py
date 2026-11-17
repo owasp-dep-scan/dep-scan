@@ -157,6 +157,8 @@ def fake_tools(tmp_path, monkeypatch):
     empty_path = tmp_path / "stripped-path"
     empty_path.mkdir()
     monkeypatch.setenv("PATH", str(empty_path))
+    # On Windows cdxgen is also looked up under %APPDATA%\npm.
+    monkeypatch.setenv("APPDATA", str(empty_path))
     for var in (
         "CDXGEN_PLUGINS_DIR",
         "CDXGEN_CMD",
