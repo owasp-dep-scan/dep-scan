@@ -709,23 +709,24 @@ def _capability_gate(args: argparse.Namespace, names):
 
     Each explicitly requested check whose doctor capability is
     not-implemented or unavailable stops the verb with exit 4 before any scan
-    work; ``all`` is not gated, because its unavailable checks become
-    not-assessed entries instead. Without ``--checks`` and without
-    ``--profile`` no report is collected here at all: the scan directory's
-    own setup collects the one it records. Returns ``(report, exit_code)``;
-    the report is the one the scans reuse.
+    work. A check named next to ``all`` is explicitly requested and gated the
+    same way, while the ``all`` expansion itself never gates: its unavailable
+    checks become not-assessed entries instead. Without ``--checks`` and
+    without ``--profile`` no report is collected here at all: the scan
+    directory's own setup collects the one it records. Returns
+    ``(report, exit_code)``; the report is the one the scans reuse.
     """
     profile_name = getattr(args, "profile", None)
+    named = [name for name in names if name != checks_table.ALL_CHECKS]
     if not names and profile_name is None:
         return None, 0
     report = doctor_lib.doctor()
-    if checks_table.ALL_CHECKS in names:
-        return report, 0
-    if names:
-        requested = names
+    if named:
+        requested = named
     elif profile_name is not None:
         requested = list(checks_table.PROFILES[profile_name].checks)
     else:
+        # Only the all expansion was requested.
         return report, 0
     tools = report.tools_by_name()
     for name in requested:

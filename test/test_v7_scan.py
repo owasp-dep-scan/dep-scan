@@ -707,6 +707,67 @@ def test_profile_deep_runs_the_license_analysis_for_a_bom_target(
 
 
 # ---------------------------------------------------------------------------
+# checks named alongside the all expansion
+# ---------------------------------------------------------------------------
+
+
+def test_checks_named_alongside_all_are_gated(
+    scan_stubs, fake_tools, monkeypatch, caplog, tmp_path
+):
+    """A check named next to all is gated like a directly named check: with
+    cdxgen unusable, all,reachability refuses the run before any work."""
+    fake_tools["remove"]("cdxgen")
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    with caplog.at_level(logging.ERROR, logger=LOG.name):
+        code = run_main(
+            monkeypatch,
+            [
+                "scan",
+                bom,
+                "--checks",
+                "all,reachability",
+                "--reports-dir",
+                str(reports),
+                "--no-banner",
+            ],
+        )
+    assert code == 4
+    message = " ".join(record.getMessage() for record in caplog.records)
+    assert "capability reachability is unavailable" in message
+    assert not reports.exists(), "the gate must not create the reports directory"
+    # Positive control of the hidden-tool stub: the scan never ran.
+    assert scan_stubs["matching"] == []
+
+
+def test_checks_all_plus_a_neutral_check_still_runs(
+    scan_stubs, fake_tools, monkeypatch, tmp_path, no_license_env
+):
+    """all,license runs with cdxgen hidden: the expansion records
+    reachability not assessed and the named license check needs nothing."""
+    fake_tools["remove"]("cdxgen")
+    _licensed_packages(monkeypatch)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        ["scan", bom, "--checks", "all,license", "--reports-dir", str(reports), "--no-banner"],
+    )
+    assert code == 0
+    manifest = _manifest_of(reports)
+    stages = {stage["name"]: stage for stage in manifest["stages"]}
+    assert stages["check-reachability"]["status"] == "not-assessed"
+    assert "cdxgen" in stages["check-reachability"]["reason"]
+    assert manifest["options"]["reachability_analyzer"] == "off"
+    assert stages["enrichment"]["status"] == "skipped"
+    # The named check really ran.
+    assert stages["licenses"]["status"] == "completed"
+    assert (reports / "license-bom.json").is_file()
+    # Positive control: the scan itself ran.
+    assert scan_stubs["matching"], "the matching stage never ran"
+
+
+# ---------------------------------------------------------------------------
 # the json format
 # ---------------------------------------------------------------------------
 
