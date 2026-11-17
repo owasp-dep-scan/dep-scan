@@ -1,0 +1,53 @@
+---
+title: Migrate from v6 to v7
+description: The breaking changes between dep-scan 6.3 and 7.0, and what to change in your workflows.
+---
+
+# Migrate from dep-scan v6 to v7
+
+dep-scan 7 is still in development on the `master` branch, and this page grows with it: every change that breaks a v6 workflow is added here in the pull request that makes it. The 6.x line continues on the `release/6.3.x` branch for fixes.
+
+Each entry says what changed, why, and what to do instead.
+
+## Python
+
+- **Python 3.11 is the minimum.** v6 supported Python 3.10. Install dep-scan 7 on Python 3.11 or later.
+
+## Vulnerability database (BREAKING)
+
+dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), whose database format and download images differ from v6.
+
+- **v6 databases are not read or migrated.** A database directory that holds only v6 files is reported as unusable, with the steps to fetch a v7 database. Delete the old directory or point `VDB_HOME` at a new one.
+- **A missing or empty database stops the scan.** v6 could report zero findings when the database was missing, empty or failed to download. v7 stops with a message naming the problem and exits with status 1, so a CI job no longer passes on a scan that could not match anything.
+- **The `vdb` download options are gone.** `vdb --download-image` and `vdb --download-full-image` no longer exist. Use `vdb db refresh full --app-only` for application vulnerabilities, or `vdb db refresh full` for application and OS vulnerabilities. `vdb db status` shows what is installed. A scan still downloads the database itself when it is missing.
+- **Select the database with `--vdb-flavor`.** The flavors are `full` (application and OS, the default), `app-only`, `app-extended`, `app-10y` and `app-10y-extended`. `--vdb-scope`, `--vdb-time` and `--vdb-extended` still work but are deprecated: each logs a warning naming the flavor it selected. `--vdb-flavor` cannot be combined with them.
+- **Some v6 selections have no v7 database and are refused.** `--vdb-time 2y`, an app+OS 10-year or extended selection, and `--vdb-distro` stop the scan with the list of published flavors instead of silently using a bigger or smaller database. For a single distribution, use `--vdb-flavor full`.
+- **`VDB_IMAGE_TAG` is no longer read.** Pin a database image with `VDB_DATABASE_URL` or `--vdb-image`, which are used as given.
+- **Type shards are opt-in.** Set `VDB_USE_SHARDS=true` to scan with per-ecosystem shards; see [the vulnerability database page](vulnerability-database).
+
+## cdxgen (BREAKING)
+
+- **cdxgen 13.8.0 or later is required.** dep-scan refuses an older local cdxgen, and a 13.8.0 pre-release, with the command that installs a supported one.
+- **The npm package is `@cdxgen/cdxgen`.** v6 documentation installed `@cyclonedx/cdxgen`. Install with `npm install -g @cdxgen/cdxgen`, and remove the old package first if both are present, because the older one can stay first on `PATH`.
+- **Untrusted sources run cdxgen in secure mode.** When cdxgen fetches the code itself (a git URL as the source) or the scan was requested through the dep-scan server, cdxgen always runs with `CDXGEN_SECURE_MODE=true`, which limits what it may install or execute. Projects that relied on cdxgen installing packages during such scans need their dependencies resolved beforehand.
+
+## Reachability
+
+- **Slices from atom 2.x are not read.** dep-scan 7 reads the slices atom 4 writes, which cdxgen 13.8 produces. Regenerate BOMs and slices saved by older cdxgen versions before passing them with `--bom-dir`; old slices contribute no reachable packages.
+- **When atom times out, the scan says so.** v6 treated the missing slices as zero reachable flows. v7 records the reachability analysis as not assessed for that scan.
+- **Go reachability runs with cgo off.** golem loads Go packages with `CGO_ENABLED=0` and with every `CGO_*_ALLOW` variable removed, even when the environment sets them, because loading cgo packages runs the machine's C compiler with flags from the scanned code. Packages that need cgo are therefore not loaded and their reachability is missing. Pass `--go-analyzer-cgo` (or set `DEPSCAN_GO_ANALYZER_CGO=true`) only for code you trust, with a Go release that carries the fixes for CVE-2026-97033 to CVE-2026-97043.
+
+## Server mode
+
+- **A request that cannot be scanned answers HTTP 500.** v6 could answer with a BOM carrying no vulnerabilities when the scan did not run. The server also prepares the database once when it starts, rather than in each request.
+
+## Python library
+
+- **`analysis_lib.utils` is removed.** Its functions moved to `analysis_lib.advisory`, `merge`, `suggestions`, `packages`, `prioritize` and `endpoints`, and no compatibility module is kept. Import from the new modules.
+- **Use `depscan.api` instead of calling the command line internals.** `scan`, `load_scan`, `query`, `explain`, `diff` and `doctor` are the supported entry points; see [the Python API](python-api). Functions inside `depscan.cli` and `depscan.lib.pipeline` may change between v7 releases.
+
+## New commands
+
+These are not breaking, but they replace manual checks some v6 workflows did:
+
+- `depscan doctor` reports the tools, database and capabilities a scan can use on the machine; `--require CAP` exits 4 when a capability is missing. See [depscan doctor](doctor).

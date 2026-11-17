@@ -65,6 +65,7 @@ const sidebars: SidebarsConfig = {
     },
     'env-var',
     'adv-usage',
+    'migrate-v6-to-v7',
     'migrate-v5-to-v6',
     {
       type: 'category',

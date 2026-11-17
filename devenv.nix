@@ -110,12 +110,12 @@ in
       };
       tasks."vdb:download-image" = {
         exec = ''
-        uv run vdb --download-image
+        uv run vdb db refresh full --app-only
         '';
       };
       tasks."vdb:download-full-image" = {
         exec = ''
-        uv run vdb --download-full-image
+        uv run vdb db refresh full
         '';
       };
   };
