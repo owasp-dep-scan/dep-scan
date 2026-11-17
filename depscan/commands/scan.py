@@ -16,43 +16,55 @@ Two dests differ from the v6 names on purpose: ``--bom-profile`` (the cdxgen
 BOM profile v6 called ``--profile``) lands on ``bom_profile`` because
 ``--profile`` now names the scan profile, and ``--exclude-type`` lands on
 ``exclude_types`` (repeatable) so it maps straight onto the internal option.
+
+:func:`scan_namespace` builds the internal namespace from a parsed command
+line, and :func:`run` drives the scans: one per target, with the target kind
+detected (or forced), the requested checks gated against one doctor report
+before any scan work, and one JSON document on stdout in json format.
 """
 
 import argparse
+import json
+import os
+import re
 import sys
+from typing import List, Optional, Tuple
 
 from analysis_lib.config import SUPPORTED_BOM_PROFILES
 
-from depscan.cli_options import validate_spec_version
+from depscan import api
+from depscan.cli_options import build_parser, validate_spec_version
+from depscan.commands import checks as checks_table
+from depscan.commands.targets import FORCE_TARGET_KINDS, detect_kind
+from depscan.lib import doctor as doctor_lib
+from depscan.lib.logger import LOG, console
 
 #: The checks a scan can run, as the ``--checks`` help lists them.
-CHECK_NAMES = (
-    "all",
-    "vulnerabilities",
-    "reachability",
-    "license",
-    "supply-chain",
-    "binary",
-    "memory-safety",
-    "mobile",
-    "code",
-    "crypto",
-)
+CHECK_NAMES = checks_table.CHECK_NAMES
 
 #: The scan profiles, as the ``--profile`` help lists them.
-PROFILE_NAMES = ("quick", "ci", "deep", "research", "offline")
+PROFILE_NAMES = checks_table.PROFILE_NAMES
 
-TARGET_KINDS = (
-    "purl",
-    "git",
-    "container",
-    "bom",
-    "bom-dir",
-    "binary",
-    "android",
-    "ios",
-    "source",
+#: Dests of the scan parse that never map onto an internal option.
+_NOT_INTERNAL_DESTS = (
+    "verb",
+    "subcommand",
+    "targets",
+    "target_kind",
+    "checks",
+    "profile",
+    "format",
 )
+
+#: The scan flag whose dest differs from the internal option it sets: v6's
+#: ``--profile`` (the cdxgen BOM profile) is v7's ``--bom-profile``.
+_SCAN_TO_INTERNAL_DESTS = {"bom_profile": "profile"}
+
+#: The project type each target kind forces when the user passed no ``-t``.
+_TARGET_PROJECT_TYPES = {"container": "docker", "binary": "binary", "android": "apk"}
+
+#: The characters a multi-target directory name replaces.
+_DIRECTORY_NAME_SEPARATORS = re.compile(r"[/\\:@]")
 
 
 def add_scan_options(parser: argparse.ArgumentParser) -> None:
@@ -82,9 +94,11 @@ def _add_target_options(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--target-kind",
-        choices=TARGET_KINDS,
+        choices=FORCE_TARGET_KINDS,
         default=argparse.SUPPRESS,
-        help="Force the kind of every target instead of detecting it.",
+        help="Force the kind of every target instead of detecting it. "
+        "firmware is accepted only to be refused: it has no inventory path "
+        "in this version.",
     )
     parser.add_argument(
         "--checks",
@@ -562,6 +576,362 @@ def register(subparsers) -> None:
     add_scan_options(parser)
 
 
+# --- the internal namespace ------------------------------------------------------
+
+
+def internal_argv(args: argparse.Namespace) -> list:
+    """The argv the internal parser gets: only ``--config`` when given.
+
+    Without it the internal parser falls back to its own default config path
+    (``DEPSCAN_CONFIG`` or ``$PWD/.config/depscan.toml``), exactly as a v6
+    scan did.
+    """
+    config = getattr(args, "config", None)
+    return ["--config", config] if config else []
+
+
+def apply_scan_options(args: argparse.Namespace, internal) -> set:
+    """Apply the options this invocation passed onto the internal namespace.
+
+    The internal namespace carries the environment-backed defaults and the
+    TOML file's values, and the explicitly passed options win over both.
+    Returns the internal dests the command line set. ``config show`` performs
+    the same step to name "command line" as a value's source.
+    """
+    applied = set()
+    for dest, value in vars(args).items():
+        if dest in _NOT_INTERNAL_DESTS:
+            continue
+        internal_dest = _SCAN_TO_INTERNAL_DESTS.get(dest, dest)
+        if hasattr(internal, internal_dest):
+            setattr(internal, internal_dest, value)
+            applied.add(internal_dest)
+    return applied
+
+
+def scan_namespace(args: argparse.Namespace, *, resolution=None) -> argparse.Namespace:
+    """Build the internal namespace for the scan these arguments describe.
+
+    The internal parser supplies the environment-backed defaults and the TOML
+    file's values, the resolved checks and profile settings land on their
+    internal dests, the explicitly passed options are applied on top of them
+    (they win over every profile and check setting), and the ``--exclude-type``
+    values are parsed onto the internal ``exclude_types`` list. Nothing
+    downstream reads the v7 names.
+    """
+    internal = build_parser().parse_args(internal_argv(args))
+    if resolution is None:
+        resolution = checks_table.resolve(args)
+    for dest, value in resolution.options.items():
+        setattr(internal, dest, value)
+    apply_scan_options(args, internal)
+    _apply_excluded_types(args, internal)
+    _append_check_lists(internal, resolution)
+    if "license" in resolution.checks:
+        # The license analysis turns on through this environment variable,
+        # exactly as v6's ``-t license`` set it in finalize_setup. Appending
+        # the pseudo type alone reaches only source scans: a BOM, BOM
+        # directory or purl scan never reads the project types, and the
+        # licenses stage consults this variable directly.
+        os.environ["FETCH_LICENSE"] = "true"
+    return internal
+
+
+def _apply_excluded_types(args: argparse.Namespace, internal) -> None:
+    """Parse the repeatable, comma-separated ``--exclude-type`` values."""
+    raw = getattr(args, "exclude_types", None)
+    if raw is None:
+        return
+    if isinstance(raw, str):
+        raw = [raw]
+    parsed = [name.strip() for item in raw for name in str(item).split(",") if name.strip()]
+    internal.exclude_types = list(dict.fromkeys(parsed))
+
+
+def _append_check_lists(internal, resolution) -> None:
+    """Append the check-added types and techniques after the explicit options.
+
+    The license check appends the ``license`` pseudo type and the binary check
+    the ``binary-analysis`` technique, also to a value the user passed, so an
+    explicit ``--type`` never silently drops a requested check.
+    """
+    for project_type in resolution.append_project_types:
+        if project_type not in internal.project_type:
+            internal.project_type = [*internal.project_type, project_type]
+    techniques = list(internal.techniques or [])
+    for technique in resolution.append_techniques:
+        if technique not in techniques:
+            techniques.append(technique)
+    internal.techniques = techniques or None
+
+
+# --- the targets -----------------------------------------------------------------
+
+#: Forced kinds with no inventory path in this version. Naming one through
+#: ``--target-kind`` refuses the run whether or not targets were given;
+#: detection can additionally find an iOS app on a ``.ipa`` file.
+_UNSCANNABLE_FORCED_KINDS = ("ios", "firmware")
+
+
+def _refuse_forced_kind(kind: str) -> None:
+    """Log why a forced kind cannot be scanned in this version."""
+    if kind == "firmware":
+        LOG.error("Firmware targets have no inventory path in this version.")
+        return
+    mobile = doctor_lib.capability_unavailable_reason("mobile", {}, {})
+    LOG.error("iOS targets need the mobile capability, which cannot scan them: %s", mobile)
+
+
+def _resolve_targets(args: argparse.Namespace):
+    """Detect every target's kind; returns ``(entries, refusal_code)``.
+
+    ``entries`` holds one ``(target, kind, refusal)`` triple per given
+    target, in the given order: a refused target (a source target that does
+    not exist) carries no kind and its refusal reason, so the json output can
+    report it instead of silently dropping it, while a multi-target run still
+    scans the remaining targets. ``entries`` is None when the whole run is
+    refused (exit 4 for a kind this version cannot scan). Each detection is
+    logged with its reason.
+    """
+    forced = getattr(args, "target_kind", None)
+    if forced in _UNSCANNABLE_FORCED_KINDS:
+        _refuse_forced_kind(forced)
+        return None, 4
+    entries: List[Tuple[str, Optional[str], Optional[str]]] = []
+    for target in getattr(args, "targets", None) or []:
+        if forced:
+            kind, reason = forced, f"forced with --target-kind {forced}"
+        else:
+            kind, reason = detect_kind(target)
+        if kind == "ios":
+            mobile = doctor_lib.capability_unavailable_reason("mobile", {}, {})
+            LOG.error(
+                "The target %s is an iOS app, which the mobile capability cannot scan: %s",
+                target,
+                mobile,
+            )
+            return None, 4
+        if kind == "source" and not os.path.exists(target):
+            message = f"The source target '{target}' does not exist."
+            LOG.error(message)
+            entries.append((target, None, message))
+            continue
+        LOG.info("Target %s: kind %s (%s)", target, kind, reason)
+        entries.append((target, kind, None))
+    return entries, 0
+
+
+def _capability_gate(args: argparse.Namespace, names):
+    """Collect one doctor report when checks or a profile were requested.
+
+    Each explicitly requested check whose doctor capability is
+    not-implemented or unavailable stops the verb with exit 4 before any scan
+    work. A check named next to ``all`` is explicitly requested and gated the
+    same way, while the ``all`` expansion itself never gates: its unavailable
+    checks become not-assessed entries instead. Without ``--checks`` and
+    without ``--profile`` no report is collected here at all: the scan
+    directory's own setup collects the one it records. Returns
+    ``(report, exit_code)``; the report is the one the scans reuse.
+    """
+    profile_name = getattr(args, "profile", None)
+    named = [name for name in names if name != checks_table.ALL_CHECKS]
+    if not names and profile_name is None:
+        return None, 0
+    report = doctor_lib.doctor()
+    if named:
+        requested = named
+    elif profile_name is not None:
+        requested = list(checks_table.PROFILES[profile_name].checks)
+    else:
+        # Only the all expansion was requested.
+        return report, 0
+    tools = report.tools_by_name()
+    for name in requested:
+        capability = checks_table.CHECKS[name].capability
+        if capability is None:
+            continue
+        reason = doctor_lib.capability_unavailable_reason(capability, tools, report.data)
+        if reason:
+            LOG.error("The %s check cannot run on this machine: %s", name, reason)
+            return None, 4
+    return report, 0
+
+
+# --- the scans -------------------------------------------------------------------
+
+
 def run(args: argparse.Namespace) -> int:
-    print("the scan verb lands in the next piece", file=sys.stderr)
-    return 2
+    """Run the scan verb; the process exit code.
+
+    Usage errors (an unknown check name) exit 2, a kind this version cannot
+    scan exits 4, and the exit code of the scans themselves is the highest of
+    them: a scan that stopped early counts 1.
+    """
+    names = checks_table.parse_checks(getattr(args, "checks", None))
+    unknown = checks_table.unknown_checks(names)
+    if unknown:
+        print(
+            f"depscan scan: unknown check {', '.join(unknown)}; known checks: "
+            f"{', '.join(checks_table.CHECK_NAMES)}",
+            file=sys.stderr,
+        )
+        return 2
+    entries, refusal = _resolve_targets(args)
+    if entries is None:
+        return refusal
+    report, gate_code = _capability_gate(args, names)
+    if gate_code:
+        return gate_code
+    resolution = checks_table.resolve(args, doctor_report=report)
+    internal = scan_namespace(args, resolution=resolution)
+    saved_stdout = sys.stdout
+    if args.format == "json":
+        # The stdout console moves to stderr for the duration and the process
+        # stdout is redirected with it, so stdout carries exactly one JSON
+        # document: the tables, the banner, the logs and any stray print from
+        # a library the scan calls all land on stderr instead. ``_file`` is
+        # None while the console follows sys.stdout, and None is what the
+        # restore puts back: pinning the current sys.stdout object instead
+        # would break under a harness that replaces the stream between runs.
+        internal.no_banner = True
+        saved_file = console._file
+        console.file = sys.stderr
+        sys.stdout = sys.stderr
+        try:
+            outcomes = _run_all_scans(args, internal, resolution, entries, report)
+        finally:
+            sys.stdout = saved_stdout
+            # Assigning the private attribute is deliberate: the public
+            # setter's declared type does not accept None, and None is the
+            # value that makes the console follow sys.stdout again.
+            console._file = saved_file
+    else:
+        outcomes = _run_all_scans(args, internal, resolution, entries, report)
+    exit_code = max([refusal, *(code for code, _ in outcomes)])
+    if args.format == "json":
+        _print_json_outcomes(outcomes, saved_stdout)
+    return exit_code
+
+
+def _run_all_scans(args, internal, resolution, entries, doctor_report):
+    """One scan per given target; a single scan for zero or one target.
+
+    Returns one ``(exit_code, document)`` per given target: a scan object
+    (``scanDir``, ``manifest``, ``findings``) for a scan that ran, and a
+    ``{"target", "error"}`` object for a target the detection refused, so
+    the json output never silently drops a target. More than one target
+    writes each scan into ``<reports-dir>/<n>-<name>/``, with ``n`` the
+    target's 1-based index in the given list; zero or one target uses
+    ``--reports-dir`` as given.
+    """
+    base_reports_dir = internal.reports_dir
+    given = list(getattr(args, "targets", None) or [])
+    if not given:
+        # Zero targets means the current directory, with the internal
+        # default and no per-target override.
+        return [_scan_one(argparse.Namespace(**vars(internal)), resolution, doctor_report)]
+    multiple = len(given) > 1
+    outcomes = []
+    for index, (target, kind, refusal) in enumerate(entries, start=1):
+        if kind is None:
+            # A target the detection refused; it was already logged.
+            outcomes.append((1, {"target": target, "error": refusal}))
+            continue
+        options = argparse.Namespace(**vars(internal))
+        _apply_target_options(options, target, kind, args, resolution)
+        if multiple:
+            options.reports_dir = os.path.join(
+                base_reports_dir, f"{index}-{_target_directory_name(target)}"
+            )
+        outcomes.append(_scan_one(options, resolution, doctor_report))
+    return outcomes
+
+
+def _apply_target_options(options, target: str, kind: str, args, resolution) -> None:
+    """Land one target on the internal namespace's inventory paths."""
+    if kind == "purl":
+        options.search_purl = target
+    elif kind == "bom":
+        options.bom = target
+    elif kind == "bom-dir":
+        options.bom_dir = target
+    else:
+        # git, container, binary, android and source all scan through the
+        # source directory or image argument.
+        options.src_dir_image = target
+    forced_type = _TARGET_PROJECT_TYPES.get(kind)
+    if forced_type and not hasattr(args, "project_type"):
+        # The kind names the inventory path, so it names the type too; the
+        # check-added types (license) survive the replacement.
+        appended = [ptype for ptype in resolution.append_project_types if ptype != forced_type]
+        options.project_type = [forced_type, *appended]
+
+
+def _scan_one(options, resolution, doctor_report):
+    """Run one scan, reusing the gate's doctor report and recording the
+    not-assessed checks; returns the exit code and the json document.
+
+    A scan that stopped early counts exit 1; its document reports the
+    manifest the pipeline still wrote on the way out and no findings.
+    """
+    try:
+        result = api.scan(
+            options,
+            doctor_report=doctor_report,
+            checks_not_assessed=resolution.not_assessed or None,
+        )
+    except api.ScanError:
+        # The stage already logged why the scan stopped.
+        return (
+            1,
+            {
+                "scanDir": options.reports_dir,
+                "manifest": _read_manifest(options.reports_dir),
+                "findings": [],
+            },
+        )
+    return (
+        0,
+        {
+            "scanDir": result.reports_dir,
+            "manifest": result.manifest,
+            "findings": result.findings,
+        },
+    )
+
+
+def _target_directory_name(target: str) -> str:
+    """The directory name a multi-target scan writes this target into.
+
+    The basename for an existing path, otherwise the sanitized reference with
+    ``/``, ``\\``, ``:`` and ``@`` replaced, truncated to 60 characters.
+    """
+    if os.path.exists(target):
+        name = os.path.basename(target)
+    else:
+        name = _DIRECTORY_NAME_SEPARATORS.sub("-", target)
+    return name[:60] or "target"
+
+
+# --- the json output -------------------------------------------------------------
+
+
+def _print_json_outcomes(outcomes, stream) -> None:
+    """Print the outcomes as one JSON document on the saved stdout.
+
+    A zero or one-target invocation gets a single object, an invocation with
+    more targets an array with one entry per target, whatever happened to
+    them.
+    """
+    documents = [document for _, document in outcomes]
+    print(json.dumps(documents[0] if len(documents) == 1 else documents, indent=2), file=stream)
+
+
+def _read_manifest(reports_dir: str):
+    """The manifest a stopped scan wrote, or None when it wrote none."""
+    path = os.path.join(reports_dir, "depscan.manifest.json")
+    try:
+        with open(path, encoding="utf-8") as fp:
+            return json.load(fp)
+    except (OSError, ValueError):
+        return None
