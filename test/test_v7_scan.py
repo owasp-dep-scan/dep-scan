@@ -509,6 +509,26 @@ def test_target_kind_firmware_is_refused(scan_stubs, monkeypatch, caplog, tmp_pa
     assert "no inventory path" in message
 
 
+@pytest.mark.parametrize("kind,fragment", [("firmware", "no inventory path"), ("ios", "mobile")])
+def test_a_forced_kind_without_an_inventory_path_is_refused_without_targets(
+    scan_stubs, monkeypatch, caplog, tmp_path, kind, fragment
+):
+    """--target-kind naming a kind this version cannot scan refuses the run
+    before any target handling, also when no target was given: without this
+    the current directory would be scanned instead."""
+    monkeypatch.chdir(tmp_path)
+    with caplog.at_level(logging.ERROR, logger=LOG.name):
+        code = run_main(monkeypatch, ["scan", "--target-kind", kind])
+    assert code == 4
+    message = " ".join(record.getMessage() for record in caplog.records).lower()
+    assert kind in message
+    assert fragment in message
+    # Nothing was scanned: no reports directory, no matching, no detection.
+    assert not (tmp_path / "reports").exists(), "the refusal must not scan anything"
+    assert scan_stubs["matching"] == []
+    assert not any("kind" in record.getMessage() for record in caplog.records)
+
+
 def test_a_missing_source_target_exits_one(scan_stubs, monkeypatch, caplog, tmp_path):
     """A target that is not an existing path and no reference is a source
     target; a nonexistent one is refused with exit 1."""

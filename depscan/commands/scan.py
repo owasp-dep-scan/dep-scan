@@ -666,6 +666,20 @@ def _append_check_lists(internal, resolution) -> None:
 
 # --- the targets -----------------------------------------------------------------
 
+#: Forced kinds with no inventory path in this version. Naming one through
+#: ``--target-kind`` refuses the run whether or not targets were given;
+#: detection can additionally find an iOS app on a ``.ipa`` file.
+_UNSCANNABLE_FORCED_KINDS = ("ios", "firmware")
+
+
+def _refuse_forced_kind(kind: str) -> None:
+    """Log why a forced kind cannot be scanned in this version."""
+    if kind == "firmware":
+        LOG.error("Firmware targets have no inventory path in this version.")
+        return
+    mobile = doctor_lib.capability_unavailable_reason("mobile", {}, {})
+    LOG.error("iOS targets need the mobile capability, which cannot scan them: %s", mobile)
+
 
 def _resolve_targets(args: argparse.Namespace):
     """Detect every target's kind; returns ``(targets, skipped_code)``.
@@ -677,12 +691,12 @@ def _resolve_targets(args: argparse.Namespace):
     targets.
     """
     forced = getattr(args, "target_kind", None)
+    if forced in _UNSCANNABLE_FORCED_KINDS:
+        _refuse_forced_kind(forced)
+        return None, 4
     resolved = []
     skipped = 0
     for target in getattr(args, "targets", None) or []:
-        if forced == "firmware":
-            LOG.error("Firmware targets have no inventory path in this version.")
-            return None, 4
         if forced:
             kind, reason = forced, f"forced with --target-kind {forced}"
         else:
