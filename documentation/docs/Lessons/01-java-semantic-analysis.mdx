@@ -50,13 +50,13 @@ docker pull dependencytrack/bundled:latest
 export DEPSCAN_SOURCE_IMAGE=dependencytrack/bundled:latest
 
 # Perform semantic analysis with local cdxgen engine and detailed explanation
-depscan --src path/to/dependency-track --reports-dir path/to/dependency-track/reports -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+depscan scan path/to/dependency-track --reports-dir path/to/dependency-track/reports -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
 ```
 
 Additional learning. Leaving out the `--bom-engine` argument would make depscan use the `CdxgenImageBasedGenerator`, which uses a container image-based BOM generation for better compatibility. On Windows, or in environments without Docker, `CdxgenGenerator` would be used by default.
 
 ```shell
-depscan --src path/to/dependency-track --reports-dir path/to/dependency-track/reports -t java --reachability-analyzer SemanticReachability --explain
+depscan scan path/to/dependency-track --reports-dir path/to/dependency-track/reports -t java --reachability-analyzer SemanticReachability --explain
 ```
 
 Unsetting the environment variable `DEPSCAN_SOURCE_IMAGE` would make depscan analyze only the source code without considering the container layer.

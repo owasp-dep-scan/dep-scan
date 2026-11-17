@@ -19,16 +19,16 @@ dep-scan emits VEX as an OASIS Common Security Advisory Framework (CSAF) documen
 Pass `--csaf` to any dep-scan run that produces a VDR. dep-scan writes the document into the reports directory with a filename derived from the BOM base name and a `.csaf.json` suffix.
 
 ```shell
-depscan --bom reports/sbom-build.cdx.json --reports-dir reports --src . --csaf
+depscan scan reports/sbom-build.cdx.json --reports-dir reports --csaf
 ```
 
 Select the target schema with `--csaf-version`; the default is `2.1`, and `2.0` is available for consumers that require it.
 
 ```shell
-depscan --bom reports/sbom-build.cdx.json --reports-dir reports --src . --csaf --csaf-version 2.0
+depscan scan reports/sbom-build.cdx.json --reports-dir reports --csaf --csaf-version 2.0
 ```
 
-Reachability is what makes the VEX meaningful, so combine `--csaf` with the reachability workflow appropriate to your project. For a single-language scan, that is `--profile research`; for lifecycle and semantic coverage, use the `--bom-dir` workflow described in [Semantic reachability](../analyzers/semantic-reachability).
+Reachability is what makes the VEX meaningful, so combine `--csaf` with the reachability workflow appropriate to your project. For a single-language scan, that is `--bom-profile research`; for lifecycle and semantic coverage, use the BOM directory workflow described in [Semantic reachability](../analyzers/semantic-reachability).
 
 ## Output naming and the VDR safety guarantee
 
@@ -145,7 +145,7 @@ The first layer is the official CSAF 2.0 or 2.1 **JSON Schema** bundled with the
 
 The second layer is the set of **CSAF §6.1 mandatory tests** the JSON Schema cannot express, implemented in `analysis_lib.vex.semantic`. A document that merely satisfies the schema can still be non-conformant, so dep-scan additionally checks for missing or duplicate product ids (§6.1.1/§6.1.2), contradicting product status (§6.1.6, with `recommended` permitted to overlap), multiple CVSS scores of the same version *and source* for one product (§6.1.7), invalid or inconsistent CVSS (§6.1.8–§6.1.10), CWE and language and purl validity (§6.1.11–§6.1.13), revision-history consistency (§6.1.14/§6.1.16/§6.1.21/§6.1.22), draft-versus-version status (§6.1.17/§6.1.18/§6.1.20), mixed versioning (§6.1.30), duplicate CVE use (§6.1.23), document category (§6.1.26), RFC 3339 date-time everywhere (§6.1.37), and the VEX profile tests under §6.1.27.x — product status (§6.1.27.7), vulnerability id (§6.1.27.8), impact statement for `known_not_affected` (§6.1.27.9), and action statement for `known_affected` (§6.1.27.10) — plus remediation and flag product references (§6.1.29/§6.1.32/§6.1.33). The VEX profile tests are gated on `document.category == "csaf_vex"`, so they never fire against other CSAF categories such as `csaf_security_advisory`. To keep the document conformant by construction, dep-scan normalizes every timestamp to RFC 3339 UTC (`...Z`), guarantees each vulnerability carries at least one of `cve` or `ids` (distro advisories such as `DLA-4485-1` get an `ids` synthesized from their advisory token), and gives every `known_affected` product a `remediations` action statement (`vendor_fix` when a fix is recommended, otherwise `none_available`).
 
-The same two-layer validation is available as a standalone command, `depscan-validate`, so you can check documents after the fact — including documents produced by other tools. It is documented in [Validating VEX and VDR documents](validate-command).
+The same two-layer validation is available as a standalone command, `depscan validate`, so you can check documents after the fact, including documents produced by other tools. It is documented in [Validating VEX and VDR documents](validate-command).
 
 ## CSAF 2.0 versus 2.1
 

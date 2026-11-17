@@ -43,17 +43,17 @@ The hermetic fixtures under `test/data/rusi/repos/` let you reproduce the reacha
 
 ```shell
 # Reachable case: time@0.1.45 is both present and called
-depscan -i ./test/data/rusi/repos/rustsec-app -o ./reports --profile research --explain
+depscan scan ./test/data/rusi/repos/rustsec-app -o ./reports --bom-profile research --explain
 
 # Point dep-scan at a dev build of rusi
-DEPSCAN_RUSI_BINARY=/path/to/rusi depscan -i ./test/data/rusi/repos/rustsec-app -o ./reports --profile research --explain
+DEPSCAN_RUSI_BINARY=/path/to/rusi depscan scan ./test/data/rusi/repos/rustsec-app -o ./reports --bom-profile research --explain
 ```
 
 The control is `unreachable-app`, whose `Cargo.toml` lists dependencies but whose `main` only prints a greeting and never calls into any external crate.
 
 ```shell
 # Present-but-unreachable case: no crate sits on a traced path
-depscan -i ./test/data/rusi/repos/unreachable-app -o ./reports --profile research --explain
+depscan scan ./test/data/rusi/repos/unreachable-app -o ./reports --bom-profile research --explain
 ```
 
 Reachability is on by default (`--reachability-analyzer FrameworkReachability`). Switch to `SemanticReachability` only when you also want reached services and endpoints attributed.
