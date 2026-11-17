@@ -472,7 +472,7 @@ def test_translator_produces_the_published_shapes(before, after):
 #: Content the position-based extractor cannot see (backticked, quoted or
 #: variable-indirected), asserted directly against the file text.
 TARGETED_CONTENT = {
-    ".github/ISSUE_TEMPLATE/false_positive.yaml": 'depscan scan "purl-of-the-wrong-positive"',
+    ".github/ISSUE_TEMPLATE/false_positive.yaml": 'depscan scan "pkg:<purl-of-the-false-positive>"',
     ".github/scripts/repotest-project.sh": '$DEPSCAN scan "$PROJECT_DIR" --target-kind bom-dir',
     ".github/workflows/repotests.yml": "depscan scan ${GITHUB_WORKSPACE}/repotests/dejacode/reports "
     "--target-kind bom-dir",
