@@ -58,6 +58,7 @@ const sidebars: SidebarsConfig = {
       collapsible: true,
       label: 'Reports and Compliance',
       items: [
+        'output/scan-directory',
         'output/vdr-guide',
         'output/vex-csaf-guide',
         'output/validate-command'

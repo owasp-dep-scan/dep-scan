@@ -24,7 +24,7 @@ print(result.reports_dir, result.project_types)
 
 An override name that is not a command line option raises `TypeError` naming it. If you parse the command line yourself, pass that namespace to `scan` directly.
 
-The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
+The scan writes the same files the `depscan` command writes to `options.reports_dir`: the BOM documents, the VDR files, the license and risk reports and `depscan.toml.sample`, plus the scan directory's own `depscan.findings.json` and `depscan.manifest.json`. The [scan directory](output/scan-directory.mdx) page documents the layout. With `render=False` the rendering is skipped (the console tables, the HTML and text reports, the template report, the explanation, the CSAF export and the `--annotate` annotations); the VDR and BOM files are still written. Pass `render=False` when you only want the data:
 
 ```python
 result = api.scan(options, render=False)
@@ -42,6 +42,8 @@ When a stage stops the scan, for example a `--bom` file that does not exist or a
 | `project_types` | Every project type the scan ran for, including types skipped after producing nothing. |
 | `types` | One `TypeScanResult` per type that produced results, in scan order. |
 | `vulnerabilities` | Property: every vulnerability of every type, in type then write order. |
+| `manifest` | The scan directory's manifest document, or `None` when the result came from a directory without one. |
+| `findings` | The array of `depscan.findings.json`: one finding per advisory and component, each of the `depscan-finding` schema. |
 
 Each `TypeScanResult` carries the `project_type`, the `bom_file` the type was scanned from, the `vdr_file` written for it (either is `None` when the scan produced no such file: a single-purl scan writes neither, and a scan that found no vulnerabilities writes no VDR), and the `vulnerabilities` as written to that VDR.
 
@@ -50,13 +52,17 @@ for tscan in result.types:
     print(tscan.project_type, tscan.bom_file, tscan.vdr_file, len(tscan.vulnerabilities))
 ```
 
+A scan that stops partway still leaves its directory with a manifest naming the failed stage; the scan raises `ScanError` as above and the directory is there to read.
+
 ## Loading a saved scan
 
-`load_scan(reports_dir)` rebuilds a `ScanResult` from a reports directory a scan wrote, without running a scan. It reads the VDR files of today's layout: the BOM name with `.vdr.json` (or the BOM name itself when it does not end in `.cdx.json`) and `depscan-universal.vdr.json` for a BOM directory scan. A directory with no VDR file raises `ScanError` rather than returning an empty result, so the directory of a scan that found no vulnerabilities cannot be loaded. A directory that several scans wrote to gives the VDRs of all of them.
+`load_scan(reports_dir)` rebuilds a `ScanResult` from a scan directory a scan wrote, without running a scan. When the directory carries `depscan.manifest.json`, the manifest path runs: the project types, the files and the stage results come from the manifest, the vulnerabilities from the VDR files it lists, and the findings from `depscan.findings.json`. The result carries the same `manifest` and `findings` the scan returned, and a scan that found no vulnerabilities loads as an empty result because the manifest shows the matching stage completed. A manifest whose layout major this dep-scan does not know is refused with an error naming both versions, and a manifest that shows the matching stage did not complete is refused instead of loading as clean.
+
+A directory without a manifest is read the way scans before the scan directory wrote them: every CycloneDX JSON file directly in the directory that carries a `vulnerabilities` array is treated as a VDR (the BOM name with `.vdr.json`, and `depscan-universal.vdr.json` for a BOM directory scan). Such a directory cannot hold the result of a clean scan, because those scans wrote no VDR, and a directory with no VDR file raises `ScanError` rather than returning an empty result.
 
 ```python
 result = api.load_scan("reports")
-print(len(result.vulnerabilities))
+print(len(result.vulnerabilities), result.manifest["layoutVersion"])
 ```
 
 ## Querying vulnerabilities

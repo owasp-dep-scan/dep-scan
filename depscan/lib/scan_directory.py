@@ -607,6 +607,38 @@ def matching_completed(manifest: Dict[str, Any]) -> bool:
     return False
 
 
+#: The schema objects the documentation documents as field tables, in page
+#: order. The top-level manifest fields come first.
+_DOCUMENTED_DEFS = ("input", "database", "stage", "analyzer", "stageOutput", "file")
+
+
+def _field_table(properties: Dict[str, Any]) -> List[str]:
+    """One markdown table of field names and descriptions, from the schema."""
+    lines = ["| Field | What it holds |", "| --- | --- |"]
+    for name, spec in properties.items():
+        description = str(spec.get("description") or "").strip()
+        lines.append(f"| `{name}` | {description} |")
+    return lines
+
+
+def manifest_fields_markdown() -> str:
+    """The manifest schema's fields as the markdown tables the docs embed.
+
+    The documentation page carries the output of this function, so the
+    published tables cannot drift from the schema.
+    """
+    from analysis_lib.findings.schemas import load_schema
+
+    schema = load_schema("depscan-manifest")
+    lines = ["### Manifest fields", ""]
+    lines += _field_table(schema["properties"])
+    for def_name in _DOCUMENTED_DEFS:
+        definition = schema["$defs"][def_name]
+        lines += ["", f"### {def_name} fields", ""]
+        lines += _field_table(definition["properties"])
+    return "\n".join(lines)
+
+
 def project_types(manifest: Dict[str, Any]) -> List[str]:
     """The project types the manifest recorded, in the order they ran."""
     types = []

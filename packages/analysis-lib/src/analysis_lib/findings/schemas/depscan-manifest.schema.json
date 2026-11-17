@@ -54,7 +54,8 @@
       "description": "The doctor report's tool entries, collected once for this scan."
     },
     "platform": {
-      "$ref": "depscan-doctor.schema.json#/$defs/platform"
+      "$ref": "depscan-doctor.schema.json#/$defs/platform",
+      "description": "The doctor report's platform entry: os, arch and, on Linux, libc."
     },
     "capabilities": {
       "type": "array",
@@ -64,7 +65,8 @@
       "description": "The doctor report's evaluated capability table, collected once for this scan."
     },
     "database": {
-      "$ref": "#/$defs/database"
+      "$ref": "#/$defs/database",
+      "description": "The doctor report's database inspection, plus the flavor and shards the matching stage actually used."
     },
     "stages": {
       "type": "array",
