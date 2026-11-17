@@ -109,6 +109,35 @@ def test_stage_setup_switches_to_lifecycle_analyzer_for_semantic(tmp_path):
     assert ctx.depscan_options["vuln_analyzer"] == "LifecycleAnalyzer"
 
 
+def test_finalize_setup_enables_licenses_from_a_profile_without_the_type(tmp_path, monkeypatch):
+    """A profile naming license turns the analysis on even when the license
+    pseudo type was not among the project types; stripping it from the type
+    list must not fail the scan."""
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    src = tmp_path / "src"
+    src.mkdir()
+    ctx = _ctx(tmp_path, ["-t", "python", "--src", str(src), "--profile", "license-compliance"])
+
+    pipeline.finalize_setup(ctx)
+
+    assert os.environ["FETCH_LICENSE"] == "true"
+    assert ctx.project_types == ["python"]
+
+
+def test_finalize_setup_strips_a_detected_license_pseudo_type(tmp_path, monkeypatch):
+    """The license pseudo type detected through --type licenses nothing
+    itself; the analysis is what runs, and no empty type scan remains."""
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    src = tmp_path / "src"
+    src.mkdir()
+    ctx = _ctx(tmp_path, ["-t", "license", "python", "--src", str(src)])
+
+    pipeline.finalize_setup(ctx)
+
+    assert os.environ["FETCH_LICENSE"] == "true"
+    assert ctx.project_types == ["python"]
+
+
 # ---------------------------------------------------------------------------
 # database
 # ---------------------------------------------------------------------------

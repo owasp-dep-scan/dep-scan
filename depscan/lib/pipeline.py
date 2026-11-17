@@ -671,7 +671,11 @@ def finalize_setup(ctx):
     # Enable license scanning
     if "license" in ctx.project_types or "license" in args.profile:
         os.environ["FETCH_LICENSE"] = "true"
-        ctx.project_types.remove("license")
+        # The license pseudo type names no scan of its own; it only turns the
+        # license analysis on. A profile can name license without the type
+        # having been detected, so remove it only when it is there.
+        if "license" in ctx.project_types:
+            ctx.project_types.remove("license")
         console.print(
             Panel(
                 "License audit is enabled for this scan. This would increase "
