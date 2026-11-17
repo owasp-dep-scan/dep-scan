@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from depscan.commands import VERBS
+from depscan.commands import VERBS, build_parser
 from depscan.commands.translate import translate
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +51,10 @@ _COMMAND_PREFIXES = frozenset({"run", "&&", "||", ";", "|"})
 
 #: Punctuation prose glues to the end of a quoted command.
 _TRAILING_PROSE = "\"'.,):;"
+
+#: A bare ``name:tag`` image reference (a single letter before the colon is a
+#: drive letter, not a one-character repository name).
+_TAG_REFERENCE = re.compile(r"^(?![A-Za-z]:)[^\s/:@]+:[^\s/:@]+$")
 
 #: Unquoted characters that end a command and start shell plumbing.
 _SEPARATORS = "|&;>`"
@@ -166,6 +170,23 @@ def extract_invocations():
     return found
 
 
+def _looks_like_target(token):
+    """Whether a raw token names a scan target rather than a plain word.
+
+    Targets in the published commands are purls, image references (a tag or a
+    sha256 digest) and paths (absolute, relative or through a shell
+    variable). Project-type words such as ``docker`` or ``docker,license``
+    never match, so the predicate separates a lost target from a type value.
+    """
+    return (
+        token.startswith("pkg:")
+        or "@sha256:" in token
+        or token.startswith(("/", "./", "$", "~"))
+        or "/" in token
+        or bool(_TAG_REFERENCE.match(token))
+    )
+
+
 def test_no_invocation_keeps_a_v6_leading_option():
     """A command whose first token is an option is the v6 options-first shape."""
     leftovers = [
@@ -184,6 +205,88 @@ def test_every_invocation_names_a_registered_verb():
         if argv[1] not in ACCEPTED_FIRST_TOKENS
     ]
     assert not offenders, "unknown verbs in invocations: " + "\n".join(offenders)
+
+
+def _matrix_substituted(argv):
+    r"""argv with ``${{ ... }}`` expressions replaced by a plain word.
+
+    A workflow runner evaluates the expressions before the shell sees the
+    line, so a value such as ``containertests_${{ matrix.os }}`` reaches the
+    command as one word. Whitespace tokenization cuts the raw line at the
+    expression's spaces; substituting first restores the word structure the
+    runner produces.
+    """
+    return re.sub(r"\$\{\{[^}]*\}\}", "m", " ".join(argv)).split()
+
+
+def _parse_scan(argv):
+    """Parse a scan invocation through the real registry parser.
+
+    Returns ``(namespace, problem)``; exactly one of them is None. argparse
+    answers a usage error with SystemExit, which carries no namespace.
+    """
+    try:
+        return build_parser().parse_args(_matrix_substituted(argv)[1:]), None
+    except SystemExit:
+        return None, f"the parser rejects the command: {' '.join(argv)}"
+
+
+def test_type_values_never_swallow_a_target():
+    """A target written after -t/--type is consumed as another type value.
+
+    ``-t/--type`` takes one or more values, so a positional target that
+    follows it never reaches ``targets``: with zero targets the scan verb
+    scans the current directory under the swallowed image reference as a
+    project type. Every published scan that names a type is parsed with the
+    real parser: the raw values behind the type option must all be plain
+    type words, and a command that names a target-like token anywhere must
+    keep a non-empty target list.
+    """
+    problems = []
+    for path, lineno, argv in extract_invocations():
+        if argv[1] != "scan" or not {"-t", "--type"} & set(argv):
+            continue
+        where = f"{path.relative_to(REPO_ROOT)}:{lineno}: {' '.join(argv)}"
+        tokens = _matrix_substituted(argv)
+        namespace, problem = _parse_scan(argv)
+        if problem:
+            problems.append(f"{where}: {problem}")
+            continue
+        for index, token in enumerate(tokens):
+            if token not in ("-t", "--type"):
+                continue
+            absorbed = []
+            for value in tokens[index + 1 :]:
+                if value.startswith("-"):
+                    break
+                absorbed.append(value)
+            swallowed = [value for value in absorbed if _looks_like_target(value)]
+            if swallowed:
+                problems.append(
+                    f"{where}: -t absorbed target-like values {swallowed}; "
+                    "move the target in front of the options"
+                )
+        target_like = [token for token in tokens[2:] if _looks_like_target(token)]
+        if target_like and not getattr(namespace, "targets", None):
+            problems.append(
+                f"{where}: names {target_like} but parses with no target"
+            )
+    assert not problems, "\n".join(problems)
+
+
+def test_dockertests_ubuntu_scan_keeps_its_target():
+    """The ubuntu image is the scan's target, not a second type value."""
+    matches = [
+        (path, lineno, argv)
+        for path, lineno, argv in extract_invocations()
+        if path.name == "dockertests.yml" and "ubuntu:latest" in argv
+    ]
+    assert len(matches) == 1, "expected exactly one ubuntu:latest scan"
+    _, _, argv = matches[0]
+    namespace, problem = _parse_scan(argv)
+    assert problem is None, problem
+    assert getattr(namespace, "targets", None) == ["ubuntu:latest"]
+    assert list(getattr(namespace, "project_type", None) or []) == ["docker"]
 
 
 @pytest.mark.parametrize(
@@ -300,6 +403,23 @@ TRANSLATED_PAIRS = [
     ),
     # csafdemo.yml
     (["--bom", "./bom.json", "--csaf"], "depscan scan ./bom.json --csaf"),
+    # dockertests.yml: the ubuntu image. The translator's ordering keeps the
+    # target in front of the options, which is what keeps it out of the
+    # one-or-more values -t/--type consumes.
+    (
+        [
+            "--no-banner",
+            "-t",
+            "docker",
+            "--src",
+            "ubuntu:latest",
+            "-o",
+            "containertests",
+            "--no-vuln-table",
+        ],
+        "depscan scan ubuntu:latest --no-banner --reports-dir containertests "
+        "--type docker --no-vuln-table",
+    ),
     # README.md quick-start shapes
     (
         ["-i", "./my-rust-app", "-o", "./reports", "--profile", "research"],

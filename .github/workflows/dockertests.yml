@@ -145,7 +145,7 @@ jobs:
         cp contrib/csaf.toml repotests/microservices-demo/csaf.toml
         cp contrib/csaf.toml repotests/NodeGoat/csaf.toml
         uv run depscan scan --no-banner  ./test/data/bom-yaml-manifest.json -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --no-vuln-table
-        uv run depscan scan --no-banner  -t docker ubuntu:latest -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --no-vuln-table
+        uv run depscan scan ubuntu:latest --no-banner  -t docker -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --no-vuln-table
         uv run depscan scan --csaf --no-banner  -t go --bom-engine CdxgenGenerator ${GITHUB_WORKSPACE}/repotests/microservices-demo -o ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }} --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/msd
         uv run depscan scan --csaf --no-banner  -t js --bom-engine CdxgenGenerator ${GITHUB_WORKSPACE}/repotests/NodeGoat --reports-dir ${GITHUB_WORKSPACE}/containertests_${{ matrix.os }}/ng-reports
       env:
