@@ -1,0 +1,14 @@
+test/test_scan_internals.py
+  h_6a4cc5cdf68def 240-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b044c440c5bc0aa71b3f6ef5111563983f71c09",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
