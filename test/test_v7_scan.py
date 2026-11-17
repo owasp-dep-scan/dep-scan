@@ -20,11 +20,12 @@ from pathlib import Path
 
 import pytest
 
-from depscan import cli
+from depscan import api, cli
 from depscan.commands.targets import detect_kind
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
+from depscan.lib import report as report_lib
 from depscan.lib.logger import LOG, console
 from xbom_lib import cdxgen as cdxgen_mod
 
@@ -311,6 +312,78 @@ def test_scan_runs_a_bom_directory(scan_stubs, monkeypatch, tmp_path):
     assert scan_stubs["matching"], "the matching stage never ran"
     assert scan_stubs["matching"][0].bom_dir == str(bom_dir)
     assert scan_stubs["cdxgen"] == []
+
+
+def _bom_directory(tmp_path, name="boms"):
+    """A directory holding two CycloneDX documents."""
+    bom_dir = tmp_path / name
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "a.cdx.json", name="a")
+    _write_bom(bom_dir / "b.cdx.json", name="b")
+    return bom_dir
+
+
+def test_a_lone_bom_directory_target_reuses_itself_as_the_reports_directory(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """A bare `depscan scan <bomdir>` writes its scan directory into the BOM
+    directory, as v6's reports-reuse rule did, so the VDR lands inside it and
+    the directory loads back."""
+    monkeypatch.delenv("DEPSCAN_REPORTS_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    bom_dir = _bom_directory(tmp_path)
+    code = run_main(monkeypatch, ["scan", str(bom_dir), "--no-banner"])
+    assert code == 0
+    # The scan directory, the VDR and the findings all landed in the BOM
+    # directory, and the default <cwd>/reports was never created.
+    assert (bom_dir / "depscan.manifest.json").is_file()
+    assert (bom_dir / "depscan-universal.vdr.json").is_file()
+    assert (bom_dir / "depscan.findings.json").is_file()
+    assert not (tmp_path / "reports").exists()
+    # The VDR output is recorded as inside the scan directory, not as the
+    # not-assessed-outside entry that makes a directory unloadable.
+    manifest = _manifest_of(bom_dir)
+    vdr_stage = next(stage for stage in manifest["stages"] if stage["name"] == "vdr")
+    assert vdr_stage["outputs"] == [
+        {"file": "depscan-universal.vdr.json", "status": "completed"}
+    ]
+    # Positive control: the scan really ran, and the directory loads back
+    # through the API and renders through the report command.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    loaded = api.load_scan(str(bom_dir))
+    assert len(loaded.vulnerabilities) == 1
+    assert report_lib.run_report_command([str(bom_dir)]) == 0
+
+
+def test_an_explicit_or_shared_reports_dir_beats_the_bom_directory_reuse(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """An explicit --reports-dir keeps writing outside the BOM directory, and
+    several targets keep writing their numbered subdirectories, reuse or not."""
+    monkeypatch.delenv("DEPSCAN_REPORTS_DIR", raising=False)
+    monkeypatch.chdir(tmp_path)
+    bom_dir = _bom_directory(tmp_path)
+    reports = tmp_path / "elsewhere"
+    code = run_main(
+        monkeypatch, ["scan", str(bom_dir), "--reports-dir", str(reports), "--no-banner"]
+    )
+    assert code == 0
+    assert (reports / "depscan.manifest.json").is_file()
+    assert not (bom_dir / "depscan.manifest.json").exists()
+
+    second = _bom_directory(tmp_path, name="more-boms")
+    shared = tmp_path / "shared"
+    code = run_main(
+        monkeypatch,
+        ["scan", str(bom_dir), str(second), "--reports-dir", str(shared), "--no-banner"],
+    )
+    assert code == 0
+    assert (shared / "1-boms" / "depscan.manifest.json").is_file()
+    assert (shared / "2-more-boms" / "depscan.manifest.json").is_file()
+    assert not (bom_dir / "depscan.manifest.json").exists()
+    assert not (second / "depscan.manifest.json").exists()
+    # Positive control: two scans ran, one per target.
+    assert len(scan_stubs["matching"]) == 3, "three scans ran across the two commands"
 
 
 def test_scan_runs_a_purl(scan_stubs, monkeypatch, tmp_path):
