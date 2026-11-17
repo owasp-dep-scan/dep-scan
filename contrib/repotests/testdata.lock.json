@@ -1,5 +1,188 @@
 {
-  "projects": {},
+  "projects": {
+    "cdxgen": {
+      "generated": "2026-11-17T00:08:05Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:25232f37863f4da03a5c01e10e108aa84b5c6b639d8fcf384261e245d0efc1a5",
+      "source": {
+        "commit": "e6fbc357aad19ad139f1376dfbe0f34645b324fa",
+        "git": "https://github.com/CycloneDX/cdxgen"
+      },
+      "tag": "cdxgen-cdxgen13.8.0-20261117"
+    },
+    "curl-8.13.0": {
+      "generated": "2026-11-16T22:16:33Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:8cb0abbf8c57368405acc5d5963e7dee4796efdb6a9d27a4a43522f139b2f052",
+      "source": {
+        "commit": "1c3149881769e7bd79b072e48374e4c2b3678b2f",
+        "git": "https://github.com/curl/curl"
+      },
+      "tag": "curl-8.13.0-cdxgen13.8.0-20261116"
+    },
+    "depscan": {
+      "generated": "2026-11-16T23:45:52Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:fff3ddf765572cd0801f67a6e9f2c2bd22f4a671c050c687e948b57b6d2b3b52",
+      "source": {
+        "commit": "55be3ff4fd7939fffb4ef803e5d673f116530531",
+        "git": "https://github.com/owasp-dep-scan/dep-scan"
+      },
+      "tag": "depscan-cdxgen13.8.0-20261116"
+    },
+    "django-defectdojo": {
+      "generated": "2026-11-16T23:51:46Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:49519261e9b1401055ba13ab1922124f76f698f6d9a10de6af64d00344e628c9",
+      "source": {
+        "commit": "f6cee25f3e0fca85c8ccfc6e3764a4e69a2f0c0f",
+        "git": "https://github.com/DefectDojo/django-DefectDojo"
+      },
+      "tag": "django-defectdojo-cdxgen13.8.0-20261116"
+    },
+    "forgejo": {
+      "generated": "2026-11-17T00:00:05Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:5a6163582012068a6ced5fce4b1b5bb821bb6d6ddd2f49c4ec1353c38cdf9cd6",
+      "source": {
+        "commit": "10615cce5019acefd625c1300cba85d228b045cc",
+        "git": "https://codeberg.org/forgejo/forgejo"
+      },
+      "tag": "forgejo-cdxgen13.8.0-20261117"
+    },
+    "kafka-4.0.0": {
+      "generated": "2026-11-16T23:44:04Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:78d62c4566b9f5c18d5254ccb3bccee6837032983614912c2f5e8f878159c67c",
+      "source": {
+        "commit": "985bc99521dd22bbf620591b8db8613c54f596b2",
+        "git": "https://github.com/apache/kafka"
+      },
+      "tag": "kafka-4.0.0-cdxgen13.8.0-20261116"
+    },
+    "open5gs-2.7.5": {
+      "generated": "2026-11-16T17:29:44Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:3e6f167582bfb93187afb6a8cf371a92812c20daf469a1127305f90cf1e2228a",
+      "source": {
+        "commit": "7dfd9a39649700c24c22f1978ed7a35541a72cca",
+        "git": "https://github.com/open5gs/open5gs"
+      },
+      "tag": "open5gs-2.7.5-cdxgen13.8.0-20261116"
+    },
+    "openssl-3.5.0": {
+      "generated": "2026-11-16T17:16:00Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:8da6029d5a6659b6b57ca0ea4a306776c63193776ef468ad2958a992a03ba0b5",
+      "source": {
+        "commit": "636dfadc70ce26f2473870570bfd9ec352806b1d",
+        "git": "https://github.com/openssl/openssl"
+      },
+      "tag": "openssl-3.5.0-cdxgen13.8.0-20261116"
+    },
+    "phpmyadmin": {
+      "generated": "2026-11-16T23:57:58Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:20dfba8373b43fe4c9168eb246764bbc0982740401b55ab953696013c75cee8f",
+      "source": {
+        "commit": "e68adb31b040e19f7b8cd7bb853430e136940118",
+        "git": "https://github.com/phpmyadmin/phpmyadmin"
+      },
+      "tag": "phpmyadmin-cdxgen13.8.0-20261116"
+    },
+    "rustpad": {
+      "generated": "2026-11-16T23:44:48Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:2baa36a6c34b7d4953a312ece1636ef5db79f64a34f6bced850ffd4ff803e53e",
+      "source": {
+        "commit": "54e4a9383c84d7317af42a7ddb177ce8bcba058d",
+        "git": "https://github.com/ekzhang/rustpad"
+      },
+      "tag": "rustpad-cdxgen13.8.0-20261116"
+    },
+    "signal-android": {
+      "generated": "2026-11-16T23:55:41Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:eed8990980d655248297c2105e777b6301e561049d2ed3aba2f3aeba5423db79",
+      "source": {
+        "commit": "90a6ddce46540f49a67852f94ea8c8c282854299",
+        "git": "https://github.com/signalapp/Signal-Android"
+      },
+      "tag": "signal-android-cdxgen13.8.0-20261116"
+    },
+    "signal-desktop": {
+      "generated": "2026-11-16T23:45:21Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:8e6b2ed80779b90fefc4a7fb66251dfd10eb7c942ab7003b7422f55a8a510791",
+      "source": {
+        "commit": "848443afc3fcc74a0e127ba4f4d8554b95da856e",
+        "git": "https://github.com/signalapp/Signal-Desktop"
+      },
+      "tag": "signal-desktop-cdxgen13.8.0-20261116"
+    },
+    "spring-petclinic": {
+      "generated": "2026-11-16T23:47:03Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:30cca93e40a309cec422323b09eaaf02d43fce8fb62f2bdc215f0b26c08aed7b",
+      "source": {
+        "commit": "500158f732419217507c7656904b8e6aa1bcc0d6",
+        "git": "https://github.com/spring-projects/spring-petclinic"
+      },
+      "tag": "spring-petclinic-cdxgen13.8.0-20261116"
+    }
+  },
   "registry": "ghcr.io/owasp-dep-scan/depscan-testdata",
   "schema": 1
 }

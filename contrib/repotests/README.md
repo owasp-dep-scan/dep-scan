@@ -87,6 +87,16 @@ generates and validates without publishing), and after it merges and
 `master` is dispatched, the second updates `testdata.lock.json` and, when
 the counts moved, `minReachablePurls` and `mustReach`.
 
+The first generation (November 2026) was not published by the workflow: a
+hosted runner was shut down while forgejo's Go analysis ran. Ten projects
+were generated with `generate.sh` inside the `ghcr.io/cdxgen/cdxgen:13.8.0`
+image and the three C projects natively with the same cdxgen, atom and
+plugins versions, because inside the image cdxgen 13.8.0 adds the image's
+own `openssl-devel` package to C BOMs and then fails its validation. All
+thirteen passed `validate.py assert` and were pushed with `publish.sh` from
+a maintainer's workstation. The manifest annotations record the versions
+of each.
+
 ## Why the producer is split by privilege
 
 cdxgen research generation executes the scanned project's build tooling:
