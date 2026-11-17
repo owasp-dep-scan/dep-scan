@@ -33,7 +33,10 @@ jobs:
         # The unit tests in pythonapp.yml cover every supported Python. These
         # end-to-end scans exercise the operating systems, so each one runs on
         # the latest Python, and Ubuntu also runs the oldest supported one.
-        os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-26', 'windows-latest']
+        # macOS is left out: hosted macOS arm64 runners are often unavailable
+        # and the job is cancelled before it starts. pythonapp.yml still runs
+        # the unit tests on macOS.
+        os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'windows-latest']
         python-version: ['3.14']
         include:
           - os: ubuntu-24.04
