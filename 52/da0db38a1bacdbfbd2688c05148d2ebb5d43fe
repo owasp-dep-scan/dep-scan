@@ -1,0 +1,16 @@
+pyproject.toml
+  h_6a4cc5cdf68def 63
+test/test_v7_verbs.py
+  h_6a4cc5cdf68def 1-595
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "52da0db38a1bacdbfbd2688c05148d2ebb5d43fe",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
