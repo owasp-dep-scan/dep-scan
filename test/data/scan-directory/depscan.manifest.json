@@ -62,7 +62,8 @@
         {
           "name": "atom",
           "capability": "reachability",
-          "status": "completed"
+          "status": "not-assessed",
+          "reason": "no reachables slices from atom were produced or given for this scan"
         },
         {
           "name": "rusi",
@@ -74,13 +75,13 @@
           "name": "golem",
           "capability": "reachability:go",
           "status": "not-assessed",
-          "reason": "capability reachability:go is unavailable: tool:golem (golem: golem was not found; set GOLEM_CMD or install it on PATH); tool:go (tool:go is not a tool this version knows)"
+          "reason": "capability reachability:go is unavailable: tool:golem (golem: golem was not found; set GOLEM_CMD or install it on PATH); tool:go (go: the Go toolchain golem needs was not found on PATH)"
         },
         {
           "name": "dosai",
           "capability": "reachability:dotnet",
           "status": "not-assessed",
-          "reason": "capability reachability:dotnet is unavailable: tool:dosai (dosai: dosai was not found; set DOSAI_CMD or install it on PATH); tool:dotnet (tool:dotnet is not a tool this version knows)"
+          "reason": "capability reachability:dotnet is unavailable: tool:dosai (dosai: dosai was not found; set DOSAI_CMD or install it on PATH); tool:dotnet (dotnet: the .NET runtime dosai needs was not found on PATH; a self-contained dosai binary (name containing '-full') would not need it)"
         }
       ],
       "outputs": [
@@ -228,11 +229,25 @@
       "reason": "golem was not found; set GOLEM_CMD or install it on PATH"
     },
     {
+      "name": "go",
+      "path": null,
+      "version": null,
+      "source": null,
+      "reason": "the Go toolchain golem needs was not found on PATH"
+    },
+    {
       "name": "dosai",
       "path": null,
       "version": null,
       "source": null,
       "reason": "dosai was not found; set DOSAI_CMD or install it on PATH"
+    },
+    {
+      "name": "dotnet",
+      "path": null,
+      "version": null,
+      "source": null,
+      "reason": "the .NET runtime dosai needs was not found on PATH; a self-contained dosai binary (name containing '-full') would not need it"
     }
   ],
   "platform": {

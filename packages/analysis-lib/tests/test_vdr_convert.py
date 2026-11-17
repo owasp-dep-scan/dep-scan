@@ -21,7 +21,9 @@ VULN = {
         {"severity": "high", "score": 8.1, "method": "CVSSv31"},
     ],
     "fixed_location": "2.32.2",
-    "advisories": [{"title": "NVD entry", "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1111"}],
+    "advisories": [
+        {"title": "NVD entry", "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1111"}
+    ],
     "cwes": [400, 400, "not-a-number"],
     "properties": [{"name": "depscan:prioritized", "value": "true"}],
 }
@@ -41,9 +43,7 @@ def test_one_finding_per_advisory_and_component():
     for finding in findings:
         pair_components = finding.components
         assert pair_components is not None
-        assert finding.id == finding_fingerprint(
-            "vulnerability", "CVE-2024-1111", pair_components
-        )
+        assert finding.id == finding_fingerprint("vulnerability", "CVE-2024-1111", pair_components)
 
 
 def test_entry_without_affects_produces_no_finding():
@@ -81,8 +81,16 @@ def test_two_entries_differing_only_in_component_version_share_the_fingerprint()
     other = dict(VULN)
     other["affects"] = [{"ref": "pkg:pypi/requests@2.30.0"}]
     findings = findings_from_vdr([VULN, other], producer_version="7.0.0.dev0")
-    assert len(findings) == 1, "the same advisory on one package collapses onto one id"
-    assert findings[0].components == ["pkg:pypi/requests@2.32.1"]
+    assert findings[0].id == findings[1].id, "the fingerprint leaves the version out"
+    assert [f.components for f in findings] == [
+        ["pkg:pypi/requests@2.32.1"],
+        ["pkg:pypi/requests@2.30.0"],
+    ], "each version the project ships keeps its own finding"
+
+
+def test_a_repeated_advisory_and_component_pair_collapses():
+    findings = findings_from_vdr([VULN, dict(VULN)], producer_version="7.0.0.dev0")
+    assert len(findings) == 1
 
 
 def test_fixed_versions_come_from_the_unaffected_versions_too():
@@ -132,7 +140,9 @@ def test_entries_without_an_advisory_id_are_rejected():
 
 def test_invalid_component_refs_are_rejected():
     with pytest.raises(ValueError) as excinfo:
-        findings_from_vdr([{"id": "CVE-1", "affects": [{"ref": "not-a-purl"}]}], producer_version="1")
+        findings_from_vdr(
+            [{"id": "CVE-1", "affects": [{"ref": "not-a-purl"}]}], producer_version="1"
+        )
     assert "not-a-purl" in str(excinfo.value)
 
 

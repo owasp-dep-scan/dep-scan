@@ -8,8 +8,10 @@ point at them, so the capability entries in a manifest say what a machine
 with (or without) those tools would say.
 
 The checked-in fixture under ``test/data/scan-directory`` was written by
-api.scan itself; its manifest is hand-checked field by field in the
-compatibility tests.
+api.scan with a stubbed doctor report (cdxgen present, the language tools
+and their toolchains missing); the input path was then made relative and
+the home directory replaced. Its manifest is hand-checked field by field in
+the compatibility tests.
 """
 
 import hashlib
@@ -91,9 +93,7 @@ def scan_stubs(monkeypatch):
     )
     monkeypatch.setattr(vdb_setup, "vdb_download_needed", lambda url, d: (False, ""))
     monkeypatch.setattr(vdb_setup, "configure_vdb_readonly", lambda: None)
-    monkeypatch.setattr(
-        vdb_setup, "ensure_vdb_usable", lambda: calls["database"].append(1)
-    )
+    monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", lambda: calls["database"].append(1))
     monkeypatch.setattr(pipeline, "get_pkgs_by_scope", lambda pkg_list: {})
     monkeypatch.setattr(
         pipeline,
@@ -173,9 +173,7 @@ def fake_tools(tmp_path, monkeypatch):
     def script(name):
         path = tmp_path / f"fake-{name}.py"
         path.write_text(
-            "#!/usr/bin/env python3\n"
-            "import sys\n"
-            f"print({FAKE_TOOLS[name][1]!r})\n",
+            f"#!/usr/bin/env python3\nimport sys\nprint({FAKE_TOOLS[name][1]!r})\n",
             encoding="utf-8",
         )
         path.chmod(0o755)
@@ -340,11 +338,26 @@ def test_fixture_is_a_valid_scan_directory():
             "reason": "golem was not found; set GOLEM_CMD or install it on PATH",
         },
         {
+            "name": "go",
+            "path": None,
+            "version": None,
+            "source": None,
+            "reason": "the Go toolchain golem needs was not found on PATH",
+        },
+        {
             "name": "dosai",
             "path": None,
             "version": None,
             "source": None,
             "reason": "dosai was not found; set DOSAI_CMD or install it on PATH",
+        },
+        {
+            "name": "dotnet",
+            "path": None,
+            "version": None,
+            "source": None,
+            "reason": "the .NET runtime dosai needs was not found on PATH; a "
+            "self-contained dosai binary (name containing '-full') would not need it",
         },
     ]
     assert manifest["platform"] == {"os": "linux", "arch": "x86_64", "libc": "glibc"}
@@ -385,13 +398,22 @@ def test_fixture_is_a_valid_scan_directory():
     assert enrichment["status"] == "completed"
     assert enrichment["capabilities"] == ["reachability"]
     analyzers = {entry["name"]: entry for entry in enrichment["analyzers"]}
-    assert analyzers["atom"]["status"] == "completed"
-    assert analyzers["atom"]["capability"] == "reachability"
+    # A BOM-only scan reads no slices, so no analyzer contributed.
+    assert analyzers["atom"] == {
+        "name": "atom",
+        "capability": "reachability",
+        "status": "not-assessed",
+        "reason": "no reachables slices from atom were produced or given for this scan",
+    }
     assert analyzers["rusi"]["status"] == "not-assessed"
     assert analyzers["rusi"]["capability"] == "reachability:rust"
     assert "rusi was not found" in analyzers["rusi"]["reason"]
     assert analyzers["golem"]["status"] == "not-assessed"
+    assert "tool:go (go: the Go toolchain" in analyzers["golem"]["reason"]
     assert analyzers["dosai"]["status"] == "not-assessed"
+    assert "tool:dotnet (dotnet: the .NET runtime" in analyzers["dosai"]["reason"]
+    for entry in analyzers.values():
+        assert "not a tool this version knows" not in entry.get("reason", "")
     assert enrichment["outputs"] == [
         {
             "file": "evidence.jsonl",
@@ -483,63 +505,88 @@ def _enrichment_analyzers(manifest):
     return {}
 
 
-@pytest.mark.parametrize(
-    "analyzer,tool_removed,capability,reason_fragment,others_completed",
-    [
-        # Removing cdxgen removes the tool every reachability capability
-        # names, so all four entries are marked, not just atom's.
-        ("atom", "cdxgen", "reachability", "cdxgen", False),
-        ("rusi", "rusi", "reachability:rust", "rusi was not found", True),
-        ("golem", "golem", "reachability:go", "golem was not found", True),
-        ("dosai", "dosai", "reachability:dotnet", "dosai was not found", True),
-    ],
-)
-def test_removing_one_analyzer_marks_only_its_entry_not_assessed(
-    scan_stubs,
-    fake_tools,
-    tmp_path,
-    analyzer,
-    tool_removed,
-    capability,
-    reason_fragment,
-    others_completed,
-):
-    fake_tools["remove"](tool_removed)
-    bom = _write_bom(tmp_path / "given.cdx.json")
-    result = api.scan(
-        api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True),
+# The reachables slices each analyzer leaves for the enrichment stage.
+ANALYZER_SLICES = {
+    "atom": "python-reachables.slices.json",
+    "rusi": "rust-reachables.slices.json",
+    "golem": "go-reachables.slices.json",
+    "dosai": "dotnet-reachables.slices.json",
+}
+
+
+def _bom_dir_scan(tmp_path, analyzers_with_slices):
+    """A BOM directory scan whose directory holds the given analyzers' slices."""
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "sbom-python.cdx.json")
+    for name in analyzers_with_slices:
+        (bom_dir / ANALYZER_SLICES[name]).write_text("[]")
+    return api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(tmp_path / "reports"),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
         render=False,
     )
-    analyzers = _enrichment_analyzers(result.manifest)
+
+
+@pytest.mark.parametrize(
+    "analyzer,tool_removed,capability,reason_fragment",
+    [
+        ("atom", "cdxgen", "reachability", "cdxgen"),
+        ("rusi", "rusi", "reachability:rust", "rusi was not found"),
+        ("golem", "golem", "reachability:go", "golem was not found"),
+        ("dosai", "dosai", "reachability:dotnet", "dosai was not found"),
+    ],
+)
+def test_a_missing_analyzer_is_not_assessed_with_the_doctor_reason(
+    scan_stubs, fake_tools, tmp_path, analyzer, tool_removed, capability, reason_fragment
+):
+    """The analyzer whose tool is gone left no slices and is named with the
+    capability and the doctor's reason; every analyzer whose slices the
+    enrichment stage read stays completed."""
+    fake_tools["remove"](tool_removed)
+    others = [name for name in ANALYZER_SLICES if name != analyzer]
+    analyzers = _enrichment_analyzers(_bom_dir_scan(tmp_path, others).manifest)
+    assert set(analyzers) == set(ANALYZER_SLICES)
     assert analyzers[analyzer]["status"] == "not-assessed"
     assert analyzers[analyzer]["capability"] == capability
     assert reason_fragment in analyzers[analyzer]["reason"]
     assert capability in analyzers[analyzer]["reason"], "the entry names the capability too"
-    for name, entry in analyzers.items():
-        if name == analyzer:
-            continue
-        if others_completed:
-            assert entry["status"] == "completed", f"{name} stays completed: {entry}"
-        else:
-            assert entry["status"] == "not-assessed"
-            assert "tool:cdxgen" in entry["reason"], f"{name} says its capability misses cdxgen"
+    for name in others:
+        assert analyzers[name]["status"] == "completed", f"{name}: {analyzers[name]}"
 
 
-def test_every_analyzer_completed_when_the_tools_are_all_present(
+def test_an_installed_analyzer_without_slices_is_not_reported_as_completed(
     scan_stubs, fake_tools, tmp_path
 ):
+    """Every tool is present, but the scan was given only Python slices:
+    the language analyzers produced nothing and say so."""
+    analyzers = _enrichment_analyzers(_bom_dir_scan(tmp_path, ["atom"]).manifest)
+    assert analyzers["atom"]["status"] == "completed"
+    for name in ("rusi", "golem", "dosai"):
+        assert analyzers[name]["status"] == "not-assessed"
+        assert analyzers[name]["reason"] == (
+            f"no {ANALYZER_SLICES[name]} was produced or given for this scan"
+        )
+
+
+def test_analyzers_are_not_listed_when_reachability_is_off(scan_stubs, fake_tools, tmp_path):
     bom = _write_bom(tmp_path / "given.cdx.json")
     result = api.scan(
-        api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True),
+        api.scan_options(
+            bom=bom,
+            reports_dir=str(tmp_path / "reports"),
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
         render=False,
     )
-    analyzers = _enrichment_analyzers(result.manifest)
-    assert {name: entry["status"] for name, entry in analyzers.items()} == {
-        "atom": "completed",
-        "rusi": "completed",
-        "golem": "completed",
-        "dosai": "completed",
-    }
+    enrichment = next(s for s in result.manifest["stages"] if s["name"] == "enrichment")
+    assert enrichment["status"] == "skipped"
+    assert enrichment["analyzers"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -566,9 +613,12 @@ def test_interrupted_scan_writes_a_manifest_naming_the_failed_stage(
     assert len(failed) == 1
     assert failed[0]["name"] == "matching"
     assert failed[0]["reason"] == "the matching stage could not read the database"
-    assert "matching" not in [stage["name"] for stage in manifest["stages"]][
-        [stage["name"] for stage in manifest["stages"]].index("matching") + 1 :
-    ], "no stage after the failed one is recorded"
+    assert (
+        "matching"
+        not in [stage["name"] for stage in manifest["stages"]][
+            [stage["name"] for stage in manifest["stages"]].index("matching") + 1 :
+        ]
+    ), "no stage after the failed one is recorded"
     # The manifest lists only files that exist, and nothing after the VDR
     # stage ran, so there is no VDR to load.
     for entry in manifest["files"]:
@@ -664,7 +714,9 @@ def test_home_path_stays_out_of_the_manifest_outside_inputs(scan_stubs, tmp_path
 
     for text in strings_outside_inputs(document):
         assert str(home) not in text, f"the home path leaked outside inputs: {text}"
-        assert os.path.basename(home) not in text.split(os.sep), f"a path segment named the home: {text}"
+        assert os.path.basename(home) not in text.split(os.sep), (
+            f"a path segment named the home: {text}"
+        )
     assert "depscan.html" not in {entry["path"] for entry in document["files"]}, (
         "render=False wrote no rendering output"
     )
@@ -704,6 +756,75 @@ def test_a_manifest_without_a_completed_matching_stage_is_refused(tmp_path):
     with pytest.raises(api.ScanError) as excinfo:
         api.load_scan(str(destination))
     assert "matching stage did not complete" in str(excinfo.value)
+
+
+def test_a_type_whose_matching_did_not_complete_gets_no_result(tmp_path):
+    """One type matched and one was skipped: only the first loads, and the
+    skipped type never reads as a clean one."""
+    manifest = json.loads((FIXTURE_DIR / "depscan.manifest.json").read_text())
+    go_stages = [
+        {"name": "inventory", "status": "completed", "capabilities": [], "projectType": "go"},
+        {
+            "name": "matching",
+            "status": "skipped",
+            "capabilities": ["vulnerabilities"],
+            "projectType": "go",
+            "reason": "the stage had nothing to do",
+        },
+    ]
+    manifest["stages"].extend(go_stages)
+    destination = tmp_path / "two-types"
+    destination.mkdir()
+    for name in ("django-app.cdx.json", "django-app.vdr.json", "depscan.findings.json"):
+        (destination / name).write_text((FIXTURE_DIR / name).read_text())
+    (destination / "depscan.manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    loaded = api.load_scan(str(destination))
+    assert loaded.project_types == ["bom", "go"]
+    assert [tscan.project_type for tscan in loaded.types] == ["bom"]
+    assert len(loaded.vulnerabilities) == 1
+
+
+def test_an_unexpected_error_still_leaves_a_manifest(scan_stubs, monkeypatch, tmp_path):
+    """A bug in a stage, not a ScanStageError, propagates unchanged and the
+    manifest still names the failed stage."""
+
+    def broken(vdr_options):
+        raise KeyError("purl")
+
+    monkeypatch.setattr(pipeline, "VDRAnalyzer", broken)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    with pytest.raises(KeyError):
+        api.scan(api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True), render=False)
+    manifest = _manifest_of(reports)
+    validate("depscan-manifest", manifest)
+    failed = [stage for stage in manifest["stages"] if stage["status"] == "failed"]
+    assert [stage["name"] for stage in failed] == ["matching"]
+    assert "purl" in failed[0]["reason"]
+
+
+def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monkeypatch, tmp_path):
+    def audit_fails(*args, **kwargs):
+        raise RuntimeError("the registry did not answer")
+
+    monkeypatch.setattr(pipeline, "risk_audit", audit_fails)
+    monkeypatch.setattr(
+        pipeline,
+        "get_pkg_list",
+        lambda f: ([{"purl": "pkg:npm/left-pad@1.3.0", "name": "left-pad"}], []),
+    )
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    result = api.scan(
+        api.scan_options(
+            bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True, risk_audit=True
+        ),
+        render=False,
+    )
+    risk = next(stage for stage in result.manifest["stages"] if stage["name"] == "risk")
+    assert risk["status"] == "failed"
+    assert "the registry did not answer" in risk["reason"]
+    matching = next(stage for stage in result.manifest["stages"] if stage["name"] == "matching")
+    assert matching["status"] == "completed", "a degraded audit does not stop the scan"
 
 
 def test_a_clean_scan_loads_as_empty_because_matching_completed(scan_stubs, tmp_path, monkeypatch):
@@ -756,11 +877,16 @@ def test_a_directory_without_a_manifest_or_a_vdr_is_refused(tmp_path):
 def test_git_state_reads_the_commit_and_the_dirty_flag(tmp_path):
     repo = tmp_path / "repo"
     repo.mkdir()
-    env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example", GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@example")
+    env = dict(
+        os.environ,
+        GIT_AUTHOR_NAME="t",
+        GIT_AUTHOR_EMAIL="t@example",
+        GIT_COMMITTER_NAME="t",
+        GIT_COMMITTER_EMAIL="t@example",
+    )
+
     def git(*args):
-        return subprocess.run(
-            ["git", *args], cwd=repo, env=env, check=True, capture_output=True
-        )
+        return subprocess.run(["git", *args], cwd=repo, env=env, check=True, capture_output=True)
 
     git("init", "-q")
     (repo / "file.txt").write_text("one")
@@ -819,34 +945,54 @@ def test_classify_file_roles():
     )
 
 
-def test_walk_files_hashes_everything_but_the_manifest(tmp_path):
+def test_walk_files_hashes_the_scan_files_but_not_the_manifest(tmp_path):
     (tmp_path / "depscan.findings.json").write_text("{}")
-    (tmp_path / "nested").mkdir()
-    (tmp_path / "nested" / "rusi.json").write_text("{}")
+    (tmp_path / "analysis" / "rusi").mkdir(parents=True)
+    (tmp_path / "analysis" / "rusi" / "rusi.json").write_text("{}")
     (tmp_path / "depscan.manifest.json").write_text("{}")
+    # A reports directory inside the scanned project, or a user's BOM
+    # directory, can hold trees no scan wrote; they are not walked.
+    (tmp_path / "node_modules" / "left-pad").mkdir(parents=True)
+    (tmp_path / "node_modules" / "left-pad" / "index.js").write_text("")
+    (tmp_path / ".git").mkdir()
+    (tmp_path / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
     entries = scan_directory.walk_files(str(tmp_path))
     assert [entry["path"] for entry in entries] == [
+        "analysis/rusi/rusi.json",
         "depscan.findings.json",
-        "nested/rusi.json",
     ]
     for entry in entries:
         expected = hashlib.sha256((tmp_path / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == expected
-    assert "/" in entries[1]["path"], "nested paths always use forward slashes"
+    assert entries[0]["role"] == "raw-report" and entries[0]["producer"] == "rusi"
 
 
-def test_analyzer_entries_name_the_capability_and_reason(fake_tools):
+def test_analyzer_entries_follow_the_slices_read_and_the_doctor(fake_tools, tmp_path):
     fake_tools["remove"]("golem")
-    tools_by_name = doctor_mod.doctor().tools_by_name()
-    entries = scan_directory.analyzer_entries(
-        doctor_mod.doctor(), ["bom"]
-    )
-    by_name = {entry["name"]: entry for entry in entries}
+    fake_tools["remove"]("rusi")
+    report = doctor_mod.doctor()
+    read = [
+        str(tmp_path / "python-reachables.slices.json"),
+        # Slices the user gave count even when the tool is missing here.
+        str(tmp_path / "rust-reachables.slices_1.json"),
+        str(tmp_path / "python-usages.slices.json"),
+    ]
+    by_name = {
+        entry["name"]: entry for entry in scan_directory.analyzer_entries(report, ["bom"], read)
+    }
+    assert by_name["atom"]["status"] == "completed"
+    assert by_name["rusi"]["status"] == "completed"
     assert by_name["golem"]["status"] == "not-assessed"
     assert by_name["golem"]["capability"] == "reachability:go"
     assert "golem was not found" in by_name["golem"]["reason"]
-    assert by_name["atom"]["status"] == "completed"
-    assert by_name["rusi"]["status"] == "completed"
+    assert by_name["dosai"] == {
+        "name": "dosai",
+        "capability": "reachability:dotnet",
+        "status": "not-assessed",
+        "reason": "no dotnet-reachables.slices.json was produced or given for this scan",
+    }
+    python_only = scan_directory.analyzer_entries(report, ["python"], read)
+    assert [entry["name"] for entry in python_only] == ["atom"]
 
 
 def test_capability_reason_reads_the_doctor_table_not_a_copy():
@@ -858,9 +1004,92 @@ def test_capability_reason_reads_the_doctor_table_not_a_copy():
     data = {"vulnerabilityDatabase": dict(_FULL_VDB_DATA)}
     reason = doctor_mod.capability_unavailable_reason("reachability:go", tools, data)
     assert reason == (
-        "capability reachability:go is unavailable: "
-        "tool:golem (golem: golem was not found)"
+        "capability reachability:go is unavailable: tool:golem (golem: golem was not found)"
     )
     assert doctor_mod.capability_unavailable_reason("reachability", tools, data) is None
     assert doctor_mod.capability_unavailable_reason("no-such-capability", tools, data)
     assert doctor_mod.capability_unavailable_reason("memory-safety", tools, data)
+
+
+# ---------------------------------------------------------------------------
+# the capability lookup explains a missing report, it never gates a run
+# ---------------------------------------------------------------------------
+
+
+class _FakeConverter:
+    @staticmethod
+    def is_report_ok(data):
+        return isinstance(data, dict) and "flows" in data
+
+    @staticmethod
+    def build_index(components, extra_components=None):
+        return {}
+
+    @staticmethod
+    def convert(report, bom_index):
+        return list(report["flows"])
+
+    @staticmethod
+    def write_slices(path, flows):
+        Path(path).write_text(json.dumps(flows))
+
+
+def _fake_tool(run_fallback):
+    from depscan.lib.bom import ReachabilityTool
+
+    return ReachabilityTool(
+        name="golem",
+        project_types=("go",),
+        default_prefix="go",
+        slice_file="go-reachables.slices.json",
+        import_converter=lambda: _FakeConverter,
+        run_fallback=run_fallback,
+        no_report_error="No golem report was available.",
+    )
+
+
+def test_an_unavailable_capability_does_not_stop_a_tool_that_can_run(fake_tools, tmp_path):
+    """The doctor says reachability:go is unavailable (no Go toolchain on
+    PATH), but the tool still produced a report: the slice is written, as it
+    was before the doctor table was consulted."""
+    from depscan.lib.bom import _run_reachability_tool
+
+    fake_tools["remove"]("go")
+    report = doctor_mod.doctor()
+    assert scan_directory.analyzer_entries(report, ["go"], [])[1]["status"] == "not-assessed"
+    bom = _write_bom(tmp_path / "sbom-go.cdx.json")
+    ran = []
+
+    def fallback(src_dir, bom_dir, options, is_report_ok, json_load):
+        ran.append(src_dir)
+        return {"flows": [{"purls": ["pkg:golang/example.com/a@v1.0.0"]}]}
+
+    options = {"project_type": ["go"], "doctor_report": report}
+    assert _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(fallback))
+    assert ran == [str(tmp_path)]
+    assert (tmp_path / "go-reachables.slices.json").is_file()
+
+
+def test_fail_on_error_still_fails_when_the_capability_is_unavailable(fake_tools, tmp_path):
+    from depscan.lib.bom import ScanFailureError, _run_reachability_tool
+
+    fake_tools["remove"]("golem")
+    options = {
+        "project_type": ["go"],
+        "doctor_report": doctor_mod.doctor(),
+        "fail_on_error": True,
+    }
+    bom = _write_bom(tmp_path / "sbom-go.cdx.json")
+    with pytest.raises(ScanFailureError, match="No golem report"):
+        _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
+    options["fail_on_error"] = False
+    assert not _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
+
+
+def test_documented_manifest_fields_match_the_schema():
+    """The scan directory page carries the generated tables; regenerate them
+    with the command in the page when this fails."""
+    page = (
+        Path(__file__).parent.parent / "documentation" / "docs" / "output" / "scan-directory.mdx"
+    )
+    assert scan_directory.manifest_fields_markdown() in page.read_text(encoding="utf-8")

@@ -32,7 +32,7 @@ Raw reports that cdxgen writes itself, such as the `<type>-semantics.slices.json
 
 ## The role of each file
 
-The manifest's `files` array carries one entry for every file in the directory except the manifest itself, each with the path relative to the directory (always with forward slashes), a `role`, the `producer`, the `projectType` when the file name carries one, and the SHA-256 digest of the bytes.
+The manifest's `files` array carries one entry for every file at the top of the directory and under `analysis/`, except the manifest itself. Other subdirectories are not listed, because the reports directory can be a user's BOM directory or sit inside the scanned project. Each entry has the path relative to the directory (always with forward slashes), a `role`, the `producer`, the `projectType` when the file name carries one, and the SHA-256 digest of the bytes.
 
 | Role | Files | Written by |
 | --- | --- | --- |
@@ -54,6 +54,7 @@ The manifest's `files` array carries one entry for every file in the directory e
 The manifest records what the scan read and what ran, so a directory can be interpreted without re-running anything: the inputs with their digests, the tools and capabilities of the machine as `depscan doctor` saw them, the database flavor and shards the matching stage used, the stages with their status, and the options with secrets removed. Two properties are worth knowing before reading one:
 
 - It is written last, after every other file, through a temporary file and a rename. A manifest that lists files lists files that exist, and an interrupted scan never leaves a half-written manifest behind.
+- The enrichment stage lists the reachability analyzers the scan could have used. An analyzer is `completed` only when the stage read reachables slices it produces (`rust-`, `go-` and `dotnet-reachables.slices.json` for rusi, golem and dosai, any other reachables slices for atom), whether the scan produced them or was given them. Otherwise it is `not-assessed`, with the doctor's reason, naming the capability, when the tool or toolchain is missing on this machine, and otherwise the reason that no slices were produced or given. An installed tool is never reported as an analysis that ran.
 - No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it. Paths in `files` are relative. The tool paths come from the doctor report with the user's home replaced by `~`, and options that can hold a secret, such as `cdxgen_args` or `vdb_image`, are recorded as `"<redacted>"` when they were set and null when they were not.
 
 <!-- The tables below are the output of:
@@ -75,7 +76,7 @@ Regenerate them with that command when the schema changes. -->
 | `database` | The doctor report's database inspection, plus the flavor and shards the matching stage actually used. |
 | `stages` | One entry per stage, in the order the stages ran. A stage that stopped the scan is recorded as failed with its reason; the stages after it are absent. |
 | `options` | The parsed scan options. Options whose name can hold a secret are recorded as the string "<redacted>" when they were set, and path-valued options are recorded in inputs instead, so no absolute path appears here. |
-| `files` | Every file in the scan directory except the manifest itself. Paths are relative to the directory, always with forward slashes. |
+| `files` | Every file at the top of the scan directory and under analysis/, except the manifest itself. Other subdirectories are not listed. Paths are relative to the directory, always with forward slashes. |
 
 ### input fields
 
@@ -100,11 +101,11 @@ Regenerate them with that command when the schema changes. -->
 | --- | --- |
 | `name` | The stage name, for example setup, database, inventory, enrichment, matching, analysis or render. |
 | `projectType` | The project type the stage ran for, for stages that run once per type. |
-| `status` | completed when the stage ran to completion. failed when it stopped the scan, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason. |
+| `status` | completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason. |
 | `reason` | Why the status is failed, skipped or not-assessed. Absent for completed. |
 | `capabilities` | The capability names the stage needed, named the way depscan doctor names them. |
 | `notAssessed` | Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran. |
-| `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether it was available. |
+| `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether the stage read slices it produced. |
 | `outputs` | The files this version of the stage would write, each with its status, so a missing output is named rather than left out silently. |
 
 ### analyzer fields
@@ -113,8 +114,8 @@ Regenerate them with that command when the schema changes. -->
 | --- | --- |
 | `name` | The analyzer name, for example atom, golem, rusi or dosai. |
 | `capability` | The capability the analyzer satisfies, named the way depscan doctor names it. |
-| `status` | completed when the capability was available on this machine. not-assessed when it was not, with the doctor's reason. |
-| `reason` | For not-assessed, the doctor's reason the capability cannot run here. |
+| `status` | completed when the stage read reachables slices this analyzer produces, whether this scan produced them or was given them. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the reason that no slices were produced or given. |
+| `reason` | For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given. |
 
 ### stageOutput fields
 
@@ -140,7 +141,7 @@ Regenerate them with that command when the schema changes. -->
 
 ## Loading a directory back
 
-`depscan.api.load_scan(reports_dir)` and `depscan report` both read the manifest when it is present: the project types, the files and the stage results come from the manifest, the vulnerabilities from the VDR files it lists, and the findings from `depscan.findings.json`. A scan that found no vulnerabilities loads as an empty result, because the manifest shows the matching stage completed. A manifest that shows matching did not complete is refused rather than loading as clean, and a directory without a manifest is still read the way scans before the scan directory wrote them: the VDR files are recognised by name, and a clean scan's directory cannot be loaded at all, because such a scan wrote no VDR.
+`depscan.api.load_scan(reports_dir)` and `depscan report` both read the manifest when it is present: the project types, the files and the stage results come from the manifest, the vulnerabilities from the VDR files it lists, and the findings from `depscan.findings.json`. A project type that found no vulnerabilities loads as an empty result, because the manifest shows its matching stage completed. A type whose matching was skipped or failed is listed in `project_types` but gets no result, and a manifest in which no matching stage completed is refused rather than loading as clean, and a directory without a manifest is still read the way scans before the scan directory wrote them: the VDR files are recognised by name, and a clean scan's directory cannot be loaded at all, because such a scan wrote no VDR.
 
 ## depscan report
 

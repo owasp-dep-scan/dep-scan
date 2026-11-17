@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:owasp:depscan:schema:manifest:1",
   "title": "dep-scan scan directory manifest",
-  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file in the directory with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist.",
+  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -87,7 +87,7 @@
       "items": {
         "$ref": "#/$defs/file"
       },
-      "description": "Every file in the scan directory except the manifest itself. Paths are relative to the directory, always with forward slashes."
+      "description": "Every file at the top of the scan directory and under analysis/, except the manifest itself. Other subdirectories are not listed. Paths are relative to the directory, always with forward slashes."
     }
   },
   "$defs": {
@@ -172,7 +172,7 @@
         "status": {
           "type": "string",
           "enum": ["completed", "failed", "skipped", "not-assessed"],
-          "description": "completed when the stage ran to completion. failed when it stopped the scan, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason."
+          "description": "completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason."
         },
         "reason": {
           "type": "string",
@@ -197,7 +197,7 @@
           "items": {
             "$ref": "#/$defs/analyzer"
           },
-          "description": "The reachability analyzers this stage could have used, each with its capability and whether it was available."
+          "description": "The reachability analyzers this stage could have used, each with its capability and whether the stage read slices it produced."
         },
         "outputs": {
           "type": "array",
@@ -226,11 +226,11 @@
         "status": {
           "type": "string",
           "enum": ["completed", "not-assessed"],
-          "description": "completed when the capability was available on this machine. not-assessed when it was not, with the doctor's reason."
+          "description": "completed when the stage read reachables slices this analyzer produces, whether this scan produced them or was given them. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the reason that no slices were produced or given."
         },
         "reason": {
           "type": "string",
-          "description": "For not-assessed, the doctor's reason the capability cannot run here."
+          "description": "For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given."
         }
       }
     },

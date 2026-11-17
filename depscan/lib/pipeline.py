@@ -121,6 +121,8 @@ class TypeScan:
     operations_bom_file: Optional[str] = None
     target_bom_file: Optional[str] = None
     risk_report_file: Optional[str] = None
+    # Why the risk audit failed when it ran and degraded; the scan goes on.
+    risk_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
     nominated_bom_file: Optional[str] = None
     bom_file: Optional[str] = None
@@ -1028,6 +1030,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
     except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
         LOG.error(e)
         LOG.error("Risk audit was not successful")
+        scan.risk_error = f"the risk audit was not successful: {e}"
     return True
 
 

@@ -331,13 +331,25 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
 
 
 def walk_files(reports_dir: str) -> List[Dict[str, Any]]:
-    """Every file in the directory except the manifest, with digests.
+    """The files of the scan directory except the manifest, with digests.
 
-    Paths are relative to the directory, always with forward slashes, so a
-    manifest written on any platform reads the same everywhere.
+    The scan directory is the top level of the reports directory plus the
+    ``analysis/`` tree, which is everything a scan writes. Other
+    subdirectories are not walked: the reports directory can be a BOM
+    directory the user passed, or a directory inside the scanned project,
+    and hashing a source tree would be slow and would list files no scan
+    wrote. Paths are relative to the directory, always with forward
+    slashes, so a manifest written on any platform reads the same
+    everywhere.
     """
     entries = []
-    for root, _dirs, names in os.walk(reports_dir):
+    analysis_root = os.path.join(reports_dir, ANALYSIS_DIR)
+    for root, dirs, names in os.walk(reports_dir):
+        if root == reports_dir:
+            dirs[:] = [name for name in dirs if name == ANALYSIS_DIR]
+        elif not root.startswith(analysis_root):
+            dirs[:] = []
+            continue
         for name in sorted(names):
             if name == MANIFEST_FILE:
                 continue
@@ -356,30 +368,55 @@ def walk_files(reports_dir: str) -> List[Dict[str, Any]]:
 
 
 def analyzer_entries(
-    report: Optional[DoctorReport], project_types: List[str]
+    report: Optional[DoctorReport],
+    project_types: List[str],
+    slices_files: Optional[List[str]],
 ) -> List[Dict[str, Any]]:
     """The reachability analyzer entries for the enrichment stage.
 
-    Every analyzer this scan could have used gets an entry: ``completed``
-    when its capability was available on this machine, ``not-assessed`` with
-    the capability name and the doctor's reason when it was not. atom applies
-    to every scan; a language analyzer applies when the scan's project types
-    cover it, which a BOM directory or universal scan always does, because
-    such a scan may hold packages of any language.
+    Every analyzer this scan could have used gets an entry, and the entry
+    says what the enrichment stage actually read. ``completed`` means the
+    stage read reachables slices that analyzer produces: the language
+    tools' ``rust-``, ``go-`` and ``dotnet-reachables.slices.json``, and
+    atom's for every other reachables slices file. Without such a file the
+    analyzer is ``not-assessed``, and the reason is the doctor's, naming the
+    capability, when the capability is unavailable on this machine, or
+    otherwise that no slices were produced or given. A tool being installed
+    is never reported as an analysis that ran.
+
+    atom applies to every scan; a language analyzer applies when the scan's
+    project types cover it, which a BOM directory or universal scan always
+    does, because such a scan may hold packages of any language.
     """
-    from depscan.lib.bom import reachability_analyzers_for_types
+    from depscan.lib.bom import reachability_analyzers_for_types, reachability_slice_files
 
     tools_by_name = report.tools_by_name() if report else {}
     data = report.data if report else {}
+    # rust-reachables.slices.json and its split files rust-reachables.slices_1.json
+    stems = {
+        name: file_name.split(".slices", 1)[0]
+        for name, file_name in reachability_slice_files().items()
+    }
+    read = [os.path.basename(path) for path in slices_files or []]
+    reachables = [name for name in read if "reachables.slices" in name]
     entries = []
     for name in reachability_analyzers_for_types(project_types):
         capability = doctor_lib.ANALYZER_CAPABILITIES[name]
-        reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
-        entry: Dict[str, Any] = {"name": name, "capability": capability}
-        if reason:
-            entry.update(status="not-assessed", reason=reason)
+        if name == "atom":
+            produced = [f for f in reachables if not f.startswith(tuple(stems.values()))]
+            missing = "no reachables slices from atom were produced or given for this scan"
         else:
-            entry.update(status="completed")
+            produced = [f for f in reachables if f.startswith(stems[name])]
+            missing = f"no {stems[name]}.slices.json was produced or given for this scan"
+        entry: Dict[str, Any] = {"name": name, "capability": capability}
+        if produced:
+            entry["status"] = "completed"
+        else:
+            reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
+            entry.update(
+                status="not-assessed",
+                reason=reason or missing,
+            )
         entries.append(entry)
     return entries
 
@@ -590,18 +627,22 @@ def check_layout_version(manifest: Dict[str, Any]) -> None:
         )
 
 
-def matching_completed(manifest: Dict[str, Any]) -> bool:
-    """Whether the manifest shows the matching stage completed somewhere.
+def matching_completed_types(manifest: Dict[str, Any]) -> List[str]:
+    """The project types whose matching stage completed, in scan order.
 
-    This is what lets a manifest-backed scan with no VDR file load as a
-    result with no vulnerabilities: the stage ran and found nothing. A scan
-    whose matching stage was skipped, failed or never recorded must not
-    load as clean.
+    This is what lets a manifest-backed type with no VDR file load as a
+    result with no vulnerabilities: its matching stage ran and found
+    nothing. A type whose matching stage was skipped, failed or never
+    recorded must not load as clean.
     """
+    types: List[str] = []
     for stage in manifest.get("stages") or []:
-        if stage.get("name") == "matching" and stage.get("status") == "completed":
-            return True
-    return False
+        if stage.get("name") != "matching" or stage.get("status") != "completed":
+            continue
+        project_type = stage.get("projectType")
+        if project_type and project_type not in types:
+            types.append(project_type)
+    return types
 
 
 #: The schema objects the documentation documents as field tables, in page

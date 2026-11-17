@@ -53,7 +53,9 @@ def highest_severity(vuln: Dict[str, Any]) -> str:
         if name not in _SEVERITY_ORDER:
             name = "unknown"
         score = rating.get("score")
-        numeric = score if isinstance(score, (int, float)) and not isinstance(score, bool) else None
+        numeric = (
+            score if isinstance(score, (int, float)) and not isinstance(score, bool) else None
+        )
         key = (
             -_SEVERITY_ORDER.index(name),
             numeric is not None,
@@ -171,8 +173,11 @@ def findings_from_vdr(
     """One finding per advisory and component of the given VDR entries.
 
     Entries without ``affects`` refs produce no finding; a scan cannot name
-    a component it did not record. Duplicate (advisory, component) pairs
-    collapse onto one finding, since the fingerprint is their identity.
+    a component it did not record. A repeated (advisory, component) pair
+    collapses onto one finding. Two versions of one package hit by the same
+    advisory stay two findings: they share the fingerprint, which leaves the
+    version out so suppressions survive upgrades, but each version is a
+    package the project ships.
 
     :raises ValueError: when an entry has no advisory id or a ref that is
         not a valid package URL; a VDR the scan wrote always carries both.
@@ -194,7 +199,8 @@ def findings_from_vdr(
                 producer_name=producer_name,
                 producer_version=producer_version,
             )
-            if finding.id not in seen:
-                seen.add(finding.id)
+            key = (finding.id, str(component_ref))
+            if key not in seen:
+                seen.add(key)
                 findings.append(finding)
     return findings

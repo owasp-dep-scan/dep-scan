@@ -28,7 +28,7 @@ from depscan.lib import explainer, pipeline, scan_directory
 from depscan.lib import doctor as doctor_lib
 from depscan.lib.config import DEPSCAN_DEFAULT_VDR_FILE
 from depscan.lib.doctor import DoctorReport
-from depscan.lib.logger import console
+from depscan.lib.logger import LOG, console
 
 __all__ = [
     "DiffEntry",
@@ -205,7 +205,9 @@ def scan(options, *, render: bool = True) -> ScanResult:
     return _run_stages(options, render=render, database=True, write_scan_dir=True)
 
 
-def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool = False) -> ScanResult:
+def _run_stages(
+    options, *, render: bool, database: bool, write_scan_dir: bool = False
+) -> ScanResult:
     """Run the scan stages; see :func:`scan`.
 
     ``database=False`` skips the database stage, and ``write_scan_dir=False``
@@ -264,6 +266,7 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
                 tscan,
                 project_type=project_type,
                 skipped_reason="the risk audit was not requested for this type",
+                failed_reason=lambda: tscan.risk_error,
             )
             pipeline.announce_scan_targets(ctx, tscan)
             _stage(
@@ -274,12 +277,10 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
                 tscan,
                 project_type=project_type,
                 capabilities=["reachability"],
-                analyzers=scan_directory.analyzer_entries(ctx.doctor_report, [project_type])
-                if options.reachability_analyzer != "off"
-                else [],
                 outputs=_evidence_output(),
                 skipped=bool(options.reachability_analyzer == "off"),
                 skipped_reason="reachability analysis is off",
+                record_extra=lambda: {"analyzers": _analyzer_entries(ctx, tscan)},
             )
             _stage(
                 ctx,
@@ -312,11 +313,17 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
                 )
         if render:
             _stage(ctx, "render", pipeline.stage_render_reports, ctx)
-    except pipeline.ScanStageError as exc:
+    except BaseException as exc:
         # The manifest of a scan that stopped partway names the failed stage
-        # and carries the files written before it.
-        pipeline.finish_scan_directory(ctx)
-        raise ScanError(str(exc) or "The scan stopped early.") from exc
+        # and carries the files written before it. Writing it must not hide
+        # the error that stopped the scan.
+        try:
+            pipeline.finish_scan_directory(ctx)
+        except Exception as write_exc:  # noqa: BLE001 - the original error wins
+            LOG.error("The scan directory manifest could not be written: %s", write_exc)
+        if isinstance(exc, pipeline.ScanStageError):
+            raise ScanError(str(exc) or "The scan stopped early.") from exc
+        raise
     written = pipeline.finish_scan_directory(ctx) if write_scan_dir else None
     result = _result_from_context(ctx)
     if written is not None:
@@ -337,6 +344,7 @@ def _stage(
     skipped=False,
     skipped_reason=None,
     record_extra=None,
+    failed_reason=None,
 ):
     """Run one stage and record what it did in the scan directory's manifest.
 
@@ -348,7 +356,9 @@ def _stage(
 
     ``record_extra`` is called at record time so a stage can add fields that
     are only known once it has run, for example the inventory stage's
-    not-assessed reasons.
+    not-assessed reasons. ``failed_reason`` is called after a stage that
+    degrades instead of stopping the scan; a reason it returns records the
+    stage as failed while the scan goes on.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
@@ -369,14 +379,29 @@ def _stage(
 
     try:
         result = func(*args)
-    except pipeline.ScanStageError as exc:
-        record("failed", str(exc) or "the stage stopped the scan")
+    except BaseException as exc:
+        record("failed", str(exc) or f"the stage stopped the scan ({type(exc).__name__})")
         raise
-    if result is False or skipped:
+    degraded = failed_reason() if failed_reason else None
+    if degraded:
+        record("failed", degraded)
+    elif result is False or skipped:
         record("skipped", skipped_reason or "the stage had nothing to do")
     else:
         record("completed")
     return result
+
+
+def _analyzer_entries(ctx, tscan):
+    """The enrichment stage's analyzer entries, from the slices it read."""
+    options = tscan.reachability_options
+    if options is None:
+        # Reachability was off, so the stage is recorded as skipped and no
+        # analyzer had anything to contribute.
+        return []
+    return scan_directory.analyzer_entries(
+        ctx.doctor_report, [tscan.project_type], options.slices_files
+    )
 
 
 def _inventory_capabilities(options, project_type: str) -> List[str]:
@@ -534,7 +559,8 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
         scan_directory.check_layout_version(manifest)
     except ValueError as exc:
         raise ScanError(str(exc)) from exc
-    if not scan_directory.matching_completed(manifest):
+    assessed = scan_directory.matching_completed_types(manifest)
+    if not assessed:
         raise ScanError(
             f"Cannot load a scan from '{reports_dir}': the manifest shows "
             "the matching stage did not complete, so the directory holds no "
@@ -543,7 +569,7 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
     by_type: Dict[str, TypeScanResult] = {}
     order: List[str] = []
     for project_type, relative in scan_directory.stage_outputs(manifest, "inventory"):
-        if project_type is None:
+        if project_type not in assessed:
             continue
         path = os.path.join(reports_dir, *relative.split("/"))
         if os.path.isfile(path):
@@ -590,16 +616,19 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
         if project_type not in order:
             order.append(project_type)
     # Types whose scan found no vulnerabilities wrote no VDR; the manifest
-    # showing matching completed is what makes them loadable as empty.
-    for project_type in scan_directory.project_types(manifest):
+    # showing their matching completed is what makes them loadable as
+    # empty. A type whose matching did not complete is listed in
+    # project_types, as a scan lists a type it skipped, but gets no result.
+    for project_type in assessed:
         if project_type not in by_type:
             by_type[project_type] = TypeScanResult(project_type=project_type)
             order.append(project_type)
     types = [by_type[project_type] for project_type in order if project_type in by_type]
+    all_types = scan_directory.project_types(manifest)
     findings_document = scan_directory.read_findings(reports_dir)
     return ScanResult(
         reports_dir=reports_dir,
-        project_types=order,
+        project_types=all_types + [t for t in order if t not in all_types],
         types=types,
         manifest=manifest,
         findings=(findings_document or {}).get("findings") or [],

@@ -324,7 +324,9 @@ def test_reachable_app_marks_newtonsoft_reached(tmp_path, monkeypatch):
     )
 
     # the native facts sidecar carries dosai's High-confidence verdict
-    facts = json.loads((tmp_path / "analysis" / "dosai" / "dotnet-reachability.facts.json").read_text())
+    facts = json.loads(
+        (tmp_path / "analysis" / "dosai" / "dotnet-reachability.facts.json").read_text()
+    )
     nf = facts["reached_purls"]["pkg:nuget/Newtonsoft.Json@13.0.3"]
     assert nf["confidence"] == "High"
     assert nf["kind"] in ("DataFlowNode", "CallGraphEdge")

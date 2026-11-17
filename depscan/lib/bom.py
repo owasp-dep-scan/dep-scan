@@ -878,7 +878,9 @@ def _persist_dosai_facts(report, converter, bom_index, bom_dir, options):
     """Stash the native dosai reachability facts (the truth) as a sidecar for
     VEX/advanced analysis. The verdict itself flows through the atom
     projection below via the existing purl-keyed engine loop."""
-    facts_path = os.path.join(analysis_report_dir(bom_dir, "dosai"), "dotnet-reachability.facts.json")
+    facts_path = os.path.join(
+        analysis_report_dir(bom_dir, "dosai"), "dotnet-reachability.facts.json"
+    )
     try:
         facts = converter.extract_native(report, bom_index)
         json_dump(facts_path, facts, compact=True)
@@ -943,14 +945,6 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     if not bom_file or not os.path.exists(bom_file):
         return False
     fail_on_error = bool(options.get("fail_on_error"))
-    # The doctor table is the single source of what each analyzer needs. When
-    # the capability cannot run here the step behaves as it would with the
-    # tool missing - degrade and continue - and the scan's manifest records
-    # the analyzer as not assessed with this reason.
-    reason = _capability_unavailable_reason(tool.name, options)
-    if reason:
-        LOG.warning("Not assessed: %s", reason)
-        return False
     # Lazy imports so other-language scans never pay the import cost and
     # tests that monkeypatch the tool can run in isolation.
     try:
@@ -997,7 +991,14 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     if report is None:
         if fail_on_error:
             raise ScanFailureError(tool.no_report_error)
-        LOG.debug("No %s report available; reachability via %s skipped.", tool.name, tool.name)
+        # The doctor table is the single source of what each analyzer needs;
+        # when it explains the missing report, say so. The step itself
+        # degrades exactly as it did before the table was consulted.
+        reason = _capability_unavailable_reason(tool.name, options)
+        if reason:
+            LOG.warning("%s reachability was not assessed: %s", tool.name, reason)
+        else:
+            LOG.debug("No %s report available; reachability via %s skipped.", tool.name, tool.name)
         return False
 
     bom_data = _json_load(bom_file, log=LOG) or {}
@@ -1083,6 +1084,11 @@ def reachability_analyzers_for_types(project_types: List[str]) -> List[str]:
         if aggregate or any(t in tool.project_types for t in types):
             analyzers.append(tool.name)
     return analyzers
+
+
+def reachability_slice_files() -> Dict[str, str]:
+    """The reachables slices file each language tool writes, by tool name."""
+    return {tool.name: tool.slice_file for tool in _REACHABILITY_TOOLS}
 
 
 def analysis_report_dir(bom_dir: str, producer: str) -> str:
