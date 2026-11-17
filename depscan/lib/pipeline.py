@@ -494,10 +494,14 @@ def _start_scan_directory(ctx):
     Every stage records its entry into the builder from here on; the manifest
     itself is written when the scan finishes, after every other file. Server
     requests write no scan directory, so they collect no doctor report either.
+    A scan handed a report through :func:`depscan.api.scan` reuses it: the
+    report never travels through the options namespace, whose every value the
+    manifest and the sample config copy.
     """
     if not ctx.write_scan_dir:
         return
-    ctx.doctor_report = doctor_lib.doctor()
+    if ctx.doctor_report is None:
+        ctx.doctor_report = doctor_lib.doctor()
     ctx.scan_dir = scan_directory.ScanDirectory(
         ctx.reports_dir,
         depscan_version=get_version(),
@@ -559,8 +563,11 @@ def stage_database(ctx):
                 "VDB_USE_SHARDS is set but this scan's purl types are not known "
                 "before matching; using a complete database instead."
             )
-    if not ctx.shards_connected:
-        # Should we download the latest vdb.
+    if not ctx.shards_connected and not args.vdb_offline:
+        # Should we download the latest vdb. Offline mode uses the database
+        # as it is: no freshness check, no download, no marker write. The
+        # unusable-database guard below still runs, so a missing or empty
+        # database stops the scan instead of looking like a clean one.
         should_download, dl_reason = vdb_setup.vdb_download_needed(scan_vdb_url, config.DATA_DIR)
         if should_download:
             with console.status(

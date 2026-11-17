@@ -412,6 +412,16 @@ def build_parser():
         help="Override the vdb image URL verbatim (bypasses the resolver). "
         "Equivalent to setting VDB_DATABASE_URL.",
     )
+    vdb_group.add_argument(
+        "--vdb-offline",
+        action="store_true",
+        default=False,
+        dest="vdb_offline",
+        help="Use the local vulnerability database as it is: the freshness "
+        "check, the download and the image marker are all skipped. A missing "
+        "or empty database still stops the scan with an error instead of "
+        "answering with zero findings.",
+    )
     parser.add_argument(
         "--no-universal",
         action="store_true",

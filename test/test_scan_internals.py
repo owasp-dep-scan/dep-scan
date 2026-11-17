@@ -200,3 +200,140 @@ def test_the_container_run_command_carries_the_excluded_types(tmp_path):
         if arg == "--exclude-type"
     ]
     assert excluded == ["os", "docker"]
+
+
+# ---------------------------------------------------------------------------
+# the offline database
+# ---------------------------------------------------------------------------
+
+
+def test_vdb_offline_skips_the_download_and_still_guards_the_database(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """Offline mode skips the whole download branch: no freshness check, no
+    download, no marker write. The unusable-database guard still runs, so the
+    database is verified rather than assumed."""
+    needed = []
+
+    def refused_download(url):
+        raise AssertionError("the offline scan must not download the database")
+
+    def would_download(url, data_dir):
+        needed.append(url)
+        return True, "stale"
+
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", refused_download)
+    monkeypatch.setattr(vdb_setup, "vdb_download_needed", would_download)
+
+    result = api.scan(
+        _source_scan_options(tmp_path, project_type=["python"], vdb_offline=True), render=False
+    )
+
+    # Positive control: the database stage still ran to its guard.
+    assert scan_stubs["database"], "the unusable-database guard never ran"
+    assert needed == [], "the download decision must not even be consulted"
+    assert result.project_types == ["python"]
+
+
+def test_vdb_offline_with_an_unusable_database_stops_the_scan(scan_stubs, tmp_path, monkeypatch):
+    """Offline mode never fetches a database, so a missing or empty one stops
+    the scan through the existing guard: the error the CLI turns into exit
+    code 1, never a clean-looking zero-findings scan."""
+
+    def unusable():
+        raise vdb_setup.VdbUnusableError(
+            "The vulnerability database at /tmp/vdb is empty; no search can "
+            "return results. Fetch one with `depscan-vdb download` or "
+            "'vdb db refresh full'."
+        )
+
+    monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", unusable)
+
+    with pytest.raises(api.ScanError, match="depscan-vdb download"):
+        api.scan(
+            _source_scan_options(tmp_path, project_type=["python"], vdb_offline=True), render=False
+        )
+
+
+# ---------------------------------------------------------------------------
+# the doctor report a caller hands the scan
+# ---------------------------------------------------------------------------
+
+
+def test_a_passed_doctor_report_is_reused_not_recollected(scan_stubs, tmp_path, monkeypatch):
+    """api.scan reuses the doctor report it is handed instead of probing the
+    machine a second time, the manifest carries that report's content, and
+    the report object never lands in the options namespace."""
+    calls = []
+
+    def refused_doctor():
+        calls.append(1)
+        raise AssertionError("a passed doctor report must not be collected again")
+
+    monkeypatch.setattr(doctor_mod, "doctor", refused_doctor)
+    fixed = doctor_mod.DoctorReport(
+        schema_version="1",
+        depscan_version="7.0.0-test",
+        platform={"os": "linux", "arch": "x86_64", "libc": "glibc"},
+        tools=[
+            doctor_mod.ToolStatus(
+                name="cdxgen", path="/opt/fake/cdxgen", version="13.8.0", source="path"
+            )
+        ],
+        data={"vulnerabilityDatabase": dict(FULL_VDB_DATA)},
+        capabilities=[],
+    )
+    options = _source_scan_options(tmp_path, project_type=["python"])
+
+    result = api.scan(options, render=False, doctor_report=fixed)
+
+    # Positive control of the refusal stub: the real collector never ran.
+    assert calls == []
+    assert result.manifest["platform"] == fixed.platform
+    assert result.manifest["tools"][0]["name"] == "cdxgen"
+    assert result.manifest["tools"][0]["path"] == "/opt/fake/cdxgen"
+    assert result.manifest["capabilities"] == []
+    # The report travelled only through the keyword argument.
+    assert "doctor_report" not in vars(options)
+    assert "doctor_report" not in result.manifest["options"]
+
+
+def test_checks_not_assessed_are_recorded_in_the_manifest(scan_stubs, tmp_path):
+    """Each entry becomes a check-<name> stage entry with status
+    not-assessed, the reason and the capability named, in the written
+    manifest."""
+    result = api.scan(
+        _source_scan_options(tmp_path, project_type=["python"]),
+        render=False,
+        checks_not_assessed=[
+            {"name": "reachability", "reason": "cdxgen was not found on PATH"},
+            {"name": "binary", "reason": "the blint package is not installed"},
+        ],
+    )
+
+    stages = {stage["name"]: stage for stage in result.manifest["stages"]}
+    assert stages["check-reachability"]["status"] == "not-assessed"
+    assert stages["check-reachability"]["reason"] == "cdxgen was not found on PATH"
+    assert stages["check-reachability"]["capabilities"] == ["reachability"]
+    assert stages["check-binary"]["status"] == "not-assessed"
+    assert stages["check-binary"]["reason"] == "the blint package is not installed"
+    assert stages["check-binary"]["capabilities"] == ["binary"]
+    # The written file carries the same entries the result holds.
+    written = _manifest_of(result.reports_dir)
+    assert "check-reachability" in {stage["name"] for stage in written["stages"]}
+    assert "check-binary" in {stage["name"] for stage in written["stages"]}
+
+
+def test_checks_not_assessed_are_skipped_without_a_scan_directory(scan_stubs, tmp_path):
+    """A scan that writes no directory (the server path) records nothing and
+    does not fail on the entries."""
+    result = api._run_stages(
+        _source_scan_options(tmp_path, project_type=["python"]),
+        render=False,
+        database=False,
+        write_scan_dir=False,
+        checks_not_assessed=[{"name": "reachability", "reason": "not probed"}],
+    )
+    assert result.manifest is None
+    # Positive control: the scan itself still ran.
+    assert scan_stubs["matching"], "the matching stage never ran"
