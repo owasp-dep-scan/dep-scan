@@ -1,0 +1,19 @@
+test/test_scan_internals.py
+  s_35240395b0d41a::t_de395179ff1fd8 20,376-377,381
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4dca63d26eb8e9949b644fde3ee6a8b435e5058",
+  "prompts": {},
+  "sessions": {
+    "s_35240395b0d41a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_400474cf-858d-4c83-aa88-47a793a7ed45",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
