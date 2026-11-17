@@ -782,18 +782,22 @@ def run(args: argparse.Namespace) -> int:
     resolution = checks_table.resolve(args, doctor_report=report)
     internal = scan_namespace(args, resolution=resolution)
     if args.format == "json":
-        # The stdout console moves to stderr for the duration, so stdout
-        # carries exactly one JSON document: the tables, the banner and the
-        # logs all print on stderr instead. ``_file`` is None while the
-        # console follows sys.stdout, and None is what the restore puts back:
-        # pinning the current sys.stdout object instead would break under a
-        # harness that replaces the stream between runs.
+        # The stdout console moves to stderr for the duration and the process
+        # stdout is redirected with it, so stdout carries exactly one JSON
+        # document: the tables, the banner, the logs and any stray print from
+        # a library the scan calls all land on stderr instead. ``_file`` is
+        # None while the console follows sys.stdout, and None is what the
+        # restore puts back: pinning the current sys.stdout object instead
+        # would break under a harness that replaces the stream between runs.
         internal.no_banner = True
+        saved_stdout = sys.stdout
         saved_file = console._file
         console.file = sys.stderr
+        sys.stdout = sys.stderr
         try:
             outcomes = _run_all_scans(args, internal, resolution, targets, report)
         finally:
+            sys.stdout = saved_stdout
             # Assigning the private attribute is deliberate: the public
             # setter's declared type does not accept None, and None is the
             # value that makes the console follow sys.stdout again.
@@ -802,7 +806,7 @@ def run(args: argparse.Namespace) -> int:
         outcomes = _run_all_scans(args, internal, resolution, targets, report)
     exit_code = max([skipped, *(code for code, _, _ in outcomes)])
     if args.format == "json":
-        _print_json_outcomes(outcomes)
+        _print_json_outcomes(outcomes, saved_stdout)
     return exit_code
 
 
@@ -891,10 +895,10 @@ def _target_directory_name(target: str) -> str:
 # --- the json output -------------------------------------------------------------
 
 
-def _print_json_outcomes(outcomes) -> None:
-    """Print one JSON document with every scan's result on stdout."""
+def _print_json_outcomes(outcomes, stream) -> None:
+    """Print one JSON document with every scan's result on the saved stdout."""
     documents = [_outcome_document(reports_dir, result) for _, reports_dir, result in outcomes]
-    print(json.dumps(documents[0] if len(documents) == 1 else documents, indent=2))
+    print(json.dumps(documents[0] if len(documents) == 1 else documents, indent=2), file=stream)
 
 
 def _outcome_document(reports_dir: str, result):

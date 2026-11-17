@@ -849,6 +849,32 @@ def test_json_format_with_two_targets_prints_an_array(scan_stubs, monkeypatch, c
     assert len(scan_stubs["matching"]) == 2
 
 
+def test_json_format_keeps_stray_stdout_writes_off_stdout(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    """A library that prints its progress straight to stdout, as the vdb
+    download does, must not pollute the one JSON document: in json mode the
+    process stdout itself is redirected for the duration of the scans."""
+    def noisy_database_guard():
+        scan_stubs["database"].append("printed")
+        print("vdb download progress: 42%")
+
+    monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", noisy_database_guard)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    code = run_main(
+        monkeypatch,
+        ["scan", bom, "--reports-dir", str(tmp_path / "reports"), "--format", "json"],
+    )
+    assert code == 0
+    # Positive control: the noisy stub really ran, inside the scan.
+    assert scan_stubs["database"] == ["printed"]
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)
+    assert set(document) == {"scanDir", "manifest", "findings"}
+    assert "vdb download progress" not in captured.out
+    assert "vdb download progress" in captured.err
+
+
 def test_text_format_leaves_the_scan_tables_on_stdout(
     scan_stubs, monkeypatch, capfd, tmp_path, no_license_env
 ):
