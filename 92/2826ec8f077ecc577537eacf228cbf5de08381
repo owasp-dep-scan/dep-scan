@@ -1,0 +1,16 @@
+documentation/docs/migrate-v6-to-v7.mdx
+  h_6a4cc5cdf68def 34,121
+documentation/docs/cli-usage.mdx
+  h_6a4cc5cdf68def 548-550
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "922826ec8f077ecc577537eacf228cbf5de08381",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
