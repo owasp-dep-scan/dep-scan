@@ -670,3 +670,24 @@ def test_scan_unknown_profile_is_a_usage_error(monkeypatch, capsys):
     code = run_main(monkeypatch, ["scan", ".", "--profile", "bogus"])
     assert code == 2
     assert "invalid choice: 'bogus'" in capsys.readouterr().err
+
+
+def test_config_show_reports_what_a_profile_and_checks_set(monkeypatch, capsys, clean_option_env):
+    """``config show`` resolves --profile and --checks the way the scan verb
+    does, so the printed options are the ones a scan would use."""
+    code = run_main(
+        monkeypatch,
+        ["config", "show", "--profile", "deep", "--reachability-analyzer", "off", "--format", "json"],
+    )
+    assert code == 0
+    options = json.loads(capsys.readouterr().out)["options"]
+    assert options["risk_audit"] == {"value": True, "source": "checks or profile"}
+    assert "license" in options["project_type"]["value"]
+    # The explicit option wins over the profile, and says so.
+    assert options["reachability_analyzer"] == {"value": "off", "source": "command line"}
+
+
+def test_config_show_refuses_an_unknown_check(monkeypatch, capsys, clean_option_env):
+    code = run_main(monkeypatch, ["config", "show", "--checks", "vulnerabilitys"])
+    assert code == 2
+    assert "unknown check vulnerabilitys" in capsys.readouterr().err

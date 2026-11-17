@@ -77,7 +77,7 @@ def add_scan_options(parser: argparse.ArgumentParser) -> None:
     _add_analyzer_options(parser)
     _add_search_options(parser)
     _add_filter_options(parser)
-    _add_vdb_options(parser)
+    add_vdb_options(parser)
     _add_render_options(parser)
 
 
@@ -459,14 +459,19 @@ def _add_filter_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_vdb_options(parser: argparse.ArgumentParser) -> None:
-    vdb_group = parser.add_argument_group(
-        "vulnerability database selection",
-        "Select which published vdb database the scan downloads. These can also be "
-        'persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An '
-        "explicit VDB_DATABASE_URL env pin always wins. The `depscan vdb download` "
-        "command shares the same options for pre-fetching.",
-    )
+_SCAN_VDB_DESCRIPTION = (
+    "Select which published vdb database the scan downloads. These can also be "
+    'persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An '
+    "explicit VDB_DATABASE_URL env pin always wins. The `depscan vdb download` "
+    "command shares the same options for pre-fetching."
+)
+
+
+def add_vdb_options(
+    parser: argparse.ArgumentParser, description: str = _SCAN_VDB_DESCRIPTION
+) -> None:
+    """Add the database selection options; ``depscan serve`` shares them."""
+    vdb_group = parser.add_argument_group("vulnerability database selection", description)
     vdb_group.add_argument(
         "--vdb-flavor",
         choices=("full", "app-only", "app-extended", "app-10y", "app-10y-extended"),
@@ -619,14 +624,9 @@ def scan_namespace(args: argparse.Namespace, *, resolution=None) -> argparse.Nam
     values are parsed onto the internal ``exclude_types`` list. Nothing
     downstream reads the v7 names.
     """
-    internal = build_parser().parse_args(internal_argv(args))
     if resolution is None:
         resolution = checks_table.resolve(args)
-    for dest, value in resolution.options.items():
-        setattr(internal, dest, value)
-    apply_scan_options(args, internal)
-    _apply_excluded_types(args, internal)
-    _append_check_lists(internal, resolution)
+    internal, _sources = resolved_namespace(args, resolution)
     if "license" in resolution.checks:
         # The license analysis turns on through this environment variable,
         # exactly as v6's ``-t license`` set it in finalize_setup. Appending
@@ -635,6 +635,29 @@ def scan_namespace(args: argparse.Namespace, *, resolution=None) -> argparse.Nam
         # licenses stage consults this variable directly.
         os.environ["FETCH_LICENSE"] = "true"
     return internal
+
+
+def resolved_namespace(args: argparse.Namespace, resolution):
+    """The internal namespace and the dests the resolution and command line set.
+
+    Returns ``(internal, sources)`` where ``sources`` maps each dest the
+    checks, the profile or the command line set to ``"checks"`` or
+    ``"command line"``. ``config show`` reports these sources; the scan verb
+    uses only the namespace. Nothing here touches the environment.
+    """
+    internal = build_parser().parse_args(internal_argv(args))
+    sources = {}
+    for dest, value in resolution.options.items():
+        setattr(internal, dest, value)
+        sources[dest] = "checks"
+    for dest in apply_scan_options(args, internal):
+        sources[dest] = "command line"
+    _apply_excluded_types(args, internal)
+    if getattr(args, "exclude_types", None) is not None:
+        sources["exclude_types"] = "command line"
+    for dest in _append_check_lists(internal, resolution):
+        sources.setdefault(dest, "checks")
+    return internal, sources
 
 
 def _apply_excluded_types(args: argparse.Namespace, internal) -> None:
@@ -648,21 +671,26 @@ def _apply_excluded_types(args: argparse.Namespace, internal) -> None:
     internal.exclude_types = list(dict.fromkeys(parsed))
 
 
-def _append_check_lists(internal, resolution) -> None:
+def _append_check_lists(internal, resolution) -> set:
     """Append the check-added types and techniques after the explicit options.
 
     The license check appends the ``license`` pseudo type and the binary check
     the ``binary-analysis`` technique, also to a value the user passed, so an
-    explicit ``--type`` never silently drops a requested check.
+    explicit ``--type`` never silently drops a requested check. Returns
+    the dests it changed.
     """
+    changed = set()
     for project_type in resolution.append_project_types:
         if project_type not in internal.project_type:
             internal.project_type = [*internal.project_type, project_type]
+            changed.add("project_type")
     techniques = list(internal.techniques or [])
     for technique in resolution.append_techniques:
         if technique not in techniques:
             techniques.append(technique)
+            changed.add("techniques")
     internal.techniques = techniques or None
+    return changed
 
 
 # --- the targets -----------------------------------------------------------------
@@ -712,13 +740,23 @@ def _resolve_targets(args: argparse.Namespace):
             )
             return None, 4
         if kind == "source" and not os.path.exists(target):
-            message = f"The source target '{target}' does not exist."
+            message = _missing_source_message(target)
             LOG.error(message)
             entries.append((target, None, message))
             continue
         LOG.info("Target %s: kind %s (%s)", target, kind, reason)
         entries.append((target, kind, None))
     return entries, 0
+
+
+def _missing_source_message(target: str) -> str:
+    """Why a source target that does not exist cannot be scanned."""
+    if target.startswith(("http://", "https://")):
+        return (
+            f"The target '{target}' is a URL to an archive file, which dep-scan "
+            "does not download; download it and pass the file instead."
+        )
+    return f"The source target '{target}' does not exist."
 
 
 def _capability_gate(args: argparse.Namespace, names):
@@ -930,7 +968,9 @@ def _target_directory_name(target: str) -> str:
     ``/``, ``\\``, ``:`` and ``@`` replaced, truncated to 60 characters.
     """
     if os.path.exists(target):
-        name = os.path.basename(target)
+        # The absolute path, so "." and a trailing separator still name the
+        # directory itself.
+        name = os.path.basename(os.path.abspath(target))
     else:
         name = _DIRECTORY_NAME_SEPARATORS.sub("-", target)
     return name[:60] or "target"

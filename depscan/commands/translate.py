@@ -26,6 +26,8 @@ conflict, an option without its value) translates to None.
 import argparse
 import contextlib
 import io
+import re
+import shlex
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -640,11 +642,25 @@ def translate(argv: Sequence[str]) -> str | None:
         value = explicit[row.dest]
         if isinstance(value, (list, tuple)):
             words.extend(str(item) for item in value)
+        elif not isinstance(value, bool) and str(value).startswith("-"):
+            # A value that looks like an option only parses joined to its flag.
+            words[-1] = f"{row.v7_flag}={value}"
         elif not isinstance(value, bool):
             words.append(str(value))
     if verb == "scan" and len(words) == 2:
         return None
-    return " ".join(words)
+    return " ".join(_quote(word) for word in words)
+
+
+#: Words made only of these characters print unquoted. ``$``, ``{`` and ``}``
+#: are included so a shell variable in a workflow line stays expandable.
+_UNQUOTED_WORD_RE = re.compile(r"^[\w@%+=:,./${}~-]+$")
+
+
+def _quote(word: str) -> str:
+    """Quote a word for a POSIX shell when it needs it, so a value with spaces
+    or an empty value stays one argument when the command is pasted back."""
+    return word if _UNQUOTED_WORD_RE.match(word) else shlex.quote(word)
 
 
 def option_table_markdown() -> str:

@@ -428,8 +428,7 @@ def detection_fixtures(tmp_path):
     apk.write_text("an apk is more specific than any executable bit")
     apk.chmod(0o755)
     binary = tmp_path / "tool"
-    binary.write_text("#!/bin/sh\n")
-    binary.chmod(0o755)
+    binary.write_bytes(b"\x7fELF\x02\x01\x01\x00")
     src = tmp_path / "src"
     src.mkdir()
     (src / "main.py").write_text("pass\n")
@@ -448,7 +447,7 @@ def detection_fixtures(tmp_path):
         ("pkg:pypi/requests@2.32.1", "purl", "starts with pkg:"),
         ("https://github.com/owasp/dep-scan", "git", "starts with https://"),
         ("git@github.com:owasp/dep-scan.git", "git", "starts with git@"),
-        ("https://example.com/app.tar", "container", "no path"),
+        ("https://example.com/app.tar", "source", "no more specific kind"),
         ("alpine:3.19", "container", "name:tag"),
         ("registry.io/team/app:1.2.3", "container", "registry/name"),
         ("app@" + "sha256:" + "a" * 64, "container", "sha256 digest"),
@@ -473,13 +472,63 @@ def test_detect_kind_of_existing_paths(detection_fixtures, tmp_path):
         (bom, "bom", "JSON document is CycloneDX"),
         (str(bom_dir), "bom-dir", "JSON files are all CycloneDX documents"),
         (detection_fixtures["apk"], "android", ".apk file"),
-        (detection_fixtures["binary"], "binary", "executable file"),
+        (detection_fixtures["binary"], "binary", "ELF, PE or Mach-O header"),
         (detection_fixtures["src"], "source", "existing directory"),
     ]
     for target, kind, fragment in expected:
         detected, reason = detect_kind(target)
         assert detected == kind, f"{target}: {detected}"
         assert fragment in reason, f"{target}: {reason}"
+
+
+def test_a_script_with_the_executable_bit_is_not_a_binary(tmp_path):
+    """The header decides, not the executable bit: a shell script is source,
+    a PE file is a binary even without the bit (as on Windows)."""
+    script = tmp_path / "build.sh"
+    script.write_text("#!/bin/sh\n")
+    script.chmod(0o755)
+    assert detect_kind(str(script))[0] == "source"
+    pe = tmp_path / "tool.exe"
+    pe.write_bytes(b"MZ\x90\x00")
+    pe.chmod(0o644)
+    assert detect_kind(str(pe))[0] == "binary"
+
+
+def test_a_bom_directory_with_slices_and_manifest_is_a_bom_directory(tmp_path):
+    """The files cdxgen and dep-scan write beside BOMs do not hide a BOM
+    directory, while any other JSON file still makes it a source directory."""
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "bom.json")
+    (bom_dir / "python-reachables.slices.json").write_text("[]")
+    (bom_dir / "depscan.manifest.json").write_text("{}")
+    (bom_dir / "depscan.findings.json").write_text("{}")
+    assert detect_kind(str(bom_dir))[0] == "bom-dir"
+    (bom_dir / "package.json").write_text("{}")
+    assert detect_kind(str(bom_dir))[0] == "source"
+    only_slices = tmp_path / "slices"
+    only_slices.mkdir()
+    (only_slices / "app.slices.json").write_text("[]")
+    assert detect_kind(str(only_slices))[0] == "source"
+
+
+@pytest.mark.parametrize("target", ["./missing", "/no/such/dir", "~/app", "Team/App"])
+def test_a_missing_path_is_never_an_image_reference(target):
+    """Strings that are spelled as paths or break the reference grammar stay
+    source targets, so a typo is refused instead of pulled as an image."""
+    assert detect_kind(target)[0] == "source"
+
+
+def test_a_url_to_an_archive_is_refused_with_its_reason(scan_stubs, monkeypatch, caplog, tmp_path):
+    """dep-scan does not download archives; the refusal says so."""
+    with caplog.at_level(logging.ERROR, logger=LOG.name):
+        code = run_main(
+            monkeypatch,
+            ["scan", "https://example.com/app.tar", "--reports-dir", str(tmp_path / "r")],
+        )
+    assert code == 1
+    assert "does not download" in " ".join(r.getMessage() for r in caplog.records)
+    assert scan_stubs["matching"] == []
 
 
 def _directory_named(parent, name):
@@ -1241,3 +1290,14 @@ def test_bom_profile_license_compliance_runs_the_license_stage(
     assert stages["licenses"]["status"] == "completed"
     # Positive control: the license analysis really turned on.
     assert os.environ.get("FETCH_LICENSE") == "true"
+
+
+def test_a_multi_target_directory_name_for_dot_names_the_directory(monkeypatch, tmp_path):
+    """"." and a trailing separator name the directory itself, not "." or ""."""
+    from depscan.commands.scan import _target_directory_name
+
+    project = tmp_path / "myproject"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    assert _target_directory_name(".") == "myproject"
+    assert _target_directory_name(str(project) + os.sep) == "myproject"

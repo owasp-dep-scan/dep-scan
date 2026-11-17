@@ -9,7 +9,7 @@ scan verb logs on stderr for each target.
 The order is settled: existence checks for path kinds beat the reference
 heuristics, and among path kinds the container archive and OCI layout come
 first, then the BOM file, the BOM directory, the app extensions, the
-executable bit and finally the source fallback. A string that is both a
+executable header and finally the source fallback. A string that is both a
 possible image reference and an existing path is the path, whatever kind the
 path itself gives.
 """
@@ -45,6 +45,32 @@ _GIT_URL_PREFIXES = ("http://", "https://", "git://", "ssh://", "git@")
 #: Archive extensions: a URL ending in one of these names a file to fetch,
 #: not a repository to clone.
 _ARCHIVE_EXTENSIONS = (".tar", ".tar.gz", ".tgz", ".zip")
+
+#: Files cdxgen or dep-scan writes beside the BOMs of a BOM directory, besides
+#: the ``*.slices.json`` reachability slices.
+_BOM_COMPANION_NAMES = ("depscan.manifest.json", "depscan.findings.json")
+
+#: The four-byte headers of ELF, Mach-O (both byte orders, 32 and 64 bits)
+#: and Mach-O universal files; PE files start with ``MZ``.
+_EXECUTABLE_MAGICS = (
+    b"\x7fELF",
+    b"\xfe\xed\xfa\xce",
+    b"\xfe\xed\xfa\xcf",
+    b"\xce\xfa\xed\xfe",
+    b"\xcf\xfa\xed\xfe",
+    b"\xca\xfe\xba\xbe",
+)
+
+# A registry/name reference as the distribution reference grammar spells it:
+# an optional registry host (with an optional port), lowercase path
+# components separated by single dots, underscores or dashes, and an
+# optional tag. Paths such as ./app, /srv/app, ~/app or C:\app never match.
+_PATH_REFERENCE_RE = re.compile(
+    r"^(?:[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::[0-9]+)?/)?"
+    r"[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*"
+    r"(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*"
+    r"(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?$"
+)
 
 # An image digest reference, ``name@sha256:<64 hex>``.
 _DIGEST_REFERENCE_RE = re.compile(r"^\S+@sha256:[0-9a-fA-F]{64}$")
@@ -96,8 +122,8 @@ def _detect_existing_file(target: str) -> Tuple[str, str]:
             return "android", f"an existing {extension} file"
     if lowered.endswith(".ipa"):
         return "ios", "an existing .ipa file"
-    if os.access(target, os.X_OK):
-        return "binary", "an existing executable file that is not a BOM"
+    if _has_executable_header(target):
+        return "binary", "an existing file with an ELF, PE or Mach-O header"
     return "source", "an existing file no more specific kind names"
 
 
@@ -105,7 +131,9 @@ def _detect_existing_directory(target: str) -> Tuple[str, str]:
     """Classify an existing directory: OCI layout, BOM directory, source."""
     if os.path.isfile(os.path.join(target, "oci-layout")):
         return "container", "a directory holding an oci-layout file"
-    json_files = _direct_json_files(target)
+    json_files = [
+        path for path in _direct_json_files(target) if not _is_bom_companion(path)
+    ]
     if json_files and all(_is_cyclonedx_document(path) for path in json_files):
         return "bom-dir", "a directory whose JSON files are all CycloneDX documents"
     return "source", "an existing directory"
@@ -118,6 +146,35 @@ def _direct_json_files(target: str) -> list:
         for entry in sorted(os.listdir(target))
         if entry.endswith(".json") and os.path.isfile(os.path.join(target, entry))
     ]
+
+
+def _is_bom_companion(path: str) -> bool:
+    """Whether the file is one cdxgen or dep-scan writes next to its BOMs.
+
+    Reachability slices and dep-scan's own manifest and findings files sit
+    beside the BOMs in a directory cdxgen or an earlier scan produced; they
+    are not CycloneDX documents and must not make the directory a source
+    directory.
+    """
+    name = os.path.basename(path)
+    return name.endswith(".slices.json") or name in _BOM_COMPANION_NAMES
+
+
+def _has_executable_header(path: str) -> bool:
+    """Whether the file starts with an ELF, PE or Mach-O header.
+
+    The header decides rather than the executable bit, which every file has
+    on Windows and which shell scripts carry elsewhere. A Java class file
+    shares the Mach-O universal magic, so ``.class`` files never count.
+    """
+    if path.lower().endswith(".class"):
+        return False
+    try:
+        with open(path, "rb") as fp:
+            header = fp.read(4)
+    except OSError:
+        return False
+    return header.startswith(b"MZ") or header in _EXECUTABLE_MAGICS
 
 
 def _is_cyclonedx_document(path: str) -> bool:
@@ -150,6 +207,6 @@ def _image_reference_reason(target: str) -> Optional[str]:
         return "no path and carries a sha256 digest"
     if _TAG_REFERENCE_RE.match(target):
         return "no path and looks like name:tag"
-    if "/" in target and "@" not in target and not any(c.isspace() for c in target):
+    if "/" in target and _PATH_REFERENCE_RE.match(target):
         return "no path and looks like registry/name"
     return None

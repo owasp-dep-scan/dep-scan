@@ -4,9 +4,10 @@
 same way the scan verb will (the v6 parser's environment-backed defaults,
 overridden by the TOML file ``--config`` names or the default config path),
 and prints every internal option with its value and where the value came
-from: the command line, the TOML file, an environment variable or the
-default. Precedence is v6's: command line, then the TOML file, then
-environment-backed defaults, then defaults.
+from: the command line, ``--checks`` or ``--profile``, the TOML file, an
+environment variable or the default. Precedence: command line, then the
+checks and profile, then the TOML file, then environment-backed defaults,
+then defaults.
 
 ``config init`` writes ``./depscan.toml`` with the same content a scan writes
 to ``depscan.toml.sample`` and refuses to overwrite an existing file.
@@ -19,7 +20,8 @@ import sys
 import tomllib
 
 from depscan.cli_options import build_parser
-from depscan.commands.scan import add_scan_options, apply_scan_options, internal_argv
+from depscan.commands import checks as checks_table
+from depscan.commands.scan import add_scan_options, internal_argv, resolved_namespace
 from depscan.lib import pipeline
 
 #: Maps an internal option dest to the environment variable that feeds its
@@ -46,6 +48,7 @@ DEST_TO_ENV = {
 }
 
 SOURCE_COMMAND_LINE = "command line"
+SOURCE_CHECKS = "checks or profile"
 SOURCE_CONFIG_FILE = "depscan.toml"
 SOURCE_ENVIRONMENT = "environment"
 SOURCE_DEFAULT = "default"
@@ -78,11 +81,6 @@ def run(args: argparse.Namespace) -> int:
     if args.subcommand == "init":
         return _run_init(args)
     return _run_show(args)
-
-
-def _internal_argv(args: argparse.Namespace) -> list:
-    """The argv the internal parser gets; the scan verb's shared helper."""
-    return internal_argv(args)
 
 
 def _internal_dests() -> list:
@@ -132,31 +130,21 @@ def _env_produced(argv: list, dest: str, env_var: str, internal) -> bool:
     return getattr(without, dest, None) != getattr(internal, dest, None)
 
 
-def _apply_command_line(args: argparse.Namespace, internal) -> set:
-    """Apply the options this invocation passed onto the internal namespace.
-
-    This is the same step the scan verb performs last (the shared
-    ``apply_scan_options``): the internal namespace carries the
-    environment-backed defaults and the TOML file's values, and the
-    explicitly passed options win over both. Returns the internal dests the
-    command line set.
-    """
-    return apply_scan_options(args, internal)
-
-
-def _option_sources(args: argparse.Namespace, internal, command_line: set) -> dict:
+def _option_sources(args: argparse.Namespace, internal, set_by: dict) -> dict:
     """Every internal option with its value and its source."""
     toml_dests = _toml_dests(internal)
     entries = {}
     for dest in _internal_dests():
-        if dest in command_line:
+        if set_by.get(dest) == "command line":
             source = SOURCE_COMMAND_LINE
+        elif dest in set_by:
+            source = SOURCE_CHECKS
         elif dest in toml_dests:
             source = SOURCE_CONFIG_FILE
         elif (
             dest in DEST_TO_ENV
             and os.environ.get(DEST_TO_ENV[dest]) is not None
-            and _env_produced(_internal_argv(args), dest, DEST_TO_ENV[dest], internal)
+            and _env_produced(internal_argv(args), dest, DEST_TO_ENV[dest], internal)
         ):
             source = SOURCE_ENVIRONMENT
         else:
@@ -166,9 +154,17 @@ def _option_sources(args: argparse.Namespace, internal, command_line: set) -> di
 
 
 def _run_show(args: argparse.Namespace) -> int:
-    internal = build_parser().parse_args(_internal_argv(args))
-    command_line = _apply_command_line(args, internal)
-    entries = _option_sources(args, internal, command_line)
+    names = checks_table.parse_checks(getattr(args, "checks", None))
+    unknown = checks_table.unknown_checks(names)
+    if unknown:
+        print(
+            f"depscan config show: unknown check {', '.join(unknown)}; known checks: "
+            f"{', '.join(checks_table.CHECK_NAMES)}",
+            file=sys.stderr,
+        )
+        return 2
+    internal, set_by = resolved_namespace(args, checks_table.resolve(args))
+    entries = _option_sources(args, internal, set_by)
     if args.format == "json":
         print(json.dumps({"options": entries}, indent=2))
         return 0
@@ -190,7 +186,7 @@ def _run_init(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 1
-    internal = build_parser().parse_args(_internal_argv(args))
+    internal = build_parser().parse_args(internal_argv(args))
     if not pipeline.write_config_file(vars(internal), path):
         print(f"depscan config init: {path} could not be written.", file=sys.stderr)
         return 1

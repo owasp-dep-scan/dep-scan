@@ -319,7 +319,7 @@ def start_server_mode(ctx):
             custom_data_directory=args.custom_data,
         )
         return simple.run_server(server_options)
-    LOG.info(
+    LOG.error(
         "The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`."
     )
     return False

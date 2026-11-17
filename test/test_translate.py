@@ -201,3 +201,23 @@ def test_option_table_markdown_is_a_well_formed_table():
     for line in lines[2:]:
         assert line.startswith("| ") and line.endswith(" |")
         assert line.count("|") == 4
+
+
+def test_values_with_spaces_or_leading_dashes_survive_a_paste():
+    """The printed command parses back to the same values in the v7 parser."""
+    import shlex
+
+    from depscan.commands import build_parser as build_v7_parser
+
+    command = translate(["-i", "my dir", "--cdxgen-args", "--a b", "-o", "out"])
+    assert command is not None
+    parsed = build_v7_parser().parse_args(shlex.split(command)[1:])
+    assert parsed.targets == ["my dir"]
+    assert parsed.cdxgen_args == "--a b"
+    command = translate(["-i", ".", "--cdxgen-args=--no-recurse"])
+    assert command is not None
+    assert build_v7_parser().parse_args(shlex.split(command)[1:]).cdxgen_args == "--no-recurse"
+
+
+def test_shell_variables_stay_unquoted():
+    assert translate(["-i", "${HOME}/src"]) == "depscan scan ${HOME}/src"

@@ -216,17 +216,17 @@ The scan verb takes what to scan as positional targets, and detects each target'
 | --- | --- | --- |
 | `purl` | a string starting with `pkg:` | the purl search |
 | `git` | a git URL (`http://`, `https://`, `git://`, `ssh://` or `git@`) that does not end in an archive extension | the remote source |
-| `container` | an image reference (`name:tag`, `registry/name` or `name@sha256:<digest>`), a `.tar` or `.tar.gz` archive file, or a directory holding an `oci-layout` file | the container image |
+| `container` | a string that is not an existing path and has the shape of an image reference (`name:tag`, `registry/name[:tag]` with lowercase path components, or `name@sha256:<digest>`), a `.tar` or `.tar.gz` archive file, or a directory holding an `oci-layout` file | the container image |
 | `bom` | an existing JSON file whose document is a CycloneDX BOM | that BOM |
-| `bom-dir` | an existing directory whose JSON files are all CycloneDX documents | every BOM in the directory |
-| `binary` | an existing executable file that is not a BOM | blint binary analysis |
+| `bom-dir` | an existing directory whose JSON files are all CycloneDX documents, not counting the `*.slices.json` reachability slices and dep-scan's own `depscan.manifest.json` and `depscan.findings.json` | every BOM in the directory |
+| `binary` | an existing file that starts with an ELF, PE or Mach-O header | blint binary analysis |
 | `android` | an existing `.apk` or `.aab` file | blint app analysis |
 | `ios` | an existing `.ipa` file | refused (see below) |
 | `source` | an existing path no more specific kind names, or any other string | the source tree |
 
 An existing path beats a same-shaped image reference: a string that is both a possible image reference and an existing path is scanned as the path, whatever kind the path itself gives.
 
-`--target-kind KIND` forces the kind of every target instead of detecting it. `ios` and `firmware` have no inventory path in this version: naming either (or scanning a `.ipa` file) stops the scan with exit 4 and the reason on stderr. A `source` target that does not exist is refused with exit 1. Detection logs, on stderr, the kind chosen for each target and the evidence behind it.
+`--target-kind KIND` forces the kind of every target instead of detecting it. `ios` and `firmware` have no inventory path in this version: naming either (or scanning a `.ipa` file) stops the scan with exit 4 and the reason on stderr. A `source` target that does not exist is refused with exit 1, and so is an `http://` or `https://` URL to an archive file, which dep-scan does not download. A path such as `./app`, `/srv/app` or `~/app` is never read as an image reference. A directory that holds other JSON files next to its BOMs is detected as a source directory; pass `--target-kind bom-dir` for it. Detection logs, on stderr, the kind chosen for each target and the evidence behind it.
 
 When the user passed no `-t`, the kind names the project type too: a `container` target scans as `docker`, a `binary` target as `binary` and an `android` target as `apk`.
 
