@@ -482,12 +482,34 @@ def test_detect_kind_of_existing_paths(detection_fixtures, tmp_path):
         assert fragment in reason, f"{target}: {reason}"
 
 
+def _directory_named(parent, name):
+    """A directory whose relative path spells an image reference shape.
+
+    The registry/name shapes need their parent directories created too, and
+    path separators follow the platform.
+    """
+    path = parent.joinpath(*name.split("/"))
+    path.mkdir(parents=True)
+    return path
+
+
+@pytest.mark.parametrize(
+    ("reference_shape", "make_path"),
+    [
+        # A tag-shaped name cannot exist as a Windows path (a colon is not a
+        # legal path character there), so the nested registry/name shape is
+        # the ambiguous case every platform can create.
+        pytest.param("app:latest", lambda p: _directory_named(p, "app:latest"),
+                     marks=pytest.mark.skipif(sys.platform == "win32",
+                                              reason="a colon cannot appear in a Windows path name")),
+        ("shiftleft/scan-slim", lambda p: _directory_named(p, "shiftleft/scan-slim")),
+    ],
+)
 def test_an_image_reference_that_is_an_existing_path_is_the_path(
-    scan_stubs, monkeypatch, caplog, tmp_path
+    scan_stubs, monkeypatch, caplog, tmp_path, reference_shape, make_path
 ):
-    """A directory named like an image reference scans as the path it is."""
-    weird = tmp_path / "app:latest"
-    weird.mkdir()
+    """A path named like an image reference scans as the path it is."""
+    weird = make_path(tmp_path)
     (weird / "main.py").write_text("pass\n")
     reports = tmp_path / "reports"
     with caplog.at_level(logging.INFO, logger=LOG.name):
