@@ -1,0 +1,31 @@
+documentation/sidebars.ts
+  s_588541f8890570::t_c6920846dcde9a 61
+documentation/docs/doctor.mdx
+  s_588541f8890570::t_9be27972bc67e2 12-13
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_588541f8890570::t_9064be305708ef 68-69
+  s_588541f8890570::t_a15187b9accf87 57-58
+depscan/lib/scan_directory.py
+  s_588541f8890570::t_c8b050def4c4fb 610-641
+documentation/docs/python-api.mdx
+  s_588541f8890570::t_cbf3a49ffef804 27
+  s_588541f8890570::t_29f264ef56b528 45-46,55-56,59-61,65
+documentation/docs/output/scan-directory.mdx
+  s_588541f8890570::t_29bbb994b9948f 1-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db3b74fb15a5fa3042cbabc5812d93ff3712c87d",
+  "prompts": {},
+  "sessions": {
+    "s_588541f8890570": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_01cbd196-55fc-41c0-9d49-84a8d7f69548",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
