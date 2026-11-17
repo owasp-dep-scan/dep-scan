@@ -843,8 +843,31 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
             options.reports_dir = os.path.join(
                 base_reports_dir, f"{index}-{_target_directory_name(target)}"
             )
+        elif kind == "bom-dir" and _no_reports_dir_requested(args, internal):
+            # v6's reuse rule: a lone BOM directory target with no reports
+            # directory requested writes its reports into the BOM directory,
+            # so the scan directory, the VDR and the findings land together
+            # and the directory loads back. The internal reports directory
+            # is never empty (the env variable or <cwd>/reports), so the
+            # pipeline's own rule cannot fire from this verb.
+            options.reports_dir = os.path.realpath(target)
         outcomes.append(_scan_one(options, resolution, doctor_report))
     return outcomes
+
+
+def _no_reports_dir_requested(args: argparse.Namespace, internal) -> bool:
+    """Whether nothing named a reports directory for this invocation.
+
+    The command line (``--reports-dir`` passed), the ``DEPSCAN_REPORTS_DIR``
+    environment variable and a config file each count as naming one; the
+    config file shows through as an internal value away from the built-in
+    default of ``<cwd>/reports``.
+    """
+    if "reports_dir" in vars(args):
+        return False
+    if os.getenv("DEPSCAN_REPORTS_DIR"):
+        return False
+    return internal.reports_dir == os.path.join(os.getcwd(), "reports")
 
 
 def _apply_target_options(options, target: str, kind: str, args, resolution) -> None:
