@@ -18,7 +18,7 @@ The bundled `docker-compose.yml` now configures the dep-scan service with a deve
 Alternatively, start the server directly:
 
 ```bash
-depscan --server --server-host 127.0.0.1 --server-port 7070
+depscan serve --server-host 127.0.0.1 --server-port 7070
 ```
 
 Local-only binds such as `127.0.0.1` continue to work without additional configuration.
@@ -27,7 +27,7 @@ To bind the dep-scan server to a non-local address, set an API key first.
 
 ```bash
 export DEPSCAN_SERVER_API_KEY="change-this-before-production"
-depscan --server --server-host 0.0.0.0 --server-port 7070
+depscan serve --server-host 0.0.0.0 --server-port 7070
 ```
 
 All authenticated requests can then supply the key using either `X-API-Key` or `Authorization: Bearer ...`.
@@ -39,7 +39,7 @@ If you need the old behavior for a short-lived trusted development setup, opt in
 
 ```bash
 export DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true
-depscan --server --server-host 0.0.0.0 --server-port 7070
+depscan serve --server-host 0.0.0.0 --server-port 7070
 ```
 
 ### Browser and Host header checks
@@ -61,7 +61,7 @@ With `DEPSCAN_SERVER_API_KEY` set, any host name is accepted, because a rebound 
 To scan git URLs, cdxgen server is mandatory. Use the argument `--cdxgen-server` to pass the url.
 
 ```bash
-depscan --server --server-host 127.0.0.1 --server-port 7070 --cdxgen-server http://127.0.0.1:9090
+depscan serve --server-host 127.0.0.1 --server-port 7070 --cdxgen-server http://127.0.0.1:9090
 ```
 
 The server listens for requests on the `/scan` endpoint. The `type` parameter is mandatory for all scan requests.
@@ -116,7 +116,7 @@ Access to the `/scan` endpoint can be restricted based on the client's IP addres
 
 ```bash
 export DEPSCAN_SERVER_API_KEY="change-this-before-production"
-depscan --server \
+depscan serve \
   --server-host 0.0.0.0 \
   --server-port 7070 \
   --server-allowed-hosts 10.0.1.100 10.0.1.101 \
