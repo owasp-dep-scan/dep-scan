@@ -11,11 +11,14 @@ from xbom_lib import golem as golem_mod
 from xbom_lib.golem import (
     DEFAULT_CALLGRAPH_MODE,
     DEFAULT_DATAFLOW_MODE,
+    CGO_ALLOW_ENV_VARS,
     _build_golem_args,
     _build_hardened_go_env,
     bundled_golem_path,
     find_golem_binary,
     go_toolchain_available,
+    go_toolchain_has_cgo_fixes,
+    go_toolchain_version,
     run_golem,
 )
 
@@ -273,6 +276,229 @@ def test_hardened_env_respects_user_goflags(monkeypatch):
     monkeypatch.setenv("GOFLAGS", "-mod=mod")
     env = _build_hardened_go_env("auto")
     assert env["GOFLAGS"] == "-mod=mod"
+
+
+# ---------------------------------------------------------------------------
+# cgo is forced off unless the operator opted in
+# ---------------------------------------------------------------------------
+
+
+def _clear_cgo_env(monkeypatch):
+    monkeypatch.delenv("CGO_ENABLED", raising=False)
+    for var in CGO_ALLOW_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_hardened_env_forces_cgo_off_over_caller_env(monkeypatch):
+    """CGO_ENABLED=0 and no CGO_*_ALLOW, even when the caller's environment
+    sets them. CI images export CGO_ENABLED=1 for their own builds; that must
+    not turn cgo on for a scan."""
+    _clear_cgo_env(monkeypatch)
+    monkeypatch.setenv("CGO_ENABLED", "1")
+    monkeypatch.setenv("CGO_CFLAGS_ALLOW", ".*")
+    monkeypatch.setenv("CGO_LDFLAGS_ALLOW", "-Wl,.*")
+    monkeypatch.setenv("CGO_CPPFLAGS_ALLOW", "-I.*")
+    env = _build_hardened_go_env("auto")
+    assert env["CGO_ENABLED"] == "0"
+    for var in CGO_ALLOW_ENV_VARS:
+        assert var not in env
+
+
+def test_hardened_env_cgo_opt_in_keeps_caller_values(monkeypatch):
+    """The opt-in keeps the caller's CGO_ENABLED and CGO_*_ALLOW values."""
+    _clear_cgo_env(monkeypatch)
+    monkeypatch.setenv("CGO_ENABLED", "1")
+    monkeypatch.setenv("CGO_CFLAGS_ALLOW", ".*")
+    monkeypatch.setenv("CGO_LDFLAGS_ALLOW", "-Wl,.*")
+    env = _build_hardened_go_env("auto", allow_cgo=True)
+    assert env["CGO_ENABLED"] == "1"
+    assert env["CGO_CFLAGS_ALLOW"] == ".*"
+    assert env["CGO_LDFLAGS_ALLOW"] == "-Wl,.*"
+
+
+def test_hardened_env_cgo_opt_in_defaults_cgo_enabled_to_1(monkeypatch):
+    """Without a caller value, the opt-in enables cgo explicitly."""
+    _clear_cgo_env(monkeypatch)
+    env = _build_hardened_go_env("auto", allow_cgo=True)
+    assert env["CGO_ENABLED"] == "1"
+
+
+def test_run_golem_env_forces_cgo_off(stub_binary, monkeypatch, tmp_path):
+    """The subprocess env run_golem hands over has cgo off by default, even
+    when the caller's environment sets CGO_ENABLED and CGO_*_ALLOW."""
+    _clear_cgo_env(monkeypatch)
+    monkeypatch.setenv("CGO_ENABLED", "1")
+    monkeypatch.setenv("CGO_CFLAGS_ALLOW", ".*")
+    out_path = str(tmp_path / "golem.json")
+    captured = {}
+
+    def fake_run(full_cmd, **kwargs):
+        captured["env"] = kwargs.get("env", {})
+        import json
+
+        with open(out_path, "w") as f:
+            json.dump({"tool": {"name": "golem"}, "callGraph": {"nodes": []}}, f)
+        from subprocess import CompletedProcess
+
+        return CompletedProcess(args=full_cmd, returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = run_golem(str(tmp_path), out_path)
+    assert result.success
+    assert captured["env"]["CGO_ENABLED"] == "0"
+    assert "CGO_CFLAGS_ALLOW" not in captured["env"]
+
+
+# ---------------------------------------------------------------------------
+# Go release check behind the cgo opt-in
+# ---------------------------------------------------------------------------
+
+
+def _fake_go_version(monkeypatch, output, rc=0):
+    """Point ``go version`` at fixed output and let the golem run succeed.
+
+    The fake answers every subprocess call: a command carrying ``go version``
+    gets ``output``, and a golem invocation (it carries ``--out``) writes a
+    minimal valid report so the caller sees a successful run.
+    """
+
+    import json
+    from subprocess import CompletedProcess
+
+    def fake_run(full_cmd, **kwargs):
+        parts = [str(part) for part in full_cmd]
+        if "--out" in parts:
+            out_path = parts[parts.index("--out") + 1]
+            with open(out_path, "w") as f:
+                json.dump({"tool": {"name": "golem"}, "callGraph": {"nodes": []}}, f)
+            return CompletedProcess(args=full_cmd, returncode=0, stdout="ok", stderr="")
+        return CompletedProcess(args=full_cmd, returncode=rc, stdout=output, stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+
+
+@pytest.mark.parametrize(
+    "output,expected",
+    [
+        ("go version go1.26.10 X:boringcrypto linux/amd64", "go1.26.10"),
+        ("go version go1.27.4 darwin/arm64", "go1.27.4"),
+        ("go version go1.26.11 linux/amd64", "go1.26.11"),
+        ("go version go1.28rc1 linux/amd64", "go1.28rc1"),
+        ("go version go1.29beta1 linux/amd64", "go1.29beta1"),
+        ("go version devel +2a4b6c8 Darwin/arm64", "devel"),
+    ],
+)
+def test_go_toolchain_version_parses_release_forms(monkeypatch, output, expected):
+    """go_toolchain_version reads the release token out of ``go version``
+    output, including the boringcrypto annotation, release candidates, beta
+    builds and source builds."""
+    _fake_go_version(monkeypatch, output)
+    assert go_toolchain_version() == expected
+
+
+def test_go_toolchain_version_none_when_missing(monkeypatch):
+    _fake_go_version(monkeypatch, "", rc=1)
+    assert go_toolchain_version() is None
+
+
+@pytest.mark.parametrize(
+    "release,patched",
+    [
+        ("go1.26.10", False),
+        ("go1.26.11", True),
+        ("go1.26.12", True),
+        ("go1.27.3", False),
+        ("go1.27.4", True),
+        ("go1.27rc2", False),
+        ("go1.28rc1", True),
+        ("go1.29beta1", True),
+        ("go1.25.5", False),
+        ("go1.24.0", False),
+        ("devel", False),
+        ("go1.x", False),
+        (None, False),
+    ],
+)
+def test_go_toolchain_has_cgo_fixes(release, patched):
+    """The 1.26 line needs 1.26.11, the 1.27 line needs 1.27.4, older lines
+    are unpatched, release candidates of later lines count as fixed, and a
+    release that cannot be dated counts as unpatched so the operator is
+    warned."""
+    assert go_toolchain_has_cgo_fixes(release) is patched
+
+
+def test_run_golem_cgo_opt_in_warns(stub_binary, monkeypatch, tmp_path, caplog):
+    """The opt-in logs one warning about the C compiler and a second one when
+    the toolchain predates the fixed releases."""
+    import logging
+
+    _clear_cgo_env(monkeypatch)
+    _fake_go_version(monkeypatch, "go version go1.26.10 X:boringcrypto linux/amd64")
+    out_path = str(tmp_path / "golem.json")
+    result = run_golem(
+        str(tmp_path), out_path, allow_cgo=True, logger=logging.getLogger("golem-test")
+    )
+    assert result.success
+    messages = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any("C compiler will run with flags taken from the scanned code" in m for m in messages)
+    assert any("go1.26.11" in m and "go1.27.4" in m for m in messages)
+
+
+def test_run_golem_cgo_opt_in_warns_once_when_patched(stub_binary, monkeypatch, tmp_path, caplog):
+    """A patched toolchain gets the cgo warning but not the release warning."""
+    import logging
+
+    _clear_cgo_env(monkeypatch)
+    _fake_go_version(monkeypatch, "go version go1.27.4 darwin/arm64")
+    out_path = str(tmp_path / "golem.json")
+    result = run_golem(
+        str(tmp_path), out_path, allow_cgo=True, logger=logging.getLogger("golem-test")
+    )
+    assert result.success
+    messages = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert any("C compiler will run with flags taken from the scanned code" in m for m in messages)
+    assert not any("predates the releases" in m for m in messages)
+
+
+def test_run_golem_no_cgo_warning_by_default(monkeypatch, tmp_path, caplog):
+    """Without the opt-in, no cgo warnings are logged and the release probe
+    does not run a second time."""
+    import logging
+
+    fake_bin = str(tmp_path / "golem")
+    monkeypatch.setattr(golem_mod, "find_golem_binary", lambda logger=None: fake_bin)
+    monkeypatch.setattr(golem_mod, "get_golem_version", lambda binary, logger=None: "2.5.2")
+    monkeypatch.setattr(golem_mod, "_peek_report", lambda out_path: (True, "ok"))
+    monkeypatch.setattr(golem_mod, "_check_truncation", lambda out_path, logger=None: None)
+    _clear_cgo_env(monkeypatch)
+    calls = []
+    import json
+    from subprocess import CompletedProcess
+
+    def fake_run(full_cmd, **kwargs):
+        calls.append([str(part) for part in full_cmd])
+        parts = [str(part) for part in full_cmd]
+        if "--out" in parts:
+            out_path = parts[parts.index("--out") + 1]
+            with open(out_path, "w") as f:
+                json.dump({"tool": {"name": "golem"}, "callGraph": {"nodes": []}}, f)
+            return CompletedProcess(args=full_cmd, returncode=0, stdout="ok", stderr="")
+        return CompletedProcess(
+            args=full_cmd,
+            returncode=0,
+            stdout="go version go1.26.10 linux/amd64",
+            stderr="",
+        )
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    result = run_golem(
+        str(tmp_path), str(tmp_path / "golem.json"), logger=logging.getLogger("golem-test")
+    )
+    assert result.success
+    messages = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert not any("C compiler" in m for m in messages)
+    # One `go version` probe (availability), no second probe for the release.
+    assert sum(1 for cmd in calls if cmd[1:2] == ["version"]) == 1
 
 
 # ---------------------------------------------------------------------------

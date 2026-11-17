@@ -67,7 +67,7 @@ Reachability is on by default under `--profile research`, which is what dep-scan
 depscan -i ./my-rust-app -o ./reports --profile research
 ```
 
-**Go (golem).** dep-scan invokes [golem](https://github.com/cdxgen/cdxgen-plugins-bin) directly for Go projects (needs `go` on `PATH`), marking a module Reachable when its functions are on a traced path. Use `--go-analyzer-network offline` for untrusted repos with a warm module cache. See the [Go reachability guide](https://depscan.readthedocs.io/languages/go-reachability).
+**Go (golem).** dep-scan invokes [golem](https://github.com/cdxgen/cdxgen-plugins-bin) directly for Go projects (needs `go` on `PATH`), marking a module Reachable when its functions are on a traced path. golem runs with cgo off, so packages that need cgo are not loaded and their reachability is missing; pass `--go-analyzer-cgo` for trusted input. Use `--go-analyzer-network offline` for untrusted repos with a warm module cache. See the [Go reachability guide](https://depscan.readthedocs.io/languages/go-reachability).
 
 ```bash
 depscan -i ./my-go-app -o ./reports -t go

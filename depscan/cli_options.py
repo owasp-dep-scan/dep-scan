@@ -160,11 +160,25 @@ def build_parser():
         default=os.getenv("DEPSCAN_GO_ANALYZER_NETWORK", "auto"),
         dest="go_analyzer_network",
         help="Network mode for golem (Go Source Inspector) reachability. "
-        "``auto`` (default) allows golem's package loader to download missing "
-        "modules per the user's Go env (GOFLAGS=-mod=readonly is still set to "
-        "prevent go.mod rewrites). ``offline`` sets GOPROXY=off to forbid all "
-        "downloads -- requires a warm module cache (GOMODCACHE). "
+        "golem runs with cgo off, so packages that need cgo are not loaded "
+        "and their reachability is missing; pass --go-analyzer-cgo to enable "
+        "cgo for trusted input. ``auto`` (default) allows golem's package "
+        "loader to download missing modules per the user's Go env "
+        "(GOFLAGS=-mod=readonly is still set to prevent go.mod rewrites). "
+        "``offline`` sets GOPROXY=off to forbid all downloads -- requires a "
+        "warm module cache (GOMODCACHE). "
         "Set DEPSCAN_GOLEM_BINARY to point at a non-PATH golem binary.",
+    )
+    parser.add_argument(
+        "--go-analyzer-cgo",
+        action="store_true",
+        default=os.getenv("DEPSCAN_GO_ANALYZER_CGO", "") in ("true", "1"),
+        dest="go_analyzer_cgo",
+        help="Allow cgo while golem loads Go packages. Default is cgo off: "
+        "packages that need cgo are not loaded and their reachability is "
+        "missing. With this flag the C compiler runs with flags taken from "
+        "the scanned code and its dependencies, so use it only for input you "
+        "trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.",
     )
     parser.add_argument(
         "--dotnet-analyzer-mode",

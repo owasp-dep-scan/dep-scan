@@ -603,6 +603,10 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     report_path = os.path.join(bom_dir, "golem.json")
     network_mode = options.get("go_analyzer_network") or "auto"
     deep = bool(options.get("deep_scan") or options.get("deep"))
+    # cgo stays off unless the operator opted in with --go-analyzer-cgo; with
+    # cgo off, packages that need cgo are not loaded and their reachability is
+    # missing.
+    allow_cgo = bool(options.get("go_analyzer_cgo"))
     with console.status(f"Running golem Go reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_golem(
             src_dir,
@@ -611,6 +615,7 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             dataflow_mode=GOLEM_DEFAULT_DATAFLOW_MODE,
             network_mode=network_mode,
             deep=deep,
+            allow_cgo=allow_cgo,
             logger=LOG,
         )
     if res.skipped or not res.success or not os.path.exists(report_path):
