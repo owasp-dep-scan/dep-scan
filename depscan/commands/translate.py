@@ -244,14 +244,20 @@ OPTION_TABLE: tuple[OptionRow, ...] = (
         dest="bom",
         kind=TARGET,
         v7_display="depscan scan <bom-file>",
-        note="The value becomes the positional target; the kind is bom.",
+        note="The value becomes the positional target; the kind is bom. A --src "
+        "given with it is dropped, because a BOM scan generates nothing from "
+        "the source directory.",
     ),
     OptionRow(
         v6_flags=("--bom-dir",),
         dest="bom_dir",
         kind=TARGET,
-        v7_display="depscan scan <dir>",
-        note="The value becomes the positional target; the kind is bom-dir.",
+        v7_display="depscan scan <dir> --target-kind bom-dir",
+        note="The value becomes the positional target with its kind forced, as "
+        "--bom-dir forced it (detection reads a directory holding other JSON "
+        "files, such as OpenAPI documents, as source); a --src given with it is "
+        "dropped, because a BOM directory scan generates nothing from the "
+        "source directory.",
     ),
     OptionRow(
         v6_flags=("--purl",),
@@ -607,6 +613,32 @@ def _parse_explicit(
     return parsed, explicit
 
 
+#: The v6 target options that replaced the source directory as the input,
+#: with the kind the translation forces. A purl and a CycloneDX file are
+#: always detected as such; a BOM directory is not when it holds other JSON.
+_INPUT_TARGET_KINDS = {"bom_dir": "bom-dir", "bom": None, "search_purl": None}
+
+
+def _target_words(explicit: dict[str, Any]) -> list[str]:
+    """The positional targets, with ``--target-kind`` where v6 forced a kind.
+
+    v6 ``--bom-dir`` named the kind, so its translation forces it; detection
+    alone would read a BOM directory that also holds OpenAPI or
+    other JSON files as a source directory. With ``--bom-dir``, ``--bom`` or
+    ``--purl``, a ``--src`` was not scanned, so it is dropped rather than
+    turned into a second target.
+    """
+    for dest, kind in _INPUT_TARGET_KINDS.items():
+        if dest in explicit:
+            forced = ["--target-kind", kind] if kind else []
+            return [str(explicit[dest]), *forced]
+    return [
+        str(explicit[row.dest])
+        for row in OPTION_TABLE
+        if row.kind == TARGET and row.dest in explicit
+    ]
+
+
 def translate(argv: Sequence[str]) -> str | None:
     """Translate a v6 argv into the v7 command line.
 
@@ -628,10 +660,7 @@ def translate(argv: Sequence[str]) -> str | None:
         verb = "serve"
     else:
         verb = "scan"
-    words: list[str] = ["depscan", verb]
-    for row in OPTION_TABLE:
-        if row.kind == TARGET and row.dest in explicit:
-            words.append(str(explicit[row.dest]))
+    words: list[str] = ["depscan", verb, *_target_words(explicit)]
     for row in OPTION_TABLE:
         if row.kind not in (FLAG, CHECKS) or row.dest not in explicit:
             continue

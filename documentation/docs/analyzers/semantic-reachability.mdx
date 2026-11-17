@@ -26,7 +26,7 @@ Instead of scanning a source directory, you generate the lifecycle BOMs yourself
 
 ```shell
 # Recommended: analyze a directory of lifecycle BOMs
-depscan scan <bom directory> --reports-dir <reports directory> \
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> \
   --reachability-analyzer SemanticReachability --explain
 ```
 
@@ -38,7 +38,7 @@ depscan scan <source directory> --reports-dir <reports directory> -t <language> 
   --reachability-analyzer SemanticReachability --explain
 ```
 
-For multiple images, such as a docker-compose setup, build the images and generate a BOM for each, then collect them. The steps are: run `docker compose build`; generate a `.cdx.json` BOM per image with `cdxgen -t docker -o reports/<name>.cdx.json <image>`; place every BOM in a single directory; run `depscan scan <that directory>`. Ensure the BOM files all correspond to the same version of the source code, because mixing versions produces duplicate-looking component names and unreliable reachability. Use `DEPSCAN_BUILD_DIR` to point at a build directory when the build output is not under the source root; blint's SBOM command runs against that directory during lifecycle analysis.
+For multiple images, such as a docker-compose setup, build the images and generate a BOM for each, then collect them. The steps are: run `docker compose build`; generate a `.cdx.json` BOM per image with `cdxgen -t docker -o reports/<name>.cdx.json <image>`; place every BOM in a single directory; run `depscan scan <that directory> --target-kind bom-dir`. Ensure the BOM files all correspond to the same version of the source code, because mixing versions produces duplicate-looking component names and unreliable reachability. Use `DEPSCAN_BUILD_DIR` to point at a build directory when the build output is not under the source root; blint's SBOM command runs against that directory during lifecycle analysis.
 
 ## Resources and runtime
 
@@ -54,7 +54,7 @@ When `SemanticReachability` is enabled and `--explain` is passed, the `--explana
 - `LLMPrompts` generates prompt text for use with an LLM when you want code-fix suggestions, which lets you hand the reachability evidence to a downstream model.
 
 ```shell
-depscan scan <bom directory> --reports-dir <reports directory> \
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> \
   --reachability-analyzer SemanticReachability --explain --explanation-mode LLMPrompts
 ```
 

@@ -164,7 +164,7 @@ jobs:
             --noupx
           Get-ChildItem dist | Format-Table Name,Length,Mode
 
-      - name: Smoke test - --version and --help
+      - name: Smoke test - version and --help
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'

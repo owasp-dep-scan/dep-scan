@@ -197,7 +197,7 @@ jobs:
           codesign -vvv dist/${{ matrix.binary_name }}
           ls -la dist/
 
-      - name: Smoke test - --version and --help
+      - name: Smoke test - version and --help
         run: |
           set -euo pipefail
           echo "::group::depscan version"

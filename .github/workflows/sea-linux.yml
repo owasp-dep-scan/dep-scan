@@ -130,7 +130,7 @@ jobs:
             --noupx
           ls -la dist/
 
-      - name: Smoke test - --version and --help
+      - name: Smoke test - version and --help
         run: |
           set -euo pipefail
           echo "::group::depscan version"

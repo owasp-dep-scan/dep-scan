@@ -59,7 +59,7 @@ dep-scan computes reachability for seven language ecosystems through four slicer
 
 For the concepts behind reachability and prioritization, read the [reachability model](https://depscan.readthedocs.io/concepts/reachability-model) and [prioritization](https://depscan.readthedocs.io/concepts/prioritization) chapters. For per-language worked examples, see the [Language Guides](https://depscan.readthedocs.io/languages/rust-reachability). For the compliance story (VDR and CSAF VEX), see the [VDR guide](https://depscan.readthedocs.io/output/vdr-guide) and the [CSAF VEX guide](https://depscan.readthedocs.io/output/vex-csaf-guide).
 
-Reachability is on by default under `--profile research`, which is what dep-scan uses when reachability is on. The commands below are enough to get started; the per-language guides cover binary resolution, backend and network safety, restore requirements, and worked examples on the in-repo fixtures.
+Reachability is on by default: dep-scan asks cdxgen for its research BOM profile, which writes the slices the analyzers read. The commands below are enough to get started; the per-language guides cover binary resolution, backend and network safety, restore requirements, and worked examples on the in-repo fixtures.
 
 **Rust (rusi).** cdxgen runs [rusi](https://github.com/cdxgen/cdxgen-plugins-bin) and persists its report, which dep-scan converts into the shared pipeline, so a crate that is actually called (for example `time::now()` for RUSTSEC-2020-0071) is Reachable while one merely present is not. See the [Rust reachability guide](https://depscan.readthedocs.io/languages/rust-reachability).
 
@@ -85,7 +85,7 @@ depscan scan ./my-dotnet-app -o ./reports -t dotnet
 depscan scan ./my-java-app --bom-profile research -t java -o ./reports --explain
 ```
 
-To move beyond framework-forward reachability to endpoint, service, and post-build tiers, pass `--reachability-analyzer SemanticReachability` with a directory of lifecycle BOMs as the target. See the [semantic reachability guide](https://depscan.readthedocs.io/analyzers/semantic-reachability).
+To move beyond framework-forward reachability to endpoint, service, and post-build tiers, pass `--reachability-analyzer SemanticReachability` with a directory of lifecycle BOMs as the target and `--target-kind bom-dir`. See the [semantic reachability guide](https://depscan.readthedocs.io/analyzers/semantic-reachability).
 
 ### Clear insights about CVEs
 

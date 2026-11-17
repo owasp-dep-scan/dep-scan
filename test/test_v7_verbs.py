@@ -89,7 +89,7 @@ def test_v6_invocation_exits_two_with_the_translation(monkeypatch, capsys):
     assert code == 2
     err = capsys.readouterr().err
     assert "this is a dep-scan 6 command line" in err
-    assert "The equivalent v7 command is: depscan scan x --reports-dir y" in err
+    assert "The equivalent v7 command is: depscan scan x --target-kind bom-dir --reports-dir y" in err
     assert MIGRATION_GUIDE in err
 
 

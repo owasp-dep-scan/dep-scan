@@ -80,7 +80,9 @@ def test_plain_src_scan_translates_to_scan_with_a_target():
 
 
 def test_bom_dir_scan_moves_reports_dir_to_its_long_name():
-    assert translate(["--bom-dir", "x", "-o", "y"]) == "depscan scan x --reports-dir y"
+    assert translate(["--bom-dir", "x", "-o", "y"]) == (
+        "depscan scan x --target-kind bom-dir --reports-dir y"
+    )
 
 
 def test_purl_becomes_the_target():
@@ -221,3 +223,12 @@ def test_values_with_spaces_or_leading_dashes_survive_a_paste():
 
 def test_shell_variables_stay_unquoted():
     assert translate(["-i", "${HOME}/src"]) == "depscan scan ${HOME}/src"
+
+
+def test_a_source_given_with_a_bom_input_is_not_a_second_target():
+    """v6 scanned only the BOM, BOM directory or purl when one was given."""
+    assert translate(["--src", ".", "--bom-dir", "boms"]) == (
+        "depscan scan boms --target-kind bom-dir"
+    )
+    assert translate(["--src", ".", "--bom", "b.json"]) == "depscan scan b.json"
+    assert translate(["--src", ".", "--purl", "pkg:npm/a@1"]) == "depscan scan pkg:npm/a@1"

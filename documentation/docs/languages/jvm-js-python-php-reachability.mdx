@@ -21,7 +21,7 @@ The prerequisites are per-language because atom loads and slices real source.
 - Python projects need Python 3.10 or newer; cdxgen resolves `pkg:pypi` purls from requirements, Poetry, uv, and Pipfile inputs.
 - PHP projects need PHP 7.4 or newer installed locally, though dep-scan supports scanning PHP 5.2 through 8.3. Alternatively, use the dep-scan container image, which carries the PHP runtime.
 
-Across all four, you need cdxgen and dep-scan (`npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`), and the `--profile research` setting so cdxgen persists the atom slices.
+Across all four, you need cdxgen and dep-scan (`npm install -g @cdxgen/cdxgen` and `pip install owasp-depscan`), and cdxgen's research BOM profile (`--bom-profile research` on `depscan scan`) so cdxgen persists the atom slices.
 
 ## Turning reachability on
 
@@ -63,14 +63,14 @@ For a concrete, project-scale illustration of each analyzer on a real codebase, 
 
 `FrameworkReachability` is enough for the question analysts ask most often: is the vulnerable package actually called? Move to `SemanticReachability` when you need endpoint-level, service-level, and post-build reachability on top of that answer. The semantic analyzer maps OpenAPI `x-atom-usages` usage targets onto a component's own occurrence locations (endpoint reachability), associates service tags with the nearest purl (service reachability), and matches framework and cryptographic-asset components across lifecycle SBOMs (post-build reachability).
 
-SemanticReachability needs more inputs than FrameworkReachability can provide from a single source scan, which is called the formulation problem: dep-scan cannot automatically generate all the BOMs the semantic tiers want. The recommended workflow is to build the project and container images, manually generate the necessary BOMs (source, build, container), place them in a single directory, and pass that directory to `depscan scan`.
+SemanticReachability needs more inputs than FrameworkReachability can provide from a single source scan, which is called the formulation problem: dep-scan cannot automatically generate all the BOMs the semantic tiers want. The recommended workflow is to build the project and container images, manually generate the necessary BOMs (source, build, container), place them in a single directory, and pass that directory to `depscan scan` with `--target-kind bom-dir`.
 
 ```shell
 # Recommended semantic workflow: analyze a directory of lifecycle BOMs
-depscan scan <bom directory> --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> --reachability-analyzer SemanticReachability --explain
 ```
 
-For a single container image, set `DEPSCAN_SOURCE_IMAGE` so dep-scan can generate the container BOM automatically. For multiple images, such as a docker-compose setup, build the images, generate a `.cdx.json` BOM for each with `cdxgen -t docker -o reports/<name>.cdx.json <image>`, collect them in one directory, and pass that directory to `depscan scan`. Ensure the BOM files all correspond to the same version of the source, because mixing versions produces duplicate-looking component names. Semantic analysis, including computing the atom slices, is resource-intensive: for larger codebases allocate over 64GB of memory and expect runtimes of 15 minutes or more. The full trade-offs are developed in the [Semantic reachability](../analyzers/semantic-reachability) chapter.
+For a single container image, set `DEPSCAN_SOURCE_IMAGE` so dep-scan can generate the container BOM automatically. For multiple images, such as a docker-compose setup, build the images, generate a `.cdx.json` BOM for each with `cdxgen -t docker -o reports/<name>.cdx.json <image>`, collect them in one directory, and pass that directory to `depscan scan` with `--target-kind bom-dir`. Ensure the BOM files all correspond to the same version of the source, because mixing versions produces duplicate-looking component names. Semantic analysis, including computing the atom slices, is resource-intensive: for larger codebases allocate over 64GB of memory and expect runtimes of 15 minutes or more. The full trade-offs are developed in the [Semantic reachability](../analyzers/semantic-reachability) chapter.
 
 ## Customizing the explanation
 
@@ -82,7 +82,7 @@ When `SemanticReachability` is enabled, `--explanation-mode` selects what the `-
 - `LLMPrompts`: prompt text for use with an LLM when you want code-fix suggestions.
 
 ```shell
-depscan scan <bom directory> --reports-dir <reports directory> \
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> \
   --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
 ```
 
