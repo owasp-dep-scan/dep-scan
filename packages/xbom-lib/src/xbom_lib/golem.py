@@ -19,15 +19,24 @@ fallback finds the SAME binary cdxgen uses):
 
 Safety gate (per golem THREAT_MODEL): golem has a single backend -- it loads
 packages via ``golang.org/x/tools/go/packages`` with full type/SSA info. It
-does NOT run the program and does NOT run ``go:generate``. BUT package
-loading uses the **local Go toolchain**, and module downloads **can occur**
-depending on the user's Go env (proxy/module cache). This is the analog of
-rusi's "compiler backend builds the target".
+does NOT run the program and does NOT run ``go:generate``. BUT package loading
+uses the **local Go toolchain**, and loading in this mode runs ``go list
+-compiled``, which compiles cgo packages: the machine's C compiler runs with
+flags taken from the scanned code (``#cgo`` directives, ``.syso`` files,
+``#cgo pkg-config:`` lines). Module downloads **can occur** depending on the
+user's Go env (proxy/module cache). This is the analog of rusi's "compiler
+backend builds the target".
 
 Plan:
   - Require a Go toolchain (``go version``) before invoking golem; skip
     gracefully with a diagnostic if absent (never crash).
   - Run golem with a hardened Go env by default: ``GOFLAGS=-mod=readonly``.
+  - Force cgo off: ``CGO_ENABLED=0`` and no ``CGO_*_ALLOW`` variables, even
+    when the caller's environment sets them (see :func:`apply_cgo_env`, which
+    the cdxgen generators share). Packages that need cgo are not loaded and
+    their reachability is missing. ``--go-analyzer-cgo`` opts in, keeps the
+    caller's cgo environment, and warns about the C compiler and about
+    toolchains older than go1.26.11 / go1.27.4.
   - ``--go-analyzer-network offline`` sets ``GOPROXY=off`` to forbid
     downloads entirely (requires a warm module cache). Default ``auto``.
   - ``--include-all-flows`` is ALWAYS passed: without it, golem drops
@@ -40,6 +49,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from logging import Logger
@@ -76,6 +86,30 @@ INCLUDE_ALL_FLOWS = True
 # Generous for large Go workspaces; override via ``DEPSCAN_GOLEM_TIMEOUT``
 # (seconds).
 DEFAULT_TIMEOUT = int(os.environ.get("DEPSCAN_GOLEM_TIMEOUT", "1800") or 1800)
+
+# The environment variables that re-enable #cgo flags Go refuses for safety.
+# A scanned package's ``#cgo`` directives, ``.syso`` files or
+# ``#cgo pkg-config:`` lines can make the C compiler or linker run code on the
+# machine that loads the package, and these variables re-allow the refused
+# flags for every package in the build. golem's package loader compiles cgo
+# packages, so none of them may pass through to golem by default.
+CGO_ALLOW_ENV_VARS = (
+    "CGO_CFLAGS_ALLOW",
+    "CGO_CPPFLAGS_ALLOW",
+    "CGO_CXXFLAGS_ALLOW",
+    "CGO_FFLAGS_ALLOW",
+    "CGO_LDFLAGS_ALLOW",
+)
+
+# The Go releases that closed the cgo flag holes, per release line. A
+# toolchain older than these (or older than the whole 1.26 line) still lets a
+# package's flags reach the C compiler when cgo is on.
+GO_CGO_PATCHED_RELEASES = {"1.26": (1, 26, 11), "1.27": (1, 27, 4)}
+
+# ``go version`` prints ``go version go1.26.10 X:boringcrypto linux/amd64``;
+# the second token carries the release (``go1.26.10``, ``go1.28rc1``,
+# ``go1.29beta1``) or the word ``devel`` for a source build.
+_GO_RELEASE_RE = re.compile(r"^go(\d+)\.(\d+)(?:\.(\d+))?(?:(?:rc|beta)\d+)?$")
 
 
 @dataclass
@@ -189,6 +223,17 @@ def go_toolchain_available(logger: Optional[Logger] = None) -> bool:
     function. We check this explicitly so we can skip gracefully with a clear
     diagnostic rather than letting golem fail with an opaque error.
     """
+    return go_toolchain_release_probe(logger=logger)[0]
+
+
+def go_toolchain_release_probe(logger: Optional[Logger] = None) -> tuple:
+    """Run ``go version`` once and return ``(available, release)``.
+
+    ``available`` is True when a Go toolchain answered, whether or not its
+    output could be parsed. ``release`` is the token naming the release, such
+    as ``go1.26.10``, ``go1.28rc1`` or ``go1.29beta1``; a source build reports
+    ``devel`` and an unparseable report reports ``None``.
+    """
     try:
         cp = subprocess.run(
             build_command(["go", "version"]),
@@ -203,12 +248,46 @@ def go_toolchain_available(logger: Optional[Logger] = None) -> bool:
     except (OSError, subprocess.SubprocessError):
         if logger:
             logger.debug("go version invocation failed or 'go' not on PATH")
-        return False
+        return False, None
     if cp.returncode != 0:
         if logger:
             logger.debug("go version returned rc=%s", cp.returncode)
+        return False, None
+    for tok in (cp.stdout or "").split():
+        if tok == "devel" or _GO_RELEASE_RE.match(tok):
+            return True, tok
+    return True, None
+
+
+def go_toolchain_version(logger: Optional[Logger] = None) -> Optional[str]:
+    """Return the Go release token from ``go version``, or ``None``."""
+    return go_toolchain_release_probe(logger=logger)[1]
+
+
+def go_toolchain_has_cgo_fixes(release: Optional[str]) -> bool:
+    """Return True if the Go release named by ``release`` includes the cgo
+    flag fixes.
+
+    The fixes landed in go1.26.11 and go1.27.4, so anything newer on those
+    lines and every release candidate of a later line counts as fixed. A
+    ``devel`` build or a release that cannot be parsed returns False: it
+    cannot be dated, so the operator who enabled cgo is warned rather than
+    reassured.
+    """
+    if not release or release == "devel":
         return False
-    return True
+    match = _GO_RELEASE_RE.match(release)
+    if not match:
+        return False
+    major, minor = int(match.group(1)), int(match.group(2))
+    # A release candidate carries no patch number and counts as patch 0.
+    patch = int(match.group(3) or 0)
+    threshold = GO_CGO_PATCHED_RELEASES.get(f"{major}.{minor}")
+    if threshold is not None:
+        return (major, minor, patch) >= threshold
+    # A release candidate of a line newer than the fixed ones carries the
+    # fixes from the start.
+    return (major, minor) > max(tuple(int(p) for p in key.split(".")) for key in GO_CGO_PATCHED_RELEASES)
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +295,28 @@ def go_toolchain_available(logger: Optional[Logger] = None) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def _build_hardened_go_env(network_mode: str) -> dict:
+def apply_cgo_env(env: dict, allow_cgo: bool) -> dict:
+    """Apply the cgo rule to ``env`` in place and return it.
+
+    With ``allow_cgo`` the caller's ``CGO_ENABLED`` is kept, defaulting to 1.
+    Without it, ``CGO_ENABLED`` is forced to 0 and every ``CGO_*_ALLOW``
+    variable is removed even when the caller's environment sets them. This is
+    the one place that knows the rule; the golem runner and the cdxgen
+    generators both call it, because cdxgen can also end up running golem for
+    a Go project.
+    """
+    if allow_cgo:
+        # The operator opted in: keep their CGO_ENABLED, defaulting to 1 so a
+        # plain environment still loads cgo packages.
+        env.setdefault("CGO_ENABLED", "1")
+    else:
+        env["CGO_ENABLED"] = "0"
+        for var in CGO_ALLOW_ENV_VARS:
+            env.pop(var, None)
+    return env
+
+
+def _build_hardened_go_env(network_mode: str, allow_cgo: bool = False) -> dict:
     """Build a hardened Go environment for golem's subprocess.
 
     - Default: ``GOFLAGS=-mod=readonly`` (prevents go from rewriting go.mod
@@ -227,6 +327,15 @@ def _build_hardened_go_env(network_mode: str) -> dict:
     - Respects the user's existing ``GOFLAGS``/``GOPROXY``/``GONOSUMCHECK``
       only when they are already set; our defaults do not override explicit
       user configuration.
+    - cgo is the exception to that rule and is always forced off (see
+      :func:`apply_cgo_env`): golem's package loader compiles cgo packages,
+      and a package's ``#cgo`` directives would otherwise run flags on the C
+      compiler with the caller's ``CGO_ENABLED`` and ``CGO_*_ALLOW`` values
+      applied. Those are removed even when the caller's environment sets
+      them, because many CI images export ``CGO_ENABLED=1`` for their own
+      builds and that choice must not silently turn cgo on for a scan of
+      untrusted code. Pass ``allow_cgo=True`` only for an explicit operator
+      opt-in (``--go-analyzer-cgo``).
     """
     env = os.environ.copy()
     # Harden module resolution: never let go rewrite go.mod on untrusted input
@@ -237,7 +346,7 @@ def _build_hardened_go_env(network_mode: str) -> dict:
         # GOPROXY=off forbids all module downloads. golem will fail rather
         # than silently fetch code from the network.
         env["GOPROXY"] = "off"
-    return env
+    return apply_cgo_env(env, allow_cgo)
 
 
 def _dataflow_worker_count() -> int:
@@ -321,6 +430,7 @@ def run_golem(
     dataflow_mode: str = DEFAULT_DATAFLOW_MODE,
     network_mode: str = "auto",
     deep: bool = False,
+    allow_cgo: bool = False,
     logger: Optional[Logger] = None,
     timeout: Optional[int] = DEFAULT_TIMEOUT,
 ) -> GolemResult:
@@ -334,6 +444,14 @@ def run_golem(
     ``network_mode``: ``"auto"`` (default) allows golem's package loader to
     download missing modules per the user's Go env. ``"offline"`` sets
     ``GOPROXY=off`` to forbid all downloads (requires a warm module cache).
+
+    ``allow_cgo``: cgo stays off by default, so packages that need cgo are
+    not loaded and their reachability is missing. With ``allow_cgo=True``
+    (the ``--go-analyzer-cgo`` opt-in) the package loader compiles cgo
+    packages with the caller's ``CGO_ENABLED`` and ``CGO_*_ALLOW`` values,
+    which means the C compiler runs with flags taken from the scanned code
+    and its dependencies; the toolchain release is checked and warned about
+    when it predates the Go releases that refuse those flags.
     """
     binary = find_golem_binary(logger=logger)
     if not binary:
@@ -353,6 +471,22 @@ def run_golem(
             )
         return GolemResult(success=False, skipped=True, command_output="go toolchain not found")
 
+    if allow_cgo and logger:
+        logger.warning(
+            "cgo is enabled for this golem run (--go-analyzer-cgo): the C "
+            "compiler will run with flags taken from the scanned code and its "
+            "dependencies. Use this only for input you trust."
+        )
+        release = go_toolchain_version(logger=logger)
+        if not go_toolchain_has_cgo_fixes(release):
+            logger.warning(
+                "Go %s is not known to refuse unsafe cgo flags (go1.26.11 "
+                "and go1.27.4 fixed these). Upgrade the Go toolchain to "
+                "go1.26.11, go1.27.4 or newer before scanning untrusted input "
+                "with cgo enabled.",
+                release or "(unrecognised release)",
+            )
+
     version = get_golem_version(binary, logger=logger)
     if version and logger:
         logger.debug("golem version: %s", version)
@@ -370,7 +504,7 @@ def run_golem(
     if logger:
         logger.debug("Executing '%s'", " ".join(full_cmd))
 
-    env = _build_hardened_go_env(network_mode)
+    env = _build_hardened_go_env(network_mode, allow_cgo=allow_cgo)
     try:
         cp = subprocess.run(
             build_command(full_cmd),

@@ -171,6 +171,8 @@ A practical threat here is not necessarily classic command injection. The code l
 
 `cdxgen_args` deserves special attention during review because it is intentionally flexible. Flexibility is useful for operators, but it also means a caller can influence downstream tool behavior in ways that may bypass normal expectations.
 
+Go reachability adds a compile-shaped surface of its own. Both golem (which dep-scan runs directly) and cdxgen (which can run golem for a Go project) load Go packages through the local Go toolchain in a mode that needs compiled files, so the toolchain compiles cgo packages and the C compiler and linker of the scan machine run with flags taken from the scanned code: a package's `#cgo` directives, `.syso` files and `#cgo pkg-config:` lines all reach them. The `CGO_CFLAGS_ALLOW`, `CGO_CPPFLAGS_ALLOW`, `CGO_CXXFLAGS_ALLOW`, `CGO_FFLAGS_ALLOW` and `CGO_LDFLAGS_ALLOW` variables of the operator's environment would re-enable flags the toolchain refuses, for every package in the build. dep-scan runs golem and every local cdxgen invocation with `CGO_ENABLED=0` and without those variables, and the container generator passes the same rule into the container. The `--go-analyzer-cgo` opt-in restores the caller's cgo environment for an input the operator chose to trust, which puts the flags of the scanned code back on the compiler's command line; the remote cdxgen server mode is outside this rule because dep-scan does not control that server's environment.
+
 ### 3. BOM parsing and report generation
 
 `dep-scan` reads both JSON and XML BOMs. XML parsing uses `defusedxml`, which is an important existing mitigation against classic XML parser abuse.
@@ -282,6 +284,8 @@ Server mode defaults are cautious. Non-local binds require an API key or an expl
 XML parsing uses `defusedxml`.
 
 The metadata audit path uses timeouts and a circuit breaker.
+
+Go package loading runs with cgo off. The golem runner and every local cdxgen invocation set `CGO_ENABLED=0` and drop the `CGO_*_ALLOW` variables unless the operator passes `--go-analyzer-cgo`, so the flags of the scanned code do not reach the C compiler by default even when the CI image exports `CGO_ENABLED=1` for its own builds.
 
 The final runtime container uses a non-root user.
 
