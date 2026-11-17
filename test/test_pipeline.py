@@ -150,6 +150,14 @@ def test_set_project_types_keeps_the_list_when_nothing_is_excluded(tmp_path):
     assert project_types == ["python"]
 
 
+def test_set_project_types_stops_when_every_type_is_excluded(tmp_path):
+    """A scan left with no project type must stop, not run zero type scans
+    and report a clean result."""
+    args = _args(["-t", "os", "python", "--exclude-types", "os", "python"])
+    with pytest.raises(pipeline.ScanStageError, match="was excluded"):
+        pipeline.set_project_types(args, str(tmp_path))
+
+
 # ---------------------------------------------------------------------------
 # database
 # ---------------------------------------------------------------------------

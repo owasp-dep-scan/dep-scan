@@ -669,6 +669,15 @@ def set_project_types(args, src_dir):
     excluded = _excluded_types(args)
     if excluded:
         project_types_list = [ptype for ptype in project_types_list if ptype not in excluded]
+        if not project_types_list:
+            # A scan with no project type left runs zero type scans and its
+            # manifest shows no matching, which reads exactly like a clean
+            # result. Stop with the reason instead.
+            raise ScanStageError(
+                "Every project type of this scan was excluded, so there is "
+                "nothing to scan. Pass at least one project type that is not "
+                f"excluded; the excluded types are {', '.join(sorted(excluded))}."
+            )
     return pkg_list, project_types_list
 
 

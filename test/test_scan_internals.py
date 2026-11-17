@@ -187,6 +187,18 @@ def test_an_excluded_docker_type_leaves_no_docker_scan(scan_stubs, tmp_path):
     assert all("-t" not in args or args[args.index("-t") + 1] != "docker" for args in scan_stubs["cdxgen"])
 
 
+def test_a_scan_with_every_type_excluded_stops(scan_stubs, tmp_path):
+    """Excluding every project type stops the scan with an error naming why,
+    instead of running zero type scans and exiting 0 looking clean."""
+    with pytest.raises(api.ScanError, match="Every project type of this scan was excluded"):
+        api.scan(
+            _source_scan_options(
+                tmp_path, project_type=["os", "python"], exclude_types=["os", "python"]
+            ),
+            render=False,
+        )
+
+
 def test_the_container_run_command_carries_the_excluded_types(tmp_path):
     """The image-based generator appends one --exclude-type pair per excluded
     type to the docker run command it builds."""
