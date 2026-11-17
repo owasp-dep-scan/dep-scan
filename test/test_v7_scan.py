@@ -875,6 +875,39 @@ def test_json_format_keeps_stray_stdout_writes_off_stdout(
     assert "vdb download progress" in captured.err
 
 
+def test_json_format_follows_the_number_of_targets_given(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    """A two-target invocation prints an array of two entries whatever
+    happened to the targets: the refused one carries its target and the
+    refusal reason instead of being silently dropped."""
+    monkeypatch.chdir(tmp_path)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            bom,
+            "no-such-project",
+            "--reports-dir",
+            str(reports),
+            "--format",
+            "json",
+            "--no-banner",
+        ],
+    )
+    assert code == 1
+    documents = json.loads(capfd.readouterr().out)
+    assert isinstance(documents, list) and len(documents) == 2
+    assert set(documents[0]) == {"scanDir", "manifest", "findings"}
+    assert set(documents[1]) == {"target", "error"}
+    assert documents[1]["target"] == "no-such-project"
+    assert "does not exist" in documents[1]["error"]
+    # Positive control: exactly one scan ran, for the existing target.
+    assert len(scan_stubs["matching"]) == 1
+
+
 def test_text_format_leaves_the_scan_tables_on_stdout(
     scan_stubs, monkeypatch, capfd, tmp_path, no_license_env
 ):
