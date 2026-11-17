@@ -103,8 +103,26 @@ def logical_commands(body_lines, start_line):
     return commands
 
 
-def test_usage_page_embeds_the_built_help():
-    """The two usage blocks are the parsers' own output, byte for byte."""
+def _normalized_help(text: str) -> str:
+    """Help text comparable across the supported Python versions.
+
+    Two renderings differ between 3.11 and 3.13: the width argparse wraps at
+    comes from the terminal, and 3.13 stopped repeating a short option's
+    value placeholder in the option list (``-o, --reports-dir REPORTS_DIR``
+    where 3.11 prints ``-o REPORTS_DIR, --reports-dir REPORTS_DIR``). The
+    page is generated at a fixed wide ``COLUMNS`` with the modern rendering;
+    the comparison normalizes both sides to it.
+    """
+    return re.sub(
+        r"-([a-zA-Z]) ([A-Z_]+)((?: \[[A-Z_ ]+\.\.\.\])?)(, --[a-z][a-z0-9-]*) \2\3",
+        r"-\1\4 \2\3",
+        text,
+    )
+
+
+def test_usage_page_embeds_the_built_help(monkeypatch):
+    """The two usage blocks are the parsers' own output at a fixed width."""
+    monkeypatch.setenv("COLUMNS", "200")
     blocks = [
         body
         for _, body in fenced_blocks(_read(USAGE_PAGE), {"text"})
@@ -114,8 +132,10 @@ def test_usage_page_embeds_the_built_help():
     tops = [block for block in blocks if block[0].startswith("usage: depscan scan")]
     assert len(tops) == 1, "one of the two blocks must be the scan help"
     whole = [block for block in blocks if block not in tops]
-    assert "\n".join(whole[0]) + "\n" == build_parser().format_help()
-    assert "\n".join(tops[0]) + "\n" == scan_help_text()
+    assert _normalized_help("\n".join(whole[0]) + "\n") == _normalized_help(
+        build_parser().format_help()
+    )
+    assert _normalized_help("\n".join(tops[0]) + "\n") == _normalized_help(scan_help_text())
 
 
 def test_migration_page_embeds_the_generated_option_table():

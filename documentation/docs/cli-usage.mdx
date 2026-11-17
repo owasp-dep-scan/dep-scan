@@ -23,32 +23,24 @@ The dep-scan 7 command line starts with a verb: `depscan scan`, `depscan vdb`, `
 | `version` | Print the dep-scan version, with tool versions as JSON. |
 | `help` | Show the top-level help, or one verb's help. |
 
-The table rows are the verbs' own help descriptions. The top-level help lists the same verbs:
+The table rows are the verbs' own help descriptions. The two blocks below are the parsers' own help output, printed at a fixed terminal width (`COLUMNS=200 uv run depscan --help` and `COLUMNS=200 uv run depscan scan --help`); a test regenerates them from the built parsers, so they cannot drift:
 
 ```text
-usage: depscan [-h]
-               {scan,report,vdb,doctor,schema,config,serve,validate,version,help} ...
+usage: depscan [-h] {scan,report,vdb,doctor,schema,config,serve,validate,version,help} ...
 
-Fully open-source security and license audit for application dependencies and
-container images based on known vulnerabilities and advisories.
+Fully open-source security and license audit for application dependencies and container images based on known vulnerabilities and advisories.
 
 positional arguments:
   {scan,report,vdb,doctor,schema,config,serve,validate,version,help}
-    scan                Scan a project, BOM, purl or container image for
-                        vulnerabilities.
-    report              Render the console tables and explanations of a saved
-                        scan.
+    scan                Scan a project, BOM, purl or container image for vulnerabilities.
+    report              Render the console tables and explanations of a saved scan.
     vdb                 Download and inspect the vdb vulnerability database.
-    doctor              Report the tools, data and capabilities a scan can use
-                        here.
+    doctor              Report the tools, data and capabilities a scan can use here.
     schema              Print the published finding schemas.
-    config              Show the effective scan options or write a config
-                        file.
+    config              Show the effective scan options or write a config file.
     serve               Run depscan as a server.
-    validate            Validate CSAF VEX or CycloneDX VDR/VEX documents
-                        against their schema.
-    version             Print the dep-scan version, with tool versions as
-                        JSON.
+    validate            Validate CSAF VEX or CycloneDX VDR/VEX documents against their schema.
+    version             Print the dep-scan version, with tool versions as JSON.
     help                Show the top-level help, or one verb's help.
 
 options:
@@ -60,248 +52,127 @@ Visit https://github.com/owasp-dep-scan/dep-scan to learn more
 The scan verb carries every scan option:
 
 ```text
-usage: depscan scan [-h]
-                    [--target-kind {purl,git,container,bom,bom-dir,binary,android,ios,source,firmware}]
-                    [--checks CHECKS]
-                    [--profile {quick,ci,deep,research,offline}]
-                    [--bom-profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}]
-                    [--exclude-type TYPE] [--format {text,json}]
-                    [--config CONFIG] [--no-banner] [-o REPORTS_DIR] [--debug]
-                    [-q | --explain] [--csaf] [--csaf-version {2.0,2.1}]
-                    [--custom-data CUSTOM_DATA]
-                    [--report-template REPORT_TEMPLATE]
-                    [--report-name REPORT_NAME]
-                    [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
+usage: depscan scan [-h] [--target-kind {purl,git,container,bom,bom-dir,binary,android,ios,source,firmware}] [--checks CHECKS] [--profile {quick,ci,deep,research,offline}]
+                    [--bom-profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}] [--exclude-type TYPE]
+                    [--format {text,json}] [--config CONFIG] [--no-banner] [-o REPORTS_DIR] [--debug] [-q | --explain] [--csaf] [--csaf-version {2.0,2.1}] [--custom-data CUSTOM_DATA]
+                    [--report-template REPORT_TEMPLATE] [--report-name REPORT_NAME] [--lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]]
                     [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
-                    [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} |
-                    --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}]
-                    [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}]
-                    [--spec-version SPEC_VERSION] [--cdxgen-args CDXGEN_ARGS]
-                    [--cdxgen-server CDXGEN_SERVER]
-                    [--rust-analyzer-backend {stable,compiler}]
-                    [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo]
-                    [--dotnet-analyzer-mode {source,assembly,auto}]
-                    [--no-suggest] [--fail-on-error]
-                    [-t PROJECT_TYPE [PROJECT_TYPE ...]]
-                    [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search]
-                    [--search-order {purl,pcu,cpe,cpu,url}]
-                    [--severity {low,medium,high,critical}] [--malware-only]
-                    [--vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}]
-                    [--vdb-scope {app,app+os}] [--vdb-time {2y,default,10y}]
-                    [--vdb-extended] [--vdb-compression {xz,zst}]
-                    [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}]
-                    [--vdb-image VDB_IMAGE] [--no-universal] [--no-vuln-table]
-                    [--explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}]
-                    [--annotate]
+                    [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}]
+                    [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--spec-version SPEC_VERSION] [--cdxgen-args CDXGEN_ARGS] [--cdxgen-server CDXGEN_SERVER]
+                    [--rust-analyzer-backend {stable,compiler}] [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo] [--dotnet-analyzer-mode {source,assembly,auto}] [--no-suggest]
+                    [--fail-on-error] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}]
+                    [--severity {low,medium,high,critical}] [--malware-only] [--vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}] [--vdb-scope {app,app+os}]
+                    [--vdb-time {2y,default,10y}] [--vdb-extended] [--vdb-compression {xz,zst}] [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}] [--vdb-image VDB_IMAGE] [--no-universal]
+                    [--no-vuln-table] [--explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}] [--annotate]
                     [target ...]
 
 positional arguments:
-  target                What to scan: a source directory, git URL, container
-                        image reference, BOM file, BOM directory, purl or
-                        binary. The kind is detected; pass --target-kind to
-                        force one. Multiple targets run one scan each.
+  target                What to scan: a source directory, git URL, container image reference, BOM file, BOM directory, purl or binary. The kind is detected; pass --target-kind to force one. Multiple
+                        targets run one scan each.
 
 options:
   -h, --help            show this help message and exit
   --target-kind {purl,git,container,bom,bom-dir,binary,android,ios,source,firmware}
-                        Force the kind of every target instead of detecting
-                        it. firmware is accepted only to be refused: it has no
-                        inventory path in this version.
-  --checks CHECKS       Comma-separated list of checks to run: all,
-                        vulnerabilities, reachability, license, supply-chain,
-                        binary, memory-safety, mobile, code, crypto. An
-                        explicit list defines the whole optional set;
-                        vulnerabilities always runs.
+                        Force the kind of every target instead of detecting it. firmware is accepted only to be refused: it has no inventory path in this version.
+  --checks CHECKS       Comma-separated list of checks to run: all, vulnerabilities, reachability, license, supply-chain, binary, memory-safety, mobile, code, crypto. An explicit list defines the
+                        whole optional set; vulnerabilities always runs.
   --profile {quick,ci,deep,research,offline}
-                        Scan profile: quick (vulnerabilities only), ci
-                        (vulnerabilities and reachability, no explanations),
-                        deep (adds license and supply-chain with semantic
-                        reachability), research (deep plus cdxgen's research
-                        BOM profile), offline (no database download, no remote
-                        cdxgen). Explicit options win over the profile.
+                        Scan profile: quick (vulnerabilities only), ci (vulnerabilities and reachability, no explanations), deep (adds license and supply-chain with semantic reachability), research
+                        (deep plus cdxgen's research BOM profile), offline (no database download, no remote cdxgen). Explicit options win over the profile.
   --bom-profile {appsec,research,operational,threat-modeling,license-compliance,generic,machine-learning,ml,deep-learning,ml-deep,ml-tiny}
-                        Profile to use while generating the BOM. For granular
-                        control, use the arguments --bom-engine,
-                        --vulnerability-analyzer, or --reachability-analyzer.
-  --exclude-type TYPE   Project type dropped from the detected list before any
-                        stage runs, so no inventory or scan runs for it (an
-                        excluded os or docker type stops the OS and container
-                        scans), and passed to cdxgen as a repeated --exclude-
-                        type argument so the BOM contents are filtered the
-                        same way. Repeatable; comma-separated values are
-                        accepted.
+                        Profile to use while generating the BOM. For granular control, use the arguments --bom-engine, --vulnerability-analyzer, or --reachability-analyzer.
+  --exclude-type TYPE   Project type dropped from the detected list before any stage runs, so no inventory or scan runs for it (an excluded os or docker type stops the OS and container scans), and
+                        passed to cdxgen as a repeated --exclude-type argument so the BOM contents are filtered the same way. Repeatable; comma-separated values are accepted.
   --format {text,json}  text for people, json for scripts (default: text)
-  --config CONFIG       Path to the configuration file. Default:
-                        $PWD/.config/depscan.toml
-  --no-banner           Do not display the logo and donation banner. Please
-                        make a donation to OWASP before using this argument.
+  --config CONFIG       Path to the configuration file. Default: $PWD/.config/depscan.toml
+  --no-banner           Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.
   -o, --reports-dir REPORTS_DIR
                         Reports directory
   --debug               Run depscan in debug mode.
   -q, --quiet           Makes depscan quiet.
-  --explain             Makes depscan to explain the various analysis. Useful
-                        for creating detailed reports.
+  --explain             Makes depscan to explain the various analysis. Useful for creating detailed reports.
   --csaf                Generate a OASIS CSAF VEX document
   --csaf-version {2.0,2.1}
-                        CSAF schema version to target (default: 2.1). CSAF 2.1
-                        retains CVSS v4 scores; 2.0 drops them because the
-                        schema has no cvss_v4 slot.
+                        CSAF schema version to target (default: 2.1). CSAF 2.1 retains CVSS v4 scores; 2.0 drops them because the schema has no cvss_v4 slot.
   --custom-data CUSTOM_DATA
-                        Path to directory containing custom vulnerability data
-                        (JSON/YAML/TOML) to override/augment results.
+                        Path to directory containing custom vulnerability data (JSON/YAML/TOML) to override/augment results.
   --report-template REPORT_TEMPLATE
                         Jinja template file used for rendering a custom report
   --report-name REPORT_NAME
-                        Filename of the custom report written to the
-                        --reports-dir
+                        Filename of the custom report written to the --reports-dir
   --lifecycle {pre-build,build,post-build} [{pre-build,build,post-build} ...]
-                        Product lifecycle for the generated BOM. Multiple
-                        values allowed.
+                        Product lifecycle for the generated BOM. Multiple values allowed.
   --technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]
-                        Analysis technique to use for BOM generation. Multiple
-                        values allowed.
+                        Analysis technique to use for BOM generation. Multiple values allowed.
   --bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator}
-                        BOM generation engine to use. Defaults to automatic
-                        selection based on project type and lifecycle.
+                        BOM generation engine to use. Defaults to automatic selection based on project type and lifecycle.
   --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}
-                        Vulnerability analyzer to use. Defaults to automatic
-                        selection based on bom_dir argument.
+                        Vulnerability analyzer to use. Defaults to automatic selection based on bom_dir argument.
   --reachability-analyzer {off,FrameworkReachability,SemanticReachability}
-                        Reachability analyzer to use. Default
-                        FrameworkReachability.
+                        Reachability analyzer to use. Default FrameworkReachability.
   --spec-version SPEC_VERSION
-                        CycloneDX specification version to request from
-                        cdxgen. Choices: 1.4, 1.5, 1.6, 1.7, 2.0. Defaults to
-                        1.6 (1.7 is not yet supported by Dependency-Track and
-                        some other consumers).
+                        CycloneDX specification version to request from cdxgen. Choices: 1.4, 1.5, 1.6, 1.7, 2.0. Defaults to 1.6 (1.7 is not yet supported by Dependency-Track and some other
+                        consumers).
   --cdxgen-args CDXGEN_ARGS
                         Additional arguments to pass to cdxgen
   --cdxgen-server CDXGEN_SERVER
                         cdxgen server url. Eg: http://cdxgen:9090
   --rust-analyzer-backend {stable,compiler}
-                        rusi (Rust Source Inspector) backend for Rust
-                        reachability. ``stable`` (default) is syn-based
-                        parsing with no cargo/rustc build and is safe on
-                        untrusted repos. ``compiler`` embeds nightly rustc and
-                        builds the target for higher fidelity -- only use on
-                        trusted input (see rusi THREAT_MODEL). Implied by
-                        --deep for Rust projects. Set DEPSCAN_RUSI_BINARY to
-                        point at a non-PATH rusi binary.
+                        rusi (Rust Source Inspector) backend for Rust reachability. ``stable`` (default) is syn-based parsing with no cargo/rustc build and is safe on untrusted repos. ``compiler``
+                        embeds nightly rustc and builds the target for higher fidelity -- only use on trusted input (see rusi THREAT_MODEL). Implied by --deep for Rust projects. Set
+                        DEPSCAN_RUSI_BINARY to point at a non-PATH rusi binary.
   --go-analyzer-network {auto,offline}
-                        Network mode for golem (Go Source Inspector)
-                        reachability. golem runs with cgo off, so packages
-                        that need cgo are not loaded and their reachability is
-                        missing; pass --go-analyzer-cgo to enable cgo for
-                        trusted input. ``auto`` (default) allows golem's
-                        package loader to download missing modules per the
-                        user's Go env (GOFLAGS=-mod=readonly is still set to
-                        prevent go.mod rewrites). ``offline`` sets GOPROXY=off
-                        to forbid all downloads -- requires a warm module
-                        cache (GOMODCACHE). Set DEPSCAN_GOLEM_BINARY to point
-                        at a non-PATH golem binary.
-  --go-analyzer-cgo     Allow cgo while golem loads Go packages. Default is
-                        cgo off: packages that need cgo are not loaded and
-                        their reachability is missing. With this flag the C
-                        compiler runs with flags taken from the scanned code
-                        and its dependencies, so use it only for input you
-                        trust. Can also be enabled with
-                        DEPSCAN_GO_ANALYZER_CGO.
+                        Network mode for golem (Go Source Inspector) reachability. golem runs with cgo off, so packages that need cgo are not loaded and their reachability is missing; pass --go-
+                        analyzer-cgo to enable cgo for trusted input. ``auto`` (default) allows golem's package loader to download missing modules per the user's Go env (GOFLAGS=-mod=readonly is
+                        still set to prevent go.mod rewrites). ``offline`` sets GOPROXY=off to forbid all downloads -- requires a warm module cache (GOMODCACHE). Set DEPSCAN_GOLEM_BINARY to point at
+                        a non-PATH golem binary.
+  --go-analyzer-cgo     Allow cgo while golem loads Go packages. Default is cgo off: packages that need cgo are not loaded and their reachability is missing. With this flag the C compiler runs with
+                        flags taken from the scanned code and its dependencies, so use it only for input you trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.
   --dotnet-analyzer-mode {source,assembly,auto}
-                        dosai (Dotnet Source and Assembly Inspector) analysis
-                        mode for .NET reachability. ``auto`` (default)
-                        inspects source when a source tree is present and
-                        falls back to assembly inspection for bin/.nupkg-only
-                        inputs. ``source`` forces Roslyn-based C#/VB/F# source
-                        inspection; ``assembly`` forces Reflection-based
-                        .dll/.exe inspection. Pattern packs default to
-                        ``all``. dosai requires a .NET runtime (or a self-
-                        contained ``-full`` binary). Set DOSAI_CMD to point at
-                        a non-PATH dosai binary. dep-scan does NOT run
-                        ``dotnet restore``; a restored tree yields the best
-                        versioned NuGet purls.
+                        dosai (Dotnet Source and Assembly Inspector) analysis mode for .NET reachability. ``auto`` (default) inspects source when a source tree is present and falls back to assembly
+                        inspection for bin/.nupkg-only inputs. ``source`` forces Roslyn-based C#/VB/F# source inspection; ``assembly`` forces Reflection-based .dll/.exe inspection. Pattern packs
+                        default to ``all``. dosai requires a .NET runtime (or a self-contained ``-full`` binary). Set DOSAI_CMD to point at a non-PATH dosai binary. dep-scan does NOT run ``dotnet
+                        restore``; a restored tree yields the best versioned NuGet purls.
   --no-suggest          Disable suggest mode
-  --fail-on-error       Abort the scan with a non-zero exit code instead of
-                        silently degrading. Passed through to cdxgen so
-                        extractor failures fail BOM generation, and applied to
-                        blint, rusi, golem, and dosai failures, unreadable
-                        reachability reports, empty slices, and empty package
-                        lists.
+  --fail-on-error       Abort the scan with a non-zero exit code instead of silently degrading. Passed through to cdxgen so extractor failures fail BOM generation, and applied to blint, rusi, golem,
+                        and dosai failures, unreadable reachability reports, empty slices, and empty package lists.
   -t, --type PROJECT_TYPE [PROJECT_TYPE ...]
-                        Override project types if auto-detection is incorrect.
-                        Multiple values supported.
+                        Override project types if auto-detection is incorrect. Multiple values supported.
   --private-ns PRIVATE_NS
-                        Private namespace to use while performing oss risk
-                        audit. Private packages should not be available in
-                        public registries by default. Comma separated values
-                        accepted.
-  --deep                Perform deep scan by passing this --deep argument to
-                        cdxgen. Useful while scanning docker images and OS
-                        packages.
-  --fuzzy-search        Perform fuzzy search by creating variations of package
-                        names. Use this when the input SBOM lacks a PURL.
+                        Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
+  --deep                Perform deep scan by passing this --deep argument to cdxgen. Useful while scanning docker images and OS packages.
+  --fuzzy-search        Perform fuzzy search by creating variations of package names. Use this when the input SBOM lacks a PURL.
   --search-order {purl,pcu,cpe,cpu,url}
-                        Attributes to use while searching for vulnerabilities.
-                        Default: PURL, CPE, URL (pcu).
+                        Attributes to use while searching for vulnerabilities. Default: PURL, CPE, URL (pcu).
   --severity {low,medium,high,critical}
-                        Minimum severity threshold to report (low, medium,
-                        high, critical). Only advisories at or above this
-                        severity are returned. depscan applies this floor to
-                        the final VDR on any database; on the extended vdb
-                        (VDB_INCLUDE_METADATA) it is additionally pushed down
-                        into the search for speed. Findings with no rated
-                        severity are kept.
-  --malware-only        Report only malware advisories (MAL-*). Works on the
-                        default vdb because is_malware is always populated via
-                        the MAL- fallback.
-  --no-universal        Depscan would attempt to perform a single universal
-                        scan instead of individual scans per language type.
-  --no-vuln-table       Do not print the table with the full list of
-                        vulnerabilities. This can help reduce console output.
+                        Minimum severity threshold to report (low, medium, high, critical). Only advisories at or above this severity are returned. depscan applies this floor to the final VDR on any
+                        database; on the extended vdb (VDB_INCLUDE_METADATA) it is additionally pushed down into the search for speed. Findings with no rated severity are kept.
+  --malware-only        Report only malware advisories (MAL-*). Works on the default vdb because is_malware is always populated via the MAL- fallback.
+  --no-universal        Depscan would attempt to perform a single universal scan instead of individual scans per language type.
+  --no-vuln-table       Do not print the table with the full list of vulnerabilities. This can help reduce console output.
   --explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}
-                        Style of explanation needed. Defaults to Endpoints and
-                        Reachables.
-  --annotate            Include the generated text VDR report as an
-                        annotation. Defaults to true when explain is enabled;
-                        false otherwise.
+                        Style of explanation needed. Defaults to Endpoints and Reachables.
+  --annotate            Include the generated text VDR report as an annotation. Defaults to true when explain is enabled; false otherwise.
 
 vulnerability database selection:
-  Select which published vdb database the scan downloads. These can also be
-  persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An
-  explicit VDB_DATABASE_URL env pin always wins. The `depscan vdb download`
-  command shares the same options for pre-fetching.
+  Select which published vdb database the scan downloads. These can also be persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An explicit VDB_DATABASE_URL env pin always wins.
+  The `depscan vdb download` command shares the same options for pre-fetching.
 
   --vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}
-                        Which published database flavor to use: 'full'
-                        (app+OS), 'app-only' (application ecosystems, NVD
-                        2020+), 'app-extended' (adds metadata tables for
-                        severity, text, alias, reference, symbol and date
-                        search), 'app-10y' (NVD 2016+), 'app-10y-extended'
-                        (both). Default: full.
+                        Which published database flavor to use: 'full' (app+OS), 'app-only' (application ecosystems, NVD 2020+), 'app-extended' (adds metadata tables for severity, text, alias,
+                        reference, symbol and date search), 'app-10y' (NVD 2016+), 'app-10y-extended' (both). Default: full.
   --vdb-scope {app,app+os}
-                        Deprecated alias for --vdb-flavor: 'app' maps to app-
-                        only (or app-extended/app-10y/app-10y-extended with
-                        the other deprecated options), 'app+os' to full.
-                        Default: app+os.
+                        Deprecated alias for --vdb-flavor: 'app' maps to app-only (or app-extended/app-10y/app-10y-extended with the other deprecated options), 'app+os' to full. Default: app+os.
   --vdb-time {2y,default,10y}
-                        Deprecated alias for --vdb-flavor: '10y' selects a
-                        10-year flavor; '2y' has no v7 equivalent and is
-                        rejected. Default: default.
-  --vdb-extended        Deprecated alias selecting the metadata flavor (app-
-                        extended or app-10y-extended), needed for severity,
-                        text, alias, reference, symbol, and date search. Auto-
-                        selected when --severity is set.
+                        Deprecated alias for --vdb-flavor: '10y' selects a 10-year flavor; '2y' has no v7 equivalent and is rejected. Default: default.
+  --vdb-extended        Deprecated alias selecting the metadata flavor (app-extended or app-10y-extended), needed for severity, text, alias, reference, symbol, and date search. Auto-selected when
+                        --severity is set.
   --vdb-compression {xz,zst}
-                        Compression format. 'xz' (tar.xz) always works; 'zst'
-                        (zstd) is faster to decompress but needs a zstd
-                        decompressor. Default: xz.
+                        Compression format. 'xz' (tar.xz) always works; 'zst' (zstd) is faster to decompress but needs a zstd decompressor. Default: xz.
   --vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}
-                        Rejected: vdb 7 publishes no per-distro complete
-                        database. Pass --vdb-flavor full and scan the distro
-                        packages, or fetch type shards with `depscan vdb
-                        download`.
+                        Rejected: vdb 7 publishes no per-distro complete database. Pass --vdb-flavor full and scan the distro packages, or fetch type shards with `depscan vdb download`.
   --vdb-image VDB_IMAGE
-                        Override the vdb image URL verbatim (bypasses the
-                        resolver). Equivalent to setting VDB_DATABASE_URL.
+                        Override the vdb image URL verbatim (bypasses the resolver). Equivalent to setting VDB_DATABASE_URL.
 ```
 
 ## Exit codes
