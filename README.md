@@ -416,9 +416,9 @@ errors.
 
 ```shell
 vdb --clean
-vdb --download-image
+vdb db refresh full --app-only
 # To scan containers and OS images
-# vdb --download-full-image
+# vdb db refresh full
 ```
 
 ### Scan local depscan
