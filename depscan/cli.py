@@ -1,63 +1,59 @@
 #!/usr/bin/env python3 -W ignore::DeprecationWarning
 # -*- coding: utf-8 -*-
+"""The ``depscan`` entry point: verb dispatch with a v6 rejection path.
+
+The v7 command line is verb first (``depscan scan``, ``depscan serve``,
+``depscan vdb`` and so on); the registry in :mod:`depscan.commands` builds
+the parser and runs the chosen verb. Two command lines are handled before
+the registry sees them:
+
+* ``depscan -h``/``--help`` prints the v7 help and exits 0.
+* Any other command line that starts with an option is a v6 invocation,
+  which v7 no longer runs. It is translated to its v7 equivalent, the
+  translation and a link to the migration guide are printed on stderr, and
+  the process exits 2.
+"""
 
 import os
 import sys
 
-from depscan import api
-from depscan.cli_options import build_parser
-from depscan.lib import doctor as doctor_lib
-from depscan.lib import pipeline, report as report_lib
+from depscan.commands import build_parser, run
+from depscan.commands import translate
 
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
+MIGRATION_GUIDE = "https://depscan.readthedocs.io/migrate-v6-to-v7/"
 
-def build_args():
-    """
-    Constructs command line arguments for the depscan tool
-    """
-    parser = build_parser()
-    return parser.parse_args()
+_V6_PREFIX = "depscan: this is a dep-scan 6 command line, which dep-scan 7 no longer runs."
 
 
-def run_depscan(args):
-    """
-    Detects the project type, performs various scans and audits,
-    and generates reports based on the results.
-
-    The scan itself runs through :func:`depscan.api.scan`; this function
-    starts server mode (which is not a scan) and turns a scan that stopped
-    early into the exit code the scan has always used.
-    """
-    if args.server_mode:
-        ctx = pipeline.build_context(args)
-        pipeline.configure_output(ctx)
-        try:
-            return pipeline.start_server_mode(ctx)
-        except pipeline.ScanStageError:
-            # The database stage already logged why the server cannot start.
-            sys.exit(1)
-    try:
-        api.scan(args)
-    except api.ScanError:
-        # The stage already logged why the scan stops; this keeps the exit
-        # code the scan has always used for these conditions.
-        sys.exit(1)
+def _print_v6_rejection(translated):
+    """Explain a rejected v6 invocation on stderr."""
+    print(_V6_PREFIX, file=sys.stderr)
+    if translated:
+        print(f"The equivalent v7 command is: {translated}", file=sys.stderr)
+    else:
+        print(
+            "Re-run the command with a verb, for example: depscan scan --help",
+            file=sys.stderr,
+        )
+    print(f"See the migration guide: {MIGRATION_GUIDE}", file=sys.stderr)
 
 
 def main():
-    # The full subcommand layout lands later; for now ``doctor`` and
-    # ``report`` are the two verbs handled before the v6-style parser, which
-    # sees every other invocation unchanged.
-    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
-        sys.exit(doctor_lib.run_doctor_command(sys.argv[2:]))
-    if len(sys.argv) > 1 and sys.argv[1] == "report":
-        sys.exit(report_lib.run_report_command(sys.argv[2:]))
-    cli_args = build_args()
-    run_depscan(cli_args)
+    argv = sys.argv[1:]
+    if argv and argv[0] in ("-h", "--help"):
+        # Argparse prints the v7 help and exits 0.
+        build_parser().parse_args(argv)
+        return
+    if argv and argv[0].startswith("-"):
+        _print_v6_rejection(translate.translate(argv))
+        sys.exit(2)
+    args = build_parser().parse_args(argv)
+    sys.exit(run(args) or 0)
 
 
 if __name__ == "__main__":

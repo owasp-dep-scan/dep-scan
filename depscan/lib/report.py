@@ -9,6 +9,7 @@ non-zero rather than printing something the scan did not produce.
 """
 
 import argparse
+import json
 import sys
 from typing import List
 
@@ -19,12 +20,8 @@ from depscan import api
 from depscan.lib.logger import LOG, console
 
 
-def parse_report_args(argv: List[str]) -> argparse.Namespace:
-    """Parse the arguments after ``report``."""
-    parser = argparse.ArgumentParser(
-        prog="depscan report",
-        description="Render the console tables and explanations of a saved scan.",
-    )
+def register_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the report options to ``parser``."""
     parser.add_argument("scan_dir", help="The scan directory a depscan scan wrote.")
     parser.add_argument(
         "--explain",
@@ -40,6 +37,22 @@ def parse_report_args(argv: List[str]) -> argparse.Namespace:
         dest="explanation_mode",
         help="Style of explanation needed. Defaults to Endpoints and Reachables.",
     )
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text renders the tables, json prints the scan directory's "
+        "documents as one JSON object (default: text)",
+    )
+
+
+def parse_report_args(argv: List[str]) -> argparse.Namespace:
+    """Parse the arguments after ``report``."""
+    parser = argparse.ArgumentParser(
+        prog="depscan report",
+        description="Render the console tables and explanations of a saved scan.",
+    )
+    register_arguments(parser)
     return parser.parse_args(argv)
 
 
@@ -86,20 +99,37 @@ def _render_results(tscan) -> None:
         console.print(f"No vulnerabilities found for project type '{tscan.project_type}'.")
 
 
-def run_report_command(argv: List[str]) -> int:
-    """Run the report command; returns the process exit code.
+def _run_json_report(result) -> int:
+    """Print the loaded scan directory as one JSON document on stdout."""
+    print(
+        json.dumps(
+            {
+                "scanDir": result.reports_dir,
+                "manifest": result.manifest,
+                "findings": result.findings,
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def run_report_args(args: argparse.Namespace) -> int:
+    """Run the report command from parsed arguments; the exit code.
 
     A directory that cannot be loaded, or an explanation whose inputs the
     directory does not hold, is reported with the reason on stderr and
-    exits 1. The tables go to stdout through the same console the scan
-    renders on.
+    exits 1. In text mode the tables go to stdout through the same console
+    the scan renders on; in json mode stdout carries exactly one JSON
+    document and nothing else.
     """
-    args = parse_report_args(argv)
     try:
         result = api.load_scan(args.scan_dir)
     except api.ScanError as exc:
         print(f"depscan report: {exc}", file=sys.stderr)
         return 1
+    if args.format == "json":
+        return _run_json_report(result)
     manifest = result.manifest or {}
     console.print(
         f"Scan of {result.reports_dir}: dep-scan "
@@ -116,3 +146,8 @@ def run_report_command(argv: List[str]) -> int:
             return 1
         console.print(text)
     return 0
+
+
+def run_report_command(argv: List[str]) -> int:
+    """Run the report command from a raw argv; returns the process exit code."""
+    return run_report_args(parse_report_args(argv))
