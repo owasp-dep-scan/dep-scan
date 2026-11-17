@@ -24,7 +24,7 @@ from custom_json_diff.lib.utils import json_load
 from vdb.lib.utils import parse_purl
 
 from depscan.cli_options import build_parser
-from depscan.lib import explainer, pipeline
+from depscan.lib import explainer, pipeline, scan_directory
 from depscan.lib import doctor as doctor_lib
 from depscan.lib.config import DEPSCAN_DEFAULT_VDR_FILE
 from depscan.lib.doctor import DoctorReport
@@ -82,12 +82,18 @@ class ScanResult:
     ``project_types`` lists every project type the scan ran for, including
     types that were skipped with a log message after producing nothing.
     ``types`` holds one :class:`TypeScanResult` per type that produced
-    results, in scan order.
+    results, in scan order. ``manifest`` is the scan directory's manifest
+    document and ``findings`` the array of ``depscan.findings.json``; both
+    are set for a scan of this version and for a manifest-backed
+    :func:`load_scan`, and carry the earlier values (None and []) when a
+    directory without a manifest is loaded.
     """
 
     reports_dir: str
     project_types: List[str] = field(default_factory=list)
     types: List[TypeScanResult] = field(default_factory=list)
+    manifest: Optional[Dict[str, Any]] = None
+    findings: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def vulnerabilities(self) -> List[Dict[str, Any]]:
@@ -173,7 +179,9 @@ def scan(options, *, render: bool = True) -> ScanResult:
     This runs the stages the ``depscan`` command runs, in the same order,
     including the console, quiet and debug handling of the CLI, and writes
     the same files to ``options.reports_dir``: the BOM documents, the VDR
-    files, the license and risk reports and ``depscan.toml.sample``.
+    files, the license and risk reports and ``depscan.toml.sample``, plus
+    the scan directory's own ``depscan.findings.json`` and
+    ``depscan.manifest.json``.
 
     With ``render=False`` the rendering is skipped (the console tables, the
     HTML and text reports, the template report, the explanation, the CSAF
@@ -186,51 +194,209 @@ def scan(options, *, render: bool = True) -> ScanResult:
     :param options: An ``argparse.Namespace`` from the CLI parser or from
         :func:`scan_options`.
     :param render: Render the console and report output (the default).
-    :returns: The :class:`ScanResult` of the scan.
+    :returns: The :class:`ScanResult` of the scan, carrying the manifest and
+        findings of the scan directory it wrote.
     :raises ScanError: When a stage stops the scan, with the message the
         stage logged. The function never calls ``sys.exit`` and never
-        returns a result in place of a stopped scan.
+        returns a result in place of a stopped scan. A scan that stopped
+        partway still leaves its directory with a manifest naming the
+        failed stage.
     """
-    return _run_stages(options, render=render, database=True)
+    return _run_stages(options, render=render, database=True, write_scan_dir=True)
 
 
-def _run_stages(options, *, render: bool, database: bool) -> ScanResult:
+def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool = False) -> ScanResult:
     """Run the scan stages; see :func:`scan`.
 
-    ``database=False`` skips the database stage. Only the server uses it: it
+    ``database=False`` skips the database stage, and ``write_scan_dir=False``
+    leaves the scan directory unwritten. Only the server uses these: it
     prepares the database once when it starts, so a request never downloads
-    or replaces the database the server is reading.
+    or replaces the database the server is reading, and a request's output is
+    the response rather than a directory.
     """
     if not render:
         options.no_vuln_table = True
     ctx = pipeline.build_context(options)
+    ctx.write_scan_dir = write_scan_dir
     pipeline.configure_output(ctx)
+    written = None
     try:
         # We have everything needed to start the composition analysis. There are many approaches to implementing an SCA tool.
         # Our style of analysis is comparable to that of an intelligent Hubble telescope or a rover—examining the same subject through multiple optics, colors, and depths to gain a deeper understanding.
         # We begin by iterating over the project types provided or assumed.
         pipeline.stage_setup(ctx)
         if database:
-            pipeline.stage_database(ctx)
+            _stage(ctx, "database", pipeline.stage_database, ctx, capabilities=["vulnerabilities"])
         pipeline.finalize_setup(ctx)
         for project_type in ctx.project_types:
             tscan = pipeline.TypeScan(project_type=project_type)
-            if not pipeline.stage_inventory(ctx, tscan):
+            if not _stage(
+                ctx,
+                "inventory",
+                pipeline.stage_inventory,
+                ctx,
+                tscan,
+                project_type=project_type,
+                capabilities=_inventory_capabilities(project_type),
+                skipped_reason="the type produced no BOM or packages to scan",
+                record_extra=lambda: {"notAssessed": list(tscan.not_assessed)},
+            ):
                 continue
             ctx.scans.append(tscan)
-            pipeline.stage_analysis_licenses(ctx, tscan)
-            pipeline.stage_analysis_risk(ctx, tscan)
+            _stage(
+                ctx,
+                "licenses",
+                pipeline.stage_analysis_licenses,
+                ctx,
+                tscan,
+                project_type=project_type,
+                capabilities=["license"],
+                skipped_reason="license analysis was not requested",
+            )
+            _stage(
+                ctx,
+                "risk",
+                pipeline.stage_analysis_risk,
+                ctx,
+                tscan,
+                project_type=project_type,
+                skipped_reason="the risk audit was not requested for this type",
+            )
             pipeline.announce_scan_targets(ctx, tscan)
-            pipeline.stage_enrichment(ctx, tscan)
-            pipeline.stage_matching(ctx, tscan)
-            pipeline.stage_analysis_vdr(ctx, tscan)
+            _stage(
+                ctx,
+                "enrichment",
+                pipeline.stage_enrichment,
+                ctx,
+                tscan,
+                project_type=project_type,
+                capabilities=["reachability"],
+                analyzers=scan_directory.analyzer_entries(ctx.doctor_report, [project_type])
+                if options.reachability_analyzer != "off"
+                else [],
+                outputs=[_evidence_output()],
+                skipped=bool(options.reachability_analyzer == "off"),
+                skipped_reason="reachability analysis is off",
+            )
+            _stage(
+                ctx,
+                "matching",
+                pipeline.stage_matching,
+                ctx,
+                tscan,
+                project_type=project_type,
+                capabilities=["vulnerabilities"],
+            )
+            _stage(ctx, "vdr", pipeline.stage_analysis_vdr, ctx, tscan, project_type=project_type)
             if render:
-                pipeline.stage_render_explain(ctx, tscan)
+                _stage(
+                    ctx,
+                    "explain",
+                    pipeline.stage_render_explain,
+                    ctx,
+                    tscan,
+                    project_type=project_type,
+                    skipped=bool(not options.explain),
+                    skipped_reason="the explanation was not requested",
+                )
         if render:
-            pipeline.stage_render_reports(ctx)
+            _stage(ctx, "render", pipeline.stage_render_reports, ctx)
     except pipeline.ScanStageError as exc:
+        written = pipeline.finish_scan_directory(ctx)
         raise ScanError(str(exc) or "The scan stopped early.") from exc
-    return _result_from_context(ctx)
+    if write_scan_dir:
+        written = pipeline.finish_scan_directory(ctx)
+    result = _result_from_context(ctx)
+    if written:
+        result.manifest = written["manifest"]
+        result.findings = written["findings"]
+    return result
+
+
+def _stage(
+    ctx,
+    name,
+    func,
+    *args,
+    project_type=None,
+    capabilities=(),
+    analyzers=None,
+    outputs=None,
+    skipped=False,
+    skipped_reason=None,
+    record_extra=None,
+):
+    """Run one stage and record what it did in the scan directory's manifest.
+
+    ``skipped`` marks a stage whose conditions were not met, and a stage
+    that returns False after producing nothing is recorded the same way with
+    the same reason. A stage that stops the scan is recorded as failed with
+    the reason it logged, and the error moves on to the caller, which writes
+    the manifest before re-raising.
+
+    ``record_extra`` is called at record time so a stage can add fields that
+    are only known once it has run, for example the inventory stage's
+    not-assessed reasons.
+    """
+    scan_dir = ctx.scan_dir
+    if scan_dir is None:
+        return func(*args)
+
+    def record(status, reason=None):
+        extra = record_extra() if record_extra else {}
+        scan_dir.record_stage(
+            name,
+            status,
+            project_type=project_type,
+            reason=reason,
+            capabilities=list(capabilities),
+            analyzers=analyzers,
+            outputs=outputs,
+            **extra,
+        )
+
+    try:
+        result = func(*args)
+    except pipeline.ScanStageError as exc:
+        record("failed", str(exc) or "the stage stopped the scan")
+        raise
+    if result is False or skipped:
+        record("skipped", skipped_reason or "the stage had nothing to do")
+    else:
+        record("completed")
+    return result
+
+
+def _inventory_capabilities(project_type: str) -> List[str]:
+    """The capabilities the inventory stage's analyzer runs consult.
+
+    The BOM generation step looks these up through the doctor table before
+    running a reachability analyzer; the entry names the same capabilities.
+    """
+    from depscan.lib.bom import reachability_analyzers_for_types
+
+    analyzers = reachability_analyzers_for_types([project_type])
+    return [
+        doctor_lib.ANALYZER_CAPABILITIES[name]
+        for name in analyzers
+        if name in doctor_lib.ANALYZER_CAPABILITIES
+    ]
+
+
+def _evidence_output():
+    """The enrichment stage's evidence output entry.
+
+    The evidence store does not exist in this version; the manifest says so
+    instead of leaving the file out silently. No empty evidence file is
+    written either.
+    """
+    return [
+        {
+            "file": scan_directory.EVIDENCE_FILE,
+            "status": "not-assessed",
+            "reason": scan_directory.EVIDENCE_NOT_PRODUCED_REASON,
+        }
+    ]
 
 
 def _result_from_context(ctx) -> ScanResult:
@@ -267,30 +433,130 @@ def _result_from_context(ctx) -> ScanResult:
 def load_scan(reports_dir: str) -> ScanResult:
     """Rebuild a :class:`ScanResult` from a reports directory of a scan.
 
-    Today's layout is read, nothing else: every JSON file directly in the
-    directory that is a CycloneDX document carrying a ``vulnerabilities``
-    array is treated as a VDR written by :func:`scan` (the VDR names are the
-    BOM name with ``.cdx.json`` replaced by ``.vdr.json``, the BOM name
-    itself when it does not end in ``.cdx.json``, and
-    ``depscan-universal.vdr.json`` for a BOM directory scan). The BOM file of
-    a type is the sibling ``<stem>.cdx.json`` when it exists; a ``--bom``
-    scan keeps its input BOM wherever the caller passed it, so no BOM file is
-    recorded for it. The project type is ``sbom-<type>``'s type for generated
-    BOMs, ``bom`` for the BOM directory VDR, and otherwise the file stem,
-    which is the best today's file names carry.
+    Two layouts are read, and the manifest decides which path runs. When the
+    directory carries ``depscan.manifest.json``, the manifest-backed path
+    runs: the project types, the files and the stage results come from the
+    manifest, the vulnerabilities from the VDR files it lists, and the
+    findings from ``depscan.findings.json``. A scan of this version always
+    takes this path. A manifest whose layout major this dep-scan does not
+    know is refused with an error naming both versions, and a manifest that
+    shows the matching stage did not complete is refused too, so a skipped
+    or failed scan never loads as one with no vulnerabilities. A
+    manifest-backed scan that found no vulnerabilities loads as a result
+    with none, because the manifest shows matching completed.
 
-    A scan that found no vulnerabilities writes no VDR file, so its
-    directory cannot be loaded. A directory that several scans wrote to
-    gives the VDRs of all of them.
+    Without a manifest, the older layout path runs, and the directory is
+    read exactly as versions before the scan directory read it: every JSON
+    file directly in the directory that is a CycloneDX document carrying a
+    ``vulnerabilities`` array is treated as a VDR written by :func:`scan`
+    (the VDR names are the BOM name with ``.cdx.json`` replaced by
+    ``.vdr.json``, the BOM name itself when it does not end in
+    ``.cdx.json``, and ``depscan-universal.vdr.json`` for a BOM directory
+    scan). The BOM file of a type is the sibling ``<stem>.cdx.json`` when it
+    exists; a ``--bom`` scan keeps its input BOM wherever the caller passed
+    it, so no BOM file is recorded for it. The project type is
+    ``sbom-<type>``'s type for generated BOMs, ``bom`` for the BOM directory
+    VDR, and otherwise the file stem, which is the best those file names
+    carry. Such a directory cannot hold the scan of a clean project, because
+    those scans wrote no VDR.
 
-    :param reports_dir: A reports directory written by :func:`scan`.
-    :returns: The rebuilt result.
-    :raises ScanError: When the directory holds no VDR file. An empty result
-        is never returned in place of a missing one.
+    :param reports_dir: A scan directory written by :func:`scan`.
+    :returns: The rebuilt result, carrying the manifest and findings when
+        the manifest path ran.
+    :raises ScanError: When the directory cannot be read as a scan: no VDR
+        file was found, the layout version is not supported, or the manifest
+        shows matching did not complete. An empty result is never returned
+        in place of a missing one.
     """
     reports_dir = str(reports_dir)
     if not os.path.isdir(reports_dir):
         raise ScanError(f"Cannot load a scan from '{reports_dir}': the directory does not exist.")
+    manifest = scan_directory.read_manifest(reports_dir)
+    if manifest is not None:
+        return _load_manifest_scan(reports_dir, manifest)
+    return _load_vdr_scan(reports_dir)
+
+
+def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResult:
+    """Read a scan directory that carries a manifest.
+
+    The manifest lists the files; the VDR and BOM entries of it name what
+    each project type produced. This is the path every scan of this version
+    loads through.
+    """
+    try:
+        scan_directory.check_layout_version(manifest)
+    except ValueError as exc:
+        raise ScanError(str(exc)) from exc
+    if not scan_directory.matching_completed(manifest):
+        raise ScanError(
+            f"Cannot load a scan from '{reports_dir}': the manifest shows "
+            "the matching stage did not complete, so the directory holds no "
+            "assessed vulnerability result."
+        )
+    by_type: Dict[str, TypeScanResult] = {}
+    order: List[str] = []
+    for relative in scan_directory.vdr_files(manifest):
+        path = os.path.join(reports_dir, *relative.split("/"))
+        if not os.path.isfile(path):
+            raise ScanError(
+                f"Cannot load a scan from '{reports_dir}': the manifest "
+                f"lists the VDR file '{relative}', which does not exist."
+            )
+        data = json_load(path)
+        if not (
+            isinstance(data, dict)
+            and data.get("bomFormat") == "CycloneDX"
+            and "vulnerabilities" in data
+        ):
+            raise ScanError(
+                f"Cannot load a scan from '{reports_dir}': the manifest "
+                f"lists '{relative}' as a VDR, but it is not a CycloneDX "
+                "document with vulnerabilities."
+            )
+        filename = relative.rsplit("/", 1)[-1]
+        stem = (
+            filename[: -len(".vdr.json")]
+            if filename.endswith(".vdr.json")
+            else filename[: -len(".json")]
+        )
+        project_type = _type_from_vdr_name(filename, stem)
+        by_type[project_type] = TypeScanResult(
+            project_type=project_type,
+            vdr_file=path,
+            vulnerabilities=list(data.get("vulnerabilities") or []),
+        )
+        if project_type not in order:
+            order.append(project_type)
+    # Types whose scan found no vulnerabilities wrote no VDR; the manifest
+    # showing matching completed is what makes them loadable as empty.
+    for project_type in scan_directory.project_types(manifest):
+        if project_type not in by_type:
+            by_type[project_type] = TypeScanResult(project_type=project_type)
+            order.append(project_type)
+    for entry in manifest.get("files") or []:
+        project_type = entry.get("projectType")
+        if entry.get("role") == "bom" and project_type in by_type:
+            path = os.path.join(reports_dir, *str(entry.get("path")).split("/"))
+            if os.path.isfile(path) and not by_type[project_type].bom_file:
+                by_type[project_type].bom_file = path
+    types = [by_type[project_type] for project_type in order if project_type in by_type]
+    findings_document = scan_directory.read_findings(reports_dir)
+    return ScanResult(
+        reports_dir=reports_dir,
+        project_types=order,
+        types=types,
+        manifest=manifest,
+        findings=(findings_document or {}).get("findings") or [],
+    )
+
+
+def _load_vdr_scan(reports_dir: str) -> ScanResult:
+    """Read a directory without a manifest, the way older scans wrote them.
+
+    This is the layout path: the VDR files are recognised by name and
+    content, and nothing else is known about the scan that wrote them.
+    """
     types = []
     for entry in sorted(os.listdir(reports_dir)):
         # Slices files can be large and are never VDRs.

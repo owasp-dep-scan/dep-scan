@@ -183,6 +183,13 @@
           },
           "description": "The capability names the stage needed, named the way depscan doctor names them."
         },
+        "notAssessed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran."
+        },
         "analyzers": {
           "type": "array",
           "items": {

@@ -132,7 +132,7 @@ def test_primary_path_consumes_persisted_combined_report(tmp_path):
     )
 
     # the native facts sidecar is written for VEX/advanced analysis
-    facts_file = tmp_path / "dotnet-reachability.facts.json"
+    facts_file = tmp_path / "analysis" / "dosai" / "dotnet-reachability.facts.json"
     assert facts_file.exists()
     facts = json.loads(facts_file.read_text())
     assert "pkg:nuget/System.Text.Json@10.0.0" in facts["reached_purls"]
@@ -324,7 +324,7 @@ def test_reachable_app_marks_newtonsoft_reached(tmp_path, monkeypatch):
     )
 
     # the native facts sidecar carries dosai's High-confidence verdict
-    facts = json.loads((tmp_path / "dotnet-reachability.facts.json").read_text())
+    facts = json.loads((tmp_path / "analysis" / "dosai" / "dotnet-reachability.facts.json").read_text())
     nf = facts["reached_purls"]["pkg:nuget/Newtonsoft.Json@13.0.3"]
     assert nf["confidence"] == "High"
     assert nf["kind"] in ("DataFlowNode", "CallGraphEdge")

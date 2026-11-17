@@ -52,7 +52,8 @@ from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
 from depscan.lib import explainer, utils
-from depscan.lib import vdb_setup
+from depscan.lib import doctor as doctor_lib
+from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
     ScanFailureError,
@@ -160,6 +161,13 @@ class ScanContext:
     user_bom_dir: Optional[str] = None
     bom_dir_mode: bool = False
     config_file_mode: bool = False
+    # Whether this run writes a scan directory. The server's per-request
+    # scans leave it off: their output is the response, not a directory.
+    write_scan_dir: bool = False
+    # The doctor report collected once per scan, and the scan directory
+    # builder the stages record their manifest entries into.
+    doctor_report: Optional[doctor_lib.DoctorReport] = None
+    scan_dir: Optional[scan_directory.ScanDirectory] = None
     # Database selection for this scan.
     scan_vdb_url: Optional[str] = None
     vdb_user_pinned: bool = False
@@ -475,6 +483,48 @@ def stage_setup(ctx):
         LOG.debug("Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis.")
         ctx.depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
+    _start_scan_directory(ctx)
+
+
+def _start_scan_directory(ctx):
+    """Collect the doctor report once and open the scan directory's manifest.
+
+    Every stage records its entry into the builder from here on; the manifest
+    itself is written when the scan finishes, after every other file. Server
+    requests write no scan directory, so they collect no doctor report either.
+    """
+    if not ctx.write_scan_dir:
+        return
+    ctx.doctor_report = doctor_lib.doctor()
+    ctx.scan_dir = scan_directory.ScanDirectory(
+        ctx.reports_dir,
+        depscan_version=get_version(),
+        doctor_report=ctx.doctor_report,
+    )
+    ctx.scan_dir.record_stage("setup", "completed")
+
+
+def finish_scan_directory(ctx):
+    """Write the findings file and then the manifest, in that order.
+
+    The manifest is written last, through a temporary file and a rename, so
+    it lists only files that exist. A scan that stopped partway still gets
+    one, carrying the failed stage and its reason. Returns the manifest and
+    the findings array, or None when this run writes no scan directory.
+    """
+    scan_dir = ctx.scan_dir
+    if scan_dir is None:
+        return None
+    findings_document = scan_directory.write_findings(
+        ctx.reports_dir, ctx.all_pkg_vulnerabilities, get_version()
+    )
+    manifest = scan_dir.build(
+        options=ctx.depscan_options,
+        database_flavor=ctx.vdb_flavor,
+        shards_used=ctx.shards_connected,
+    )
+    scan_directory.write_manifest(scan_dir, manifest)
+    return {"manifest": manifest, "findings": findings_document["findings"]}
 
 
 def stage_database(ctx):
@@ -745,6 +795,10 @@ def _generate_boms(ctx, scan):
                 "postbuild_bom_file": scan.postbuild_bom_file,
                 "container_bom_file": scan.container_bom_file,
                 "operations_bom_file": scan.operations_bom_file,
+                # The reachability runners consult the doctor's capability
+                # table through this report instead of probing the tools
+                # a second time.
+                "doctor_report": ctx.doctor_report,
             },
         )
     except ScanFailureError as e:
@@ -905,27 +959,37 @@ def stage_inventory(ctx, scan):
     return _load_packages(ctx, scan)
 
 
-def stage_analysis_licenses(ctx, scan):
-    """Look up license risks, before any security-related analysis."""
+def stage_analysis_licenses(ctx, scan) -> bool:
+    """Look up license risks, before any security-related analysis.
+
+    Returns False when license analysis was not requested, so the scan's
+    manifest can record the stage as skipped rather than silent.
+    """
     args = ctx.args
     # Is the user interested in seeing license risks? Handle that first before any security-related analysis.
-    if os.getenv("FETCH_LICENSE", "") in (True, "1", "true") or "license" in args.profile:
-        licenses_results = bulk_lookup(
-            build_license_data(license_data_dir, spdx_license_list),
-            pkg_list=scan.pkg_list,
-        )
-        license_report_file = os.path.join(ctx.reports_dir, f"license-{scan.project_type}.json")
-        ltable = licenses_risk_table(scan.project_type, licenses_results, license_report_file)
-        if ltable and not args.no_vuln_table:
-            console.print(ltable)
+    if os.getenv("FETCH_LICENSE", "") not in (True, "1", "true") and "license" not in args.profile:
+        return False
+    licenses_results = bulk_lookup(
+        build_license_data(license_data_dir, spdx_license_list),
+        pkg_list=scan.pkg_list,
+    )
+    license_report_file = os.path.join(ctx.reports_dir, f"license-{scan.project_type}.json")
+    ltable = licenses_risk_table(scan.project_type, licenses_results, license_report_file)
+    if ltable and not args.no_vuln_table:
+        console.print(ltable)
+    return True
 
 
-def stage_analysis_risk(ctx, scan):
-    """Run the OSS risk audit for the package managers that support it."""
+def stage_analysis_risk(ctx, scan) -> bool:
+    """Run the OSS risk audit for the package managers that support it.
+
+    Returns False when the audit did not run, either because it was not
+    requested or because the type has no packages it can audit.
+    """
     args = ctx.args
     # Do we support OSS risk audit for this type? If yes, proceed with the relevant checks.
     if not ctx.perform_risk_audit:
-        return
+        return False
     pkg_list_to_use = []
     project_type_to_use = scan.project_type
     if scan.project_type in risk_audit_map:
@@ -933,36 +997,38 @@ def stage_analysis_risk(ctx, scan):
     elif scan.project_type in ("bom",):
         pkg_list_to_use = get_pkg_by_type(scan.pkg_list, "npm")
         project_type_to_use = "npm"
-    if pkg_list_to_use:
-        if len(scan.pkg_list) > 1:
-            console.print(
-                Panel(
-                    f"Performing OSS Risk Audit for packages from "
-                    f"{ctx.src_dir}\nNo of packages [bold]{len(scan.pkg_list)}"
-                    f"[/bold]. This will take a while ...",
-                    title="OSS Risk Audit",
-                    expand=False,
-                )
+    if not pkg_list_to_use:
+        return False
+    if len(scan.pkg_list) > 1:
+        console.print(
+            Panel(
+                f"Performing OSS Risk Audit for packages from "
+                f"{ctx.src_dir}\nNo of packages [bold]{len(scan.pkg_list)}"
+                f"[/bold]. This will take a while ...",
+                title="OSS Risk Audit",
+                expand=False,
             )
-        try:
-            risk_results = risk_audit(
-                project_type_to_use,
-                scan.scoped_pkgs,
-                args.private_ns,
-                pkg_list_to_use,
-            )
-            rtable, report_data = pkg_risks_table(
-                project_type_to_use,
-                scan.scoped_pkgs,
-                risk_results,
-                pkg_max_risk_score=pkg_max_risk_score,
-                risk_report_file=scan.risk_report_file,
-            )
-            if not args.no_vuln_table and report_data and rtable:
-                console.print(rtable)
-        except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
-            LOG.error(e)
-            LOG.error("Risk audit was not successful")
+        )
+    try:
+        risk_results = risk_audit(
+            project_type_to_use,
+            scan.scoped_pkgs,
+            args.private_ns,
+            pkg_list_to_use,
+        )
+        rtable, report_data = pkg_risks_table(
+            project_type_to_use,
+            scan.scoped_pkgs,
+            risk_results,
+            pkg_max_risk_score=pkg_max_risk_score,
+            risk_report_file=scan.risk_report_file,
+        )
+        if not args.no_vuln_table and report_data and rtable:
+            console.print(rtable)
+    except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
+        LOG.error(e)
+        LOG.error("Risk audit was not successful")
+    return True
 
 
 def announce_scan_targets(ctx, scan):
