@@ -504,7 +504,7 @@ def _start_scan_directory(ctx):
     ctx.scan_dir.record_stage("setup", "completed")
 
 
-def finish_scan_directory(ctx):
+def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     """Write the findings file and then the manifest, in that order.
 
     The manifest is written last, through a temporary file and a rename, so

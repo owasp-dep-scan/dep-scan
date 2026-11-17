@@ -313,14 +313,15 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
         if render:
             _stage(ctx, "render", pipeline.stage_render_reports, ctx)
     except pipeline.ScanStageError as exc:
-        written = pipeline.finish_scan_directory(ctx)
+        # The manifest of a scan that stopped partway names the failed stage
+        # and carries the files written before it.
+        pipeline.finish_scan_directory(ctx)
         raise ScanError(str(exc) or "The scan stopped early.") from exc
-    if write_scan_dir:
-        written = pipeline.finish_scan_directory(ctx)
+    written = pipeline.finish_scan_directory(ctx) if write_scan_dir else None
     result = _result_from_context(ctx)
-    if written:
-        result.manifest = written["manifest"]
-        result.findings = written["findings"]
+    if written is not None:
+        result.manifest = written.get("manifest")
+        result.findings = written.get("findings") or []
     return result
 
 

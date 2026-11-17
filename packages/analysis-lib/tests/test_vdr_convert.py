@@ -32,14 +32,17 @@ def test_one_finding_per_advisory_and_component():
     vuln["affects"] = [{"ref": "pkg:pypi/requests@2.32.1"}, {"ref": "pkg:pypi/urllib3@2.2.0"}]
     findings = findings_from_vdr([vuln], producer_version="7.0.0.dev0")
     assert len(findings) == 2
-    assert [finding.components for finding in findings] == [
+    components = [finding.components for finding in findings]
+    assert components == [
         ["pkg:pypi/requests@2.32.1"],
         ["pkg:pypi/urllib3@2.2.0"],
     ]
     # Each id is the fingerprint of the (advisory, component) pair.
     for finding in findings:
+        pair_components = finding.components
+        assert pair_components is not None
         assert finding.id == finding_fingerprint(
-            "vulnerability", "CVE-2024-1111", finding.components
+            "vulnerability", "CVE-2024-1111", pair_components
         )
 
 
@@ -62,11 +65,15 @@ def test_fields_carry_the_entry_knowledge():
     assert finding.coverage.state == "assessed"
     assert finding.producer.name == "dep-scan"
     assert finding.producer.version == "7.0.0.dev0"
-    assert finding.fix.fixed_versions == ["2.32.2"]
-    assert finding.references[0].url == "https://nvd.nist.gov/vuln/detail/CVE-2024-1111"
-    assert finding.references[0].type == "advisory"
+    fix = finding.fix
+    assert fix is not None and fix.fixed_versions == ["2.32.2"]
+    references = finding.references
+    assert references is not None
+    assert references[0].url == "https://nvd.nist.gov/vuln/detail/CVE-2024-1111"
+    assert references[0].type == "advisory"
     assert finding.cwes == [400]
-    assert finding.properties[0].name == "depscan:prioritized"
+    properties = finding.properties
+    assert properties is not None and properties[0].name == "depscan:prioritized"
     assert finding.title == "CVE-2024-1111 affects pkg:pypi/requests@2.32.1"
 
 
@@ -91,12 +98,13 @@ def test_fixed_versions_come_from_the_unaffected_versions_too():
             }
         ],
     }
-    assert finding_from_vdr(vuln, "pkg:npm/lodash@4.17.20", producer_version="1").fix.fixed_versions == [
-        "4.17.21"
-    ]
-    assert finding_from_vdr(
+    fixed = finding_from_vdr(vuln, "pkg:npm/lodash@4.17.20", producer_version="1")
+    assert fixed.fix is not None
+    assert fixed.fix.fixed_versions == ["4.17.21"]
+    unresolved = finding_from_vdr(
         {"id": "CVE-1", "affects": []}, "pkg:npm/lodash@4.17.20", producer_version="1"
-    ).fix is None
+    )
+    assert unresolved.fix is None
 
 
 def test_unresolved_finding_fields_stay_out_of_the_json():
@@ -152,7 +160,11 @@ def test_finding_schema_publishes_the_severity_names_the_conversion_emits():
 
 def test_every_produced_document_validates_with_the_published_validator():
     validator = Draft202012Validator(load_schema("finding"))
-    for vuln in (VULN, {"id": "CVE-1", "affects": [{"ref": "pkg:npm/a@1"}]}):
-        finding = finding_from_vdr(vuln, vuln["affects"][0]["ref"], producer_version="1")
+    cases = [
+        ("pkg:pypi/requests@2.32.1", VULN),
+        ("pkg:npm/a@1", {"id": "CVE-1", "affects": [{"ref": "pkg:npm/a@1"}]}),
+    ]
+    for ref, vuln in cases:
+        finding = finding_from_vdr(vuln, ref, producer_version="1")
         errors = list(validator.iter_errors(finding.to_dict()))
         assert not errors

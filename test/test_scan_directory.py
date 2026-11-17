@@ -438,6 +438,7 @@ def test_fixture_loads_and_renders(capsys):
     assert len(loaded.vulnerabilities) == 1
     assert loaded.vulnerabilities[0]["id"] == "CVE-2024-1111"
     assert len(loaded.findings) == 1
+    assert loaded.manifest is not None
     assert loaded.manifest["layoutVersion"] == "1.0"
 
     assert report_lib.run_report_command([str(FIXTURE_DIR)]) == 0
@@ -675,7 +676,9 @@ def test_scan_directory_paths_are_relative_and_forward_slashed(scan_stubs, tmp_p
         api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True),
         render=False,
     )
-    for entry in result.manifest["files"]:
+    manifest = result.manifest
+    assert manifest is not None
+    for entry in manifest["files"]:
         relative = entry["path"]
         assert not relative.startswith("/")
         assert "\\" not in relative
@@ -764,9 +767,11 @@ def test_git_state_reads_the_commit_and_the_dirty_flag(tmp_path):
     git("add", ".")
     git("commit", "-qm", "one")
     clean = scan_directory.git_state(str(repo))
+    assert clean is not None
     assert clean == {"commit": git("rev-parse", "HEAD").stdout.decode().strip(), "dirty": False}
     (repo / "file.txt").write_text("two")
     dirty = scan_directory.git_state(str(repo))
+    assert dirty is not None
     assert dirty["commit"] == clean["commit"]
     assert dirty["dirty"] is True
     assert scan_directory.git_state(str(tmp_path)) is None
@@ -804,7 +809,7 @@ def test_classify_file_roles():
     }
     cyclonedx = {"bomFormat": "CycloneDX"}
     for path, expected in entries.items():
-        if path == "depscan.manifest.json":
+        if expected is None:
             continue
         entry = classify_file(path, is_cyclonedx=cyclonedx if path == "bom.json" else None)
         for key, value in expected.items():
