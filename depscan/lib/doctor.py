@@ -673,6 +673,65 @@ def issue_url(number: int) -> str:
     return f"https://github.com/owasp-dep-scan/dep-scan/issues/{number}"
 
 
+#: The reachability analyzers a scan can run, each with the capability it
+#: satisfies. The requirements themselves stay in :data:`CAPABILITIES`; this
+#: names the analyzer rows the manifest records, so a scan that cannot run
+#: one analyzer names the capability and the doctor's reason.
+ANALYZER_CAPABILITIES = {
+    "atom": "reachability",
+    "rusi": "reachability:rust",
+    "golem": "reachability:go",
+    "dosai": "reachability:dotnet",
+}
+
+
+def requirement_reason(
+    requirement: str, tools: Dict[str, ToolStatus], data: Dict[str, Any]
+) -> str:
+    """The doctor's human reason one requirement is not satisfied.
+
+    Satisfied requirements have no reason, so callers ask this only after
+    :func:`requirement_missing` returned the name.
+    """
+    if requirement.startswith("tool:"):
+        status = tools.get(requirement[len("tool:") :])
+        if status is None:
+            return f"{requirement} is not a tool this version knows"
+        if status.reason:
+            return f"{status.name}: {status.reason}"
+        return f"{status.name} has no readable version"
+    if requirement == "data:vdb":
+        vdb = data.get("vulnerabilityDatabase") or {}
+        if not vdb.get("present"):
+            return "the vulnerability database is not present"
+        return "the vulnerability database has no searchable rows"
+    return f"{requirement} is not available"
+
+
+def capability_unavailable_reason(
+    name: str, tools: Dict[str, ToolStatus], data: Dict[str, Any]
+) -> Optional[str]:
+    """Why a capability cannot run here, or None when it can.
+
+    Reads :data:`CAPABILITIES`, the single source of what each capability
+    needs; callers never keep their own copy of the requirements. The reason
+    names the capability and, for every unsatisfied requirement, the same
+    message the doctor report prints for the tool or data behind it. An
+    unknown name and a capability this version does not implement are
+    reported as reasons too, because both mean the step cannot run.
+    """
+    spec = next((spec for spec in CAPABILITIES if spec.name == name), None)
+    if spec is None:
+        return f"{name} is not a capability this version knows"
+    if not spec.implemented:
+        return f"{name} is not implemented in this version ({issue_url(spec.issue)})"
+    missing = [r for r in spec.requirements if requirement_missing(r, tools, data)]
+    if not missing:
+        return None
+    detail = "; ".join(f"{r} ({requirement_reason(r, tools, data)})" for r in missing)
+    return f"capability {name} is unavailable: {detail}"
+
+
 @dataclass(frozen=True)
 class CapabilitySpec:
     """One capability row of :data:`CAPABILITIES`.
@@ -938,6 +997,10 @@ class DoctorReport:
     tools: List[ToolStatus]
     data: Dict[str, Any]
     capabilities: List[CapabilityStatus]
+
+    def tools_by_name(self) -> Dict[str, ToolStatus]:
+        """The tool entries by name, as the capability checks look them up."""
+        return {tool.name: tool for tool in self.tools}
 
     def to_dict(self) -> Dict[str, Any]:
         return {
