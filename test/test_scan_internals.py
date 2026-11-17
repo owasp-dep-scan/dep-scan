@@ -12,11 +12,13 @@ its calls and the tests assert the recording.
 """
 
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from depscan import api
+from depscan.cli_options import build_parser
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
@@ -289,6 +291,7 @@ def test_a_passed_doctor_report_is_reused_not_recollected(scan_stubs, tmp_path, 
 
     # Positive control of the refusal stub: the real collector never ran.
     assert calls == []
+    assert result.manifest is not None, "the scan directory was not written"
     assert result.manifest["platform"] == fixed.platform
     assert result.manifest["tools"][0]["name"] == "cdxgen"
     assert result.manifest["tools"][0]["path"] == "/opt/fake/cdxgen"
@@ -311,6 +314,7 @@ def test_checks_not_assessed_are_recorded_in_the_manifest(scan_stubs, tmp_path):
         ],
     )
 
+    assert result.manifest is not None, "the scan directory was not written"
     stages = {stage["name"]: stage for stage in result.manifest["stages"]}
     assert stages["check-reachability"]["status"] == "not-assessed"
     assert stages["check-reachability"]["reason"] == "cdxgen was not found on PATH"
@@ -337,3 +341,111 @@ def test_checks_not_assessed_are_skipped_without_a_scan_directory(scan_stubs, tm
     assert result.manifest is None
     # Positive control: the scan itself still ran.
     assert scan_stubs["matching"], "the matching stage never ran"
+
+
+# ---------------------------------------------------------------------------
+# logs and progress on stderr, tables on stdout
+# ---------------------------------------------------------------------------
+
+
+def _bom_scan_options(tmp_path, **overrides):
+    bom = tmp_path / "given.cdx.json"
+    bom.write_text(json.dumps(BOM_DOCUMENT))
+    options = dict(bom=str(bom), reports_dir=str(tmp_path / "reports"), no_banner=True)
+    options.update(overrides)
+    return api.scan_options(**options)
+
+
+def test_the_logging_console_writes_on_stderr(capfd):
+    """The second console writes on stderr, so logs and progress that print
+    on it leave stdout to the rendered output."""
+    pipeline.log_console.print("probe line for the log console")
+    captured = capfd.readouterr()
+    assert "probe line for the log console" in captured.err
+    assert captured.out == ""
+
+
+def test_the_logging_handler_is_attached_to_the_stderr_console():
+    """In a fresh interpreter, where the handler is installed the way the
+    command runs (the test session's root logger already has handlers of its
+    own), a log line lands on stderr and nothing on stdout."""
+    import subprocess
+    import sys
+
+    probe = "from depscan.lib.logger import LOG\nLOG.info('probe log line for stderr')\n"
+    proc = subprocess.run(
+        [sys.executable, "-c", probe], capture_output=True, text=True, check=False
+    )
+    assert "probe log line for stderr" in proc.stderr, proc.stderr
+    assert proc.stdout == ""
+
+
+def test_progress_panels_write_on_stderr(tmp_path, capfd, monkeypatch):
+    """The pipeline's progress panels, the license audit announcement here,
+    print on the log console: stderr, not stdout."""
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    src = tmp_path / "src"
+    src.mkdir()
+    args = build_parser().parse_args(
+        [
+            "-t",
+            "license",
+            "python",
+            "--src",
+            str(src),
+            "--reports-dir",
+            str(tmp_path / "reports"),
+            "--no-banner",
+        ]
+    )
+    ctx = pipeline.build_context(args)
+    pipeline.stage_setup(ctx)
+    pipeline.finalize_setup(ctx)
+
+    captured = capfd.readouterr()
+    # Positive control: the license analysis really turned on.
+    assert os.environ["FETCH_LICENSE"] == "true"
+    assert "License audit is enabled" in captured.err
+    assert "License audit is enabled" not in captured.out
+
+
+def test_tables_stay_on_stdout(scan_stubs, tmp_path, monkeypatch, capfd):
+    """The rendered tables, the license table here, print on the stdout
+    console and never on stderr."""
+    monkeypatch.setenv("FETCH_LICENSE", "true")
+    monkeypatch.setattr(
+        pipeline,
+        "get_pkg_list",
+        lambda f: (
+            [
+                {
+                    "purl": "pkg:npm/demo@1.0.0",
+                    "name": "demo",
+                    "version": "1.0.0",
+                    # A license that is not OSI approved earns the package a
+                    # row in the license table printed on stdout.
+                    "licenses": ["CC-BY-NC-4.0"],
+                }
+            ],
+            [],
+        ),
+    )
+    api.scan(_bom_scan_options(tmp_path))
+
+    # Positive control: the matching stage ran, so the scan was real.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    captured = capfd.readouterr()
+    assert "demo" in captured.out
+    assert "CC-BY-NC-4.0" in captured.out
+    assert "CC-BY-NC-4.0" not in captured.err
+
+
+def test_quiet_mode_mutes_the_log_console_too(scan_stubs, tmp_path, monkeypatch, capfd):
+    """Quiet mutes both consoles: no log lines, no progress, no tables."""
+    # The quiet handling disables the logger globally; the pre-test state is
+    # restored so later tests keep their log output.
+    monkeypatch.setattr(pipeline.LOG, "disabled", False)
+    api.scan(_bom_scan_options(tmp_path, quiet=True))
+    captured = capfd.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""

@@ -68,13 +68,30 @@ console = Console(
     emoji=_emoji_enabled(),
 )
 
+# Logs, warnings and progress print on stderr so the stdout console carries
+# only rendered output (tables, summaries, explanations) and its HTML and
+# text exports stay free of log lines. The same theme and colour system apply;
+# this console records nothing because no report exports it.
+log_console = Console(
+    file=sys.stderr,
+    log_time=False,
+    log_path=False,
+    theme=custom_theme,
+    color_system=_color_system(),
+    width=140 if IS_CI else None,
+    highlight=not IS_CI,
+    tab_size=2,
+    highlighter=CustomHighlighter(),
+    emoji=_emoji_enabled(),
+)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(message)s",
     datefmt="[%X]",
     handlers=[
         RichHandler(
-            console=console,
+            console=log_console,
             markup=True,
             show_path=False,
             enable_link_path=False,

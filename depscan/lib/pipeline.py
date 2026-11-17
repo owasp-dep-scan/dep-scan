@@ -74,7 +74,7 @@ from depscan.lib.config import (
     write_vdb_image_marker,
 )
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console
+from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console, log_console
 
 LOGO = """
   _|  _  ._   _  _  _. ._
@@ -206,7 +206,7 @@ def configure_output(ctx):
         and not args.no_banner
         and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan."
     ):
-        console.print(
+        log_console.print(
             Panel(
                 "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
                 title="Donate to the OWASP Foundation",
@@ -221,6 +221,7 @@ def configure_output(ctx):
         os.environ["SCAN_DEBUG_MODE"] = "off"
         os.environ["CDXGEN_DEBUG_MODE"] = "off"
         console.quiet = True
+        log_console.quiet = True
         args.no_vuln_table = True
     # Should we enable debug
     if args.enable_debug:
@@ -570,7 +571,7 @@ def stage_database(ctx):
         # database stops the scan instead of looking like a clean one.
         should_download, dl_reason = vdb_setup.vdb_download_needed(scan_vdb_url, config.DATA_DIR)
         if should_download:
-            with console.status(
+            with log_console.status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
                 spinner=SPINNER,
             ) as vdb_download_status:
@@ -702,7 +703,7 @@ def finalize_setup(ctx):
         # having been detected, so remove it only when it is there.
         if "license" in ctx.project_types:
             ctx.project_types.remove("license")
-        console.print(
+        log_console.print(
             Panel(
                 "License audit is enabled for this scan. This would increase "
                 "the time by up to 10 minutes.",
@@ -1032,7 +1033,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
     if not pkg_list_to_use:
         return False
     if len(scan.pkg_list) > 1:
-        console.print(
+        log_console.print(
             Panel(
                 f"Performing OSS Risk Audit for packages from "
                 f"{ctx.src_dir}\nNo of packages [bold]{len(scan.pkg_list)}"
