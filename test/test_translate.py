@@ -62,11 +62,7 @@ def test_v7_internal_options_are_the_only_ones_without_a_row():
 
 def test_row_dests_match_the_parser():
     parser = build_parser()
-    dests = {
-        action.dest
-        for action in parser._actions
-        if action.dest is not argparse.SUPPRESS
-    }
+    dests = {action.dest for action in parser._actions if action.dest is not argparse.SUPPRESS}
     for row in OPTION_TABLE:
         if row.dest is not None:
             assert row.dest in dests, row.v6_flags
@@ -98,9 +94,7 @@ def test_server_options_switch_the_verb_to_serve():
 
 
 def test_server_only_option_without_server_switches_the_verb_to_serve():
-    assert translate(["--server-host", "0.0.0.0"]) == (
-        "depscan serve --server-host 0.0.0.0"
-    )
+    assert translate(["--server-host", "0.0.0.0"]) == ("depscan serve --server-host 0.0.0.0")
     assert translate(["--server-port", "7071"]) == "depscan serve --server-port 7071"
 
 

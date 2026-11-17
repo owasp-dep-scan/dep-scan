@@ -108,9 +108,7 @@ def _toml_dests(internal) -> set:
             data = tomllib.load(fp)
     except (OSError, tomllib.TOMLDecodeError):
         return set()
-    return {
-        key.replace("-", "_") for key, value in data.items() if not isinstance(value, dict)
-    }
+    return {key.replace("-", "_") for key, value in data.items() if not isinstance(value, dict)}
 
 
 def _env_produced(argv: list, dest: str, env_var: str, internal) -> bool:

@@ -268,9 +268,7 @@ def test_type_values_never_swallow_a_target():
                 )
         target_like = [token for token in tokens[2:] if _looks_like_target(token)]
         if target_like and not getattr(namespace, "targets", None):
-            problems.append(
-                f"{where}: names {target_like} but parses with no target"
-            )
+            problems.append(f"{where}: names {target_like} but parses with no target")
     assert not problems, "\n".join(problems)
 
 
@@ -298,9 +296,7 @@ def test_removed_console_scripts_are_gone(removed):
         text = _read_text(path)
         if text is None:
             continue
-        assert removed not in text, (
-            f"{path.relative_to(REPO_ROOT)} still names {removed}"
-        )
+        assert removed not in text, f"{path.relative_to(REPO_ROOT)} still names {removed}"
 
 
 #: Representative before/after pairs for the rewrites the files carry. Each
@@ -339,8 +335,7 @@ TRANSLATED_PAIRS = [
     ),
     (
         ["--no-banner", "--bom", "sbom-docker.cdx.json", "-o", "reports", "--no-vuln-table"],
-        "depscan scan sbom-docker.cdx.json --no-banner --reports-dir reports "
-        "--no-vuln-table",
+        "depscan scan sbom-docker.cdx.json --no-banner --reports-dir reports --no-vuln-table",
     ),
     # repotests.yml and the lifecycle workflows
     (
@@ -426,7 +421,17 @@ TRANSLATED_PAIRS = [
         "depscan scan ./my-rust-app --reports-dir ./reports --bom-profile research",
     ),
     (
-        ["--profile", "research", "-t", "java", "-i", "./my-java-app", "-o", "./reports", "--explain"],
+        [
+            "--profile",
+            "research",
+            "-t",
+            "java",
+            "-i",
+            "./my-java-app",
+            "-o",
+            "./reports",
+            "--explain",
+        ],
         "depscan scan ./my-java-app --reports-dir ./reports --bom-profile research "
         "--type java --explain",
     ),
@@ -436,7 +441,15 @@ TRANSLATED_PAIRS = [
     ),
     # README.md and docker-compose.yml server mode
     (
-        ["--server", "--server-host", "0.0.0.0", "--server-port", "7070", "--cdxgen-server", "http://cdxgen:9090"],
+        [
+            "--server",
+            "--server-host",
+            "0.0.0.0",
+            "--server-port",
+            "7070",
+            "--cdxgen-server",
+            "http://cdxgen:9090",
+        ],
         "depscan serve --server-host 0.0.0.0 --server-port 7070 "
         "--cdxgen-server http://cdxgen:9090",
     ),
@@ -480,6 +493,4 @@ TARGETED_CONTENT = {
 def test_hand_adjusted_rewrites_are_present(relative_path, expected):
     """The rewrites that needed judgement survive in their files verbatim."""
     text = _read_text(REPO_ROOT / relative_path)
-    assert text is not None and expected in text, (
-        f"{expected!r} is missing from {relative_path}"
-    )
+    assert text is not None and expected in text, f"{expected!r} is missing from {relative_path}"

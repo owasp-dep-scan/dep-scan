@@ -539,9 +539,7 @@ class _RecordAction(argparse.Action):
     """
 
     def __init__(self, option_strings: list[str], dest: str) -> None:
-        super().__init__(
-            option_strings=option_strings, dest=dest, nargs=0, default=False
-        )
+        super().__init__(option_strings=option_strings, dest=dest, nargs=0, default=False)
 
     def __call__(
         self,
@@ -556,14 +554,10 @@ class _RecordAction(argparse.Action):
 def _install_recorders(parser: argparse.ArgumentParser) -> None:
     """Swap the parser's help and version actions for recording actions."""
     for action in list(parser._actions):
-        option_strings = [
-            flag for flag in action.option_strings if flag in _RECORDABLE_ACTIONS
-        ]
+        option_strings = [flag for flag in action.option_strings if flag in _RECORDABLE_ACTIONS]
         if not option_strings:
             continue
-        recorder = _RecordAction(
-            option_strings, _RECORDABLE_ACTIONS[option_strings[0]]
-        )
+        recorder = _RecordAction(option_strings, _RECORDABLE_ACTIONS[option_strings[0]])
         for flag in option_strings:
             parser._option_string_actions[flag] = recorder
 
@@ -654,9 +648,7 @@ def translate(argv: Sequence[str]) -> str | None:
         return None
     if getattr(parsed, "recorded_version", False):
         return "depscan version"
-    if explicit.get("server_mode") is True or any(
-        dest in explicit for dest in _SERVER_ONLY_DESTS
-    ):
+    if explicit.get("server_mode") is True or any(dest in explicit for dest in _SERVER_ONLY_DESTS):
         verb = "serve"
     else:
         verb = "scan"

@@ -247,9 +247,7 @@ def _download_shards(args, data_dir):
         ", ".join(shard_names),
         vdb_config.VDB_SHARDS_DIR,
     )
-    placed = (
-        refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
-    )
+    placed = refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
     write_vdb_image_marker(vdb_shards_marker(shard_names), data_dir)
     LOG.info(
         "Refreshed shard(s): %s. Marker written to %s",

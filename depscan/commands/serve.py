@@ -85,11 +85,7 @@ def _add_database_options(parser: argparse.ArgumentParser) -> None:
 
 
 def run(args: argparse.Namespace) -> int:
-    overrides = {
-        dest: value
-        for dest, value in vars(args).items()
-        if dest not in _NON_SCAN_DESTS
-    }
+    overrides = {dest: value for dest, value in vars(args).items() if dest not in _NON_SCAN_DESTS}
     options = api.scan_options(server_mode=True, **overrides)
     ctx = pipeline.build_context(options)
     pipeline.configure_output(ctx)

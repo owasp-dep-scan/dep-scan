@@ -45,7 +45,18 @@ def test_help_flag_prints_the_v7_help(monkeypatch, capsys):
     assert run_main(monkeypatch, ["-h"]) == 0
     out = capsys.readouterr().out
     assert "usage: depscan" in out
-    for verb in ("scan", "report", "vdb", "doctor", "schema", "config", "serve", "validate", "version", "help"):
+    for verb in (
+        "scan",
+        "report",
+        "vdb",
+        "doctor",
+        "schema",
+        "config",
+        "serve",
+        "validate",
+        "version",
+        "help",
+    ):
         assert verb in out
 
 
@@ -71,7 +82,18 @@ def test_help_verb_json_prints_the_help_as_one_document(monkeypatch, capsys):
     document = json.loads(capsys.readouterr().out)
     assert set(document) == {"help"}
     assert "usage: depscan" in document["help"]
-    for verb in ("scan", "report", "vdb", "doctor", "schema", "config", "serve", "validate", "version", "help"):
+    for verb in (
+        "scan",
+        "report",
+        "vdb",
+        "doctor",
+        "schema",
+        "config",
+        "serve",
+        "validate",
+        "version",
+        "help",
+    ):
         assert verb in document["help"]
 
 
@@ -89,7 +111,9 @@ def test_v6_invocation_exits_two_with_the_translation(monkeypatch, capsys):
     assert code == 2
     err = capsys.readouterr().err
     assert "this is a dep-scan 6 command line" in err
-    assert "The equivalent v7 command is: depscan scan x --target-kind bom-dir --reports-dir y" in err
+    assert (
+        "The equivalent v7 command is: depscan scan x --target-kind bom-dir --reports-dir y" in err
+    )
     assert MIGRATION_GUIDE in err
 
 
@@ -193,9 +217,7 @@ def test_config_show_sources(monkeypatch, capsys, tmp_path, clean_option_env):
     )
     assert code == 0
     rows = {
-        line.split()[0]: line
-        for line in capsys.readouterr().out.splitlines()[1:]
-        if line.strip()
+        line.split()[0]: line for line in capsys.readouterr().out.splitlines()[1:] if line.strip()
     }
     assert "command line" in rows["reports_dir"]
     assert '"x"' in rows["reports_dir"]
@@ -288,10 +310,14 @@ def test_config_show_json(monkeypatch, capsys, tmp_path, clean_option_env):
     ]
 
 
-def test_config_show_maps_bom_profile_onto_the_internal_profile(monkeypatch, capsys, clean_option_env):
+def test_config_show_maps_bom_profile_onto_the_internal_profile(
+    monkeypatch, capsys, clean_option_env
+):
     """v6's ``--profile`` is v7's ``--bom-profile``; the internal dest stays
     ``profile`` and the v7 scan profile is not an internal option."""
-    code = run_main(monkeypatch, ["config", "show", "--bom-profile", "research", "--format", "json"])
+    code = run_main(
+        monkeypatch, ["config", "show", "--bom-profile", "research", "--format", "json"]
+    )
     assert code == 0
     options = json.loads(capsys.readouterr().out)["options"]
     assert options["profile"] == {"value": "research", "source": "command line"}
@@ -299,7 +325,9 @@ def test_config_show_maps_bom_profile_onto_the_internal_profile(monkeypatch, cap
     assert "target_kind" not in options
 
 
-def test_config_command_line_wins_over_the_toml_file(monkeypatch, capsys, tmp_path, clean_option_env):
+def test_config_command_line_wins_over_the_toml_file(
+    monkeypatch, capsys, tmp_path, clean_option_env
+):
     config_file = tmp_path / "depscan.toml"
     config_file.write_text('reports_dir = "/from/the/toml"\n')
     code = run_main(
@@ -677,7 +705,16 @@ def test_config_show_reports_what_a_profile_and_checks_set(monkeypatch, capsys, 
     does, so the printed options are the ones a scan would use."""
     code = run_main(
         monkeypatch,
-        ["config", "show", "--profile", "deep", "--reachability-analyzer", "off", "--format", "json"],
+        [
+            "config",
+            "show",
+            "--profile",
+            "deep",
+            "--reachability-analyzer",
+            "off",
+            "--format",
+            "json",
+        ],
     )
     assert code == 0
     options = json.loads(capsys.readouterr().out)["options"]

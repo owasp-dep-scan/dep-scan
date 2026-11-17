@@ -304,7 +304,9 @@ def test_scan_runs_a_bom_directory(scan_stubs, monkeypatch, tmp_path):
     _write_bom(bom_dir / "b.cdx.json", name="b")
     (bom_dir / "notes.txt").write_text("not a BOM, ignored by detection")
     reports = tmp_path / "reports"
-    code = run_main(monkeypatch, ["scan", str(bom_dir), "--reports-dir", str(reports), "--no-banner"])
+    code = run_main(
+        monkeypatch, ["scan", str(bom_dir), "--reports-dir", str(reports), "--no-banner"]
+    )
     assert code == 0
     assert (reports / "depscan.manifest.json").is_file()
     # Positive controls: the packages came from the BOM directory and
@@ -344,9 +346,7 @@ def test_a_lone_bom_directory_target_reuses_itself_as_the_reports_directory(
     # not-assessed-outside entry that makes a directory unloadable.
     manifest = _manifest_of(bom_dir)
     vdr_stage = next(stage for stage in manifest["stages"] if stage["name"] == "vdr")
-    assert vdr_stage["outputs"] == [
-        {"file": "depscan-universal.vdr.json", "status": "completed"}
-    ]
+    assert vdr_stage["outputs"] == [{"file": "depscan-universal.vdr.json", "status": "completed"}]
     # Positive control: the scan really ran, and the directory loads back
     # through the API and renders through the report command.
     assert scan_stubs["matching"], "the matching stage never ran"
@@ -548,9 +548,13 @@ def _directory_named(parent, name):
         # A tag-shaped name cannot exist as a Windows path (a colon is not a
         # legal path character there), so the nested registry/name shape is
         # the ambiguous case every platform can create.
-        pytest.param("app:latest", lambda p: _directory_named(p, "app:latest"),
-                     marks=pytest.mark.skipif(sys.platform == "win32",
-                                              reason="a colon cannot appear in a Windows path name")),
+        pytest.param(
+            "app:latest",
+            lambda p: _directory_named(p, "app:latest"),
+            marks=pytest.mark.skipif(
+                sys.platform == "win32", reason="a colon cannot appear in a Windows path name"
+            ),
+        ),
         ("shiftleft/scan-slim", lambda p: _directory_named(p, "shiftleft/scan-slim")),
     ],
 )
@@ -751,9 +755,7 @@ def test_an_explicit_reachability_check_with_cdxgen_hidden_exits_four(
     assert scan_stubs["matching"] == []
 
 
-def test_the_default_checks_are_never_gated(
-    scan_stubs, fake_tools, monkeypatch, tmp_path
-):
+def test_the_default_checks_are_never_gated(scan_stubs, fake_tools, monkeypatch, tmp_path):
     """Without --checks the same scan runs to exit 0, and reachability is
     recorded not assessed with the doctor's reason, as before."""
     fake_tools["remove"]("cdxgen")
@@ -999,6 +1001,7 @@ def test_json_format_keeps_stray_stdout_writes_off_stdout(
     """A library that prints its progress straight to stdout, as the vdb
     download does, must not pollute the one JSON document: in json mode the
     process stdout itself is redirected for the duration of the scans."""
+
     def noisy_database_guard():
         scan_stubs["database"].append("printed")
         print("vdb download progress: 42%")
@@ -1019,9 +1022,7 @@ def test_json_format_keeps_stray_stdout_writes_off_stdout(
     assert "vdb download progress" in captured.err
 
 
-def test_json_format_follows_the_number_of_targets_given(
-    scan_stubs, monkeypatch, capfd, tmp_path
-):
+def test_json_format_follows_the_number_of_targets_given(scan_stubs, monkeypatch, capfd, tmp_path):
     """A two-target invocation prints an array of two entries whatever
     happened to the targets: the refused one carries its target and the
     refusal reason instead of being silently dropped."""
@@ -1075,7 +1076,9 @@ def test_text_format_leaves_the_scan_tables_on_stdout(
         ),
     )
     bom = _write_bom(tmp_path / "given.cdx.json")
-    code = run_main(monkeypatch, ["scan", bom, "--reports-dir", str(tmp_path / "reports"), "--no-banner"])
+    code = run_main(
+        monkeypatch, ["scan", bom, "--reports-dir", str(tmp_path / "reports"), "--no-banner"]
+    )
     assert code == 0
     # Positive control: the matching stage ran, so the scan was real.
     assert scan_stubs["matching"], "the matching stage never ran"
@@ -1095,7 +1098,8 @@ def test_profile_quick_turns_reachability_off_and_an_explicit_analyzer_wins(
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
     code = run_main(
-        monkeypatch, ["scan", bom, "--profile", "quick", "--reports-dir", str(reports), "--no-banner"]
+        monkeypatch,
+        ["scan", bom, "--profile", "quick", "--reports-dir", str(reports), "--no-banner"],
     )
     assert code == 0
     stages = {stage["name"]: stage for stage in _manifest_of(reports)["stages"]}
@@ -1134,7 +1138,16 @@ def test_profile_ci_keeps_explain_on_when_passed_explicitly(
     reports = tmp_path / "reports"
     code = run_main(
         monkeypatch,
-        ["scan", bom, "--profile", "ci", "--explain", "--reports-dir", str(reports), "--no-banner"],
+        [
+            "scan",
+            bom,
+            "--profile",
+            "ci",
+            "--explain",
+            "--reports-dir",
+            str(reports),
+            "--no-banner",
+        ],
     )
     assert code == 0
     manifest = _manifest_of(reports)
@@ -1197,9 +1210,7 @@ def test_profile_deep_enables_risk_license_and_semantic_reachability(
 # ---------------------------------------------------------------------------
 
 
-def test_exclude_type_through_the_cli_leaves_no_os_scan(
-    scan_stubs, monkeypatch, tmp_path
-):
+def test_exclude_type_through_the_cli_leaves_no_os_scan(scan_stubs, monkeypatch, tmp_path):
     """--exclude-type os drops the os type before any stage and reaches the
     cdxgen command line."""
     src = tmp_path / "src"
@@ -1293,7 +1304,7 @@ def test_bom_profile_license_compliance_runs_the_license_stage(
 
 
 def test_a_multi_target_directory_name_for_dot_names_the_directory(monkeypatch, tmp_path):
-    """"." and a trailing separator name the directory itself, not "." or ""."""
+    """ "." and a trailing separator name the directory itself, not "." or ""."""
     from depscan.commands.scan import _target_directory_name
 
     project = tmp_path / "myproject"

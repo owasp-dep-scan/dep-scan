@@ -131,9 +131,7 @@ def _detect_existing_directory(target: str) -> Tuple[str, str]:
     """Classify an existing directory: OCI layout, BOM directory, source."""
     if os.path.isfile(os.path.join(target, "oci-layout")):
         return "container", "a directory holding an oci-layout file"
-    json_files = [
-        path for path in _direct_json_files(target) if not _is_bom_companion(path)
-    ]
+    json_files = [path for path in _direct_json_files(target) if not _is_bom_companion(path)]
     if json_files and all(_is_cyclonedx_document(path) for path in json_files):
         return "bom-dir", "a directory whose JSON files are all CycloneDX documents"
     return "source", "an existing directory"

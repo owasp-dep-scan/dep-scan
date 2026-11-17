@@ -1191,7 +1191,9 @@ def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] 
     if reachability_analyzer != "off" and not options.get("deep"):
         options["deep"] = True
     blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=options)
-    with log_console.status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
+    with log_console.status(
+        f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER
+    ):
         bom_result = blint_lib.generate()
         if not bom_result.success:
             LOG.info("The blint invocation was unsuccessful. Try generating the BOM separately.")
