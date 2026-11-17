@@ -151,9 +151,9 @@ def _in_command_position(line, match):
     return last in _COMMAND_PREFIXES
 
 
-def extract_invocations():
+def extract_invocations() -> list[tuple[Path, int, list[str]]]:
     """Every ``(path, lineno, argv)`` depscan command in the walked files."""
-    found = []
+    found: list[tuple[Path, int, list[str]]] = []
     for path in _walk_files():
         text = _read_text(path)
         if text is None:
@@ -166,7 +166,7 @@ def extract_invocations():
                 if not tokens:
                     # A bare word at the end of a sentence, not a command.
                     continue
-                found.append((path, lineno, ("depscan", *tokens)))
+                found.append((path, lineno, ["depscan", *tokens]))
     return found
 
 
