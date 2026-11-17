@@ -74,6 +74,10 @@ _PATH_OPTIONS = (
     "custom_data",
     "report_template",
     "server_allowed_paths",
+    "html_report_file",
+    "txt_report_file",
+    "llm_prompt_file",
+    "config",
 )
 
 #: The suffixes of the cdxgen slice files, for role and project type parsing.
@@ -285,9 +289,13 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         return entry
     if name.endswith(".vdr.json"):
         project_type = None
-        if stem and stem.startswith("sbom-"):
-            project_type = _parse_bom_project_type(stem)
-        entry.update(role="vdr", producer="dep-scan", projectType=project_type)
+        vdr_stem = name[: -len(".vdr.json")]
+        if vdr_stem.startswith("sbom-"):
+            project_type = _parse_bom_project_type(vdr_stem)
+        if project_type:
+            entry.update(role="vdr", producer="dep-scan", projectType=project_type)
+        else:
+            entry.update(role="vdr", producer="dep-scan")
         return entry
     if name.endswith(".csaf.json"):
         entry.update(role="csaf", producer="dep-scan")
@@ -295,18 +303,22 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
     if ".slices" in name and name.endswith(".json"):
         prefix = _parse_slice_project_type(name[: -len(".json")])
         producer = "dep-scan" if prefix in _LANGUAGE_REACHABLES else "cdxgen"
-        entry.update(role="slices", producer=producer, projectType=prefix)
+        if prefix:
+            entry.update(role="slices", producer=producer, projectType=prefix)
+        else:
+            entry.update(role="slices", producer=producer)
         return entry
     if stem and stem.endswith("-openapi"):
         entry.update(role="other", producer="cdxgen", projectType=stem[: -len("-openapi")])
         return entry
     if name.endswith(".cdx.json") and stem:
-        project_type = _parse_bom_project_type(stem)
+        bom_stem = name[: -len(".cdx.json")]
+        project_type = _parse_bom_project_type(bom_stem)
         if project_type is not None:
-            producer = "blint" if stem.startswith("sbom-postbuild-") else "cdxgen"
+            producer = "blint" if bom_stem.startswith("sbom-postbuild-") else "cdxgen"
+            entry.update(role="bom", producer=producer, projectType=project_type)
         else:
-            producer = "user"
-        entry.update(role="bom", producer=producer, projectType=project_type)
+            entry.update(role="bom", producer="user")
         return entry
     if name in _REPORT_FILES or name.startswith("depscan-risk-") or name.startswith("license-"):
         entry.update(role="report", producer="dep-scan")
@@ -373,6 +385,30 @@ def analyzer_entries(
             entry.update(status="completed")
         entries.append(entry)
     return entries
+
+
+def home_relative(path: Optional[str]) -> Optional[str]:
+    """A path with the user's home replaced by ``~``, or the path unchanged.
+
+    The manifest may be shared, so it never carries the home directory or
+    the username behind it; the doctor's tool and database paths are the
+    machine's, and this keeps them readable without identifying anyone.
+    Paths outside the home are machine locations such as ``/opt``, which
+    name no user and are kept as they are.
+    """
+    if not path:
+        return path
+    home = os.path.expanduser("~")
+    if home != "~" and (path == home or path.startswith(home + os.sep)):
+        return "~" + path[len(home) :]
+    return path
+
+
+def _sanitize_doctor_entry(entry: Dict[str, Any]) -> Dict[str, Any]:
+    sanitized = dict(entry)
+    if sanitized.get("path"):
+        sanitized["path"] = home_relative(str(sanitized["path"]))
+    return sanitized
 
 
 class ScanDirectory:
@@ -450,12 +486,12 @@ class ScanDirectory:
         }
         if self.doctor_report is not None:
             report_doc = self.doctor_report.to_dict()
-            manifest["tools"] = report_doc["tools"]
+            manifest["tools"] = [_sanitize_doctor_entry(tool) for tool in report_doc["tools"]]
             manifest["platform"] = report_doc["platform"]
             manifest["capabilities"] = report_doc["capabilities"]
-            manifest["database"]["vulnerabilityDatabase"] = report_doc["data"][
-                "vulnerabilityDatabase"
-            ]
+            database = dict(report_doc["data"]["vulnerabilityDatabase"])
+            database["directory"] = home_relative(database.get("directory"))
+            manifest["database"]["vulnerabilityDatabase"] = database
         return manifest
 
 
@@ -581,16 +617,16 @@ def project_types(manifest: Dict[str, Any]) -> List[str]:
     return types
 
 
-def stage_vdr_outputs(manifest: Dict[str, Any]) -> List[Any]:
-    """The (project type, file path) pairs of the VDRs the stages wrote.
+def stage_outputs(manifest: Dict[str, Any], name: str) -> List[Any]:
+    """The (project type, file path) pairs a stage recorded as completed.
 
-    The analysis stage records the VDR it wrote as a completed output, which
-    maps the file to the type that produced it; the file name alone does not
-    always carry the type.
+    The inventory stage records the BOM document it settled on and the vdr
+    stage records the VDR it wrote, which maps each file to the project type
+    that produced it; the file name alone does not always carry the type.
     """
     outputs = []
     for stage in manifest.get("stages") or []:
-        if stage.get("name") != "vdr" or stage.get("status") != "completed":
+        if stage.get("name") != name or stage.get("status") != "completed":
             continue
         for output in stage.get("outputs") or []:
             if output.get("file") and output.get("status") == "completed":

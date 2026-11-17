@@ -1,0 +1,19 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "metadata": {
+    "component": {
+      "name": "django-app",
+      "type": "application"
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:pypi/requests@2.32.1",
+      "purl": "pkg:pypi/requests@2.32.1",
+      "name": "requests",
+      "version": "2.32.1"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1",
+  "findings": [
+    {
+      "id": "dsf1:9485b7ed3b65fe9899bd83bb2e26d753d5bbcbd39d718ea5be2908b54fe9f9a6",
+      "category": "vulnerability",
+      "rule": "CVE-2024-1111",
+      "title": "CVE-2024-1111 affects pkg:pypi/requests@2.32.1",
+      "severity": "high",
+      "coverage": {
+        "state": "assessed"
+      },
+      "producer": {
+        "name": "dep-scan",
+        "version": "7.0.0.dev0"
+      },
+      "cwes": [
+        400
+      ],
+      "components": [
+        "pkg:pypi/requests@2.32.1"
+      ],
+      "fix": {
+        "fixed_versions": [
+          "2.32.2"
+        ]
+      },
+      "references": [
+        {
+          "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1111",
+          "type": "advisory"
+        }
+      ]
+    }
+  ]
+}

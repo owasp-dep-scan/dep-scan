@@ -237,9 +237,12 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
                 ctx,
                 tscan,
                 project_type=project_type,
-                capabilities=_inventory_capabilities(project_type),
+                capabilities=_inventory_capabilities(options, project_type),
                 skipped_reason="the type produced no BOM or packages to scan",
-                record_extra=lambda: {"notAssessed": list(tscan.not_assessed)},
+                record_extra=lambda: {
+                    "notAssessed": list(tscan.not_assessed),
+                    "outputs": _inventory_outputs(ctx, tscan),
+                },
             ):
                 continue
             ctx.scans.append(tscan)
@@ -274,7 +277,7 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
                 analyzers=scan_directory.analyzer_entries(ctx.doctor_report, [project_type])
                 if options.reachability_analyzer != "off"
                 else [],
-                outputs=[_evidence_output()],
+                outputs=_evidence_output(),
                 skipped=bool(options.reachability_analyzer == "off"),
                 skipped_reason="reachability analysis is off",
             )
@@ -375,19 +378,23 @@ def _stage(
     return result
 
 
-def _inventory_capabilities(project_type: str) -> List[str]:
+def _inventory_capabilities(options, project_type: str) -> List[str]:
     """The capabilities the inventory stage's analyzer runs consult.
 
     The BOM generation step looks these up through the doctor table before
-    running a reachability analyzer; the entry names the same capabilities.
+    running a reachability analyzer, and the entry names the same
+    capabilities. A scan given a BOM or a BOM directory generates no BOM and
+    runs no analyzer, so it consults nothing.
     """
+    if options.bom or options.bom_dir or options.search_purl:
+        return []
     from depscan.lib.bom import reachability_analyzers_for_types
 
     analyzers = reachability_analyzers_for_types([project_type])
     return [
         doctor_lib.ANALYZER_CAPABILITIES[name]
         for name in analyzers
-        if name in doctor_lib.ANALYZER_CAPABILITIES
+        if name != "atom" and name in doctor_lib.ANALYZER_CAPABILITIES
     ]
 
 
@@ -405,6 +412,23 @@ def _evidence_output():
             "reason": scan_directory.EVIDENCE_NOT_PRODUCED_REASON,
         }
     ]
+
+
+def _inventory_outputs(ctx, tscan):
+    """The BOM document a type's inventory stage settled on, as a stage
+    output, when it lives in the scan directory.
+
+    A BOM the user passed in from elsewhere keeps its place and is recorded
+    in the manifest's inputs instead.
+    """
+    bom_file = tscan.bom_file
+    if not (bom_file and ctx.reports_dir and os.path.isfile(bom_file)):
+        return []
+    absolute_reports = os.path.abspath(ctx.reports_dir)
+    if not os.path.abspath(bom_file).startswith(absolute_reports + os.sep):
+        return []
+    relative = os.path.relpath(bom_file, ctx.reports_dir).replace(os.sep, "/")
+    return [{"file": relative, "status": "completed"}]
 
 
 def _vdr_outputs(ctx, tscan):
@@ -517,7 +541,15 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
         )
     by_type: Dict[str, TypeScanResult] = {}
     order: List[str] = []
-    for project_type, relative in scan_directory.stage_vdr_outputs(manifest):
+    for project_type, relative in scan_directory.stage_outputs(manifest, "inventory"):
+        if project_type is None:
+            continue
+        path = os.path.join(reports_dir, *relative.split("/"))
+        if os.path.isfile(path):
+            by_type[project_type] = TypeScanResult(project_type=project_type, bom_file=path)
+            if project_type not in order:
+                order.append(project_type)
+    for project_type, relative in scan_directory.stage_outputs(manifest, "vdr"):
         path = os.path.join(reports_dir, *relative.split("/"))
         if not os.path.isfile(path):
             raise ScanError(
@@ -542,13 +574,15 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
             else filename[: -len(".json")]
         )
         project_type = project_type or _type_from_vdr_name(filename, stem)
-        if project_type in by_type:
+        if project_type in by_type and by_type[project_type].vdr_file:
             raise ScanError(
                 f"Cannot load a scan from '{reports_dir}': the manifest "
                 f"lists two VDR files for project type '{project_type}'."
             )
+        existing = by_type.get(project_type)
         by_type[project_type] = TypeScanResult(
             project_type=project_type,
+            bom_file=existing.bom_file if existing else None,
             vdr_file=path,
             vulnerabilities=list(data.get("vulnerabilities") or []),
         )
@@ -560,12 +594,6 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
         if project_type not in by_type:
             by_type[project_type] = TypeScanResult(project_type=project_type)
             order.append(project_type)
-    for entry in manifest.get("files") or []:
-        project_type = entry.get("projectType")
-        if entry.get("role") == "bom" and project_type in by_type:
-            path = os.path.join(reports_dir, *str(entry.get("path")).split("/"))
-            if os.path.isfile(path) and not by_type[project_type].bom_file:
-                by_type[project_type].bom_file = path
     types = [by_type[project_type] for project_type in order if project_type in by_type]
     findings_document = scan_directory.read_findings(reports_dir)
     return ScanResult(
