@@ -287,7 +287,15 @@ def _run_stages(options, *, render: bool, database: bool, write_scan_dir: bool =
                 project_type=project_type,
                 capabilities=["vulnerabilities"],
             )
-            _stage(ctx, "vdr", pipeline.stage_analysis_vdr, ctx, tscan, project_type=project_type)
+            _stage(
+                ctx,
+                "vdr",
+                pipeline.stage_analysis_vdr,
+                ctx,
+                tscan,
+                project_type=project_type,
+                record_extra=lambda: {"outputs": _vdr_outputs(ctx, tscan)},
+            )
             if render:
                 _stage(
                     ctx,
@@ -343,17 +351,17 @@ def _stage(
         return func(*args)
 
     def record(status, reason=None):
-        extra = record_extra() if record_extra else {}
-        scan_dir.record_stage(
-            name,
-            status,
-            project_type=project_type,
-            reason=reason,
-            capabilities=list(capabilities),
-            analyzers=analyzers,
-            outputs=outputs,
-            **extra,
-        )
+        # record_extra may override any field, for a value that is only
+        # known once the stage has run.
+        kwargs = {
+            "project_type": project_type,
+            "reason": reason,
+            "capabilities": list(capabilities),
+            "analyzers": analyzers,
+            "outputs": outputs,
+        }
+        kwargs.update(record_extra() if record_extra else {})
+        scan_dir.record_stage(name, status, **kwargs)
 
     try:
         result = func(*args)
@@ -397,6 +405,19 @@ def _evidence_output():
             "reason": scan_directory.EVIDENCE_NOT_PRODUCED_REASON,
         }
     ]
+
+
+def _vdr_outputs(ctx, tscan):
+    """The VDR file a type's analysis stage wrote, as a stage output.
+
+    Recorded when the stage has run, so the manifest maps the file to the
+    project type that produced it, which the file name alone does not always
+    carry.
+    """
+    if not (tscan.vdr_file and os.path.isfile(tscan.vdr_file) and ctx.reports_dir):
+        return []
+    relative = os.path.relpath(tscan.vdr_file, ctx.reports_dir).replace(os.sep, "/")
+    return [{"file": relative, "status": "completed"}]
 
 
 def _result_from_context(ctx) -> ScanResult:
@@ -496,7 +517,7 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
         )
     by_type: Dict[str, TypeScanResult] = {}
     order: List[str] = []
-    for relative in scan_directory.vdr_files(manifest):
+    for project_type, relative in scan_directory.stage_vdr_outputs(manifest):
         path = os.path.join(reports_dir, *relative.split("/"))
         if not os.path.isfile(path):
             raise ScanError(
@@ -520,7 +541,12 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
             if filename.endswith(".vdr.json")
             else filename[: -len(".json")]
         )
-        project_type = _type_from_vdr_name(filename, stem)
+        project_type = project_type or _type_from_vdr_name(filename, stem)
+        if project_type in by_type:
+            raise ScanError(
+                f"Cannot load a scan from '{reports_dir}': the manifest "
+                f"lists two VDR files for project type '{project_type}'."
+            )
         by_type[project_type] = TypeScanResult(
             project_type=project_type,
             vdr_file=path,

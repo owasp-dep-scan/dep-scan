@@ -581,10 +581,18 @@ def project_types(manifest: Dict[str, Any]) -> List[str]:
     return types
 
 
-def vdr_files(manifest: Dict[str, Any]) -> List[str]:
-    """The VDR files the manifest lists, in manifest order."""
-    return [
-        entry.get("path")
-        for entry in manifest.get("files") or []
-        if entry.get("role") == "vdr" and entry.get("path")
-    ]
+def stage_vdr_outputs(manifest: Dict[str, Any]) -> List[Any]:
+    """The (project type, file path) pairs of the VDRs the stages wrote.
+
+    The analysis stage records the VDR it wrote as a completed output, which
+    maps the file to the type that produced it; the file name alone does not
+    always carry the type.
+    """
+    outputs = []
+    for stage in manifest.get("stages") or []:
+        if stage.get("name") != "vdr" or stage.get("status") != "completed":
+            continue
+        for output in stage.get("outputs") or []:
+            if output.get("file") and output.get("status") == "completed":
+                outputs.append((stage.get("projectType"), output["file"]))
+    return outputs
