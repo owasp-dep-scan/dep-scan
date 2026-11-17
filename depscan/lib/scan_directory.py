@@ -156,39 +156,36 @@ def git_state(path: str, timeout: int = 10) -> Optional[Dict[str, Any]]:
     """The git commit and dirty flag of a work tree, or None.
 
     Runs ``git rev-parse HEAD`` and ``git status --porcelain`` in ``path``
-    with a timeout, and never runs anything else in the scanned project. Any
-    failure, including a directory that is not a work tree, leaves no git
-    information behind.
+    with a timeout, and never runs anything else in the scanned project. The
+    two invocations carry ``-c core.fsmonitor=false`` and
+    ``--no-optional-locks`` so a scanned repository's own configuration can
+    neither start a monitor process nor take index locks while the scan
+    reads it. Any failure, including a directory that is not a work tree,
+    leaves no git information behind.
     """
-    try:
-        commit = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=path,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=False,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-            timeout=timeout,
-        )
-    except (OSError, subprocess.SubprocessError):
+    argv = ["git", "-c", "core.fsmonitor=false", "--no-optional-locks"]
+
+    def run(args: List[str]) -> Optional[subprocess.CompletedProcess]:
+        try:
+            return subprocess.run(
+                [*argv, *args],
+                cwd=path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=False,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=timeout,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+
+    commit = run(["rev-parse", "HEAD"])
+    if commit is None or commit.returncode != 0:
         return None
-    if commit.returncode != 0:
-        return None
-    try:
-        status = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=path,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=False,
-            encoding="utf-8",
-            errors="replace",
-            check=False,
-            timeout=timeout,
-        )
-    except (OSError, subprocess.SubprocessError):
+    status = run(["status", "--porcelain"])
+    if status is None:
         return None
     return {"commit": commit.stdout.strip(), "dirty": bool(status.stdout.strip())}
 
