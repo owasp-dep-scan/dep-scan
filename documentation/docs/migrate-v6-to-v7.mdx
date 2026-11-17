@@ -37,6 +37,10 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 - **When atom times out, the scan says so.** v6 treated the missing slices as zero reachable flows. v7 records the reachability analysis as not assessed for that scan.
 - **Go reachability runs with cgo off.** golem loads Go packages with `CGO_ENABLED=0` and with every `CGO_*_ALLOW` variable removed, even when the environment sets them, because loading cgo packages runs the machine's C compiler with flags from the scanned code. Packages that need cgo are therefore not loaded and their reachability is missing. Pass `--go-analyzer-cgo` (or set `DEPSCAN_GO_ANALYZER_CGO=true`) only for code you trust, with a Go release that carries the fixes for CVE-2026-97033 to CVE-2026-97043.
 
+## Console output
+
+- **Log messages, progress and warnings moved to stderr.** v6 printed them on stdout, mixed with the results tables. v7 keeps stdout for the results tables and any JSON output, and prints everything else on stderr, so piping and JSON parsing work. The `depscan.html` and `depscan.txt` report files export the stdout console and therefore no longer contain the log lines v6 included. Scripts that scraped stdout for log lines should read stderr instead.
+
 ## Server mode
 
 - **A request that cannot be scanned answers HTTP 500.** v6 could answer with a BOM carrying no vulnerabilities when the scan did not run. The server also prepares the database once when it starts, rather than in each request.
@@ -44,10 +48,10 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 ## Python library
 
 - **`analysis_lib.utils` is removed.** Its functions moved to `analysis_lib.advisory`, `merge`, `suggestions`, `packages`, `prioritize` and `endpoints`, and no compatibility module is kept. Import from the new modules.
-- **Use `depscan.api` instead of calling the command line internals.** `scan`, `load_scan`, `query`, `explain`, `diff` and `doctor` are the supported entry points; see [the Python API](python-api). Functions inside `depscan.cli` and `depscan.lib.pipeline` may change between v7 releases.
+- **Use `depscan.api` instead of calling the command line internals.** `scan`, `load_scan`, `query`, `explain`, `diff` and `doctor` are the supported entry points; see [the Python API](python-api). Functions inside `depscan.cli` and `depscan.lib.pipeline` may change between v7 releases. `scan` also accepts a `doctor_report` to reuse a collected report and `checks_not_assessed` to record capability-gated checks in the manifest.
 
 ## New commands
 
 These are not breaking, but they replace manual checks some v6 workflows did:
 
-- `depscan doctor` reports the tools, database and capabilities a scan can use on the machine; `--require CAP` exits 4 when a capability is missing. See [depscan doctor](doctor).
+- `depscan doctor` reports the tools, database and capabilities a scan can use on the machine; `--require CAP` exits 4 when a capability is missing. See [depscan doctor](doctor). The `supply-chain` capability (the package risk audit and malware advisory reporting) and the `binary` capability (binary analysis with blint, needing the blint package) are reported as implemented in this version.

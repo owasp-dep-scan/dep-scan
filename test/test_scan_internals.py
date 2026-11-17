@@ -497,9 +497,15 @@ def test_quiet_mode_mutes_the_log_console_too(scan_stubs, tmp_path, monkeypatch,
     """Quiet mutes both consoles: no log lines, no progress panels, no
     tables. The license audit announcement is the panel the scan would
     otherwise print on the log console."""
-    # The quiet handling disables the logger globally; the pre-test state is
-    # restored so later tests keep their log output.
+    # The quiet handling disables the logger and mutes both consoles
+    # globally; recording the current values through monkeypatch restores
+    # them at teardown, whatever the scan changed, so later tests keep
+    # their output.
     monkeypatch.setattr(pipeline.LOG, "disabled", False)
+    monkeypatch.setattr(pipeline.console, "quiet", pipeline.console.quiet)
+    monkeypatch.setattr(pipeline.log_console, "quiet", pipeline.log_console.quiet)
+    monkeypatch.delenv("SCAN_DEBUG_MODE", raising=False)
+    monkeypatch.delenv("CDXGEN_DEBUG_MODE", raising=False)
     monkeypatch.delenv("FETCH_LICENSE", raising=False)
     api.scan(
         _source_scan_options(
