@@ -1,0 +1,37 @@
+depscan/commands/config.py
+  s_7318da1b9edd46::t_3e86db9f6018d5 111
+depscan/commands/serve.py
+  s_7318da1b9edd46::t_873499390b2149 88
+depscan/commands/targets.py
+  s_7318da1b9edd46::t_85e4b733ee8f14 134
+depscan/commands/translate.py
+  s_7318da1b9edd46::t_a0bd2075f0fc31 542,557,560,651
+depscan/lib/bom.py
+  s_7318da1b9edd46::t_759ef624b076ae 1194-1196
+depscan/vdb_cli.py
+  s_7318da1b9edd46::t_f36e3a4a13ae1b 250
+test/test_repo_invocations.py
+  s_7318da1b9edd46::t_675c0d353f844e 271,299,338,424-434,444-452,496
+test/test_translate.py
+  s_7318da1b9edd46::t_0c1ea13709afc8 65,97
+test/test_v7_scan.py
+  s_7318da1b9edd46::t_2f8abf3f3ee5ba 307-309,349,551-557,758,1004,1025,1079-1081,1101-1102,1141-1150,1213,1307
+test/test_v7_verbs.py
+  s_7318da1b9edd46::t_571e0e1795396f 48-59,85-96,114-116,220,313-315,318-320,328-330,708-717
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2df0409e04fd0965e6aa8f76f7eae588150025d0",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
