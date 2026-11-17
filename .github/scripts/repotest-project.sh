@@ -53,7 +53,9 @@ run_depscan() {
 }
 
 run_depscan
-for MODE in "${EXTRA_MODES[@]}"; do
+# The guarded expansion keeps bash 3.2 (macOS) from calling an empty array
+# unbound under set -u.
+for MODE in ${EXTRA_MODES[@]+"${EXTRA_MODES[@]}"}; do
   run_depscan --explanation-mode "$MODE"
 done
 
