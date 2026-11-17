@@ -1,0 +1,18 @@
+depscan/cli_options.py
+  h_6a4cc5cdf68def 421-424
+depscan/lib/pipeline.py
+  h_6a4cc5cdf68def 553-556,558-563
+test/test_scan_internals.py
+  h_6a4cc5cdf68def 240-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a745b0f23b99e4d1211972c03af4b7c01346a30b",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
