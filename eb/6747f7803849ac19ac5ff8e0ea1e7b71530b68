@@ -1,0 +1,24 @@
+depscan/commands/serve.py
+  s_35240395b0d41a::t_a69e42abecfad8 156-159,162,166-170
+test/test_v7_verbs.py
+  s_35240395b0d41a::t_e923a77a3440a5 69-83,361-364,366-367,373,380-383,400-415
+depscan/commands/help.py
+  s_35240395b0d41a::t_a69e42abecfad8 4,23-37,45-48
+  s_35240395b0d41a::t_2a434a7dce3bfe 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb6747f7803849ac19ac5ff8e0ea1e7b71530b68",
+  "prompts": {},
+  "sessions": {
+    "s_35240395b0d41a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_400474cf-858d-4c83-aa88-47a793a7ed45",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
