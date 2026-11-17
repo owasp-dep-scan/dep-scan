@@ -153,17 +153,18 @@ def run(args: argparse.Namespace) -> int:
     options = api.scan_options(server_mode=True, **overrides)
     ctx = pipeline.build_context(options)
     pipeline.configure_output(ctx)
-    if args.format == "json" and pipeline.SERVER_LIB:
-        # The startup line belongs after the database is ready and before
-        # the server blocks; start_server_mode runs the same stage again,
-        # which only re-checks the fresh database.
-        try:
-            pipeline.stage_database(ctx)
-        except pipeline.ScanStageError:
-            return 1
+    if args.format == "json":
+        # The database stage runs (and reports its problems on stderr) inside
+        # start_server_mode, before the server blocks; this line is the only
+        # stdout content.
         print(json.dumps({"serve": f"{options.server_host}:{options.server_port}"}))
     try:
-        return pipeline.start_server_mode(ctx) or 0
+        started = pipeline.start_server_mode(ctx)
     except pipeline.ScanStageError:
         # The database stage already logged why the server cannot start.
         return 1
+    if started is False:
+        # The server packages are missing or the bind was refused; the reason
+        # is already logged. A requested capability that cannot run exits 4.
+        return 4
+    return 0
