@@ -1,0 +1,19 @@
+test/test_vdb_cli.py
+  s_8cbdd9e5002975::t_3ce200a5dd2f3e 1,312,320,333
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4993a9c999ba75b6dbd19ff7f7154b9370d843c",
+  "prompts": {},
+  "sessions": {
+    "s_8cbdd9e5002975": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6069faca-92d9-4572-89fa-ecc8c90e7b25",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
