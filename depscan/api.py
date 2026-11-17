@@ -440,21 +440,23 @@ def _evidence_output():
     ]
 
 
-def _inventory_outputs(ctx, tscan):
-    """The BOM document a type's inventory stage settled on, as a stage
-    output, when it lives in the scan directory.
-
-    A BOM the user passed in from elsewhere keeps its place and is recorded
-    in the manifest's inputs instead.
-    """
-    bom_file = tscan.bom_file
-    if not (bom_file and ctx.reports_dir and os.path.isfile(bom_file)):
+def _relative_output(ctx, path):
+    """A file inside the scan directory as a completed stage output, or no
+    output for a file elsewhere (another drive on Windows included); those
+    keep their place and the manifest's inputs record them."""
+    if not (path and ctx.reports_dir and os.path.isfile(path)):
         return []
     absolute_reports = os.path.abspath(ctx.reports_dir)
-    if not os.path.abspath(bom_file).startswith(absolute_reports + os.sep):
+    if not os.path.abspath(path).startswith(absolute_reports + os.sep):
         return []
-    relative = os.path.relpath(bom_file, ctx.reports_dir).replace(os.sep, "/")
+    relative = os.path.relpath(path, ctx.reports_dir).replace(os.sep, "/")
     return [{"file": relative, "status": "completed"}]
+
+
+def _inventory_outputs(ctx, tscan):
+    """The BOM document a type's inventory stage settled on, as a stage
+    output, when it lives in the scan directory."""
+    return _relative_output(ctx, tscan.bom_file)
 
 
 def _vdr_outputs(ctx, tscan):
@@ -462,12 +464,21 @@ def _vdr_outputs(ctx, tscan):
 
     Recorded when the stage has run, so the manifest maps the file to the
     project type that produced it, which the file name alone does not always
-    carry.
+    carry. A BOM directory scan with a separate reports directory writes its
+    VDR next to the BOMs, outside the scan directory; that output is recorded
+    as not assessed so the directory never loads as a clean scan.
     """
-    if not (tscan.vdr_file and os.path.isfile(tscan.vdr_file) and ctx.reports_dir):
-        return []
-    relative = os.path.relpath(tscan.vdr_file, ctx.reports_dir).replace(os.sep, "/")
-    return [{"file": relative, "status": "completed"}]
+    inside = _relative_output(ctx, tscan.vdr_file)
+    if inside or not (tscan.vdr_file and os.path.isfile(tscan.vdr_file)):
+        return inside
+    return [
+        {
+            "file": os.path.basename(tscan.vdr_file),
+            "status": "not-assessed",
+            "reason": "the VDR was written next to the BOM directory input, "
+            "outside the scan directory",
+        }
+    ]
 
 
 def _result_from_context(ctx) -> ScanResult:
@@ -576,6 +587,12 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
             by_type[project_type] = TypeScanResult(project_type=project_type, bom_file=path)
             if project_type not in order:
                 order.append(project_type)
+    outside = scan_directory.stage_outputs(manifest, "vdr", status="not-assessed")
+    if outside:
+        raise ScanError(
+            f"Cannot load a scan from '{reports_dir}': the VDR file "
+            f"'{outside[0][1]}' was written outside the scan directory."
+        )
     for project_type, relative in scan_directory.stage_outputs(manifest, "vdr"):
         path = os.path.join(reports_dir, *relative.split("/"))
         if not os.path.isfile(path):

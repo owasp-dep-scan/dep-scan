@@ -434,7 +434,8 @@ def home_relative(path: Optional[str]) -> Optional[str]:
         return path
     home = os.path.expanduser("~")
     if home != "~" and (path == home or path.startswith(home + os.sep)):
-        return "~" + path[len(home) :]
+        # Forward slashes, so the manifest reads the same on every platform.
+        return "~" + path[len(home) :].replace(os.sep, "/")
     return path
 
 
@@ -687,8 +688,9 @@ def project_types(manifest: Dict[str, Any]) -> List[str]:
     return types
 
 
-def stage_outputs(manifest: Dict[str, Any], name: str) -> List[Any]:
-    """The (project type, file path) pairs a stage recorded as completed.
+def stage_outputs(manifest: Dict[str, Any], name: str, status: str = "completed") -> List[Any]:
+    """The (project type, file path) pairs a completed stage recorded with
+    the given output status.
 
     The inventory stage records the BOM document it settled on and the vdr
     stage records the VDR it wrote, which maps each file to the project type
@@ -699,6 +701,6 @@ def stage_outputs(manifest: Dict[str, Any], name: str) -> List[Any]:
         if stage.get("name") != name or stage.get("status") != "completed":
             continue
         for output in stage.get("outputs") or []:
-            if output.get("file") and output.get("status") == "completed":
+            if output.get("file") and output.get("status") == status:
                 outputs.append((stage.get("projectType"), output["file"]))
     return outputs

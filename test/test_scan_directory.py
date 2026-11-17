@@ -17,6 +17,7 @@ the compatibility tests.
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -693,13 +694,17 @@ def test_home_path_stays_out_of_the_manifest_outside_inputs(scan_stubs, tmp_path
     home = tmp_path / "ahome"
     (home / "project").mkdir(parents=True)
     monkeypatch.setenv("HOME", str(home))
+    # expanduser reads USERPROFILE on Windows
+    monkeypatch.setenv("USERPROFILE", str(home))
     bom = _write_bom(home / "project" / "given.cdx.json")
     reports = home / "project" / "reports"
     result = api.scan(
         api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True), render=False
     )
     document = json.loads((reports / "depscan.manifest.json").read_text())
-    assert str(home) in json.dumps(document["inputs"]), "the inputs record paths as given"
+    assert any(str(home) in entry["path"] for entry in document["inputs"]), (
+        "the inputs record paths as given"
+    )
 
     def strings_outside_inputs(node):
         if isinstance(node, dict):
@@ -715,7 +720,7 @@ def test_home_path_stays_out_of_the_manifest_outside_inputs(scan_stubs, tmp_path
 
     for text in strings_outside_inputs(document):
         assert str(home) not in text, f"the home path leaked outside inputs: {text}"
-        assert os.path.basename(home) not in text.split(os.sep), (
+        assert os.path.basename(home) not in re.split(r"[/\\]", text), (
             f"a path segment named the home: {text}"
         )
     assert "depscan.html" not in {entry["path"] for entry in document["files"]}, (
@@ -1095,3 +1100,23 @@ def test_documented_manifest_fields_match_the_schema():
         Path(__file__).parent.parent / "documentation" / "docs" / "output" / "scan-directory.mdx"
     )
     assert scan_directory.manifest_fields_markdown() in page.read_text(encoding="utf-8")
+
+
+def test_a_vdr_outside_the_scan_directory_is_not_read_as_clean(scan_stubs, tmp_path):
+    """A BOM directory scan with its own reports directory writes the VDR
+    next to the BOMs; the scan directory must not load as clean."""
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "a.cdx.json", name="a")
+    _write_bom(bom_dir / "b.cdx.json", name="b")
+    reports = tmp_path / "elsewhere" / "reports"
+    result = api.scan(
+        api.scan_options(bom_dir=str(bom_dir), reports_dir=str(reports), no_banner=True),
+        render=False,
+    )
+    assert result.vulnerabilities, "the scan itself found the stubbed vulnerability"
+    vdr_stage = next(s for s in (result.manifest or {})["stages"] if s["name"] == "vdr")
+    assert vdr_stage["outputs"][0]["status"] == "not-assessed"
+    assert not os.path.isabs(vdr_stage["outputs"][0]["file"])
+    with pytest.raises(api.ScanError, match="outside the scan directory"):
+        api.load_scan(str(reports))
