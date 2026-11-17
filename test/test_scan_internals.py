@@ -184,7 +184,10 @@ def test_an_excluded_docker_type_leaves_no_docker_scan(scan_stubs, tmp_path):
     assert args[args.index("-t") + 1] == "python"
     assert args[args.index("--exclude-type") + 1] == "docker"
     # The docker inventory itself never ran.
-    assert all("-t" not in args or args[args.index("-t") + 1] != "docker" for args in scan_stubs["cdxgen"])
+    assert all(
+        "-t" not in invocation or invocation[invocation.index("-t") + 1] != "docker"
+        for invocation in scan_stubs["cdxgen"]
+    )
 
 
 def test_a_scan_with_every_type_excluded_stops(scan_stubs, tmp_path):
