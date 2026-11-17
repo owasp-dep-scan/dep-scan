@@ -183,8 +183,8 @@ jobs:
               ls -la dist/
               echo "::endgroup::"
 
-              echo "::group::smoke test --version"
-              ./dist/"${BINARY_NAME}" --version
+              echo "::group::smoke test version"
+              ./dist/"${BINARY_NAME}" version
               ./dist/"${BINARY_NAME}" --help | head -5
               echo "::endgroup::"
 
@@ -201,7 +201,7 @@ jobs:
               printf "requests==2.32.0\n" > /tmp/sea-fixture/requirements.txt
 
               ./dist/"${BINARY_NAME}" \
-                --src /tmp/sea-fixture \
+                scan /tmp/sea-fixture \
                 -o /tmp/sea-reports \
                 --csaf \
                 --no-banner

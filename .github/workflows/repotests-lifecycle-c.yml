@@ -55,7 +55,7 @@ jobs:
       - name: lifecycle-test attestation-client-samples
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/attestation-client-samples
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/attestation-client-samples\
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/attestation-client-samples\
                           --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/attestation-client-samples\
                           -t cpp\
                           --vulnerability-analyzer LifecycleAnalyzer

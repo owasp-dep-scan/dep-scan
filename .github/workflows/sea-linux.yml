@@ -133,8 +133,8 @@ jobs:
       - name: Smoke test - --version and --help
         run: |
           set -euo pipefail
-          echo "::group::depscan --version"
-          ./dist/${{ matrix.binary_name }} --version
+          echo "::group::depscan version"
+          ./dist/${{ matrix.binary_name }} version
           echo "::endgroup::"
           echo "::group::depscan --help (first 10 lines)"
           ./dist/${{ matrix.binary_name }} --help | head -10
@@ -166,7 +166,7 @@ jobs:
           # (analysis_lib.vex.data), the HTML report exercises reporting_lib
           # templates, and license scanning touches vendor/.
           ./dist/${{ matrix.binary_name }} \
-            --src /tmp/sea-fixture \
+            scan /tmp/sea-fixture \
             -o /tmp/sea-reports \
             --csaf \
             --no-banner

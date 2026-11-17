@@ -168,8 +168,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          Write-Host "::group::depscan --version"
-          & "dist\$env:BINARY_NAME.exe" --version
+          Write-Host "::group::depscan version"
+          & "dist\$env:BINARY_NAME.exe" version
           Write-Host "::endgroup::"
           Write-Host "::group::depscan --help (first 10 lines)"
           & "dist\$env:BINARY_NAME.exe" --help | Select-Object -First 10
@@ -204,7 +204,7 @@ jobs:
           # (analysis_lib.vex.data), the HTML report exercises reporting_lib
           # templates, and license scanning touches vendor/.
           & "dist\$env:BINARY_NAME.exe" `
-            --src C:\sea\fixture `
+            scan C:\sea\fixture `
             -o C:\sea\reports `
             --csaf `
             --no-banner

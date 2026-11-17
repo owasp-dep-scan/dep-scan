@@ -34,8 +34,9 @@ date as annotations.
     purls to attach, in atom 2 as in atom 4, so those projects need at least
     one flow at all instead.
   - `assert ... ` also runs the reachability analyzers over the data
-    directory, exactly as a `depscan --bom-dir` scan does, and fails below
-    `minReachablePurls` or when a `mustReach` package name is not reached.
+    directory, exactly as a `depscan scan --target-kind bom-dir` run does, and
+    fails below `minReachablePurls` or when a `mustReach` package name is not
+    reached.
   - `digests DATA_DIR --manifest MANIFEST.json --digest sha256:...` checks
     that the manifest hashes to the digest the lock file pins, then
     verifies a pulled artifact file by file against its layer digests.
