@@ -1,0 +1,19 @@
+depscan/lib/scan_directory.py
+  s_588541f8890570::t_be5ded1c6503e0 159-164,166-185,187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "430bd1b93d685d88beb6abb6cec423bbab19aabf",
+  "prompts": {},
+  "sessions": {
+    "s_588541f8890570": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_01cbd196-55fc-41c0-9d49-84a8d7f69548",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
