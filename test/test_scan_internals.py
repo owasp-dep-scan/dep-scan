@@ -453,11 +453,20 @@ def test_tables_stay_on_stdout(scan_stubs, tmp_path, monkeypatch, capfd):
 
 
 def test_quiet_mode_mutes_the_log_console_too(scan_stubs, tmp_path, monkeypatch, capfd):
-    """Quiet mutes both consoles: no log lines, no progress, no tables."""
+    """Quiet mutes both consoles: no log lines, no progress panels, no
+    tables. The license audit announcement is the panel the scan would
+    otherwise print on the log console."""
     # The quiet handling disables the logger globally; the pre-test state is
     # restored so later tests keep their log output.
     monkeypatch.setattr(pipeline.LOG, "disabled", False)
-    api.scan(_bom_scan_options(tmp_path, quiet=True))
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    api.scan(
+        _source_scan_options(
+            tmp_path, project_type=["python"], profile="license-compliance", quiet=True
+        ),
+        render=False,
+    )
     captured = capfd.readouterr()
+    assert "License audit is enabled" not in captured.err
     assert captured.out == ""
     assert captured.err == ""
