@@ -1,0 +1,21 @@
+depscan/commands/version.py
+  s_8cbdd9e5002975::t_75ae9e06e07792 1-35
+test/test_doctor.py
+  s_8cbdd9e5002975::t_300c5cf7f67166 783-785,796-800
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f55274794c24756cd5ac30d52d5fde756b35e0a9",
+  "prompts": {},
+  "sessions": {
+    "s_8cbdd9e5002975": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6069faca-92d9-4572-89fa-ecc8c90e7b25",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
