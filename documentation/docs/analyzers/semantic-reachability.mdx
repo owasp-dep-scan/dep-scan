@@ -6,7 +6,7 @@ title: Semantic reachability
 
 ## Learning objective
 
-After this chapter you will be able to explain what `SemanticReachability` adds on top of `FrameworkReachability`, why it needs more inputs than a single source scan can provide, and how to assemble those inputs through the `--bom-dir` lifecycle workflow. You will also know how to drive the explanation modes, including `LLMPrompts`, and what resources to plan for.
+After this chapter you will be able to explain what `SemanticReachability` adds on top of `FrameworkReachability`, why it needs more inputs than a single source scan can provide, and how to assemble those inputs through the BOM directory lifecycle workflow. You will also know how to drive the explanation modes, including `LLMPrompts`, and what resources to plan for.
 
 ## What the analyzer adds
 
@@ -18,15 +18,15 @@ The third tier is post-build and binary reachability. The analyzer matches frame
 
 ## The formulation problem
 
-These three tiers need inputs that dep-scan cannot generate automatically from a single scan, which is sometimes called the formulation problem. Endpoint reachability needs an OpenAPI document with `x-atom-usages` targets. Post-build reachability needs BOMs for the build output and the container image, not just the source. dep-scan cannot build arbitrary projects or container images for you, and it cannot guess your OpenAPI surface, so the semantic analyzer is only as rich as the inputs you gather. The practical consequence is the `--bom-dir` workflow, which is the recommended way to run `SemanticReachability`.
+These three tiers need inputs that dep-scan cannot generate automatically from a single scan, which is sometimes called the formulation problem. Endpoint reachability needs an OpenAPI document with `x-atom-usages` targets. Post-build reachability needs BOMs for the build output and the container image, not just the source. dep-scan cannot build arbitrary projects or container images for you, and it cannot guess your OpenAPI surface, so the semantic analyzer is only as rich as the inputs you gather. The practical consequence is the BOM directory workflow, which is the recommended way to run `SemanticReachability`.
 
-## The --bom-dir lifecycle workflow
+## The BOM directory lifecycle workflow
 
-Instead of scanning a source directory, you generate the lifecycle BOMs yourself, collect them in one directory, and point dep-scan at the directory. dep-scan then selects `LifecycleAnalyzer` automatically (because `auto` uses `LifecycleAnalyzer` when `--bom-dir` points at multiple xBOMs) and feeds the semantic analyzer the full set.
+Instead of scanning a source directory, you generate the lifecycle BOMs yourself, collect them in one directory, and point dep-scan at the directory. dep-scan then selects `LifecycleAnalyzer` automatically (because `auto` uses `LifecycleAnalyzer` when the target is a BOM directory holding multiple xBOMs) and feeds the semantic analyzer the full set.
 
 ```shell
 # Recommended: analyze a directory of lifecycle BOMs
-depscan --bom-dir <bom directory> --reports-dir <reports directory> \
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> \
   --reachability-analyzer SemanticReachability --explain
 ```
 
@@ -34,11 +34,11 @@ For a single container image, set the `DEPSCAN_SOURCE_IMAGE` environment variabl
 
 ```shell
 export DEPSCAN_SOURCE_IMAGE=<your-image>:<tag>
-depscan --src <source directory> --reports-dir <reports directory> -t <language> \
+depscan scan <source directory> --reports-dir <reports directory> -t <language> \
   --reachability-analyzer SemanticReachability --explain
 ```
 
-For multiple images, such as a docker-compose setup, build the images and generate a BOM for each, then collect them. The steps are: run `docker compose build`; generate a `.cdx.json` BOM per image with `cdxgen -t docker -o reports/<name>.cdx.json <image>`; place every BOM in a single directory; run dep-scan with `--bom-dir <that directory>`. Ensure the BOM files all correspond to the same version of the source code, because mixing versions produces duplicate-looking component names and unreliable reachability. Use `DEPSCAN_BUILD_DIR` to point at a build directory when the build output is not under the source root; blint's SBOM command runs against that directory during lifecycle analysis.
+For multiple images, such as a docker-compose setup, build the images and generate a BOM for each, then collect them. The steps are: run `docker compose build`; generate a `.cdx.json` BOM per image with `cdxgen -t docker -o reports/<name>.cdx.json <image>`; place every BOM in a single directory; run `depscan scan <that directory> --target-kind bom-dir`. Ensure the BOM files all correspond to the same version of the source code, because mixing versions produces duplicate-looking component names and unreliable reachability. Use `DEPSCAN_BUILD_DIR` to point at a build directory when the build output is not under the source root; blint's SBOM command runs against that directory during lifecycle analysis.
 
 ## Resources and runtime
 
@@ -54,7 +54,7 @@ When `SemanticReachability` is enabled and `--explain` is passed, the `--explana
 - `LLMPrompts` generates prompt text for use with an LLM when you want code-fix suggestions, which lets you hand the reachability evidence to a downstream model.
 
 ```shell
-depscan --bom-dir <bom directory> --reports-dir <reports directory> \
+depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports directory> \
   --reachability-analyzer SemanticReachability --explain --explanation-mode LLMPrompts
 ```
 
@@ -66,8 +66,8 @@ The [Java semantic analysis lesson](../Lessons/java-semantic-analysis) is the ca
 
 ## Troubleshooting
 
-If container SBOMs were not generated, the cause is usually the image variable. For simple container scans, pass the image name via `--src`. For lifecycle or semantic reachability analysis, pass the source directory via `--src` and the container image name via `DEPSCAN_SOURCE_IMAGE` so the container BOM is generated as part of the run. If post-build binary SBOMs were not generated, build the application first, because dep-scan cannot build arbitrary projects for you, and point `DEPSCAN_BUILD_DIR` at the build output. If the semantic run is slow or memory-hungry on a large project, that is expected; size the machine to the figures above, and consider running slicing once and reusing the persisted slices across scans.
+If container SBOMs were not generated, the cause is usually the image variable. For simple container scans, pass the image reference as the scan target. For lifecycle or semantic reachability analysis, pass the source directory as the target and the container image name via `DEPSCAN_SOURCE_IMAGE` so the container BOM is generated as part of the run. If post-build binary SBOMs were not generated, build the application first, because dep-scan cannot build arbitrary projects for you, and point `DEPSCAN_BUILD_DIR` at the build output. If the semantic run is slow or memory-hungry on a large project, that is expected; size the machine to the figures above, and consider running slicing once and reusing the persisted slices across scans.
 
 ## Summary
 
-`SemanticReachability` is the compliance-grade analyzer that adds endpoint, service, and post-build reachability on top of the framework-forward default, at the cost of gathering the lifecycle BOMs and OpenAPI inputs those tiers need. The `--bom-dir` workflow is the recommended way to supply those inputs, `DEPSCAN_SOURCE_IMAGE` covers the single-image case, and the explanation modes (including `LLMPrompts`) let you tailor the report to your audience. Plan for the resource cost, which is dominated by slicing, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters to return to are [Framework reachability](framework-reachability) for the lighter analyzer, the [VDR guide](../output/vdr-guide) for the analyst artifact, and the [CSAF VEX guide](../output/vex-csaf-guide) for the compliance artifact.
+`SemanticReachability` is the compliance-grade analyzer that adds endpoint, service, and post-build reachability on top of the framework-forward default, at the cost of gathering the lifecycle BOMs and OpenAPI inputs those tiers need. The BOM directory workflow is the recommended way to supply those inputs, `DEPSCAN_SOURCE_IMAGE` covers the single-image case, and the explanation modes (including `LLMPrompts`) let you tailor the report to your audience. Plan for the resource cost, which is dominated by slicing, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters to return to are [Framework reachability](framework-reachability) for the lighter analyzer, the [VDR guide](../output/vdr-guide) for the analyst artifact, and the [CSAF VEX guide](../output/vex-csaf-guide) for the compliance artifact.

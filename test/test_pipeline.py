@@ -109,6 +109,55 @@ def test_stage_setup_switches_to_lifecycle_analyzer_for_semantic(tmp_path):
     assert ctx.depscan_options["vuln_analyzer"] == "LifecycleAnalyzer"
 
 
+def test_finalize_setup_enables_licenses_from_a_profile_without_the_type(tmp_path, monkeypatch):
+    """A profile naming license turns the analysis on even when the license
+    pseudo type was not among the project types; stripping it from the type
+    list must not fail the scan."""
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    src = tmp_path / "src"
+    src.mkdir()
+    ctx = _ctx(tmp_path, ["-t", "python", "--src", str(src), "--profile", "license-compliance"])
+
+    pipeline.finalize_setup(ctx)
+
+    assert os.environ["FETCH_LICENSE"] == "true"
+    assert ctx.project_types == ["python"]
+
+
+def test_finalize_setup_strips_a_detected_license_pseudo_type(tmp_path, monkeypatch):
+    """The license pseudo type detected through --type licenses nothing
+    itself; the analysis is what runs, and no empty type scan remains."""
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    src = tmp_path / "src"
+    src.mkdir()
+    ctx = _ctx(tmp_path, ["-t", "license", "python", "--src", str(src)])
+
+    pipeline.finalize_setup(ctx)
+
+    assert os.environ["FETCH_LICENSE"] == "true"
+    assert ctx.project_types == ["python"]
+
+
+def test_set_project_types_removes_the_excluded_types(tmp_path):
+    args = _args(["-t", "os", "python", "docker", "--exclude-types", "os", "docker"])
+    pkg_list, project_types = pipeline.set_project_types(args, str(tmp_path))
+    assert project_types == ["python"]
+
+
+def test_set_project_types_keeps_the_list_when_nothing_is_excluded(tmp_path):
+    args = _args(["-t", "python"])
+    pkg_list, project_types = pipeline.set_project_types(args, str(tmp_path))
+    assert project_types == ["python"]
+
+
+def test_set_project_types_stops_when_every_type_is_excluded(tmp_path):
+    """A scan left with no project type must stop, not run zero type scans
+    and report a clean result."""
+    args = _args(["-t", "os", "python", "--exclude-types", "os", "python"])
+    with pytest.raises(pipeline.ScanStageError, match="was excluded"):
+        pipeline.set_project_types(args, str(tmp_path))
+
+
 # ---------------------------------------------------------------------------
 # database
 # ---------------------------------------------------------------------------

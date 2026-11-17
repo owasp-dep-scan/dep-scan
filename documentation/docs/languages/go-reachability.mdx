@@ -44,20 +44,20 @@ The hermetic fixtures under `test/data/golem/repos/` let you reproduce the reach
 
 ```shell
 # Reachable case: satori/go.uuid is imported and called
-depscan -i ./test/data/golem/repos/real-cve-app -o ./reports -t go --profile research --explain
+depscan scan ./test/data/golem/repos/real-cve-app -o ./reports -t go --bom-profile research --explain
 
 # Point dep-scan at a specific golem binary
-DEPSCAN_GOLEM_BINARY=/path/to/golem depscan -i ./test/data/golem/repos/real-cve-app -o ./reports -t go --profile research --explain
+DEPSCAN_GOLEM_BINARY=/path/to/golem depscan scan ./test/data/golem/repos/real-cve-app -o ./reports -t go --bom-profile research --explain
 
 # Forbid network access during analysis (requires warm module cache)
-depscan -i ./test/data/golem/repos/real-cve-app -o ./reports -t go --go-analyzer-network offline --explain
+depscan scan ./test/data/golem/repos/real-cve-app -o ./reports -t go --go-analyzer-network offline --explain
 ```
 
 The control is `unreachable-app`, which declares `github.com/example/vuln-lib` in `go.mod` through a local `replace` directive but never calls its `ProcessQuery` function.
 
 ```shell
 # Present-but-unreachable case: vuln-lib is declared but never called
-depscan -i ./test/data/golem/repos/unreachable-app -o ./reports -t go --profile research --explain
+depscan scan ./test/data/golem/repos/unreachable-app -o ./reports -t go --bom-profile research --explain
 ```
 
 Reachability is on by default (`--reachability-analyzer FrameworkReachability`). Switch to `SemanticReachability` only when you also want reached services and endpoints attributed.

@@ -535,6 +535,33 @@ def test_removing_one_plugin_changes_only_its_dependents(plugin, plugins_env):
     assert plugin in (entry.reason or "")
 
 
+# --- the supply-chain and binary rows -----------------------------------------
+
+
+def test_supply_chain_needs_nothing_and_binary_follows_blint(fakes, monkeypatch):
+    """supply-chain is the package risk audit and the malware advisory
+    reporting a scan already does, so it needs no tool or data and is
+    available on a machine with nothing installed. binary runs on blint, so
+    it is unavailable while the package is missing."""
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    _uninstall_tool(fakes, monkeypatch, "blint")
+    report = doctor_mod.doctor()
+    signature = _capability_signature(report)
+    assert signature["supply-chain"] == ("available", ())
+    assert signature["binary"] == ("unavailable", ("tool:blint",))
+    by_name = {capability.name: capability for capability in report.capabilities}
+    assert by_name["supply-chain"].description == (
+        "Package risk audit and malware advisory reporting."
+    )
+    assert by_name["binary"].description == "Binary analysis with blint."
+
+
+def test_binary_is_available_with_blint_installed(fakes, monkeypatch):
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    _install_tool(fakes, monkeypatch, "blint")
+    assert _capability_signature(doctor_mod.doctor())["binary"] == ("available", ())
+
+
 # --- the command and the guarantees -------------------------------------------
 
 
@@ -753,8 +780,9 @@ def test_doctor_rejects_an_unknown_format(capsys):
     assert excinfo.value.code == 2
 
 
-def test_main_routes_doctor_and_leaves_other_invocations_alone(monkeypatch, capsys):
-    """``doctor`` reaches the doctor command; everything else parses as before."""
+def test_main_routes_doctor_and_rejects_v6_invocations(monkeypatch, capsys):
+    """``doctor`` reaches the doctor command through the verb registry; a
+    v6 options-first invocation is rejected with its translation."""
     from depscan import cli
 
     monkeypatch.setattr(sys, "argv", ["depscan", "doctor", "--format", "json"])
@@ -764,12 +792,12 @@ def test_main_routes_doctor_and_leaves_other_invocations_alone(monkeypatch, caps
     document = json.loads(capsys.readouterr().out)
     assert document["schemaVersion"] == "1"
 
-    parsed = []
     monkeypatch.setattr(sys, "argv", ["depscan", "--purl", "pkg:pypi/requests@2.32.1"])
-    monkeypatch.setattr(cli, "build_args", lambda: parsed.append(sys.argv) or "--parsed--")
-    monkeypatch.setattr(cli, "run_depscan", lambda args: parsed.append(args))
-    cli.main()
-    assert parsed == [["depscan", "--purl", "pkg:pypi/requests@2.32.1"], "--parsed--"]
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+    assert excinfo.value.code == 2
+    err = capsys.readouterr().err
+    assert "The equivalent v7 command is: depscan scan pkg:pypi/requests@2.32.1" in err
 
 
 def test_documented_capability_table_matches_the_code():

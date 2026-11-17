@@ -30,7 +30,7 @@ The scan writes the same files the `depscan` command writes to `options.reports_
 result = api.scan(options, render=False)
 ```
 
-When a stage stops the scan, for example a `--bom` file that does not exist or an unusable vulnerability database, `scan` raises `depscan.api.ScanError` carrying the message the scan logged. It never exits the process and never returns a result with zero vulnerabilities in place of a stopped scan. The console settings a scan applies, such as `quiet=True`, stay in effect for later scans in the same process.
+When a stage stops the scan, for example a BOM file target that does not exist or an unusable vulnerability database, `scan` raises `depscan.api.ScanError` carrying the message the scan logged. It never exits the process and never returns a result with zero vulnerabilities in place of a stopped scan. The console settings a scan applies, such as `quiet=True`, stay in effect for later scans in the same process.
 
 ## The scan result
 

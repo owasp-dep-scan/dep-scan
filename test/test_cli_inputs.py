@@ -15,7 +15,7 @@ from typing import Any, Dict
 
 import pytest
 
-from depscan import api, cli
+from depscan import api
 from depscan.cli_options import build_parser
 from depscan.lib import pipeline, vdb_setup
 from depscan.lib.bom import BomResult
@@ -130,8 +130,8 @@ class _FakeVdrResult:
 def harness(monkeypatch, tmp_path):
     """Stub every expensive/external call in a scan and record what the
     BOM-resolution logic decided. The tests drive the scan through
-    ``depscan.api.scan``; the exit-code tests at the end of this file drive
-    ``cli.run_depscan`` on top of it."""
+    ``depscan.api.scan``; the failure tests at the end of this file assert
+    the :class:`depscan.api.ScanError` a stopped scan raises."""
     calls: Dict[str, Any] = {
         "create_bom": [],
         "vdr": [],
@@ -374,17 +374,15 @@ def test_template_report_not_given_a_phantom_bom_path(harness, tmp_path):
 
 def test_missing_bom_argument_exits(tmp_path, harness):
     args = _args(_base_argv(tmp_path, ["--bom", str(tmp_path / "nope.json")]))
-    with pytest.raises(SystemExit) as excinfo:
-        cli.run_depscan(args)
-    assert excinfo.value.code == 1
+    with pytest.raises(api.ScanError):
+        api.scan(args)
     assert harness["vdr"] == [], "the scan must not proceed with an unusable input"
 
 
 def test_missing_bom_dir_argument_exits(tmp_path, harness):
     args = _args(_base_argv(tmp_path, ["--bom-dir", str(tmp_path / "nope")]))
-    with pytest.raises(SystemExit) as excinfo:
-        cli.run_depscan(args)
-    assert excinfo.value.code == 1
+    with pytest.raises(api.ScanError):
+        api.scan(args)
     assert harness["vdr"] == []
 
 
@@ -495,9 +493,8 @@ def test_explicit_bom_is_the_project_bom(harness, tmp_path):
 def test_fail_on_error_exits_when_bom_creation_fails(harness, tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline, "create_bom", lambda *a, **k: BomResult(success=False))
     args = _args(_base_argv(tmp_path, ["--fail-on-error"]))
-    with pytest.raises(SystemExit) as excinfo:
-        cli.run_depscan(args)
-    assert excinfo.value.code == 1
+    with pytest.raises(api.ScanError):
+        api.scan(args)
     assert harness["vdr"] == [], "the scan must not proceed without a BOM"
 
 
@@ -516,9 +513,8 @@ def test_fail_on_error_exits_on_scan_failure_error(harness, tmp_path, monkeypatc
 
     monkeypatch.setattr(pipeline, "create_bom", raising_create_bom)
     args = _args(_base_argv(tmp_path, ["--fail-on-error"]))
-    with pytest.raises(SystemExit) as excinfo:
-        cli.run_depscan(args)
-    assert excinfo.value.code == 1
+    with pytest.raises(api.ScanError):
+        api.scan(args)
     assert harness["vdr"] == []
 
 
@@ -535,9 +531,8 @@ def test_fail_on_error_exits_when_no_packages_found(harness, tmp_path, monkeypat
             "--fail-on-error",
         ]
     )
-    with pytest.raises(SystemExit) as excinfo:
-        cli.run_depscan(args)
-    assert excinfo.value.code == 1
+    with pytest.raises(api.ScanError):
+        api.scan(args)
     assert harness["vdr"] == [], "an empty package list is a failed scan under the flag"
 
 

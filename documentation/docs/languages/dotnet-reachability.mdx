@@ -25,7 +25,7 @@ dosai needs a .NET runtime to load, and the quality of purl attribution depends 
 
 ## How dep-scan runs dosai
 
-Under `--profile research`, which dep-scan forces when reachability is on, cdxgen runs dosai and persists the combined native report, containing `Metadata`, `methods`, and `dataflows`, to the `*-semantics.slices.json` path. dep-scan consumes that persisted report as the primary path and does not spawn dosai itself when cdxgen and the plugins are available. dosai is invoked directly only as a fallback, running `dataflows --pattern-packs all` and `methods`. dep-scan runs `dataflows` and `methods` with pattern packs set to `all`.
+Under cdxgen's research BOM profile, which dep-scan selects when reachability is on, cdxgen runs dosai and persists the combined native report, containing `Metadata`, `methods`, and `dataflows`, to the `*-semantics.slices.json` path. dep-scan consumes that persisted report as the primary path and does not spawn dosai itself when cdxgen and the plugins are available. dosai is invoked directly only as a fallback, running `dataflows --pattern-packs all` and `methods`. dep-scan runs `dataflows` and `methods` with pattern packs set to `all`.
 
 dep-scan resolves the dosai binary the same way cdxgen does. It checks the `DOSAI_CMD` environment variable, then `DEPSCAN_DOSAI_BINARY`, then `dosai` or `Dosai` on `PATH`, then the bundled `cdxgen-plugins-bin` layout at `<pluginsDir>/dosai/dosai-<platform>-<arch>`. When cdxgen spawns, dep-scan propagates `DOSAI_CMD` and `CDXGEN_PLUGINS_DIR` to the subprocess so both sides use the same binary. If dosai cannot be found, .NET reachability is skipped with a warning and never a crash, and other languages are unaffected.
 
@@ -37,20 +37,20 @@ The hermetic fixtures under `test/data/dosai/repos/` let you reproduce the reach
 
 ```shell
 # Reachable case: Newtonsoft.Json is referenced AND reached via a deserialization sink
-depscan -i ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --profile research --explain
+depscan scan ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --bom-profile research --explain
 
 # Point dep-scan at a specific dosai binary
-DEPSCAN_DOSAI_BINARY=/path/to/dosai depscan -i ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --profile research --explain
+DEPSCAN_DOSAI_BINARY=/path/to/dosai depscan scan ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --bom-profile research --explain
 
 # Force source inspection explicitly
-depscan -i ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --dotnet-analyzer-mode source --explain
+depscan scan ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --dotnet-analyzer-mode source --explain
 ```
 
 The control is `unreachable-app`, which references the same `Newtonsoft.Json 13.0.3` in its `.csproj` but never calls any Newtonsoft API.
 
 ```shell
 # Present-but-unreachable case: package referenced, never called
-depscan -i ./test/data/dosai/repos/unreachable-app -o ./reports -t dotnet --profile research --explain
+depscan scan ./test/data/dosai/repos/unreachable-app -o ./reports -t dotnet --bom-profile research --explain
 ```
 
 Reachability is on by default (`--reachability-analyzer FrameworkReachability`). The `--dotnet-analyzer-mode` flag selects how dosai inspects the target. The values are:

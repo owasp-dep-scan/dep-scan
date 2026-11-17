@@ -252,6 +252,18 @@ def build_parser():
         default=os.getenv("DEPSCAN_PROJECT_TYPE", "universal").split(","),
         help="Override project types if auto-detection is incorrect. Multiple values supported.",
     )
+    parser.add_argument(
+        "--exclude-types",
+        nargs="+",
+        type=str,
+        dest="exclude_types",
+        default=[],
+        help="Project types dropped from the detected list before any stage "
+        "runs, so no inventory or scan runs for them (an excluded os or "
+        "docker type stops the OS and container scans), and passed to cdxgen "
+        "as repeated --exclude-type arguments so the BOM contents are "
+        "filtered the same way.",
+    )
     bom_group = parser.add_mutually_exclusive_group(required=False)
     bom_group.add_argument(
         "--bom",
@@ -337,7 +349,7 @@ def build_parser():
         "Select which published vdb database the scan downloads. These can also be "
         'persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An '
         "explicit VDB_DATABASE_URL env pin always wins. The dedicated "
-        "`depscan-vdb` command shares the same options for pre-fetching.",
+        "`depscan vdb download` command shares the same options for pre-fetching.",
     )
     vdb_group.add_argument(
         "--vdb-flavor",
@@ -391,7 +403,7 @@ def build_parser():
         dest="vdb_distro",
         help="Rejected: vdb 7 publishes no per-distro complete database. Pass "
         "--vdb-flavor full and scan the distro packages, or fetch type shards "
-        "with depscan-vdb.",
+        "with `depscan vdb download`.",
     )
     vdb_group.add_argument(
         "--vdb-image",
@@ -399,6 +411,17 @@ def build_parser():
         dest="vdb_image",
         help="Override the vdb image URL verbatim (bypasses the resolver). "
         "Equivalent to setting VDB_DATABASE_URL.",
+    )
+    vdb_group.add_argument(
+        "--vdb-offline",
+        action="store_true",
+        default=False,
+        dest="vdb_offline",
+        help="Use the local vulnerability database as it is: the freshness "
+        "check, the download and the image marker are all skipped, and shard "
+        "mode (VDB_USE_SHARDS) is ignored so the local complete database is "
+        "read as it is. A missing or empty database still stops the scan with "
+        "an error instead of answering with zero findings.",
     )
     parser.add_argument(
         "--no-universal",

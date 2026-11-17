@@ -22,7 +22,7 @@ You need the standard Rust toolchain plus dep-scan and cdxgen. For the default b
 
 ## How dep-scan runs rusi
 
-Under `--profile research`, which dep-scan forces when reachability is on, cdxgen runs rusi via its evinse layer for Rust projects and persists the full raw rusi report to the `*-semantics.slices.json` path. dep-scan then consumes that persisted report; it does not spawn rusi itself when cdxgen and the plugins are available. rusi is invoked directly only as a fallback.
+Under cdxgen's research BOM profile, which dep-scan selects when reachability is on, cdxgen runs rusi via its evinse layer for Rust projects and persists the full raw rusi report to the `*-semantics.slices.json` path. dep-scan then consumes that persisted report; it does not spawn rusi itself when cdxgen and the plugins are available. rusi is invoked directly only as a fallback.
 
 The normal data path routes through cdxgen, which is the same pattern .NET uses but different from Go, where dep-scan invokes the slicer itself.
 
@@ -43,17 +43,17 @@ The hermetic fixtures under `test/data/rusi/repos/` let you reproduce the reacha
 
 ```shell
 # Reachable case: time@0.1.45 is both present and called
-depscan -i ./test/data/rusi/repos/rustsec-app -o ./reports --profile research --explain
+depscan scan ./test/data/rusi/repos/rustsec-app -o ./reports --bom-profile research --explain
 
 # Point dep-scan at a dev build of rusi
-DEPSCAN_RUSI_BINARY=/path/to/rusi depscan -i ./test/data/rusi/repos/rustsec-app -o ./reports --profile research --explain
+DEPSCAN_RUSI_BINARY=/path/to/rusi depscan scan ./test/data/rusi/repos/rustsec-app -o ./reports --bom-profile research --explain
 ```
 
 The control is `unreachable-app`, whose `Cargo.toml` lists dependencies but whose `main` only prints a greeting and never calls into any external crate.
 
 ```shell
 # Present-but-unreachable case: no crate sits on a traced path
-depscan -i ./test/data/rusi/repos/unreachable-app -o ./reports --profile research --explain
+depscan scan ./test/data/rusi/repos/unreachable-app -o ./reports --bom-profile research --explain
 ```
 
 Reachability is on by default (`--reachability-analyzer FrameworkReachability`). Switch to `SemanticReachability` only when you also want reached services and endpoints attributed.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""depscan-vdb: download and inspect the vdb vulnerability database.
+"""``depscan vdb``: download and inspect the vdb vulnerability database.
 
 The heavy lifting belongs to vdb's ``vdb db`` command: the full-database
 flavors are downloaded through its staged, validated and atomically swapped
@@ -10,10 +10,16 @@ state report comes from its store status. This command adds dep-scan's
 variant selection (the legacy ``--scope``/``--time``/``--extended`` aliases
 mapped onto the five published flavors), its download retries, its
 ``VDB_AGE_HOURS`` freshness policy and its variant marker.
+
+The module serves two front ends: the ``depscan vdb`` verb, whose subparser
+carries :func:`register_arguments`, and :func:`main`, which parses a raw
+argv and defaults to the ``download`` subcommand when none was given.
 """
 
 import argparse
+import json
 import sys
+from typing import Any, Dict, List, Optional
 
 from vdb.lib import config as vdb_config
 from vdb.lib import db as db_lib
@@ -44,15 +50,17 @@ def _flavor_from_image(image):
     return None
 
 
-def _build_parser():
-    parser = argparse.ArgumentParser(
-        prog="depscan-vdb",
-        description=(
-            "Download and inspect the published vdb vulnerability database "
-            "flavors and type shards."
-        ),
-        epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more",
+def _add_format_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--format",
+        choices=("text", "json"),
+        default="text",
+        help="text for people, json for scripts (default: text)",
     )
+
+
+def register_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add the vdb subcommands and options to ``parser``."""
     subparsers = parser.add_subparsers(dest="command")
 
     # --- download (default) ------------------------------------------------
@@ -114,18 +122,21 @@ def _build_parser():
         default=None,
         help="Override the image URL verbatim (bypasses the flavor resolver).",
     )
+    _add_format_argument(dl)
 
     # --- info --------------------------------------------------------------
-    subparsers.add_parser(
+    info = subparsers.add_parser(
         "info",
         help="Print information about the local database and shard store.",
     )
+    _add_format_argument(info)
 
     # --- path --------------------------------------------------------------
-    subparsers.add_parser(
+    path = subparsers.add_parser(
         "path",
         help="Print the VDB_HOME directory.",
     )
+    _add_format_argument(path)
 
     parser.add_argument(
         "-v",
@@ -134,6 +145,18 @@ def _build_parser():
         action="version",
         version="%(prog)s " + get_version(),
     )
+
+
+def _build_parser():
+    parser = argparse.ArgumentParser(
+        prog="depscan vdb",
+        description=(
+            "Download and inspect the published vdb vulnerability database "
+            "flavors and type shards."
+        ),
+        epilog="Visit https://github.com/owasp-dep-scan/dep-scan to learn more",
+    )
+    register_arguments(parser)
     return parser
 
 
@@ -177,39 +200,11 @@ def _resolve_flavor_from_args(args):
 
 def cmd_download(args):
     """Download the selected database flavor or shard set and write the marker."""
-    from depscan.lib.vdb_setup import download_vdb_with_retries, refresh_shards_with_retries
+    from depscan.lib.vdb_setup import download_vdb_with_retries
 
     data_dir = vdb_config.DATA_DIR
     if args.shards:
-        if args.flavor or args.image:
-            print(
-                "error: --shards cannot be combined with --flavor or --image.",
-                file=sys.stderr,
-            )
-            return 1
-        from vdb.lib.shard_store import canonical_shard_for_type
-
-        # Shard names or purl types (npm, pypi, ...), like `vdb db refresh`.
-        shard_names = []
-        for shard in args.shards:
-            name = canonical_shard_for_type(shard)
-            if name not in shard_names:
-                shard_names.append(name)
-        LOG.info(
-            "Refreshing vdb shard(s) %s into %s",
-            ", ".join(shard_names),
-            vdb_config.VDB_SHARDS_DIR,
-        )
-        placed = (
-            refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
-        )
-        write_vdb_image_marker(vdb_shards_marker(shard_names), data_dir)
-        LOG.info(
-            "Refreshed shard(s): %s. Marker written to %s",
-            ", ".join(placed),
-            vdb_image_marker_path(data_dir),
-        )
-        return 0
+        return _download_shards(args, data_dir)
 
     try:
         flavor, _legacy = _resolve_flavor_from_args(args)
@@ -224,67 +219,176 @@ def cmd_download(args):
     download_vdb_with_retries(image_url)
     write_vdb_image_marker(image_url, data_dir)
     LOG.info("Download complete. Variant marker written to %s", vdb_image_marker_path(data_dir))
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps({"image": image_url, "marker": vdb_image_marker_path(data_dir)}))
     return 0
 
 
-def cmd_info(args):
-    """Print the local database and shard store state.
+def _download_shards(args, data_dir):
+    """Fetch the requested type shards and write the shard-set marker."""
+    from vdb.lib.shard_store import canonical_shard_for_type
+
+    from depscan.lib.vdb_setup import refresh_shards_with_retries
+
+    if args.flavor or args.image:
+        print(
+            "error: --shards cannot be combined with --flavor or --image.",
+            file=sys.stderr,
+        )
+        return 1
+    # Shard names or purl types (npm, pypi, ...), like `vdb db refresh`.
+    shard_names = []
+    for shard in args.shards:
+        name = canonical_shard_for_type(shard)
+        if name not in shard_names:
+            shard_names.append(name)
+    LOG.info(
+        "Refreshing vdb shard(s) %s into %s",
+        ", ".join(shard_names),
+        vdb_config.VDB_SHARDS_DIR,
+    )
+    placed = refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
+    write_vdb_image_marker(vdb_shards_marker(shard_names), data_dir)
+    LOG.info(
+        "Refreshed shard(s): %s. Marker written to %s",
+        ", ".join(placed),
+        vdb_image_marker_path(data_dir),
+    )
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps({"shards": shard_names, "marker": vdb_image_marker_path(data_dir)}))
+    return 0
+
+
+def _collect_info() -> Dict[str, Any]:
+    """Read the local database and shard store state as one document.
 
     Built on vdb's own reporting (``db_cmd.store_status`` and the main
-    database metadata); a partial store or a stale shard is printed as such,
+    database metadata); a partial store or a stale shard is recorded as such,
     never hidden.
     """
     data_dir = vdb_config.DATA_DIR
     marker = read_vdb_image_marker(data_dir)
-    print(f"VDB_HOME: {data_dir}")
+    document: Dict[str, Any] = {
+        "vdbHome": data_dir,
+        "marker": marker,
+        "markerKind": None,
+        "flavor": None,
+    }
     if marker:
         if marker.startswith(VDB_SHARDS_MARKER_PREFIX):
-            print(f"Last refresh:      shards {marker[len(VDB_SHARDS_MARKER_PREFIX) :]}")
+            document["markerKind"] = "shards"
         else:
-            flavor = _flavor_from_image(marker)
-            print(f"Last pulled image: {marker}" + (f" ({flavor})" if flavor else ""))
-    else:
-        print("Last pulled image: (none recorded)")
+            document["markerKind"] = "image"
+            document["flavor"] = _flavor_from_image(marker)
     db_lib.reset_connections()
     db_meta = db_lib.get_db_file_metadata() or {}
-    if db_meta.get("created_utc"):
-        stale = db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False)
-        state = "stale (re-download recommended)" if stale else "fresh"
-        print(
-            f"Main DB built:     {db_meta.get('created_utc')} ({state}, threshold: {VDB_AGE_HOURS}h)"
+    document["mainDb"] = _main_db_entry(db_meta)
+    meta_rows = db_lib.metadata_rows_count() if db_meta.get("created_utc") else 0
+    document["metadataRows"] = meta_rows
+    document["extendedFlavor"] = bool(meta_rows)
+    document["shardStore"] = _shard_store_entry(db_cmd.store_status())
+    return document
+
+
+def _main_db_entry(db_meta: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The main database entry, or None when no database was found."""
+    if not db_meta.get("created_utc"):
+        return None
+    stale = db_lib.needs_update(days=0, hours=VDB_AGE_HOURS, default_status=False)
+    return {
+        "builtUtc": db_meta.get("created_utc"),
+        "stale": bool(stale),
+        "maxAgeHours": VDB_AGE_HOURS,
+        "completeness": db_meta.get("completeness", "full"),
+        "dataRows": db_meta.get("cve_data_count", "?"),
+        "indexRows": db_meta.get("cve_index_count", "?"),
+    }
+
+
+def _shard_store_entry(store: Dict[str, Any]) -> Dict[str, Any]:
+    """The shard store entry, with one record per installed shard."""
+    shards = []
+    for shard in store.get("shards") or []:
+        shards.append(
+            {
+                "name": shard["name"],
+                "buildId": shard["build_id"],
+                "builtUtc": shard.get("created_utc"),
+                "ageDays": shard.get("age_days"),
+                "typeCount": shard["type_count"],
+                "types": list(shard["types"]),
+                "stale": bool(shard["stale"]),
+            }
         )
-        completeness = db_meta.get("completeness", "full")
-        if completeness == "partial":
-            print("Main DB type:      shard installed as the main database (partial)")
-        print(
-            f"Main DB rows:      {db_meta.get('cve_data_count', '?')} data / "
-            f"{db_meta.get('cve_index_count', '?')} index"
+    return {
+        "storeDir": store.get("store_dir"),
+        "shards": shards,
+        "coverage": store.get("coverage"),
+        "mixedBuilds": bool(store.get("mixed_builds")),
+        "missingGroupShards": list(store.get("missing_group_shards") or []),
+    }
+
+
+def _render_info_text(document: Dict[str, Any]) -> List[str]:
+    """The text rendering of the info document, one line per row."""
+    lines = [f"VDB_HOME: {document['vdbHome']}"]
+    marker = document["marker"]
+    if marker:
+        if document["markerKind"] == "shards":
+            lines.append(f"Last refresh:      shards {marker[len(VDB_SHARDS_MARKER_PREFIX) :]}")
+        else:
+            flavor = document["flavor"]
+            lines.append(f"Last pulled image: {marker}" + (f" ({flavor})" if flavor else ""))
+    else:
+        lines.append("Last pulled image: (none recorded)")
+    main_db = document["mainDb"]
+    if main_db:
+        state = "stale (re-download recommended)" if main_db["stale"] else "fresh"
+        lines.append(
+            f"Main DB built:     {main_db['builtUtc']} ({state}, "
+            f"threshold: {main_db['maxAgeHours']}h)"
+        )
+        if main_db["completeness"] == "partial":
+            lines.append("Main DB type:      shard installed as the main database (partial)")
+        lines.append(
+            f"Main DB rows:      {main_db['dataRows']} data / {main_db['indexRows']} index"
         )
     else:
-        print("Main DB built:     (no database found)")
-    meta_rows = db_lib.metadata_rows_count() if db_meta.get("created_utc") else 0
-    print(f"Metadata rows:     {meta_rows}" + (" (extended flavor)" if meta_rows else ""))
-    store = db_cmd.store_status()
-    print(f"Shard store:       {store.get('store_dir')}")
-    shards = store.get("shards") or []
+        lines.append("Main DB built:     (no database found)")
+    meta_rows = document["metadataRows"]
+    lines.append(f"Metadata rows:     {meta_rows}" + (" (extended flavor)" if meta_rows else ""))
+    store = document["shardStore"]
+    lines.append(f"Shard store:       {store['storeDir']}")
+    shards = store["shards"]
     if not shards:
-        print("Shard store:       empty")
+        lines.append("Shard store:       empty")
     for shard in shards:
         state = "STALE (much older than its siblings)" if shard["stale"] else "ok"
-        print(
-            f"  shard {shard['name']}: build {shard['build_id']}, "
-            f"built {shard.get('created_utc') or '?'}, "
-            f"{_fmt_age(shard.get('age_days'))} old, "
-            f"{shard['type_count']} type(s) ({', '.join(shard['types'])}) - {state}"
+        lines.append(
+            f"  shard {shard['name']}: build {shard['buildId']}, "
+            f"built {shard['builtUtc'] or '?'}, "
+            f"{_fmt_age(shard['ageDays'])} old, "
+            f"{shard['typeCount']} type(s) ({', '.join(shard['types'])}) - {state}"
         )
     if shards:
-        mix = " (mixed builds)" if store.get("mixed_builds") else ""
-        print(f"Store coverage:    {store.get('coverage')}{mix}")
-        if store.get("missing_group_shards"):
-            print(
+        mix = " (mixed builds)" if store["mixedBuilds"] else ""
+        lines.append(f"Store coverage:    {store['coverage']}{mix}")
+        if store["missingGroupShards"]:
+            lines.append(
                 "note: purl types with no local shard are reported as coverage "
                 "gaps at search time, never silently skipped."
             )
+    return lines
+
+
+def cmd_info(args):
+    """Print the local database and shard store state."""
+    document = _collect_info()
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps(document, indent=2))
+        return 0
+    for line in _render_info_text(document):
+        print(line)
     return 0
 
 
@@ -300,24 +404,30 @@ def _fmt_age(age_days):
 
 def cmd_path(args):
     """Print the VDB_HOME directory."""
+    if getattr(args, "format", "text") == "json":
+        print(json.dumps({"path": vdb_config.DATA_DIR}))
+        return 0
     print(vdb_config.DATA_DIR)
     return 0
 
 
-def main():
-    """Entry point for the depscan-vdb console script."""
-    known_subcommands = ("download", "info", "path")
-    raw_args = sys.argv[1:]
-    # Default to "download" when no subcommand is given.
-    if not raw_args or (raw_args[0].startswith("-") and raw_args[0] not in ("-h", "--help")):
-        raw_args = ["download"] + raw_args
-    parser = _build_parser()
-    args = parser.parse_args(raw_args)
+def dispatch(args) -> int:
+    """Run the parsed subcommand; returns the process exit code."""
     if args.command == "info":
         return cmd_info(args)
     if args.command == "path":
         return cmd_path(args)
     return cmd_download(args)
+
+
+def main(argv=None):
+    """Entry point of the vdb command; ``argv`` defaults to ``sys.argv``."""
+    raw_args = list(sys.argv[1:] if argv is None else argv)
+    # Default to "download" when no subcommand is given.
+    if not raw_args or (raw_args[0].startswith("-") and raw_args[0] not in ("-h", "--help")):
+        raw_args = ["download"] + raw_args
+    args = _build_parser().parse_args(raw_args)
+    return dispatch(args)
 
 
 if __name__ == "__main__":

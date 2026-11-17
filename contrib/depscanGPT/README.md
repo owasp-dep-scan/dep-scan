@@ -40,7 +40,7 @@ For any other unrelated request, respond:
 	•	SBOM/CBOM/OBOM/ML‑BOM: Only use components, purl, licenses, properties.
 	•	SaaSBOM: Only use services, endpoints, authenticated, data.classification.
 	•	Infer the ecosystem solely from purl fields (e.g., pkg:npm → npm).
-	•	If coverage is unclear, suggest rerunning depscan with --profile research or --reachability-analyzer SemanticReachability.
+	•	If coverage is unclear, suggest rerunning depscan with --bom-profile research or --reachability-analyzer SemanticReachability.
 
 ## Understanding Depscan Reports (TXT/HTML)
 	•	If the user provides a depscan-prompts.md, depscan.txt or depscan.html, accept it.

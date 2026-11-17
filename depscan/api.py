@@ -6,8 +6,9 @@ same order, and returns a :class:`ScanResult` instead of exiting the process.
 ``query`` filters the vulnerabilities of a result, ``explain`` returns the
 text the ``--explain`` rendering produces and ``diff` compares two results.
 
-The CLI (``depscan.cli.run_depscan``) and the depscan server call these
-functions; they do not drive the pipeline directly. This module imports from
+The command line (the verb dispatch in ``depscan.cli``) and the depscan
+server call these functions; they do not drive the pipeline directly. This
+module imports from
 :mod:`depscan.lib.pipeline`; the pipeline never imports this module.
 
 The API is new in 7.0 and may change before the 7.0.0 release.
@@ -173,7 +174,13 @@ def doctor() -> DoctorReport:
     return doctor_lib.doctor()
 
 
-def scan(options, *, render: bool = True) -> ScanResult:
+def scan(
+    options,
+    *,
+    render: bool = True,
+    doctor_report: Optional[DoctorReport] = None,
+    checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
+) -> ScanResult:
     """Run a scan with the given options and return its result.
 
     This runs the stages the ``depscan`` command runs, in the same order,
@@ -191,9 +198,21 @@ def scan(options, *, render: bool = True) -> ScanResult:
     the console tables forces ``no_vuln_table`` on the given options, because
     the tables are part of the rendering.
 
+    ``doctor_report`` is a report a caller already collected; the scan reuses
+    it instead of probing the machine a second time. ``checks_not_assessed``
+    lists checks, as ``{"name": ..., "reason": ...}`` dictionaries, that a
+    caller decided cannot run; each is recorded in the manifest as a
+    ``check-<name>`` stage with status ``not-assessed``. Both travel only
+    through these keywords: every value of the options namespace is copied
+    into the manifest and the sample config, so a report object must never
+    land there.
+
     :param options: An ``argparse.Namespace`` from the CLI parser or from
         :func:`scan_options`.
     :param render: Render the console and report output (the default).
+    :param doctor_report: Reuse this :class:`DoctorReport` instead of
+        collecting one.
+    :param checks_not_assessed: Check entries to record as not assessed.
     :returns: The :class:`ScanResult` of the scan, carrying the manifest and
         findings of the scan directory it wrote.
     :raises ScanError: When a stage stops the scan, with the message the
@@ -202,11 +221,24 @@ def scan(options, *, render: bool = True) -> ScanResult:
         partway still leaves its directory with a manifest naming the
         failed stage.
     """
-    return _run_stages(options, render=render, database=True, write_scan_dir=True)
+    return _run_stages(
+        options,
+        render=render,
+        database=True,
+        write_scan_dir=True,
+        doctor_report=doctor_report,
+        checks_not_assessed=checks_not_assessed,
+    )
 
 
 def _run_stages(
-    options, *, render: bool, database: bool, write_scan_dir: bool = False
+    options,
+    *,
+    render: bool,
+    database: bool,
+    write_scan_dir: bool = False,
+    doctor_report: Optional[DoctorReport] = None,
+    checks_not_assessed: Optional[List[Dict[str, Any]]] = None,
 ) -> ScanResult:
     """Run the scan stages; see :func:`scan`.
 
@@ -214,12 +246,15 @@ def _run_stages(
     leaves the scan directory unwritten. Only the server uses these: it
     prepares the database once when it starts, so a request never downloads
     or replaces the database the server is reading, and a request's output is
-    the response rather than a directory.
+    the response rather than a directory. ``doctor_report`` and
+    ``checks_not_assessed`` see :func:`scan`.
     """
     if not render:
         options.no_vuln_table = True
     ctx = pipeline.build_context(options)
     ctx.write_scan_dir = write_scan_dir
+    if doctor_report is not None:
+        ctx.doctor_report = doctor_report
     pipeline.configure_output(ctx)
     written = None
     try:
@@ -227,6 +262,7 @@ def _run_stages(
         # Our style of analysis is comparable to that of an intelligent Hubble telescope or a rover—examining the same subject through multiple optics, colors, and depths to gain a deeper understanding.
         # We begin by iterating over the project types provided or assumed.
         pipeline.stage_setup(ctx)
+        _record_checks_not_assessed(ctx, checks_not_assessed)
         if database:
             _stage(ctx, "database", pipeline.stage_database, ctx, capabilities=["vulnerabilities"])
         pipeline.finalize_setup(ctx)
@@ -390,6 +426,29 @@ def _stage(
     else:
         record("completed")
     return result
+
+
+def _record_checks_not_assessed(ctx, checks_not_assessed):
+    """Record the checks a caller turned off as manifest stage entries.
+
+    Each entry becomes a ``check-<name>`` stage with status ``not-assessed``,
+    the caller's reason and the capability named, so the manifest shows the
+    check was considered and refused rather than silently absent. A scan that
+    writes no scan directory (the server path) records nothing; it passes no
+    entries anyway.
+    """
+    if not checks_not_assessed or ctx.scan_dir is None:
+        return
+    for entry in checks_not_assessed:
+        name = str(entry.get("name") or "")
+        if not name:
+            continue
+        ctx.scan_dir.record_stage(
+            f"check-{name}",
+            "not-assessed",
+            reason=entry.get("reason"),
+            capabilities=[name],
+        )
 
 
 def _analyzer_entries(ctx, tscan):

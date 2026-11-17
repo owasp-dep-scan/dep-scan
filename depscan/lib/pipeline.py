@@ -33,7 +33,7 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 import contextlib
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
@@ -74,7 +74,7 @@ from depscan.lib.config import (
     write_vdb_image_marker,
 )
 from depscan.lib.license import build_license_data, bulk_lookup
-from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console
+from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console, log_console
 
 LOGO = """
   _|  _  ._   _  _  _. ._
@@ -96,8 +96,8 @@ class ScanStageError(RuntimeError):
 
     The stage has already logged every message the scan prints for this
     condition and passes the same message to this error, so the caller can
-    report why the scan stopped; ``run_depscan`` catches this error and exits
-    with code 1.
+    report why the scan stopped; the CLI verb dispatch catches this error and
+    exits with code 1.
     """
 
 
@@ -206,7 +206,7 @@ def configure_output(ctx):
         and not args.no_banner
         and not os.getenv("INPUT_THANK_YOU", "") == "I have sponsored OWASP-dep-scan."
     ):
-        console.print(
+        log_console.print(
             Panel(
                 "OWASP foundation relies on donations to fund our projects.\nPlease donate at: https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+depscan",
                 title="Donate to the OWASP Foundation",
@@ -221,6 +221,7 @@ def configure_output(ctx):
         os.environ["SCAN_DEBUG_MODE"] = "off"
         os.environ["CDXGEN_DEBUG_MODE"] = "off"
         console.quiet = True
+        log_console.quiet = True
         args.no_vuln_table = True
     # Should we enable debug
     if args.enable_debug:
@@ -318,7 +319,7 @@ def start_server_mode(ctx):
             custom_data_directory=args.custom_data,
         )
         return simple.run_server(server_options)
-    LOG.info(
+    LOG.error(
         "The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`."
     )
     return False
@@ -494,10 +495,14 @@ def _start_scan_directory(ctx):
     Every stage records its entry into the builder from here on; the manifest
     itself is written when the scan finishes, after every other file. Server
     requests write no scan directory, so they collect no doctor report either.
+    A scan handed a report through :func:`depscan.api.scan` reuses it: the
+    report never travels through the options namespace, whose every value the
+    manifest and the sample config copy.
     """
     if not ctx.write_scan_dir:
         return
-    ctx.doctor_report = doctor_lib.doctor()
+    if ctx.doctor_report is None:
+        ctx.doctor_report = doctor_lib.doctor()
     ctx.scan_dir = scan_directory.ScanDirectory(
         ctx.reports_dir,
         depscan_version=get_version(),
@@ -545,9 +550,17 @@ def stage_database(ctx):
     )
     # Opt-in shard mode replaces the complete database with the type shards
     # serving the scan's purl types, but only when those types are known
-    # before matching.
+    # before matching. Offline mode never sets shards up: the setup does a
+    # freshness check, a refresh over the network and a marker write, none of
+    # which the offline promise allows, so the local complete database is
+    # used as it is.
     ctx.shards_connected = []
-    if VDB_USE_SHARDS:
+    if VDB_USE_SHARDS and args.vdb_offline:
+        LOG.warning(
+            "VDB_USE_SHARDS is set but the offline mode was requested; using "
+            "the local complete database as it is, without refreshing shards."
+        )
+    elif VDB_USE_SHARDS:
         shard_types = vdb_setup.collect_purl_types(args, ctx.src_dir)
         if shard_types:
             try:
@@ -559,11 +572,14 @@ def stage_database(ctx):
                 "VDB_USE_SHARDS is set but this scan's purl types are not known "
                 "before matching; using a complete database instead."
             )
-    if not ctx.shards_connected:
-        # Should we download the latest vdb.
+    if not ctx.shards_connected and not args.vdb_offline:
+        # Should we download the latest vdb. Offline mode uses the database
+        # as it is: no freshness check, no download, no marker write. The
+        # unusable-database guard below still runs, so a missing or empty
+        # database stops the scan instead of looking like a clean one.
         should_download, dl_reason = vdb_setup.vdb_download_needed(scan_vdb_url, config.DATA_DIR)
         if should_download:
-            with console.status(
+            with log_console.status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
                 spinner=SPINNER,
             ) as vdb_download_status:
@@ -579,7 +595,7 @@ def stage_database(ctx):
                     LOG.error(
                         "Could not download the vulnerability database %s into %s: %s. "
                         "Check the network or proxy settings, or download it first "
-                        "with `depscan-vdb download` and run the scan again.",
+                        "with `depscan vdb download` and run the scan again.",
                         scan_vdb_url,
                         config.DATA_DIR,
                         e,
@@ -602,8 +618,24 @@ def stage_database(ctx):
         raise ScanStageError(str(e)) from e
 
 
+def _excluded_types(args) -> Set[str]:
+    """The excluded project types, whatever form the option carries.
+
+    A single comma-separated string is accepted next to the list so a caller
+    reusing the environment-variable spellings works unchanged.
+    """
+    raw = getattr(args, "exclude_types", None) or []
+    if isinstance(raw, str):
+        raw = raw.split(",")
+    return {item.strip() for item in raw if isinstance(item, str) and item.strip()}
+
+
 def set_project_types(args, src_dir):
     """Detect the project types and perform the right type of scan.
+
+    Types named in the ``exclude_types`` option are removed before the list
+    is returned, so no stage ever sees an excluded type: the per-type loop
+    scans nothing for it and cdxgen is never asked for its inventory.
 
     :param args: cli arguments
     :param src_dir: source directory
@@ -634,6 +666,18 @@ def set_project_types(args, src_dir):
         project_types_list = [UNIVERSAL_SCAN_TYPE]
     else:
         project_types_list = utils.detect_project_type(src_dir)
+    excluded = _excluded_types(args)
+    if excluded:
+        project_types_list = [ptype for ptype in project_types_list if ptype not in excluded]
+        if not project_types_list:
+            # A scan with no project type left runs zero type scans and its
+            # manifest shows no matching, which reads exactly like a clean
+            # result. Stop with the reason instead.
+            raise ScanStageError(
+                "Every project type of this scan was excluded, so there is "
+                "nothing to scan. Pass at least one project type that is not "
+                f"excluded; the excluded types are {', '.join(sorted(excluded))}."
+            )
     return pkg_list, project_types_list
 
 
@@ -671,8 +715,12 @@ def finalize_setup(ctx):
     # Enable license scanning
     if "license" in ctx.project_types or "license" in args.profile:
         os.environ["FETCH_LICENSE"] = "true"
-        ctx.project_types.remove("license")
-        console.print(
+        # The license pseudo type names no scan of its own; it only turns the
+        # license analysis on. A profile can name license without the type
+        # having been detected, so remove it only when it is there.
+        if "license" in ctx.project_types:
+            ctx.project_types.remove("license")
+        log_console.print(
             Panel(
                 "License audit is enabled for this scan. This would increase "
                 "the time by up to 10 minutes.",
@@ -683,23 +731,33 @@ def finalize_setup(ctx):
     _write_sample_config(ctx, run_config_file)
 
 
-def _write_sample_config(ctx, run_config_file):
-    """Write a sample configuration file based on the options in use."""
-    if ctx.config_file_mode:
-        return
-    run_config = {**ctx.depscan_options}
-    del run_config["no_banner"]
+def write_config_file(options: Dict[str, Any], run_config_file: str) -> bool:
+    """Write an options dict as a TOML config file, without ``no_banner``.
+
+    The sample config a scan writes and the file ``depscan config init``
+    writes are the same document: the effective options minus the banner
+    flag. Options whose value is None are dropped by the TOML encoder.
+    Returns False when the file could not be written.
+    """
+    run_config = {**options}
+    run_config.pop("no_banner", None)
     try:
         import toml as _toml
 
         with open(run_config_file, "w") as _fh:
             _fh.write(_toml.dumps(run_config))
     except OSError as exc:
-        LOG.debug("Could not write sample config to %s: %s", run_config_file, exc)
-    else:
-        LOG.debug(
-            f"Created a sample depscan config file at '{run_config_file}', based on this run."
-        )
+        LOG.debug("Could not write config to %s: %s", run_config_file, exc)
+        return False
+    LOG.debug(f"Created a depscan config file at '{run_config_file}'.")
+    return True
+
+
+def _write_sample_config(ctx, run_config_file):
+    """Write a sample configuration file based on the options in use."""
+    if ctx.config_file_mode:
+        return
+    write_config_file(ctx.depscan_options, run_config_file)
 
 
 def _prepare_lifecycle_paths(ctx, scan):
@@ -1002,7 +1060,7 @@ def stage_analysis_risk(ctx, scan) -> bool:
     if not pkg_list_to_use:
         return False
     if len(scan.pkg_list) > 1:
-        console.print(
+        log_console.print(
             Panel(
                 f"Performing OSS Risk Audit for packages from "
                 f"{ctx.src_dir}\nNo of packages [bold]{len(scan.pkg_list)}"

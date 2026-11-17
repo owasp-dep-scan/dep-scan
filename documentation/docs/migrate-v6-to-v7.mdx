@@ -13,6 +13,91 @@ Each entry says what changed, why, and what to do instead.
 
 - **Python 3.11 is the minimum.** v6 supported Python 3.10. Install dep-scan 7 on Python 3.11 or later.
 
+## Command line (BREAKING)
+
+dep-scan 7 commands start with a verb: `depscan scan`, `depscan serve`, `depscan vdb`, `depscan doctor`, `depscan schema`, `depscan config`, `depscan validate`, `depscan version`, `depscan report`, `depscan help`. The v6 flat option list is not accepted.
+
+- **Options-first command lines exit 2 with the equivalent v7 command printed.** A v6 invocation is not run; dep-scan translates it, prints the translated command and a link to this page on stderr, and exits 2.
+
+  ```text
+  $ depscan --src . --reports-dir reports
+  depscan: this is a dep-scan 6 command line, which dep-scan 7 no longer runs.
+  The equivalent v7 command is: depscan scan . --reports-dir reports
+  See the migration guide: https://depscan.readthedocs.io/migrate-v6-to-v7/
+  ```
+
+- **Bare `depscan` is a usage error.** It exits 2 with the verb list. Use `depscan scan` to scan the current directory; `depscan -h` and `depscan --help` still print the help and exit 0.
+- **The `depscan-vdb` and `depscan-validate` console scripts are gone.** Use `depscan vdb` and `depscan validate`; the subcommands (`depscan vdb download --flavor app-only`, `depscan validate <file>`) are unchanged.
+- **`--server` is gone; the server is a verb.** `depscan --server --server-host H --server-port P` becomes `depscan serve --server-host H --server-port P`. The four `--server-*` options moved to the serve verb, which also accepts `--cdxgen-server`, `--custom-data`, `--debug` and the `--vdb-*` selection options. `serve` has no `--config` option.
+- **The v6 `--profile` is now `--bom-profile`.** v6's `--profile` named cdxgen's BOM profile; `--profile research` becomes `--bom-profile research`. The new `--profile` names one of five scan profiles (`quick`, `ci`, `deep`, `research`, `offline`) that set the checks and the analyzer settings, with explicit options winning.
+- **`-v`/`--version` became `depscan version`.** `depscan version --format json` also prints every tool version.
+- **`--risk-audit` became `--checks supply-chain`.** The package risk audit is the supply-chain check; the matching stage's malware advisory reporting is always on, whatever checks run.
+- **`--src`, `--bom`, `--bom-dir` and `--purl` became positional targets.** `depscan --src .` is `depscan scan .`, `depscan --purl pkg:pypi/requests@2.32.1` is `depscan scan pkg:pypi/requests@2.32.1`. The kind of each target is detected (`--target-kind` forces one); an existing path wins over a same-shaped image reference. A directory counts as a BOM directory only when every JSON file in it, apart from `*.slices.json` slices and dep-scan's own manifest and findings files, is a CycloneDX document, so `depscan --bom-dir DIR` becomes `depscan scan DIR --target-kind bom-dir` to keep v6's meaning for a directory that also holds OpenAPI or other JSON files. A `--src` given together with `--bom`, `--bom-dir` or `--purl` was not scanned in v6 and has no v7 equivalent; drop it. A binary target is recognised by its ELF, PE or Mach-O header, not by the executable bit. Several targets run one scan each into `<reports-dir>/<n>-<name>/` (the 1-based index and the target's name), and the exit code is the highest of the scans.
+- **New exit codes.** A usage error, including every v6 command line, exits 2; a requested capability that cannot run (a check named through `--checks` whose analyzer is missing, an iOS or firmware target) exits 4. Findings still never change the exit code.
+- **`--exclude-type` is a first-class, repeatable option.** It removes the type from the detected list before any stage runs, so an excluded `os` or `docker` stops the OS and container scans, and it is passed to cdxgen so the BOM contents are filtered the same way. Inside v6's `--cdxgen-args` an `--exclude-type` filtered only the BOM contents; the OS and container scans still ran.
+
+Every v6 option and its v7 equivalent:
+
+<!-- v6-to-v7 option table start -->
+| v6 option | v7 equivalent | note |
+| --- | --- | --- |
+| `--no-banner` | `depscan scan --no-banner` | Unchanged. |
+| `-i`, `--src` | `depscan scan <target>` | The value becomes the positional target; the kind is detected. |
+| `-o`, `--reports-dir` | `depscan scan --reports-dir` | Unchanged. |
+| `--csaf` | `depscan scan --csaf` | Unchanged. |
+| `--csaf-version` | `depscan scan --csaf-version` | Unchanged. |
+| `--profile` | `depscan scan --bom-profile` | The cdxgen BOM profile flag is renamed. |
+| `--lifecycle` | `depscan scan --lifecycle` | Unchanged. |
+| `--technique` | `depscan scan --technique` | Unchanged. |
+| `--bom-engine` | `depscan scan --bom-engine` | Unchanged. |
+| `--vulnerability-analyzer` | `depscan scan --vulnerability-analyzer` | Unchanged. |
+| `--reachability-analyzer` | `depscan scan --reachability-analyzer` | Unchanged. |
+| `--rust-analyzer-backend` | `depscan scan --rust-analyzer-backend` | Unchanged. |
+| `--go-analyzer-network` | `depscan scan --go-analyzer-network` | Unchanged. |
+| `--go-analyzer-cgo` | `depscan scan --go-analyzer-cgo` | Unchanged. |
+| `--dotnet-analyzer-mode` | `depscan scan --dotnet-analyzer-mode` | Unchanged. |
+| `--no-suggest` | `depscan scan --no-suggest` | Unchanged. |
+| `--risk-audit` | `depscan scan --checks supply-chain` | The package risk audit became the supply-chain check. |
+| `--fail-on-error` | `depscan scan --fail-on-error` | Unchanged. |
+| `--cdxgen-args` | `depscan scan --cdxgen-args` | Unchanged. |
+| `--spec-version` | `depscan scan --spec-version` | Unchanged. |
+| `--private-ns` | `depscan scan --private-ns` | Unchanged. |
+| `-t`, `--type` | `depscan scan --type` | Unchanged. |
+| `--bom` | `depscan scan <bom-file>` | The value becomes the positional target; the kind is bom. A --src given with it is dropped, because a BOM scan generates nothing from the source directory. |
+| `--bom-dir` | `depscan scan <dir> --target-kind bom-dir` | The value becomes the positional target with its kind forced, as --bom-dir forced it (detection reads a directory holding other JSON files, such as OpenAPI documents, as source); a --src given with it is dropped, because a BOM directory scan generates nothing from the source directory. |
+| `--purl` | `depscan scan <purl>` | The value becomes the positional target; the kind is purl. |
+| `--custom-data` | `depscan scan --custom-data` | Unchanged; also accepted by depscan serve. |
+| `--report-template` | `depscan scan --report-template` | Unchanged. |
+| `--report-name` | `depscan scan --report-name` | Unchanged. |
+| `--deep` | `depscan scan --deep` | Unchanged. |
+| `--fuzzy-search` | `depscan scan --fuzzy-search` | Unchanged. |
+| `--search-order` | `depscan scan --search-order` | Unchanged. |
+| `--severity` | `depscan scan --severity` | Unchanged. |
+| `--malware-only` | `depscan scan --malware-only` | Unchanged. |
+| `--vdb-flavor` | `depscan scan --vdb-flavor` | Unchanged; also accepted by depscan serve. |
+| `--vdb-scope` | `depscan scan --vdb-scope` | Unchanged; deprecated. |
+| `--vdb-time` | `depscan scan --vdb-time` | Unchanged; deprecated. |
+| `--vdb-extended` | `depscan scan --vdb-extended` | Unchanged; deprecated. |
+| `--vdb-compression` | `depscan scan --vdb-compression` | Unchanged; also accepted by depscan serve. |
+| `--vdb-distro` | `depscan scan --vdb-distro` | Unchanged; rejected with the flavor list. |
+| `--vdb-image` | `depscan scan --vdb-image` | Unchanged; also accepted by depscan serve. |
+| `--no-universal` | `depscan scan --no-universal` | Unchanged. |
+| `--no-vuln-table` | `depscan scan --no-vuln-table` | Unchanged. |
+| `--server` | `depscan serve` | Removed as a flag; it switches the verb to serve. |
+| `--server-host` | `depscan serve --server-host` | Now on the serve verb. |
+| `--server-port` | `depscan serve --server-port` | Now on the serve verb. |
+| `--server-allowed-hosts` | `depscan serve --server-allowed-hosts` | Now on the serve verb. |
+| `--server-allowed-paths` | `depscan serve --server-allowed-paths` | Now on the serve verb. |
+| `--cdxgen-server` | `depscan scan --cdxgen-server` | Unchanged; also accepted by depscan serve. |
+| `--debug` | `depscan scan --debug` | Unchanged; also accepted by depscan serve. |
+| `-q`, `--quiet` | `depscan scan --quiet` | Unchanged. |
+| `--explain` | `depscan scan --explain` | Unchanged. |
+| `--explanation-mode` | `depscan scan --explanation-mode` | Unchanged. |
+| `--annotate` | `depscan scan --annotate` | Unchanged. |
+| `-v`, `--version` | `depscan version` | Removed as a flag; use the version verb. |
+| `--config` | `depscan scan --config` | Unchanged; the flat TOML file keeps its v6 semantics. |
+<!-- v6-to-v7 option table end -->
+
 ## Vulnerability database (BREAKING)
 
 dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), whose database format and download images differ from v6.
@@ -33,9 +118,17 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 
 ## Reachability
 
-- **Slices from atom 2.x are not read.** dep-scan 7 reads the slices atom 4 writes, which cdxgen 13.8 produces. Regenerate BOMs and slices saved by older cdxgen versions before passing them with `--bom-dir`; old slices contribute no reachable packages.
+- **Slices from atom 2.x are not read.** dep-scan 7 reads the slices atom 4 writes, which cdxgen 13.8 produces. Regenerate BOMs and slices saved by older cdxgen versions before passing them as a BOM directory target; old slices contribute no reachable packages.
 - **When atom times out, the scan says so.** v6 treated the missing slices as zero reachable flows. v7 records the reachability analysis as not assessed for that scan.
 - **Go reachability runs with cgo off.** golem loads Go packages with `CGO_ENABLED=0` and with every `CGO_*_ALLOW` variable removed, even when the environment sets them, because loading cgo packages runs the machine's C compiler with flags from the scanned code. Packages that need cgo are therefore not loaded and their reachability is missing. Pass `--go-analyzer-cgo` (or set `DEPSCAN_GO_ANALYZER_CGO=true`) only for code you trust, with a Go release that carries the fixes for CVE-2026-97033 to CVE-2026-97043.
+
+## Console output
+
+- **Log messages, progress and warnings moved to stderr.** v6 printed them on stdout, mixed with the results tables. v7 keeps stdout for the results tables and any JSON output, and prints everything else on stderr, so piping and JSON parsing work. The `depscan.html` and `depscan.txt` report files export the stdout console and therefore no longer contain the log lines v6 included. Scripts that scraped stdout for log lines should read stderr instead. The `--format json` option of the verbs relies on this split: in json mode stdout carries exactly one JSON document, the banner is suppressed, and everything else, the tables included, moves to stderr.
+
+## Reports directory
+
+- **Every scan now writes a scan directory.** The raw reports of the tools dep-scan runs itself, such as rusi, golem and dosai, moved under `analysis/<tool>/` in the reports directory; files cdxgen writes, and files the user passed in, keep their names and places. Each scan writes `depscan.manifest.json` (the manifest, written last of every file) and `depscan.findings.json` (one finding per advisory and component) at the top of the reports directory. `depscan.api.load_scan` and `depscan report` refuse a directory whose matching stage did not complete, or whose VDR was written outside it (a BOM directory scanned with a separate `--reports-dir`), instead of loading it as a clean scan; a directory without a manifest is still read the way scans before the scan directory wrote them. The layout is documented in [the scan directory](output/scan-directory) page.
 
 ## Server mode
 
@@ -44,10 +137,10 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 ## Python library
 
 - **`analysis_lib.utils` is removed.** Its functions moved to `analysis_lib.advisory`, `merge`, `suggestions`, `packages`, `prioritize` and `endpoints`, and no compatibility module is kept. Import from the new modules.
-- **Use `depscan.api` instead of calling the command line internals.** `scan`, `load_scan`, `query`, `explain`, `diff` and `doctor` are the supported entry points; see [the Python API](python-api). Functions inside `depscan.cli` and `depscan.lib.pipeline` may change between v7 releases.
+- **Use `depscan.api` instead of calling the command line internals.** `scan`, `load_scan`, `query`, `explain`, `diff` and `doctor` are the supported entry points; see [the Python API](python-api). Functions inside `depscan.cli` and `depscan.lib.pipeline` may change between v7 releases. `scan` also accepts a `doctor_report` to reuse a collected report and `checks_not_assessed` to record capability-gated checks in the manifest.
 
 ## New commands
 
 These are not breaking, but they replace manual checks some v6 workflows did:
 
-- `depscan doctor` reports the tools, database and capabilities a scan can use on the machine; `--require CAP` exits 4 when a capability is missing. See [depscan doctor](doctor).
+- `depscan doctor` reports the tools, database and capabilities a scan can use on the machine; `--require CAP` exits 4 when a capability is missing. See [depscan doctor](doctor). The `supply-chain` capability (the package risk audit and malware advisory reporting) and the `binary` capability (binary analysis with blint, needing the blint package) are reported as implemented in this version.

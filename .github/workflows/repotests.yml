@@ -33,7 +33,10 @@ jobs:
         # The unit tests in pythonapp.yml cover every supported Python. These
         # end-to-end scans exercise the operating systems, so each one runs on
         # the latest Python, and Ubuntu also runs the oldest supported one.
-        os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-26', 'windows-latest']
+        # macOS is left out: hosted macOS arm64 runners are often unavailable
+        # and the job is cancelled before it starts. pythonapp.yml still runs
+        # the unit tests on macOS.
+        os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'windows-latest']
         python-version: ['3.14']
         include:
           - os: ubuntu-24.04
@@ -103,9 +106,9 @@ jobs:
       - name: repotests java-sec-code
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --bom-profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --bom-profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
         shell: bash
         env:
           BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
@@ -127,9 +130,9 @@ jobs:
           dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/NetPodcast.Services.sln
           dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/NetPodcast.sln
           dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/Podcast.Web.sln
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts -t dotnet --bom-engine CdxgenGenerator
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2 --profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts -t dotnet --bom-engine CdxgenGenerator
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 --bom-profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2 --bom-profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
@@ -137,7 +140,7 @@ jobs:
       - name: repotests vulnerable-aws-koa-app
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
         env:
@@ -239,7 +242,7 @@ jobs:
         run: |
           mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
           uv run vdb --clean
-          uv run depscan --src ${GITHUB_WORKSPACE} --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          uv run depscan scan ${GITHUB_WORKSPACE} --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           ls -lh ${GITHUB_WORKSPACE}/depscan_reports/depscan
           rm -rf ${GITHUB_WORKSPACE}/depscan_reports
         shell: bash
@@ -270,9 +273,9 @@ jobs:
           docker build -t dejacode:latest -f Dockerfile .
           uv pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
           cd ${GITHUB_WORKSPACE}
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
           cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode
-          uv run depscan --src ${GITHUB_WORKSPACE}/repotests/dejacode --bom-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
+          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dejacode/reports --target-kind bom-dir --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
           cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
           ls -lh ${GITHUB_WORKSPACE}/repotests/dejacode/reports
         shell: bash

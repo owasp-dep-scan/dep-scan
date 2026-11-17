@@ -2,54 +2,62 @@
 title: Validating VEX and VDR documents
 ---
 
-# Validating VEX and VDR documents with `depscan-validate`
+# Validating VEX and VDR documents with `depscan validate`
 
 ## Learning objective
 
-After this chapter you will be able to validate a VEX or VDR document — one produced by dep-scan or by any other tool — against its schema and, for CSAF, against the CSAF §6.1 semantic tests, using the standalone `depscan-validate` command.
+After this chapter you will be able to validate a VEX or VDR document, whether produced by dep-scan or by any other tool, against its schema and, for CSAF, against the CSAF §6.1 semantic tests, using the `depscan validate` command.
 
 ## Why a standalone validator
 
-dep-scan validates every document it generates in-process, but you often need to validate a document *after* the fact: one committed to a repository, one received from a supplier, or one produced by a different tool whose conformance you want to confirm. `depscan-validate` exposes the same offline validation dep-scan uses internally as a command you can run against arbitrary files. It ships with dep-scan and requires no network access — every schema it needs is bundled.
+dep-scan validates every document it generates in-process, but you often need to validate a document *after* the fact: one committed to a repository, one received from a supplier, or one produced by a different tool whose conformance you want to confirm. `depscan validate` exposes the same offline validation dep-scan uses internally as a command you can run against arbitrary files. It ships with dep-scan and requires no network access: every schema it needs is bundled.
 
 ## Supported formats and auto-detection
 
 The command handles the two document families dep-scan works with and detects which one each file is:
 
-- **CSAF VEX** — validated against the bundled CSAF 2.0 or 2.1 JSON Schema (with a real RFC 3339 `date-time` check) plus the CSAF §6.1 mandatory semantic tests. The CSAF version is read from `document.csaf_version` unless you override it.
-- **CycloneDX VDR/VEX** — validated against the bundled CycloneDX JSON Schema matching the document's `specVersion` (1.4 through 1.7).
+- **CSAF VEX**, validated against the bundled CSAF 2.0 or 2.1 JSON Schema (with a real RFC 3339 `date-time` check) plus the CSAF §6.1 mandatory semantic tests. The CSAF version is read from `document.csaf_version` unless you override it.
+- **CycloneDX VDR/VEX**, validated against the bundled CycloneDX JSON Schema matching the document's `specVersion` (1.4 through 1.7).
 
-Detection uses the document contents: a `bomFormat` of `CycloneDX` (or a `specVersion` field) selects CycloneDX, while a `document` object with a `csaf_version` or `category` selects CSAF. Pass `--format` to force one when a file cannot be auto-detected or when you want to validate against a specific family.
+Detection uses the document contents: a `bomFormat` of `CycloneDX` (or a `specVersion` field) selects CycloneDX, while a `document` object with a `csaf_version` or `category` selects CSAF. Pass `--format csaf` or `--format cyclonedx` to force one when a file cannot be auto-detected or when you want to validate against a specific family.
 
 ## Usage
 
 Validate one or more documents; the format is detected per file:
 
 ```shell
-depscan-validate reports/sbom-build.csaf.json reports/sbom-build.vdr.json
+depscan validate reports/sbom-build.csaf.json reports/sbom-build.vdr.json
 ```
 
 Force a format, or a CSAF version:
 
 ```shell
-depscan-validate --format csaf --csaf-version 2.0 path/to/document.json
+depscan validate --format csaf --csaf-version 2.0 path/to/document.json
 ```
 
 Print only a summary line per file (suppress the individual errors):
 
 ```shell
-depscan-validate --quiet reports/*.json
+depscan validate --quiet reports/*.json
 ```
 
-Each file is reported as `[VALID]` or `[INVALID]` with its detected format, and invalid files list their errors (each CSAF semantic error is prefixed with the §6.1 test id it maps to). The command exits with a non-zero status when any document is invalid, which makes it convenient to gate a CI pipeline:
+Each file is reported as `[VALID]` or `[INVALID]` with its detected format, and invalid files list their errors (each CSAF semantic error is prefixed with the §6.1 test id it maps to). The command exits with status 1 when any document is invalid, which makes it convenient to gate a CI pipeline:
 
 ```shell
-depscan-validate reports/sbom-build.csaf.json || exit 1
+depscan validate reports/sbom-build.csaf.json || exit 1
+```
+
+## JSON output
+
+`--format json` changes the output, not the validation: the document format stays auto-detected, and instead of the text lines the command prints one JSON document, an array with one entry per file (`file`, `format`, `valid`, `errors`), on stdout. The exit status is the same as in text mode.
+
+```shell
+depscan validate --format json reports/*.json
 ```
 
 ## Offline behavior and limitations
 
-All validation is offline. The CSAF schema resolves the FIRST CVSS schemas from bundled copies, and the CycloneDX schema resolves its sibling references — `spdx`, `jsf-0.82`, and (for 1.7) `cryptography-defs` — from bundled copies of the official CycloneDX schemas, so the full SPDX license enumeration is enforced without network access. For CSAF, the §6.1 profile tests apply to `csaf_vex` documents; the schema layer still applies to every CSAF category.
+All validation is offline. The CSAF schema resolves the FIRST CVSS schemas from bundled copies, and the CycloneDX schema resolves its sibling references (`spdx`, `jsf-0.82`, and `cryptography-defs` for 1.7) from bundled copies of the official CycloneDX schemas, so the full SPDX license enumeration is enforced without network access. For CSAF, the §6.1 profile tests apply to `csaf_vex` documents; the schema layer still applies to every CSAF category.
 
 ## Related
 

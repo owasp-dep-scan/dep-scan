@@ -220,8 +220,8 @@ def purl_package_names(purl):
 
 def run_reachability(data_dir, analyzer):
     """Run the analyzers exactly as the repo tests' depscan invocation does
-    for a --bom-dir scan: same options construction, same implementation
-    lookup."""
+    for a scan of a BOM directory: same options construction, same
+    implementation lookup."""
     from analysis_lib import ReachabilityAnalysisKV
     from analysis_lib.reachability import get_reachability_impl
 

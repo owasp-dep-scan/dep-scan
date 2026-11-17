@@ -504,6 +504,10 @@ class CdxgenGenerator(XBOMGenerator):
         technique_args: list[str] = [f"--technique {item}" for item in techniques]
         args: list[str] = as_command_list(cdxgen_cmd)
         args = args + (" ".join(project_type_args).split())
+        # The excluded types were removed from the types depscan scans; cdxgen
+        # filters the BOM contents the same way.
+        for excluded_type in options.get("exclude_types") or []:
+            args += ["--exclude-type", str(excluded_type)]
         args = args + ["-o", self.bom_file]
         if options.get("spec_version"):
             args = args + ["--spec-version", str(options.get("spec_version"))]
@@ -753,6 +757,8 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         project_type_args = [f"-t {item}" for item in project_type_list]
         if project_type_args:
             run_command_args += " ".join(project_type_args).split()
+        for excluded_type in self.options.get("exclude_types") or []:
+            run_command_args += ["--exclude-type", str(excluded_type)]
         if self.options.get("spec_version"):
             run_command_args += ["--spec-version", str(self.options.get("spec_version"))]
         if self.options.get("profile"):
