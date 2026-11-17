@@ -1,4 +1,4 @@
-"""Tests for the depscan-vdb command."""
+"""Tests for the ``depscan vdb`` command."""
 
 import pytest
 
@@ -309,7 +309,7 @@ def test_cmd_info_shows_shard_set_marker(vdb_home, monkeypatch, capsys):
 
 
 def test_main_defaults_to_download(monkeypatch):
-    """Running depscan-vdb with no subcommand should default to download."""
+    """Running the vdb command with no subcommand should default to download."""
     called = []
 
     def fake_cmd_download(args):
@@ -317,8 +317,7 @@ def test_main_defaults_to_download(monkeypatch):
         return 0
 
     monkeypatch.setattr("depscan.vdb_cli.cmd_download", fake_cmd_download)
-    monkeypatch.setattr("sys.argv", ["depscan-vdb"])
-    rc = main()
+    rc = main([])
     assert rc == 0
     assert called == ["download"]
 
@@ -331,7 +330,6 @@ def test_main_download_with_flags(monkeypatch):
         return 0
 
     monkeypatch.setattr("depscan.vdb_cli.cmd_download", fake_cmd_download)
-    monkeypatch.setattr("sys.argv", ["depscan-vdb", "--flavor", "app-only"])
-    rc = main()
+    rc = main(["--flavor", "app-only"])
     assert rc == 0
     assert called == ["app-only"]

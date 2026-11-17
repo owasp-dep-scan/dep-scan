@@ -1,4 +1,4 @@
-"""Generic document validation for the ``depscan-validate`` command.
+"""Generic document validation for the ``depscan validate`` command.
 
 Validates two kinds of documents dep-scan (and other tools) produce, with
 auto-detection of which one a file is:

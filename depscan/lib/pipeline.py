@@ -96,8 +96,8 @@ class ScanStageError(RuntimeError):
 
     The stage has already logged every message the scan prints for this
     condition and passes the same message to this error, so the caller can
-    report why the scan stopped; ``run_depscan`` catches this error and exits
-    with code 1.
+    report why the scan stopped; the CLI verb dispatch catches this error and
+    exits with code 1.
     """
 
 
@@ -595,7 +595,7 @@ def stage_database(ctx):
                     LOG.error(
                         "Could not download the vulnerability database %s into %s: %s. "
                         "Check the network or proxy settings, or download it first "
-                        "with `depscan-vdb download` and run the scan again.",
+                        "with `depscan vdb download` and run the scan again.",
                         scan_vdb_url,
                         config.DATA_DIR,
                         e,
@@ -731,23 +731,33 @@ def finalize_setup(ctx):
     _write_sample_config(ctx, run_config_file)
 
 
-def _write_sample_config(ctx, run_config_file):
-    """Write a sample configuration file based on the options in use."""
-    if ctx.config_file_mode:
-        return
-    run_config = {**ctx.depscan_options}
-    del run_config["no_banner"]
+def write_config_file(options: Dict[str, Any], run_config_file: str) -> bool:
+    """Write an options dict as a TOML config file, without ``no_banner``.
+
+    The sample config a scan writes and the file ``depscan config init``
+    writes are the same document: the effective options minus the banner
+    flag. Options whose value is None are dropped by the TOML encoder.
+    Returns False when the file could not be written.
+    """
+    run_config = {**options}
+    run_config.pop("no_banner", None)
     try:
         import toml as _toml
 
         with open(run_config_file, "w") as _fh:
             _fh.write(_toml.dumps(run_config))
     except OSError as exc:
-        LOG.debug("Could not write sample config to %s: %s", run_config_file, exc)
-    else:
-        LOG.debug(
-            f"Created a sample depscan config file at '{run_config_file}', based on this run."
-        )
+        LOG.debug("Could not write config to %s: %s", run_config_file, exc)
+        return False
+    LOG.debug(f"Created a depscan config file at '{run_config_file}'.")
+    return True
+
+
+def _write_sample_config(ctx, run_config_file):
+    """Write a sample configuration file based on the options in use."""
+    if ctx.config_file_mode:
+        return
+    write_config_file(ctx.depscan_options, run_config_file)
 
 
 def _prepare_lifecycle_paths(ctx, scan):

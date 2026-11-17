@@ -43,8 +43,6 @@ Funding = "https://owasp.org/donate/?reponame=www-project-dep-scan&title=OWASP+d
 
 [project.scripts]
 depscan = "depscan.cli:main"
-depscan-vdb = "depscan.vdb_cli:main"
-depscan-validate = "depscan.validate_cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -62,7 +60,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["depscan", "depscan.lib", "depscan.lib.package_query", "vendor", "vendor.spdx.json"]
+packages = ["depscan", "depscan.commands", "depscan.lib", "depscan.lib.package_query", "vendor", "vendor.spdx.json"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

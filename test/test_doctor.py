@@ -780,8 +780,9 @@ def test_doctor_rejects_an_unknown_format(capsys):
     assert excinfo.value.code == 2
 
 
-def test_main_routes_doctor_and_leaves_other_invocations_alone(monkeypatch, capsys):
-    """``doctor`` reaches the doctor command; everything else parses as before."""
+def test_main_routes_doctor_and_rejects_v6_invocations(monkeypatch, capsys):
+    """``doctor`` reaches the doctor command through the verb registry; a
+    v6 options-first invocation is rejected with its translation."""
     from depscan import cli
 
     monkeypatch.setattr(sys, "argv", ["depscan", "doctor", "--format", "json"])
@@ -791,12 +792,12 @@ def test_main_routes_doctor_and_leaves_other_invocations_alone(monkeypatch, caps
     document = json.loads(capsys.readouterr().out)
     assert document["schemaVersion"] == "1"
 
-    parsed = []
     monkeypatch.setattr(sys, "argv", ["depscan", "--purl", "pkg:pypi/requests@2.32.1"])
-    monkeypatch.setattr(cli, "build_args", lambda: parsed.append(sys.argv) or "--parsed--")
-    monkeypatch.setattr(cli, "run_depscan", lambda args: parsed.append(args))
-    cli.main()
-    assert parsed == [["depscan", "--purl", "pkg:pypi/requests@2.32.1"], "--parsed--"]
+    with pytest.raises(SystemExit) as excinfo:
+        cli.main()
+    assert excinfo.value.code == 2
+    err = capsys.readouterr().err
+    assert "The equivalent v7 command is: depscan scan pkg:pypi/requests@2.32.1" in err
 
 
 def test_documented_capability_table_matches_the_code():

@@ -349,7 +349,7 @@ def build_parser():
         "Select which published vdb database the scan downloads. These can also be "
         'persisted in the depscan config file (e.g. vdb_flavor = "app-only"). An '
         "explicit VDB_DATABASE_URL env pin always wins. The dedicated "
-        "`depscan-vdb` command shares the same options for pre-fetching.",
+        "`depscan vdb download` command shares the same options for pre-fetching.",
     )
     vdb_group.add_argument(
         "--vdb-flavor",
@@ -403,7 +403,7 @@ def build_parser():
         dest="vdb_distro",
         help="Rejected: vdb 7 publishes no per-distro complete database. Pass "
         "--vdb-flavor full and scan the distro packages, or fetch type shards "
-        "with depscan-vdb.",
+        "with `depscan vdb download`.",
     )
     vdb_group.add_argument(
         "--vdb-image",

@@ -6,8 +6,9 @@ same order, and returns a :class:`ScanResult` instead of exiting the process.
 ``query`` filters the vulnerabilities of a result, ``explain`` returns the
 text the ``--explain`` rendering produces and ``diff` compares two results.
 
-The CLI (``depscan.cli.run_depscan``) and the depscan server call these
-functions; they do not drive the pipeline directly. This module imports from
+The command line (the verb dispatch in ``depscan.cli``) and the depscan
+server call these functions; they do not drive the pipeline directly. This
+module imports from
 :mod:`depscan.lib.pipeline`; the pipeline never imports this module.
 
 The API is new in 7.0 and may change before the 7.0.0 release.
