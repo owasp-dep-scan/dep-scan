@@ -403,7 +403,7 @@ depscan scan . --exclude-type os --exclude-type docker
 
 ## JSON output
 
-`--format json` (on `scan` and every other verb that renders) prints one JSON document on stdout and moves the banner, tables, progress and logs to stderr, so `depscan scan . --format json | jq` sees exactly the document.
+`--format json` (on `scan` and every other verb that renders) prints one JSON document on stdout: the banner is suppressed, and the tables, progress and logs move to stderr, so `depscan scan . --format json | jq` sees exactly the document.
 
 The scan verb prints `{"scanDir", "manifest", "findings"}` per target: the reports directory, the manifest the scan wrote and the findings array. Several targets print an array of those objects, one per target in the order given. A target the detection refused gets a `{"target", "error"}` entry carrying the reason, so no target is silently dropped.
 
@@ -413,7 +413,7 @@ depscan scan . --format json
 
 ## Several targets
 
-Passing more than one target runs one scan per target, each writing into `<reports-dir>/<n>-<name>/`, where `n` is the target's 1-based position and `<name>` its basename for an existing path, or the reference with `/`, `\`, `:` and `@` replaced by `-` (truncated to 60 characters) for a purl, URL or image reference. The exit code is the highest of the scans.
+Passing more than one target runs one scan per target, each writing into `<reports-dir>/<n>-<name>/`, where `n` is the target's 1-based position and `<name>` its basename for an existing path, or the reference with `/`, `\`, `:` and `@` replaced by `-`, for a purl, URL or image reference; every name is truncated to 60 characters, and a name that comes out empty becomes `target`. The exit code is the highest of the scans.
 
 ```bash
 depscan scan app/src app/bom.json --reports-dir reports

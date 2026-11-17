@@ -124,7 +124,7 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 
 ## Console output
 
-- **Log messages, progress and warnings moved to stderr.** v6 printed them on stdout, mixed with the results tables. v7 keeps stdout for the results tables and any JSON output, and prints everything else on stderr, so piping and JSON parsing work. The `depscan.html` and `depscan.txt` report files export the stdout console and therefore no longer contain the log lines v6 included. Scripts that scraped stdout for log lines should read stderr instead. The `--format json` option of the verbs relies on this split: in json mode stdout carries exactly one JSON document and everything else, the tables included, moves to stderr.
+- **Log messages, progress and warnings moved to stderr.** v6 printed them on stdout, mixed with the results tables. v7 keeps stdout for the results tables and any JSON output, and prints everything else on stderr, so piping and JSON parsing work. The `depscan.html` and `depscan.txt` report files export the stdout console and therefore no longer contain the log lines v6 included. Scripts that scraped stdout for log lines should read stderr instead. The `--format json` option of the verbs relies on this split: in json mode stdout carries exactly one JSON document, the banner is suppressed, and everything else, the tables included, moves to stderr.
 
 ## Reports directory
 
