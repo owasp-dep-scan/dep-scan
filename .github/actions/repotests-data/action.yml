@@ -51,6 +51,9 @@ runs:
         import os
         import sys
 
+        # Python on Windows writes \r\n by default, and a trailing \r on
+        # each digest makes oras reject the reference.
+        sys.stdout.reconfigure(newline="\n")
         wanted = [name.strip() for name in os.environ["WANTED"].split(",") if name.strip()]
         with open(os.environ["LOCK_FILE"], encoding="utf-8") as fp:
             lock = json.load(fp)
