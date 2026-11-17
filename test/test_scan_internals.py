@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 
+from analysis_lib.findings.schemas import validate
 from depscan import api
 from depscan.cli_options import build_parser
 from depscan.lib import bom as bom_mod
@@ -372,10 +373,12 @@ def test_checks_not_assessed_are_recorded_in_the_manifest(scan_stubs, tmp_path):
     assert stages["check-binary"]["status"] == "not-assessed"
     assert stages["check-binary"]["reason"] == "the blint package is not installed"
     assert stages["check-binary"]["capabilities"] == ["binary"]
-    # The written file carries the same entries the result holds.
+    # The written file carries the same entries the result holds, and stays
+    # a valid manifest document with the check entries in it.
     written = _manifest_of(result.reports_dir)
     assert "check-reachability" in {stage["name"] for stage in written["stages"]}
     assert "check-binary" in {stage["name"] for stage in written["stages"]}
+    validate("depscan-manifest", written)
 
 
 def test_checks_not_assessed_are_skipped_without_a_scan_directory(scan_stubs, tmp_path):
