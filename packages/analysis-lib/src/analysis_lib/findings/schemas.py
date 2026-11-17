@@ -12,12 +12,14 @@ from importlib import resources
 from typing import Any, Dict, List
 
 from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
 
 _SCHEMA_PACKAGE = "analysis_lib.findings"
 _SCHEMA_DIR = "schemas"
 _SCHEMA_FILES = {
     "finding": "depscan-finding.schema.json",
     "depscan-doctor": "depscan-doctor.schema.json",
+    "depscan-manifest": "depscan-manifest.schema.json",
 }
 
 # jsonschema checks format: date-time only when a checker for it is
@@ -60,6 +62,27 @@ def load_schema(name: str) -> Dict[str, Any]:
     return json.loads(schema_path.read_text(encoding="utf-8"))
 
 
+def _registry() -> Registry:
+    """Every published schema, retrievable under its file name.
+
+    A schema may reference a sibling schema by file name, as the manifest
+    schema reuses the doctor definitions through
+    ``depscan-doctor.schema.json#/$defs/...``. Registering each file under its
+    name is what lets the validator follow that reference without copying the
+    definitions.
+    """
+    registry = Registry()
+    for filename in _SCHEMA_FILES.values():
+        schema = json.loads(
+            resources.files(_SCHEMA_PACKAGE)
+            .joinpath(_SCHEMA_DIR)
+            .joinpath(filename)
+            .read_text(encoding="utf-8")
+        )
+        registry = registry.with_resource(filename, Resource.from_contents(schema))
+    return registry
+
+
 def validate(name: str, document: Any) -> None:
     """Validate a document against the named schema.
 
@@ -68,7 +91,7 @@ def validate(name: str, document: Any) -> None:
     instead of fixing them one by one.
     """
     schema = load_schema(name)
-    validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
+    validator = Draft202012Validator(schema, registry=_registry(), format_checker=FORMAT_CHECKER)
     errors = sorted(validator.iter_errors(document), key=lambda e: [str(p) for p in e.path])
     if errors:
         lines = [

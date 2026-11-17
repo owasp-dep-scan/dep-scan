@@ -52,7 +52,7 @@ def _base_finding() -> Dict[str, Any]:
 
 
 def test_schema_names():
-    assert schema_names() == ["finding", "depscan-doctor"]
+    assert schema_names() == ["finding", "depscan-doctor", "depscan-manifest"]
 
 
 def test_load_schema_metadata():

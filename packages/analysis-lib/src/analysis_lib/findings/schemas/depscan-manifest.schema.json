@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:manifest:1",
+  "title": "dep-scan scan directory manifest",
+  "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "layoutVersion",
+    "depscanVersion",
+    "startUtc",
+    "endUtc",
+    "inputs",
+    "tools",
+    "platform",
+    "capabilities",
+    "database",
+    "stages",
+    "options",
+    "files"
+  ],
+  "properties": {
+    "layoutVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$",
+      "description": "The scan directory layout version as major.minor, starting at 1.0. A reader accepts any minor version of a major it knows and refuses any other major."
+    },
+    "depscanVersion": {
+      "type": "string",
+      "description": "The version of dep-scan that ran the scan."
+    },
+    "startUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the scan started, in UTC, as an RFC 3339 date-time."
+    },
+    "endUtc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the scan ended, in UTC, as an RFC 3339 date-time. A scan that stopped early still records its end."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/input"
+      },
+      "description": "Every source directory, BOM file, BOM directory and package URL the scan read. Paths are recorded as the user gave them, so this is the only place an absolute path, a username or a hostname may appear."
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "depscan-doctor.schema.json#/$defs/tool"
+      },
+      "description": "The doctor report's tool entries, collected once for this scan."
+    },
+    "platform": {
+      "$ref": "depscan-doctor.schema.json#/$defs/platform",
+      "description": "The doctor report's platform entry: os, arch and, on Linux, libc."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "depscan-doctor.schema.json#/$defs/capability"
+      },
+      "description": "The doctor report's evaluated capability table, collected once for this scan."
+    },
+    "database": {
+      "$ref": "#/$defs/database",
+      "description": "The doctor report's database inspection, plus the flavor and shards the matching stage actually used."
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stage"
+      },
+      "description": "One entry per stage, in the order the stages ran. A stage that stopped the scan is recorded as failed with its reason; the stages after it are absent."
+    },
+    "options": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "boolean", "integer", "number", "array", "null"]
+      },
+      "description": "The parsed scan options. Options whose name can hold a secret are recorded as the string \"<redacted>\" when they were set, and path-valued options are recorded in inputs instead, so no absolute path appears here."
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/file"
+      },
+      "description": "Every file at the top of the scan directory and under analysis/, except the manifest itself. Other subdirectories are not listed. Paths are relative to the directory, always with forward slashes."
+    }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "path"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["dir", "file", "purl"],
+          "description": "dir is a directory the scan read, file a single BOM or template file, purl a package URL search."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The path or package URL as the user gave it."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The SHA-256 digest of a file input."
+        },
+        "git": {
+          "$ref": "#/$defs/gitInput"
+        }
+      }
+    },
+    "gitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "dirty"],
+      "properties": {
+        "commit": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The commit the work tree was at, from git rev-parse HEAD."
+        },
+        "dirty": {
+          "type": "boolean",
+          "description": "True when git status --porcelain reported uncommitted changes."
+        }
+      },
+      "description": "Read only for a directory input that is a git work tree, with git rev-parse and git status --porcelain alone. Absent when the directory is not a work tree or git could not be run."
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vulnerabilityDatabase", "flavorUsed", "shardsUsed"],
+      "properties": {
+        "vulnerabilityDatabase": {
+          "$ref": "depscan-doctor.schema.json#/$defs/vulnerabilityDatabase",
+          "description": "The doctor report's read-only database inspection."
+        },
+        "flavorUsed": {
+          "type": ["string", "null"],
+          "description": "The database flavor the matching stage actually used for this scan."
+        },
+        "shardsUsed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The shard names the matching stage actually connected, empty when shard mode was off."
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "capabilities"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The stage name, for example setup, database, inventory, enrichment, matching, analysis or render."
+        },
+        "projectType": {
+          "type": "string",
+          "description": "The project type the stage ran for, for stages that run once per type."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "failed", "skipped", "not-assessed"],
+          "description": "completed when the stage ran to completion. failed when it stopped the scan, or when it degraded and the scan went on, with the reason it logged. skipped when nothing needed doing, with the reason. not-assessed when the stage could not assess what it was asked to, with the reason."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the status is failed, skipped or not-assessed. Absent for completed."
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The capability names the stage needed, named the way depscan doctor names them."
+        },
+        "notAssessed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran."
+        },
+        "analyzers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/analyzer"
+          },
+          "description": "The reachability analyzers this stage could have used, each with its capability and whether the stage read slices it produced."
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stageOutput"
+          },
+          "description": "The files this version of the stage would write, each with its status, so a missing output is named rather than left out silently."
+        }
+      }
+    },
+    "analyzer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "capability", "status"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The analyzer name, for example atom, golem, rusi or dosai."
+        },
+        "capability": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The capability the analyzer satisfies, named the way depscan doctor names it."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "not-assessed"],
+          "description": "completed when the stage read reachables slices this analyzer produces, whether this scan produced them or was given them. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the reason that no slices were produced or given."
+        },
+        "reason": {
+          "type": "string",
+          "description": "For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given."
+        }
+      }
+    },
+    "stageOutput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "status"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The output file's name in the scan directory layout."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["completed", "not-assessed"],
+          "description": "completed when this version writes the file. not-assessed when it does not, with the reason."
+        },
+        "reason": {
+          "type": "string",
+          "description": "For not-assessed, why this version does not produce the file."
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "producer", "sha256"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The path relative to the scan directory, always with forward slashes."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["bom", "vdr", "findings", "slices", "raw-report", "csaf", "report", "other"],
+          "description": "What the file is in the scan directory layout."
+        },
+        "producer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The tool that wrote the file: cdxgen, blint, dep-scan, a reachability plugin, or user for a file the user placed here."
+        },
+        "projectType": {
+          "type": "string",
+          "description": "The project type the file belongs to, when the name carries one."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "The SHA-256 digest of the file's bytes."
+        }
+      }
+    }
+  }
+}

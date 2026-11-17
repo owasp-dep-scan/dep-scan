@@ -23,24 +23,7 @@
       "description": "The version of the dep-scan installation that produced the report."
     },
     "platform": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["os", "arch", "libc"],
-      "properties": {
-        "os": {
-          "type": "string",
-          "description": "The operating system as Python's sys.platform reports it, for example linux, darwin or win32."
-        },
-        "arch": {
-          "type": "string",
-          "description": "The machine architecture, for example arm64 or x86_64."
-        },
-        "libc": {
-          "type": ["string", "null"],
-          "enum": ["glibc", "musl", null],
-          "description": "The C library, which decides the cdxgen plugin binary token on Linux (linux or linuxmusl). Null outside Linux."
-        }
-      }
+      "$ref": "#/$defs/platform"
     },
     "tools": {
       "type": "array",
@@ -260,6 +243,26 @@
         "description": {
           "type": "string",
           "description": "One sentence saying what the capability does."
+        }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "arch", "libc"],
+      "properties": {
+        "os": {
+          "type": "string",
+          "description": "The operating system as Python's sys.platform reports it, for example linux, darwin or win32."
+        },
+        "arch": {
+          "type": "string",
+          "description": "The machine architecture, for example arm64 or x86_64."
+        },
+        "libc": {
+          "type": ["string", "null"],
+          "enum": ["glibc", "musl", null],
+          "description": "The C library, which decides the cdxgen plugin binary token on Linux (linux or linuxmusl). Null outside Linux."
         }
       }
     }

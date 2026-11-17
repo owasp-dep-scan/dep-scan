@@ -115,11 +115,13 @@ def clean_env(tmp_path, monkeypatch):
     """Strip every tool override and the real PATH so only the fakes resolve.
 
     PATH points at an empty directory, so the PATH lookup of a tool that no
-    fake serves finds nothing on any platform.
+    fake serves finds nothing on any platform. APPDATA points there too,
+    because on Windows cdxgen is also looked up under ``%APPDATA%\\npm``.
     """
     empty_path = tmp_path / "stripped-path"
     empty_path.mkdir()
     monkeypatch.setenv("PATH", str(empty_path))
+    monkeypatch.setenv("APPDATA", str(empty_path))
     for var in (
         "CDXGEN_PLUGINS_DIR",
         "CDXGEN_CMD",

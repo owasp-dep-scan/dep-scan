@@ -701,7 +701,7 @@ def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             raise ScanFailureError(f"rusi runner unavailable: {e}") from e
         LOG.debug("rusi runner unavailable: %s", e)
         return None
-    report_path = os.path.join(bom_dir, "rusi.json")
+    report_path = os.path.join(analysis_report_dir(bom_dir, "rusi"), "rusi.json")
     # Backend safety gate (per rusi THREAT_MODEL). ``stable`` is parsing-only
     # and safe on untrusted repos; ``compiler`` builds the target and is only
     # enabled via explicit ``--rust-analyzer-backend compiler`` or ``--deep``.
@@ -741,7 +741,7 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
             raise ScanFailureError(f"golem runner unavailable: {e}") from e
         LOG.debug("golem runner unavailable: %s", e)
         return None
-    report_path = os.path.join(bom_dir, "golem.json")
+    report_path = os.path.join(analysis_report_dir(bom_dir, "golem"), "golem.json")
     network_mode = options.get("go_analyzer_network") or "auto"
     deep = bool(options.get("deep_scan") or options.get("deep"))
     # cgo stays off unless the operator opted in with --go-analyzer-cgo; with
@@ -788,7 +788,7 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     with console.status(f"Running dosai .NET reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_dosai(
             src_dir,
-            bom_dir,
+            analysis_report_dir(bom_dir, "dosai"),
             pattern_packs=pattern_packs,
             logger=LOG,
         )
@@ -878,7 +878,9 @@ def _persist_dosai_facts(report, converter, bom_index, bom_dir, options):
     """Stash the native dosai reachability facts (the truth) as a sidecar for
     VEX/advanced analysis. The verdict itself flows through the atom
     projection below via the existing purl-keyed engine loop."""
-    facts_path = os.path.join(bom_dir, "dotnet-reachability.facts.json")
+    facts_path = os.path.join(
+        analysis_report_dir(bom_dir, "dosai"), "dotnet-reachability.facts.json"
+    )
     try:
         facts = converter.extract_native(report, bom_index)
         json_dump(facts_path, facts, compact=True)
@@ -989,7 +991,14 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     if report is None:
         if fail_on_error:
             raise ScanFailureError(tool.no_report_error)
-        LOG.debug("No %s report available; reachability via %s skipped.", tool.name, tool.name)
+        # The doctor table is the single source of what each analyzer needs;
+        # when it explains the missing report, say so. The step itself
+        # degrades exactly as it did before the table was consulted.
+        reason = _capability_unavailable_reason(tool.name, options)
+        if reason:
+            LOG.warning("%s reachability was not assessed: %s", tool.name, reason)
+        else:
+            LOG.debug("No %s report available; reachability via %s skipped.", tool.name, tool.name)
         return False
 
     bom_data = _json_load(bom_file, log=LOG) or {}
@@ -1050,6 +1059,70 @@ DOSAI_TOOL = ReachabilityTool(
     ),
     persist_report=_persist_dosai_facts,
 )
+
+
+#: Every reachability tool, for the code that reasons about the set rather
+#: than one tool: which analyzers a scan's project types could use.
+_REACHABILITY_TOOLS = (RUSI_TOOL, GOLEM_TOOL, DOSAI_TOOL)
+
+
+def reachability_analyzers_for_types(project_types: List[str]) -> List[str]:
+    """The reachability analyzers a scan with these project types could use.
+
+    atom applies to every scan, because every language can carry reachables
+    slices. A language tool applies when one of the scan's project types
+    selects it, and a BOM directory or universal scan can hold packages of
+    any language, so every analyzer applies to those. The tool tables above
+    stay the only place that knows which type selects which tool.
+    """
+    from depscan.lib.config import UNIVERSAL_SCAN_TYPE
+
+    types = list(project_types or [])
+    analyzers = ["atom"]
+    aggregate = any(t in ("bom", UNIVERSAL_SCAN_TYPE) for t in types)
+    for tool in _REACHABILITY_TOOLS:
+        if aggregate or any(t in tool.project_types for t in types):
+            analyzers.append(tool.name)
+    return analyzers
+
+
+def reachability_slice_files() -> Dict[str, str]:
+    """The reachables slices file each language tool writes, by tool name."""
+    return {tool.name: tool.slice_file for tool in _REACHABILITY_TOOLS}
+
+
+def analysis_report_dir(bom_dir: str, producer: str) -> str:
+    """The ``analysis/<producer>/`` directory for one tool's raw reports.
+
+    dep-scan keeps the raw reports of the tools it runs itself here, next to
+    the BOM they were produced for; the manifest records them as raw-report
+    files. Reports cdxgen writes stay where cdxgen puts them.
+    """
+    from depscan.lib.scan_directory import ANALYSIS_DIR
+
+    directory = os.path.join(bom_dir, ANALYSIS_DIR, producer)
+    os.makedirs(directory, exist_ok=True)
+    return directory
+
+
+def _capability_unavailable_reason(analyzer: str, options: Dict) -> Optional[str]:
+    """Why an analyzer's capability cannot run here, from the doctor report.
+
+    ``options`` carries the report the scan collected once at setup. Without
+    it the check cannot answer, which reads as available: the step then
+    behaves exactly as before this lookup existed.
+    """
+    from depscan.lib import doctor as doctor_lib
+
+    report = options.get("doctor_report")
+    if report is None:
+        return None
+    capability = doctor_lib.ANALYZER_CAPABILITIES.get(analyzer)
+    if capability is None:
+        return None
+    return doctor_lib.capability_unavailable_reason(
+        capability, report.tools_by_name(), report.data
+    )
 
 
 def run_rusi_reachability(

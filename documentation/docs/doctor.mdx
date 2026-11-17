@@ -9,6 +9,8 @@ description: Report the tools, data and capabilities a scan can use on this mach
 
 The command never prompts, never downloads anything and never writes to the vulnerability database. A missing tool or a missing database is a reported state, not an error: the command exits 0 whenever it produced a report, so a CI job can run it on any runner and attach what it finds. To make a missing capability fail the command instead, name it with `--require`.
 
+Every scan collects this report once and records the tools, the platform and the evaluated capability table in its manifest, and the analysis steps consult the same capability table when a tool they need is missing. That is why the manifest of a scan where an analyzer was missing names the capability and the doctor's reason; see [the scan directory](output/scan-directory.mdx).
+
 ## The command
 
 ```bash
