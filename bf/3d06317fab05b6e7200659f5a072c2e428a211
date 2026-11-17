@@ -1,0 +1,58 @@
+.github/ISSUE_TEMPLATE/false_positive.yaml
+  h_6a4cc5cdf68def 28
+.github/scripts/repotest-project.sh
+  h_6a4cc5cdf68def 49-51,53
+.github/workflows/csafdemo.yml
+  h_6a4cc5cdf68def 42
+.github/workflows/dockertests.yml
+  h_6a4cc5cdf68def 41-43,92,147-150,206-207,260-262
+.github/workflows/gobintests.yml
+  h_6a4cc5cdf68def 47
+.github/workflows/pythonapp.yml
+  h_6a4cc5cdf68def 89,94-100,133
+.github/workflows/repotests-lifecycle-c.yml
+  h_6a4cc5cdf68def 58
+.github/workflows/repotests-lifecycle-dotnet.yml
+  h_6a4cc5cdf68def 57
+.github/workflows/repotests-lifecycle-go.yml
+  h_6a4cc5cdf68def 59
+.github/workflows/repotests-lifecycle-java.yml
+  h_6a4cc5cdf68def 57
+.github/workflows/repotests.yml
+  h_6a4cc5cdf68def 106-108,130-132,140,242,273,275
+.github/workflows/sea-alpine.yml
+  h_6a4cc5cdf68def 186-187,204
+.github/workflows/sea-linux.yml
+  h_6a4cc5cdf68def 136-137,169
+.github/workflows/sea-mac.yml
+  h_6a4cc5cdf68def 203-204,236
+.github/workflows/sea-win.yml
+  h_6a4cc5cdf68def 171-172,207
+Dockerfile
+  h_6a4cc5cdf68def 12,96
+Dockerfile.al9
+  h_6a4cc5cdf68def 12,96
+README.md
+  h_6a4cc5cdf68def 67,73,79,85,88,152,155,158-181,185-266,269-272,274-285,287-288,290-291,293-294,296-297,299-305,310-388,390-433,444,469,476,485,491,497,503,511,523,533,550,557,627
+contrib/CSAF_README.md
+  h_6a4cc5cdf68def 27,31
+contrib/depscanGPT/README.md
+  h_6a4cc5cdf68def 43
+contrib/repotests/README.md
+  h_6a4cc5cdf68def 37-39
+contrib/repotests/validate.py
+  h_6a4cc5cdf68def 223-224
+docker-compose.yml
+  h_6a4cc5cdf68def 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf3d06317fab05b6e7200659f5a072c2e428a211",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

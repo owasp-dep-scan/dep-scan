@@ -1,0 +1,18 @@
+depscan/commands/config.py
+  h_6a4cc5cdf68def 22,84-85,138-142,144
+depscan/commands/scan.py
+  h_6a4cc5cdf68def 19-23,27-29,34-39,42,45-55,58-67,96,98-100,578-737,739-898
+test/test_v7_verbs.py
+  h_6a4cc5cdf68def 657-658,661-672
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "873847fa3a143eb56dc2f2e2a205c61ac93fa9fb",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

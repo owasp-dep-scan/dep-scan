@@ -1,0 +1,22 @@
+documentation/docs/migrate-v6-to-v7.mdx
+  s_35240395b0d41a::t_84bd86c39ffc79 40-43,51,57
+test/test_scan_internals.py
+  s_35240395b0d41a::t_87470c00b9c76d 500-503,505,507-508
+  s_35240395b0d41a::t_e803698cc93cc8 506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "27e220a90aea74eb5c7244b85aec36a331a899f2",
+  "prompts": {},
+  "sessions": {
+    "s_35240395b0d41a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_400474cf-858d-4c83-aa88-47a793a7ed45",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

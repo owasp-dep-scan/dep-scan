@@ -1,0 +1,44 @@
+documentation/docs/Develop/debugging.mdx
+  h_6a4cc5cdf68def 54
+documentation/docs/Develop/getting-started-development.mdx
+  h_6a4cc5cdf68def 53
+documentation/docs/Lessons/01-java-semantic-analysis.mdx
+  h_6a4cc5cdf68def 53,59
+documentation/docs/Lessons/02-dotnet-framework-analysis.mdx
+  h_6a4cc5cdf68def 52,105,164
+documentation/docs/adv-usage.mdx
+  h_6a4cc5cdf68def 31,74,80,156,162
+documentation/docs/analyzers/framework-reachability.mdx
+  h_6a4cc5cdf68def 31,43
+documentation/docs/analyzers/semantic-reachability.mdx
+  h_6a4cc5cdf68def 9,21,23,25,29,37,41,57,69,73
+documentation/docs/getting-started.mdx
+  h_6a4cc5cdf68def 19
+documentation/docs/languages/dotnet-reachability.mdx
+  h_6a4cc5cdf68def 40,43,46,53
+documentation/docs/languages/go-reachability.mdx
+  h_6a4cc5cdf68def 47,50,53,60
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  h_6a4cc5cdf68def 28,32,35,38,41,44,66,70,73,85,103
+documentation/docs/languages/rust-reachability.mdx
+  h_6a4cc5cdf68def 46,49,56
+documentation/docs/output/scan-directory.mdx
+  h_6a4cc5cdf68def 8,31
+documentation/docs/output/vdr-guide.mdx
+  h_6a4cc5cdf68def 13
+documentation/docs/output/vex-csaf-guide.mdx
+  h_6a4cc5cdf68def 22,28,31,148
+documentation/docs/reachability-analysis.mdx
+  h_6a4cc5cdf68def 43,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b50a079caf6ca184586cccb4009aa79c3f8666c",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

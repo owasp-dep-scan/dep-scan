@@ -1,0 +1,16 @@
+depscan/commands/__init__.py
+  h_6a4cc5cdf68def 1-6
+depscan/commands/translate.py
+  h_6a4cc5cdf68def 1-624
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "260ef6ef73abe2498e3dc3577f602b6a2393e6e4",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

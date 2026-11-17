@@ -1,0 +1,18 @@
+depscan/lib/doctor.py
+  h_6a4cc5cdf68def 821,823,827,829-830
+documentation/docs/doctor.mdx
+  h_6a4cc5cdf68def 75-76,114-115
+test/test_doctor.py
+  h_6a4cc5cdf68def 538-564
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4b4baac01ea4c19f9764d716dd1f54be4355e0d",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

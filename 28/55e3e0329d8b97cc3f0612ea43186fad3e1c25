@@ -1,0 +1,21 @@
+test/test_v7_scan.py
+  s_35240395b0d41a::t_a95d5c55c83595 878-910
+depscan/commands/scan.py
+  s_35240395b0d41a::t_8192bd5498e976 787
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2855e3e0329d8b97cc3f0612ea43186fad3e1c25",
+  "prompts": {},
+  "sessions": {
+    "s_35240395b0d41a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_400474cf-858d-4c83-aa88-47a793a7ed45",
+        "model": "GLM-5.3"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,16 @@
+documentation/docs/cli-usage.mdx
+  h_6a4cc5cdf68def 406,416
+documentation/docs/output/scan-directory.mdx
+  h_6a4cc5cdf68def 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45b7767fc426732c48aa014b57ebb5987a58707c",
+  "prompts": {},
+  "humans": {
+    "h_6a4cc5cdf68def": {
+      "author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
