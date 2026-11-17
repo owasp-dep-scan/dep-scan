@@ -237,24 +237,36 @@ def test_vdb_offline_skips_the_download_and_still_guards_the_database(
     assert result.project_types == ["python"]
 
 
-def test_vdb_offline_with_an_unusable_database_stops_the_scan(scan_stubs, tmp_path, monkeypatch):
-    """Offline mode never fetches a database, so a missing or empty one stops
-    the scan through the existing guard: the error the CLI turns into exit
-    code 1, never a clean-looking zero-findings scan."""
+def test_vdb_offline_with_no_database_stops_the_scan(tmp_path, monkeypatch):
+    """Offline mode never fetches a database, so a scan with no database
+    present stops through the real unusable-database guard: the error the
+    CLI turns into exit code 1, never a clean-looking zero-findings scan."""
+    monkeypatch.setattr(
+        vdb_setup, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False, "app-only")
+    )
+    monkeypatch.setattr(pipeline, "VDB_USE_SHARDS", False)
 
-    def unusable():
-        raise vdb_setup.VdbUnusableError(
-            "The vulnerability database at /tmp/vdb is empty; no search can "
-            "return results. Fetch one with `depscan-vdb download` or "
-            "'vdb db refresh full'."
-        )
+    def refused_download(url):
+        raise AssertionError("the offline scan must not download the database")
 
-    monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", unusable)
-
-    with pytest.raises(api.ScanError, match="depscan-vdb download"):
-        api.scan(
-            _source_scan_options(tmp_path, project_type=["python"], vdb_offline=True), render=False
-        )
+    monkeypatch.setattr(vdb_setup, "download_vdb_with_retries", refused_download)
+    # vdb's config captured its import-time paths, so they are patched
+    # alongside the environment; the directory is resolved because vdb opens
+    # its databases with SQLITE_OPEN_NOFOLLOW.
+    home = tmp_path.resolve() / "vdb-home"
+    home.mkdir()
+    monkeypatch.setenv("VDB_HOME", str(home))
+    monkeypatch.setattr(vdb_setup.config, "DATA_DIR", str(home))
+    monkeypatch.setattr(vdb_setup.config, "VDB_BIN_FILE", str(home / "data.vdb7"))
+    monkeypatch.setattr(vdb_setup.config, "VDB_BIN_INDEX", str(home / "data.index.vdb7"))
+    try:
+        with pytest.raises(api.ScanError, match="vdb db refresh full"):
+            api.scan(
+                _source_scan_options(tmp_path, project_type=["python"], vdb_offline=True),
+                render=False,
+            )
+    finally:
+        vdb_setup.db_lib.reset_connections()
 
 
 # ---------------------------------------------------------------------------
