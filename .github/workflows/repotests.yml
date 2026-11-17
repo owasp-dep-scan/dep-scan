@@ -84,16 +84,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # The unit tests in pythonapp.yml cover every supported Python. These
+        # end-to-end scans exercise the operating systems, so each one runs on
+        # the latest Python, and Ubuntu also runs the oldest supported one.
         os: ['ubuntu-24.04', 'ubuntu-24.04-arm', 'macos-26', 'windows-latest']
-        python-version: ['3.11', '3.12', '3.13', '3.14']
-        # macOS runners are scarce, so macOS runs only the latest Python.
-        exclude:
-          - os: macos-26
+        python-version: ['3.14']
+        include:
+          - os: ubuntu-24.04
             python-version: '3.11'
-          - os: macos-26
-            python-version: '3.12'
-          - os: macos-26
-            python-version: '3.13'
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
