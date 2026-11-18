@@ -16,7 +16,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
 from mcp import Client, types
@@ -191,52 +191,6 @@ def scan_env(tmp_path, monkeypatch):
     )
 
 
-@pytest.fixture
-def tools_stub(monkeypatch):
-    """A stand-in for the sibling tools module the server imports when it is
-    built.
-
-    The tools piece owns ``depscan.mcp_server.tools`` and lands separately,
-    so the server cannot be constructed in this worktree without a stand-in
-    that imports. No test here calls a tool, so the stand-in only has to be
-    importable and answer ``tools/list`` with an empty list; the resource
-    reads and prompt renders in the other tests are the proof that the
-    resource handlers are wired for real. The stand-in's own positive
-    control is the test that asks the server for its tools and checks the
-    stand-in answered.
-    """
-    module = ModuleType("depscan.mcp_server.tools")
-    calls: list = []
-
-    async def handle_list_tools(ctx, params):
-        calls.append("list")
-        return types.ListToolsResult(tools=[])
-
-    async def handle_call_tool(ctx, params):
-        calls.append(("call", str(params.name)))
-        raise MCPError(
-            code=types.INVALID_PARAMS,
-            message="the tools module is not part of the resources piece",
-        )
-
-    setattr(module, "handle_list_tools", handle_list_tools)
-    setattr(module, "handle_call_tool", handle_call_tool)
-    import depscan.mcp_server as package
-
-    monkeypatch.setattr(package, "tools", module, raising=False)
-    monkeypatch.setitem(sys.modules, "depscan.mcp_server.tools", module)
-    return SimpleNamespace(module=module, calls=calls)
-
-
-async def test_the_tools_stand_in_answers_the_server(scan_env, tools_stub):
-    """Positive control for the stand-in: the server really boots with it
-    and asks it for the tool list."""
-    async with mcp_client([scan_env.root]) as client:
-        result = await client.list_tools()
-    assert list(result.tools) == []
-    assert tools_stub.calls == ["list"], "the server never asked the tools module"
-
-
 def build_server(roots):
     """The real server object, built the way the verb builds it.
 
@@ -281,7 +235,7 @@ def read_error_text(excinfo) -> str:
 # --- the resource templates -------------------------------------------------------
 
 
-async def test_the_three_resource_templates_are_listed(scan_env, tools_stub):
+async def test_the_three_resource_templates_are_listed(scan_env):
     async with mcp_client([scan_env.root]) as client:
         result = await client.list_resource_templates()
     templates = {template.uri_template: template for template in result.resource_templates}
@@ -300,13 +254,13 @@ async def test_the_three_resource_templates_are_listed(scan_env, tools_stub):
         assert "percent-encoded" in template.description
 
 
-async def test_no_static_resources_are_listed(scan_env, tools_stub):
+async def test_no_static_resources_are_listed(scan_env):
     async with mcp_client([scan_env.root]) as client:
         result = await client.list_resources()
     assert list(result.resources) == []
 
 
-async def test_the_templates_serve_documents_the_published_schemas_define(scan_env, tools_stub):
+async def test_the_templates_serve_documents_the_published_schemas_define(scan_env):
     """The templates read the same documents the scan_summary, list_findings
     and get_finding tools return, and those tools have published schemas."""
     tools = set(mcp_tool_names())
@@ -316,7 +270,7 @@ async def test_the_templates_serve_documents_the_published_schemas_define(scan_e
 # --- reads inside the roots -------------------------------------------------------
 
 
-async def test_the_manifest_resource_returns_the_manifest_document(scan_env, tools_stub):
+async def test_the_manifest_resource_returns_the_manifest_document(scan_env):
     uri = res_mod.scan_resource_uri(str(scan_env.scan_dir), "manifest")
     async with mcp_client([scan_env.root]) as client:
         result = await client.read_resource(uri)
@@ -330,7 +284,7 @@ async def test_the_manifest_resource_returns_the_manifest_document(scan_env, too
     assert scan_env.manifest["layoutVersion"], "the manifest document is empty"
 
 
-async def test_the_findings_resource_returns_the_findings_document(scan_env, tools_stub):
+async def test_the_findings_resource_returns_the_findings_document(scan_env):
     uri = res_mod.scan_resource_uri(str(scan_env.scan_dir), "findings")
     async with mcp_client([scan_env.root]) as client:
         result = await client.read_resource(uri)
@@ -343,7 +297,7 @@ async def test_the_findings_resource_returns_the_findings_document(scan_env, too
     assert len(document["findings"]) == len(scan_env.findings)
 
 
-async def test_a_single_finding_resource_returns_that_finding(scan_env, tools_stub):
+async def test_a_single_finding_resource_returns_that_finding(scan_env):
     finding = scan_env.findings[0]
     # The id is a fingerprint of this shape by schema, not by construction
     # of this test: the fixture finding is validated before it is used.
@@ -402,7 +356,7 @@ def test_the_uri_builder_percent_encodes_every_tail_segment():
 # --- reads outside the roots --------------------------------------------------------
 
 
-async def test_an_absolute_path_outside_the_roots_is_refused_naming_the_rule(scan_env, tools_stub):
+async def test_an_absolute_path_outside_the_roots_is_refused_naming_the_rule(scan_env):
     uri = res_mod.scan_resource_uri(str(scan_env.decoy), "manifest")
     async with mcp_client([scan_env.root]) as client:
         with pytest.raises(MCPError) as excinfo:
@@ -412,7 +366,7 @@ async def test_an_absolute_path_outside_the_roots_is_refused_naming_the_rule(sca
     assert str(scan_env.decoy) in message
 
 
-async def test_a_dotdot_escape_in_a_uri_is_refused_naming_the_rule(scan_env, tools_stub):
+async def test_a_dotdot_escape_in_a_uri_is_refused_naming_the_rule(scan_env):
     escape = os.path.join(
         str(scan_env.scan_dir), os.pardir, os.pardir, "outside", "other-scan"
     )
@@ -424,7 +378,7 @@ async def test_a_dotdot_escape_in_a_uri_is_refused_naming_the_rule(scan_env, too
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="directory symlinks need privileges there")
-async def test_a_symlink_out_of_the_roots_is_refused_naming_the_rule(scan_env, tools_stub):
+async def test_a_symlink_out_of_the_roots_is_refused_naming_the_rule(scan_env):
     link = scan_env.root / "link"
     os.symlink(scan_env.outside, link)
     uri = res_mod.scan_resource_uri(str(link), "manifest")
@@ -434,7 +388,7 @@ async def test_a_symlink_out_of_the_roots_is_refused_naming_the_rule(scan_env, t
     assert confinement.RULE_SYMLINK in read_error_text(excinfo)
 
 
-async def test_an_unsupported_uri_names_the_templates(scan_env, tools_stub):
+async def test_an_unsupported_uri_names_the_templates(scan_env):
     async with mcp_client([scan_env.root]) as client:
         with pytest.raises(MCPError) as excinfo:
             await client.read_resource("file:///etc/hosts")
@@ -443,7 +397,7 @@ async def test_an_unsupported_uri_names_the_templates(scan_env, tools_stub):
     assert res_mod.MANIFEST_TEMPLATE in message
 
 
-async def test_an_unknown_tail_is_refused_naming_the_templates(scan_env, tools_stub):
+async def test_an_unknown_tail_is_refused_naming_the_templates(scan_env):
     uri = res_mod.scan_resource_uri(str(scan_env.scan_dir), "manifest/extra")
     async with mcp_client([scan_env.root]) as client:
         with pytest.raises(MCPError) as excinfo:
@@ -451,7 +405,7 @@ async def test_an_unknown_tail_is_refused_naming_the_templates(scan_env, tools_s
     assert "unsupported resource URI" in read_error_text(excinfo)
 
 
-async def test_an_empty_finding_id_segment_is_refused(scan_env, tools_stub):
+async def test_an_empty_finding_id_segment_is_refused(scan_env):
     uri = res_mod.scan_resource_uri(str(scan_env.scan_dir), "findings/")
     async with mcp_client([scan_env.root]) as client:
         with pytest.raises(MCPError) as excinfo:
@@ -462,7 +416,7 @@ async def test_an_empty_finding_id_segment_is_refused(scan_env, tools_stub):
 # --- missing documents are errors, never empty reads -------------------------------
 
 
-async def test_a_missing_scan_directory_inside_the_roots_is_an_error(scan_env, tools_stub):
+async def test_a_missing_scan_directory_inside_the_roots_is_an_error(scan_env):
     absent = scan_env.root / "absent"
     uri = res_mod.scan_resource_uri(str(absent), "manifest")
     async with mcp_client([scan_env.root]) as client:
@@ -473,7 +427,7 @@ async def test_a_missing_scan_directory_inside_the_roots_is_an_error(scan_env, t
     assert "does not exist" in message
 
 
-async def test_a_directory_without_a_manifest_names_the_missing_file(scan_env, tools_stub):
+async def test_a_directory_without_a_manifest_names_the_missing_file(scan_env):
     empty = scan_env.root / "empty-dir"
     empty.mkdir()
     manifest_uri = res_mod.scan_resource_uri(str(empty), "manifest")
@@ -487,7 +441,7 @@ async def test_a_directory_without_a_manifest_names_the_missing_file(scan_env, t
     assert "depscan.findings.json" in read_error_text(findings_error)
 
 
-async def test_an_unknown_finding_id_is_an_error_naming_the_id(scan_env, tools_stub):
+async def test_an_unknown_finding_id_is_an_error_naming_the_id(scan_env):
     absent_id = "dsf1:" + "0" * 64
     uri = res_mod.scan_resource_uri(str(scan_env.scan_dir), f"findings/{absent_id}")
     async with mcp_client([scan_env.root]) as client:
@@ -507,7 +461,7 @@ async def test_an_unknown_finding_id_is_an_error_naming_the_id(scan_env, tools_s
     ],
     ids=["not-json", "empty-object", "no-layout-version"],
 )
-async def test_an_unreadable_manifest_is_an_error_naming_the_file(scan_env, tools_stub, content):
+async def test_an_unreadable_manifest_is_an_error_naming_the_file(scan_env, content):
     """A manifest that parses but carries no layoutVersion is as unreadable
     as one that does not parse: neither may read back as a clean document."""
     broken = scan_env.root / "broken-manifest"
@@ -533,9 +487,7 @@ async def test_an_unreadable_manifest_is_an_error_naming_the_file(scan_env, tool
     ],
     ids=["not-json", "empty-object", "no-findings-key", "no-schema-version"],
 )
-async def test_an_unreadable_findings_document_is_an_error_naming_the_file(
-    scan_env, tools_stub, content
-):
+async def test_an_unreadable_findings_document_is_an_error_naming_the_file(scan_env, content):
     broken = scan_env.root / "broken-findings"
     broken.mkdir()
     (broken / "depscan.findings.json").write_text(content, encoding="utf-8")
@@ -552,9 +504,7 @@ async def test_an_unreadable_findings_document_is_an_error_naming_the_file(
         assert "unreadable" in message
 
 
-async def test_an_unexpected_read_failure_names_itself_not_internal_error(
-    scan_env, tools_stub, monkeypatch
-):
+async def test_an_unexpected_read_failure_names_itself_not_internal_error(scan_env, monkeypatch):
     """A failure outside the refusal vocabulary, a file read error say,
     reaches the client with its own name and message, the way tool errors
     do, instead of the SDK's generic internal error."""
@@ -578,7 +528,7 @@ async def test_an_unexpected_read_failure_names_itself_not_internal_error(
 # --- roots the client announces ------------------------------------------------------
 
 
-async def test_client_roots_add_to_the_startup_roots(scan_env, tools_stub, tmp_path, monkeypatch):
+async def test_client_roots_add_to_the_startup_roots(scan_env, tmp_path, monkeypatch):
     """A server started with no --allow-dir works from its working directory
     alone; the client's announced roots add to it, and a path under neither
     is still refused."""
@@ -604,7 +554,7 @@ async def test_client_roots_add_to_the_startup_roots(scan_env, tools_stub, tmp_p
 # --- the prompts ---------------------------------------------------------------------
 
 
-async def test_both_prompts_are_listed_with_an_optional_scan_dir_argument(scan_env, tools_stub):
+async def test_both_prompts_are_listed_with_an_optional_scan_dir_argument(scan_env):
     async with mcp_client([scan_env.root]) as client:
         result = await client.list_prompts()
     listed = {prompt.name: prompt for prompt in result.prompts}
@@ -618,7 +568,7 @@ async def test_both_prompts_are_listed_with_an_optional_scan_dir_argument(scan_e
         assert argument.required is False
 
 
-async def test_triage_findings_renders_the_scan_dir_and_the_tools_in_order(scan_env, tools_stub):
+async def test_triage_findings_renders_the_scan_dir_and_the_tools_in_order(scan_env):
     async with mcp_client([scan_env.root]) as client:
         result = await client.get_prompt(
             "triage_findings", {"scan_dir": str(scan_env.scan_dir)}
@@ -648,7 +598,7 @@ async def test_triage_findings_renders_the_scan_dir_and_the_tools_in_order(scan_
     assert "The server records nothing" in text
 
 
-async def test_plan_fixes_renders_the_scan_dir_and_the_tools_in_order(scan_env, tools_stub):
+async def test_plan_fixes_renders_the_scan_dir_and_the_tools_in_order(scan_env):
     async with mcp_client([scan_env.root]) as client:
         result = await client.get_prompt("plan_fixes", {"scan_dir": str(scan_env.scan_dir)})
     assert isinstance(result.messages[0].content, types.TextContent)
@@ -663,7 +613,7 @@ async def test_plan_fixes_renders_the_scan_dir_and_the_tools_in_order(scan_env, 
     assert "does not apply fixes" in text
 
 
-async def test_prompts_render_without_a_scan_dir_and_ask_for_one(scan_env, tools_stub):
+async def test_prompts_render_without_a_scan_dir_and_ask_for_one(scan_env):
     async with mcp_client([scan_env.root]) as client:
         for name in res_mod.PROMPT_NAMES:
             result = await client.get_prompt(name)
@@ -675,7 +625,7 @@ async def test_prompts_render_without_a_scan_dir_and_ask_for_one(scan_env, tools
             assert f"{res_mod.SCAN_DIR_ARGUMENT} argument" in text
 
 
-async def test_an_unknown_prompt_name_is_an_error_naming_the_prompts(scan_env, tools_stub):
+async def test_an_unknown_prompt_name_is_an_error_naming_the_prompts(scan_env):
     async with mcp_client([scan_env.root]) as client:
         with pytest.raises(MCPError) as excinfo:
             await client.get_prompt("frobnicate")
@@ -685,7 +635,7 @@ async def test_an_unknown_prompt_name_is_an_error_naming_the_prompts(scan_env, t
         assert name in message
 
 
-async def test_a_prompt_argument_is_interpolated_verbatim(scan_env, tools_stub):
+async def test_a_prompt_argument_is_interpolated_verbatim(scan_env):
     tricky = f"{scan_env.scan_dir}{os.sep}with spaces"
     async with mcp_client([scan_env.root]) as client:
         result = await client.get_prompt("triage_findings", {"scan_dir": tricky})

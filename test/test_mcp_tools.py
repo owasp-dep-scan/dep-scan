@@ -10,12 +10,6 @@ matching, risk audit and cdxgen process are stubbed with recorded calls,
 so every document a tool reads back was written by the scan pipeline
 itself.
 
-The resources module is a sibling piece's file; while it has not landed on
-this branch, the session fixture installs a stub module for it, and the
-subprocess test stops injecting a stub as soon as the real module is
-importable. The stub is scaffolding for the piece split, not a fake
-result: nothing under test here reads from it.
-
 On Windows the tmp paths keep their backslashes; every path a document
 carries (scanDir, file, target) is compared in the forward-slash form
 :func:`depscan.commands.output.json_path` produces, never as escaped JSON
@@ -26,13 +20,11 @@ import asyncio
 import base64
 import contextlib
 import hashlib
-import importlib.util
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from mcp import ClientSession
@@ -250,54 +242,11 @@ def make_scan_dir(tmp_path, scan_stubs):
 
 
 @pytest.fixture
-def resources_stub(monkeypatch):
-    """A stub for the resources module while the sibling piece is missing.
-
-    The server's construction path imports the module; on this branch it
-    has not landed yet, so the fixture installs an empty stub, which is all
-    the tool tests need: nothing under test here reads resources. Once the
-    real module exists the fixture installs nothing and every session
-    exercises the real resources handlers.
-    """
-    if importlib.util.find_spec("depscan.mcp_server.resources") is not None:
-        return None
-
-    async def empty_list_resources(ctx, params):
-        return mcp_types.ListResourcesResult(resources=[])
-
-    async def empty_list_templates(ctx, params):
-        return mcp_types.ListResourceTemplatesResult(resourceTemplates=[])
-
-    async def empty_read(ctx, params):
-        return mcp_types.ReadResourceResult(contents=[])
-
-    async def empty_list_prompts(ctx, params):
-        return mcp_types.ListPromptsResult(prompts=[])
-
-    async def empty_get_prompt(ctx, params):
-        return mcp_types.GetPromptResult(description="stub", messages=[])
-
-    stub = SimpleNamespace(
-        handle_list_resources=empty_list_resources,
-        handle_list_resource_templates=empty_list_templates,
-        handle_read_resource=empty_read,
-        handle_list_prompts=empty_list_prompts,
-        handle_get_prompt=empty_get_prompt,
-    )
-    import depscan.mcp_server as package
-
-    monkeypatch.setattr(package, "resources", stub, raising=False)
-    monkeypatch.setitem(sys.modules, "depscan.mcp_server.resources", stub)
-    return stub
-
-
-@pytest.fixture
-def open_session(resources_stub):
+def open_session():
     """A factory for client sessions over the in-memory transport.
 
-    The factory keeps the resources stub of the sibling piece alive for the
-    server's construction path, and takes the startup roots, the
-    ``--allow-scans`` flag and the roots the client announces.
+    The factory takes the startup roots, the ``--allow-scans`` flag and the
+    roots the client announces.
     """
 
     @contextlib.asynccontextmanager
@@ -1720,58 +1669,9 @@ def test_a_startup_root_is_enough_without_client_roots(open_session, make_scan_d
 # --- stdout purity over the real stdio transport ---------------------------------------
 
 
-def _resources_stub_needed():
-    """Whether the resources module is still missing from this branch."""
-    return importlib.util.find_spec("depscan.mcp_server.resources") is None
-
-
-_RESOURCES_STUB_SOURCE = """
-from mcp import types as mcp_types
-
-
-async def handle_list_resources(ctx, params):
-    return mcp_types.ListResourcesResult(resources=[])
-
-
-async def handle_list_resource_templates(ctx, params):
-    return mcp_types.ListResourceTemplatesResult(resourceTemplates=[])
-
-
-async def handle_read_resource(ctx, params):
-    return mcp_types.ReadResourceResult(contents=[])
-
-
-async def handle_list_prompts(ctx, params):
-    return mcp_types.ListPromptsResult(prompts=[])
-
-
-async def handle_get_prompt(ctx, params):
-    return mcp_types.GetPromptResult(description="stub", messages=[])
-"""
-
-
 def test_stdout_carries_only_jsonrpc_messages(tmp_path):
     """`depscan mcp` over real stdio: every stdout line is a JSON-RPC message."""
     command = [sys.executable, "-c", "from depscan.cli import main; main()"]
-    if _resources_stub_needed():
-        # The resources module is a sibling piece's file; until it lands,
-        # the subprocess gets an empty stub through the same import path
-        # build_server uses. Once the real module exists the stub is off.
-        stub_file = tmp_path / "resources_stub.py"
-        stub_file.write_text(_RESOURCES_STUB_SOURCE, encoding="utf-8")
-        bootstrap = (
-            "import importlib.util, sys, types\n"
-            "spec = importlib.util.spec_from_file_location("
-            "'depscan.mcp_server.resources', r'{}')\n"
-            "module = importlib.util.module_from_spec(spec)\n"
-            "spec.loader.exec_module(module)\n"
-            "sys.modules['depscan.mcp_server.resources'] = module\n"
-            "import depscan.mcp_server as package\n"
-            "package.resources = module\n"
-            "from depscan.cli import main\n"
-            "main()\n"
-        ).format(stub_file)
-        command = [sys.executable, "-c", bootstrap]
     root = tmp_path / "root"
     root.mkdir()
     initialize = json.dumps(
