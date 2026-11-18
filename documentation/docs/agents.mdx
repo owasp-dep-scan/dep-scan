@@ -30,7 +30,20 @@ Each row names the document a verb writes in json format and the published schem
 | `version` | `{"version", "tools"}`, the dep-scan version and every tool's version | `depscan-version-output` |
 | `help` | `{"help": "..."}`, the top-level help or one verb's help as one string | `depscan-help-output` |
 
-The `mcp` verb is not in this table: it has no `--format` option and writes no json document, because its stdout is the protocol channel of the Model Context Protocol server. Agents that speak MCP can drive the same data through its ten tools; see [the MCP server](mcp).
+The `mcp` verb is not in this table: it has no `--format` option and writes no json document, because its stdout is the protocol channel of the Model Context Protocol server. Agents that speak MCP can drive the same data through its ten tools; see [the MCP server](mcp). Each tool returns one document over that protocol, with a published output schema of its own:
+
+| Tool | Document | Schema |
+| --- | --- | --- |
+| `scan_summary` | the manifest summary and the finding counts by category and severity, or the spill envelope when the summary exceeds the response budget | `depscan-mcp-scan_summary-output` |
+| `list_findings` | one page of findings with `nextCursor` when more remain, or the spill envelope | `depscan-mcp-list_findings-output` |
+| `get_finding` | the one finding the id names, or the spill envelope when the finding alone exceeds the budget | `depscan-mcp-get_finding-output` |
+| `explain_finding` | the finding and the scan-wide explanation, or the spill envelope | `depscan-mcp-explain_finding-output` |
+| `coverage` | the stages, the not-assessed reasons and the checks not run, or the spill envelope | `depscan-mcp-coverage-output` |
+| `list_components` | one page of BOM components with `nextCursor` when more remain, or the spill envelope | `depscan-mcp-list_components-output` |
+| `diff_scans` | the new, fixed and changed pairs of two scans, or the spill envelope | `depscan-mcp-diff_scans-output` |
+| `doctor` | the doctor report, exactly as the `depscan-doctor` schema defines it | `depscan-mcp-doctor-output` |
+| `vdb_status` | the local database and shard store state, as the vdb info document carries it | `depscan-mcp-vdb_status-output` |
+| `run_scan` | the dry run's argv and effective options, the real run's scan entry, or the spill envelope | `depscan-mcp-run_scan-output` |
 
 Every published schema is a draft 2020-12 schema whose `$id` is `urn:owasp:depscan:schema:<name>:1`, where `<name>` is the schema name without the `depscan-` prefix (`urn:owasp:depscan:schema:scan-output:1`). A schema that embeds an existing document refers to it instead of copying: the scan output references the manifest and finding schemas, and the doctor output references the doctor report schema. `depscan schema` prints every published name, `depscan schema --format json` adds each one's `$id` and title, and `depscan schema <name>` prints the schema document, which a caller can validate against directly. The short name `finding` stays accepted as an alias for `depscan-finding`.
 
