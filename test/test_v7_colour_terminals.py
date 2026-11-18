@@ -49,8 +49,18 @@ def _known_colour_environment(monkeypatch):
         ({"NO_COLOR": "0"}, {"color_system": None}),
         ({"NO_COLOR": ""}, {"color_system": "auto"}),
         ({"FORCE_COLOR": "1"}, {"color_system": "auto", "force_terminal": True}),
-        ({"CONSOLE_COLOR_SCHEME": "256"}, {"color_system": "256"}),
-        ({"CONSOLE_COLOR_SCHEME": "truecolor"}, {"color_system": "truecolor"}),
+        (
+            {"FORCE_COLOR": "1", "TERM": ""},
+            {"color_system": "standard", "force_terminal": True},
+        ),
+        (
+            {"CONSOLE_COLOR_SCHEME": "256"},
+            {"color_system": "256", "force_terminal": True},
+        ),
+        (
+            {"CONSOLE_COLOR_SCHEME": "truecolor"},
+            {"color_system": "truecolor", "force_terminal": True},
+        ),
         # Explicit but unknown: colour is still asked for, rich picks the system.
         (
             {"CONSOLE_COLOR_SCHEME": "bogus"},

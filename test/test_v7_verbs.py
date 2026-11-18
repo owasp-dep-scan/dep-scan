@@ -8,6 +8,7 @@ it ran.
 """
 
 import json
+import os
 import sys
 from importlib import resources
 from pathlib import Path
@@ -18,7 +19,6 @@ import pytest
 from analysis_lib.findings.schemas import (
     load_schema,
     schema_names,
-    schema_summaries,
     validate,
 )
 from depscan import api, cli
@@ -587,7 +587,9 @@ def vdb_home(tmp_path, monkeypatch):
 
 def test_vdb_path_json(monkeypatch, capsys, vdb_home):
     assert run_main(monkeypatch, ["vdb", "path", "--format", "json"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"path": str(vdb_home)}
+    assert json.loads(capsys.readouterr().out) == {
+        "path": str(vdb_home).replace(os.sep, "/")
+    }
 
 
 def test_vdb_info_json(monkeypatch, capsys, vdb_home):
@@ -610,7 +612,7 @@ def test_vdb_info_json(monkeypatch, capsys, vdb_home):
     )
     assert run_main(monkeypatch, ["vdb", "info", "--format", "json"]) == 0
     document = json.loads(capsys.readouterr().out)
-    assert document["vdbHome"] == str(vdb_home)
+    assert document["vdbHome"] == str(vdb_home).replace(os.sep, "/")
     assert document["mainDb"]["dataRows"] == 100
     assert document["mainDb"]["indexRows"] == 99
     assert document["shardStore"]["shards"] == []
@@ -651,7 +653,7 @@ def test_vdb_download_json(monkeypatch, capsys, vdb_home):
     # marker records it.
     assert calls == ["ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"]
     assert read_vdb_image_marker(str(vdb_home)) == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
-    assert document["marker"] == str(vdb_home / ".depscan-vdb-image")
+    assert document["marker"] == str(vdb_home / ".depscan-vdb-image").replace(os.sep, "/")
 
 
 # --- the download hint names the v7 command --------------------------------------

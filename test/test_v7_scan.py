@@ -963,7 +963,7 @@ def test_json_format_prints_one_document_and_nothing_else(
     assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
     assert entry["target"] == bom
     assert entry["kind"] == "bom"
-    assert entry["scanDir"] == str(reports)
+    assert entry["scanDir"] == str(reports).replace(os.sep, "/")
     assert entry["manifest"]["layoutVersion"] == "1.0"
     assert len(entry["findings"]) == 1
     # Positive control: the scan ran, rendering on the moved console.
@@ -1008,8 +1008,8 @@ def test_json_format_with_two_targets_prints_one_object(scan_stubs, monkeypatch,
     assert [entry["target"] for entry in entries] == [first, second]
     assert [entry["kind"] for entry in entries] == ["bom", "bom"]
     assert [entry["scanDir"] for entry in entries] == [
-        str(reports / "1-first.cdx.json"),
-        str(reports / "2-second.cdx.json"),
+        str(reports / "1-first.cdx.json").replace(os.sep, "/"),
+        str(reports / "2-second.cdx.json").replace(os.sep, "/"),
     ]
     for entry in entries:
         assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}

@@ -58,15 +58,20 @@ def _color_arguments():
     scheme = os.getenv("CONSOLE_COLOR_SCHEME") or ""
     if scheme and scheme in VALID_COLOR_SYSTEMS:
         # The scheme goes to rich directly and bypasses detection, so a named
-        # scheme holds for redirected streams too. ``auto`` is the value
-        # that keeps detection per stream.
-        return {"color_system": scheme}
+        # scheme holds for redirected streams too, on a Windows pipe included,
+        # where rich needs the terminal forced to emit the codes. ``auto`` is
+        # the value that keeps detection per stream.
+        if scheme == "auto":
+            return {"color_system": "auto"}
+        return {"color_system": scheme, "force_terminal": True}
     if not scheme and not os.getenv("FORCE_COLOR", ""):
         return {"color_system": "auto"}
-    if os.getenv("TERM", "").strip().lower() in ("dumb", "unknown"):
-        # rich would auto-detect no colour support on a terminal that calls
-        # itself dumb, but the request for colour here is explicit, so keep a
-        # plain 16-colour system instead of none.
+    term = os.getenv("TERM", "").strip().lower()
+    if not term or term in ("dumb", "unknown"):
+        # rich detects no colour support without a TERM to read (a Windows
+        # pipe) or on a terminal that calls itself dumb, but the request for
+        # colour here is explicit, so keep a plain 16-colour system instead
+        # of none.
         return {"color_system": "standard", "force_terminal": True}
     return {"color_system": "auto", "force_terminal": True}
 
