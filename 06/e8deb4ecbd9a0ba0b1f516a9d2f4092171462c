@@ -1,0 +1,36 @@
+.github/scripts/repotest-project.sh
+  s_7318da1b9edd46::t_b3916dbe780837 11,13-15,18,30,34-35,38-45,62-65,68,72,74-76,78,80-82
+contrib/repotests/projects.json
+  s_7318da1b9edd46::t_279d99d6320270 149-150,159-160,169-171,180-181
+  s_7318da1b9edd46::t_717bbe464703e1 141-148,151-158,161-168,172-179
+.github/workflows/repotests.yml
+  s_7318da1b9edd46::t_2390226d7a1477 86,88-95,98-99,103-104,108,194,196-198,205-206
+contrib/repotests/testdata.lock.json
+  s_7318da1b9edd46::t_d30a86b4a7d762 31-44,73-86,101-114,226-239
+contrib/repotests/generate.sh
+  s_7318da1b9edd46::t_8749c7e343890f 20-22,104-119
+  s_7318da1b9edd46::t_e2398d2df88027 120
+contrib/repotests/README.md
+  s_7318da1b9edd46::t_7bc05911405a2c 23-27
+contrib/repotests/native_reachability.py
+  s_7318da1b9edd46::t_8749c7e343890f 1-39
+.github/workflows/repotests-data.yml
+  s_7318da1b9edd46::t_8749c7e343890f 55-56,59-67,76-77
+  s_7318da1b9edd46::t_2594307bab447a 57-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06e8deb4ecbd9a0ba0b1f516a9d2f4092171462c",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
