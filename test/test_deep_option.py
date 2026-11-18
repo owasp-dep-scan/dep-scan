@@ -159,3 +159,36 @@ def test_lifecycle_prebuild_omits_deep_build_keeps_it(tmp_path, monkeypatch):
     assert prebuild_invocations, "expected a pre-build lifecycle invocation"
     assert all("--deep" in a for a in build_invocations)
     assert all("--deep" not in a for a in prebuild_invocations)
+
+
+def test_lifecycle_container_stage_is_neither_deep_nor_sliced(tmp_path, monkeypatch):
+    """The container stage lists the image's packages without the deep pass
+    and without atom slices: a deep oci run parses every installed package's
+    source and timed out with no container BOM on dep-scan's own image."""
+    invocations = []
+
+    def fake_exec_tool(args, *a, **k):
+        invocations.append(list(args))
+        return cdxgen_mod.BOMResult(success=True)
+
+    monkeypatch.setattr(cdxgen_mod, "find_cdxgen_cmd", lambda *a, **k: "cdxgen")
+    monkeypatch.setattr(cdxgen_mod, "exec_tool", fake_exec_tool)
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+    monkeypatch.setenv("DEPSCAN_SOURCE_IMAGE", "example/image:tag")
+    options = {
+        "prebuild_bom_file": str(tmp_path / "sbom-prebuild.cdx.json"),
+        "build_bom_file": str(tmp_path / "sbom-build.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container.cdx.json"),
+        "project_type": ["python"],
+        "reachability_analyzer": "SemanticReachability",
+        "profile": "research",
+    }
+    bom_mod.create_lifecycle_boms(cdxgen_mod.CdxgenGenerator, str(tmp_path), options)
+    container = [a for a in invocations if "example/image:tag" in a]
+    build = [a for a in invocations if "build" in a]
+    assert len(container) == 1
+    assert "--deep" not in container[0]
+    assert not any(arg.endswith("-slices-file") for arg in container[0])
+    # The source stages keep their slices.
+    assert any("--reachables-slices-file" in a for a in build)

@@ -1288,7 +1288,18 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         container_image_name = os.getenv("DEPSCAN_SOURCE_IMAGE") or options.get("source_image")
         if container_image_name:
             status.update(f"Generating container BOM for '{src_dir}' with cdxgen.")
-            coptions = {**options, "deep": "true", "project_type": ["oci"]}
+            # Not deep and without slices: a deep oci run makes atom parse
+            # every source file of every package installed in the image,
+            # which ran for over an hour on dep-scan's own image and timed
+            # out with no container BOM at all. Reachability reads the
+            # source stage's slices, never the image's, and the image's
+            # packages are listed without the deep pass.
+            coptions = {
+                **options,
+                "deep": "false",
+                "slices": False,
+                "project_type": ["oci"],
+            }
             if container_image_name == src_dir:
                 LOG.info(
                     "Set the environment variable DEPSCAN_SOURCE_IMAGE to the name of the container image to include its components."
@@ -1297,7 +1308,11 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
                 container_image_name, container_bom_file, logger=LOG, options=coptions
             ).generate()
             if not stage_usable(bom_result, container_bom_file, "container"):
-                LOG.debug("The cdxgen invocation was unsuccessful. Trying for the next lifecycle.")
+                LOG.warning(
+                    "No container BOM was generated for the image %s, so its "
+                    "packages are missing from this scan.",
+                    container_image_name,
+                )
                 LOG.debug(bom_result.command_output)
             else:
                 written_bom_files.append(container_bom_file)

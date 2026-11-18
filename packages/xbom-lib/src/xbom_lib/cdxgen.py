@@ -520,7 +520,8 @@ class CdxgenGenerator(XBOMGenerator):
         if options.get("profile"):
             args.append("--profile")
             args.append(options.get("profile", ""))
-            set_slices_args(project_type_list, args, os.path.dirname(self.bom_file))
+            if options.get("slices", True):
+                set_slices_args(project_type_list, args, os.path.dirname(self.bom_file))
             if options.get("profile") not in ("generic",):
                 # This would help create openapi spec file inside the reports directory
                 env["ATOM_TOOLS_WORK_DIR"] = os.path.realpath(os.path.dirname(self.bom_file))
@@ -776,7 +777,8 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         if self.options.get("profile"):
             run_command_args.append("--profile")
             run_command_args.append(self.options.get("profile", ""))
-            set_slices_args(project_type_list, run_command_args, image_output_dir)
+            if self.options.get("slices", True):
+                set_slices_args(project_type_list, run_command_args, image_output_dir)
         # Build introspection report next to the BOM inside /reports, which
         # the volume mount maps onto the host reports directory.
         run_command_args += [
