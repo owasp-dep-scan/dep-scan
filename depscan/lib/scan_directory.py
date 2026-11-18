@@ -597,11 +597,22 @@ def read_manifest(reports_dir: str) -> Optional[Dict[str, Any]]:
 
 
 def read_findings(reports_dir: str) -> Optional[Dict[str, Any]]:
-    """The findings document of a scan directory, or None when absent."""
+    """The findings document of a scan directory, or None when absent.
+
+    A file that exists but is not valid JSON raises: the error names the
+    file and the parse failure, because a corrupted findings document must
+    never read back as a scan with no findings.
+    """
     path = os.path.join(str(reports_dir), FINDINGS_FILE)
     if not os.path.isfile(path):
         return None
-    document = json_load(path)
+    try:
+        with open(path, encoding="utf-8") as fp:
+            document = json.load(fp)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"The findings file at '{path}' is unreadable: it is not valid JSON ({exc})."
+        ) from exc
     if not isinstance(document, dict):
         raise ValueError(f"The findings file at '{path}' is not a JSON object.")
     return document

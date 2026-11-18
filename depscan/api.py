@@ -702,7 +702,10 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
             order.append(project_type)
     types = [by_type[project_type] for project_type in order if project_type in by_type]
     all_types = scan_directory.project_types(manifest)
-    findings_document = scan_directory.read_findings(reports_dir)
+    try:
+        findings_document = scan_directory.read_findings(reports_dir)
+    except ValueError as exc:
+        raise ScanError(f"Cannot load a scan from '{reports_dir}': {exc}") from exc
     return ScanResult(
         reports_dir=reports_dir,
         project_types=all_types + [t for t in order if t not in all_types],

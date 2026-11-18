@@ -195,7 +195,13 @@ def _document(scan_root: str, parsed: ParsedResourceUri) -> Any:
                 scan_root, scan_directory.MANIFEST_FILE, "layoutVersion"
             )
         return manifest
-    findings_document = scan_directory.read_findings(scan_root)
+    # A findings file that is not valid JSON raises from the reader; the
+    # reader's message names the file and the parse failure, which is the
+    # refusal this layer passes on for that shape.
+    try:
+        findings_document = scan_directory.read_findings(scan_root)
+    except ValueError as exc:
+        raise MCPError(code=types.INVALID_PARAMS, message=str(exc)) from exc
     if findings_document is None:
         raise _missing_document_error(scan_root, scan_directory.FINDINGS_FILE)
     if not isinstance(findings_document.get("schemaVersion"), str) or not isinstance(

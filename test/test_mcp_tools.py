@@ -466,6 +466,25 @@ def test_scan_summary_refuses_a_directory_that_is_not_a_scan(open_session, tmp_p
     assert expected_path(empty) in message
 
 
+def test_a_corrupted_findings_document_is_a_tool_error(open_session, make_scan_dir):
+    """A depscan.findings.json that is not valid JSON must not serve a
+    clean summary or an empty findings page: both tools refuse and name
+    the file and the parse failure."""
+    scan_dir = make_scan_dir("corrupted-findings")
+    (scan_dir / "depscan.findings.json").write_text("{not json at all", encoding="utf-8")
+
+    async def scenario(session):
+        summary_error = await call_error(session, "scan_summary", {"scan_dir": str(scan_dir)})
+        findings_error = await call_error(session, "list_findings", {"scan_dir": str(scan_dir)})
+        return summary_error, findings_error
+
+    summary_error, findings_error = drive(open_session, scenario, (scan_dir.parent,))
+    for message in (summary_error, findings_error):
+        assert "Cannot load a scan" in message
+        assert "depscan.findings.json" in message
+        assert "not valid JSON" in message
+
+
 # --- list_findings ------------------------------------------------------------------
 
 
