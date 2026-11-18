@@ -31,7 +31,9 @@ def _vectors():
         .joinpath("schemas")
         .joinpath("depscan-finding-fingerprint-vectors.json")
     )
-    return json.loads(vectors_path.read_text(encoding="utf-8"))
+    # The file is a JSON Schema that describes one vector and carries the
+    # published vectors array under the vectors keyword.
+    return json.loads(vectors_path.read_text(encoding="utf-8"))["vectors"]
 
 
 def test_fingerprint_version_is_1():

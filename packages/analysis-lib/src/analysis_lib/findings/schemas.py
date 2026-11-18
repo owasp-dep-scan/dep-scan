@@ -63,24 +63,37 @@ def load_schema(name: str) -> Dict[str, Any]:
 
 
 def _registry() -> Registry:
-    """Every published schema, retrievable under its file name.
+    """Every published schema, retrievable under its file name and its $id.
 
     A schema may reference a sibling schema by file name, as the manifest
     schema reuses the doctor definitions through
-    ``depscan-doctor.schema.json#/$defs/...``. Registering each file under its
-    name is what lets the validator follow that reference without copying the
-    definitions.
+    ``depscan-doctor.schema.json#/$defs/...``. Because every schema carries an
+    absolute ``$id``, such a reference resolves to ``$id`` of the target file,
+    so each resource is registered under both names and the validator follows
+    the reference without copying the definitions.
     """
     registry = Registry()
-    for filename in _SCHEMA_FILES.values():
+    for filename in published_files():
         schema = json.loads(
             resources.files(_SCHEMA_PACKAGE)
             .joinpath(_SCHEMA_DIR)
             .joinpath(filename)
             .read_text(encoding="utf-8")
         )
-        registry = registry.with_resource(filename, Resource.from_contents(schema))
+        resource = Resource.from_contents(schema)
+        registry = registry.with_resource(filename, resource)
+        schema_id = schema.get("$id")
+        if schema_id:
+            registry = registry.with_resource(schema_id, resource)
     return registry
+
+
+def published_files() -> List[str]:
+    """The file names in the bundled schemas directory."""
+    directory = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR)
+    return sorted(
+        item.name for item in directory.iterdir() if item.name.endswith(".json")
+    )
 
 
 def validate(name: str, document: Any) -> None:

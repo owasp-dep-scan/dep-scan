@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:doctor:1",
+  "$id": "https://depscan.owasp.org/schemas/depscan-doctor.schema.json",
   "title": "dep-scan doctor report",
   "description": "The document `depscan doctor --format json` prints and depscan.api.doctor().to_dict() returns. It names every tool a scan may call, where each was found, the vulnerability database as a read-only inspection sees it, and for every capability whether it can run on this machine and which missing requirement stops it. The report is produced without running a scan, prompting or downloading anything, and a missing tool or database is a reported state rather than an error.",
   "type": "object",
