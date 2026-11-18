@@ -277,6 +277,7 @@ def _run_stages(
                 project_type=project_type,
                 capabilities=_inventory_capabilities(options, project_type),
                 skipped_reason="the type produced no BOM or packages to scan",
+                failed_reason=lambda: tscan.inventory_error,
                 record_extra=lambda: {
                     "notAssessed": list(tscan.not_assessed),
                     "outputs": _inventory_outputs(ctx, tscan),

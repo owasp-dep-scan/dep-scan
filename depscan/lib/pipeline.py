@@ -136,6 +136,8 @@ class TypeScan:
     risk_report_file: Optional[str] = None
     # Why the risk audit failed when it ran and degraded; the scan goes on.
     risk_error: Optional[str] = None
+    # Why BOM generation failed for this type; the scan goes on to the next.
+    inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
     nominated_bom_file: Optional[str] = None
     bom_file: Optional[str] = None
@@ -1080,6 +1082,10 @@ def _produce_boms(ctx, scan):
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
             scan.target_bom_file,
+        )
+        scan.inventory_error = (
+            f"the BOM for the {scan.project_type} type was not created; the type's "
+            "packages were not scanned"
         )
         if ctx.args.fail_on_error:
             LOG.error("--fail-on-error is set; aborting the scan because BOM generation failed.")

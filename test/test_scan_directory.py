@@ -21,6 +21,7 @@ import re
 import shutil
 import subprocess
 import sys
+from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -834,6 +835,31 @@ def test_a_failed_risk_audit_is_recorded_while_the_scan_goes_on(scan_stubs, monk
     assert "the registry did not answer" in risk["reason"]
     matching = next(stage for stage in result.manifest["stages"] if stage["name"] == "matching")
     assert matching["status"] == "completed", "a degraded audit does not stop the scan"
+
+
+def test_a_bom_that_was_not_created_is_a_failed_inventory(scan_stubs, monkeypatch, tmp_path):
+    """cdxgen failing for a type is recorded as failed, not as nothing to scan."""
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=False, bom_files=[], primary=None, not_assessed=[]
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            project_type=["python"],
+            reports_dir=str(tmp_path / "reports"),
+            no_banner=True,
+        ),
+        render=False,
+    )
+    inventory = next(stage for stage in result.manifest["stages"] if stage["name"] == "inventory")
+    assert inventory["status"] == "failed"
+    assert "the BOM for the python type was not created" in inventory["reason"]
 
 
 def test_a_clean_scan_loads_as_empty_because_matching_completed(scan_stubs, tmp_path, monkeypatch):
