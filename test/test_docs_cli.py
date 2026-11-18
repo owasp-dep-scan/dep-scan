@@ -7,14 +7,17 @@ remaining tests sweep every page under ``documentation/``: no fenced command
 block may show a v6 (options-first) ``depscan`` invocation, and the removed
 ``depscan-vdb`` and ``depscan-validate`` console scripts may be named only in
 the migration entry that documents their removal (the ``.depscan-vdb-image``
-marker file keeps its name). When one of these fails, fix the page or
-regenerate the embedded block, not the test.
+marker file keeps its name). Published schema names such as
+``depscan-vdb-info-output`` name schema files, not the removed commands, so
+the sweep strips them from a line before checking it. When one of these
+fails, fix the page or regenerate the embedded block, not the test.
 """
 
 import argparse
 import re
 from pathlib import Path
 
+from analysis_lib.findings.schemas import schema_names
 from depscan.commands import VERBS, build_parser
 from depscan.commands.translate import option_table_markdown
 
@@ -36,6 +39,11 @@ CONSOLE_SCRIPT_ENTRY = "- **The `depscan-vdb` and `depscan-validate` console scr
 #: The marker file the code writes; its name contains a console-script name
 #: but names a file, not a command (``VDB_IMAGE_MARKER_FILE`` in the config).
 MARKER_FILE = ".depscan-vdb-image"
+
+#: The published schema names, which may carry a console-script substring
+#: (``depscan-vdb-download-output`` names a schema file, not a command); the
+#: sweep strips them from a line before checking the line.
+SCHEMA_NAMES = tuple(schema_names())
 
 #: The text files under ``documentation/`` the console-script sweep reads;
 #: images and other binaries are skipped.
@@ -184,6 +192,14 @@ def test_no_console_script_names_remain_in_the_docs():
             if "depscan-vdb" not in line and "depscan-validate" not in line:
                 continue
             if MARKER_FILE in line:
+                continue
+            without_schema_names = line
+            for name in SCHEMA_NAMES:
+                without_schema_names = without_schema_names.replace(name, "")
+            if (
+                "depscan-vdb" not in without_schema_names
+                and "depscan-validate" not in without_schema_names
+            ):
                 continue
             if path == MIGRATION_PAGE and line.strip().startswith(CONSOLE_SCRIPT_ENTRY):
                 continue
