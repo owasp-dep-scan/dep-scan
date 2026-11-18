@@ -669,6 +669,7 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         lifecycles = self.options.get("lifecycles") or []
         image_output_dir = "/reports"
         app_input_dir = "/app"
+        container_tmp_dir = "/tmp"
         container_command = get_env_options_value(self.options, "DOCKER_CMD", "docker")
         image_name = get_image_for_type(self.options, project_type_list)
         run_command_args = [
@@ -689,6 +690,12 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
         )
         for k, _ in os.environ.items():
             if force_secure and k == "CDXGEN_SECURE_MODE":
+                continue
+            # CDXGEN_TEMP_DIR is forwarded below with the in-container path:
+            # the value in this environment is the host path of the temp
+            # directory, which does not exist inside the container, and the
+            # image's cdxgen dies creating it there.
+            if k == "CDXGEN_TEMP_DIR":
                 continue
             if k.startswith("CDXGEN_") or k.startswith("GIT") or k in ("FETCH_LICENSE",):
                 run_command_args += ["-e", k]
@@ -739,7 +746,12 @@ class CdxgenImageBasedGenerator(CdxgenGenerator):
             ]
         else:
             run_command_args.append(self.source_dir)
-        run_command_args += ["-v", f"{self.cdxgen_temp_dir}:/tmp:rw"]
+        # The temp directory is mounted at /tmp, so the environment the
+        # container sees must name /tmp: the host path cannot resolve inside
+        # the container, and the image's cdxgen creates its temp directory
+        # with a mkdir that cannot reach through the mount.
+        run_command_args += ["-v", f"{self.cdxgen_temp_dir}:{container_tmp_dir}:rw"]
+        run_command_args += ["-e", f"CDXGEN_TEMP_DIR={container_tmp_dir}"]
         run_command_args += [
             "-v",
             f"{output_dir}:{image_output_dir}:rw",
