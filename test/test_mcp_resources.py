@@ -25,7 +25,7 @@ from mcp.shared.exceptions import MCPError
 from analysis_lib.findings.schemas import schema_names, validate
 from depscan import cli
 from depscan.lib import doctor as doctor_mod
-from depscan.lib import pipeline, vdb_setup
+from depscan.lib import pipeline, scan_directory, vdb_setup
 from depscan.mcp_server import confinement
 from depscan.mcp_server import resources as res_mod
 from depscan.mcp_server import server as server_mod
@@ -377,6 +377,28 @@ def test_parse_scan_uri_names_the_three_kinds():
     assert parsed.finding_id == "dsf1:abc"
 
 
+def test_the_uri_builder_percent_encodes_every_tail_segment():
+    """A tail segment carrying URI-reserved characters builds a URI that
+    parses back to the same segment, instead of breaking at the first
+    ``?`` or ``#``."""
+    for tail, kind in (
+        ("manifest", "manifest"),
+        ("findings", "findings"),
+        ("findings/dsf1:abc", "finding"),
+        ("findings/weird?id#frag", "finding"),
+    ):
+        parsed = res_mod.parse_scan_uri(res_mod.scan_resource_uri("/tmp/scan", tail))
+        assert parsed.kind == kind
+        if parsed.finding_id is not None:
+            assert parsed.finding_id == tail.split("/", 1)[1]
+    # A segment with a raw slash inside cannot survive the split, so the
+    # builder leaves the URI structurally loud about it rather than
+    # silently misrouting: parsing refuses it as unsupported.
+    uri = res_mod.scan_resource_uri("/tmp/scan", "findings/two/segments")
+    with pytest.raises(MCPError):
+        res_mod.parse_scan_uri(uri)
+
+
 # --- reads outside the roots --------------------------------------------------------
 
 
@@ -474,6 +496,83 @@ async def test_an_unknown_finding_id_is_an_error_naming_the_id(scan_env, tools_s
     message = read_error_text(excinfo)
     assert absent_id in message
     assert "no finding with id" in message
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "{not json at all",
+        "{}",
+        '{"depscanVersion": "7.0.0"}',
+    ],
+    ids=["not-json", "empty-object", "no-layout-version"],
+)
+async def test_an_unreadable_manifest_is_an_error_naming_the_file(scan_env, tools_stub, content):
+    """A manifest that parses but carries no layoutVersion is as unreadable
+    as one that does not parse: neither may read back as a clean document."""
+    broken = scan_env.root / "broken-manifest"
+    broken.mkdir()
+    (broken / "depscan.manifest.json").write_text(content, encoding="utf-8")
+    uri = res_mod.scan_resource_uri(str(broken), "manifest")
+    async with mcp_client([scan_env.root]) as client:
+        with pytest.raises(MCPError) as excinfo:
+            await client.read_resource(uri)
+    message = read_error_text(excinfo)
+    assert "depscan.manifest.json" in message
+    assert "unreadable" in message
+    assert "layoutVersion" in message
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "{not json at all",
+        "{}",
+        '{"schemaVersion": "1"}',
+        '{"findings": []}',
+    ],
+    ids=["not-json", "empty-object", "no-findings-key", "no-schema-version"],
+)
+async def test_an_unreadable_findings_document_is_an_error_naming_the_file(
+    scan_env, tools_stub, content
+):
+    broken = scan_env.root / "broken-findings"
+    broken.mkdir()
+    (broken / "depscan.findings.json").write_text(content, encoding="utf-8")
+    findings_uri = res_mod.scan_resource_uri(str(broken), "findings")
+    finding_uri = res_mod.scan_resource_uri(str(broken), "findings/dsf1:" + "a" * 64)
+    async with mcp_client([scan_env.root]) as client:
+        with pytest.raises(MCPError) as findings_error:
+            await client.read_resource(findings_uri)
+        with pytest.raises(MCPError) as finding_error:
+            await client.read_resource(finding_uri)
+    for error in (findings_error, finding_error):
+        message = read_error_text(error)
+        assert "depscan.findings.json" in message
+        assert "unreadable" in message
+
+
+async def test_an_unexpected_read_failure_names_itself_not_internal_error(
+    scan_env, tools_stub, monkeypatch
+):
+    """A failure outside the refusal vocabulary, a file read error say,
+    reaches the client with its own name and message, the way tool errors
+    do, instead of the SDK's generic internal error."""
+
+    def vanished(reports_dir):
+        raise OSError("the manifest vanished while reading")
+
+    monkeypatch.setattr(scan_directory, "read_manifest", vanished)
+    uri = res_mod.scan_resource_uri(str(scan_env.scan_dir), "manifest")
+    async with mcp_client([scan_env.root]) as client:
+        with pytest.raises(MCPError) as excinfo:
+            await client.read_resource(uri)
+    message = read_error_text(excinfo)
+    # Positive control: the message carries the stub's own words, so the
+    # stub ran and its failure surfaced with the reason intact.
+    assert "the manifest vanished while reading" in message
+    assert "OSError" in message
+    assert "Internal server error" not in message
 
 
 # --- roots the client announces ------------------------------------------------------

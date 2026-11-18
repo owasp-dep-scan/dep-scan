@@ -10,9 +10,10 @@ resolve, with ``os.path.realpath``, inside the allowed roots, and a refusal
 carries the confinement rule it broke.
 
 A read that cannot produce the document says what is missing: a directory
-that does not exist, a directory with no manifest or findings file, and a
-finding id no finding carries are errors naming what was asked for. No read
-returns an empty document in place of the truth.
+that does not exist, a directory with no manifest or findings file, a
+document that does not parse or parses without the fields the writer always
+writes, and a finding id no finding carries are errors naming what was asked
+for. No read returns an empty document in place of the truth.
 
 The two prompts, ``triage_findings`` and ``plan_fixes``, are short
 templates that name the tools to call, in the order to call them, and
@@ -77,8 +78,16 @@ def encode_scan_dir(path: str) -> str:
 
 def scan_resource_uri(scan_dir: str, tail: str) -> str:
     """The resource URI for a scan directory and a tail such as ``manifest``,
-    ``findings`` or ``findings/<id>``."""
-    return f"{URI_SCHEME}://{URI_AUTHORITY}/{encode_scan_dir(scan_dir)}/{tail}"
+    ``findings`` or ``findings/<id>``.
+
+    Every segment of the tail is percent-encoded, so an id carrying a
+    URI-reserved character builds a URI that parses back to itself instead
+    of breaking at the first ``?`` or ``#``. A slash inside a segment
+    cannot survive the split into structure and segment, so a tail built
+    that way parses as an unsupported URI and is refused, loudly.
+    """
+    encoded_tail = "/".join(quote(segment, safe="") for segment in tail.split("/"))
+    return f"{URI_SCHEME}://{URI_AUTHORITY}/{encode_scan_dir(scan_dir)}/{encoded_tail}"
 
 
 def _invalid_uri_error(uri: str) -> MCPError:
@@ -156,21 +165,45 @@ def _missing_document_error(scan_root: str, filename: str) -> MCPError:
     )
 
 
+def _unreadable_document_error(scan_root: str, filename: str, missing: str) -> MCPError:
+    return MCPError(
+        code=types.INVALID_PARAMS,
+        message=(
+            f"the {filename} in '{scan_root}' is unreadable: it carries no "
+            f"{missing}, so it is not a document this version of dep-scan "
+            "wrote"
+        ),
+    )
+
+
 def _document(scan_root: str, parsed: ParsedResourceUri) -> Any:
     """The document one resource URI names, or an error naming what is missing.
 
-    A missing manifest, a missing findings file and an id no finding
-    carries are errors, never empty documents: a resource read must not
-    dress a missing result up as a clean one.
+    A missing manifest, a missing findings file, a document that does not
+    parse or parses without the fields the writer always writes (the
+    manifest's ``layoutVersion``, the findings document's ``schemaVersion``
+    and ``findings``), and an id no finding carries are errors, never empty
+    documents: a resource read must not dress a missing or broken result up
+    as a clean one.
     """
     if parsed.kind == "manifest":
         manifest = scan_directory.read_manifest(scan_root)
         if manifest is None:
             raise _missing_document_error(scan_root, scan_directory.MANIFEST_FILE)
+        if not isinstance(manifest.get("layoutVersion"), str) or not manifest["layoutVersion"]:
+            raise _unreadable_document_error(
+                scan_root, scan_directory.MANIFEST_FILE, "layoutVersion"
+            )
         return manifest
     findings_document = scan_directory.read_findings(scan_root)
     if findings_document is None:
         raise _missing_document_error(scan_root, scan_directory.FINDINGS_FILE)
+    if not isinstance(findings_document.get("schemaVersion"), str) or not isinstance(
+        findings_document.get("findings"), list
+    ):
+        raise _unreadable_document_error(
+            scan_root, scan_directory.FINDINGS_FILE, "schemaVersion and findings array"
+        )
     if parsed.kind == "findings":
         return findings_document
     for finding in findings_document.get("findings") or []:
@@ -242,7 +275,10 @@ async def handle_read_resource(ctx, params) -> types.ReadResourceResult:
     The URI is parsed, the scan directory it names is confined against the
     effective roots, and the manifest, the findings document or the one
     finding is returned as text. Every refusal names the rule it broke or
-    the file or id that was missing.
+    the file or id that was missing. A failure outside that vocabulary,
+    a file read error, keeps its own name and message, the way tool errors
+    do, instead of the SDK's generic internal error that would drop the
+    reason before it reaches the client.
     """
     roots = await _effective_roots(ctx)
     parsed = parse_scan_uri(params.uri)
@@ -258,8 +294,16 @@ async def handle_read_resource(ctx, params) -> types.ReadResourceResult:
                 "is not a directory"
             ),
         )
-    document = _document(scan_root, parsed)
-    text = json.dumps(document, indent=2, sort_keys=True)
+    try:
+        document = _document(scan_root, parsed)
+        text = json.dumps(document, indent=2, sort_keys=True)
+    except MCPError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - an unexpected failure still names itself
+        raise MCPError(
+            code=types.INTERNAL_ERROR,
+            message=f"{type(exc).__name__}: {exc}",
+        ) from exc
     return types.ReadResourceResult(
         contents=[
             types.TextResourceContents(
