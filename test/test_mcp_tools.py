@@ -412,7 +412,9 @@ def test_scan_summary_refuses_a_directory_that_is_not_a_scan(open_session, tmp_p
 
     message = drive(open_session, scenario, (tmp_path,))
     assert "Cannot load a scan" in message
-    assert expected_path(empty) in message
+    # The error text names the confined path as the platform spells it; the
+    # json_path form is for the fields of json documents only.
+    assert os.path.realpath(str(empty)) in message
 
 
 def test_a_corrupted_findings_document_is_a_tool_error(open_session, make_scan_dir):
