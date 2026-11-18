@@ -58,6 +58,7 @@ def test_help_flag_prints_the_v7_help(monkeypatch, capsys):
         "schema",
         "config",
         "serve",
+        "mcp",
         "validate",
         "version",
         "help",
@@ -69,7 +70,7 @@ def test_bare_depscan_is_a_usage_error(monkeypatch, capsys):
     assert run_main(monkeypatch, []) == 2
     captured = capsys.readouterr()
     assert "usage: depscan" in captured.err
-    assert "{scan,report,vdb,doctor,schema,config,serve,validate,version,help}" in captured.err
+    assert "{scan,report,vdb,doctor,schema,config,serve,mcp,validate,version,help}" in captured.err
 
 
 def test_unknown_verb_is_a_usage_error(monkeypatch, capsys):
@@ -95,6 +96,7 @@ def test_help_verb_json_prints_the_help_as_one_document(monkeypatch, capsys):
         "schema",
         "config",
         "serve",
+        "mcp",
         "validate",
         "version",
         "help",

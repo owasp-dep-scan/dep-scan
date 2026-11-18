@@ -29,6 +29,7 @@ from depscan.commands.output import (
 from depscan.commands import (
     config as config_verb,
     doctor as doctor_verb,
+    mcp as mcp_verb,
     report as report_verb,
     scan as scan_verb,
     schema as schema_verb,
@@ -48,6 +49,7 @@ VERBS = (
     "schema",
     "config",
     "serve",
+    "mcp",
     "validate",
     "version",
     "help",
@@ -61,6 +63,7 @@ _VERB_MODULES = {
     "schema": schema_verb,
     "config": config_verb,
     "serve": serve_verb,
+    "mcp": mcp_verb,
     "validate": validate_verb,
     "version": version_verb,
     "help": help_verb,
