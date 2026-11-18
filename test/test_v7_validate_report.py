@@ -152,6 +152,37 @@ def test_auto_detection_keeps_picking_the_format_per_file(monkeypatch, capfd, tm
     assert all(entry["valid"] for entry in entries)
 
 
+def test_an_undetectable_document_advises_input_format(monkeypatch, capfd, tmp_path):
+    """The hint for a document no format matches names the option that forces
+    one, ``--input-format``; ``--format`` selects the output and its old
+    document values are gone, so advising them would point at a usage error.
+    The positive control follows the hint and is accepted."""
+    path = tmp_path / "unknown.json"
+    Path(path).write_text(json.dumps({"nothing": "useful"}))
+    code = run_main(monkeypatch, ["validate", str(path)])
+    assert code == 1
+    out = capfd.readouterr().out
+    assert "could not detect" in out
+    assert "--input-format" in out
+    assert "--format" not in out
+    # Positive control: the advised spelling is a real option, not a usage
+    # error, and forces the path it names.
+    code = run_main(
+        monkeypatch, ["validate", str(path), "--input-format", "cyclonedx", "--format", "json"]
+    )
+    assert code == 1
+    entry = json.loads(capfd.readouterr().out)["results"][0]
+    assert entry["format"] == "cyclonedx"
+    code = run_main(
+        monkeypatch, ["validate", str(path), "--input-format", "csaf", "--format", "json"]
+    )
+    assert code == 1
+    # Forcing skips detection, so the entry names the forced format and its
+    # own schema errors instead of the hint.
+    entry = json.loads(capfd.readouterr().out)["results"][0]
+    assert entry["format"] == "csaf"
+
+
 # --- validate: --input-format ------------------------------------------------------
 
 
