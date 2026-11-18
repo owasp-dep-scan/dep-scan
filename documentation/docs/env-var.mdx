@@ -55,3 +55,14 @@ The environment variables below are advanced override knobs for automation and s
 - DEPSCAN_SERVER_ALLOW_PRIVATE_URLS - Set to `true` to allow the server to scan URLs that resolve to private, loopback, or link-local addresses. Leave unset for the safer default.
 - DEPSCAN_SERVER_TRUSTED_HOST_NAMES - Comma-separated host names that clients may use in the `Host` header to reach a dep-scan server running without `DEPSCAN_SERVER_API_KEY`. List names without a port, and international names in their punycode (`xn--`) form. `localhost`, `*.localhost` and IP addresses are always accepted. Other names are refused to stop DNS rebinding attacks. Not needed when an API key is set.
 - DEPSCAN_SERVER_MAX_CONTENT_LENGTH - Maximum accepted request body size in bytes for the built-in server, including uploaded BOM files. Defaults to `104857600` (100 MiB).
+
+## Console output
+
+Colour is on only when the stream is a terminal, unless the environment asks otherwise, and each console decides for its own stream: stdout and stderr are detected separately. Four variables customize the behavior.
+
+- NO_COLOR - Set to any non-empty value to turn colour off on both consoles, including a real terminal.
+- FORCE_COLOR - Set to any non-empty value to turn colour on even when the stream is not a terminal, so a redirected run keeps its colours.
+- CONSOLE_COLOR_SCHEME - The colour system to use: one of `auto`, `standard`, `256`, `truecolor` or `windows`. Setting it to a named scheme forces colour and selects that scheme, on redirected streams too. An unknown value falls back to dep-scan's own detection with colour forced. `auto` keeps rich's per-stream detection instead of forcing colour, so a redirected stream stays plain unless `FORCE_COLOR` is also set. There is no built-in scheme: with none of the colour variables set, colour follows the stream.
+- DISABLE_CONSOLE_EMOJI - Set to `true` or `1` to turn emoji shortcodes off. Emoji are also off when the stream is not a terminal.
+
+Progress bars and spinners draw only when stderr is a terminal; `FORCE_COLOR` does not turn them on, because a spinner redraws itself in place and a redirected stream would only collect one frame per refresh. With none of the colour variables set, output on a redirected stream carries no ANSI escape sequences.

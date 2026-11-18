@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:serve-output:1",
+  "title": "dep-scan serve output",
+  "description": "The document `depscan serve --format json` writes on stdout once the server is listening, and the only content stdout ever carries: the host and port the server was configured with, and the URL a client can reach it on. Request logs go to stderr. A server that cannot start produces the error document instead.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "serving"
+  ],
+  "properties": {
+    "serving": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "host",
+        "port",
+        "url"
+      ],
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The host the server was configured with, as given."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "The TCP port the server listens on."
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^http://(\\[[0-9A-Fa-f:.]+\\]|[^/:\\[\\]]+):[0-9]+$",
+          "description": "The URL a client can reach the server on, http://<host>:<port> with the unspecified addresses 0.0.0.0 and :: shown as 127.0.0.1. An IPv6 host is written in brackets."
+        }
+      }
+    }
+  }
+}

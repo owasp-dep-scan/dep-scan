@@ -32,8 +32,12 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 
 import contextlib
 import os
+import secrets
+import socket
+import threading
+import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
@@ -53,6 +57,7 @@ from xbom_lib.cdxgen import remove_stale_slices
 from depscan import get_version
 from depscan.lib import explainer, utils
 from depscan.lib import doctor as doctor_lib
+from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
@@ -101,6 +106,14 @@ class ScanStageError(RuntimeError):
     """
 
 
+class ServerRequirementError(RuntimeError):
+    """The server cannot start: a package or a requirement is missing.
+
+    :func:`start_server_mode` raises it instead of returning False, so the
+    caller always holds the reason to report.
+    """
+
+
 @dataclass
 class TypeScan:
     """The per-project-type state the loop stages pass to each other.
@@ -123,6 +136,8 @@ class TypeScan:
     risk_report_file: Optional[str] = None
     # Why the risk audit failed when it ran and degraded; the scan goes on.
     risk_error: Optional[str] = None
+    # Why BOM generation failed for this type; the scan goes on to the next.
+    inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
     nominated_bom_file: Optional[str] = None
     bom_file: Optional[str] = None
@@ -283,11 +298,136 @@ def build_server_bom_scanner():
     return scan_bom
 
 
-def start_server_mode(ctx):
+#: How long the startup announcement waits for the server's listening socket
+#: to accept a connection, in seconds. The bind happens moments after the
+#: server package's startup hooks run; the deadline only bounds a start that
+#: never comes up, where nothing is announced at all.
+ANNOUNCE_TIMEOUT_SECONDS = 30.0
+
+#: The response header that marks every answer this process's server gives.
+#: The announcement probe reads it to tell the server it started from
+#: whatever else may already hold the port.
+_SERVING_MARKER_HEADER = "X-Depscan-Instance"
+
+
+def _listener_candidates(host):
+    """The addresses the startup announcement may probe.
+
+    The configured host comes first; the loopback forms follow, for a
+    wildcard or IPv6-any host whose socket also accepts loopback
+    connections. Duplicates and empty names are dropped, order kept.
+    """
+    seen = set()
+    ordered = []
+    for candidate in (host, "127.0.0.1", "::1", "localhost"):
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            ordered.append(candidate)
+    return ordered
+
+
+def _carries_marker(response: bytes, marker: str) -> bool:
+    """Whether an HTTP response head carries this process's marker header."""
+    head = response.split(b"\r\n\r\n", 1)[0]
+    for line in head.split(b"\r\n"):
+        name, _, value = line.partition(b":")
+        if name.strip().lower() == _SERVING_MARKER_HEADER.lower().encode():
+            return value.strip().decode("latin-1") == marker
+    return False
+
+
+def _answers_with_marker(host, port, marker: str) -> bool:
+    """Whether the server answering this port carries this process's marker.
+
+    A successful connection proves only that something listens; when the
+    port was already held by another process, the bind that follows fails.
+    This process's server stamps every response, whatever its status, with
+    the marker header, so the probe can tell the server it started from a
+    squatter or from another dep-scan server.
+    """
+    try:
+        port_number = int(port)
+    except (TypeError, ValueError):
+        return False
+    try:
+        with socket.create_connection((host, port_number), timeout=0.25) as probe:
+            probe.settimeout(1.0)
+            probe.sendall(f"GET / HTTP/1.0\r\nHost: {host}\r\n\r\n".encode())
+            response = b""
+            while len(response) < 4096:
+                chunk = probe.recv(1024)
+                if not chunk:
+                    break
+                response += chunk
+                if b"\r\n\r\n" in response:
+                    break
+    except OSError:
+        return False
+    return _carries_marker(response, marker)
+
+
+def _wait_until_listening(
+    host, port, marker: str, announce: Callable[[], None], cancelled
+) -> None:
+    """Announce once the server answering the port carries this process's marker.
+
+    The thread returns without announcing when the cancellation event is set
+    or the deadline passes, so a server that never binds, or whose port is
+    held by something else, announces nothing.
+    """
+    deadline = time.monotonic() + ANNOUNCE_TIMEOUT_SECONDS
+    while time.monotonic() < deadline and not cancelled.is_set():
+        for candidate in _listener_candidates(host):
+            if _answers_with_marker(candidate, port, marker):
+                if not cancelled.is_set():
+                    announce()
+                return
+        time.sleep(0.05)
+
+
+def _announce_once_listening(app, host, port, announce: Callable[[], None]):
+    """Run ``announce`` through a hook the server calls once it serves.
+
+    The server package's startup hooks run before it binds its socket, so
+    announcing from the hook alone would print before the server is
+    listening, and announcing on the first successful connection alone
+    would announce for whatever already holds the port when the bind later
+    fails. The hook therefore stamps the app's responses with a
+    per-process marker header and starts a daemon thread that polls the
+    port for a server answering with that marker: only the server this
+    process started can carry it, so the announcement names a server that
+    is listening and is ours. The returned event cancels the thread.
+    """
+    cancelled = threading.Event()
+    marker = f"dep-scan-{secrets.token_hex(8)}"
+
+    def mark_response(response):
+        response.headers[_SERVING_MARKER_HEADER] = marker
+        return response
+
+    def start_hook():
+        threading.Thread(
+            target=_wait_until_listening,
+            args=(host, port, marker, announce, cancelled),
+            daemon=True,
+        ).start()
+
+    app.after_request(mark_response)
+    app.before_serving(start_hook)
+    return cancelled
+
+
+def start_server_mode(ctx, started_hook: Optional[Callable[[], None]] = None):
     """Prepare the database once, then start the depscan server.
 
     No other scan stage runs here. A database that cannot be prepared raises
-    :class:`ScanStageError`, so the server never starts without one.
+    :class:`ScanStageError`, so the server never starts without one. A server
+    whose packages are missing, or that refuses its requirements, raises
+    :class:`ServerRequirementError` with the reason.
+
+    ``started_hook``, when given, runs once the server's listening socket
+    accepts connections; the announce reason is described in
+    :func:`_announce_once_listening`.
     """
     args = ctx.args
     if SERVER_LIB:
@@ -318,11 +458,28 @@ def start_server_mode(ctx):
             max_content_length=max_content_length,
             custom_data_directory=args.custom_data,
         )
-        return simple.run_server(server_options)
-    LOG.error(
-        "The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`."
+        cancelled = None
+        if started_hook is not None:
+            cancelled = _announce_once_listening(
+                simple.app, args.server_host, args.server_port, started_hook
+            )
+        try:
+            started = simple.run_server(server_options)
+        finally:
+            if cancelled is not None:
+                cancelled.set()
+        if started is False:
+            # run_server returns False only when it refuses a non-local bind
+            # without an API key; the same refusal is logged by the server.
+            raise ServerRequirementError(
+                "The server cannot bind to a non-local host without "
+                "DEPSCAN_SERVER_API_KEY or DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true."
+            )
+        return started
+    raise ServerRequirementError(
+        "The required packages for server mode are unavailable. Reinstall depscan "
+        "using `pip install owasp-depscan[all]`."
     )
-    return False
 
 
 def validate_scan_inputs(args):
@@ -579,7 +736,7 @@ def stage_database(ctx):
         # database stops the scan instead of looking like a clean one.
         should_download, dl_reason = vdb_setup.vdb_download_needed(scan_vdb_url, config.DATA_DIR)
         if should_download:
-            with log_console.status(
+            with logger_lib.console_status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
                 spinner=SPINNER,
             ) as vdb_download_status:
@@ -925,6 +1082,10 @@ def _produce_boms(ctx, scan):
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
             scan.target_bom_file,
+        )
+        scan.inventory_error = (
+            f"the BOM for the {scan.project_type} type was not created; the type's "
+            "packages were not scanned"
         )
         if ctx.args.fail_on_error:
             LOG.error("--fail-on-error is set; aborting the scan because BOM generation failed.")

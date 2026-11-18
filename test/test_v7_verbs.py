@@ -8,19 +8,24 @@ it ran.
 """
 
 import json
+import os
 import sys
+from importlib import resources
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from analysis_lib.findings.schemas import load_schema, schema_names, validate
+from analysis_lib.findings.schemas import (
+    load_schema,
+    schema_names,
+    validate,
+)
 from depscan import api, cli
 from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
 
 DATA_DIR = Path(__file__).parent / "data"
-FIXTURE_DIR = DATA_DIR / "scan-directory"
 # The VDR fixture that satisfies the bundled CycloneDX schema. The scan
 # directory's own django-app.vdr.json carries dep-scan's vendor extensions
 # (fixed_location, insights, matched_by) and empty timestamps, which the
@@ -176,9 +181,25 @@ def test_schema_lists_the_names(monkeypatch, capsys):
     assert capsys.readouterr().out.split() == schema_names()
 
 
-def test_schema_names_json(monkeypatch, capsys):
+def test_schema_lists_every_file_in_the_directory(monkeypatch, capsys):
+    assert run_main(monkeypatch, ["schema"]) == 0
+    assert capsys.readouterr().out.split() == schema_names()
+    # A schema file that exists but is not listed is the regression this
+    # test watches for. The fingerprint vectors file is data, not a schema.
+    directory = resources.files("analysis_lib.findings").joinpath("schemas")
+    files = {item.name for item in directory.iterdir() if item.name.endswith(".schema.json")}
+    assert {f"{name}.schema.json" for name in schema_names()} == files
+
+
+def test_schema_names_json_lists_name_id_and_title(monkeypatch, capsys):
     assert run_main(monkeypatch, ["schema", "--format", "json"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"schemas": schema_names()}
+    document = json.loads(capsys.readouterr().out)
+    assert [entry["name"] for entry in document["schemas"]] == schema_names()
+    for entry in document["schemas"]:
+        schema = load_schema(entry["name"])
+        assert entry["$id"] == schema["$id"]
+        assert entry["title"] == schema["title"]
+    validate("depscan-schema-output", document)
 
 
 @pytest.mark.parametrize("fmt", ["text", "json"])
@@ -187,12 +208,32 @@ def test_schema_prints_one_document(monkeypatch, capsys, fmt):
     assert json.loads(capsys.readouterr().out) == load_schema("finding")
 
 
+def test_schema_prints_every_published_document(monkeypatch, capsys):
+    for name in schema_names():
+        assert run_main(monkeypatch, ["schema", name]) == 0
+        assert json.loads(capsys.readouterr().out) == load_schema(name)
+
+
 def test_schema_unknown_name_exits_two(monkeypatch, capsys):
     assert run_main(monkeypatch, ["schema", "nope"]) == 2
     err = capsys.readouterr().err
     assert "unknown schema 'nope'" in err
     for name in schema_names():
         assert name in err
+
+
+def test_schema_unknown_name_json_writes_the_error_document(monkeypatch, capsys):
+    assert run_main(monkeypatch, ["schema", "nope", "--format", "json"]) == 2
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 2
+    assert document["error"]["verb"] == "schema"
+    assert "unknown schema 'nope'" in document["error"]["message"]
+    validate("depscan-error", document)
+    # The same message goes to stderr as text, and stderr stays free of JSON.
+    assert "unknown schema 'nope'" in captured.err
+    with pytest.raises(ValueError):
+        json.loads(captured.err)
 
 
 # --- config show -----------------------------------------------------------------
@@ -365,11 +406,17 @@ def test_config_init_writes_and_refuses(monkeypatch, capsys, tmp_path, clean_opt
 
 @pytest.fixture
 def serve_stubs(monkeypatch):
-    """Stub the server start and the database stage it prepares; record both."""
+    """Stub the server start and the database stage it prepares; record both.
+
+    The fake start runs the startup hook the way the real one does, once it
+    is serving; a test whose start fails replaces the fake.
+    """
     calls = {"server": [], "database": 0}
 
-    def fake_start(ctx):
-        calls["server"].append(ctx)
+    def fake_start(ctx, started_hook=None):
+        calls["server"].append((ctx, started_hook))
+        if started_hook is not None:
+            started_hook()
         return 0
 
     def fake_database(ctx):
@@ -387,18 +434,56 @@ def test_serve_starts_the_server_with_the_given_address(monkeypatch, capsys, ser
     )
     assert code == 0
     captured = capsys.readouterr()
-    # The startup line is the only stdout content; the database stage's own
-    # logging stays on stderr, inside the stubbed server start.
-    assert captured.out == '{"serve": "0.0.0.0:9999"}\n'
+    # The serving document is the only stdout content, and it shows a
+    # wildcard host as 127.0.0.1 in the url: an address a caller on the same
+    # machine can reach.
+    document = json.loads(captured.out)
+    assert document == {
+        "serving": {"host": "0.0.0.0", "port": 9999, "url": "http://127.0.0.1:9999"}
+    }
     # Positive controls: the server was started once, in server mode, with
-    # the passed address, and the verb did not run the database stage itself
-    # (start_server_mode owns it, so a stale database downloads once).
+    # the passed address and a hook to announce the running server, and the
+    # verb did not run the database stage itself (start_server_mode owns it,
+    # so a stale database downloads once).
     assert len(serve_stubs["server"]) == 1
-    args = serve_stubs["server"][0].args
-    assert args.server_mode is True
-    assert args.server_host == "0.0.0.0"
-    assert args.server_port == "9999"
+    ctx, started_hook = serve_stubs["server"][0]
+    assert ctx.args.server_mode is True
+    assert ctx.args.server_host == "0.0.0.0"
+    assert ctx.args.server_port == "9999"
+    assert started_hook is not None
     assert serve_stubs["database"] == 0
+
+
+def test_serve_document_keeps_the_loopback_host_verbatim(monkeypatch, capsys, serve_stubs):
+    """Only the wildcard and IPv6-any hosts are shown as 127.0.0.1."""
+    code = run_main(monkeypatch, ["serve", "--server-host", "127.0.0.1", "--format", "json"])
+    assert code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["serving"]["host"] == "127.0.0.1"
+    assert document["serving"]["url"] == "http://127.0.0.1:7070"
+
+
+def test_serve_document_honours_the_host_and_port_environment(
+    monkeypatch, capsys, serve_stubs
+):
+    monkeypatch.setenv("DEPSCAN_HOST", "0.0.0.0")
+    monkeypatch.setenv("DEPSCAN_PORT", "8443")
+    code = run_main(monkeypatch, ["serve", "--format", "json"])
+    assert code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["serving"] == {
+        "host": "0.0.0.0",
+        "port": 8443,
+        "url": "http://127.0.0.1:8443",
+    }
+
+
+def test_serve_document_shows_the_ipv6_any_host_as_loopback(monkeypatch, capsys, serve_stubs):
+    code = run_main(monkeypatch, ["serve", "--server-host", "::", "--format", "json"])
+    assert code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["serving"]["host"] == "::"
+    assert document["serving"]["url"] == "http://127.0.0.1:7070"
 
 
 def test_serve_passes_only_what_was_set(monkeypatch, capsys, serve_stubs):
@@ -409,36 +494,74 @@ def test_serve_passes_only_what_was_set(monkeypatch, capsys, serve_stubs):
     # Text mode writes nothing to stdout; the server's own logging reports
     # the startup.
     assert captured.out == ""
-    args = serve_stubs["server"][0].args
-    assert args.server_mode is True
-    assert args.server_host == "127.0.0.1"
-    assert args.server_port == "7070"
+    ctx, started_hook = serve_stubs["server"][0]
+    assert ctx.args.server_mode is True
+    assert ctx.args.server_host == "127.0.0.1"
+    assert ctx.args.server_port == "7070"
+    # Text mode announces nothing.
+    assert started_hook is None
     assert serve_stubs["database"] == 0
 
 
 def test_serve_reports_a_failed_database_stage(monkeypatch, capsys, serve_stubs):
-    def failing(ctx):
+    def failing(ctx, started_hook=None):
         raise pipeline.ScanStageError("the database could not be prepared")
 
     monkeypatch.setattr(pipeline, "start_server_mode", failing)
     code = run_main(monkeypatch, ["serve"])
     assert code == 1
+    # Text mode leaves the report to the stage that logged it.
+    captured = capsys.readouterr()
+    assert captured.out == ""
 
 
-def test_serve_returns_four_when_the_server_cannot_start(monkeypatch, capsys, serve_stubs):
-    """A server that cannot run (missing packages, refused bind) exits 4."""
-    monkeypatch.setattr(pipeline, "start_server_mode", lambda ctx: False)
+def test_serve_reports_a_failed_database_stage_in_json(monkeypatch, capsys, serve_stubs):
+    def failing(ctx, started_hook=None):
+        raise pipeline.ScanStageError("the database could not be prepared")
+
+    monkeypatch.setattr(pipeline, "start_server_mode", failing)
+    code = run_main(monkeypatch, ["serve", "--format", "json"])
+    assert code == 1
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 1
+    assert document["error"]["verb"] == "serve"
+    assert document["error"]["message"] == "the database could not be prepared"
+    assert "details" not in document["error"]
+    assert "the database could not be prepared" in captured.err
+
+
+def test_serve_reports_a_missing_server_capability(monkeypatch, caplog, capsys, serve_stubs):
+    def missing(ctx, started_hook=None):
+        raise pipeline.ServerRequirementError(
+            "The required packages for server mode are unavailable."
+        )
+
+    monkeypatch.setattr(pipeline, "start_server_mode", missing)
     code = run_main(monkeypatch, ["serve"])
     assert code == 4
+    assert capsys.readouterr().out == ""
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("The required packages for server mode are unavailable." in m for m in messages)
 
 
-def test_serve_returns_four_in_json_mode_too(monkeypatch, capsys, serve_stubs):
-    monkeypatch.setattr(pipeline, "start_server_mode", lambda ctx: False)
+def test_serve_reports_a_missing_server_capability_in_json(monkeypatch, capsys, serve_stubs):
+    def missing(ctx, started_hook=None):
+        raise pipeline.ServerRequirementError("the server packages are missing")
+
+    monkeypatch.setattr(pipeline, "start_server_mode", missing)
     code = run_main(monkeypatch, ["serve", "--format", "json"])
     assert code == 4
-    # The startup line precedes the start attempt, so it is already on
-    # stdout when the start is refused; the exit code carries the failure.
-    assert capsys.readouterr().out == '{"serve": "127.0.0.1:7070"}\n'
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 4
+    assert document["error"]["verb"] == "serve"
+    assert document["error"]["message"] == "the server packages are missing"
+    assert document["error"]["details"] == {
+        "capability": "server",
+        "reason": "the server packages are missing",
+    }
+    assert "the server packages are missing" in captured.err
 
 
 # --- vdb -------------------------------------------------------------------------
@@ -462,7 +585,9 @@ def vdb_home(tmp_path, monkeypatch):
 
 def test_vdb_path_json(monkeypatch, capsys, vdb_home):
     assert run_main(monkeypatch, ["vdb", "path", "--format", "json"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"path": str(vdb_home)}
+    assert json.loads(capsys.readouterr().out) == {
+        "path": str(vdb_home).replace(os.sep, "/")
+    }
 
 
 def test_vdb_info_json(monkeypatch, capsys, vdb_home):
@@ -485,7 +610,7 @@ def test_vdb_info_json(monkeypatch, capsys, vdb_home):
     )
     assert run_main(monkeypatch, ["vdb", "info", "--format", "json"]) == 0
     document = json.loads(capsys.readouterr().out)
-    assert document["vdbHome"] == str(vdb_home)
+    assert document["vdbHome"] == str(vdb_home).replace(os.sep, "/")
     assert document["mainDb"]["dataRows"] == 100
     assert document["mainDb"]["indexRows"] == 99
     assert document["shardStore"]["shards"] == []
@@ -526,7 +651,7 @@ def test_vdb_download_json(monkeypatch, capsys, vdb_home):
     # marker records it.
     assert calls == ["ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"]
     assert read_vdb_image_marker(str(vdb_home)) == "ghcr.io/appthreat/vdb7-app-only:v7.0.x-xz"
-    assert document["marker"] == str(vdb_home / ".depscan-vdb-image")
+    assert document["marker"] == str(vdb_home / ".depscan-vdb-image").replace(os.sep, "/")
 
 
 # --- the download hint names the v7 command --------------------------------------
@@ -560,47 +685,7 @@ def test_download_failure_hint_names_the_v7_command(monkeypatch, caplog):
 
 
 # --- validate --------------------------------------------------------------------
-
-
-def test_validate_vdr_fixture_text(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["validate", str(VDR_FIXTURE)]) == 0
-    out = capsys.readouterr().out
-    assert "[VALID]   " in out
-    assert "cyclonedx" in out
-
-
-def test_validate_vdr_fixture_json(monkeypatch, capsys):
-    code = run_main(monkeypatch, ["validate", str(VDR_FIXTURE), "--format", "json"])
-    assert code == 0
-    document = json.loads(capsys.readouterr().out)
-    assert document == [
-        {"file": str(VDR_FIXTURE), "format": "cyclonedx", "valid": True, "errors": []}
-    ]
-
-
-def test_validate_invalid_document_text(monkeypatch, capsys, tmp_path):
-    document = json.loads(VDR_FIXTURE.read_text())
-    document["specVersion"] = "9.9"
-    broken = tmp_path / "broken.vdr.json"
-    broken.write_text(json.dumps(document))
-    code = run_main(monkeypatch, ["validate", str(broken)])
-    assert code == 1
-    out = capsys.readouterr().out
-    assert "[INVALID]" in out
-    assert "unsupported CycloneDX specVersion '9.9'" in out
-
-
-def test_validate_invalid_document_json(monkeypatch, capsys, tmp_path):
-    document = json.loads(VDR_FIXTURE.read_text())
-    document["specVersion"] = "9.9"
-    broken = tmp_path / "broken.vdr.json"
-    broken.write_text(json.dumps(document))
-    code = run_main(monkeypatch, ["validate", str(broken), "--format", "json"])
-    assert code == 1
-    entries = json.loads(capsys.readouterr().out)
-    assert entries[0]["valid"] is False
-    assert entries[0]["errors"]
-    assert any("specVersion" in error for error in entries[0]["errors"])
+# The validate verb's own tests live in test_v7_validate_report.py.
 
 
 # --- doctor ----------------------------------------------------------------------
@@ -664,22 +749,7 @@ def test_doctor_json_through_the_registry(monkeypatch, capsys, fixed_doctor_repo
 
 
 # --- report ----------------------------------------------------------------------
-
-
-def test_report_json_prints_one_document(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["report", "--format", "json", str(FIXTURE_DIR)]) == 0
-    document = json.loads(capsys.readouterr().out)
-    assert set(document) == {"scanDir", "manifest", "findings"}
-    assert document["manifest"]["layoutVersion"] == "1.0"
-    assert len(document["findings"]) == 1
-    validate("finding", document["findings"][0])
-
-
-def test_report_text_still_renders_the_tables(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["report", str(FIXTURE_DIR)]) == 0
-    out = capsys.readouterr().out
-    assert "Vulnerabilities count: 1" in out
-    assert "high: 1" in out
+# The report verb's own tests live in test_v7_validate_report.py.
 
 
 # --- the scan verb ----------------------------------------------------------------

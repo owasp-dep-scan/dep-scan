@@ -19,6 +19,13 @@ import sys
 
 from depscan.commands import build_parser, run
 from depscan.commands import translate
+from depscan.commands.output import (
+    EXIT_USAGE,
+    argv_requests_json,
+    argv_verb,
+    error_document,
+    print_json_document,
+)
 
 if sys.platform == "win32" and os.environ.get("PYTHONIOENCODING") is None:
     sys.stdin.reconfigure(encoding="utf-8")
@@ -50,8 +57,18 @@ def main():
         build_parser().parse_args(argv)
         return
     if argv and argv[0].startswith("-"):
-        _print_v6_rejection(translate.translate(argv))
-        sys.exit(2)
+        translated = translate.translate(argv)
+        if argv_requests_json(argv):
+            details = {"migrationGuide": MIGRATION_GUIDE}
+            if translated:
+                details["translated"] = translated
+            print_json_document(
+                error_document(
+                    EXIT_USAGE, argv_verb(argv), _V6_PREFIX[len("depscan: ") :], details
+                )
+            )
+        _print_v6_rejection(translated)
+        sys.exit(EXIT_USAGE)
     args = build_parser().parse_args(argv)
     sys.exit(run(args) or 0)
 

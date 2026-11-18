@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:version-output:1",
+  "title": "dep-scan version output",
+  "description": "The document `depscan version --format json` writes on stdout: the dep-scan version and the version of every tool the doctor report found, null for a tool whose version could not be read.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "tools"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The version of the running dep-scan."
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "null"]
+      },
+      "description": "Every tool the doctor report names, mapped to the version it reported or null when the version could not be read."
+    }
+  }
+}

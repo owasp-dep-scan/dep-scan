@@ -38,5 +38,6 @@ def register(subparsers) -> None:
 def run(args: argparse.Namespace) -> int:
     argv = ["--format", args.format]
     for value in args.require:
-        argv += ["--require", value]
+        # The = form keeps a value that starts with a dash a value.
+        argv.append(f"--require={value}")
     return doctor_lib.run_doctor_command(argv)

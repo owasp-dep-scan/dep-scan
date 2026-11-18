@@ -28,6 +28,8 @@ reports/
 └── report.csaf.json               the CSAF VEX document, with --csaf
 ```
 
+The tree shows every kind of file a scan can write; a scan writes only the ones that apply to it. A package URL target has no BOM, so its scan writes no BOM and no VDR, and its findings are in `depscan.findings.json` alone.
+
 Raw reports that cdxgen writes itself, such as the `<type>-semantics.slices.json` files cdxgen persists for the language analyzers and the atom slice files, stay where cdxgen puts them; the manifest lists them where they are. A BOM the user passed as a BOM file or BOM directory target is never moved.
 
 ## The role of each file

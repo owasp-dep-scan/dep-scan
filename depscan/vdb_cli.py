@@ -14,10 +14,22 @@ mapped onto the five published flavors), its download retries, its
 The module serves two front ends: the ``depscan vdb`` verb, whose subparser
 carries :func:`register_arguments`, and :func:`main`, which parses a raw
 argv and defaults to the ``download`` subcommand when none was given.
+
+``--format`` is accepted before and after the subcommand: the parent parser
+and every subcommand parser register it with a suppressed default, so the
+subcommand's occurrence is parsed last and wins when both are given, and the
+verb fills the final default. In json format each subcommand writes exactly
+one JSON document to stdout, and every path in it (the database home, the
+shard store directory, the variant marker's path) carries the absolute,
+normalised, slash-separated form :func:`depscan.commands.output.json_path`
+gives; the recorded marker value (an image reference or a shard-set marker,
+not a filesystem path) stays verbatim. A rejected selection, a failed
+download and a command that stops with an unexpected error write the error
+document on stdout in json format and their message on stderr in every
+format.
 """
 
 import argparse
-import json
 import sys
 from typing import Any, Dict, List, Optional
 
@@ -25,7 +37,15 @@ from vdb.lib import config as vdb_config
 from vdb.lib import db as db_lib
 from vdb.lib import db_cmd
 
-from depscan import get_version
+from depscan.commands.output import (
+    EXIT_USAGE,
+    stdout_on_stderr,
+    EXIT_FAILURE,
+    argv_verb,
+    json_path,
+    print_error_document,
+    print_json_document,
+)
 from depscan.lib.config import (
     VDB_AGE_HOURS,
     VDB_FLAVORS,
@@ -39,6 +59,9 @@ from depscan.lib.config import (
 )
 from depscan.lib.logger import LOG
 
+#: The subcommands of the vdb command, in registration order.
+SUBCOMMAND_NAMES = ("download", "info", "path")
+
 
 def _flavor_from_image(image):
     """The flavor name of a vdb 7 image reference, when it carries one."""
@@ -51,17 +74,40 @@ def _flavor_from_image(image):
 
 
 def _add_format_argument(parser: argparse.ArgumentParser) -> None:
+    """Register ``--format`` with a suppressed default.
+
+    Both the parent parser and every subcommand parser carry the option, so
+    it is accepted before and after the subcommand; the subcommand's
+    occurrence is parsed last and wins when both are given, and the verb
+    fills the final default through :func:`_format`.
+    """
     parser.add_argument(
         "--format",
         choices=("text", "json"),
-        default="text",
+        default=argparse.SUPPRESS,
         help="text for people, json for scripts (default: text)",
     )
 
 
+def _format(args) -> str:
+    """The output format the parsed arguments select; text unless asked."""
+    return getattr(args, "format", "text")
+
+
 def register_arguments(parser: argparse.ArgumentParser) -> None:
-    """Add the vdb subcommands and options to ``parser``."""
-    subparsers = parser.add_subparsers(dest="command")
+    """Add the vdb subcommands and options to ``parser``.
+
+    ``--format`` lands on ``parser`` itself and again on every subcommand
+    parser, both with a suppressed default. The subcommand parsers are
+    :class:`~depscan.commands.ErrorDocumentParser`, so a usage error argparse
+    finds inside a subcommand writes the error document on stdout when the
+    command line asked for json anywhere, and stays text only otherwise.
+    """
+    # Imported here and not at module level: the registry defines the class
+    # after importing the verb modules, and this parser is built through it.
+    from depscan.commands import ErrorDocumentParser
+
+    subparsers = parser.add_subparsers(dest="command", parser_class=ErrorDocumentParser)
 
     # --- download (default) ------------------------------------------------
     dl = subparsers.add_parser(
@@ -138,13 +184,7 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
     )
     _add_format_argument(path)
 
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="Display the version",
-        action="version",
-        version="%(prog)s " + get_version(),
-    )
+    _add_format_argument(parser)
 
 
 def _build_parser():
@@ -198,6 +238,42 @@ def _resolve_flavor_from_args(args):
     return flavor, legacy_flags
 
 
+def _vdb_failure(args, message: str, exit_code: int = EXIT_FAILURE) -> int:
+    """Report a failed vdb command; the process exit code, 1 by default.
+
+    Options that cannot be combined are a usage error and pass exit code 2.
+
+    The message goes on stderr as text in every format; in json format the
+    error document carries it on stdout. The verb's failures have no details
+    beyond the message.
+    """
+    if _format(args) == "json":
+        print_error_document(exit_code, "vdb", message)
+    else:
+        print(f"error: {message}", file=sys.stderr)
+    return exit_code
+
+
+def _error_message(exc: Exception) -> str:
+    """One-line description of an exception, never empty."""
+    return f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+
+
+def _run_download(args, download):
+    """Run one vdb download step, keeping stdout for the json document alone.
+
+    vdb's refresh reports its progress on stdout; in json format stdout
+    carries exactly one document, so the progress joins stderr for the
+    duration of the step. Returns ``(None, result)`` on success and the
+    step's failure message otherwise.
+    """
+    try:
+        with stdout_on_stderr(_format(args) == "json"):
+            return None, download()
+    except Exception as exc:  # noqa: BLE001 - the download fails across layers
+        return _error_message(exc), None
+
+
 def cmd_download(args):
     """Download the selected database flavor or shard set and write the marker."""
     from depscan.lib.vdb_setup import download_vdb_with_retries
@@ -209,18 +285,23 @@ def cmd_download(args):
     try:
         flavor, _legacy = _resolve_flavor_from_args(args)
     except ValueError as e:
-        print(f"error: {e}", file=sys.stderr)
-        return 1
+        return _vdb_failure(args, str(e), EXIT_USAGE)
     image_url = resolve_vdb_image_url(
         flavor=flavor, compression=args.compression, image=args.image
     )
     LOG.info("vdb image: %s", image_url)
     LOG.info("Target directory: %s", data_dir)
-    download_vdb_with_retries(image_url)
+    failure_message, _result = _run_download(args, lambda: download_vdb_with_retries(image_url))
+    if failure_message is not None:
+        return _vdb_failure(
+            args, f"Downloading the vdb image {image_url} failed: {failure_message}"
+        )
     write_vdb_image_marker(image_url, data_dir)
     LOG.info("Download complete. Variant marker written to %s", vdb_image_marker_path(data_dir))
-    if getattr(args, "format", "text") == "json":
-        print(json.dumps({"image": image_url, "marker": vdb_image_marker_path(data_dir)}))
+    if _format(args) == "json":
+        print_json_document(
+            {"image": image_url, "marker": json_path(vdb_image_marker_path(data_dir))}
+        )
     return 0
 
 
@@ -231,11 +312,9 @@ def _download_shards(args, data_dir):
     from depscan.lib.vdb_setup import refresh_shards_with_retries
 
     if args.flavor or args.image:
-        print(
-            "error: --shards cannot be combined with --flavor or --image.",
-            file=sys.stderr,
+        return _vdb_failure(
+            args, "--shards cannot be combined with --flavor or --image.", EXIT_USAGE
         )
-        return 1
     # Shard names or purl types (npm, pypi, ...), like `vdb db refresh`.
     shard_names = []
     for shard in args.shards:
@@ -247,15 +326,27 @@ def _download_shards(args, data_dir):
         ", ".join(shard_names),
         vdb_config.VDB_SHARDS_DIR,
     )
-    placed = refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
+    failure_message, placed = _run_download(
+        args,
+        lambda: (
+            refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
+        ),
+    )
+    if failure_message is not None:
+        return _vdb_failure(
+            args,
+            f"Refreshing the vdb shard(s) {', '.join(shard_names)} failed: {failure_message}",
+        )
     write_vdb_image_marker(vdb_shards_marker(shard_names), data_dir)
     LOG.info(
         "Refreshed shard(s): %s. Marker written to %s",
-        ", ".join(placed),
+        ", ".join(placed or []),
         vdb_image_marker_path(data_dir),
     )
-    if getattr(args, "format", "text") == "json":
-        print(json.dumps({"shards": shard_names, "marker": vdb_image_marker_path(data_dir)}))
+    if _format(args) == "json":
+        print_json_document(
+            {"shards": shard_names, "marker": json_path(vdb_image_marker_path(data_dir))}
+        )
     return 0
 
 
@@ -381,11 +472,27 @@ def _render_info_text(document: Dict[str, Any]) -> List[str]:
     return lines
 
 
+def _info_document(document: Dict[str, Any]) -> Dict[str, Any]:
+    """The info document for json output, with its path fields normalised.
+
+    ``vdbHome`` and ``shardStore.storeDir`` carry the absolute, normalised,
+    slash-separated form. The recorded ``marker`` value is an image
+    reference or a shard-set marker, not a filesystem path, and stays
+    verbatim. The text rendering keeps the raw form.
+    """
+    shard_store = dict(document["shardStore"])
+    shard_store["storeDir"] = json_path(document["shardStore"].get("storeDir"))
+    normalised = dict(document)
+    normalised["vdbHome"] = json_path(document["vdbHome"])
+    normalised["shardStore"] = shard_store
+    return normalised
+
+
 def cmd_info(args):
     """Print the local database and shard store state."""
     document = _collect_info()
-    if getattr(args, "format", "text") == "json":
-        print(json.dumps(document, indent=2))
+    if _format(args) == "json":
+        print_json_document(_info_document(document))
         return 0
     for line in _render_info_text(document):
         print(line)
@@ -404,28 +511,50 @@ def _fmt_age(age_days):
 
 def cmd_path(args):
     """Print the VDB_HOME directory."""
-    if getattr(args, "format", "text") == "json":
-        print(json.dumps({"path": vdb_config.DATA_DIR}))
+    if _format(args) == "json":
+        print_json_document({"path": json_path(vdb_config.DATA_DIR)})
         return 0
     print(vdb_config.DATA_DIR)
     return 0
 
 
 def dispatch(args) -> int:
-    """Run the parsed subcommand; returns the process exit code."""
-    if args.command == "info":
-        return cmd_info(args)
-    if args.command == "path":
-        return cmd_path(args)
-    return cmd_download(args)
+    """Run the parsed subcommand; returns the process exit code.
+
+    A command that stops with an unexpected error reports it like a scan
+    does: the message and its traceback go to stderr, and in json format the
+    error document follows on stdout so the stream never carries nothing,
+    with exit code 1. The rejected selections and the failed downloads are
+    expected failures, reported by the download itself.
+    """
+    try:
+        if args.command == "info":
+            return cmd_info(args)
+        if args.command == "path":
+            return cmd_path(args)
+        return cmd_download(args)
+    except Exception as exc:  # noqa: BLE001 - the verb keeps its output contract
+        message = _error_message(exc)
+        LOG.exception("The vdb command stopped with an unexpected error: %s", message)
+        if _format(args) == "json":
+            print_error_document(EXIT_FAILURE, "vdb", message)
+        return EXIT_FAILURE
 
 
 def main(argv=None):
-    """Entry point of the vdb command; ``argv`` defaults to ``sys.argv``."""
+    """Entry point of the vdb command; ``argv`` defaults to ``sys.argv``.
+
+    ``download`` is the subcommand when none was named: a command line that
+    starts with an option still ends in download unless a token names a
+    subcommand, so an option value such as ``--format``'s never swallows it.
+    """
     raw_args = list(sys.argv[1:] if argv is None else argv)
     # Default to "download" when no subcommand is given.
-    if not raw_args or (raw_args[0].startswith("-") and raw_args[0] not in ("-h", "--help")):
-        raw_args = ["download"] + raw_args
+    if not raw_args:
+        raw_args = ["download"]
+    elif raw_args[0].startswith("-") and raw_args[0] not in ("-h", "--help"):
+        if argv_verb(raw_args) not in SUBCOMMAND_NAMES:
+            raw_args = ["download"] + raw_args
     args = _build_parser().parse_args(raw_args)
     return dispatch(args)
 

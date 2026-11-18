@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:doctor-output:1",
+  "title": "dep-scan doctor output",
+  "description": "The document `depscan doctor --format json` writes on stdout: the doctor report itself, exactly as the published doctor schema defines it. A usage error (an unknown capability name in --require) or an unmet requirement (--require with a capability that is not available here) produces the error document instead.",
+  "$ref": "depscan-doctor.schema.json"
+}

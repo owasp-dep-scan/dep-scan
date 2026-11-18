@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:help-output:1",
+  "title": "dep-scan help output",
+  "description": "The document `depscan help --format json` writes on stdout: the top-level help text, or the named verb's help text, as one string.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["help"],
+  "properties": {
+    "help": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The help text, starting with its usage line."
+    }
+  }
+}

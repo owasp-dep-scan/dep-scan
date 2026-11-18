@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
     'dep-scan',
     'getting-started',
     'cli-usage',
+    'agents',
     'doctor',
     'python-api',
     'vulnerability-database',

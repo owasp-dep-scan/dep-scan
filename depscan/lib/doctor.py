@@ -53,12 +53,24 @@ PROBE_TIMEOUT_SEC = 10
 #: The version of the doctor report document itself.
 SCHEMA_VERSION = "1"
 
-#: Exit code for a ``--require`` capability that cannot run here. It is the
-#: "coverage requirement was not met" code of the v7 exit-code table.
-EXIT_REQUIREMENT_NOT_MET = 4
 
-#: Exit code for a usage error, such as an unknown ``--require`` name.
-EXIT_USAGE = 2
+def __getattr__(name: str):
+    """The exit codes, resolved from the shared table on first use.
+
+    The codes live in :data:`depscan.commands.output.EXIT_CODES`, and this
+    module keeps no copy of them. The import cannot run while the module is
+    being defined, in any placement: importing ``depscan.commands`` executes
+    the verb registry, whose modules import :mod:`depscan.api`, which reads
+    :class:`DoctorReport` from this module mid-flight. Deferring the import
+    to the first attribute access keeps the module importable in any order
+    and leaves the shared table the only place that knows the codes.
+    """
+    if name in ("EXIT_REQUIREMENT_NOT_MET", "EXIT_USAGE"):
+        from depscan.commands import output
+
+        return getattr(output, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 # Version strings are read from the tool's own output; each parser mirrors
 # the parse the matching runner in xbom_lib uses.
@@ -1180,27 +1192,49 @@ def run_doctor_command(argv: List[str]) -> int:
     ``--require`` names a capability that is not available here (exit 4),
     which lets an image build fail when it lacks a capability it is meant to
     have. An unknown capability name is a usage error (exit 2).
+
+    In json format stdout carries exactly one document whatever the exit
+    code: a failure writes the error document instead of the report, with
+    the unknown capability names or the unmet requirement names in
+    ``details``, and the same message on stderr as text. The text format
+    still prints the report next to the message when ``--require`` fails.
     """
+    from depscan.commands.output import (
+        EXIT_REQUIREMENT_NOT_MET,
+        EXIT_USAGE,
+        print_error_document,
+        print_json_document,
+    )
+
     args = parse_doctor_args(argv)
     known = {spec.name for spec in CAPABILITIES}
     unknown = [name for name in args.require if name not in known]
     if unknown:
-        print(
+        message = (
             f"depscan doctor: unknown capability {', '.join(unknown)}; "
-            f"known capabilities: {', '.join(sorted(known))}",
-            file=sys.stderr,
+            f"known capabilities: {', '.join(sorted(known))}"
         )
+        if args.format == "json":
+            print_error_document(
+                EXIT_USAGE, "doctor", message, {"unknownCapabilities": list(unknown)}
+            )
+        else:
+            print(message, file=sys.stderr)
         return EXIT_USAGE
     report = doctor()
-    if args.format == "json":
-        print(json.dumps(report.to_dict(), indent=2))
-    else:
-        print(report.to_text())
     unmet = unmet_requirements(report, args.require)
     if unmet:
-        print(
-            f"depscan doctor: required capabilities not available: {', '.join(unmet)}",
-            file=sys.stderr,
-        )
+        message = f"depscan doctor: required capabilities not available: {', '.join(unmet)}"
+        if args.format == "json":
+            print_error_document(
+                EXIT_REQUIREMENT_NOT_MET, "doctor", message, {"unmet": list(unmet)}
+            )
+        else:
+            print(report.to_text())
+            print(message, file=sys.stderr)
         return EXIT_REQUIREMENT_NOT_MET
+    if args.format == "json":
+        print_json_document(report.to_dict())
+    else:
+        print(report.to_text())
     return 0

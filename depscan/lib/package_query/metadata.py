@@ -4,7 +4,7 @@ import httpx
 from rich.progress import Progress
 
 from depscan.lib import config
-from depscan.lib.logger import console, LOG
+from depscan.lib.logger import console, LOG, spinners_enabled
 from depscan.lib.package_query.npm_pkg import npm_pkg_risk
 from depscan.lib.package_query.pkg_query import get_lookup_url
 from depscan.lib.package_query.pypi_pkg import pypi_pkg_risk
@@ -15,6 +15,15 @@ from depscan.lib.package_query.cargo_pkg import cargo_pkg_risk
 _AUDIT_MAX_WORKERS = max(
     8, min(16, _n) if (_n := config.get_int_from_env("DEPSCAN_AUDIT_WORKERS", 0)) else 10
 )
+
+
+def _progress_disabled(pkg_count):
+    """Whether the registry audit should leave its progress bar off.
+
+    Fewer than 10 packages finish before a bar is worth drawing, and a bar
+    animates by erasing itself, which only a terminal stderr supports.
+    """
+    return pkg_count < 10 or not spinners_enabled()
 
 
 def _lookup_pkg_metadata(client, registry_type, scoped_pkgs, pkg_list, private_ns, pkg):
@@ -115,7 +124,7 @@ def metadata_from_registry(registry_type, scoped_pkgs, pkg_list, private_ns=None
             redirect_stderr=False,
             redirect_stdout=False,
             refresh_per_second=1,
-            disable=len(pkg_list) < 10,
+            disable=_progress_disabled(len(pkg_list)),
         ) as progress,
     ):
         task = progress.add_task("[green] Auditing packages", total=len(pkg_list))

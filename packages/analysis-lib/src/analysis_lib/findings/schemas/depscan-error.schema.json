@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:error:1",
+  "title": "dep-scan error document",
+  "description": "The document a dep-scan verb in json format writes on stdout when it exits 1, 2 or 4: a command that could not run, a usage error, or a requested capability that cannot run here. The same message always goes to stderr as text, so a caller reading stdout learns the failure in one document and a human watching stderr sees one line. Exit code 0 never produces this document, and a scan whose individual targets fail keeps its own output document with the failures inside.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["error"],
+  "properties": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exitCode", "verb", "message"],
+      "properties": {
+        "exitCode": {
+          "enum": [1, 2, 4],
+          "description": "The exit code the process ends with: 1 when the verb could not run, 2 for a usage error, 4 for a requested capability that cannot run here."
+        },
+        "verb": {
+          "type": "string",
+          "description": "The verb that failed, or the empty string when the command line named no verb, as on a usage error argparse finds before any verb runs."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One human-readable line saying what failed. The same text is printed on stderr."
+        },
+        "details": {
+          "type": "object",
+          "description": "Optional, verb-specific structured facts about the failure. The scan verb names the unknown checks it was given as {\"unknownChecks\": [...]} on a usage error, and the capability that cannot run as {\"capability\": <name or null>, \"reason\": ...} on exit 4. The doctor verb names the unknown capabilities as {\"unknownCapabilities\": [...]} on a usage error and the unmet requirements as {\"unmet\": [...]} on exit 4. The serve verb carries the capability reason on exit 4. The vdb and schema verbs add no details beyond the message."
+        }
+      }
+    }
+  }
+}
