@@ -52,13 +52,32 @@ def _base_finding() -> Dict[str, Any]:
 
 
 def test_schema_names():
-    assert schema_names() == ["finding", "depscan-doctor", "depscan-manifest"]
+    assert schema_names() == [
+        "depscan-finding",
+        "depscan-doctor",
+        "depscan-manifest",
+        "depscan-finding-fingerprint-vectors",
+        "depscan-scan-output",
+        "depscan-report-output",
+        "depscan-vdb-download-output",
+        "depscan-vdb-info-output",
+        "depscan-vdb-path-output",
+        "depscan-doctor-output",
+        "depscan-schema-output",
+        "depscan-config-show-output",
+        "depscan-config-init-output",
+        "depscan-serve-output",
+        "depscan-validate-output",
+        "depscan-version-output",
+        "depscan-help-output",
+        "depscan-error",
+    ]
 
 
 def test_load_schema_metadata():
     schema = load_schema("finding")
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert schema["$id"] == "urn:owasp:depscan:schema:finding:1"
+    assert schema["$id"] == "https://depscan.owasp.org/schemas/depscan-finding.schema.json"
     assert schema["additionalProperties"] is False
 
 

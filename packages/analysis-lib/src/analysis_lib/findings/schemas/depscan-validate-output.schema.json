@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.owasp.org/schemas/depscan-validate-output.schema.json",
+  "title": "dep-scan validate output",
+  "description": "The document `depscan validate --format json` writes on stdout: one result per given file, in the order the files were given. An invalid input document is a result, not an error: the verb exits 1 with this document, and a document that could not be read at all is a result with its reason among the errors. A failure that stops the verb as a whole produces the error document instead.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results"],
+  "properties": {
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/result"
+      },
+      "description": "One entry per given file, in the given order."
+    }
+  },
+  "$defs": {
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "format", "valid", "errors"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "The file that was validated, absolute and normalised, with / as the separator on every platform."
+        },
+        "format": {
+          "type": ["string", "null"],
+          "description": "The document format the detection settled on, csaf or cyclonedx, or the string unknown when neither matched. Null when the file could not be read as JSON at all."
+        },
+        "valid": {
+          "type": "boolean",
+          "description": "Whether the document passed its schema and, for CSAF, the mandatory semantic tests."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Every reason the document failed, empty when it is valid."
+        }
+      }
+    }
+  }
+}

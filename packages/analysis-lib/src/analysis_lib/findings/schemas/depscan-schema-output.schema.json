@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.owasp.org/schemas/depscan-schema-output.schema.json",
+  "title": "dep-scan schema output",
+  "description": "The document `depscan schema --format json` writes on stdout: every published schema, in the order the CLI lists them, with the name it accepts on the command line, its $id and its title.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemas"],
+  "properties": {
+    "schemas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "$id", "title"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The name `depscan schema <name>` accepts: the schema's file name in the schemas directory without .json."
+          },
+          "$id": {
+            "type": "string",
+            "pattern": "^https://depscan\\.owasp\\.org/schemas/",
+            "description": "The schema's identifier as the file itself declares it."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The schema's title as the file itself declares it."
+          }
+        }
+      },
+      "description": "One entry per published schema, in the order the CLI lists them: the document schemas first, then the output schemas verb by verb, then the error schema."
+    }
+  }
+}

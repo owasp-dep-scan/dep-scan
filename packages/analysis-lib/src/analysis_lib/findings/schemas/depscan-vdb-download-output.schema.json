@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.owasp.org/schemas/depscan-vdb-download-output.schema.json",
+  "title": "dep-scan vdb download output",
+  "description": "The document `depscan vdb download --format json` writes on stdout after the download completed and the marker file was written: the image reference it downloaded and the marker file's path for a complete flavor, or the refreshed shard names and the marker file's path for --shards. A download that fails produces the error document instead of this one.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/flavor"
+    },
+    {
+      "$ref": "#/$defs/shards"
+    }
+  ],
+  "$defs": {
+    "flavor": {
+      "title": "a complete flavor download",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image", "marker"],
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The image reference that was downloaded."
+        },
+        "marker": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The path of the marker file written for this download, absolute and normalised, with / as the separator on every platform. The file records the image reference; `depscan vdb info` reads it and reports that reference as its own marker field."
+        }
+      }
+    },
+    "shards": {
+      "title": "a shard-set download",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shards", "marker"],
+      "properties": {
+        "shards": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "The canonical shard names that were refreshed, in the order they were requested."
+        },
+        "marker": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The path of the marker file written for this refresh, absolute and normalised, with / as the separator on every platform. The file records the shard-set marker string; `depscan vdb info` reads it and reports that string as its own marker field."
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,13 @@ The JSON Schema files live in the schemas/ directory next to this module and
 ship inside the wheel as package data. Other implementations read the same
 files, so this module only loads and validates: the schema is the contract,
 not this code.
+
+A schema's name is its file name without ``.json``: ``depscan-scan-output``
+for ``depscan-scan-output.schema.json``, ``depscan-finding-fingerprint-vectors``
+for the vectors file. The legacy short name ``finding`` stays accepted as an
+alias so existing callers keep working. The published names are listed in
+registration order: the document schemas first, then the output schemas verb
+by verb, then the error schema.
 """
 
 import json
@@ -16,10 +23,37 @@ from referencing import Registry, Resource
 
 _SCHEMA_PACKAGE = "analysis_lib.findings"
 _SCHEMA_DIR = "schemas"
-_SCHEMA_FILES = {
-    "finding": "depscan-finding.schema.json",
-    "depscan-doctor": "depscan-doctor.schema.json",
-    "depscan-manifest": "depscan-manifest.schema.json",
+
+#: Every published schema file, in the order the CLI lists the names.
+_SCHEMA_FILES = (
+    # The document schemas: the shapes a scan directory publishes.
+    "depscan-finding.schema.json",
+    "depscan-doctor.schema.json",
+    "depscan-manifest.schema.json",
+    "depscan-finding-fingerprint-vectors.json",
+    # The output schemas, verb by verb in the verb registry's order, each
+    # verb's subcommands in the order the verb registers them.
+    "depscan-scan-output.schema.json",
+    "depscan-report-output.schema.json",
+    "depscan-vdb-download-output.schema.json",
+    "depscan-vdb-info-output.schema.json",
+    "depscan-vdb-path-output.schema.json",
+    "depscan-doctor-output.schema.json",
+    "depscan-schema-output.schema.json",
+    "depscan-config-show-output.schema.json",
+    "depscan-config-init-output.schema.json",
+    "depscan-serve-output.schema.json",
+    "depscan-validate-output.schema.json",
+    "depscan-version-output.schema.json",
+    "depscan-help-output.schema.json",
+    # The shared error document.
+    "depscan-error.schema.json",
+)
+
+#: Names the published schemas keep answering to that are no longer file
+#: stems. The short name of the finding schema predates the file-stem rule.
+_ALIASES = {
+    "finding": "depscan-finding",
 }
 
 # jsonschema checks format: date-time only when a checker for it is
@@ -43,9 +77,56 @@ class SchemaValidationError(ValueError):
     """A document did not satisfy the named schema."""
 
 
+def _schema_name(filename: str) -> str:
+    """The published name of a schema file: its name without .json."""
+    if filename.endswith(".schema.json"):
+        return filename[: -len(".schema.json")]
+    return filename[: -len(".json")]
+
+
+#: Maps every published schema name (its file stem) to its file.
+_STEM_TO_FILE = {_schema_name(filename): filename for filename in _SCHEMA_FILES}
+
+
 def schema_names() -> List[str]:
     """Names of the published schemas, in the order the CLI prints them."""
-    return list(_SCHEMA_FILES)
+    return [_schema_name(filename) for filename in _SCHEMA_FILES]
+
+
+def published_files() -> List[str]:
+    """The file names in the bundled schemas directory."""
+    directory = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR)
+    return sorted(item.name for item in directory.iterdir() if item.name.endswith(".json"))
+
+
+def _resolve(name: str) -> str:
+    """The file of a published schema name, aliases included."""
+    filename = _STEM_TO_FILE.get(_ALIASES.get(name, name))
+    if not filename:
+        raise ValueError(
+            f"unknown schema {name!r}; published schemas: {', '.join(schema_names())}"
+        )
+    return filename
+
+
+def schema_summaries() -> List[Dict[str, str]]:
+    """Every published schema as its name, $id and title.
+
+    The document ``depscan schema --format json`` prints, in the order the
+    text listing prints the names.
+    """
+    summaries = []
+    for filename in _SCHEMA_FILES:
+        schema = _read(filename)
+        summaries.append(
+            {"name": _schema_name(filename), "$id": schema["$id"], "title": schema["title"]}
+        )
+    return summaries
+
+
+def _read(filename: str) -> Dict[str, Any]:
+    schema_path = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR).joinpath(filename)
+    return json.loads(schema_path.read_text(encoding="utf-8"))
 
 
 def load_schema(name: str) -> Dict[str, Any]:
@@ -53,33 +134,27 @@ def load_schema(name: str) -> Dict[str, Any]:
 
     Raises ValueError for a name that is not published.
     """
-    filename = _SCHEMA_FILES.get(name)
-    if not filename:
-        raise ValueError(
-            f"unknown schema {name!r}; published schemas: {', '.join(schema_names())}"
-        )
-    schema_path = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR).joinpath(filename)
-    return json.loads(schema_path.read_text(encoding="utf-8"))
+    return _read(_resolve(name))
 
 
 def _registry() -> Registry:
-    """Every published schema, retrievable under its file name.
+    """Every published schema, retrievable under its file name and its $id.
 
     A schema may reference a sibling schema by file name, as the manifest
     schema reuses the doctor definitions through
-    ``depscan-doctor.schema.json#/$defs/...``. Registering each file under its
-    name is what lets the validator follow that reference without copying the
-    definitions.
+    ``depscan-doctor.schema.json#/$defs/...``. Because every schema carries an
+    absolute ``$id``, such a reference resolves to ``$id`` of the target file,
+    so each resource is registered under both names and the validator follows
+    the reference without copying the definitions.
     """
     registry = Registry()
-    for filename in _SCHEMA_FILES.values():
-        schema = json.loads(
-            resources.files(_SCHEMA_PACKAGE)
-            .joinpath(_SCHEMA_DIR)
-            .joinpath(filename)
-            .read_text(encoding="utf-8")
-        )
-        registry = registry.with_resource(filename, Resource.from_contents(schema))
+    for filename in published_files():
+        schema = _read(filename)
+        resource = Resource.from_contents(schema)
+        registry = registry.with_resource(filename, resource)
+        schema_id = schema.get("$id")
+        if schema_id:
+            registry = registry.with_resource(schema_id, resource)
     return registry
 
 
