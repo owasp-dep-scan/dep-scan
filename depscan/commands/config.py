@@ -11,6 +11,12 @@ then defaults.
 
 ``config init`` writes ``./depscan.toml`` with the same content a scan writes
 to ``depscan.toml.sample`` and refuses to overwrite an existing file.
+
+In json format each subcommand writes exactly one document to stdout:
+``{"options": ...}`` for show and ``{"written": ...}`` for init, with
+``show``'s values verbatim, as the scan receives them. A failure writes the
+error document instead, with the unknown check names or the failed path in
+``details``, and carries the same message on stderr as text.
 """
 
 import argparse
@@ -21,6 +27,13 @@ import tomllib
 
 from depscan.cli_options import build_parser
 from depscan.commands import checks as checks_table
+from depscan.commands.output import (
+    EXIT_FAILURE,
+    EXIT_USAGE,
+    json_path,
+    print_error_document,
+    print_json_document,
+)
 from depscan.commands.scan import add_scan_options, internal_argv, resolved_namespace
 from depscan.lib import pipeline
 
@@ -155,16 +168,19 @@ def _run_show(args: argparse.Namespace) -> int:
     names = checks_table.parse_checks(getattr(args, "checks", None))
     unknown = checks_table.unknown_checks(names)
     if unknown:
-        print(
+        message = (
             f"depscan config show: unknown check {', '.join(unknown)}; known checks: "
-            f"{', '.join(checks_table.CHECK_NAMES)}",
-            file=sys.stderr,
+            f"{', '.join(checks_table.CHECK_NAMES)}"
         )
-        return 2
+        if args.format == "json":
+            print_error_document(EXIT_USAGE, "config", message, {"unknownChecks": list(unknown)})
+        else:
+            print(message, file=sys.stderr)
+        return EXIT_USAGE
     internal, set_by = resolved_namespace(args, checks_table.resolve(args))
     entries = _option_sources(args, internal, set_by)
     if args.format == "json":
-        print(json.dumps({"options": entries}, indent=2))
+        print_json_document({"options": entries})
         return 0
     name_width = max(len(dest) for dest in entries)
     source_width = max(len(entry["source"]) for entry in entries.values())
@@ -179,17 +195,22 @@ def _run_show(args: argparse.Namespace) -> int:
 def _run_init(args: argparse.Namespace) -> int:
     path = os.path.join(os.getcwd(), "depscan.toml")
     if os.path.exists(path):
-        print(
-            f"depscan config init: {path} already exists; not overwriting it.",
-            file=sys.stderr,
-        )
-        return 1
+        message = f"depscan config init: {path} already exists; not overwriting it."
+        if args.format == "json":
+            print_error_document(EXIT_FAILURE, "config", message, {"path": json_path(path)})
+        else:
+            print(message, file=sys.stderr)
+        return EXIT_FAILURE
     internal = build_parser().parse_args(internal_argv(args))
     if not pipeline.write_config_file(vars(internal), path):
-        print(f"depscan config init: {path} could not be written.", file=sys.stderr)
-        return 1
+        message = f"depscan config init: {path} could not be written."
+        if args.format == "json":
+            print_error_document(EXIT_FAILURE, "config", message, {"path": json_path(path)})
+        else:
+            print(message, file=sys.stderr)
+        return EXIT_FAILURE
     if args.format == "json":
-        print(json.dumps({"written": path.replace(os.sep, "/")}))
+        print_json_document({"written": json_path(path)})
     else:
         print(f"Wrote the effective scan options to {path.replace(os.sep, '/')}.")
     return 0

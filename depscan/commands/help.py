@@ -1,7 +1,12 @@
-"""The ``depscan help`` verb: the top-level help or one verb's help."""
+"""The ``depscan help`` verb: the top-level help or one verb's help.
+
+In json format the document is ``{"help": <text>}``, printed by the shared
+one-document printer.
+"""
 
 import argparse
-import json
+
+from depscan.commands.output import print_json_document
 
 
 def register(subparsers) -> None:
@@ -43,7 +48,7 @@ def run(args: argparse.Namespace) -> int:
     topic = getattr(args, "topic", "") or ""
     text = _help_text(build_parser(), topic)
     if args.format == "json":
-        print(json.dumps({"help": text}))
+        print_json_document({"help": text})
         return 0
     print(text, end="")
     return 0

@@ -1,9 +1,13 @@
-"""The ``depscan version`` verb."""
+"""The ``depscan version`` verb: the version and the tool versions.
+
+In json format the document is ``{"version", "tools"}``, printed by the
+shared one-document printer.
+"""
 
 import argparse
-import json
 
 from depscan import get_version
+from depscan.commands.output import print_json_document
 from depscan.lib import doctor as doctor_lib
 
 
@@ -25,11 +29,12 @@ def run(args: argparse.Namespace) -> int:
         # Collecting the doctor report probes every tool, so it runs only
         # when the tool versions were asked for.
         report = doctor_lib.doctor()
-        document = {
-            "version": get_version(),
-            "tools": {tool.name: tool.version for tool in report.tools},
-        }
-        print(json.dumps(document, indent=2))
+        print_json_document(
+            {
+                "version": get_version(),
+                "tools": {tool.name: tool.version for tool in report.tools},
+            }
+        )
         return 0
     print(f"depscan {get_version()}")
     return 0
