@@ -540,18 +540,29 @@ def _install_stub_modules(monkeypatch, calls):
     return tools_stub, resources_stub
 
 
-def test_construction_imports_the_tool_and_resource_modules(monkeypatch):
-    """The modules load inside build_server, not at module import."""
-    import depscan.mcp_server as package
+def test_construction_imports_the_tool_and_resource_modules():
+    """The modules load inside build_server, not at module import.
 
-    assert not hasattr(package, "tools")
-    assert not hasattr(package, "resources")
-    calls = []
-    _install_stub_modules(monkeypatch, calls)
-    sdk = server_mod.load_mcp_sdk()
-    server = server_mod.build_server(sdk, ("/some/root",), allow_scans=False)
-    assert server.name == server_mod.SERVER_NAME
-    assert server.version == server_mod.SERVER_VERSION
+    The check runs in a subprocess because importing the sibling modules
+    anywhere in this process, as the tools and resources tests do, binds
+    them onto the package for every later check in it. The delegates test
+    below boots the server with stand-in modules and proves the
+    construction path calls them.
+    """
+    probe = (
+        "import sys; import depscan.mcp_server.server; "
+        "print('depscan.mcp_server.tools' in sys.modules, "
+        "'depscan.mcp_server.resources' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=REPO_ROOT,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "False False", result.stdout
 
 
 def test_the_construction_contract_delegates_and_converts_errors(monkeypatch):
