@@ -1006,7 +1006,7 @@ def test_json_format_with_two_targets_prints_one_object(scan_stubs, monkeypatch,
     assert list(document) == ["scans"]
     entries = document["scans"]
     assert len(entries) == 2
-    assert [entry["target"] for entry in entries] == [first, second]
+    assert [entry["target"] for entry in entries] == [json_path(first), json_path(second)]
     assert [entry["kind"] for entry in entries] == ["bom", "bom"]
     assert [entry["scanDir"] for entry in entries] == [
         str(reports / "1-first.cdx.json").replace(os.sep, "/"),
