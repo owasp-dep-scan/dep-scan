@@ -886,6 +886,31 @@ def test_list_components_refuses_a_scan_without_a_bom(open_session, make_scan_di
     assert "records no BOM" in message
 
 
+@pytest.mark.parametrize(
+    ("content", "expected_in_message"),
+    [
+        ("{not json at all", "not valid JSON"),
+        ("{}", "not a CycloneDX document"),
+    ],
+    ids=["not-json", "not-cyclonedx"],
+)
+def test_list_components_refuses_a_corrupted_bom(
+    open_session, make_scan_dir, content, expected_in_message
+):
+    """A BOM file the scan's inventory stage recorded must not silently
+    drop out of the component page: a file that does not parse, or parses
+    as something else, is a tool error naming the file."""
+    scan_dir = make_scan_dir("corrupted-bom")
+    (scan_dir / "sbom-python.cdx.json").write_text(content, encoding="utf-8")
+
+    async def scenario(session):
+        return await call_error(session, "list_components", {"scan_dir": str(scan_dir)})
+
+    message = drive(open_session, scenario, (scan_dir.parent,))
+    assert "sbom-python.cdx.json" in message
+    assert expected_in_message in message
+
+
 # --- diff_scans ----------------------------------------------------------------------
 
 

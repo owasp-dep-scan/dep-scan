@@ -42,7 +42,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from analysis_lib.findings.schemas import SchemaValidationError, load_schema, validate
-from custom_json_diff.lib.utils import json_load
 from mcp import types
 from vdb.lib.utils import parse_purl
 
@@ -436,13 +435,31 @@ def _bom_files(scan_dir: str, result: api.ScanResult) -> List[str]:
 
 
 def _bom_components(scan_dir: str, result: api.ScanResult) -> List[Dict[str, Any]]:
-    """The BOM components of the scan, in BOM order, deduplicated."""
+    """The BOM components of the scan, in BOM order, deduplicated.
+
+    Every BOM file ``_bom_files`` returns is a document the scan recorded
+    as the BOM of one of its project types, so each one must read as a
+    CycloneDX document. A file that does not parse, or parses as something
+    else, is a tool error naming the file, never a silent skip that would
+    read back as a clean component page.
+    """
     components: List[Dict[str, Any]] = []
     seen = set()
     for bom_file in _bom_files(scan_dir, result):
-        data = json_load(bom_file)
+        try:
+            with open(bom_file, encoding="utf-8") as fp:
+                data = json.load(fp)
+        except json.JSONDecodeError as exc:
+            raise ToolError(
+                f"the BOM file at {json_path(bom_file)} is unreadable: it is "
+                f"not valid JSON ({exc})"
+            ) from exc
         if not (isinstance(data, dict) and data.get("bomFormat") == "CycloneDX"):
-            continue
+            raise ToolError(
+                f"the BOM file at {json_path(bom_file)} is unreadable: it is "
+                "not a CycloneDX document, so it is not a BOM the scan's "
+                "inventory stage settled on"
+            )
         for component in data.get("components") or []:
             if not isinstance(component, dict):
                 continue
