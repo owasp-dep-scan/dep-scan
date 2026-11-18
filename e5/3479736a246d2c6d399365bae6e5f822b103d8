@@ -1,0 +1,30 @@
+documentation/sidebars.ts
+  s_c62bcbe3a0cfe4::t_1d6e145767d5f0 21
+documentation/docs/mcp.mdx
+  s_c62bcbe3a0cfe4::t_4755286c5a5d0a 10
+  s_c62bcbe3a0cfe4::t_f21c71da62232b 1-9,11-19,21-90,92-135,137-149,151-178
+  s_c62bcbe3a0cfe4::t_01b2214269ebed 136
+  s_c62bcbe3a0cfe4::t_80957ef28bcf0b 91
+  s_c62bcbe3a0cfe4::t_6b5de21d0b236a 150
+  s_c62bcbe3a0cfe4::t_804bac942a0e5a 20
+documentation/docs/agents.mdx
+  s_c62bcbe3a0cfe4::t_eaa02b9f5371b2 33-34
+documentation/docs/migrate-v6-to-v7.mdx
+  s_c62bcbe3a0cfe4::t_5b915bb274d1cc 150
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e53479736a246d2c6d399365bae6e5f822b103d8",
+  "prompts": {},
+  "sessions": {
+    "s_c62bcbe3a0cfe4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_5",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

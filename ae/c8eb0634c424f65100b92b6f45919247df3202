@@ -1,0 +1,19 @@
+depscan/lib/logger.py
+  s_3b5cf7456e6ade::t_0b66f423e7fe58 99,103-108,119,126-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aec8eb0634c424f65100b92b6f45919247df3202",
+  "prompts": {},
+  "sessions": {
+    "s_3b5cf7456e6ade": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-cd72d15f-38e9-4db1-8a2d-4823faf822ee-actor_14_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

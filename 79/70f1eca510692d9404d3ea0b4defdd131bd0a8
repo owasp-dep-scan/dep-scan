@@ -1,0 +1,20 @@
+documentation/docs/migrate-v6-to-v7.mdx
+  s_803c32b02d4a7d::t_b182e4b0a85204 31
+  s_803c32b02d4a7d::t_b915112f00f870 129-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7970f1eca510692d9404d3ea0b4defdd131bd0a8",
+  "prompts": {},
+  "sessions": {
+    "s_803c32b02d4a7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

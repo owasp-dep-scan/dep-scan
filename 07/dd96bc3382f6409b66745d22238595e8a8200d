@@ -1,0 +1,33 @@
+depscan/commands/scan.py
+  s_96a96fbd5cf706::t_e5bbdead159277 1041-1046
+  s_96a96fbd5cf706::t_7f7524d7ed87cf 731,734,921-924
+  s_96a96fbd5cf706::t_6dd45514336b5e 706-720,727-728,730,733,738,745-748,752,761-766,775
+  s_96a96fbd5cf706::t_f39ccbd30d8698 23-24,32-33,40-45
+  s_96a96fbd5cf706::t_92d8828770761f 992-994,1007,1015
+  s_96a96fbd5cf706::t_058dac14d797d1 798-800,805,813,821-826
+  s_96a96fbd5cf706::t_f074b703e75eb3 906-910,913-914,930,946-947
+  s_96a96fbd5cf706::t_b9cd6253b2bd1a 837-841,843,847,849,851-855,858-871,875,897-898
+test/test_v7_scan.py
+  s_96a96fbd5cf706::t_4ee7429c67c391 1115-1117
+  s_96a96fbd5cf706::t_9dbeeea4f54536 1114
+  s_96a96fbd5cf706::t_2e7801827e5b24 944-945,959-967,972-985,1003-1009,1013-1015,1042,1048-1049,1068-1074,1080-1084,1093-1113,1118-1126
+  s_96a96fbd5cf706::t_a02815e52e52fc 1129-1239
+  s_96a96fbd5cf706::t_7f7524d7ed87cf 1079,1085-1092
+  s_96a96fbd5cf706::t_1badf6da7e53f8 1127-1128,1240-1241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07dd96bc3382f6409b66745d22238595e8a8200d",
+  "prompts": {},
+  "sessions": {
+    "s_96a96fbd5cf706": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_2_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

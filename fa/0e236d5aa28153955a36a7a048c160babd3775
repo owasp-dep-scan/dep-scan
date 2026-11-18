@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_mcp_schemas.py
+  s_27270cb49317ac::t_6132f080b46b9d 1-655
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa0e236d5aa28153955a36a7a048c160babd3775",
+  "prompts": {},
+  "sessions": {
+    "s_27270cb49317ac": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_4",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

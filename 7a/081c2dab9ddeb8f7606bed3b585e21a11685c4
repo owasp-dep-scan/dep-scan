@@ -1,0 +1,21 @@
+documentation/docs/agents.mdx
+  s_4319487fa41c8a::t_4f920cf76b927d 33-46
+test/test_v7_output_contract.py
+  s_4319487fa41c8a::t_627026c849146b 1325-1334,1337,1339,1343-1354,1403-1404,1406-1409,1411,1413-1414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a081c2dab9ddeb8f7606bed3b585e21a11685c4",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

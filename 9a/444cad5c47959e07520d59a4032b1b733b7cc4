@@ -1,0 +1,42 @@
+depscan/mcp_server/tools.py
+  s_962e5d9a741027::t_d58e6b59de9436 555-556,560-563,565,567-568,572-576
+  s_962e5d9a741027::t_a7987f11124f9b 582-589,592-595
+  s_962e5d9a741027::t_1b8590c4209a6e 30-32
+  s_962e5d9a741027::t_bd05200fd8999b 613-616
+  s_962e5d9a741027::t_293a1728749dfb 671-682
+  s_962e5d9a741027::t_3d099c54e24e8a 75-78,81-86
+  s_11e5f30cdd5370::t_26aed67c68858f 87
+test/test_mcp_tools.py
+  s_962e5d9a741027::t_e38c076365e31d 1194
+  s_962e5d9a741027::t_0e141896050603 1226,1229-1232,1237-1249,1252,1260,1265-1266,1270-1271,1273-1290
+  s_962e5d9a741027::t_f0076a60f3e4dd 1269
+  s_962e5d9a741027::t_87d41094136386 254,256-260,262-263
+  s_962e5d9a741027::t_03aaf6a882cb37 1187,1209,1341
+  s_962e5d9a741027::t_cc4e9bffe7def7 1272
+  s_962e5d9a741027::t_6735acfff8f85b 1188-1193,1195-1208,1210-1225,1227-1228,1233-1236,1250-1251,1253-1259,1261-1264,1267,1291-1340,1342-1358
+  s_962e5d9a741027::t_b1ae5ac329952c 1268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9a444cad5c47959e07520d59a4032b1b733b7cc4",
+  "prompts": {},
+  "sessions": {
+    "s_11e5f30cdd5370": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-a3a8d57a-0353-4059-bb9e-865e80c6e114-actor_5_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    },
+    "s_962e5d9a741027": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_6",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

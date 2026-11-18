@@ -1,0 +1,21 @@
+depscan/mcp_server/resources.py
+  s_4319487fa41c8a::t_5f41ea7ee12c4f 198-200
+test/test_repotests_workflow.py
+  s_4319487fa41c8a::t_b1a24735962368 335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7d4d478e9dccf97e5d3176cd717e6f3b22bb86a2",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}

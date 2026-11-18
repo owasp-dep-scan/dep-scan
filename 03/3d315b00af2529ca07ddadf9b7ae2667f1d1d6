@@ -1,0 +1,31 @@
+Dockerfile
+  s_257c086714955c::t_b092110b1f8578 1
+  s_257c086714955c::t_63c681d38de556 16-19
+  s_257c086714955c::t_7604989b24a066 26
+  s_257c086714955c::t_6b9c74d66927dd 53,55-58
+  s_257c086714955c::t_80a0658e1c029e 72
+  s_257c086714955c::t_9aabc3e31c7742 15
+Dockerfile.al9
+  s_257c086714955c::t_5531973d2c568c 26
+  s_257c086714955c::t_37c7889d4d172b 1
+  s_257c086714955c::t_86c67238e0b81a 53
+  s_257c086714955c::t_814a481f3ea8f8 16-19
+  s_257c086714955c::t_5f8d8462a5dd84 67
+  s_257c086714955c::t_e10bad8733949b 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "033d315b00af2529ca07ddadf9b7ae2667f1d1d6",
+  "prompts": {},
+  "sessions": {
+    "s_257c086714955c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_5d7e3c74-282d-40bf-917c-88f55153ae9c",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

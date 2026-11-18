@@ -1,0 +1,22 @@
+documentation/sidebars.ts
+  s_803c32b02d4a7d::t_657e48d6dd11da 20
+documentation/docs/agents.mdx
+  s_803c32b02d4a7d::t_7421d08d62afe4 1-10,12-205
+  s_803c32b02d4a7d::t_75370c8f96dd27 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39ebce3cf820fc32fffbc56082f79a69817204d3",
+  "prompts": {},
+  "sessions": {
+    "s_803c32b02d4a7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+contrib/repotests/README.md
+  s_30b704f208c121::t_1661062c35d463 59-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "819f0d810db562c887783a65b3caebc8b817082d",
+  "prompts": {},
+  "sessions": {
+    "s_30b704f208c121": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

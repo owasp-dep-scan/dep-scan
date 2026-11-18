@@ -1,0 +1,24 @@
+.github/workflows/repotests.yml
+  s_30b704f208c121::t_d2ec2d36320d04 549-570,572-576,578,580-582
+  s_30b704f208c121::t_e616ae6571950b 141-161,163-167,169,171-173
+test/test_repotests_workflow.py
+  s_30b704f208c121::t_ff75edcb117df9 240-257
+contrib/repotests/README.md
+  s_30b704f208c121::t_b147356249ad9d 94-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a1e7ed18598b83666d1bfb3415f5ae058e2bafe",
+  "prompts": {},
+  "sessions": {
+    "s_30b704f208c121": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

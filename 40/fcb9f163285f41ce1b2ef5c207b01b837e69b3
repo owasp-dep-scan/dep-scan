@@ -1,0 +1,25 @@
+depscan/lib/pipeline.py
+  s_62048ac960e80c::t_b3a6b420fefb1f 601-602,604
+  s_62048ac960e80c::t_ab4ed86c0897a5 56
+  s_62048ac960e80c::t_64c9d4f9f97386 538-555
+test/test_v7_serve.py
+  s_62048ac960e80c::t_b14d73dec1dc11 84-86
+  s_62048ac960e80c::t_5c61bf74d2862a 1-16,18-83,87-139
+  s_62048ac960e80c::t_b6c5542e1bdea0 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40fcb9f163285f41ce1b2ef5c207b01b837e69b3",
+  "prompts": {},
+  "sessions": {
+    "s_62048ac960e80c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_4",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

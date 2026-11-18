@@ -1,0 +1,65 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-coverage-input.schema.json
+  s_27270cb49317ac::t_cf7db34ee8a013 1-16
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-diff_scans-output.schema.json
+  s_27270cb49317ac::t_6e9efe0423382a 1-63
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_27270cb49317ac::t_01a89650927607 16-17
+  s_27270cb49317ac::t_f5c63bc808ea97 52-73
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-vdb_status-input.schema.json
+  s_27270cb49317ac::t_601f8954d80fb6 1-9
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-scan_summary-output.schema.json
+  s_27270cb49317ac::t_9b870699f5248c 1-137
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-explain_finding-output.schema.json
+  s_27270cb49317ac::t_b8d0a05a9c038b 1-20
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-list_findings-input.schema.json
+  s_27270cb49317ac::t_8840f278a58ff5 1-68
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-coverage-output.schema.json
+  s_27270cb49317ac::t_6974814700342f 1-80
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-list_components-input.schema.json
+  s_27270cb49317ac::t_8456744efc7765 1-28
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-doctor-input.schema.json
+  s_27270cb49317ac::t_748e582492df16 1-9
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-vdb_status-output.schema.json
+  s_27270cb49317ac::t_6e2948fe3da090 1-7
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-diff_scans-input.schema.json
+  s_27270cb49317ac::t_2534f1b339becf 1-21
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_finding-output.schema.json
+  s_27270cb49317ac::t_feee147206fdf6 1-7
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-run_scan-input.schema.json
+  s_27270cb49317ac::t_8fa9a729fd7c77 1-62
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-doctor-output.schema.json
+  s_27270cb49317ac::t_3c85ec9ec14c95 1-7
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-run_scan-output.schema.json
+  s_27270cb49317ac::t_828fd5d3ec4c82 1-33
+packages/analysis-lib/tests/test_findings_schema.py
+  s_27270cb49317ac::t_bd1b88b1670d83 72-91
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-explain_finding-input.schema.json
+  s_27270cb49317ac::t_bb50069140c15b 1-27
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-list_findings-output.schema.json
+  s_27270cb49317ac::t_d52f11b393668b 1-47
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-schema-output.schema.json
+  s_27270cb49317ac::t_e7cffaf71bd847 35
+  s_27270cb49317ac::t_7e03c7628f6500 25
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-list_components-output.schema.json
+  s_27270cb49317ac::t_c8dc00657a431f 1-81
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_finding-input.schema.json
+  s_27270cb49317ac::t_f8f55596869d73 1-21
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-scan_summary-input.schema.json
+  s_27270cb49317ac::t_aa60f2c20ffccb 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb870b0371b170180e54806c85a6b98bf26378ac",
+  "prompts": {},
+  "sessions": {
+    "s_27270cb49317ac": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_4",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

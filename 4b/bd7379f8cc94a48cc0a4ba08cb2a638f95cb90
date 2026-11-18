@@ -1,0 +1,31 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-scan_summary-output.schema.json
+  s_4319487fa41c8a::t_129f6ec9b614a2 5-37,39-70,72,74-75,77-90,92
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-run_scan-output.schema.json
+  s_4319487fa41c8a::t_08e717c25be341 5,31-48
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-diff_scans-output.schema.json
+  s_4319487fa41c8a::t_9aada972299fe5 5-37,39-55,57
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-get_finding-output.schema.json
+  s_4319487fa41c8a::t_fed51d63016f78 5-28
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-coverage-output.schema.json
+  s_4319487fa41c8a::t_c03ee1a2c0fe12 5-41,43-59,61
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-explain_finding-output.schema.json
+  s_4319487fa41c8a::t_6533a7037476a3 5-22,24-40,42
+test/test_mcp_tools.py
+  s_4319487fa41c8a::t_0e54ab56789632 488-520,778-803,850-880,940-969,1076-1113,1561-1594
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4bbd7379f8cc94a48cc0a4ba08cb2a638f95cb90",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}

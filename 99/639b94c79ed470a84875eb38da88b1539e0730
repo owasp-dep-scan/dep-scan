@@ -1,0 +1,19 @@
+server.json
+  s_c62bcbe3a0cfe4::t_de6c569e9ddcff 1-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99639b94c79ed470a84875eb38da88b1539e0730",
+  "prompts": {},
+  "sessions": {
+    "s_c62bcbe3a0cfe4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_5",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
