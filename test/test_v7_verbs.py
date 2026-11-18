@@ -20,7 +20,6 @@ from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
 
 DATA_DIR = Path(__file__).parent / "data"
-FIXTURE_DIR = DATA_DIR / "scan-directory"
 # The VDR fixture that satisfies the bundled CycloneDX schema. The scan
 # directory's own django-app.vdr.json carries dep-scan's vendor extensions
 # (fixed_location, insights, matched_by) and empty timestamps, which the
@@ -664,22 +663,7 @@ def test_doctor_json_through_the_registry(monkeypatch, capsys, fixed_doctor_repo
 
 
 # --- report ----------------------------------------------------------------------
-
-
-def test_report_json_prints_one_document(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["report", "--format", "json", str(FIXTURE_DIR)]) == 0
-    document = json.loads(capsys.readouterr().out)
-    assert set(document) == {"scanDir", "manifest", "findings"}
-    assert document["manifest"]["layoutVersion"] == "1.0"
-    assert len(document["findings"]) == 1
-    validate("finding", document["findings"][0])
-
-
-def test_report_text_still_renders_the_tables(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["report", str(FIXTURE_DIR)]) == 0
-    out = capsys.readouterr().out
-    assert "Vulnerabilities count: 1" in out
-    assert "high: 1" in out
+# The report verb's own tests live in test_v7_validate_report.py.
 
 
 # --- the scan verb ----------------------------------------------------------------
