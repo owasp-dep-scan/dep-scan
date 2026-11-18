@@ -1,10 +1,18 @@
-"""The ``depscan schema`` verb: print the published finding schemas."""
+"""The ``depscan schema`` verb: print the published finding schemas.
+
+Without a name the verb lists every published schema, as bare names in text
+format and as one object with each schema's name, ``$id`` and title in json
+format. With a name it prints that schema document. An unknown name is a
+usage error: exit 2 with the message on stderr, and, in json format, the
+error document on stdout like any verb.
+"""
 
 import argparse
 import json
 import sys
 
-from analysis_lib.findings.schemas import load_schema, schema_names
+from analysis_lib.findings.schemas import load_schema, schema_names, schema_summaries
+from depscan.commands.output import EXIT_USAGE, print_error_document
 
 
 def register(subparsers) -> None:
@@ -27,17 +35,20 @@ def register(subparsers) -> None:
 
 def run(args: argparse.Namespace) -> int:
     if not args.name:
-        names = schema_names()
         if args.format == "json":
-            print(json.dumps({"schemas": names}, indent=2))
+            print(json.dumps({"schemas": schema_summaries()}, indent=2))
         else:
-            for name in names:
+            for name in schema_names():
                 print(name)
         return 0
     try:
         document = load_schema(args.name)
     except ValueError as exc:
-        print(f"depscan schema: {exc}", file=sys.stderr)
-        return 2
+        message = f"depscan schema: {exc}"
+        if args.format == "json":
+            print_error_document(EXIT_USAGE, "schema", message)
+        else:
+            print(message, file=sys.stderr)
+        return EXIT_USAGE
     print(json.dumps(document, indent=2))
     return 0

@@ -9,12 +9,18 @@ it ran.
 
 import json
 import sys
+from importlib import resources
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
-from analysis_lib.findings.schemas import load_schema, schema_names, validate
+from analysis_lib.findings.schemas import (
+    load_schema,
+    schema_names,
+    schema_summaries,
+    validate,
+)
 from depscan import api, cli
 from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
@@ -176,9 +182,27 @@ def test_schema_lists_the_names(monkeypatch, capsys):
     assert capsys.readouterr().out.split() == schema_names()
 
 
-def test_schema_names_json(monkeypatch, capsys):
+def test_schema_lists_every_file_in_the_directory(monkeypatch, capsys):
+    assert run_main(monkeypatch, ["schema"]) == 0
+    assert capsys.readouterr().out.split() == schema_names()
+    # A schema file that exists but is not listed is the regression this
+    # test watches for: the fingerprint vectors file sat unlisted for a
+    # release.
+    directory = resources.files("analysis_lib.findings").joinpath("schemas")
+    files = {item.name for item in directory.iterdir() if item.name.endswith(".json")}
+    listed = {load_schema(name)["$id"].rsplit("/", 1)[-1] for name in schema_names()}
+    assert listed == files
+
+
+def test_schema_names_json_lists_name_id_and_title(monkeypatch, capsys):
     assert run_main(monkeypatch, ["schema", "--format", "json"]) == 0
-    assert json.loads(capsys.readouterr().out) == {"schemas": schema_names()}
+    document = json.loads(capsys.readouterr().out)
+    assert [entry["name"] for entry in document["schemas"]] == schema_names()
+    for entry in document["schemas"]:
+        schema = load_schema(entry["name"])
+        assert entry["$id"] == schema["$id"]
+        assert entry["title"] == schema["title"]
+    validate("depscan-schema-output", document)
 
 
 @pytest.mark.parametrize("fmt", ["text", "json"])
@@ -187,12 +211,32 @@ def test_schema_prints_one_document(monkeypatch, capsys, fmt):
     assert json.loads(capsys.readouterr().out) == load_schema("finding")
 
 
+def test_schema_prints_every_published_document(monkeypatch, capsys):
+    for name in schema_names():
+        assert run_main(monkeypatch, ["schema", name]) == 0
+        assert json.loads(capsys.readouterr().out) == load_schema(name)
+
+
 def test_schema_unknown_name_exits_two(monkeypatch, capsys):
     assert run_main(monkeypatch, ["schema", "nope"]) == 2
     err = capsys.readouterr().err
     assert "unknown schema 'nope'" in err
     for name in schema_names():
         assert name in err
+
+
+def test_schema_unknown_name_json_writes_the_error_document(monkeypatch, capsys):
+    assert run_main(monkeypatch, ["schema", "nope", "--format", "json"]) == 2
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 2
+    assert document["error"]["verb"] == "schema"
+    assert "unknown schema 'nope'" in document["error"]["message"]
+    validate("depscan-error", document)
+    # The same message goes to stderr as text, and stderr stays free of JSON.
+    assert "unknown schema 'nope'" in captured.err
+    with pytest.raises(ValueError):
+        json.loads(captured.err)
 
 
 # --- config show -----------------------------------------------------------------
