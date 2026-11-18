@@ -188,7 +188,7 @@ The table is generated from the exit-code constant in `depscan/commands/output.p
 | 4 | A requested capability that cannot run, for example a named check whose analyzer is missing, or an iOS or firmware target. |
 <!-- exit code table end -->
 
-Findings never change the exit code in this version: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format exits 1, 2 or 4, stdout carries the error document, so a caller can parse stdout as one JSON document whatever the exit code.
+Findings never change the exit code in this version: a scan that reports vulnerabilities still exits 0, and a clean scan never exits non-zero for being clean. When a verb in json format stops with a failure that ends it as a whole, stdout carries the error document; a scan whose targets fail and a validate with invalid documents keep their own documents and exit 1. A caller can parse stdout as one JSON document whatever the exit code.
 
 ## Scanning projects locally (Python version)
 
@@ -280,7 +280,7 @@ depscan scan . --exclude-type os --exclude-type docker
 
 `--format json` selects the output on every verb: the verb writes exactly one JSON document on stdout, followed by a newline, and nothing else on stdout, whatever the exit code. The banner is suppressed, and the tables, progress and logs move to stderr, so `depscan scan . --format json | jq` sees exactly the document. A failing verb also prints its message on stderr as one plain text line.
 
-The scan verb prints `{"scans": [...]}`, one entry per given target, also for a single target and for zero targets. A scanned entry carries `target`, `kind`, `scanDir`, `manifest` and `findings`; a target the detection refused gets `{"target", "kind": null, "error"}` with the reason, so no target is silently dropped. When a verb exits 1, 2 or 4 in json format, stdout carries the error document `{"error": {"exitCode", "verb", "message", "details"}}` instead. Every verb's document has a published JSON Schema, and `depscan schema` lists the names. The full contract, the per-verb documents and one runnable example per verb are on [the agents page](agents).
+The scan verb prints `{"scans": [...]}`, one entry per given target, also for a single target and for zero targets. A scanned entry carries `target`, `kind`, `scanDir`, `manifest` and `findings`; a target the detection refused gets `{"target", "kind": null, "error"}` with the reason, so no target is silently dropped. When a verb stops with a failure that ends it as a whole, stdout carries the error document `{"error": {"exitCode", "verb", "message", "details"}}` instead; per-target failures do not, so a scan with a refused target and a validate with an invalid document keep their own documents and exit 1. Every verb's document has a published JSON Schema, and `depscan schema` lists the names. The full contract, the per-verb documents and one runnable example per verb are on [the agents page](agents).
 
 ```bash
 depscan scan . --format json

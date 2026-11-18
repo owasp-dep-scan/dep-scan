@@ -38,7 +38,7 @@ The `validate` result entry is `{"file", "format", "valid", "errors"}`. An inval
 
 ## The error document
 
-When a verb in json format exits 1, 2 or 4, stdout carries the error document instead of the verb's own document:
+When a verb in json format stops with a failure that ends it as a whole, it exits 1, 2 or 4 and stdout carries the error document instead of the verb's own document:
 
 ```json
 {
@@ -66,6 +66,8 @@ When a verb in json format exits 1, 2 or 4, stdout carries the error document in
 | `config init` exit 1, the file it refuses to overwrite | `{"path": "..."}` |
 | every other failure | no `details` |
 
+A failure that does not stop the verb keeps the verb's own document and still exits 1: a scan whose targets fail keeps the `{"scans": [...]}` object, and `validate` with invalid documents keeps its results document. The error document is what stdout carries when nothing else can be: a usage error, a scan refused before any target runs, a failed vdb download, a report or config command that cannot run, a doctor requirement, a server that cannot start.
+
 A usage error that argparse finds before a verb runs (an unknown option, an unknown verb, a missing value) writes the error document on stdout and exits 2 only when the command line asks for json anywhere, `--format json` as two tokens or `--format=json` as one. Otherwise argparse's text usage on stderr is the whole output, which is what a dep-scan 6 command line sees: a line that starts with an option never reaches a verb, is translated on stderr, and exits 2 with stdout empty. The `verb` field of a usage-error document is the first token the command line names, or the empty string when it names none.
 
 ## Exit codes
@@ -87,7 +89,7 @@ No verb reads stdin or waits for input, in any format, with or without a termina
 
 ## Paths in json documents
 
-Every path a json document carries outside the manifest and the findings is absolute and normalised, with `/` as the separator on every platform and the drive letter kept on Windows. The rule covers the scan and report documents' `scanDir`, the validate results' `file`, `config init`'s `written`, and the vdb documents' `vdbHome`, shard `storeDir` and marker-file path. Inside the manifest and the findings, paths keep the scan-directory-relative form their schemas define, and `scanDir` is the stated root for them.
+Every path a json document carries outside the manifest and the findings is absolute and normalised, with `/` as the separator on every platform and the drive letter kept on Windows. The rule covers the scan and report documents' `scanDir`, the validate results' `file`, `config init`'s `written`, and the vdb documents' `vdbHome`, shard `storeDir` and marker-file path. The doctor report is the one document outside the rule: its `tools[].path` and `data.vulnerabilityDatabase.directory` report the paths its lookups found, which on Windows keep backslash separators. Inside the manifest and the findings, paths keep the scan-directory-relative form their schemas define, and `scanDir` is the stated root for them.
 
 `config show` is the one place that prints option values verbatim: it mirrors the effective options the next scan receives, and rewriting a path there would misreport it.
 
