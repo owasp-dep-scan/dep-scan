@@ -1,0 +1,32 @@
+depscan/commands/__init__.py
+  s_eaf08476298e8c::t_72f9af05ed5f5e 32,52,66
+depscan/commands/mcp.py
+  s_eaf08476298e8c::t_0b7b71baef4e69 19
+  s_eaf08476298e8c::t_f7536e0ee88c4b 1-18,20-87
+depscan/mcp_server/__init__.py
+  s_eaf08476298e8c::t_37f77f89c1f5cd 1-8
+depscan/mcp_server/confinement.py
+  s_eaf08476298e8c::t_fc8b78c4602eb5 1-135
+depscan/mcp_server/server.py
+  s_eaf08476298e8c::t_1d235f83755cbc 223-225,227-228
+  s_eaf08476298e8c::t_a3f743c7744adb 1-222,226,229-237
+test/test_v7_verbs.py
+  s_eaf08476298e8c::t_8d296eae8781e0 61,73
+  s_eaf08476298e8c::t_6628cbb70b8aa1 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c0030b986dc718417aa078305b4a8ae10723a04",
+  "prompts": {},
+  "sessions": {
+    "s_eaf08476298e8c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_3",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
