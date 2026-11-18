@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-manifest.schema.json",
+  "$id": "urn:owasp:depscan:schema:manifest:1",
   "title": "dep-scan scan directory manifest",
   "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist.",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-schema-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:schema-output:1",
   "title": "dep-scan schema output",
   "description": "The document `depscan schema --format json` writes on stdout: every published schema, in the order the CLI lists them, with the name it accepts on the command line, its $id and its title.",
   "type": "object",
@@ -18,11 +18,11 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "description": "The name `depscan schema <name>` accepts: the schema's file name in the schemas directory without .json."
+            "description": "The name `depscan schema <name>` accepts: the schema's file name in the schemas directory without .schema.json."
           },
           "$id": {
             "type": "string",
-            "pattern": "^https://depscan\\.owasp\\.org/schemas/",
+            "pattern": "^urn:owasp:depscan:schema:[a-z0-9-]+:[0-9]+$",
             "description": "The schema's identifier as the file itself declares it."
           },
           "title": {

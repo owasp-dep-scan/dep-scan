@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-config-show-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:config-show-output:1",
   "title": "dep-scan config show output",
   "description": "The document `depscan config show --format json` writes on stdout: every effective scan option with the value the next scan receives and where the value came from. Values are printed verbatim, so a path-valued option shows the form the scan will read it in, not a rewritten one. Precedence when several sources set one option: the command line, then the checks or profile, then the depscan.toml file, then an environment variable, then the default.",
   "type": "object",

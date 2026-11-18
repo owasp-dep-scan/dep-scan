@@ -57,17 +57,12 @@ def test_the_exit_code_table_lists_the_four_codes_with_their_meanings():
 
 
 def test_the_documented_exit_code_table_is_the_generated_one():
-    """The cli-usage page embeds exit_code_table_markdown() between markers.
-
-    The markers and the page's table land with the documentation piece; on a
-    tree without them there is nothing for this test to check yet.
-    """
+    """The cli-usage page embeds exit_code_table_markdown() between markers."""
     page = Path(__file__).parent.parent / "documentation" / "docs" / "cli-usage.mdx"
     text = page.read_text(encoding="utf-8")
     start = text.find("<!-- exit code table start -->\n")
     end = text.find("<!-- exit code table end -->")
-    if start == -1 or end == -1:
-        pytest.skip("the exit code table markers land with the documentation piece")
+    assert start != -1 and end != -1, "the exit code table markers are missing"
     region = text[start + len("<!-- exit code table start -->\n") : end]
     assert region == exit_code_table_markdown()
 

@@ -56,7 +56,6 @@ def test_schema_names():
         "depscan-finding",
         "depscan-doctor",
         "depscan-manifest",
-        "depscan-finding-fingerprint-vectors",
         "depscan-scan-output",
         "depscan-report-output",
         "depscan-vdb-download-output",
@@ -77,7 +76,7 @@ def test_schema_names():
 def test_load_schema_metadata():
     schema = load_schema("finding")
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert schema["$id"] == "https://depscan.owasp.org/schemas/depscan-finding.schema.json"
+    assert schema["$id"] == "urn:owasp:depscan:schema:finding:1"
     assert schema["additionalProperties"] is False
 
 

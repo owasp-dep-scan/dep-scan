@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-scan-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:scan-output:1",
   "title": "dep-scan scan output",
   "description": "The document `depscan scan --format json` writes on stdout: one object with a scans array, whatever the exit code and however many targets were given, one entry per given target in the order they were given, also for zero targets, which means the current directory. A scanned entry carries the target and its detected or forced kind, the scan directory the scan wrote, its manifest and its findings. A target the detection refused, or whose scan stopped with an unexpected error, is never dropped: its entry carries kind null and the reason. Paths in scanDir are absolute with / separators; inside the manifest and the findings, paths keep the scan-directory-relative form those schemas define, with scanDir as their root.",
   "type": "object",

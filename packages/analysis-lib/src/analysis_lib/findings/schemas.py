@@ -5,9 +5,12 @@ ship inside the wheel as package data. Other implementations read the same
 files, so this module only loads and validates: the schema is the contract,
 not this code.
 
-A schema's name is its file name without ``.json``: ``depscan-scan-output``
-for ``depscan-scan-output.schema.json``, ``depscan-finding-fingerprint-vectors``
-for the vectors file. The legacy short name ``finding`` stays accepted as an
+A schema's name is its file name without ``.schema.json``:
+``depscan-scan-output`` for ``depscan-scan-output.schema.json``. Each schema's
+``$id`` is ``urn:owasp:depscan:schema:<name without depscan->:1``; the finding,
+doctor and manifest identifiers predate the output schemas and are unchanged.
+The fingerprint test vectors next to the schemas are data, not a schema, and
+are not listed. The legacy short name ``finding`` stays accepted as an
 alias so existing callers keep working. The published names are listed in
 registration order: the document schemas first, then the output schemas verb
 by verb, then the error schema.
@@ -30,7 +33,6 @@ _SCHEMA_FILES = (
     "depscan-finding.schema.json",
     "depscan-doctor.schema.json",
     "depscan-manifest.schema.json",
-    "depscan-finding-fingerprint-vectors.json",
     # The output schemas, verb by verb in the verb registry's order, each
     # verb's subcommands in the order the verb registers them.
     "depscan-scan-output.schema.json",
@@ -78,10 +80,8 @@ class SchemaValidationError(ValueError):
 
 
 def _schema_name(filename: str) -> str:
-    """The published name of a schema file: its name without .json."""
-    if filename.endswith(".schema.json"):
-        return filename[: -len(".schema.json")]
-    return filename[: -len(".json")]
+    """The published name of a schema file: its name without .schema.json."""
+    return filename[: -len(".schema.json")]
 
 
 #: Maps every published schema name (its file stem) to its file.
@@ -94,9 +94,9 @@ def schema_names() -> List[str]:
 
 
 def published_files() -> List[str]:
-    """The file names in the bundled schemas directory."""
+    """The schema files in the bundled schemas directory."""
     directory = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR)
-    return sorted(item.name for item in directory.iterdir() if item.name.endswith(".json"))
+    return sorted(item.name for item in directory.iterdir() if item.name.endswith(".schema.json"))
 
 
 def _resolve(name: str) -> str:
@@ -142,10 +142,10 @@ def _registry() -> Registry:
 
     A schema may reference a sibling schema by file name, as the manifest
     schema reuses the doctor definitions through
-    ``depscan-doctor.schema.json#/$defs/...``. Because every schema carries an
-    absolute ``$id``, such a reference resolves to ``$id`` of the target file,
-    so each resource is registered under both names and the validator follows
-    the reference without copying the definitions.
+    ``depscan-doctor.schema.json#/$defs/...``, and the output schemas refer to
+    the document schemas the same way. Each resource is registered under its
+    file name and its ``$id``, so the validator follows either form of
+    reference without copying the definitions.
     """
     registry = Registry()
     for filename in published_files():

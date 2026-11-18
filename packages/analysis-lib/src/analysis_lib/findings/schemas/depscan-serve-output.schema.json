@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-serve-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:serve-output:1",
   "title": "dep-scan serve output",
   "description": "The document `depscan serve --format json` writes on stdout once the server is listening, and the only content stdout ever carries: the host and port the server was configured with, and the URL a client can reach it on. Request logs go to stderr. A server that cannot start produces the error document instead.",
   "type": "object",

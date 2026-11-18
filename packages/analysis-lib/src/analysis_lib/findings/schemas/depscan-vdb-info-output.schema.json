@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-vdb-info-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:vdb-info-output:1",
   "title": "dep-scan vdb info output",
   "description": "The document `depscan vdb info --format json` writes on stdout: the local database and shard store as a read-only inspection records them. A missing database, a stale shard or a coverage gap is recorded as such, never hidden. The paths in vdbHome and shardStore.storeDir are absolute with / separators; the marker is the last download's image reference or shard-set marker, not a path.",
   "type": "object",

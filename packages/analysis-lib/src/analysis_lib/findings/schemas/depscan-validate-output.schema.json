@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-validate-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:validate-output:1",
   "title": "dep-scan validate output",
   "description": "The document `depscan validate --format json` writes on stdout: one result per given file, in the order the files were given. An invalid input document is a result, not an error: the verb exits 1 with this document, and a document that could not be read at all is a result with its reason among the errors. A failure that stops the verb as a whole produces the error document instead.",
   "type": "object",

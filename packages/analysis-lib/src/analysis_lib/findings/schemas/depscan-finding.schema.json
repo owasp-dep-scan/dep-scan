@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-finding.schema.json",
+  "$id": "urn:owasp:depscan:schema:finding:1",
   "title": "dep-scan finding",
   "description": "One result reported by dep-scan. Every category dep-scan writes, from classic vulnerabilities through memory-safety defects, binary hardening and license issues, uses this one shape. The id field carries the line-free fingerprint (dsf1) that baselines and suppressions key on; locations and evidence carry the reasons; coverage says whether the analysis that owns the finding actually ran. Extensions go in the properties array, which is why the objects stay closed.",
   "type": "object",

@@ -185,12 +185,10 @@ def test_schema_lists_every_file_in_the_directory(monkeypatch, capsys):
     assert run_main(monkeypatch, ["schema"]) == 0
     assert capsys.readouterr().out.split() == schema_names()
     # A schema file that exists but is not listed is the regression this
-    # test watches for: the fingerprint vectors file sat unlisted for a
-    # release.
+    # test watches for. The fingerprint vectors file is data, not a schema.
     directory = resources.files("analysis_lib.findings").joinpath("schemas")
-    files = {item.name for item in directory.iterdir() if item.name.endswith(".json")}
-    listed = {load_schema(name)["$id"].rsplit("/", 1)[-1] for name in schema_names()}
-    assert listed == files
+    files = {item.name for item in directory.iterdir() if item.name.endswith(".schema.json")}
+    assert {f"{name}.schema.json" for name in schema_names()} == files
 
 
 def test_schema_names_json_lists_name_id_and_title(monkeypatch, capsys):

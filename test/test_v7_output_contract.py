@@ -35,7 +35,12 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-from analysis_lib.findings.schemas import load_schema, schema_names, validate as validate_schema
+from analysis_lib.findings.schemas import (
+    load_schema,
+    published_files,
+    schema_names,
+    validate as validate_schema,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_PAGE = REPO_ROOT / "documentation" / "docs" / "agents.mdx"
@@ -1116,10 +1121,6 @@ def test_no_color_beats_the_colour_variables(runner_script, tmp_path):
 
 def test_schema_verb_lists_every_file_and_validates(runner_script, tmp_path):
     """`depscan schema --format json` lists every published schema file."""
-    # Imported here: published_files arrives with the schemas piece, and
-    # this module's other tests must keep collecting without it.
-    from analysis_lib.findings.schemas import published_files
-
     exit_code, out, err, _calls = run_verb(
         ["schema", "--format", "json"], "none", runner_script, tmp_path
     )
@@ -1128,10 +1129,7 @@ def test_schema_verb_lists_every_file_and_validates(runner_script, tmp_path):
     entries = document["schemas"]
     assert [entry["name"] for entry in entries] == schema_names()
     on_disk = published_files()
-    stems = {
-        name[: -len(".schema.json")] if name.endswith(".schema.json") else name[: -len(".json")]
-        for name in on_disk
-    }
+    stems = {name[: -len(".schema.json")] for name in on_disk}
     assert {entry["name"] for entry in entries} == stems, (
         "the listing and the schemas directory disagree"
     )
@@ -1143,16 +1141,9 @@ def test_schema_verb_lists_every_file_and_validates(runner_script, tmp_path):
 
 def test_every_published_schema_is_valid_draft_2020_12():
     """Every schema in the directory passes draft 2020-12 meta-validation."""
-    # Imported here: published_files arrives with the schemas piece, and
-    # this module's other tests must keep collecting without it.
-    from analysis_lib.findings.schemas import published_files
-
     for name in schema_names():
         Draft202012Validator.check_schema(load_schema(name))
-    stems = {
-        name[: -len(".schema.json")] if name.endswith(".schema.json") else name[: -len(".json")]
-        for name in published_files()
-    }
+    stems = {name[: -len(".schema.json")] for name in published_files()}
     assert stems == set(schema_names()), "a schema file is missing from the published list"
 
 

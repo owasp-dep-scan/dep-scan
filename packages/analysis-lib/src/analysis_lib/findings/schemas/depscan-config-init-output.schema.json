@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-config-init-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:config-init-output:1",
   "title": "dep-scan config init output",
   "description": "The document `depscan config init --format json` writes on stdout after it wrote the configuration file. Refusing to overwrite an existing file produces the error document instead.",
   "type": "object",

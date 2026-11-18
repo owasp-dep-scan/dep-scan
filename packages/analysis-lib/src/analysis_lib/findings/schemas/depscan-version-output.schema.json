@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-version-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:version-output:1",
   "title": "dep-scan version output",
   "description": "The document `depscan version --format json` writes on stdout: the dep-scan version and the version of every tool the doctor report found, null for a tool whose version could not be read.",
   "type": "object",

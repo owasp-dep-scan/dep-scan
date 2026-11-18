@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-vdb-download-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:vdb-download-output:1",
   "title": "dep-scan vdb download output",
   "description": "The document `depscan vdb download --format json` writes on stdout after the download completed and the marker file was written: the image reference it downloaded and the marker file's path for a complete flavor, or the refreshed shard names and the marker file's path for --shards. A download that fails produces the error document instead of this one.",
   "oneOf": [

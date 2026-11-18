@@ -42,17 +42,9 @@ def read_one_document(capsys):
 
 
 def validate_against_published_schema(document, name):
-    """Validate against the named schema when it is published.
+    """Validate against the named published schema."""
+    from analysis_lib.findings.schemas import validate
 
-    The output schemas land with the schemas piece; until then there is
-    nothing to load and this check skips.
-    """
-    from analysis_lib.findings.schemas import load_schema, validate
-
-    try:
-        load_schema(name)
-    except ValueError:
-        pytest.skip(f"the {name} schema lands with the schemas piece")
     validate(name, document)
 
 

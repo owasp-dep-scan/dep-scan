@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://depscan.owasp.org/schemas/depscan-report-output.schema.json",
+  "$id": "urn:owasp:depscan:schema:report-output:1",
   "title": "dep-scan report output",
   "description": "The document `depscan report --format json` writes on stdout: the saved scan directory's documents as one object. Paths in scanDir are absolute with / separators; inside the manifest and the findings, paths keep the scan-directory-relative form those schemas define, with scanDir as their root. A directory that cannot be loaded produces the error document instead of this one.",
   "type": "object",
