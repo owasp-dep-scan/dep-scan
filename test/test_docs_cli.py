@@ -10,12 +10,16 @@ the migration entry that documents their removal (the ``.depscan-vdb-image``
 marker file keeps its name). Published schema names such as
 ``depscan-vdb-info-output`` name schema files, not the removed commands, so
 the sweep strips them from a line before checking it. When one of these
-fails, fix the page or regenerate the embedded block, not the test.
+fails, fix the page or regenerate the embedded block, not the test. The
+exit code table on the usage page and the agents page is the generated one
+from the exit code constant, checked the same way.
 """
 
 import argparse
 import re
 from pathlib import Path
+
+import pytest
 
 from analysis_lib.findings.schemas import schema_names
 from depscan.commands import VERBS, build_parser
@@ -25,12 +29,16 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_DIR = REPO_ROOT / "documentation"
 USAGE_PAGE = DOCS_DIR / "docs" / "cli-usage.mdx"
 MIGRATION_PAGE = DOCS_DIR / "docs" / "migrate-v6-to-v7.mdx"
+AGENTS_PAGE = DOCS_DIR / "docs" / "agents.mdx"
 
 #: Fenced block languages that hold shell commands.
 COMMAND_LANGUAGES = frozenset({"bash", "sh", "shell", "zsh"})
 
 TABLE_START = "<!-- v6-to-v7 option table start -->"
 TABLE_END = "<!-- v6-to-v7 option table end -->"
+
+EXIT_TABLE_START = "<!-- exit code table start -->"
+EXIT_TABLE_END = "<!-- exit code table end -->"
 
 #: The migration entry that names the removed console scripts; it is the one
 #: place the old names may appear, because saying what was removed is its job.
@@ -154,6 +162,22 @@ def test_migration_page_embeds_the_generated_option_table():
     assert start != -1 and end != -1, "the migration page must carry both table markers"
     region = text[start + len(TABLE_START) + 1 : end]
     assert region == option_table_markdown()
+
+
+@pytest.mark.parametrize("page", [USAGE_PAGE, AGENTS_PAGE], ids=["cli-usage", "agents"])
+def test_exit_code_table_matches_the_constant(page):
+    """The region between the markers is exit_code_table_markdown() exactly."""
+    # Imported here and not at module level: the exit code constant and its
+    # table helper land with the output contract, and this file's other
+    # tests must keep collecting on a tree without them.
+    from depscan.commands.output import exit_code_table_markdown
+
+    text = _read(page)
+    start = text.find(EXIT_TABLE_START + "\n")
+    end = text.find(EXIT_TABLE_END)
+    assert start != -1 and end != -1, f"{page.name} must carry both exit code table markers"
+    region = text[start + len(EXIT_TABLE_START) + 1 : end]
+    assert region == exit_code_table_markdown()
 
 
 def test_no_v6_invocations_remain_in_the_docs():
