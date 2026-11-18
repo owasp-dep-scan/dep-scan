@@ -1254,6 +1254,35 @@ def test_vdb_status_over_the_budget_is_an_error_without_a_scan_directory(
 # --- run_scan ------------------------------------------------------------------------
 
 
+def test_a_run_scan_target_starting_with_a_dash_is_a_tool_error(
+    open_session, tmp_path, monkeypatch, scan_stubs
+):
+    """A dash-leading target that exists under a root is classified as a
+    source and reaches the scan verb's parser, where argparse would call
+    sys.exit(2); SystemExit is not an Exception, so it must never leave
+    the tool: it fails as a tool error and the session keeps serving."""
+    monkeypatch.chdir(tmp_path)
+    dash_dir = tmp_path / "-dash-dir"
+    dash_dir.mkdir()
+    good = tmp_path / "project"
+    good.mkdir()
+    (good / "app.py").write_text("import requests\n", encoding="utf-8")
+
+    async def scenario(session):
+        message = await call_error(session, "run_scan", {"target": "-dash-dir"})
+        document = await call_document(
+            session, "run_scan", {"target": str(good)}, "depscan-mcp-run_scan-output"
+        )
+        return message, document["argv"]
+
+    message, argv = drive(open_session, scenario, (tmp_path,))
+    assert "do not parse as a depscan scan command line" in message
+    assert "-dash-dir" in message
+    # The session survived the refused call and answers the next one.
+    assert argv == ["depscan", "scan", str(good)]
+    assert scan_stubs["calls"]["cdxgen"] == []
+
+
 def test_run_scan_dry_run_returns_the_argv_and_the_effective_options(
     open_session, tmp_path, scan_stubs
 ):

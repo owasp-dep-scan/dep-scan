@@ -39,7 +39,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, NoReturn, Optional, Tuple
 
 from analysis_lib.findings.schemas import SchemaValidationError, load_schema, validate
 from mcp import types
@@ -550,13 +550,31 @@ def _scan_argv(args: Dict[str, Any]) -> List[str]:
     return argv
 
 
+class _ScanArgsParser(argparse.ArgumentParser):
+    """A scan-argument parser whose errors are tool errors, not exits.
+
+    argparse's own error calls ``sys.exit(2)`` after printing the usage,
+    and ``SystemExit`` is not an ``Exception``: it would pass through
+    ``handle_call_tool``'s isError conversion and the verb's handler and
+    stop the whole server process. A target the scan verb itself would
+    reject, a dash-leading one most of all, has to fail as a tool error
+    that names what did not parse.
+    """
+
+    def error(self, message: str) -> NoReturn:
+        raise ToolError(
+            f"the run_scan target and options do not parse as a depscan "
+            f"scan command line: {message}"
+        )
+
+
 def _parsed_scan_args(argv: List[str]) -> argparse.Namespace:
     """The scan verb's parsed namespace for the argv the tool built.
 
     The same parser the scan verb registers, so the config show machinery
     sees exactly what ``depscan scan`` would have parsed.
     """
-    parser = argparse.ArgumentParser(prog="depscan scan", add_help=False)
+    parser = _ScanArgsParser(prog="depscan scan", add_help=False)
     add_scan_options(parser)
     return parser.parse_args(argv[2:])
 
