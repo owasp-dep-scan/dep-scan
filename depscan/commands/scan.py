@@ -20,7 +20,8 @@ BOM profile v6 called ``--profile``) lands on ``bom_profile`` because
 :func:`scan_namespace` builds the internal namespace from a parsed command
 line, and :func:`run` drives the scans: one per target, with the target kind
 detected (or forced), the requested checks gated against one doctor report
-before any scan work, and one JSON document on stdout in json format.
+before any scan work, and in json format the ``{"scans": [...]}`` object on
+stdout, one entry per given target with its ``target`` and ``kind``.
 """
 
 import argparse
@@ -28,13 +29,20 @@ import json
 import os
 import re
 import sys
-from typing import List, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 from analysis_lib.config import SUPPORTED_BOM_PROFILES
 
 from depscan import api
 from depscan.cli_options import build_parser, validate_spec_version
 from depscan.commands import checks as checks_table
+from depscan.commands.output import (
+    EXIT_REQUIREMENT_NOT_MET,
+    EXIT_USAGE,
+    json_path,
+    print_error_document,
+)
 from depscan.commands.targets import FORCE_TARGET_KINDS, detect_kind
 from depscan.lib import doctor as doctor_lib
 from depscan.lib.logger import LOG, console
@@ -695,36 +703,53 @@ def _append_check_lists(internal, resolution) -> set:
 
 # --- the targets -----------------------------------------------------------------
 
+
+@dataclass(frozen=True)
+class _Refusal:
+    """A failure that stops the scan verb as a whole, before any scan runs.
+
+    ``message`` is the text that goes on stderr in every format and the
+    error document's ``message`` in json format; ``details`` is the error
+    document's verb-specific payload.
+    """
+
+    exit_code: int
+    message: str
+    details: Optional[Dict[str, Any]] = None
+
+
 #: Forced kinds with no inventory path in this version. Naming one through
 #: ``--target-kind`` refuses the run whether or not targets were given;
 #: detection can additionally find an iOS app on a ``.ipa`` file.
 _UNSCANNABLE_FORCED_KINDS = ("ios", "firmware")
 
 
-def _refuse_forced_kind(kind: str) -> None:
-    """Log why a forced kind cannot be scanned in this version."""
+def _forced_kind_refusal(kind: str) -> _Refusal:
+    """Why a run forced into ``kind`` is refused: the exit 4 refusal."""
     if kind == "firmware":
-        LOG.error("Firmware targets have no inventory path in this version.")
-        return
+        message = "Firmware targets have no inventory path in this version."
+        return _Refusal(EXIT_REQUIREMENT_NOT_MET, message, {"capability": None, "reason": message})
     mobile = doctor_lib.capability_unavailable_reason("mobile", {}, {})
-    LOG.error("iOS targets need the mobile capability, which cannot scan them: %s", mobile)
+    message = f"iOS targets need the mobile capability, which cannot scan them: {mobile}"
+    return _Refusal(EXIT_REQUIREMENT_NOT_MET, message, {"capability": "mobile", "reason": mobile})
 
 
 def _resolve_targets(args: argparse.Namespace):
-    """Detect every target's kind; returns ``(entries, refusal_code)``.
+    """Detect every target's kind; returns ``(entries, refusal)``.
 
     ``entries`` holds one ``(target, kind, refusal)`` triple per given
     target, in the given order: a refused target (a source target that does
     not exist) carries no kind and its refusal reason, so the json output can
     report it instead of silently dropping it, while a multi-target run still
     scans the remaining targets. ``entries`` is None when the whole run is
-    refused (exit 4 for a kind this version cannot scan). Each detection is
-    logged with its reason.
+    refused, and ``refusal`` is then the :class:`_Refusal` to report (exit 4,
+    for a kind this version cannot scan). Each detection is logged with its
+    reason; a whole-run refusal is logged by the caller, in the format the
+    caller writes.
     """
     forced = getattr(args, "target_kind", None)
     if forced in _UNSCANNABLE_FORCED_KINDS:
-        _refuse_forced_kind(forced)
-        return None, 4
+        return None, _forced_kind_refusal(forced)
     entries: List[Tuple[str, Optional[str], Optional[str]]] = []
     for target in getattr(args, "targets", None) or []:
         if forced:
@@ -733,12 +758,13 @@ def _resolve_targets(args: argparse.Namespace):
             kind, reason = detect_kind(target)
         if kind == "ios":
             mobile = doctor_lib.capability_unavailable_reason("mobile", {}, {})
-            LOG.error(
-                "The target %s is an iOS app, which the mobile capability cannot scan: %s",
-                target,
-                mobile,
+            message = (
+                f"The target {target} is an iOS app, which the mobile capability "
+                f"cannot scan: {mobile}"
             )
-            return None, 4
+            return None, _Refusal(
+                EXIT_REQUIREMENT_NOT_MET, message, {"capability": "mobile", "reason": mobile}
+            )
         if kind == "source" and not os.path.exists(target):
             message = _missing_source_message(target)
             LOG.error(message)
@@ -746,7 +772,7 @@ def _resolve_targets(args: argparse.Namespace):
             continue
         LOG.info("Target %s: kind %s (%s)", target, kind, reason)
         entries.append((target, kind, None))
-    return entries, 0
+    return entries, None
 
 
 def _missing_source_message(target: str) -> str:
@@ -769,12 +795,14 @@ def _capability_gate(args: argparse.Namespace, names):
     checks become not-assessed entries instead. Without ``--checks`` and
     without ``--profile`` no report is collected here at all: the scan
     directory's own setup collects the one it records. Returns
-    ``(report, exit_code)``; the report is the one the scans reuse.
+    ``(report, refusal)``, ``refusal`` the :class:`_Refusal` to report when
+    the gate stopped the verb; the report is the one the scans reuse. The
+    refusal is logged by the caller, in the format the caller writes.
     """
     profile_name = getattr(args, "profile", None)
     named = [name for name in names if name != checks_table.ALL_CHECKS]
     if not names and profile_name is None:
-        return None, 0
+        return None, None
     report = doctor_lib.doctor()
     if named:
         requested = named
@@ -782,7 +810,7 @@ def _capability_gate(args: argparse.Namespace, names):
         requested = list(checks_table.PROFILES[profile_name].checks)
     else:
         # Only the all expansion was requested.
-        return report, 0
+        return report, None
     tools = report.tools_by_name()
     for name in requested:
         capability = checks_table.CHECKS[name].capability
@@ -790,9 +818,12 @@ def _capability_gate(args: argparse.Namespace, names):
             continue
         reason = doctor_lib.capability_unavailable_reason(capability, tools, report.data)
         if reason:
-            LOG.error("The %s check cannot run on this machine: %s", name, reason)
-            return None, 4
-    return report, 0
+            return None, _Refusal(
+                EXIT_REQUIREMENT_NOT_MET,
+                f"The {name} check cannot run on this machine: {reason}",
+                {"capability": capability, "reason": reason},
+            )
+    return report, None
 
 
 # --- the scans -------------------------------------------------------------------
@@ -803,27 +834,45 @@ def run(args: argparse.Namespace) -> int:
 
     Usage errors (an unknown check name) exit 2, a kind this version cannot
     scan exits 4, and the exit code of the scans themselves is the highest of
-    them: a scan that stopped early counts 1.
+    them: a scan that stopped early counts 1. A refusal that stops the verb
+    as a whole writes the error document on stdout in json format, next to
+    the message on stderr; a run whose targets partly fail still writes the
+    ``{"scans": [...]}`` object, with each failed target's error inside its
+    entry, and exits with the highest code.
     """
+    json_output = args.format == "json"
     names = checks_table.parse_checks(getattr(args, "checks", None))
     unknown = checks_table.unknown_checks(names)
     if unknown:
-        print(
+        message = (
             f"depscan scan: unknown check {', '.join(unknown)}; known checks: "
-            f"{', '.join(checks_table.CHECK_NAMES)}",
-            file=sys.stderr,
+            f"{', '.join(checks_table.CHECK_NAMES)}"
         )
-        return 2
+        if json_output:
+            print_error_document(EXIT_USAGE, "scan", message, {"unknownChecks": list(unknown)})
+        else:
+            print(message, file=sys.stderr)
+        return EXIT_USAGE
     entries, refusal = _resolve_targets(args)
     if entries is None:
-        return refusal
-    report, gate_code = _capability_gate(args, names)
-    if gate_code:
-        return gate_code
+        if json_output:
+            print_error_document(refusal.exit_code, "scan", refusal.message, refusal.details)
+        else:
+            LOG.error(refusal.message)
+        return refusal.exit_code
+    report, gate_refusal = _capability_gate(args, names)
+    if gate_refusal is not None:
+        if json_output:
+            print_error_document(
+                gate_refusal.exit_code, "scan", gate_refusal.message, gate_refusal.details
+            )
+        else:
+            LOG.error(gate_refusal.message)
+        return gate_refusal.exit_code
     resolution = checks_table.resolve(args, doctor_report=report)
     internal = scan_namespace(args, resolution=resolution)
     saved_stdout = sys.stdout
-    if args.format == "json":
+    if json_output:
         # The stdout console moves to stderr for the duration and the process
         # stdout is redirected with it, so stdout carries exactly one JSON
         # document: the tables, the banner, the logs and any stray print from
@@ -845,8 +894,8 @@ def run(args: argparse.Namespace) -> int:
             console._file = saved_file
     else:
         outcomes = _run_all_scans(args, internal, resolution, entries, report)
-    exit_code = max([refusal, *(code for code, _ in outcomes)])
-    if args.format == "json":
+    exit_code = max(code for code, _ in outcomes)
+    if json_output:
         _print_json_outcomes(outcomes, saved_stdout)
     return exit_code
 
@@ -854,26 +903,31 @@ def run(args: argparse.Namespace) -> int:
 def _run_all_scans(args, internal, resolution, entries, doctor_report):
     """One scan per given target; a single scan for zero or one target.
 
-    Returns one ``(exit_code, document)`` per given target: a scan object
-    (``scanDir``, ``manifest``, ``findings``) for a scan that ran, and a
-    ``{"target", "error"}`` object for a target the detection refused, so
-    the json output never silently drops a target. More than one target
+    Returns one ``(exit_code, entry)`` per given target, in the given order:
+    a scanned entry is ``{"target", "kind", "scanDir", "manifest",
+    "findings"}``, and a refused entry is ``{"target", "kind": None,
+    "error": <refusal reason>}`` for a target the detection refused, so the
+    json output never silently drops a target. More than one target
     writes each scan into ``<reports-dir>/<n>-<name>/``, with ``n`` the
     target's 1-based index in the given list; zero or one target uses
-    ``--reports-dir`` as given.
+    ``--reports-dir`` as given. Zero targets scans the current directory
+    the internal options name, as the one entry's ``target``.
     """
     base_reports_dir = internal.reports_dir
     given = list(getattr(args, "targets", None) or [])
     if not given:
         # Zero targets means the current directory, with the internal
         # default and no per-target override.
-        return [_scan_one(argparse.Namespace(**vars(internal)), resolution, doctor_report)]
+        code, document = _scan_one(argparse.Namespace(**vars(internal)), resolution, doctor_report)
+        return [
+            (code, {"target": json_path(internal.src_dir_image), "kind": "source", **document})
+        ]
     multiple = len(given) > 1
     outcomes = []
     for index, (target, kind, refusal) in enumerate(entries, start=1):
         if kind is None:
             # A target the detection refused; it was already logged.
-            outcomes.append((1, {"target": target, "error": refusal}))
+            outcomes.append((1, {"target": target, "kind": None, "error": refusal}))
             continue
         options = argparse.Namespace(**vars(internal))
         _apply_target_options(options, target, kind, args, resolution)
@@ -889,7 +943,8 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
             # is never empty (the env variable or <cwd>/reports), so the
             # pipeline's own rule cannot fire from this verb.
             options.reports_dir = os.path.realpath(target)
-        outcomes.append(_scan_one(options, resolution, doctor_report))
+        code, document = _scan_one(options, resolution, doctor_report)
+        outcomes.append((code, {"target": target, "kind": kind, **document}))
     return outcomes
 
 
@@ -934,6 +989,9 @@ def _scan_one(options, resolution, doctor_report):
 
     A scan that stopped early counts exit 1; its document reports the
     manifest the pipeline still wrote on the way out and no findings.
+    ``scanDir`` carries the absolute, slash-separated form; the manifest and
+    the findings keep the scan-directory-relative paths their schemas
+    define, with ``scanDir`` as their root.
     """
     try:
         result = api.scan(
@@ -946,7 +1004,7 @@ def _scan_one(options, resolution, doctor_report):
         return (
             1,
             {
-                "scanDir": options.reports_dir,
+                "scanDir": json_path(options.reports_dir),
                 "manifest": _read_manifest(options.reports_dir),
                 "findings": [],
             },
@@ -954,7 +1012,7 @@ def _scan_one(options, resolution, doctor_report):
     return (
         0,
         {
-            "scanDir": result.reports_dir,
+            "scanDir": json_path(result.reports_dir),
             "manifest": result.manifest,
             "findings": result.findings,
         },
@@ -980,14 +1038,12 @@ def _target_directory_name(target: str) -> str:
 
 
 def _print_json_outcomes(outcomes, stream) -> None:
-    """Print the outcomes as one JSON document on the saved stdout.
-
-    A zero or one-target invocation gets a single object, an invocation with
-    more targets an array with one entry per target, whatever happened to
-    them.
-    """
-    documents = [document for _, document in outcomes]
-    print(json.dumps(documents[0] if len(documents) == 1 else documents, indent=2), file=stream)
+    """Print the outcomes as the one ``{"scans": [...]}`` document on the
+    saved stdout: one entry per given target, whatever happened to it."""
+    print(
+        json.dumps({"scans": [entry for _, entry in outcomes]}, indent=2),
+        file=stream,
+    )
 
 
 def _read_manifest(reports_dir: str):

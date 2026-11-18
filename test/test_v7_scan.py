@@ -941,8 +941,8 @@ def test_checks_all_plus_a_neutral_check_still_runs(
 def test_json_format_prints_one_document_and_nothing_else(
     scan_stubs, monkeypatch, capfd, tmp_path
 ):
-    """In json mode stdout carries exactly one JSON document with the three
-    keys; the banner, tables and logs move to stderr."""
+    """In json mode stdout carries exactly one JSON document, the ``scans``
+    object with one entry; the banner, tables and logs move to stderr."""
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
     saved_console_file = console.file
@@ -956,15 +956,33 @@ def test_json_format_prints_one_document_and_nothing_else(
     captured = capfd.readouterr()
     # Parsing the whole of stdout proves nothing else reached it.
     document = json.loads(captured.out)
-    assert set(document) == {"scanDir", "manifest", "findings"}
-    assert document["scanDir"] == str(reports)
-    assert document["manifest"]["layoutVersion"] == "1.0"
-    assert len(document["findings"]) == 1
+    assert list(document) == ["scans"]
+    assert len(document["scans"]) == 1
+    entry = document["scans"][0]
+    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert entry["target"] == bom
+    assert entry["kind"] == "bom"
+    assert entry["scanDir"] == str(reports)
+    assert entry["manifest"]["layoutVersion"] == "1.0"
+    assert len(entry["findings"]) == 1
     # Positive control: the scan ran, rendering on the moved console.
     assert scan_stubs["matching"], "the matching stage never ran"
 
 
-def test_json_format_with_two_targets_prints_an_array(scan_stubs, monkeypatch, capfd, tmp_path):
+def test_json_format_scanDir_is_absolute_with_slashes(scan_stubs, monkeypatch, capfd, tmp_path):
+    """A relative --reports-dir still names an absolute, slash-separated
+    scanDir, the root the manifest and the findings' relative paths hang from."""
+    monkeypatch.chdir(tmp_path)
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    code = run_main(monkeypatch, ["scan", bom, "--reports-dir", "reports", "--format", "json"])
+    assert code == 0
+    entry = json.loads(capfd.readouterr().out)["scans"][0]
+    assert entry["scanDir"] == os.path.join(os.getcwd(), "reports").replace(os.sep, "/")
+    assert "\\" not in entry["scanDir"]
+    assert Path(entry["scanDir"]).is_absolute() and Path(entry["scanDir"]).is_dir()
+
+
+def test_json_format_with_two_targets_prints_one_object(scan_stubs, monkeypatch, capfd, tmp_path):
     first = _write_bom(tmp_path / "first.cdx.json", name="first")
     second = _write_bom(tmp_path / "second.cdx.json", name="second")
     reports = tmp_path / "reports"
@@ -982,15 +1000,19 @@ def test_json_format_with_two_targets_prints_an_array(scan_stubs, monkeypatch, c
         ],
     )
     assert code == 0
-    documents = json.loads(capfd.readouterr().out)
-    assert isinstance(documents, list) and len(documents) == 2
-    assert [doc["scanDir"] for doc in documents] == [
+    document = json.loads(capfd.readouterr().out)
+    assert list(document) == ["scans"]
+    entries = document["scans"]
+    assert len(entries) == 2
+    assert [entry["target"] for entry in entries] == [first, second]
+    assert [entry["kind"] for entry in entries] == ["bom", "bom"]
+    assert [entry["scanDir"] for entry in entries] == [
         str(reports / "1-first.cdx.json"),
         str(reports / "2-second.cdx.json"),
     ]
-    for doc in documents:
-        assert set(doc) == {"scanDir", "manifest", "findings"}
-        assert Path(doc["scanDir"]).is_dir(), "each target writes its own directory"
+    for entry in entries:
+        assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+        assert Path(entry["scanDir"]).is_dir(), "each target writes its own directory"
     # Positive control: two scans ran, one per target.
     assert len(scan_stubs["matching"]) == 2
 
@@ -1017,14 +1039,14 @@ def test_json_format_keeps_stray_stdout_writes_off_stdout(
     assert scan_stubs["database"] == ["printed"]
     captured = capfd.readouterr()
     document = json.loads(captured.out)
-    assert set(document) == {"scanDir", "manifest", "findings"}
+    assert document["scans"][0]["manifest"]["layoutVersion"] == "1.0"
     assert "vdb download progress" not in captured.out
     assert "vdb download progress" in captured.err
 
 
 def test_json_format_follows_the_number_of_targets_given(scan_stubs, monkeypatch, capfd, tmp_path):
-    """A two-target invocation prints an array of two entries whatever
-    happened to the targets: the refused one carries its target and the
+    """The ``scans`` array carries one entry per given target whatever
+    happened to it: the refused one carries its target, no kind and the
     refusal reason instead of being silently dropped."""
     monkeypatch.chdir(tmp_path)
     bom = _write_bom(tmp_path / "given.cdx.json")
@@ -1043,14 +1065,178 @@ def test_json_format_follows_the_number_of_targets_given(scan_stubs, monkeypatch
         ],
     )
     assert code == 1
-    documents = json.loads(capfd.readouterr().out)
-    assert isinstance(documents, list) and len(documents) == 2
-    assert set(documents[0]) == {"scanDir", "manifest", "findings"}
-    assert set(documents[1]) == {"target", "error"}
-    assert documents[1]["target"] == "no-such-project"
-    assert "does not exist" in documents[1]["error"]
+    entries = json.loads(capfd.readouterr().out)["scans"]
+    assert len(entries) == 2
+    assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert set(entries[1]) == {"target", "kind", "error"}
+    assert entries[1]["target"] == "no-such-project"
+    assert entries[1]["kind"] is None
+    assert "does not exist" in entries[1]["error"]
     # Positive control: exactly one scan ran, for the existing target.
     assert len(scan_stubs["matching"]) == 1
+
+
+def test_a_single_refused_target_prints_the_scans_object(scan_stubs, monkeypatch, capfd, tmp_path):
+    """A lone target that does not exist refuses with the same object shape:
+    one entry, the refusal reason, exit 1."""
+    monkeypatch.chdir(tmp_path)
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            "no-such-project",
+            "--reports-dir",
+            str(tmp_path / "reports"),
+            "--format",
+            "json",
+        ],
+    )
+    assert code == 1
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)
+    assert list(document) == ["scans"]
+    entry = document["scans"][0]
+    assert set(entry) == {"target", "kind", "error"}
+    assert entry["target"] == "no-such-project"
+    assert entry["kind"] is None
+    assert "does not exist" in entry["error"]
+    assert not (tmp_path / "reports").exists(), "a refused target scans nothing"
+    assert scan_stubs["matching"] == []
+
+
+def test_json_format_zero_targets_scans_the_current_directory(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    """Zero targets is one entry for the current directory, with the scan's
+    own kind for it."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DEPSCAN_SOURCE_DIR_IMAGE", raising=False)
+    (tmp_path / "app.py").write_text("import requests\n")
+    # The engine pin keeps the stubbed local cdxgen path; auto would pick the
+    # image based generator on a machine with docker.
+    code = run_main(monkeypatch, ["scan", "--bom-engine", "CdxgenGenerator", "--format", "json"])
+    assert code == 0
+    document = json.loads(capfd.readouterr().out)
+    assert list(document) == ["scans"]
+    entry = document["scans"][0]
+    assert entry["target"] == os.getcwd().replace(os.sep, "/")
+    assert entry["kind"] == "source"
+    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+    # Positive control: the scan ran against the current directory.
+    assert scan_stubs["matching"], "the matching stage never ran"
+
+
+# ---------------------------------------------------------------------------
+# the json error documents of a refusal that stops the verb
+# ---------------------------------------------------------------------------
+
+
+def test_json_format_unknown_check_prints_the_error_document(monkeypatch, capfd):
+    code = run_main(monkeypatch, ["scan", ".", "--checks", "bogus", "--format", "json"])
+    assert code == 2
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 2
+    assert document["error"]["verb"] == "scan"
+    assert "unknown check bogus" in document["error"]["message"]
+    assert document["error"]["details"] == {"unknownChecks": ["bogus"]}
+    # The same message goes to stderr as text.
+    assert "unknown check bogus" in captured.err
+
+
+def test_json_format_refused_firmware_kind_prints_the_error_document(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    src = tmp_path / "src"
+    src.mkdir()
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            str(src),
+            "--target-kind",
+            "firmware",
+            "--reports-dir",
+            str(tmp_path / "reports"),
+            "--format",
+            "json",
+        ],
+    )
+    assert code == 4
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 4
+    assert document["error"]["verb"] == "scan"
+    assert "no inventory path" in document["error"]["message"]
+    assert document["error"]["details"] == {
+        "capability": None,
+        "reason": "Firmware targets have no inventory path in this version.",
+    }
+    assert "no inventory path" in captured.err
+    assert not (tmp_path / "reports").exists(), "the refusal must not scan anything"
+    assert scan_stubs["matching"] == []
+
+
+def test_json_format_refused_ios_kind_names_the_mobile_capability(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    src = tmp_path / "src"
+    src.mkdir()
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            str(src),
+            "--target-kind",
+            "ios",
+            "--reports-dir",
+            str(tmp_path / "reports"),
+            "--format",
+            "json",
+        ],
+    )
+    assert code == 4
+    document = json.loads(capfd.readouterr().out)
+    details = document["error"]["details"]
+    assert details["capability"] == "mobile"
+    assert "not implemented" in details["reason"]
+    assert "mobile" in document["error"]["message"]
+
+
+def test_json_format_gated_check_prints_the_error_document(
+    scan_stubs, fake_tools, monkeypatch, capfd, tmp_path
+):
+    """A named check whose capability cannot run stops the verb with the
+    error document: the capability and the doctor's reason in details."""
+    fake_tools["remove"]("cdxgen")
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            bom,
+            "--checks",
+            "vulnerabilities,reachability",
+            "--reports-dir",
+            str(reports),
+            "--no-banner",
+            "--format",
+            "json",
+        ],
+    )
+    assert code == 4
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 4
+    assert document["error"]["verb"] == "scan"
+    assert "cannot run on this machine" in document["error"]["message"]
+    assert document["error"]["details"]["capability"] == "reachability"
+    assert "cdxgen" in document["error"]["details"]["reason"]
+    assert "cannot run on this machine" in captured.err
+    assert not reports.exists(), "the gate must not create the reports directory"
+    # Positive control of the hidden-tool stub: the scan never ran.
+    assert scan_stubs["matching"] == []
 
 
 def test_text_format_leaves_the_scan_tables_on_stdout(
