@@ -1,0 +1,23 @@
+depscan/lib/logger.py
+  s_4cb801b972802c::t_68691abb4ffc8b 62-64,67,76-81
+test/test_v7_colour_terminals.py
+  s_4cb801b972802c::t_909552ea02e5de 78
+  s_4cb801b972802c::t_dd5dd170cc53fa 52-54,57-61,65,69-73
+  s_4cb801b972802c::t_075e00a344dd4c 51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a01c8564df225af1547a572f115ed8f08af16839",
+  "prompts": {},
+  "sessions": {
+    "s_4cb801b972802c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_a3c36758-8950-47a4-a8c6-c1f9b20f0c45",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
