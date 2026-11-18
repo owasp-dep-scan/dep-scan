@@ -1,0 +1,58 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-report-output.schema.json
+  s_6d9553ae7f5d5c::t_cd1de5a13284ce 1-33
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-serve-output.schema.json
+  s_6d9553ae7f5d5c::t_531a2f46819d7d 1-32
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-vdb-path-output.schema.json
+  s_6d9553ae7f5d5c::t_5d4f7182fc5d4d 1-15
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-vdb-download-output.schema.json
+  s_6d9553ae7f5d5c::t_26cd205622bb73 1-56
+packages/analysis-lib/tests/test_findings_schema.py
+  s_6d9553ae7f5d5c::t_1fc61ca80aa932 55-74
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-schema-output.schema.json
+  s_6d9553ae7f5d5c::t_506dd6baec47f4 1-38
+packages/analysis-lib/tests/test_output_schemas.py
+  s_6d9553ae7f5d5c::t_31dab9b8566af4 15
+  s_6d9553ae7f5d5c::t_fb85be7acd09ec 52-58,62-63
+  s_6d9553ae7f5d5c::t_03f28fb034b2dd 1-14,16-20,22-51,59-61,64-76,78-83,85-402
+  s_6d9553ae7f5d5c::t_13c20ebb376397 21
+  s_6d9553ae7f5d5c::t_f21cf2bc76a5f0 77,84
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-help-output.schema.json
+  s_6d9553ae7f5d5c::t_94b6cd362294f2 1-16
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-vdb-info-output.schema.json
+  s_6d9553ae7f5d5c::t_05746e9160de7d 1-188
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-config-show-output.schema.json
+  s_6d9553ae7f5d5c::t_fd58e8f8b5c5be 1-42
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-config-init-output.schema.json
+  s_6d9553ae7f5d5c::t_352b0e9887024f 1-15
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-error.schema.json
+  s_6d9553ae7f5d5c::t_a9edfcea3bd961 1-35
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-scan-output.schema.json
+  s_6d9553ae7f5d5c::t_76b7d233256464 1-104
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_6d9553ae7f5d5c::t_daaf102b8b89af 87-88,104
+  s_6d9553ae7f5d5c::t_6c4a8f254700fc 7-13,26-56,80-86,93,96-99,101-103,111-127,132-139,152
+  s_6d9553ae7f5d5c::t_1c89cb04ee0548 89-90,109
+  s_6d9553ae7f5d5c::t_8401bc5195f3a4 110
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-validate-output.schema.json
+  s_6d9553ae7f5d5c::t_4b4988cc48a1bc 1-47
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-version-output.schema.json
+  s_6d9553ae7f5d5c::t_dd251f6bbf335d 1-23
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor-output.schema.json
+  s_6d9553ae7f5d5c::t_626e74947856d0 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9be01432d5ae638be6930c09da5c7e5a2c87493b",
+  "prompts": {},
+  "sessions": {
+    "s_6d9553ae7f5d5c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_6",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
