@@ -17,6 +17,9 @@
 # Environment:
 #   CDXGEN_BIN            cdxgen executable (default: cdxgen on PATH)
 #   GENERATE_TIMEOUT_SECS per-type cdxgen timeout in seconds (default: 5400)
+#   DEPSCAN_PYTHON        Python with dep-scan installed, required for a
+#                         project with a dotnet type: dosai writes its
+#                         reachables slice (e.g. "uv run --no-sync python")
 set -euo pipefail
 
 NAME="$1"
@@ -97,6 +100,23 @@ for project_type in "${TYPES[@]}"; do
       exit "$code"
     }
 done
+
+# atom writes no reachables slice for C#; dep-scan's .NET reachability comes
+# from dosai, run here the way depscan scan runs it, so the data carries the
+# dotnet-reachables slice a source scan would.
+for project_type in "${TYPES[@]}"; do
+  if [ "$project_type" = "dotnet" ]; then
+    if [ -z "${DEPSCAN_PYTHON:-}" ]; then
+      echo "$NAME has a dotnet type: set DEPSCAN_PYTHON to a Python with dep-scan installed" >&2
+      exit 1
+    fi
+    # shellcheck disable=SC2086
+    $DEPSCAN_PYTHON "$(cd "$(dirname "$0")" && pwd)/native_reachability.py" \
+      "$OUT_DIR/sbom-$project_type.cdx.json" "$SRC_DIR"
+  fi
+done
+# dosai's native facts sidecar is not test data.
+rm -rf "$OUT_DIR/analysis"
 
 # Only the JSON files are test data. The atom databases (*.atom) and source
 # maps (*.json.map) cdxgen leaves beside them are large and read by nothing

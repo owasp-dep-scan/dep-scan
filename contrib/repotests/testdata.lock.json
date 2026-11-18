@@ -28,6 +28,20 @@
       },
       "tag": "curl-8.13.0-cdxgen13.8.0-20261116"
     },
+    "dejacode": {
+      "generated": "2026-11-18T23:40:00Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:0949977ae16f8b657db1290168f4c6999cd60308467c55a6a143ea4c631ace9d",
+      "source": {
+        "commit": "229e64908819ee697e7bbd813964443f4a72f990",
+        "git": "https://github.com/aboutcode-org/dejacode"
+      },
+      "tag": "dejacode-cdxgen13.8.0-20261118"
+    },
     "depscan": {
       "generated": "2026-11-16T23:45:52Z",
       "generators": {
@@ -56,6 +70,20 @@
       },
       "tag": "django-defectdojo-cdxgen13.8.0-20261116"
     },
+    "dotnet-podcasts": {
+      "generated": "2026-11-18T23:44:27Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:48e23af58b2eb38b35bdafa9c86ed21302d88b8fa1c064775470c6e0b890c7a5",
+      "source": {
+        "commit": "5ee8be2990b81eb681bbd100875c263aaa5ab68a",
+        "git": "https://github.com/microsoft/dotnet-podcasts"
+      },
+      "tag": "dotnet-podcasts-cdxgen13.8.0-20261118"
+    },
     "forgejo": {
       "generated": "2026-11-17T00:00:05Z",
       "generators": {
@@ -69,6 +97,20 @@
         "git": "https://codeberg.org/forgejo/forgejo"
       },
       "tag": "forgejo-cdxgen13.8.0-20261117"
+    },
+    "java-sec-code": {
+      "generated": "2026-11-18T23:36:30Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:8588e97394786ef18f6616c6f3bf18ce24b4c66d27e4daf26a0ad7b9d65eeec1",
+      "source": {
+        "commit": "7f7f02a9e030736dd4ef4fa657511b26c4c5c016",
+        "git": "https://github.com/HooliCorp/java-sec-code"
+      },
+      "tag": "java-sec-code-cdxgen13.8.0-20261118"
     },
     "kafka-4.0.0": {
       "generated": "2026-11-16T23:44:04Z",
@@ -181,6 +223,20 @@
         "git": "https://github.com/spring-projects/spring-petclinic"
       },
       "tag": "spring-petclinic-cdxgen13.8.0-20261116"
+    },
+    "vulnerable-aws-koa-app": {
+      "generated": "2026-11-18T23:35:59Z",
+      "generators": {
+        "atom": "4.0.2",
+        "cdxgen": "13.8.0",
+        "cdxgenPlugins": "4.3.1"
+      },
+      "manifestDigest": "sha256:9cb90972bd297e09b4dd96eb869428f2ff870305dea29835edfd4da1c3c2497d",
+      "source": {
+        "commit": "dde4187bf21f0d56b6867fffd09f93ff0e275a80",
+        "git": "https://github.com/HooliCorp/vulnerable-aws-koa-app"
+      },
+      "tag": "vulnerable-aws-koa-app-cdxgen13.8.0-20261118"
     }
   },
   "registry": "ghcr.io/owasp-dep-scan/depscan-testdata",

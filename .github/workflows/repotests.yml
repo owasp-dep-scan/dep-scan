@@ -46,21 +46,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          repository: 'hoolicorp/java-sec-code'
-          path: 'repotests/java-sec-code'
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          repository: 'HooliCorp/vulnerable-aws-koa-app'
-          path: 'repotests/vulnerable-aws-koa-app'
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          repository: 'microsoft/dotnet-podcasts'
-          path: 'repotests/dotnet-podcasts'
-          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
         with:
           go-version: '1.23'
@@ -86,9 +71,6 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73  # v6.1.0
-        with:
-          dotnet-version: '8.x'
       - name: Trim CI agent
         run: |
           chmod +x contrib/free_disk_space.sh
@@ -101,56 +83,30 @@ jobs:
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
-          projects: signal-android,kafka-4.0.0,spring-petclinic,cdxgen,signal-desktop,forgejo,rustpad,django-defectdojo,depscan,phpmyadmin,openssl-3.5.0,open5gs-2.7.5,curl-8.13.0
+          projects: java-sec-code,dotnet-podcasts,vulnerable-aws-koa-app,signal-android,kafka-4.0.0,spring-petclinic,cdxgen,signal-desktop,forgejo,rustpad,django-defectdojo,depscan,phpmyadmin,openssl-3.5.0,open5gs-2.7.5,curl-8.13.0
           python-executable: uv run --no-sync python
-      - name: repotests java-sec-code
-        run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code -t java --bom-engine CdxgenGenerator
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code1 --bom-profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/java-sec-code --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/java-sec-code2 --bom-profile research -t java --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-        shell: bash
-        env:
-          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
-      # The BOMs, slices and VDRs of the java-sec-code runs, kept so the
-      # reachable packages can be compared between releases.
-      - name: Upload java-sec-code reports
-        if: ${{ matrix.os == 'ubuntu-24.04' }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: java-sec-code-reports
-          path: depscan_reports
-      - name: Remove java-sec-code reports
-        if: ${{ always() }}
-        run: rm -rf ${GITHUB_WORKSPACE}/depscan_reports
-        shell: bash
-      - name: repotests dotnet-podcasts
-        run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2
-          dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/NetPodcast.Services.sln
-          dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/NetPodcast.sln
-          dotnet build ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts/Podcast.Web.sln
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts -t dotnet --bom-engine CdxgenGenerator
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts1 --bom-profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer FrameworkReachability --explain
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dotnet-podcasts --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/dotnet-podcasts2 --bom-profile research -t dotnet --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
-        shell: bash
-        env:
-          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
-      - name: repotests vulnerable-aws-koa-app
-        run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/vulnerable-aws-koa-app --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/vulnerable-aws-koa-app -t js --bom-engine CdxgenGenerator
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
-        shell: bash
-        env:
-          BLINTDB_HOME: ${{ runner.temp }}/blintdb-home
       # Every pre-generated project below runs the same shape of step: copy
       # the pulled artifact into the reports layout, scan it with the
       # SemanticReachability analyzer and the --explain rendering the repo
       # tests exercise, then assert the reachable purl floor and the
       # mustReach packages of projects.json. A scan that silently finds
       # nothing fails the assert instead of passing on stale data.
+      # java-sec-code and dotnet-podcasts also run the FrameworkReachability
+      # analyzer, which only these two projects exercise.
+      - name: repotests java-sec-code
+        run: |
+          .github/scripts/repotest-project.sh java-sec-code \
+            -- --reachability-analyzer FrameworkReachability
+        shell: bash
+      - name: repotests dotnet-podcasts
+        run: |
+          .github/scripts/repotest-project.sh dotnet-podcasts \
+            -- --reachability-analyzer FrameworkReachability
+        shell: bash
+      - name: repotests vulnerable-aws-koa-app
+        run: |
+          .github/scripts/repotest-project.sh vulnerable-aws-koa-app
+        shell: bash
       - name: repotests signal-android
         run: |
           .github/scripts/repotest-project.sh signal-android
@@ -232,61 +188,20 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages
-          # This job runs on a self-hosted runner that keeps global npm
-          # packages between runs. The cdxgen 12 package name installs the
-          # same commands (cdxgen, cbom, ...), so npm refuses to install 13.8
-          # over it with EEXIST until it is removed.
-          sudo npm uninstall -g @cyclonedx/cdxgen
-          sudo npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom --omit=optional
-      - name: semantic analysis self
-        run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports/depscan
-          uv run vdb --clean
-          uv run depscan scan ${GITHUB_WORKSPACE} --reports-dir ${GITHUB_WORKSPACE}/depscan_reports/depscan -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          ls -lh ${GITHUB_WORKSPACE}/depscan_reports/depscan
-          rm -rf ${GITHUB_WORKSPACE}/depscan_reports
-        shell: bash
-        env:
-          DEPSCAN_SOURCE_IMAGE: ghcr.io/owasp-dep-scan/dep-scan:master
-          CDXGEN_TIMEOUT_MS: 3600000
       - name: Get repo test data
         uses: ./.github/actions/repotests-data
         with:
-          projects: depscan
+          projects: depscan,dejacode
           python-executable: uv run --no-sync python
-      # The same semantics pipeline over data pinned by digest, where the
-      # reachable purl floor can be asserted; the self scan above exercises
-      # the current checkout, whose reachable set moves with every commit.
+      # The semantics pipeline over data pinned by digest, where the
+      # reachable purl floor can be asserted. Both projects are generated
+      # by repotests-data.yml, so no step here runs cdxgen or atom.
       - name: semantic analysis over pinned data
         run: |
           .github/scripts/repotest-project.sh depscan
         shell: bash
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          repository: 'aboutcode-org/dejacode'
-          path: 'repotests/dejacode'
-          persist-credentials: false
       - name: semantic analysis dejacode
         run: |
-          mkdir -p ${GITHUB_WORKSPACE}/depscan_reports ${GITHUB_WORKSPACE}/repotests/dejacode/reports
-          cd ${GITHUB_WORKSPACE}/repotests/dejacode
-          docker build -t dejacode:latest -f Dockerfile .
-          uv pip install --find-links=thirdparty/dist/ --no-index --no-cache-dir .
-          cd ${GITHUB_WORKSPACE}
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dejacode --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports -t python --bom-engine CdxgenGenerator --reachability-analyzer SemanticReachability --explain
-          cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode
-          uv run depscan scan ${GITHUB_WORKSPACE}/repotests/dejacode/reports --target-kind bom-dir --reports-dir ${GITHUB_WORKSPACE}/repotests/dejacode/reports --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
-          cp -rf ${GITHUB_WORKSPACE}/repotests/dejacode/reports ${GITHUB_WORKSPACE}/depscan_reports/dejacode2
-          ls -lh ${GITHUB_WORKSPACE}/repotests/dejacode/reports
+          .github/scripts/repotest-project.sh dejacode \
+            -- --explanation-mode NonReachables
         shell: bash
-        env:
-          DEPSCAN_SOURCE_IMAGE: dejacode:latest
-          CDXGEN_TIMEOUT_MS: 3600000
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: dejacode_reports
-          path: depscan_reports/dejacode
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: dejacode_non_reachables
-          path: depscan_reports/dejacode2

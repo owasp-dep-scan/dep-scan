@@ -474,8 +474,6 @@ def test_translator_produces_the_published_shapes(before, after):
 TARGETED_CONTENT = {
     ".github/ISSUE_TEMPLATE/false_positive.yaml": 'depscan scan "pkg:<purl-of-the-false-positive>"',
     ".github/scripts/repotest-project.sh": '$DEPSCAN scan "$PROJECT_DIR" --target-kind bom-dir',
-    ".github/workflows/repotests.yml": "depscan scan ${GITHUB_WORKSPACE}/repotests/dejacode/reports "
-    "--target-kind bom-dir",
     ".github/workflows/sea-linux.yml": "./dist/${{ matrix.binary_name }} version",
     ".github/workflows/sea-mac.yml": "./dist/${{ matrix.binary_name }} version",
     ".github/workflows/sea-win.yml": '& "dist\\$env:BINARY_NAME.exe" version',

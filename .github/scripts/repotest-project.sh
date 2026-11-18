@@ -8,11 +8,14 @@
 # contrib/repotests/projects.json with the validator. A scan that silently
 # reaches nothing fails the assert instead of passing on stale data.
 #
-# Arguments after `--` come in `--explanation-mode <mode>` pairs; each pair
+# Arguments after `--` come in pairs. Each `--explanation-mode <mode>` pair
 # adds one more depscan run with that rendering, covering the NonReachables
-# and Endpoints modes some projects exercise.
+# and Endpoints modes some projects exercise; each `--reachability-analyzer
+# <analyzer>` pair adds one more run with that analyzer in place of
+# SemanticReachability, such as FrameworkReachability.
 #
 # Usage: repotest-project.sh NAME [-- --explanation-mode MODE ...]
+#                                 [-- --reachability-analyzer ANALYZER ...]
 # Environment:
 #   DATA_DIR    pulled data base directory (default: repotests-data)
 #   REPORTS_DIR reports base directory (default: depscan_reports)
@@ -24,14 +27,22 @@ set -euo pipefail
 NAME="$1"
 shift
 EXTRA_MODES=()
+EXTRA_ANALYZERS=()
 if [ "${1:-}" = "--" ]; then
   shift
   while [ $# -gt 0 ]; do
-    if [ "$1" != "--explanation-mode" ] || [ $# -lt 2 ]; then
-      echo "Arguments after -- must be --explanation-mode <mode> pairs" >&2
+    if [ $# -lt 2 ]; then
+      echo "Arguments after -- must come in pairs" >&2
       exit 1
     fi
-    EXTRA_MODES+=("$2")
+    case "$1" in
+      --explanation-mode) EXTRA_MODES+=("$2") ;;
+      --reachability-analyzer) EXTRA_ANALYZERS+=("$2") ;;
+      *)
+        echo "Arguments after -- must be --explanation-mode <mode> or --reachability-analyzer <analyzer> pairs" >&2
+        exit 1
+        ;;
+    esac
     shift 2
   done
 fi
@@ -48,19 +59,27 @@ cp -R "$DATA_DIR/$NAME/." "$PROJECT_DIR/"
 run_depscan() {
   # The pulled data holds slices and provenance JSON next to the BOMs, so
   # detection alone would classify the directory as source; the forced kind
-  # keeps every scan on the BOM-directory ingestion path.
+  # keeps every scan on the BOM-directory ingestion path. The first argument
+  # is the reachability analyzer.
+  local analyzer="$1"
+  shift
   # shellcheck disable=SC2086
   $DEPSCAN scan "$PROJECT_DIR" --target-kind bom-dir \
-    --reports-dir "$PROJECT_DIR" --reachability-analyzer SemanticReachability \
+    --reports-dir "$PROJECT_DIR" --reachability-analyzer "$analyzer" \
     --explain "$@"
 }
 
-run_depscan
-# The guarded expansion keeps bash 3.2 (macOS) from calling an empty array
+# The guarded expansions keep bash 3.2 (macOS) from calling an empty array
 # unbound under set -u.
-for MODE in ${EXTRA_MODES[@]+"${EXTRA_MODES[@]}"}; do
-  run_depscan --explanation-mode "$MODE"
+for ANALYZER in ${EXTRA_ANALYZERS[@]+"${EXTRA_ANALYZERS[@]}"}; do
+  run_depscan "$ANALYZER"
 done
+for MODE in ${EXTRA_MODES[@]+"${EXTRA_MODES[@]}"}; do
+  run_depscan SemanticReachability --explanation-mode "$MODE"
+done
+# The SemanticReachability run goes last, so the assert below reads its
+# reports.
+run_depscan SemanticReachability
 
 # shellcheck disable=SC2086
 $PYTHON contrib/repotests/validate.py assert "$PROJECT_DIR" \
