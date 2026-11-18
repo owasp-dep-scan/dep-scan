@@ -32,8 +32,11 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 
 import contextlib
 import os
+import socket
+import threading
+import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
@@ -99,6 +102,14 @@ class ScanStageError(RuntimeError):
     condition and passes the same message to this error, so the caller can
     report why the scan stopped; the CLI verb dispatch catches this error and
     exits with code 1.
+    """
+
+
+class ServerRequirementError(RuntimeError):
+    """The server cannot start: a package or a requirement is missing.
+
+    :func:`start_server_mode` raises it instead of returning False, so the
+    caller always holds the reason to report.
     """
 
 
@@ -284,11 +295,91 @@ def build_server_bom_scanner():
     return scan_bom
 
 
-def start_server_mode(ctx):
+#: How long the startup announcement waits for the server's listening socket
+#: to accept a connection, in seconds. The bind happens moments after the
+#: server package's startup hooks run; the deadline only bounds a start that
+#: never comes up, where nothing is announced at all.
+ANNOUNCE_TIMEOUT_SECONDS = 30.0
+
+
+def _listener_candidates(host):
+    """The addresses the startup announcement may probe.
+
+    The configured host comes first; the loopback forms follow, for a
+    wildcard or IPv6-any host whose socket also accepts loopback
+    connections. Duplicates and empty names are dropped, order kept.
+    """
+    seen = set()
+    ordered = []
+    for candidate in (host, "127.0.0.1", "::1", "localhost"):
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            ordered.append(candidate)
+    return ordered
+
+
+def _port_accepts(host, port) -> bool:
+    """Whether a TCP connection to the host and port succeeds right now."""
+    try:
+        port_number = int(port)
+    except (TypeError, ValueError):
+        return False
+    try:
+        with socket.create_connection((host, port_number), timeout=0.25):
+            return True
+    except OSError:
+        return False
+
+
+def _wait_until_listening(host, port, announce: Callable[[], None], cancelled) -> None:
+    """Announce on the first successful connection to the server's port.
+
+    The thread returns without announcing when the cancellation event is set
+    or the deadline passes, so a server that never listens announces nothing.
+    """
+    deadline = time.monotonic() + ANNOUNCE_TIMEOUT_SECONDS
+    while time.monotonic() < deadline and not cancelled.is_set():
+        if any(_port_accepts(candidate, port) for candidate in _listener_candidates(host)):
+            if not cancelled.is_set():
+                announce()
+            return
+        time.sleep(0.05)
+
+
+def _announce_once_listening(app, host, port, announce: Callable[[], None]):
+    """Run ``announce`` through a hook the server calls once it serves.
+
+    The server package's startup hooks run before it binds its socket, so
+    announcing from the hook alone would print before the server is
+    listening. The hook instead starts a daemon thread that polls the port
+    and announces on the first successful connection. The returned event
+    cancels the thread: a server whose bind attempt fails must never
+    announce against whatever else holds the port.
+    """
+    cancelled = threading.Event()
+
+    def start_hook():
+        threading.Thread(
+            target=_wait_until_listening,
+            args=(host, port, announce, cancelled),
+            daemon=True,
+        ).start()
+
+    app.before_serving(start_hook)
+    return cancelled
+
+
+def start_server_mode(ctx, started_hook: Optional[Callable[[], None]] = None):
     """Prepare the database once, then start the depscan server.
 
     No other scan stage runs here. A database that cannot be prepared raises
-    :class:`ScanStageError`, so the server never starts without one.
+    :class:`ScanStageError`, so the server never starts without one. A server
+    whose packages are missing, or that refuses its requirements, raises
+    :class:`ServerRequirementError` with the reason.
+
+    ``started_hook``, when given, runs once the server's listening socket
+    accepts connections; the announce reason is described in
+    :func:`_announce_once_listening`.
     """
     args = ctx.args
     if SERVER_LIB:
@@ -319,11 +410,28 @@ def start_server_mode(ctx):
             max_content_length=max_content_length,
             custom_data_directory=args.custom_data,
         )
-        return simple.run_server(server_options)
-    LOG.error(
-        "The required packages for server mode are unavailable. Reinstall depscan using `pip install owasp-depscan[all]`."
+        cancelled = None
+        if started_hook is not None:
+            cancelled = _announce_once_listening(
+                simple.app, args.server_host, args.server_port, started_hook
+            )
+        try:
+            started = simple.run_server(server_options)
+        finally:
+            if cancelled is not None:
+                cancelled.set()
+        if started is False:
+            # run_server returns False only when it refuses a non-local bind
+            # without an API key; the same refusal is logged by the server.
+            raise ServerRequirementError(
+                "The server cannot bind to a non-local host without "
+                "DEPSCAN_SERVER_API_KEY or DEPSCAN_SERVER_ALLOW_UNAUTHENTICATED_BIND=true."
+            )
+        return started
+    raise ServerRequirementError(
+        "The required packages for server mode are unavailable. Reinstall depscan "
+        "using `pip install owasp-depscan[all]`."
     )
-    return False
 
 
 def validate_scan_inputs(args):
