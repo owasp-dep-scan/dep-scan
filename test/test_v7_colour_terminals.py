@@ -48,23 +48,34 @@ def _known_colour_environment(monkeypatch):
         # Any non-empty value counts, including one that reads as false.
         ({"NO_COLOR": "0"}, {"color_system": None}),
         ({"NO_COLOR": ""}, {"color_system": "auto"}),
-        ({"FORCE_COLOR": "1"}, {"color_system": "auto", "force_terminal": True}),
+        (
+            {"FORCE_COLOR": "1"},
+            {"color_system": "auto", "force_terminal": True, "legacy_windows": False},
+        ),
         (
             {"FORCE_COLOR": "1", "TERM": ""},
-            {"color_system": "standard", "force_terminal": True},
+            {
+                "color_system": "standard",
+                "force_terminal": True,
+                "legacy_windows": False,
+            },
         ),
         (
             {"CONSOLE_COLOR_SCHEME": "256"},
-            {"color_system": "256", "force_terminal": True},
+            {"color_system": "256", "force_terminal": True, "legacy_windows": False},
         ),
         (
             {"CONSOLE_COLOR_SCHEME": "truecolor"},
-            {"color_system": "truecolor", "force_terminal": True},
+            {
+                "color_system": "truecolor",
+                "force_terminal": True,
+                "legacy_windows": False,
+            },
         ),
         # Explicit but unknown: colour is still asked for, rich picks the system.
         (
             {"CONSOLE_COLOR_SCHEME": "bogus"},
-            {"color_system": "auto", "force_terminal": True},
+            {"color_system": "auto", "force_terminal": True, "legacy_windows": False},
         ),
         ({"CONSOLE_COLOR_SCHEME": ""}, {"color_system": "auto"}),
         # NO_COLOR wins over the variables that ask for colour.

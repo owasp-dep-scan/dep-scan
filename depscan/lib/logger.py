@@ -59,11 +59,12 @@ def _color_arguments():
     if scheme and scheme in VALID_COLOR_SYSTEMS:
         # The scheme goes to rich directly and bypasses detection, so a named
         # scheme holds for redirected streams too, on a Windows pipe included,
-        # where rich needs the terminal forced to emit the codes. ``auto`` is
-        # the value that keeps detection per stream.
+        # where rich needs the terminal forced and the legacy Windows writer
+        # off before it emits the codes. ``auto`` is the value that keeps
+        # detection per stream.
         if scheme == "auto":
             return {"color_system": "auto"}
-        return {"color_system": scheme, "force_terminal": True}
+        return {"color_system": scheme, "force_terminal": True, "legacy_windows": False}
     if not scheme and not os.getenv("FORCE_COLOR", ""):
         return {"color_system": "auto"}
     term = os.getenv("TERM", "").strip().lower()
@@ -72,8 +73,12 @@ def _color_arguments():
         # pipe) or on a terminal that calls itself dumb, but the request for
         # colour here is explicit, so keep a plain 16-colour system instead
         # of none.
-        return {"color_system": "standard", "force_terminal": True}
-    return {"color_system": "auto", "force_terminal": True}
+        return {
+            "color_system": "standard",
+            "force_terminal": True,
+            "legacy_windows": False,
+        }
+    return {"color_system": "auto", "force_terminal": True, "legacy_windows": False}
 
 
 def _is_terminal(stream=None):
