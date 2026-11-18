@@ -53,6 +53,7 @@ from xbom_lib.cdxgen import remove_stale_slices
 from depscan import get_version
 from depscan.lib import explainer, utils
 from depscan.lib import doctor as doctor_lib
+from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
@@ -534,6 +535,24 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     return {"manifest": manifest, "findings": findings_document["findings"]}
 
 
+def _vdb_download_status(message: str):
+    """The status spinner for the vdb download, drawn only where allowed.
+
+    Spinners and progress draw on a terminal stderr; the logger owns that
+    rule through its suppression helper, which takes the console, the
+    message and the spinner keyword and returns the running status. While
+    the logger provides no helper, the console's own terminal detection
+    decides, and the download runs without a spinner on a plain stream, in
+    which case the status object of the ``with`` statement is None.
+    """
+    suppress_spinner = getattr(logger_lib, "suppress_spinner", None)
+    if suppress_spinner is not None:
+        return suppress_spinner(log_console, message, spinner=SPINNER)
+    if log_console.is_terminal:
+        return log_console.status(message, spinner=SPINNER)
+    return contextlib.nullcontext(None)
+
+
 def stage_database(ctx):
     """Resolve, download and verify the vulnerability database."""
     args = ctx.args
@@ -579,11 +598,10 @@ def stage_database(ctx):
         # database stops the scan instead of looking like a clean one.
         should_download, dl_reason = vdb_setup.vdb_download_needed(scan_vdb_url, config.DATA_DIR)
         if should_download:
-            with log_console.status(
-                f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
-                spinner=SPINNER,
+            with _vdb_download_status(
+                f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ..."
             ) as vdb_download_status:
-                if not IS_CI:
+                if vdb_download_status is not None and not IS_CI:
                     vdb_download_status.stop()
                 # The download raises once every retry has failed. The layer
                 # that fails varies (vdb's own errors, urllib3 IncompleteRead,
