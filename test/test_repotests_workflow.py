@@ -332,7 +332,7 @@ def test_miss_path_caches_only_cdxgen_and_atom_outputs():
             assert patterns <= ALLOWED_COPY_PATTERNS, (job_name, step.get("name"), patterns - ALLOWED_COPY_PATTERNS)
             assert {"*.cdx.json", "*slices*.json"} <= patterns, (job_name, step.get("name"))
             copy_steps += 1
-    # Seven miss-path copy steps: three java-sec-code variants share one step,
+    # Five miss-path copy steps: three java-sec-code variants share one step,
     # three dotnet-podcasts variants share one step, the koa app, the self
     # scan and dejacode have one each.
     assert copy_steps == 5, f"expected five miss-path copy steps, found {copy_steps}"
