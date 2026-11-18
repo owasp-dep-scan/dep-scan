@@ -347,7 +347,7 @@ def _download_shards(args, data_dir):
     write_vdb_image_marker(vdb_shards_marker(shard_names), data_dir)
     LOG.info(
         "Refreshed shard(s): %s. Marker written to %s",
-        ", ".join(placed),
+        ", ".join(placed or []),
         vdb_image_marker_path(data_dir),
     )
     if _format(args) == "json":

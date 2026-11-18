@@ -1195,6 +1195,7 @@ def _agents_examples():
             )
             tokens = commands[0].split()
             assert tokens[0] == "depscan", f"the {heading} example starts with {tokens[:1]!r}"
+            assert heading is not None
             head = heading.split()
             assert tokens[1 : 1 + len(head)] == head, (
                 f"the {heading} example runs {tokens[1:]} instead"

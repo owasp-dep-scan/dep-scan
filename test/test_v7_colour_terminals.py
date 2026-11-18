@@ -180,7 +180,7 @@ def test_console_status_is_quiet_for_a_redirected_stderr(monkeypatch):
 
 
 def test_console_status_spins_for_a_terminal(monkeypatch):
-    recorded = {}
+    recorded: dict = {}
     marker = object()
 
     def fake_status(*args, **kwargs):

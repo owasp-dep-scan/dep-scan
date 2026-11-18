@@ -859,6 +859,8 @@ def run(args: argparse.Namespace) -> int:
         return EXIT_USAGE
     entries, refusal = _resolve_targets(args)
     if entries is None:
+        # The pair contract: a None entries always carries its refusal.
+        assert refusal is not None
         if json_output:
             print_error_document(refusal.exit_code, "scan", refusal.message, refusal.details)
         else:
@@ -998,7 +1000,9 @@ def _zero_target_target(internal) -> str:
     """
     source = internal.src_dir_image
     if os.path.isabs(source) or os.path.exists(source):
-        return json_path(source)
+        normalised = json_path(source)
+        if normalised is not None:
+            return normalised
     return source
 
 

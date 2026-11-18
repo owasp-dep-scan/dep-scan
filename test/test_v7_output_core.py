@@ -78,6 +78,7 @@ def test_the_documented_exit_code_table_is_the_generated_one():
 def test_json_path_makes_a_relative_path_absolute_under_the_cwd(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     result = json_path("sub/reports")
+    assert result is not None
     assert os.path.isabs(result)
     assert result.endswith("/sub/reports")
     assert "/../" not in result and not result.endswith("/.")
@@ -93,6 +94,7 @@ def test_json_path_normalises_dot_segments_and_keeps_the_cwd_form(tmp_path, monk
 
 def test_json_path_keeps_an_absolute_path_unchanged(tmp_path):
     result = json_path(tmp_path / "reports")
+    assert result is not None
     assert os.path.isabs(result)
     assert result == str(tmp_path / "reports").replace(os.sep, "/")
 
@@ -101,6 +103,7 @@ def test_json_path_keeps_an_absolute_path_unchanged(tmp_path):
 def test_json_path_keeps_the_drive_letter_on_windows(tmp_path):
     drive = os.path.splitdrive(str(tmp_path))[0]
     result = json_path(tmp_path / "reports")
+    assert result is not None
     assert result.startswith(drive + "/")
 
 
