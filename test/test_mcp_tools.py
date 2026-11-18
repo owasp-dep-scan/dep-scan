@@ -46,11 +46,14 @@ from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
 from depscan.mcp_server import server as server_mod
-from depscan.mcp_server.tools import TOOL_BUDGET_BYTES
 from xbom_lib import cdxgen as cdxgen_mod
 
 REPO_ROOT = Path(__file__).parent.parent
 DATA_DIR = Path(__file__).parent / "data"
+
+#: The response budget the server is specified to keep, pinned here as the
+#: published number rather than imported from the implementation.
+TOOL_BUDGET_BYTES = 32 * 1024
 
 #: The tools the four later tasks own. None of them may be registered.
 FORBIDDEN_TOOLS = ("get_evidence", "policy_status", "remediation_plan", "record_triage")
