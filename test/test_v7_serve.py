@@ -44,43 +44,83 @@ class _FakeServerOptions:
         self.kwargs = kwargs
 
 
-class _FakeSimple:
-    """Stands in for server_lib.simple: a registerable app, a recorded run.
+class _FakeResponse:
+    """A stand-in response for the fake app's after_request handlers."""
 
-    The default run models the real start: the server binds its port, the
-    serving hooks run, and the connection of the announcement probe is
-    accepted. A run without hooks skips the probe wait, the way the real
-    server never announces in text mode.
+    def __init__(self):
+        self.headers = {}
+
+
+class _FakeSimple:
+    """Stands in for server_lib.simple, in the real server's order.
+
+    The serving hooks run before the socket binds, as hypercorn runs them,
+    and responses flow through the app's after_request handlers, which is
+    how the announcement's marker reaches the wire. The port may already be
+    held by another listener, in which case the bind here fails the way the
+    real bind does.
     """
 
     def __init__(self):
         self.hooks = []
+        self.after_handlers = []
         self.run_calls = []
         self.order = []
-        self.app = SimpleNamespace(before_serving=self.register)
+        self.app = SimpleNamespace(
+            before_serving=self._register_hook,
+            after_request=self._register_after,
+        )
 
-    def register(self, func):
+    def _register_hook(self, func):
         self.hooks.append(func)
         return func
+
+    def _register_after(self, func):
+        self.after_handlers.append(func)
+        return func
+
+    def _answer_probe(self, connection):
+        connection.settimeout(2)
+        try:
+            if not connection.recv(1024):
+                return
+            response = _FakeResponse()
+            for handler in self.after_handlers:
+                response = handler(response)
+            headers = "".join(
+                f"{name}: {value}\r\n" for name, value in response.headers.items()
+            )
+            connection.sendall(
+                b"HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n"
+                + headers.encode()
+                + b"\r\n{}"
+            )
+        except OSError:
+            pass
 
     def run_server(self, options):
         self.run_calls.append(options)
         host = options.kwargs["server_host"]
         port = int(options.kwargs["server_port"])
         self.order.append("run_server")
+        for hook in self.hooks:
+            hook()
         with socket.socket() as listener:
             listener.bind((host, port))
             listener.listen(1)
             self.order.append("listening")
-            for hook in self.hooks:
-                hook()
             if self.hooks:
                 listener.settimeout(5)
-                connection, _ = listener.accept()
-                connection.close()
-                self.order.append("connected")
-                # The probe announces as soon as its connection succeeds;
-                # the pause keeps this run inside the server while it does.
+                for _ in range(3):
+                    try:
+                        connection, _ = listener.accept()
+                    except OSError:
+                        break
+                    self.order.append("connected")
+                    self._answer_probe(connection)
+                # The probe announces as soon as its answer carries the
+                # marker; the pause keeps this run inside the server while
+                # it does.
                 time.sleep(0.05)
             self.order.append("served")
         return None
@@ -121,7 +161,7 @@ class _StatusStub:
 def test_download_status_draws_on_a_terminal(monkeypatch):
     stub = _StatusStub(is_terminal=True)
     monkeypatch.setattr(pipeline, "log_console", stub)
-    monkeypatch.delattr(pipeline.logger_lib, "suppress_spinner", raising=False)
+    monkeypatch.delattr(pipeline.logger_lib, "console_status", raising=False)
 
     with pipeline._vdb_download_status("Downloading") as status:
         assert status == "running-status"
@@ -135,7 +175,7 @@ def test_download_status_draws_on_a_terminal(monkeypatch):
 def test_download_status_suppresses_on_a_plain_stream(monkeypatch, capsys):
     stub = _StatusStub(is_terminal=False)
     monkeypatch.setattr(pipeline, "log_console", stub)
-    monkeypatch.delattr(pipeline.logger_lib, "suppress_spinner", raising=False)
+    monkeypatch.delattr(pipeline.logger_lib, "console_status", raising=False)
 
     with pipeline._vdb_download_status("Downloading") as status:
         assert status is None
@@ -145,30 +185,45 @@ def test_download_status_suppresses_on_a_plain_stream(monkeypatch, capsys):
 
 
 def test_download_status_uses_the_logger_helper_when_present(monkeypatch):
-    """The logger owns when a spinner may draw; its helper decides."""
+    """The logger owns when a spinner may draw; its helper decides.
+
+    The logger's helper takes the message and the spinner keyword for its
+    own stderr console, and may hand back a quiet stand-in without a stop
+    method, so this call site must survive one.
+    """
     helper_calls = []
 
     @contextlib.contextmanager
-    def fake_suppress_spinner(console, message, **kwargs):
-        helper_calls.append((console, message, kwargs))
-        yield "helper-status"
+    def fake_console_status(message, **kwargs):
+        helper_calls.append((message, kwargs))
+        yield _QuietStatusStub()
 
-    monkeypatch.setattr(
-        pipeline.logger_lib, "suppress_spinner", fake_suppress_spinner, raising=False
-    )
+    monkeypatch.setattr(pipeline.logger_lib, "console_status", fake_console_status, raising=False)
     stub = _StatusStub(is_terminal=False)
     monkeypatch.setattr(pipeline, "log_console", stub)
 
     with pipeline._vdb_download_status("Downloading") as status:
-        assert status == "helper-status"
-    # Positive control: the helper was reached, with the console, the
-    # message and the spinner keyword, and the console was not consulted.
+        assert isinstance(status, _QuietStatusStub)
+    # Positive control: the helper was reached, with the message and the
+    # spinner keyword, and the console was not consulted.
     assert len(helper_calls) == 1
-    console, message, kwargs = helper_calls[0]
-    assert console is stub
+    message, kwargs = helper_calls[0]
     assert "Downloading" in message
     assert kwargs["spinner"] == pipeline.SPINNER
     assert stub.calls == []
+
+
+class _QuietStatusStub:
+    """A stand-in status without a stop method, like the logger's quiet one."""
+
+    def update(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
 
 
 def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
@@ -193,12 +248,15 @@ def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
         calls["status"] = message
 
         @contextlib.contextmanager
-        def none_status():
-            yield None
+        def quiet_status():
+            # The logger hands back a quiet status without a stop method on
+            # a redirected stream; the download branch must not call it.
+            yield _QuietStatusStub()
 
-        return none_status()
+        return quiet_status()
 
     monkeypatch.setattr(pipeline, "_vdb_download_status", recording_status)
+    monkeypatch.setattr(pipeline, "IS_CI", False)
     ctx = pipeline.build_context(
         argparse.Namespace(risk_audit=False, enable_debug=False, vdb_offline=False)
     )
@@ -206,7 +264,7 @@ def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
     pipeline.stage_database(ctx)
 
     # Positive controls: the status was asked for the download, and the
-    # download itself ran.
+    # download itself ran past a status with nothing to stop.
     assert "Downloading the latest vulnerability database" in calls["status"]
     assert calls["download"] == "oras://vdb-img"
 
@@ -214,21 +272,78 @@ def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
 # --- the startup announcement -----------------------------------------------------
 
 
-def test_wait_until_listening_announces_only_on_a_real_listener(monkeypatch):
-    monkeypatch.setattr(pipeline, "ANNOUNCE_TIMEOUT_SECONDS", 0.4)
+def _listening_socket(port) -> socket.socket:
+    """A listening socket on the port, for the HTTP answerers below."""
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", port))
+    listener.listen(1)
+    return listener
+
+
+def _serve_http_answers(listener: socket.socket, headers: bytes, ready):
+    """Serve plain HTTP answers with the given extra headers until closed."""
+    listener.settimeout(5)
+    ready.set()
+    try:
+        while True:
+            connection, _ = listener.accept()
+            connection.recv(1024)
+            connection.sendall(b"HTTP/1.0 200 OK\r\n" + headers + b"\r\n{}")
+            connection.close()
+    except OSError:
+        return
+
+
+def test_wait_until_listening_announces_only_on_the_marked_listener(monkeypatch):
+    monkeypatch.setattr(pipeline, "ANNOUNCE_TIMEOUT_SECONDS", 1.0)
     announced = []
-    port = _free_port()
-    # A port that was just closed answers nothing.
-    pipeline._wait_until_listening("127.0.0.1", port, lambda: announced.append(True), threading.Event())
-    assert announced == []
-    # Positive control: the same probe announces against a real listener.
-    with socket.socket() as listener:
-        listener.bind(("127.0.0.1", port))
-        listener.listen(1)
+    marker = "dep-scan-hand-check"
+    # A listener without this process's marker is not the server this
+    # process started, whatever its port answers.
+    foreign = _listening_socket(_free_port())
+    foreign_ready = threading.Event()
+    try:
+        threading.Thread(
+            target=_serve_http_answers,
+            args=(foreign, b"Content-Length: 2\r\n", foreign_ready),
+            daemon=True,
+        ).start()
+        assert foreign_ready.wait(2)
         pipeline._wait_until_listening(
-            "127.0.0.1", port, lambda: announced.append(True), threading.Event()
+            "127.0.0.1",
+            foreign.getsockname()[1],
+            marker,
+            lambda: announced.append("foreign"),
+            threading.Event(),
         )
-    assert announced == [True]
+        assert announced == []
+        # Positive control: the listener carrying the marker is ours.
+        ours = _listening_socket(_free_port())
+        try:
+            ours_ready = threading.Event()
+            threading.Thread(
+                target=_serve_http_answers,
+                args=(
+                    ours,
+                    f"{pipeline._SERVING_MARKER_HEADER}: {marker}\r\nContent-Length: 2\r\n".encode(),
+                    ours_ready,
+                ),
+                daemon=True,
+            ).start()
+            assert ours_ready.wait(2)
+            pipeline._wait_until_listening(
+                "127.0.0.1",
+                ours.getsockname()[1],
+                marker,
+                lambda: announced.append("ours"),
+                threading.Event(),
+            )
+            assert announced == ["ours"]
+        finally:
+            ours.close()
+    finally:
+        foreign.close()
 
 
 def test_serve_prints_the_serving_document_once_the_port_accepts(
@@ -305,6 +420,47 @@ def test_serve_moves_the_server_banners_to_stderr(monkeypatch, capsys, fake_serv
         assert captured.out == ""
 
 
+def test_serve_never_announces_over_a_port_squatter(monkeypatch, capsys, fake_server):
+    """A port another process holds never produces a serving document.
+
+    The real failure of an occupied port is the bind error, and the
+    squatter's listener must not be mistaken for this server's, however
+    fast the announcement's first connection lands on it.
+    """
+    fake, calls = fake_server
+    port = _free_port()
+    squatter = _listening_socket(port)
+    try:
+        squatter_ready = threading.Event()
+        threading.Thread(
+            target=_serve_http_answers,
+            args=(squatter, b"Content-Length: 2\r\n", squatter_ready),
+            daemon=True,
+        ).start()
+        assert squatter_ready.wait(2)
+
+        def failing_start(options):
+            for hook in fake.hooks:
+                hook()
+            # The real startup machinery runs between the hook and the
+            # bind, giving the announcement thread its scheduling window.
+            time.sleep(0.2)
+            raise OSError("[Errno 48] Address already in use")
+
+        monkeypatch.setattr(fake, "run_server", failing_start)
+        code = run_main(monkeypatch, ["serve", "--format", "json", "--server-port", str(port)])
+        assert code == 1
+        captured = capsys.readouterr()
+        # The whole stdout is one document, the bind error. The squatter's
+        # answers carry no marker, so no serving document may name it.
+        document = json.loads(captured.out)
+        assert document["error"]["exitCode"] == 1
+        assert document["error"]["verb"] == "serve"
+        assert "Address already in use" in document["error"]["message"]
+    finally:
+        squatter.close()
+
+
 def test_serve_reports_an_unexpected_start_failure_in_json(monkeypatch, capsys, fake_server):
     fake, calls = fake_server
 
@@ -315,8 +471,8 @@ def test_serve_reports_an_unexpected_start_failure_in_json(monkeypatch, capsys, 
     code = run_main(monkeypatch, ["serve", "--format", "json"])
     assert code == 1
     captured = capsys.readouterr()
-    # The failure never leaves stdout without its document, and the socket
-    # that never listened announced nothing before it.
+    # The failure never leaves stdout without its document, and a start
+    # whose hooks never ran announced nothing before it.
     document = json.loads(captured.out)
     assert document["error"]["exitCode"] == 1
     assert document["error"]["verb"] == "serve"

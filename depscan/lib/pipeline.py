@@ -32,6 +32,7 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 
 import contextlib
 import os
+import secrets
 import socket
 import threading
 import time
@@ -301,6 +302,11 @@ def build_server_bom_scanner():
 #: never comes up, where nothing is announced at all.
 ANNOUNCE_TIMEOUT_SECONDS = 30.0
 
+#: The response header that marks every answer this process's server gives.
+#: The announcement probe reads it to tell the server it started from
+#: whatever else may already hold the port.
+_SERVING_MARKER_HEADER = "X-Depscan-Instance"
+
 
 def _listener_candidates(host):
     """The addresses the startup announcement may probe.
@@ -318,31 +324,60 @@ def _listener_candidates(host):
     return ordered
 
 
-def _port_accepts(host, port) -> bool:
-    """Whether a TCP connection to the host and port succeeds right now."""
+def _carries_marker(response: bytes, marker: str) -> bool:
+    """Whether an HTTP response head carries this process's marker header."""
+    head = response.split(b"\r\n\r\n", 1)[0]
+    for line in head.split(b"\r\n"):
+        name, _, value = line.partition(b":")
+        if name.strip().lower() == _SERVING_MARKER_HEADER.lower().encode():
+            return value.strip().decode("latin-1") == marker
+    return False
+
+
+def _answers_with_marker(host, port, marker: str) -> bool:
+    """Whether the server answering this port carries this process's marker.
+
+    A successful connection proves only that something listens; when the
+    port was already held by another process, the bind that follows fails.
+    This process's server stamps every response, whatever its status, with
+    the marker header, so the probe can tell the server it started from a
+    squatter or from another dep-scan server.
+    """
     try:
         port_number = int(port)
     except (TypeError, ValueError):
         return False
     try:
-        with socket.create_connection((host, port_number), timeout=0.25):
-            return True
+        with socket.create_connection((host, port_number), timeout=0.25) as probe:
+            probe.settimeout(1.0)
+            probe.sendall(f"GET / HTTP/1.0\r\nHost: {host}\r\n\r\n".encode())
+            response = b""
+            while len(response) < 4096:
+                chunk = probe.recv(1024)
+                if not chunk:
+                    break
+                response += chunk
+                if b"\r\n\r\n" in response:
+                    break
     except OSError:
         return False
+    return _carries_marker(response, marker)
 
 
-def _wait_until_listening(host, port, announce: Callable[[], None], cancelled) -> None:
-    """Announce on the first successful connection to the server's port.
+def _wait_until_listening(host, port, marker: str, announce: Callable[[], None], cancelled) -> None:
+    """Announce once the server answering the port carries this process's marker.
 
     The thread returns without announcing when the cancellation event is set
-    or the deadline passes, so a server that never listens announces nothing.
+    or the deadline passes, so a server that never binds, or whose port is
+    held by something else, announces nothing.
     """
     deadline = time.monotonic() + ANNOUNCE_TIMEOUT_SECONDS
     while time.monotonic() < deadline and not cancelled.is_set():
-        if any(_port_accepts(candidate, port) for candidate in _listener_candidates(host)):
-            if not cancelled.is_set():
-                announce()
-            return
+        for candidate in _listener_candidates(host):
+            if _answers_with_marker(candidate, port, marker):
+                if not cancelled.is_set():
+                    announce()
+                return
         time.sleep(0.05)
 
 
@@ -351,20 +386,29 @@ def _announce_once_listening(app, host, port, announce: Callable[[], None]):
 
     The server package's startup hooks run before it binds its socket, so
     announcing from the hook alone would print before the server is
-    listening. The hook instead starts a daemon thread that polls the port
-    and announces on the first successful connection. The returned event
-    cancels the thread: a server whose bind attempt fails must never
-    announce against whatever else holds the port.
+    listening, and announcing on the first successful connection alone
+    would announce for whatever already holds the port when the bind later
+    fails. The hook therefore stamps the app's responses with a
+    per-process marker header and starts a daemon thread that polls the
+    port for a server answering with that marker: only the server this
+    process started can carry it, so the announcement names a server that
+    is listening and is ours. The returned event cancels the thread.
     """
     cancelled = threading.Event()
+    marker = f"dep-scan-{secrets.token_hex(8)}"
+
+    def mark_response(response):
+        response.headers[_SERVING_MARKER_HEADER] = marker
+        return response
 
     def start_hook():
         threading.Thread(
             target=_wait_until_listening,
-            args=(host, port, announce, cancelled),
+            args=(host, port, marker, announce, cancelled),
             daemon=True,
         ).start()
 
+    app.after_request(mark_response)
     app.before_serving(start_hook)
     return cancelled
 
@@ -647,15 +691,17 @@ def _vdb_download_status(message: str):
     """The status spinner for the vdb download, drawn only where allowed.
 
     Spinners and progress draw on a terminal stderr; the logger owns that
-    rule through its suppression helper, which takes the console, the
-    message and the spinner keyword and returns the running status. While
-    the logger provides no helper, the console's own terminal detection
-    decides, and the download runs without a spinner on a plain stream, in
-    which case the status object of the ``with`` statement is None.
+    rule through its status helper, which takes the message and the spinner
+    keyword for its own stderr console and returns the status to enter: a
+    rich status on a terminal, and a quiet stand-in without a stop method
+    on a redirected stream. While the logger provides no helper, the
+    console's own terminal detection decides, and the download runs without
+    a spinner on a plain stream, in which case the status object of the
+    ``with`` statement is None.
     """
-    suppress_spinner = getattr(logger_lib, "suppress_spinner", None)
-    if suppress_spinner is not None:
-        return suppress_spinner(log_console, message, spinner=SPINNER)
+    console_status = getattr(logger_lib, "console_status", None)
+    if console_status is not None:
+        return console_status(message, spinner=SPINNER)
     if log_console.is_terminal:
         return log_console.status(message, spinner=SPINNER)
     return contextlib.nullcontext(None)
@@ -709,8 +755,13 @@ def stage_database(ctx):
             with _vdb_download_status(
                 f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ..."
             ) as vdb_download_status:
-                if vdb_download_status is not None and not IS_CI:
-                    vdb_download_status.stop()
+                # A redirected stream yields a status with no stop method,
+                # and there is nothing to stop; on a terminal the early stop
+                # keeps the download's own messages from fighting the
+                # animation on a CI run's console.
+                stop = getattr(vdb_download_status, "stop", None)
+                if stop is not None and not IS_CI:
+                    stop()
                 # The download raises once every retry has failed. The layer
                 # that fails varies (vdb's own errors, urllib3 IncompleteRead,
                 # requests ChunkedEncodingError), so any exception stops the
