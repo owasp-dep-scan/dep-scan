@@ -1,0 +1,40 @@
+packages/analysis-lib/tests/test_findings_schema.py
+  s_6d9553ae7f5d5c::t_ed05d187854677 61
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_6d9553ae7f5d5c::t_6b6af04f69c30a 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor.schema.json
+  s_6d9553ae7f5d5c::t_1388544a7de10e 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding-fingerprint-vectors.json
+  s_6d9553ae7f5d5c::t_f8e3099fb07a85 1-632,634
+packages/analysis-lib/tests/test_findings_fingerprint.py
+  s_6d9553ae7f5d5c::t_9ef348f69bf5c4 34-36
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_6d9553ae7f5d5c::t_3611a1a05c0869 66,70-73,76,83-87,91-96
+  s_946f4290a94b1c::t_68317aeec12c00 97-98
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding.schema.json
+  s_6d9553ae7f5d5c::t_ba658126adb096 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b84109eca9ad0978d521f95122febae5bf745183",
+  "prompts": {},
+  "sessions": {
+    "s_6d9553ae7f5d5c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_6",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    },
+    "s_946f4290a94b1c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
