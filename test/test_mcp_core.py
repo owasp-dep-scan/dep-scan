@@ -334,7 +334,9 @@ def test_confine_accepts_paths_below_a_filesystem_root(tmp_path):
     every path with the outside-root rule while the startup log names the
     root as allowed.
     """
-    root = os.path.realpath(os.sep)
+    # The root of the drive tmp_path is on: on Windows the working
+    # directory's drive (os.sep alone) can differ from the temp drive.
+    root = os.path.realpath(os.path.splitdrive(str(tmp_path))[0] + os.sep)
     assert confinement.confine(str(tmp_path), [root]) == os.path.realpath(tmp_path)
 
 
