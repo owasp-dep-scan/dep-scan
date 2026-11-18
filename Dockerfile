@@ -1,4 +1,4 @@
-FROM ghcr.io/almalinux/10-minimal:10
+FROM ghcr.io/almalinux/10-minimal:10.3
 
 LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
@@ -12,17 +12,18 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan scan"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=26.0.1-tem
-ARG MAVEN_VERSION=3.9.16
-ARG GRADLE_VERSION=9.6.1
-ARG PYTHON_VERSION=3.12
-ARG GO_VERSION=1.26.11
+ARG JAVA_VERSION=26.0.2.1+1-tem
+ARG MAVEN_VERSION=3.10.1
+ARG GRADLE_VERSION=9.9.1
+ARG PYTHON_VERSION=3.14
+ARG GO_VERSION=1.27.4
 
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=$GO_VERSION \
     JAVA_VERSION=$JAVA_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
     GRADLE_VERSION=$GRADLE_VERSION \
+    UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     GRADLE_OPTS="-Dorg.gradle.daemon=false" \
     JAVA_HOME="/opt/java/${JAVA_VERSION}" \
     MAVEN_HOME="/opt/maven/${MAVEN_VERSION}" \
@@ -49,10 +50,12 @@ RUN set -e; \
             ;; \
         *) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
     esac; \
-    echo -e "[nodejs]\nname=nodejs\nstream=22\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
-    && microdnf update -y && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
+    microdnf update -y && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
         python3 python3-devel python3-pip diffutils \
-        pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks \
+        pcre2 which tar zip unzip sudo nodejs24 nodejs24-npm ncurses glibc-common glibc-all-langpacks \
+    && ln -sf /usr/bin/node-24 /usr/local/bin/node \
+    && ln -sf /usr/bin/npm-24 /usr/local/bin/npm \
+    && ln -sf /usr/bin/npx-24 /usr/local/bin/npx \
     && python3 --version \
     && node --version \
     && curl -s "https://get.sdkman.io" | bash \
@@ -66,7 +69,7 @@ RUN set -e; \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
     && rm go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
-    && npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom-parsetools \
+    && npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom-parsetools@2.0.0 \
     && cdxgen --version \
     && useradd -ms /bin/bash owasp \
     && pecl channel-update pecl.php.net \
