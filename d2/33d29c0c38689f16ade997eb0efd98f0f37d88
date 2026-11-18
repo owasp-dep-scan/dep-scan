@@ -1,0 +1,73 @@
+documentation/docs/agents.mdx
+  s_7318da1b9edd46::t_0d8754de69ecae 33
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-vdb-download-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-scan-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+test/test_v7_verbs.py
+  s_7318da1b9edd46::t_3ac04fc33a7d42 188,190-191
+test/test_v7_output_core.py
+  s_7318da1b9edd46::t_ba2ea666958c5c 60,65
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding-fingerprint-vectors.json
+  s_7318da1b9edd46::t_6037f8b85731f9 1-589,591
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-vdb-path-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-validate-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-version-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/tests/test_findings_schema.py
+  s_7318da1b9edd46::t_0d8754de69ecae 79
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-schema-output.schema.json
+  s_7318da1b9edd46::t_9282990bb7ab0e 21,25
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/tests/test_output_schemas.py
+  s_7318da1b9edd46::t_0d8754de69ecae 77,93,104
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-serve-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-vdb-info-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_7318da1b9edd46::t_0d8754de69ecae 8-13,83-84,97,99,145-148
+test/test_v7_output_contract.py
+  s_7318da1b9edd46::t_2602410b5c7bf8 38-43
+  s_7318da1b9edd46::t_3ac04fc33a7d42 1132,1146
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-help-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-config-init-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-error.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-report-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-config-show-output.schema.json
+  s_7318da1b9edd46::t_6037f8b85731f9 3
+packages/analysis-lib/tests/test_findings_fingerprint.py
+  s_7318da1b9edd46::t_6037f8b85731f9 34
+test/test_v7_version_help_config.py
+  s_7318da1b9edd46::t_ba2ea666958c5c 45-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d233d29c0c38689f16ade997eb0efd98f0f37d88",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
