@@ -1,0 +1,26 @@
+documentation/docs/doctor.mdx
+  s_eaf08476298e8c::t_8bee7141d0d9d6 110
+depscan/lib/doctor.py
+  s_eaf08476298e8c::t_26e744f3e8d233 771-774
+  s_eaf08476298e8c::t_19752b8ce696f1 901-903,915-921
+  s_eaf08476298e8c::t_10a7ef87c93573 720-725
+  s_eaf08476298e8c::t_c2699a90445ed6 819-824
+  s_eaf08476298e8c::t_b7cadb46efe43e 818
+  s_eaf08476298e8c::t_60301fd2ebac83 922-923
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c9238f6d4b588fe0ebd5b6a8b61f3449a804662d",
+  "prompts": {},
+  "sessions": {
+    "s_eaf08476298e8c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_3",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
