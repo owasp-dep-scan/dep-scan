@@ -1,0 +1,31 @@
+test/test_v7_colour_terminals.py
+  s_dd6804d7312e00::t_a2a0e3370292fc 74-75
+  s_dd6804d7312e00::t_4e6e11f57c3e32 95,99-101
+  s_dd6804d7312e00::t_46b451084f29ec 139-141
+  s_dd6804d7312e00::t_74706f3e2a8eb7 86,88
+  s_dd6804d7312e00::t_3bd0cd88d9eeb6 188,201-202
+  s_dd6804d7312e00::t_25c2adb6f92ee1 108-110
+  s_dd6804d7312e00::t_a32fab2c5776b2 1-73,76-80,83-85,87,89-94,96-98,102-107,111-138,142-150,152-187,189-200,203-213
+  s_dd6804d7312e00::t_1ac71f27de9ae1 81-82
+  s_dd6804d7312e00::t_51c158649c582f 151
+depscan/lib/logger.py
+  s_dd6804d7312e00::t_8bb62830bdd5f8 56-68
+  s_dd6804d7312e00::t_7481defc234573 42-55,69-75,77-83,85-86,88-91,94-95,99-121,125,127-167
+  s_dd6804d7312e00::t_3ed1cc7c74790a 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a1d6277016b519b958ee7e303c09eeb8e93945c9",
+  "prompts": {},
+  "sessions": {
+    "s_dd6804d7312e00": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
