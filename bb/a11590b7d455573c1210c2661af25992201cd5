@@ -1,0 +1,23 @@
+pyproject.toml
+  s_eaf08476298e8c::t_d11d1a2565a544 71
+  s_eaf08476298e8c::t_0944ca4adc369a 51-52
+  s_eaf08476298e8c::t_159ab21f0fa1f9 56-63
+uv.lock
+  s_eaf08476298e8c::t_a1dcf63ecb1dc6 5-8,33-41,949-961,982-1007,1316-1359,1425-1436,1532,1536,1545-1547,1575-1577,1586,1931-1970,2031-2032,2055-2056,2395-2429,2451-2475,2506-2518
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bba11590b7d455573c1210c2661af25992201cd5",
+  "prompts": {},
+  "sessions": {
+    "s_eaf08476298e8c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_3",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
