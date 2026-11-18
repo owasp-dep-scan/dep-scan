@@ -857,6 +857,7 @@ def test_a_bom_that_was_not_created_is_a_failed_inventory(scan_stubs, monkeypatc
         ),
         render=False,
     )
+    assert result.manifest is not None
     inventory = next(stage for stage in result.manifest["stages"] if stage["name"] == "inventory")
     assert inventory["status"] == "failed"
     assert "the BOM for the python type was not created" in inventory["reason"]

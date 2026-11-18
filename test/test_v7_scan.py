@@ -962,7 +962,7 @@ def test_json_format_prints_one_document_and_nothing_else(
     assert len(document["scans"]) == 1
     entry = document["scans"][0]
     assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
-    assert entry["target"] == bom
+    assert entry["target"] == json_path(bom)
     assert entry["kind"] == "bom"
     assert entry["scanDir"] == str(reports).replace(os.sep, "/")
     assert entry["manifest"]["layoutVersion"] == "1.0"
@@ -1265,7 +1265,7 @@ def test_json_format_crashed_scan_prints_the_failed_entry(
     document = json.loads(captured.out)  # the whole of stdout is the one document
     entry = document["scans"][0]
     assert set(entry) == {"target", "kind", "error"}
-    assert entry["target"] == bom
+    assert entry["target"] == json_path(bom)
     assert entry["kind"] is None
     assert entry["error"] == "RuntimeError: boom"
     # The rich log console holds the stream it was built with, so the log
@@ -1311,9 +1311,9 @@ def test_a_crash_in_the_second_target_keeps_the_scans_object(
     entries = json.loads(capfd.readouterr().out)["scans"]
     assert len(entries) == 2
     assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings"}
-    assert entries[0]["target"] == first
+    assert entries[0]["target"] == json_path(first)
     assert set(entries[1]) == {"target", "kind", "error"}
-    assert entries[1]["target"] == second
+    assert entries[1]["target"] == json_path(second)
     assert entries[1]["kind"] is None
     assert entries[1]["error"] == "RuntimeError: boom"
     assert "RuntimeError: boom" in " ".join(r.getMessage() for r in caplog.records)

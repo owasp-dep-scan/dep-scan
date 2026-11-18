@@ -199,13 +199,13 @@ def test_download_shards_calls_refresh_shards_with_names(vdb_home, monkeypatch):
 def test_download_shards_rejects_flavor_combo(vdb_home):
     parser = _build_parser()
     args = parser.parse_args(["download", "--shards", "pypi", "--flavor", "full"])
-    assert cmd_download(args) == 1
+    assert cmd_download(args) == 2
 
 
-def test_download_rejected_combination_exits_one(vdb_home, capsys):
+def test_download_rejected_combination_is_a_usage_error(vdb_home, capsys):
     parser = _build_parser()
     args = parser.parse_args(["download", "--distro", "ubuntu"])
-    assert cmd_download(args) == 1
+    assert cmd_download(args) == 2
     assert "no per-distro complete database" in capsys.readouterr().err
 
 

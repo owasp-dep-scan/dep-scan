@@ -987,7 +987,7 @@ def _json_target(target: str) -> str:
     if target.startswith(("pkg:", "git@")) or "://" in target:
         return target
     if os.path.exists(target) or detect_kind(target)[0] != "container":
-        return json_path(target)
+        return json_path(target) or target
     return target
 
 
