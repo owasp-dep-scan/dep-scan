@@ -56,6 +56,57 @@ date as annotations.
   reports layout, runs the depscan scan the repo tests use and asserts the
   reachable purl floor and `mustReach`.
 
+## Generated-input caches in CI
+
+The projects the repo tests used to generate on every run
+(`java-sec-code`, `dotnet-podcasts`, `vulnerable-aws-koa-app`, the
+`dejacode` scan and the dep-scan self scan in
+`.github/workflows/repotests.yml`) now keep their cdxgen and atom outputs
+in `actions/cache` entries, so a pull request re-scans restored inputs
+instead of regenerating them. The caches hold only what cdxgen and atom
+wrote into the reports directories: the `*.cdx.json` BOMs, the
+`*slices*.json` atom slices, the `*openapi*.json` spec files, cdxgen's
+`*.introspection.json` reports and a `generation.json` when one exists.
+dep-scan's own outputs (the VDR, the risk and license reports, the findings
+and manifest documents and the analysis fallback reports) are never cached;
+every run re-derives them, because that analysis is what the jobs exist to
+test.
+
+There is one entry per scan variant: `java-sec-code` and `dotnet-podcasts`
+have three each (plain profile, research profile with
+`FrameworkReachability`, research profile with `SemanticReachability`), the
+koa app, dejacode and the self scan have one each. On a restore hit the job
+runs `depscan scan <restored dir> --target-kind bom-dir` with the same
+reachability and explain options the full run uses, and skips the project's
+build steps (`dotnet build`, dejacode's `docker build` and `uv pip
+install`), which produce only what cdxgen reads for the BOM. On a miss the
+job runs the full generation as before, copies the generated inputs into
+the cache directory and saves the entry.
+
+Every key names everything that can change the generated inputs: the
+scanned project's commit (the external checkouts are pinned to full commit
+SHAs in the workflow), the runner OS and architecture, the cdxgen and atom
+versions resolved in a step before the restore, and a `hashFiles` hash of
+the dep-scan files that build the cdxgen command line and its environment
+(`packages/xbom-lib/src/xbom_lib/cdxgen.py`,
+`packages/xbom-lib/src/xbom_lib/process.py`, `depscan/lib/bom.py`,
+`depscan/lib/pipeline.py`, `depscan/lib/config.py`, `depscan/cli_options.py`
+and `depscan/commands/scan.py`). The self scan's key replaces the project
+commit with a hash of `uv.lock` and every `pyproject.toml`, so an ordinary
+code change reuses the slices. Each saved entry's size is logged with
+`du -sk` into the job log, because the sizes can only be measured where the
+generation runs.
+
+A full generation still runs regularly so the cdxgen and atom path itself
+keeps being tested: the weekly schedule (Mondays 05:00 UTC) and the
+`regenerate` input of the `workflow_dispatch` event both skip the restore
+steps. The scheduled or dispatched run must happen on the default branch,
+because a pull request can only restore caches its own branch or the
+default branch saved; that run is what seeds the entries pull requests
+restore. The workflow has no `push` trigger on purpose. A pull request that
+misses, for example because it changed a file the key hashes, runs the full
+path and saves an entry only that pull request can reuse.
+
 ## Adding a project
 
 Add an entry to `projects.json` with the name, Git URL, full commit SHA to
