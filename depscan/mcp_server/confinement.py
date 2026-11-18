@@ -44,7 +44,13 @@ def _inside(candidate: str, roots: Iterable[str]) -> bool:
     normed = _normcase(candidate)
     for root in roots:
         normed_root = _normcase(root)
-        if normed == normed_root or normed.startswith(_normcase(root + os.sep)):
+        if normed == normed_root:
+            return True
+        # A filesystem root ("/" on POSIX, "C:\\" on Windows) already ends
+        # with the separator; appending another would anchor the containment
+        # at a doubled separator and confine nothing below it.
+        anchor = root if root.endswith(os.sep) else root + os.sep
+        if normed.startswith(_normcase(anchor)):
             return True
     return False
 

@@ -1,10 +1,10 @@
 """The MCP core: the verb, the missing-extra exit, the doctor capability,
 confinement, and the server construction contract.
 
-The tests here never boot the full server: the tool and resource modules
-belong to their own pieces, so the construction test installs stub modules
-for them and proves only that the construction path imports and delegates
-to whatever is registered. The SDK-major guard follows vdb's
+The tests here never boot the full server: the construction test installs
+stub modules in place of the real tool and resource registrations, so it
+proves only that the construction path imports and delegates to whatever
+is registered. The SDK-major guard follows vdb's
 ``test_mcp_sdk_compat.py``: the server is written against the mcp 2.x
 constructor-registration API and this suite fails when the resolved SDK
 drifts off it.
@@ -324,6 +324,18 @@ def test_confine_accepts_the_root_itself(rooted):
     assert confinement.confine(str(rooted.root), [str(rooted.root)]) == os.path.realpath(
         rooted.root
     )
+
+
+def test_confine_accepts_paths_below_a_filesystem_root(tmp_path):
+    """A --allow-dir of the filesystem root confines everything below it.
+
+    The filesystem root already ends with the separator, so appending
+    another would anchor the containment at a doubled separator and refuse
+    every path with the outside-root rule while the startup log names the
+    root as allowed.
+    """
+    root = os.path.realpath(os.sep)
+    assert confinement.confine(str(tmp_path), [root]) == os.path.realpath(tmp_path)
 
 
 def test_confine_refuses_a_dotdot_that_escapes(rooted):
