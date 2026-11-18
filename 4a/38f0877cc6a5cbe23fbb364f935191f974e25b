@@ -1,0 +1,19 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-doctor.schema.json
+  s_257c086714955c::t_92bacba3482907 229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a38f0877cc6a5cbe23fbb364f935191f974e25b",
+  "prompts": {},
+  "sessions": {
+    "s_257c086714955c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_5d7e3c74-282d-40bf-917c-88f55153ae9c",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
