@@ -1,0 +1,23 @@
+test/test_scan_internals.py
+  s_4319487fa41c8a::t_0a5a95c4a2b1cf 223-271
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_4319487fa41c8a::t_ae85727851d9d2 672
+  s_4319487fa41c8a::t_737412bd57eb50 749-754
+  s_4319487fa41c8a::t_ec385ffd96fc27 694-699
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d10eb2ceb6219e3cb8212f396a87cb8d0767898",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
