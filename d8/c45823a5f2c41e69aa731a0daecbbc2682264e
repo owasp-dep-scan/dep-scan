@@ -1,0 +1,20 @@
+documentation/docs/cli-usage.mdx
+  s_4319487fa41c8a::t_46db607d899360 22
+  s_4319487fa41c8a::t_6daa693d138dac 30,35,43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d8c45823a5f2c41e69aa731a0daecbbc2682264e",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
