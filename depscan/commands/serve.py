@@ -6,6 +6,7 @@ from typing import Dict
 
 from depscan import api
 from depscan.commands.output import (
+    EXIT_USAGE,
     stdout_on_stderr,
     EXIT_FAILURE,
     EXIT_REQUIREMENT_NOT_MET,
@@ -93,6 +94,17 @@ def _add_database_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _port_problem(port) -> str:
+    """Why ``port`` (the option or DEPSCAN_PORT) is not a TCP port, or ""."""
+    try:
+        number = int(port)
+    except (TypeError, ValueError):
+        number = 0
+    if 1 <= number <= 65535:
+        return ""
+    return f"The server port {port!r} is not a number from 1 to 65535."
+
+
 def _serving_document(options) -> Dict:
     """The document that names the running server.
 
@@ -101,8 +113,11 @@ def _serving_document(options) -> Dict:
     same machine can reach.
     """
     host = options.server_host
-    port = options.server_port
+    port = int(options.server_port)
     shown = "127.0.0.1" if host in ("0.0.0.0", "::") else host
+    if ":" in shown:
+        # An IPv6 address goes in brackets in a URL.
+        shown = f"[{shown}]"
     return {"serving": {"host": host, "port": port, "url": f"http://{shown}:{port}"}}
 
 
@@ -120,6 +135,13 @@ def run(args: argparse.Namespace) -> int:
     json_output = args.format == "json"
     overrides = {dest: value for dest, value in vars(args).items() if dest not in _NON_SCAN_DESTS}
     options = api.scan_options(server_mode=True, **overrides)
+    port_problem = _port_problem(options.server_port)
+    if port_problem:
+        if json_output:
+            print_error_document(EXIT_USAGE, "serve", port_problem)
+        else:
+            LOG.error("%s", port_problem)
+        return EXIT_USAGE
     ctx = pipeline.build_context(options)
     pipeline.configure_output(ctx)
     saved_stdout = sys.stdout

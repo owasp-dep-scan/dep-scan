@@ -757,7 +757,13 @@ def _resolve_targets(args: argparse.Namespace):
         if forced:
             kind, reason = forced, f"forced with --target-kind {forced}"
         else:
-            kind, reason = detect_kind(target)
+            try:
+                kind, reason = detect_kind(target)
+            except OSError as exc:
+                message = f"The target {target} cannot be read: {exc.strerror or exc}"
+                LOG.error(message)
+                entries.append((target, None, message))
+                continue
         if kind == "ios":
             mobile = doctor_lib.capability_unavailable_reason("mobile", {}, {})
             message = (
@@ -946,7 +952,7 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
     for index, (target, kind, refusal) in enumerate(entries, start=1):
         if kind is None:
             # A target the detection refused; it was already logged.
-            outcomes.append((1, {"target": target, "kind": None, "error": refusal}))
+            outcomes.append((1, {"target": _json_target(target), "kind": None, "error": refusal}))
             continue
         options = argparse.Namespace(**vars(internal))
         try:
@@ -967,8 +973,22 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
         except Exception as exc:
             outcomes.append((1, _crash_entry(target, exc)))
             continue
-        outcomes.append((code, {"target": target, "kind": kind, **document}))
+        outcomes.append((code, {"target": _json_target(target), "kind": kind, **document}))
     return outcomes
+
+
+def _json_target(target: str) -> str:
+    """The ``target`` field of a scan entry.
+
+    A target that names a local path, existing or not, takes the absolute
+    form every path in a json document has; a package URL, a URL and an
+    image reference that is not a local path are kept as given.
+    """
+    if target.startswith(("pkg:", "git@")) or "://" in target:
+        return target
+    if os.path.exists(target) or detect_kind(target)[0] != "container":
+        return json_path(target)
+    return target
 
 
 def _zero_target_target(internal) -> str:
@@ -999,7 +1019,7 @@ def _crash_entry(target: str, exc: Exception) -> dict:
     LOG.exception(
         "The scan of the target %s stopped with an unexpected error: %s", target, message
     )
-    return {"target": target, "kind": None, "error": message}
+    return {"target": _json_target(target), "kind": None, "error": message}
 
 
 def _no_reports_dir_requested(args: argparse.Namespace, internal) -> bool:

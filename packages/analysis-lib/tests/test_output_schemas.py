@@ -361,7 +361,7 @@ def test_config_init_output_validates():
 def test_serve_output_validates():
     _valid(
         "depscan-serve-output",
-        {"serving": {"host": "127.0.0.1", "port": "7070", "url": "http://127.0.0.1:7070"}},
+        {"serving": {"host": "127.0.0.1", "port": 7070, "url": "http://127.0.0.1:7070"}},
     )
     _valid(
         "depscan-serve-output",
@@ -370,6 +370,19 @@ def test_serve_output_validates():
     _invalid(
         "depscan-serve-output",
         {"serving": {"host": "127.0.0.1", "port": "7070"}},
+    )
+    # The port is a number, and an IPv6 host is bracketed in the URL.
+    _valid(
+        "depscan-serve-output",
+        {"serving": {"host": "::1", "port": 7070, "url": "http://[::1]:7070"}},
+    )
+    _invalid(
+        "depscan-serve-output",
+        {"serving": {"host": "127.0.0.1", "port": "7070", "url": "http://127.0.0.1:7070"}},
+    )
+    _invalid(
+        "depscan-serve-output",
+        {"serving": {"host": "::1", "port": 7070, "url": "http://::1:7070"}},
     )
 
 

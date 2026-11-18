@@ -262,7 +262,7 @@ def test_serve_prints_the_serving_document_once_the_port_accepts(monkeypatch, ca
     assert document == {
         "serving": {
             "host": "127.0.0.1",
-            "port": str(port),
+            "port": port,
             "url": f"http://127.0.0.1:{port}",
         }
     }

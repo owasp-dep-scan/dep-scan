@@ -15,6 +15,7 @@ only standard library code.
 import contextlib
 import json
 import os
+import re
 import sys
 from typing import Any, Dict, Optional
 
@@ -55,6 +56,18 @@ def exit_code_table_markdown() -> str:
     for code, meaning in EXIT_CODES:
         lines.append(f"| {code} | {meaning} |")
     return "\n".join(lines) + "\n"
+
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+def plain_text(text: str) -> str:
+    """``text`` without ANSI escape sequences.
+
+    argparse colours its help on Python 3.14 and later when the stream is a
+    terminal or FORCE_COLOR is set; a JSON document carries the plain text.
+    """
+    return _ANSI_ESCAPE.sub("", text)
 
 
 def json_path(path) -> Optional[str]:

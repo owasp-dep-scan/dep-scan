@@ -22,6 +22,7 @@ import pytest
 
 from depscan import api, cli
 from depscan.commands import checks as checks_table
+from depscan.commands.output import json_path
 from depscan.commands.targets import detect_kind
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
@@ -1070,7 +1071,7 @@ def test_json_format_follows_the_number_of_targets_given(scan_stubs, monkeypatch
     assert len(entries) == 2
     assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings"}
     assert set(entries[1]) == {"target", "kind", "error"}
-    assert entries[1]["target"] == "no-such-project"
+    assert entries[1]["target"] == json_path(tmp_path / "no-such-project")
     assert entries[1]["kind"] is None
     assert "does not exist" in entries[1]["error"]
     # Positive control: exactly one scan ran, for the existing target.
@@ -1098,7 +1099,7 @@ def test_a_single_refused_target_prints_the_scans_object(scan_stubs, monkeypatch
     assert list(document) == ["scans"]
     entry = document["scans"][0]
     assert set(entry) == {"target", "kind", "error"}
-    assert entry["target"] == "no-such-project"
+    assert entry["target"] == json_path(tmp_path / "no-such-project")
     assert entry["kind"] is None
     assert "does not exist" in entry["error"]
     assert not (tmp_path / "reports").exists(), "a refused target scans nothing"

@@ -5,12 +5,18 @@
   "description": "The document `depscan serve --format json` writes on stdout once the server is listening, and the only content stdout ever carries: the host and port the server was configured with, and the URL a client can reach it on. Request logs go to stderr. A server that cannot start produces the error document instead.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["serving"],
+  "required": [
+    "serving"
+  ],
   "properties": {
     "serving": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["host", "port", "url"],
+      "required": [
+        "host",
+        "port",
+        "url"
+      ],
       "properties": {
         "host": {
           "type": "string",
@@ -18,13 +24,15 @@
           "description": "The host the server was configured with, as given."
         },
         "port": {
-          "type": ["string", "integer"],
-          "description": "The port the server was configured with."
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "The TCP port the server listens on."
         },
         "url": {
           "type": "string",
-          "pattern": "^http://",
-          "description": "The URL a client can reach the server on, http://<host>:<port> with the unspecified addresses 0.0.0.0 and :: shown as 127.0.0.1."
+          "pattern": "^http://(\\[[0-9A-Fa-f:.]+\\]|[^/:\\[\\]]+):[0-9]+$",
+          "description": "The URL a client can reach the server on, http://<host>:<port> with the unspecified addresses 0.0.0.0 and :: shown as 127.0.0.1. An IPv6 host is written in brackets."
         }
       }
     }

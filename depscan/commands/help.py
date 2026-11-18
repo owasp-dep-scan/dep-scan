@@ -6,7 +6,7 @@ one-document printer.
 
 import argparse
 
-from depscan.commands.output import print_json_document
+from depscan.commands.output import plain_text, print_json_document
 
 
 def register(subparsers) -> None:
@@ -48,7 +48,7 @@ def run(args: argparse.Namespace) -> int:
     topic = getattr(args, "topic", "") or ""
     text = _help_text(build_parser(), topic)
     if args.format == "json":
-        print_json_document({"help": text})
+        print_json_document({"help": plain_text(text)})
         return 0
     print(text, end="")
     return 0

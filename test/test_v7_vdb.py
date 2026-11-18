@@ -209,10 +209,10 @@ def test_download_shards_print_the_absolute_marker_path(vdb_home, monkeypatch, c
 
 def test_a_rejected_distro_prints_the_error_document(vdb_home, monkeypatch, capsys):
     argv = ["vdb", "download", "--distro", "ubuntu", "--format", "json"]
-    assert run_depscan(monkeypatch, argv) == 1
+    assert run_depscan(monkeypatch, argv) == 2
     captured = capsys.readouterr()
     document = json.loads(captured.out)
-    assert document["error"]["exitCode"] == 1
+    assert document["error"]["exitCode"] == 2
     assert document["error"]["verb"] == "vdb"
     assert "no per-distro complete database" in document["error"]["message"]
     assert "details" not in document["error"]
@@ -224,9 +224,9 @@ def test_a_rejected_flavor_alias_combination_prints_the_error_document(
     vdb_home, monkeypatch, capsys
 ):
     argv = ["vdb", "download", "--flavor", "app-only", "--scope", "app", "--format", "json"]
-    assert run_depscan(monkeypatch, argv) == 1
+    assert run_depscan(monkeypatch, argv) == 2
     document = json.loads(capsys.readouterr().out)
-    assert document["error"]["exitCode"] == 1
+    assert document["error"]["exitCode"] == 2
     assert document["error"]["verb"] == "vdb"
     assert "cannot be combined" in document["error"]["message"]
 

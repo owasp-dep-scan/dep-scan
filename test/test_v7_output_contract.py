@@ -297,7 +297,7 @@ def install_serve_fakes():
         calls["server"].append(
             {
                 "host": ctx.args.server_host,
-                "port": ctx.args.server_port,
+                "port": int(ctx.args.server_port),
                 "mode": ctx.args.server_mode,
                 "hook": started_hook is not None,
             }
@@ -307,7 +307,7 @@ def install_serve_fakes():
         return 0
 
     def fake_database(ctx):
-        calls["database"] += 1
+        calls["database"].append(1)
 
     pipeline.start_server_mode = fake_start
     pipeline.stage_database = fake_database
@@ -454,22 +454,32 @@ def assert_one_document(out, err, exit_code, schema_name, label):
             f"{label}: exit {exit_code}, stdout is not one JSON document ({exc}):\n"
             f"stdout: {out[:2000]!r}\nstderr: {err[:2000]!r}"
         )
+    assert out.endswith("\n"), f"{label}: the document does not end with a newline"
     validate_schema(schema_name, document)
     return document
 
 
 def assert_stderr_rules(err, label):
-    """stderr carries no JSON line and no ANSI escape."""
+    """stderr carries no JSON document and no ANSI escape.
+
+    A document can leak one line at a time or pretty-printed over many, so
+    every line that opens an object or an array is decoded from there to
+    the end of stderr; a non-empty object or array found that way fails.
+    """
     assert "\x1b" not in err, f"{label}: stderr carries ANSI escapes:\n{err[:2000]!r}"
-    for line in err.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        try:
-            json.loads(stripped)
-        except ValueError:
-            continue
-        pytest.fail(f"{label}: stderr carries a JSON line: {stripped!r}")
+    decoder = json.JSONDecoder()
+    offset = 0
+    for line in err.splitlines(keepends=True):
+        stripped = line.lstrip()
+        if stripped[:1] in ("{", "["):
+            start = offset + len(line) - len(stripped)
+            try:
+                value, _end = decoder.raw_decode(err, start)
+            except ValueError:
+                value = None
+            if isinstance(value, (dict, list)) and value:
+                pytest.fail(f"{label}: stderr carries a JSON document: {stripped[:200]!r}")
+        offset += len(line)
 
 
 #: Sentinel for a case whose error document carries no details.
@@ -930,6 +940,84 @@ CASES = (
         message="invalid choice: 'frobnicate'",
     ),
     ContractCase(
+        case_id="help-unknown-topic",
+        profile="none",
+        argv=lambda s: ["help", "frobnicate", "--format", "json"],
+        exit_code=2,
+        schema="depscan-error",
+        verb="help",
+        message="invalid choice: 'frobnicate'",
+    ),
+    ContractCase(
+        case_id="help-flag-with-json",
+        profile="none",
+        argv=lambda s: ["scan", "--help", "--format", "json"],
+        exit_code=0,
+        schema="depscan-help-output",
+    ),
+    ContractCase(
+        case_id="vdb-subcommand-format-wins",
+        profile="vdb",
+        argv=lambda s: ["vdb", "--format", "text", "info", "--format", "json"],
+        exit_code=0,
+        schema="depscan-vdb-info-output",
+    ),
+    ContractCase(
+        case_id="vdb-download-conflicting-options",
+        profile="none",
+        argv=lambda s: [
+            "vdb",
+            "download",
+            "--shards",
+            "npm",
+            "--flavor",
+            "full",
+            "--format",
+            "json",
+        ],
+        exit_code=2,
+        schema="depscan-error",
+        verb="vdb",
+        message="--shards cannot be combined",
+    ),
+    ContractCase(
+        case_id="config-show-malformed-config-file",
+        profile="none",
+        prepare=lambda s: (s / "bad.toml").write_text("severity = [\n", encoding="utf-8"),
+        argv=lambda s: ["config", "show", "--config", str(s / "bad.toml"), "--format", "json"],
+        exit_code=1,
+        schema="depscan-error",
+        verb="config",
+        message="TOMLDecodeError",
+    ),
+    ContractCase(
+        case_id="doctor-require-value-with-a-dash",
+        profile="none",
+        argv=lambda s: ["doctor", "--require=-x", "--format", "json"],
+        exit_code=2,
+        schema="depscan-error",
+        verb="doctor",
+        message="unknown capability -x",
+        details={"unknownCapabilities": ["-x"]},
+    ),
+    ContractCase(
+        case_id="validate-deeply-nested-file",
+        profile="none",
+        prepare=lambda s: (s / "deep.json").write_text("[" * 100000 + "]" * 100000),
+        argv=lambda s: ["validate", str(s / "deep.json"), "--format", "json"],
+        exit_code=1,
+        schema="depscan-validate-output",
+    ),
+    ContractCase(
+        case_id="serve-port-not-a-number",
+        profile="none",
+        argv=lambda s: ["serve", "--server-port", "abc", "--format", "json"],
+        exit_code=2,
+        schema="depscan-error",
+        verb="serve",
+        message="is not a number from 1 to 65535",
+    ),
+    ContractCase(
         case_id="usage-error-single-token-format-json",
         profile="none",
         argv=lambda s: ["scan", "--format=json", "--no-such-option"],
@@ -953,6 +1041,10 @@ def _assert_case_document(case, document, scratch):
         assert entry["scanDir"] == str(reports_dir_of(scratch)).replace(os.sep, "/")
         assert entry["manifest"]["layoutVersion"] == "1.0"
         assert len(entry["findings"]) == 1
+    elif case.case_id == "validate-deeply-nested-file":
+        (result,) = document["results"]
+        assert result["valid"] is False
+        assert result["file"].endswith("/deep.json")
     elif case.case_id == "scan-zero-targets":
         assert len(document["scans"]) == 1
         entry = document["scans"][0]
@@ -983,7 +1075,7 @@ def _assert_case_document(case, document, scratch):
     elif case.case_id == "serve-success":
         assert document["serving"] == {
             "host": "0.0.0.0",
-            "port": "9999",
+            "port": 9999,
             "url": "http://127.0.0.1:9999",
         }
     elif case.case_id == "validate-invalid-document":
@@ -1051,6 +1143,85 @@ def test_v6_invocation_stays_text_only(runner_script, tmp_path):
     assert out == ""
     assert "this is a dep-scan 6 command line" in err
     assert_stderr_rules(err, "v6 invocation")
+
+
+def test_v6_invocation_with_json_writes_the_error_document(runner_script, tmp_path):
+    """A dep-scan 6 line that asks for json gets the error document as well."""
+    exit_code, out, err, _calls = run_verb(
+        ["--format", "json", "--bom-dir", "x"], "none", runner_script, tmp_path
+    )
+    assert exit_code == 2
+    document = assert_one_document(out, err, exit_code, "depscan-error", "v6 with json")
+    assert document["error"]["exitCode"] == 2
+    assert "dep-scan 6 command line" in document["error"]["message"]
+    assert document["error"]["details"]["translated"].startswith("depscan scan x")
+    assert "this is a dep-scan 6 command line" in err
+
+
+def test_a_path_target_is_absolute_in_the_scan_entry(runner_script, tmp_path):
+    """A relative path target is reported in the absolute, slash form."""
+    exit_code, out, err, _calls = run_verb(
+        ["scan", "no-such-dir", "--format", "json"], "scan", runner_script, tmp_path
+    )
+    document = assert_one_document(out, err, exit_code, "depscan-scan-output", "relative")
+    target = document["scans"][0]["target"]
+    assert target.endswith("/no-such-dir") and "\\" not in target
+    assert os.path.isabs(target.replace("/", os.sep))
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or (hasattr(os, "geteuid") and os.geteuid() == 0),
+    reason="mode 000 does not stop a directory listing on Windows or for root",
+)
+def test_an_unreadable_target_is_an_entry_not_a_crash(runner_script, tmp_path):
+    """A directory the scan cannot list is refused in its entry."""
+    unreadable = tmp_path / "noread"
+    unreadable.mkdir()
+    unreadable.chmod(0)
+    try:
+        exit_code, out, err, _calls = run_verb(
+            ["scan", "pkg:pypi/requests@2.32.1", str(unreadable), "--format", "json"],
+            "scan",
+            runner_script,
+            tmp_path,
+        )
+    finally:
+        unreadable.chmod(0o755)
+    assert exit_code == 1
+    document = assert_one_document(out, err, exit_code, "depscan-scan-output", "unreadable")
+    entries = document["scans"]
+    assert entries[0]["kind"] == "purl"
+    assert entries[1]["kind"] is None
+    assert "cannot be read" in entries[1]["error"]
+    assert "Traceback" not in err
+
+
+def test_schema_with_a_name_prints_a_valid_schema(runner_script, tmp_path):
+    """`depscan schema <name> --format json` prints that schema document."""
+    exit_code, out, err, _calls = run_verb(
+        ["schema", "depscan-scan-output", "--format", "json"], "none", runner_script, tmp_path
+    )
+    assert exit_code == 0
+    assert out.endswith("\n")
+    document = json.loads(out)
+    Draft202012Validator.check_schema(document)
+    assert document == load_schema("depscan-scan-output")
+    assert_stderr_rules(err, "schema by name")
+
+
+def test_help_json_carries_no_ansi_escapes(runner_script, tmp_path):
+    """FORCE_COLOR colours consoles, never the help text inside a document."""
+    exit_code, out, err, _calls = run_verb(
+        ["help", "scan", "--format", "json"],
+        "none",
+        runner_script,
+        tmp_path,
+        env_extra={"FORCE_COLOR": "1"},
+    )
+    assert exit_code == 0
+    document = json.loads(out)
+    assert "\x1b" not in document["help"]
+    assert "usage: depscan scan" in document["help"]
 
 
 def test_usage_error_without_json_is_text_only(runner_script, tmp_path):
@@ -1230,8 +1401,9 @@ def test_agents_page_example_runs_and_matches_its_schema(heading, argv, runner_s
 
     The examples run from the repository root, as the page says, with the
     fakes standing in for the database download and the server, so no run
-    touches the network. The serve example prints its serving document from
-    the startup hook the real server runs once the listener accepts.
+    touches the network. The serve example's fake start runs the startup
+    hook directly; test_v7_serve.py covers the hook firing only once the
+    real listener answers.
     """
     scratch = tmp_path
     profile = EXAMPLE_PROFILES.get(heading, "none")

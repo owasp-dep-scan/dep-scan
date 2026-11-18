@@ -16,10 +16,13 @@ import argparse
 import sys
 
 from depscan.commands.output import (
+    EXIT_FAILURE,
     EXIT_USAGE,
     argv_requests_json,
     argv_verb,
     error_document,
+    plain_text,
+    print_error_document,
     print_json_document,
 )
 
@@ -80,6 +83,19 @@ class ErrorDocumentParser(argparse.ArgumentParser):
             print_json_document(error_document(EXIT_USAGE, argv_verb(argv), message))
         super().error(message)
 
+    def print_help(self, file=None):
+        """Print the help, as the help verb's document when json was asked for.
+
+        ``-h`` and ``--help`` print the help on stdout and exit 0; with
+        ``--format json`` anywhere on the command line stdout still carries
+        one JSON document, the same ``{"help": ...}`` that ``depscan help``
+        prints.
+        """
+        if file is None and argv_requests_json(sys.argv[1:]):
+            print_json_document({"help": plain_text(self.format_help())})
+            return
+        super().print_help(file)
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the top-level ``depscan`` parser with every verb registered."""
@@ -104,4 +120,13 @@ def run(args: argparse.Namespace) -> int:
     module = _VERB_MODULES.get(verb)
     if module is None:
         return 2
-    return module.run(args)
+    if getattr(args, "format", None) != "json":
+        return module.run(args)
+    # In json format stdout carries one document whatever happens, so an
+    # error no verb expected still ends as the error document.
+    try:
+        return module.run(args)
+    except Exception as exc:  # noqa: BLE001 - the failure becomes the error document
+        message = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+        print_error_document(EXIT_FAILURE, verb, message)
+        return EXIT_FAILURE

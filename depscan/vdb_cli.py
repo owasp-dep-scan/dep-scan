@@ -37,8 +37,8 @@ from vdb.lib import config as vdb_config
 from vdb.lib import db as db_lib
 from vdb.lib import db_cmd
 
-from depscan import get_version
 from depscan.commands.output import (
+    EXIT_USAGE,
     stdout_on_stderr,
     EXIT_FAILURE,
     argv_verb,
@@ -185,13 +185,6 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
     _add_format_argument(path)
 
     _add_format_argument(parser)
-    parser.add_argument(
-        "-v",
-        "--version",
-        help="Display the version",
-        action="version",
-        version="%(prog)s " + get_version(),
-    )
 
 
 def _build_parser():
@@ -245,18 +238,20 @@ def _resolve_flavor_from_args(args):
     return flavor, legacy_flags
 
 
-def _vdb_failure(args, message: str) -> int:
-    """Report a failed vdb command; the process exit code, 1.
+def _vdb_failure(args, message: str, exit_code: int = EXIT_FAILURE) -> int:
+    """Report a failed vdb command; the process exit code, 1 by default.
+
+    Options that cannot be combined are a usage error and pass exit code 2.
 
     The message goes on stderr as text in every format; in json format the
     error document carries it on stdout. The verb's failures have no details
     beyond the message.
     """
     if _format(args) == "json":
-        print_error_document(EXIT_FAILURE, "vdb", message)
+        print_error_document(exit_code, "vdb", message)
     else:
         print(f"error: {message}", file=sys.stderr)
-    return EXIT_FAILURE
+    return exit_code
 
 
 def _error_message(exc: Exception) -> str:
@@ -290,7 +285,7 @@ def cmd_download(args):
     try:
         flavor, _legacy = _resolve_flavor_from_args(args)
     except ValueError as e:
-        return _vdb_failure(args, str(e))
+        return _vdb_failure(args, str(e), EXIT_USAGE)
     image_url = resolve_vdb_image_url(
         flavor=flavor, compression=args.compression, image=args.image
     )
@@ -317,7 +312,9 @@ def _download_shards(args, data_dir):
     from depscan.lib.vdb_setup import refresh_shards_with_retries
 
     if args.flavor or args.image:
-        return _vdb_failure(args, "--shards cannot be combined with --flavor or --image.")
+        return _vdb_failure(
+            args, "--shards cannot be combined with --flavor or --image.", EXIT_USAGE
+        )
     # Shard names or purl types (npm, pypi, ...), like `vdb db refresh`.
     shard_names = []
     for shard in args.shards:

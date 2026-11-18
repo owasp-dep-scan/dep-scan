@@ -439,7 +439,7 @@ def test_serve_starts_the_server_with_the_given_address(monkeypatch, capsys, ser
     # machine can reach.
     document = json.loads(captured.out)
     assert document == {
-        "serving": {"host": "0.0.0.0", "port": "9999", "url": "http://127.0.0.1:9999"}
+        "serving": {"host": "0.0.0.0", "port": 9999, "url": "http://127.0.0.1:9999"}
     }
     # Positive controls: the server was started once, in server mode, with
     # the passed address and a hook to announce the running server, and the
@@ -473,7 +473,7 @@ def test_serve_document_honours_the_host_and_port_environment(
     document = json.loads(capsys.readouterr().out)
     assert document["serving"] == {
         "host": "0.0.0.0",
-        "port": "8443",
+        "port": 8443,
         "url": "http://127.0.0.1:8443",
     }
 

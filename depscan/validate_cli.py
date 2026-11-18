@@ -110,7 +110,8 @@ def _validate_file(
     try:
         with open(path, "r", encoding="utf-8") as fh:
             doc = json.load(fh)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, RecursionError) as exc:
+        # RecursionError: json gives up on a document nested too deeply.
         message = f"could not read JSON ({exc})"
         if not json_output:
             print(f"[INVALID] {path}: {message}")
