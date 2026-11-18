@@ -237,6 +237,24 @@ def test_command_line_hash_covers_the_cdxgen_invocation_files():
             assert required in command, (job_name, required)
 
 
+def test_atom_version_resolution_matches_cdxgen_order():
+    # cdxgen runs the atom nested in its own node_modules when one exists and
+    # the hoisted global copy otherwise, so the key must name the version from
+    # those candidates in that order; a diverging explicit install would
+    # otherwise hide the version that actually produced the slices.
+    for job_name in ("os-repo-tests", "os-semantics-tests"):
+        job = load_workflow()["jobs"][job_name]
+        run = named_steps(job)["Resolve generated-input cache versions"]["run"]
+        candidates = [
+            found
+            for found in re.findall(r"path\.join\(root, ([^)]+)\)", run)
+            if '"@appthreat", "atom"' in found
+        ]
+        assert len(candidates) >= 2, (job_name, candidates)
+        assert '"@cdxgen", "cdxgen"' in candidates[0], (job_name, candidates[0])
+        assert '"@cdxgen"' not in candidates[1], (job_name, candidates[1])
+
+
 def test_hit_path_rescans_as_a_bom_directory_with_the_same_options():
     workflow = load_workflow()
     miss_names = {

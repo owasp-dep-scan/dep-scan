@@ -91,11 +91,14 @@ the dep-scan files that build the cdxgen command line and its environment
 (`packages/xbom-lib/src/xbom_lib/cdxgen.py`,
 `packages/xbom-lib/src/xbom_lib/process.py`, `depscan/lib/bom.py`,
 `depscan/lib/pipeline.py`, `depscan/lib/config.py`, `depscan/cli_options.py`
-and `depscan/commands/scan.py`). The self scan's key replaces the project
-commit with a hash of `uv.lock` and every `pyproject.toml`, so an ordinary
-code change reuses the slices. Each saved entry's size is logged with
-`du -sk` into the job log, because the sizes can only be measured where the
-generation runs.
+and `depscan/commands/scan.py`). The atom version is read from the copy
+nested in cdxgen's own `node_modules` when one exists and from the hoisted
+global copy otherwise, the same order cdxgen resolves the tool in, so the
+key names the atom that actually produced the slices. The self scan's key
+replaces the project commit with a hash of `uv.lock` and every
+`pyproject.toml`, so an ordinary code change reuses the slices. Each saved
+entry's size is logged with `du -sk` into the job log, because the sizes
+can only be measured where the generation runs.
 
 A full generation still runs regularly so the cdxgen and atom path itself
 keeps being tested: the weekly schedule (Mondays 05:00 UTC) and the

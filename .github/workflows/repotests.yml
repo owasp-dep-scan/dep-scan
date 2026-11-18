@@ -138,28 +138,39 @@ jobs:
             echo "Could not resolve the cdxgen version from the cdxgen --version output." >&2
             exit 1
           fi
-          # Every job here gets atom from the global npm root: this job
-          # through cdxgen's own dependency, the semantics job through its
-          # explicit install. npm ls prints JSON, which avoids the MSYS path
-          # mangling a global-root directory lookup would risk on Windows.
-          ATOM_VERSION="$(npm ls -g @appthreat/atom --depth=0 --json 2>/dev/null | node -e '
-            let data = "";
-            process.stdin.on("data", (chunk) => { data += chunk; });
-            process.stdin.on("end", () => {
-              let parsed;
+          # cdxgen runs the atom copy nested in its own node_modules when one
+          # is there (a diverging explicit install nests under it) and the
+          # hoisted global copy otherwise, so the candidates are checked in
+          # that order. The lookup runs inside node because npm root -g
+          # prints a Windows-style path that a bash-side reader would mangle.
+          ATOM_VERSION="$(node -e '
+            const { execSync } = require("child_process");
+            const fs = require("fs");
+            const path = require("path");
+            let root;
+            try {
+              root = execSync("npm root -g", { encoding: "utf8" }).trim();
+            } catch (e) {
+              console.error("Could not resolve the global npm root: " + e.message);
+              process.exit(1);
+            }
+            const candidates = [
+              path.join(root, "@cdxgen", "cdxgen", "node_modules", "@appthreat", "atom"),
+              path.join(root, "@appthreat", "atom"),
+            ];
+            for (const candidate of candidates) {
               try {
-                parsed = JSON.parse(data);
+                const version = JSON.parse(fs.readFileSync(path.join(candidate, "package.json"), "utf8")).version;
+                if (version) {
+                  console.log(version);
+                  process.exit(0);
+                }
               } catch (e) {
-                console.error("Could not parse the npm ls output for @appthreat/atom: " + e.message);
-                process.exit(1);
+                // No atom at this location; try the next one.
               }
-              const entry = parsed.dependencies && parsed.dependencies["@appthreat/atom"];
-              if (!entry || !entry.version) {
-                console.error("The global npm root holds no @appthreat/atom install; the atom version is required for the cache keys.");
-                process.exit(1);
-              }
-              console.log(entry.version);
-            });
+            }
+            console.error("No @appthreat/atom install found under " + root + "; the atom version is required for the cache keys.");
+            process.exit(1);
           ')"
           echo "cdxgen-version=$CDXGEN_VERSION" >> "$GITHUB_OUTPUT"
           echo "atom-version=$ATOM_VERSION" >> "$GITHUB_OUTPUT"
@@ -535,28 +546,40 @@ jobs:
             echo "Could not resolve the cdxgen version from the cdxgen --version output." >&2
             exit 1
           fi
-          # Every job here gets atom from the global npm root: this job
-          # through its explicit install, the repo-test jobs through cdxgen's
-          # own dependency. npm ls prints JSON, which avoids the MSYS path
-          # mangling a global-root directory lookup would risk on Windows.
-          ATOM_VERSION="$(npm ls -g @appthreat/atom --depth=0 --json 2>/dev/null | node -e '
-            let data = "";
-            process.stdin.on("data", (chunk) => { data += chunk; });
-            process.stdin.on("end", () => {
-              let parsed;
+          # cdxgen runs the atom copy nested in its own node_modules when one
+          # is there (this job's explicit install can diverge from cdxgen's
+          # own dependency and nests under it) and the hoisted global copy
+          # otherwise, so the candidates are checked in that order. The
+          # lookup runs inside node because npm root -g prints a
+          # Windows-style path that a bash-side reader would mangle.
+          ATOM_VERSION="$(node -e '
+            const { execSync } = require("child_process");
+            const fs = require("fs");
+            const path = require("path");
+            let root;
+            try {
+              root = execSync("npm root -g", { encoding: "utf8" }).trim();
+            } catch (e) {
+              console.error("Could not resolve the global npm root: " + e.message);
+              process.exit(1);
+            }
+            const candidates = [
+              path.join(root, "@cdxgen", "cdxgen", "node_modules", "@appthreat", "atom"),
+              path.join(root, "@appthreat", "atom"),
+            ];
+            for (const candidate of candidates) {
               try {
-                parsed = JSON.parse(data);
+                const version = JSON.parse(fs.readFileSync(path.join(candidate, "package.json"), "utf8")).version;
+                if (version) {
+                  console.log(version);
+                  process.exit(0);
+                }
               } catch (e) {
-                console.error("Could not parse the npm ls output for @appthreat/atom: " + e.message);
-                process.exit(1);
+                // No atom at this location; try the next one.
               }
-              const entry = parsed.dependencies && parsed.dependencies["@appthreat/atom"];
-              if (!entry || !entry.version) {
-                console.error("The global npm root holds no @appthreat/atom install; the atom version is required for the cache keys.");
-                process.exit(1);
-              }
-              console.log(entry.version);
-            });
+            }
+            console.error("No @appthreat/atom install found under " + root + "; the atom version is required for the cache keys.");
+            process.exit(1);
           ')"
           echo "cdxgen-version=$CDXGEN_VERSION" >> "$GITHUB_OUTPUT"
           echo "atom-version=$ATOM_VERSION" >> "$GITHUB_OUTPUT"
