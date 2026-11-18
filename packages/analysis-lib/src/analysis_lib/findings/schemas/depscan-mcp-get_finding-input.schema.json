@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-get_finding-input:1",
+  "title": "dep-scan mcp get_finding input",
+  "description": "The arguments the get_finding tool of `depscan mcp` accepts: a scan directory and the fingerprint id of one finding in it. The server validates the arguments against this schema, so an unknown argument is a tool error rather than a silently ignored one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scan_dir", "finding_id"],
+  "properties": {
+    "scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The scan directory the finding belongs to, as an absolute path. The tool refuses a path that does not resolve, with os.path.realpath, inside a root the server was started with."
+    },
+    "finding_id": {
+      "type": "string",
+      "pattern": "^dsf1:[0-9a-f]{64}$",
+      "description": "The finding's fingerprint id: dsf1 followed by the SHA-256 hex digest, exactly as the finding's id field carries it. An id no finding in the scan carries is a tool error."
+    }
+  }
+}

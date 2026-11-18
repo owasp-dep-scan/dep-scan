@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-list_components-output:1",
+  "title": "dep-scan mcp list_components output",
+  "description": "The document the list_components tool of `depscan mcp` returns: one page of the scan's BOM components, each with its identity fields from the CycloneDX component, with nextCursor when more pages remain, or, when even one page would exceed the server's response budget, the spill envelope with the file the page was written to and the number of components in it. The two shapes are never mixed.",
+  "oneOf": [
+    {
+      "title": "one page of components",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["components"],
+      "properties": {
+        "components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/component",
+            "description": "One component of the scan's BOM."
+          },
+          "description": "The components of this page, in BOM order."
+        },
+        "nextCursor": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The cursor to pass as the next call's cursor argument to read the page after this one. Present only when more components remain."
+        }
+      }
+    },
+    {
+      "title": "the result spilled to a file",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "count"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The absolute path, with / separators, of the file the result was written to, inside the scan directory's mcp/ directory. The file name is the tool name followed by the SHA-256 digest of the canonical arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of components the spilled file holds."
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The component's name, as the CycloneDX component carries it."
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The CycloneDX component type, for example library or framework."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The component's version, when the BOM records one."
+        },
+        "purl": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The component's package URL, when the BOM records one."
+        },
+        "bomRef": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The component's bom-ref, which the BOM's vulnerability entries refer to in their affects refs."
+        }
+      }
+    }
+  }
+}

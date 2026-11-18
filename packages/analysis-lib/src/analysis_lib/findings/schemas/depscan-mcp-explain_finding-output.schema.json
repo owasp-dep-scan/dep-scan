@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-explain_finding-output:1",
+  "title": "dep-scan mcp explain_finding output",
+  "description": "The document the explain_finding tool of `depscan mcp` returns: the finding the id names, exactly as the published finding schema defines it, and the text api.explain renders. In this version the explanation is rendered for the whole scan rather than for the finding alone, and the tool description says so; a caller reads it as the scan's context around the finding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["finding", "explanation"],
+  "properties": {
+    "finding": {
+      "$ref": "depscan-finding.schema.json",
+      "description": "The finding the id names, as the finding schema defines it."
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The explanation api.explain renders for the scan directory, with the same content the --explain rendering prints, colour codes stripped. The text covers the scan, not only this finding; an explanation that produced no text is a tool error that names what was missing, never an empty string."
+    }
+  }
+}

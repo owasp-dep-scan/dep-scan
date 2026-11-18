@@ -13,7 +13,8 @@ The fingerprint test vectors next to the schemas are data, not a schema, and
 are not listed. The legacy short name ``finding`` stays accepted as an
 alias so existing callers keep working. The published names are listed in
 registration order: the document schemas first, then the output schemas verb
-by verb, then the error schema.
+by verb, then the input and output schemas of the ``depscan mcp`` tools,
+then the error schema.
 """
 
 import json
@@ -48,6 +49,28 @@ _SCHEMA_FILES = (
     "depscan-validate-output.schema.json",
     "depscan-version-output.schema.json",
     "depscan-help-output.schema.json",
+    # The `depscan mcp` tools, each tool's input schema then its output
+    # schema, in the order the server registers the tools.
+    "depscan-mcp-scan_summary-input.schema.json",
+    "depscan-mcp-scan_summary-output.schema.json",
+    "depscan-mcp-list_findings-input.schema.json",
+    "depscan-mcp-list_findings-output.schema.json",
+    "depscan-mcp-get_finding-input.schema.json",
+    "depscan-mcp-get_finding-output.schema.json",
+    "depscan-mcp-explain_finding-input.schema.json",
+    "depscan-mcp-explain_finding-output.schema.json",
+    "depscan-mcp-coverage-input.schema.json",
+    "depscan-mcp-coverage-output.schema.json",
+    "depscan-mcp-list_components-input.schema.json",
+    "depscan-mcp-list_components-output.schema.json",
+    "depscan-mcp-diff_scans-input.schema.json",
+    "depscan-mcp-diff_scans-output.schema.json",
+    "depscan-mcp-doctor-input.schema.json",
+    "depscan-mcp-doctor-output.schema.json",
+    "depscan-mcp-vdb_status-input.schema.json",
+    "depscan-mcp-vdb_status-output.schema.json",
+    "depscan-mcp-run_scan-input.schema.json",
+    "depscan-mcp-run_scan-output.schema.json",
     # The shared error document.
     "depscan-error.schema.json",
 )

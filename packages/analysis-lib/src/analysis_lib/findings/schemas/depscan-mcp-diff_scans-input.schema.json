@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-diff_scans-input:1",
+  "title": "dep-scan mcp diff_scans input",
+  "description": "The arguments the diff_scans tool of `depscan mcp` accepts: the earlier and the later of two scan directories. The server validates the arguments against this schema, so an unknown argument is a tool error rather than a silently ignored one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["old_scan_dir", "new_scan_dir"],
+  "properties": {
+    "old_scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The earlier scan directory, as an absolute path. The tool refuses a path that does not resolve, with os.path.realpath, inside a root the server was started with."
+    },
+    "new_scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The later scan directory, as an absolute path, subject to the same root rule as old_scan_dir."
+    }
+  }
+}

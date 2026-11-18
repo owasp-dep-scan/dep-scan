@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-coverage-output:1",
+  "title": "dep-scan mcp coverage output",
+  "description": "The document the coverage tool of `depscan mcp` returns: the scan directory's manifest stage entries, the reasons parts of the analysis did not run even though their stage completed, and the checks the scan did not run. A skipped stage, a missing analyzer or a check that was turned off is reported here rather than left out.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scanDir", "stages", "notAssessedReasons", "checksNotRun"],
+  "properties": {
+    "scanDir": {
+      "type": "string",
+      "description": "The scan directory the coverage was read from, absolute and normalised, with / as the separator on every platform."
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "$ref": "depscan-manifest.schema.json#/$defs/stage",
+        "description": "One stage entry of the manifest, with its status, reason, capabilities, analyzers and outputs."
+      },
+      "description": "The manifest's stage entries, in the order the stages ran, check stages included. A scan directory without a manifest has an empty list."
+    },
+    "notAssessedReasons": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/notAssessedReason",
+        "description": "One reason part of the analysis did not run."
+      },
+      "description": "Every not-assessed reason the manifest records: a stage's notAssessed entries and each analyzer whose status is not-assessed, flattened so a reader does not have to walk the stages."
+    },
+    "checksNotRun": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/checkNotRun",
+        "description": "One check the scan did not run."
+      },
+      "description": "The checks the scan recorded as not assessed, from the manifest's check-<name> stages. Empty when every requested check ran."
+    }
+  },
+  "$defs": {
+    "notAssessedReason": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "reason"],
+      "properties": {
+        "stage": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of the stage the reason belongs to, for example enrichment."
+        },
+        "analyzer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The analyzer the reason belongs to, present when the reason comes from a stage's analyzer entries, for example atom or dosai."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this part of the analysis did not run."
+        }
+      }
+    },
+    "checkNotRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The check name, without the check- prefix the manifest's stage name carries, for example license or supply-chain."
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why the check did not run."
+        }
+      }
+    }
+  }
+}
