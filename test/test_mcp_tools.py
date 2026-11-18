@@ -251,12 +251,16 @@ def make_scan_dir(tmp_path, scan_stubs):
 
 @pytest.fixture
 def resources_stub(monkeypatch):
-    """A stub for the resources module, which is a sibling piece's file.
+    """A stub for the resources module while the sibling piece is missing.
 
-    The server's construction path imports the module; on the merged branch
-    the real module answers. The stub returns empty listings, which is all
-    the tool tests need: nothing under test here reads resources.
+    The server's construction path imports the module; on this branch it
+    has not landed yet, so the fixture installs an empty stub, which is all
+    the tool tests need: nothing under test here reads resources. Once the
+    real module exists the fixture installs nothing and every session
+    exercises the real resources handlers.
     """
+    if importlib.util.find_spec("depscan.mcp_server.resources") is not None:
+        return None
 
     async def empty_list_resources(ctx, params):
         return mcp_types.ListResourcesResult(resources=[])
@@ -1178,6 +1182,178 @@ def test_run_scan_execute_refuses_a_target_that_escapes_the_roots(
     message = drive(open_session, scenario, (inside,), allow_scans=True)
     assert "'..'" in message
     assert scan_stubs["calls"]["cdxgen"] == []
+
+
+def test_run_scan_confines_container_targets_that_are_paths(open_session, tmp_path, scan_stubs):
+    """An existing tar archive and an OCI layout directory are container
+    targets and filesystem paths, so both confine like any other path; an
+    image reference stays a reference."""
+    from depscan.commands.targets import detect_kind
+
+    outside = tmp_path / "outside"
+    outside.mkdir(parents=True)
+    tar_file = outside / "app.tar"
+    tar_file.write_bytes(b"not a real archive")
+    oci_dir = outside / "oci-root"
+    oci_dir.mkdir(parents=True)
+    (oci_dir / "oci-layout").write_text("{}", encoding="utf-8")
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+    assert detect_kind(str(tar_file))[0] == "container"
+    assert detect_kind(str(oci_dir))[0] == "container"
+
+    async def dry(session):
+        return await call_error(session, "run_scan", {"target": str(tar_file)})
+
+    async def execute(session):
+        return await call_error(session, "run_scan", {"target": str(oci_dir), "execute": True})
+
+    message = drive(open_session, dry, (allowed,))
+    assert "outside every allowed root" in message
+    message = drive(open_session, execute, (allowed,), allow_scans=True)
+    assert "outside every allowed root" in message
+    assert scan_stubs["calls"]["cdxgen"] == []
+
+    async def reference(session):
+        return await call_document(
+            session, "run_scan", {"target": "alpine:3.2"}, "depscan-mcp-run_scan-output"
+        )
+
+    document = drive(open_session, reference, (allowed,))
+    assert document["argv"] == ["depscan", "scan", "alpine:3.2"]
+
+
+def test_run_scan_real_run_confines_the_reports_directory_whether_named_or_defaulted(
+    open_session, tmp_path, monkeypatch, scan_stubs
+):
+    """A real run never writes outside the roots: the reports directory the
+    run will write is confined whether the caller named it or the default
+    (<cwd>/reports or DEPSCAN_REPORTS_DIR) chose it, and a directory outside
+    the roots is refused before the scan runs."""
+    allowed = tmp_path / "allowed"
+    target = allowed / "project"
+    target.mkdir(parents=True)
+    (target / "app.py").write_text("import requests\n", encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    scans = []
+    real_scan = api.scan
+
+    def counting_scan(options, **kwargs):
+        scans.append(1)
+        return real_scan(options, **kwargs)
+
+    monkeypatch.setattr(api, "scan", counting_scan)
+
+    # With the working directory inside the roots the default lands there
+    # and the run proceeds.
+    monkeypatch.chdir(allowed)
+
+    async def defaulted_inside(session):
+        return await call_document(
+            session,
+            "run_scan",
+            {"target": str(target), "execute": True},
+            "depscan-mcp-run_scan-output",
+        )
+
+    document = drive(open_session, defaulted_inside, (allowed,), allow_scans=True)
+    assert document["scanDir"] == expected_path(allowed / "reports")
+    assert (allowed / "reports" / "depscan.manifest.json").is_file()
+    assert len(scan_stubs["calls"]["cdxgen"]) == 1
+
+    # With the working directory outside the roots the same default is
+    # refused, before any scan work.
+    monkeypatch.chdir(elsewhere)
+    scans.clear()
+    scan_stubs["calls"]["cdxgen"].clear()
+
+    async def defaulted_outside(session):
+        return await call_error(session, "run_scan", {"target": str(target), "execute": True})
+
+    message = drive(open_session, defaulted_outside, (allowed,), allow_scans=True)
+    assert "outside every allowed root" in message
+    assert scans == [], "the scan ran although its reports directory was refused"
+    assert scan_stubs["calls"]["cdxgen"] == []
+    assert not (elsewhere / "reports").exists()
+
+    # A caller named directory outside the roots is refused the same way.
+    async def named(session):
+        return await call_error(
+            session,
+            "run_scan",
+            {"target": str(target), "execute": True, "reports_dir": str(elsewhere / "named")},
+        )
+
+    message = drive(open_session, named, (allowed,), allow_scans=True)
+    assert "outside every allowed root" in message
+    assert scans == []
+
+
+def test_run_scan_real_run_does_not_leak_the_run_flags(
+    open_session, tmp_path, monkeypatch, scan_stubs
+):
+    """The flags of one real run live only for that run: cdxgen runs in
+    secure mode and a requested license check turns FETCH_LICENSE on, and
+    the server process carries neither flag after the call."""
+    monkeypatch.delenv("CDXGEN_SECURE_MODE", raising=False)
+    monkeypatch.delenv("FETCH_LICENSE", raising=False)
+    target = tmp_path / "project"
+    target.mkdir()
+    (target / "app.py").write_text("import requests\n", encoding="utf-8")
+    reports_dir = tmp_path / "flag-reports"
+    monkeypatch.setattr(
+        pipeline,
+        "get_pkg_list",
+        lambda f: (
+            [
+                {
+                    "purl": "pkg:pypi/requests@2.32.1",
+                    "name": "requests",
+                    "version": "2.32.1",
+                    "licenses": ["CC-BY-NC-4.0"],
+                }
+            ],
+            [],
+        ),
+    )
+    during = {}
+    real_scan = api.scan
+
+    def recording_scan(options, **kwargs):
+        during.update(
+            {
+                "secure": os.environ.get("CDXGEN_SECURE_MODE"),
+                "license": os.environ.get("FETCH_LICENSE"),
+            }
+        )
+        return real_scan(options, **kwargs)
+
+    monkeypatch.setattr(api, "scan", recording_scan)
+    arguments = {
+        "target": str(target),
+        "execute": True,
+        "reports_dir": str(reports_dir),
+        "checks": ["license"],
+    }
+
+    async def scenario(session):
+        return await call_document(session, "run_scan", arguments, "depscan-mcp-run_scan-output")
+
+    document = drive(open_session, scenario, (tmp_path,), allow_scans=True)
+    # Positive controls: both flags were set for this run's scan, and
+    # cdxgen received them in the environment it was handed.
+    assert during == {"secure": "true", "license": "true"}, during
+    assert len(scan_stubs["calls"]["cdxgen"]) == 1
+    assert scan_stubs["calls"]["cdxgen"][0]["env"].get("CDXGEN_SECURE_MODE") == "true"
+    assert scan_stubs["calls"]["cdxgen"][0]["env"].get("FETCH_LICENSE") == "true"
+    # The server's environment carries neither flag after the call.
+    assert os.environ.get("CDXGEN_SECURE_MODE") is None
+    assert os.environ.get("FETCH_LICENSE") is None
+    # The scan itself completed with the license analysis on.
+    assert document["kind"] == "source"
+    stages = {stage["name"]: stage for stage in document["manifest"]["stages"]}
+    assert stages["licenses"]["status"] == "completed"
 
 
 # --- confinement through the tools ----------------------------------------------------

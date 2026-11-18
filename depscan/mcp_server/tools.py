@@ -27,9 +27,9 @@ instead. The single-document tools spill the same way when a scan
 directory is known; ``doctor``, ``vdb_status`` and the run_scan dry run
 have none, so an oversized result there is a tool error naming the budget.
 The item count of a spilled result is the number of entries the document
-carries: the findings or components of a page, the stages of a coverage
-report, the diff entries, or one for a single finding, a summary or a
-scan entry.
+carries: the findings or components of a page, the findings a summary
+counts, the stages of a coverage report, the diff entries, or one for a
+single finding or a scan entry.
 """
 
 import argparse
@@ -72,10 +72,18 @@ TOOL_BUDGET_BYTES = 32 * 1024
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 200
 
-#: The run_scan target kinds that name a filesystem path, and are therefore
-#: confined. A purl, a git URL and a container image reference are
-#: references, not paths, and are handed to the scan machinery as given.
+#: The run_scan target kinds that always name a filesystem path, and are
+#: therefore confined. A purl, a git URL and a container image reference
+#: are references, not paths, and are handed to the scan machinery as
+#: given.
 _FILESYSTEM_TARGET_KINDS = ("source", "bom", "bom-dir", "binary", "android")
+
+#: The target kinds that are references most of the time but name a local
+#: file or directory when one exists: an existing tar archive or OCI
+#: layout directory is a container target, an existing .ipa file an ios
+#: target, and both are paths the scan reads, so they confine like any
+#: other path. A reference that names no local file is not confined.
+_PATH_WHEN_EXISTS_TARGET_KINDS = ("container", "ios")
 
 #: The exploitability reach values that mean a finding is reachable, and
 #: those that mean it is not. ``unknown`` and ``not_assessed`` record no
@@ -544,36 +552,47 @@ def _options_document(scan_args: argparse.Namespace) -> Dict[str, Any]:
 
 
 @contextlib.contextmanager
-def _secure_cdxgen():
-    """Run the body with ``CDXGEN_SECURE_MODE=true`` in the environment.
+def _run_environment(license_requested: bool):
+    """The environment of one real run: secure cdxgen, license only if asked.
 
     A real run_scan hands cdxgen a caller-chosen target, so cdxgen runs in
     secure mode for the whole run, the way the depscan server path does for
-    untrusted sources. A value the environment already carried is restored
-    afterwards.
+    untrusted sources. The license check turns on through FETCH_LICENSE,
+    exactly as the scan verb sets it. The server process outlives the run,
+    so both variables are restored afterwards: one run's checks never leak
+    into the next call's options.
     """
-    saved = os.environ.get("CDXGEN_SECURE_MODE")
+    saved = {name: os.environ.get(name) for name in ("CDXGEN_SECURE_MODE", "FETCH_LICENSE")}
     os.environ["CDXGEN_SECURE_MODE"] = "true"
+    if license_requested:
+        os.environ["FETCH_LICENSE"] = "true"
     try:
         yield
     finally:
-        if saved is None:
-            os.environ.pop("CDXGEN_SECURE_MODE", None)
-        else:
-            os.environ["CDXGEN_SECURE_MODE"] = saved
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
 
 
 def _confined_target(target: str, roots: Tuple[str, ...]) -> str:
     """The target's realpath when it names a filesystem path, inside the roots.
 
-    A purl, a git URL and a container image reference are not paths and are
-    returned unchanged; everything else the detection calls a filesystem
-    kind must resolve inside the roots, in the dry run as well as the real
-    run, because the argv the dry run returns is the command the server
-    would run.
+    Every kind the detection classifies as a path must resolve inside the
+    roots, in the dry run as well as the real run, because the argv the dry
+    run returns is the command the server would run. A purl and a git URL
+    are never paths. A container target usually names an image reference,
+    but an existing tar archive or OCI layout directory is one too, and an
+    ios target is an existing .ipa file, so those confine when the target
+    names a local file or directory and pass through as references when it
+    does not.
     """
     kind, _reason = detect_kind(target)
-    if kind not in _FILESYSTEM_TARGET_KINDS:
+    names_a_path = kind in _FILESYSTEM_TARGET_KINDS or (
+        kind in _PATH_WHEN_EXISTS_TARGET_KINDS and os.path.exists(target)
+    )
+    if not names_a_path:
         return target
     return confinement.confine(target, roots)
 
@@ -591,11 +610,10 @@ def _scan_entry(
     with the error message, the way the scans document does.
     """
     try:
-        with _secure_cdxgen():
-            result = api.scan(
-                internal,
-                checks_not_assessed=resolution.not_assessed or None,
-            )
+        result = api.scan(
+            internal,
+            checks_not_assessed=resolution.not_assessed or None,
+        )
     except api.ScanError:
         reports_dir = str(internal.reports_dir)
         return {
@@ -650,16 +668,18 @@ def run_scan_tool(args, roots, allow_scans=False):
         resolution = checks_table.resolve(scan_args)
         # The real run builds the namespace the way the scan verb does, so
         # the requested checks land the same way, the license pseudo type
-        # included; the dry run below stops before anything touches the
-        # environment.
-        internal = scan_namespace(scan_args, resolution=resolution)
-        _apply_target_options(internal, given_target, kind, scan_args, resolution)
-        if args.get("reports_dir"):
-            # The caller named the reports directory; it must resolve inside
-            # the roots too, because the scan directory is where a spill file
-            # of this result would go.
-            internal.reports_dir = confinement.confine(str(args["reports_dir"]), roots)
-        entry = _scan_entry(given_target, kind, internal, resolution)
+        # included; the environment the builder and the scan touch is
+        # restored afterwards, so one run's flags never leak into the next
+        # call. The dry run below stops before any of this.
+        with _run_environment("license" in resolution.checks):
+            internal = scan_namespace(scan_args, resolution=resolution)
+            _apply_target_options(internal, given_target, kind, scan_args, resolution)
+            # The scan directory the run will write must resolve inside the
+            # roots, whether the caller named it or the default chose it
+            # (<cwd>/reports, or DEPSCAN_REPORTS_DIR): a real run never
+            # writes outside them.
+            internal.reports_dir = confinement.confine(str(internal.reports_dir), roots)
+            entry = _scan_entry(given_target, kind, internal, resolution)
         spill_dir = entry.get("scanDir")
         if spill_dir:
             try:
