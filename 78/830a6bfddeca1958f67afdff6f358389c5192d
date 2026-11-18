@@ -1,0 +1,27 @@
+test/test_v7_output_contract.py
+  s_4319487fa41c8a::t_a2f3e9bb5dea29 1411,1413
+  s_4319487fa41c8a::t_355ac308c2c75e 1403-1404,1406-1409
+  s_4319487fa41c8a::t_8fea904f1208bc 1414
+  s_4319487fa41c8a::t_3e7d082c887aa5 1326,1330-1334,1337
+  s_4319487fa41c8a::t_9070cfb84c2628 1325,1327-1329,1339,1343-1352
+  s_4319487fa41c8a::t_77379a75e1ddf4 1353-1354
+documentation/docs/agents.mdx
+  s_4319487fa41c8a::t_b796c6149daf0b 45
+  s_4319487fa41c8a::t_0c1c831c2b4e05 33-44,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78830a6bfddeca1958f67afdff6f358389c5192d",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
