@@ -9,7 +9,6 @@ non-zero rather than printing something the scan did not produce.
 """
 
 import argparse
-import json
 import sys
 from typing import List
 
@@ -17,6 +16,12 @@ from analysis_lib import VdrAnalysisKV
 from analysis_lib.output import generate_console_output, summary_stats
 
 from depscan import api
+from depscan.commands.output import (
+    EXIT_FAILURE,
+    json_path,
+    print_error_document,
+    print_json_document,
+)
 from depscan.lib.logger import LOG, console
 
 
@@ -100,18 +105,36 @@ def _render_results(tscan) -> None:
 
 
 def _run_json_report(result) -> int:
-    """Print the loaded scan directory as one JSON document on stdout."""
-    print(
-        json.dumps(
-            {
-                "scanDir": result.reports_dir,
-                "manifest": result.manifest,
-                "findings": result.findings,
-            },
-            indent=2,
-        )
+    """Print the loaded scan directory as one JSON document on stdout.
+
+    ``scanDir`` carries the absolute, slash-separated form of the scan
+    directory, as every path in a json document does outside the manifest
+    and the findings; the manifest and the findings keep the
+    scan-directory-relative paths their schemas define, with ``scanDir`` as
+    their root.
+    """
+    print_json_document(
+        {
+            "scanDir": json_path(result.reports_dir),
+            "manifest": result.manifest,
+            "findings": result.findings,
+        }
     )
     return 0
+
+
+def _unexpected_failure(json_output: bool, exc: Exception) -> int:
+    """Report a run that stopped with an error nothing above translates.
+
+    The message and its traceback go on stderr as text; in json format the
+    error document follows on stdout, so the stream never carries nothing.
+    The exit code is 1, the "could not run" code of the exit table.
+    """
+    message = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+    LOG.exception("The report stopped with an unexpected error: %s", message)
+    if json_output:
+        print_error_document(EXIT_FAILURE, "report", message)
+    return EXIT_FAILURE
 
 
 def run_report_args(args: argparse.Namespace) -> int:
@@ -119,16 +142,24 @@ def run_report_args(args: argparse.Namespace) -> int:
 
     A directory that cannot be loaded, or an explanation whose inputs the
     directory does not hold, is reported with the reason on stderr and
-    exits 1. In text mode the tables go to stdout through the same console
-    the scan renders on; in json mode stdout carries exactly one JSON
-    document and nothing else.
+    exits 1; in json format the reason is also the error document on
+    stdout, with ``report`` as its verb. In text mode the tables go to
+    stdout through the same console the scan renders on; in json mode
+    stdout carries exactly one JSON document and nothing else.
     """
+    json_output = args.format == "json"
     try:
         result = api.load_scan(args.scan_dir)
     except api.ScanError as exc:
-        print(f"depscan report: {exc}", file=sys.stderr)
-        return 1
-    if args.format == "json":
+        message = str(exc)
+        if json_output:
+            print_error_document(EXIT_FAILURE, "report", message)
+        else:
+            print(f"depscan report: {message}", file=sys.stderr)
+        return EXIT_FAILURE
+    except Exception as exc:
+        return _unexpected_failure(json_output, exc)
+    if json_output:
         return _run_json_report(result)
     manifest = result.manifest or {}
     console.print(
@@ -143,7 +174,7 @@ def run_report_args(args: argparse.Namespace) -> int:
             text = api.explain(result, mode=args.explanation_mode)
         except api.ScanError as exc:
             print(f"depscan report: {exc}", file=sys.stderr)
-            return 1
+            return EXIT_FAILURE
         console.print(text)
     return 0
 

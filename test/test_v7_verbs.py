@@ -20,7 +20,6 @@ from depscan.lib import doctor as doctor_mod
 from depscan.lib import pipeline, vdb_setup
 
 DATA_DIR = Path(__file__).parent / "data"
-FIXTURE_DIR = DATA_DIR / "scan-directory"
 # The VDR fixture that satisfies the bundled CycloneDX schema. The scan
 # directory's own django-app.vdr.json carries dep-scan's vendor extensions
 # (fixed_location, insights, matched_by) and empty timestamps, which the
@@ -560,47 +559,7 @@ def test_download_failure_hint_names_the_v7_command(monkeypatch, caplog):
 
 
 # --- validate --------------------------------------------------------------------
-
-
-def test_validate_vdr_fixture_text(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["validate", str(VDR_FIXTURE)]) == 0
-    out = capsys.readouterr().out
-    assert "[VALID]   " in out
-    assert "cyclonedx" in out
-
-
-def test_validate_vdr_fixture_json(monkeypatch, capsys):
-    code = run_main(monkeypatch, ["validate", str(VDR_FIXTURE), "--format", "json"])
-    assert code == 0
-    document = json.loads(capsys.readouterr().out)
-    assert document == [
-        {"file": str(VDR_FIXTURE), "format": "cyclonedx", "valid": True, "errors": []}
-    ]
-
-
-def test_validate_invalid_document_text(monkeypatch, capsys, tmp_path):
-    document = json.loads(VDR_FIXTURE.read_text())
-    document["specVersion"] = "9.9"
-    broken = tmp_path / "broken.vdr.json"
-    broken.write_text(json.dumps(document))
-    code = run_main(monkeypatch, ["validate", str(broken)])
-    assert code == 1
-    out = capsys.readouterr().out
-    assert "[INVALID]" in out
-    assert "unsupported CycloneDX specVersion '9.9'" in out
-
-
-def test_validate_invalid_document_json(monkeypatch, capsys, tmp_path):
-    document = json.loads(VDR_FIXTURE.read_text())
-    document["specVersion"] = "9.9"
-    broken = tmp_path / "broken.vdr.json"
-    broken.write_text(json.dumps(document))
-    code = run_main(monkeypatch, ["validate", str(broken), "--format", "json"])
-    assert code == 1
-    entries = json.loads(capsys.readouterr().out)
-    assert entries[0]["valid"] is False
-    assert entries[0]["errors"]
-    assert any("specVersion" in error for error in entries[0]["errors"])
+# The validate verb's own tests live in test_v7_validate_report.py.
 
 
 # --- doctor ----------------------------------------------------------------------
@@ -664,22 +623,7 @@ def test_doctor_json_through_the_registry(monkeypatch, capsys, fixed_doctor_repo
 
 
 # --- report ----------------------------------------------------------------------
-
-
-def test_report_json_prints_one_document(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["report", "--format", "json", str(FIXTURE_DIR)]) == 0
-    document = json.loads(capsys.readouterr().out)
-    assert set(document) == {"scanDir", "manifest", "findings"}
-    assert document["manifest"]["layoutVersion"] == "1.0"
-    assert len(document["findings"]) == 1
-    validate("finding", document["findings"][0])
-
-
-def test_report_text_still_renders_the_tables(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["report", str(FIXTURE_DIR)]) == 0
-    out = capsys.readouterr().out
-    assert "Vulnerabilities count: 1" in out
-    assert "high: 1" in out
+# The report verb's own tests live in test_v7_validate_report.py.
 
 
 # --- the scan verb ----------------------------------------------------------------

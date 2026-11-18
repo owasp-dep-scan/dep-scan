@@ -10,14 +10,15 @@ Validates one or more documents produced by dep-scan *or any other tool*:
 * **CycloneDX VDR/VEX** -- against the bundled CycloneDX schema matching the
   document's ``specVersion``.
 
-The format is auto-detected per file; use ``--format`` to force one. All
-validation is offline. Exit status is non-zero when any document is invalid.
+The document format is auto-detected per file; ``--input-format`` forces one.
+All validation is offline. Exit status is 1 when any document is invalid.
 
 The module serves two front ends: the ``depscan validate`` verb, whose
 subparser carries :func:`register_arguments`, and :func:`main`, which parses
-a raw argv. ``--format json`` prints one JSON document with an entry per
-file; ``--format auto`` (the default) leaves the document format
-auto-detected and prints the text lines.
+a raw argv. ``--format`` selects the output, like on every verb: ``json``
+prints one ``{"results": [...]}`` document on stdout, one entry per file,
+whether the documents are valid or not; ``text`` (the default) prints the
+text lines. An invalid document is a result, not an error of the verb.
 """
 
 import argparse
@@ -33,9 +34,20 @@ from analysis_lib.validation import (
 )
 
 from depscan import get_version
+from depscan.commands.output import (
+    EXIT_FAILURE,
+    json_path,
+    print_error_document,
+    print_json_document,
+)
+from depscan.lib.logger import LOG
 
-#: The ``--format`` choices: the document formats plus the output format.
-FORMAT_CHOICES = ["auto", FORMAT_CSAF, FORMAT_CYCLONEDX, "json"]
+#: The ``--format`` choices: the output formats every verb selects between.
+OUTPUT_FORMAT_CHOICES = ("text", "json")
+
+#: The ``--input-format`` choices: the document formats, auto-detected by
+#: default.
+INPUT_FORMAT_CHOICES = ("auto", FORMAT_CSAF, FORMAT_CYCLONEDX)
 
 
 def register_arguments(parser: argparse.ArgumentParser) -> None:
@@ -43,10 +55,16 @@ def register_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("files", nargs="+", help="one or more JSON documents to validate")
     parser.add_argument(
         "--format",
-        choices=FORMAT_CHOICES,
+        choices=OUTPUT_FORMAT_CHOICES,
+        default="text",
+        help="text prints one line per file, json prints the results as one "
+        "JSON document (default: text)",
+    )
+    parser.add_argument(
+        "--input-format",
+        choices=INPUT_FORMAT_CHOICES,
         default="auto",
-        help="document format (default: auto-detect per file); 'json' prints "
-        "the results as one JSON document instead of text lines",
+        help="document format (default: auto-detect per file)",
     )
     parser.add_argument(
         "--csaf-version",
@@ -80,21 +98,23 @@ def _validate_file(
     """Validate a single file; return its result entry.
 
     The entry's ``valid`` flag says whether the document passed; text lines
-    are printed only when the output is text.
+    are printed only when the output is text. ``file`` carries the absolute,
+    slash-separated form of the path, as every path in a json document does
+    outside the manifest and the findings.
     """
     if os.path.isdir(path):
         message = "is a directory, not a JSON file"
         if not json_output:
             print(f"[INVALID] {path}: {message}")
-        return {"file": path, "format": None, "valid": False, "errors": [message]}
+        return {"file": json_path(path), "format": None, "valid": False, "errors": [message]}
     try:
         with open(path, "r", encoding="utf-8") as fh:
             doc = json.load(fh)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError) as exc:
         message = f"could not read JSON ({exc})"
         if not json_output:
             print(f"[INVALID] {path}: {message}")
-        return {"file": path, "format": None, "valid": False, "errors": [message]}
+        return {"file": json_path(path), "format": None, "valid": False, "errors": [message]}
 
     detected, errors = validate_document(doc, doc_format, csaf_version)
     label = detected or "unknown"
@@ -104,27 +124,47 @@ def _validate_file(
             if not quiet:
                 for err in errors:
                     print(f"    {err}")
-        return {"file": path, "format": label, "valid": False, "errors": list(errors)}
+        return {"file": json_path(path), "format": label, "valid": False, "errors": list(errors)}
     if not json_output:
         print(f"[VALID]   {path} ({label})")
-    return {"file": path, "format": label, "valid": True, "errors": []}
+    return {"file": json_path(path), "format": label, "valid": True, "errors": []}
 
 
 def run_validation(args) -> int:
-    """Validate every file named by the parsed arguments; the exit code."""
+    """Validate every file named by the parsed arguments; the exit code.
+
+    An invalid document, a document that cannot be read and a file that is
+    no JSON at all are results, not errors: the run reports them in the
+    document (or the text lines) and exits 1. The error document is
+    reserved for a failure that stops the verb as a whole.
+    """
     json_output = args.format == "json"
-    # 'json' is an output format: the document format stays auto-detected.
-    doc_format = "auto" if args.format in ("auto", "json") else args.format
-    all_valid = True
-    entries = []
-    for path in args.files:
-        entry = _validate_file(path, doc_format, args.csaf_version, args.quiet, json_output)
-        entries.append(entry)
-        if not entry["valid"]:
-            all_valid = False
+    try:
+        entries = []
+        for path in args.files:
+            entry = _validate_file(
+                path, args.input_format, args.csaf_version, args.quiet, json_output
+            )
+            entries.append(entry)
+    except Exception as exc:
+        return _unexpected_failure(json_output, exc)
     if json_output:
-        print(json.dumps(entries, indent=2))
-    return 0 if all_valid else 1
+        print_json_document({"results": entries})
+    return 0 if all(entry["valid"] for entry in entries) else 1
+
+
+def _unexpected_failure(json_output: bool, exc: Exception) -> int:
+    """Report a validate run that stopped with an unexpected error.
+
+    The message goes on stderr as text with its traceback; in json format
+    the error document follows on stdout, so the stream never carries
+    nothing. The exit code is 1, the "could not run" code of the exit table.
+    """
+    message = f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
+    LOG.exception("The validation stopped with an unexpected error: %s", message)
+    if json_output:
+        print_error_document(EXIT_FAILURE, "validate", message)
+    return EXIT_FAILURE
 
 
 def main(argv: Optional[List[str]] = None) -> int:

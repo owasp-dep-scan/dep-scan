@@ -146,6 +146,6 @@ def validate_document(
     if resolved == FORMAT_CYCLONEDX:
         return FORMAT_CYCLONEDX, validate_cyclonedx(doc)
     return None, [
-        "<doc>: could not detect document format; pass --format {csaf,cyclonedx} "
+        "<doc>: could not detect document format; pass --input-format {csaf,cyclonedx} "
         "to force one (expected a CSAF or CycloneDX document)"
     ]
