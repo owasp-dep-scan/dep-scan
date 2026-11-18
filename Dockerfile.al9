@@ -4,7 +4,7 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
       org.opencontainers.image.source="https://github.com/owasp-dep-scan/dep-scan" \
       org.opencontainers.image.url="https://owasp.org/www-project-dep-scan" \
-      org.opencontainers.image.version="6.3.x" \
+      org.opencontainers.image.version="7.0.x" \
       org.opencontainers.image.vendor="owasp-dep-scan" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
@@ -34,7 +34,7 @@ ENV GOPATH=/opt/app-root/go \
     PYTHON_CMD=/usr/bin/python3 \
     CDXGEN_NO_BANNER=true \
     CDXGEN_CMD=cdxgen
-ENV PATH=/opt/dep-scan/.venv/bin:${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:
+ENV PATH=/opt/dep-scan/.venv/bin:${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/root/.local/bin
 
 COPY . /opt/dep-scan
 
@@ -52,7 +52,7 @@ RUN set -e; \
     esac; \
     echo -e "[nodejs]\nname=nodejs\nstream=24\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
-        python3 python3-devel python3-pip python3.12 python3.12-pip diffutils \
+        python3 python3-devel python3-pip diffutils openssl \
         pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks \
     && python3 --version \
     && node --version \
@@ -88,6 +88,8 @@ RUN set -e; \
     && which astgen \
     && which phpastgen \
     && rm ~/.local/bin/uv ~/.local/bin/uvx \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /root/.cache \
     && chown -R owasp:owasp /opt \
     && chmod a-w -R /opt \
     && rm -rf /var/cache/yum \
