@@ -39,6 +39,7 @@ from vdb.lib import db_cmd
 
 from depscan import get_version
 from depscan.commands.output import (
+    stdout_on_stderr,
     EXIT_FAILURE,
     argv_verb,
     json_path,
@@ -271,15 +272,11 @@ def _run_download(args, download):
     duration of the step. Returns ``(None, result)`` on success and the
     step's failure message otherwise.
     """
-    saved_stdout = sys.stdout
-    if _format(args) == "json":
-        sys.stdout = sys.stderr
     try:
-        return None, download()
+        with stdout_on_stderr(_format(args) == "json"):
+            return None, download()
     except Exception as exc:  # noqa: BLE001 - the download fails across layers
         return _error_message(exc), None
-    finally:
-        sys.stdout = saved_stdout
 
 
 def cmd_download(args):
@@ -299,9 +296,7 @@ def cmd_download(args):
     )
     LOG.info("vdb image: %s", image_url)
     LOG.info("Target directory: %s", data_dir)
-    failure_message, _result = _run_download(
-        args, lambda: download_vdb_with_retries(image_url)
-    )
+    failure_message, _result = _run_download(args, lambda: download_vdb_with_retries(image_url))
     if failure_message is not None:
         return _vdb_failure(
             args, f"Downloading the vdb image {image_url} failed: {failure_message}"
@@ -336,8 +331,9 @@ def _download_shards(args, data_dir):
     )
     failure_message, placed = _run_download(
         args,
-        lambda: refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR)
-        or [],
+        lambda: (
+            refresh_shards_with_retries(shard_names, store_dir=vdb_config.VDB_SHARDS_DIR) or []
+        ),
     )
     if failure_message is not None:
         return _vdb_failure(

@@ -162,12 +162,18 @@ def spinners_enabled(stream=None):
 class _QuietStatus:
     """Stand-in for a rich spinner when stderr is not a terminal.
 
-    The context yields itself and ``update`` accepts the same arguments as
-    the rich status object without drawing anything, so callers that use
-    ``status.update`` mid-way keep working unchanged.
+    The context yields itself, and ``update``, ``start`` and ``stop`` accept
+    the same arguments as the rich status object without drawing anything,
+    so callers keep working unchanged.
     """
 
     def update(self, *args, **kwargs):
+        pass
+
+    def start(self):
+        pass
+
+    def stop(self):
         pass
 
     def __enter__(self):

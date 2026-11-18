@@ -12,6 +12,7 @@ the verb modules import it, so it must be importable in any order and holds
 only standard library code.
 """
 
+import contextlib
 import json
 import os
 import sys
@@ -103,6 +104,28 @@ def print_error_document(
     """Write the error document on stdout and the message on stderr as text."""
     print_json_document(error_document(exit_code, verb, message, details), stream)
     print(message, file=sys.stderr)
+
+
+@contextlib.contextmanager
+def stdout_on_stderr(active: bool = True):
+    """Send everything written to stdout to stderr for the duration.
+
+    Yields the real stdout, which the caller keeps for its one JSON
+    document. The tables, the banner, the logs and any stray print from a
+    library the verb calls land on stderr instead. dep-scan's stdout console
+    pins no stream and follows ``sys.stdout`` at write time, so it moves
+    with the redirect. With ``active`` false nothing moves, so a text-format
+    run keeps its output where it was.
+    """
+    saved_stdout = sys.stdout
+    if not active:
+        yield saved_stdout
+        return
+    sys.stdout = sys.stderr
+    try:
+        yield saved_stdout
+    finally:
+        sys.stdout = saved_stdout
 
 
 def argv_requests_json(argv) -> bool:

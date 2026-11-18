@@ -6,6 +6,7 @@ from typing import Dict
 
 from depscan import api
 from depscan.commands.output import (
+    stdout_on_stderr,
     EXIT_FAILURE,
     EXIT_REQUIREMENT_NOT_MET,
     print_error_document,
@@ -13,7 +14,7 @@ from depscan.commands.output import (
 )
 from depscan.commands.scan import add_vdb_options
 from depscan.lib import pipeline
-from depscan.lib.logger import LOG, console
+from depscan.lib.logger import LOG
 
 #: The dests of this verb's own options that never reach scan_options.
 _NON_SCAN_DESTS = ("verb", "format")
@@ -131,20 +132,10 @@ def run(args: argparse.Namespace) -> int:
             saved_stdout.flush()
 
     try:
-        # The verb's work runs with stdout moved to stderr: the server's
-        # startup banners and any stray print land next to its request logs,
-        # and stdout carries exactly one document in json format. Assigning
-        # the console's private attribute is deliberate, as in the scan
-        # verb: the public setter's declared type does not accept None, and
-        # None is the value that makes the console follow sys.stdout again.
-        saved_file = console._file
-        console.file = sys.stderr
-        sys.stdout = sys.stderr
-        try:
+        # The server's startup banners and any stray print land next to its
+        # request logs on stderr, so stdout carries at most one document.
+        with stdout_on_stderr():
             pipeline.start_server_mode(ctx, started_hook=started_hook)
-        finally:
-            sys.stdout = saved_stdout
-            console._file = saved_file
     except pipeline.ScanStageError as exc:
         # The database stage already logged why the server cannot start;
         # json adds the document and the message line the contract asks for.

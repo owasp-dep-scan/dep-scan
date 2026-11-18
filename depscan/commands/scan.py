@@ -38,6 +38,7 @@ from depscan import api
 from depscan.cli_options import build_parser, validate_spec_version
 from depscan.commands import checks as checks_table
 from depscan.commands.output import (
+    stdout_on_stderr,
     EXIT_FAILURE,
     EXIT_REQUIREMENT_NOT_MET,
     EXIT_USAGE,
@@ -46,7 +47,7 @@ from depscan.commands.output import (
 )
 from depscan.commands.targets import FORCE_TARGET_KINDS, detect_kind
 from depscan.lib import doctor as doctor_lib
-from depscan.lib.logger import LOG, console
+from depscan.lib.logger import LOG
 
 #: The checks a scan can run, as the ``--checks`` help lists them.
 CHECK_NAMES = checks_table.CHECK_NAMES
@@ -878,28 +879,9 @@ def run(args: argparse.Namespace) -> int:
     try:
         resolution = checks_table.resolve(args, doctor_report=report)
         internal = scan_namespace(args, resolution=resolution)
-        saved_stdout = sys.stdout
         if json_output:
-            # The stdout console moves to stderr for the duration and the process
-            # stdout is redirected with it, so stdout carries exactly one JSON
-            # document: the tables, the banner, the logs and any stray print from
-            # a library the scan calls all land on stderr instead. ``_file`` is
-            # None while the console follows sys.stdout, and None is what the
-            # restore puts back: pinning the current sys.stdout object instead
-            # would break under a harness that replaces the stream between runs.
             internal.no_banner = True
-            saved_file = console._file
-            console.file = sys.stderr
-            sys.stdout = sys.stderr
-            try:
-                outcomes = _run_all_scans(args, internal, resolution, entries, report)
-            finally:
-                sys.stdout = saved_stdout
-                # Assigning the private attribute is deliberate: the public
-                # setter's declared type does not accept None, and None is the
-                # value that makes the console follow sys.stdout again.
-                console._file = saved_file
-        else:
+        with stdout_on_stderr(json_output) as saved_stdout:
             outcomes = _run_all_scans(args, internal, resolution, entries, report)
         exit_code = max(code for code, _ in outcomes)
         if json_output:

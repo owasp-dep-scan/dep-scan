@@ -9,7 +9,6 @@ the spinner suppression are observable without a running server.
 """
 
 import argparse
-import contextlib
 import json
 import socket
 import sys
@@ -87,9 +86,7 @@ class _FakeSimple:
             response = _FakeResponse()
             for handler in self.after_handlers:
                 response = handler(response)
-            headers = "".join(
-                f"{name}: {value}\r\n" for name, value in response.headers.items()
-            )
+            headers = "".join(f"{name}: {value}\r\n" for name, value in response.headers.items())
             connection.sendall(
                 b"HTTP/1.0 200 OK\r\nContent-Type: application/json\r\n"
                 + headers.encode()
@@ -141,93 +138,8 @@ def fake_server(monkeypatch):
 # --- the vdb download status spinner ---------------------------------------------
 
 
-class _StatusStub:
-    """A stand-in console that records the status calls made on it."""
-
-    def __init__(self, is_terminal):
-        self.is_terminal = is_terminal
-        self.calls = []
-
-    def status(self, message, **kwargs):
-        self.calls.append((message, kwargs))
-
-        @contextlib.contextmanager
-        def running():
-            yield "running-status"
-
-        return running()
-
-
-def test_download_status_draws_on_a_terminal(monkeypatch):
-    stub = _StatusStub(is_terminal=True)
-    monkeypatch.setattr(pipeline, "log_console", stub)
-    monkeypatch.delattr(pipeline.logger_lib, "console_status", raising=False)
-
-    with pipeline._vdb_download_status("Downloading") as status:
-        assert status == "running-status"
-    # Positive control: the console's status was entered with the message.
-    assert len(stub.calls) == 1
-    message, kwargs = stub.calls[0]
-    assert "Downloading" in message
-    assert kwargs["spinner"] == pipeline.SPINNER
-
-
-def test_download_status_suppresses_on_a_plain_stream(monkeypatch, capsys):
-    stub = _StatusStub(is_terminal=False)
-    monkeypatch.setattr(pipeline, "log_console", stub)
-    monkeypatch.delattr(pipeline.logger_lib, "console_status", raising=False)
-
-    with pipeline._vdb_download_status("Downloading") as status:
-        assert status is None
-    # Nothing was drawn: the console's status was never asked for.
-    assert stub.calls == []
-    assert capsys.readouterr().out == ""
-
-
-def test_download_status_uses_the_logger_helper_when_present(monkeypatch):
-    """The logger owns when a spinner may draw; its helper decides.
-
-    The logger's helper takes the message and the spinner keyword for its
-    own stderr console, and may hand back a quiet stand-in without a stop
-    method, so this call site must survive one.
-    """
-    helper_calls = []
-
-    @contextlib.contextmanager
-    def fake_console_status(message, **kwargs):
-        helper_calls.append((message, kwargs))
-        yield _QuietStatusStub()
-
-    monkeypatch.setattr(pipeline.logger_lib, "console_status", fake_console_status, raising=False)
-    stub = _StatusStub(is_terminal=False)
-    monkeypatch.setattr(pipeline, "log_console", stub)
-
-    with pipeline._vdb_download_status("Downloading") as status:
-        assert isinstance(status, _QuietStatusStub)
-    # Positive control: the helper was reached, with the message and the
-    # spinner keyword, and the console was not consulted.
-    assert len(helper_calls) == 1
-    message, kwargs = helper_calls[0]
-    assert "Downloading" in message
-    assert kwargs["spinner"] == pipeline.SPINNER
-    assert stub.calls == []
-
-
-class _QuietStatusStub:
-    """A stand-in status without a stop method, like the logger's quiet one."""
-
-    def update(self, *args, **kwargs):
-        pass
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        return False
-
-
-def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
-    """The download branch of the database stage runs behind the status."""
+def test_stage_database_downloads_behind_a_quiet_status(monkeypatch, capsys):
+    """On a redirected stderr the download status draws nothing and stops cleanly."""
     from depscan.lib import vdb_setup
 
     calls = {}
@@ -243,19 +155,7 @@ def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
     monkeypatch.setattr(vdb_setup, "configure_vdb_readonly", lambda: None)
     monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", lambda: None)
     monkeypatch.setattr(pipeline, "VDB_USE_SHARDS", False)
-
-    def recording_status(message):
-        calls["status"] = message
-
-        @contextlib.contextmanager
-        def quiet_status():
-            # The logger hands back a quiet status without a stop method on
-            # a redirected stream; the download branch must not call it.
-            yield _QuietStatusStub()
-
-        return quiet_status()
-
-    monkeypatch.setattr(pipeline, "_vdb_download_status", recording_status)
+    # IS_CI false takes the branch that stops the status early.
     monkeypatch.setattr(pipeline, "IS_CI", False)
     ctx = pipeline.build_context(
         argparse.Namespace(risk_audit=False, enable_debug=False, vdb_offline=False)
@@ -263,10 +163,10 @@ def test_stage_database_asks_for_the_download_status(tmp_path, monkeypatch):
 
     pipeline.stage_database(ctx)
 
-    # Positive controls: the status was asked for the download, and the
-    # download itself ran past a status with nothing to stop.
-    assert "Downloading the latest vulnerability database" in calls["status"]
     assert calls["download"] == "oras://vdb-img"
+    captured = capsys.readouterr()
+    assert "Downloading the latest vulnerability database" not in captured.err
+    assert captured.out == ""
 
 
 # --- the startup announcement -----------------------------------------------------
@@ -346,9 +246,7 @@ def test_wait_until_listening_announces_only_on_the_marked_listener(monkeypatch)
         foreign.close()
 
 
-def test_serve_prints_the_serving_document_once_the_port_accepts(
-    monkeypatch, capsys, fake_server
-):
+def test_serve_prints_the_serving_document_once_the_port_accepts(monkeypatch, capsys, fake_server):
     """The document prints from the startup machinery, after the bind."""
     fake, calls = fake_server
     port = _free_port()

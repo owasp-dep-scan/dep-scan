@@ -364,7 +364,9 @@ def _answers_with_marker(host, port, marker: str) -> bool:
     return _carries_marker(response, marker)
 
 
-def _wait_until_listening(host, port, marker: str, announce: Callable[[], None], cancelled) -> None:
+def _wait_until_listening(
+    host, port, marker: str, announce: Callable[[], None], cancelled
+) -> None:
     """Announce once the server answering the port carries this process's marker.
 
     The thread returns without announcing when the cancellation event is set
@@ -687,26 +689,6 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     return {"manifest": manifest, "findings": findings_document["findings"]}
 
 
-def _vdb_download_status(message: str):
-    """The status spinner for the vdb download, drawn only where allowed.
-
-    Spinners and progress draw on a terminal stderr; the logger owns that
-    rule through its status helper, which takes the message and the spinner
-    keyword for its own stderr console and returns the status to enter: a
-    rich status on a terminal, and a quiet stand-in without a stop method
-    on a redirected stream. While the logger provides no helper, the
-    console's own terminal detection decides, and the download runs without
-    a spinner on a plain stream, in which case the status object of the
-    ``with`` statement is None.
-    """
-    console_status = getattr(logger_lib, "console_status", None)
-    if console_status is not None:
-        return console_status(message, spinner=SPINNER)
-    if log_console.is_terminal:
-        return log_console.status(message, spinner=SPINNER)
-    return contextlib.nullcontext(None)
-
-
 def stage_database(ctx):
     """Resolve, download and verify the vulnerability database."""
     args = ctx.args
@@ -752,16 +734,12 @@ def stage_database(ctx):
         # database stops the scan instead of looking like a clean one.
         should_download, dl_reason = vdb_setup.vdb_download_needed(scan_vdb_url, config.DATA_DIR)
         if should_download:
-            with _vdb_download_status(
-                f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ..."
+            with logger_lib.console_status(
+                f"Downloading the latest vulnerability database to {config.DATA_DIR}. Please wait ...",
+                spinner=SPINNER,
             ) as vdb_download_status:
-                # A redirected stream yields a status with no stop method,
-                # and there is nothing to stop; on a terminal the early stop
-                # keeps the download's own messages from fighting the
-                # animation on a CI run's console.
-                stop = getattr(vdb_download_status, "stop", None)
-                if stop is not None and not IS_CI:
-                    stop()
+                if not IS_CI:
+                    vdb_download_status.stop()
                 # The download raises once every retry has failed. The layer
                 # that fails varies (vdb's own errors, urllib3 IncompleteRead,
                 # requests ChunkedEncodingError), so any exception stops the

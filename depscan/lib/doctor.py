@@ -1224,9 +1224,7 @@ def run_doctor_command(argv: List[str]) -> int:
     report = doctor()
     unmet = unmet_requirements(report, args.require)
     if unmet:
-        message = (
-            f"depscan doctor: required capabilities not available: {', '.join(unmet)}"
-        )
+        message = f"depscan doctor: required capabilities not available: {', '.join(unmet)}"
         if args.format == "json":
             print_error_document(
                 EXIT_REQUIREMENT_NOT_MET, "doctor", message, {"unmet": list(unmet)}
