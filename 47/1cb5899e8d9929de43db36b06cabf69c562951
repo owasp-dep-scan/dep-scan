@@ -1,0 +1,23 @@
+test/test_v7_validate_report.py
+  s_946f4290a94b1c::t_ff2b482bb781f1 155-169,173-179,182-185
+  s_946f4290a94b1c::t_347c759cb7966b 170-172
+  s_946f4290a94b1c::t_34e482baeca72f 180-181
+packages/analysis-lib/src/analysis_lib/validation.py
+  s_946f4290a94b1c::t_2435ed6b296a61 149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "471cb5899e8d9929de43db36b06cabf69c562951",
+  "prompts": {},
+  "sessions": {
+    "s_946f4290a94b1c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
