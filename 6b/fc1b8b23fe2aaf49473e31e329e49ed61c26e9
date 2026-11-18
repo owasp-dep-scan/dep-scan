@@ -1,0 +1,20 @@
+test/test_mcp_tools.py
+  s_962e5d9a741027::t_6180581f2d6e73 54-56
+  s_962e5d9a741027::t_3f81b6ea1da8d7 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6bfc1b8b23fe2aaf49473e31e329e49ed61c26e9",
+  "prompts": {},
+  "sessions": {
+    "s_962e5d9a741027": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_6",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
