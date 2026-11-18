@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-diff_scans-output:1",
+  "title": "dep-scan mcp diff_scans output",
+  "description": "The document the diff_scans tool of `depscan mcp` returns: the difference api.diff computes between two scan results. Every vulnerability is keyed by the pair of its id and the ref of each of its affects entries; new holds the pairs only the later scan has, fixed those only the earlier scan has, and changed those on both sides whose highest rating differs in severity or score. A scan directory that cannot be loaded is a tool error that names the directory, never a silent empty diff.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["new", "fixed", "changed"],
+  "properties": {
+    "new": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry",
+        "description": "One (vulnerability id, affected ref) pair only the later scan has."
+      },
+      "description": "The vulnerabilities the later scan added."
+    },
+    "fixed": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry",
+        "description": "One (vulnerability id, affected ref) pair only the earlier scan has."
+      },
+      "description": "The vulnerabilities the later scan no longer has."
+    },
+    "changed": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/entry",
+        "description": "One (vulnerability id, affected ref) pair whose highest rating changed between the scans."
+      },
+      "description": "The vulnerabilities both scans have with a different highest rating."
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "ref", "old", "new"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The vulnerability id, for example CVE-2021-23337."
+        },
+        "ref": {
+          "type": ["string", "null"],
+          "description": "The ref of the affects entry the pair is keyed on, or null when the vulnerability names no affected ref."
+        },
+        "old": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "description": "The vulnerability object as the earlier scan's VDR carries it. Null when the pair is new. The object stays open because the vulnerability shape belongs to the VDR document and the advisories behind it, which no published dep-scan schema defines."
+        },
+        "new": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "description": "The vulnerability object as the later scan's VDR carries it. Null when the pair is fixed."
+        }
+      }
+    }
+  }
+}

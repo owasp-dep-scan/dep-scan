@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-get_finding-output:1",
+  "title": "dep-scan mcp get_finding output",
+  "description": "The document the get_finding tool of `depscan mcp` returns: the one finding the id names, exactly as the published finding schema defines it. An id no finding in the scan carries is a tool error, never a null result.",
+  "$ref": "depscan-finding.schema.json"
+}

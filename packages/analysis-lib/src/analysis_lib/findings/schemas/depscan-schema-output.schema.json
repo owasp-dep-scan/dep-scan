@@ -22,7 +22,7 @@
           },
           "$id": {
             "type": "string",
-            "pattern": "^urn:owasp:depscan:schema:[a-z0-9-]+:[0-9]+$",
+            "pattern": "^urn:owasp:depscan:schema:[a-z0-9_-]+:[0-9]+$",
             "description": "The schema's identifier as the file itself declares it."
           },
           "title": {
@@ -32,7 +32,7 @@
           }
         }
       },
-      "description": "One entry per published schema, in the order the CLI lists them: the document schemas first, then the output schemas verb by verb, then the error schema."
+      "description": "One entry per published schema, in the order the CLI lists them: the document schemas first, then the output schemas verb by verb, then the input and output schemas of the `depscan mcp` tools, then the error schema."
     }
   }
 }

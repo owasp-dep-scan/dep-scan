@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-list_components-input:1",
+  "title": "dep-scan mcp list_components input",
+  "description": "The arguments the list_components tool of `depscan mcp` accepts: a scan directory and the page controls. The server validates the arguments against this schema, so an unknown argument is a tool error rather than a silently ignored one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scan_dir"],
+  "properties": {
+    "scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The scan directory whose BOM components are listed, as an absolute path. The tool refuses a path that does not resolve, with os.path.realpath, inside a root the server was started with."
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The opaque page cursor a previous call returned as nextCursor. The cursor is the base64url encoding of the page offset; a value the server cannot decode is a tool error."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200,
+      "default": 50,
+      "description": "The maximum number of components on the page. The default is 50 and the maximum 200; a larger value is a tool error."
+    }
+  }
+}
