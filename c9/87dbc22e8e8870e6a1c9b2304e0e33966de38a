@@ -1,0 +1,37 @@
+depscan/vdb_cli.py
+  s_699678b98b231c::t_a20f0c1f3f762b 186
+  s_699678b98b231c::t_2acb06e896d326 521-522,529-548,552-557,560-564
+  s_699678b98b231c::t_2e6df81bec6520 266-284,302-304
+  s_699678b98b231c::t_5f4d361c27fb77 337-340
+  s_699678b98b231c::t_8078420d28a63b 341-342,345
+  s_699678b98b231c::t_5d4cab60e5d1d4 247-265,296,306,308,311-314,325,343-344,346,353-356
+  s_699678b98b231c::t_d695e5e837765c 305,307
+  s_699678b98b231c::t_4c6b860c07a64e 482-497,501-502
+  s_699678b98b231c::t_5b40aaae54c8c0 76-82,86,91-95,97-109
+  s_699678b98b231c::t_a8212211bd829c 17-29,41-47,61-62
+  s_93b8c06c5c247b::t_5ebc30c69a2985 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c987dbc22e8e8870e6a1c9b2304e0e33966de38a",
+  "prompts": {},
+  "sessions": {
+    "s_699678b98b231c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_3",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    },
+    "s_93b8c06c5c247b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-dc472e32-e73c-4fa0-91fe-675950d24949-actor_11_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
