@@ -20,14 +20,19 @@ Three groups of tests:
   database files untouched.
 """
 
+import inspect
 import json
 import os
+import re
+import subprocess
 import sys
 import types
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from depscan.commands import output as commands_output
 from depscan.lib import doctor as doctor_mod
 
 # The fake tool records every call, prints the version line the test chose
@@ -739,18 +744,51 @@ def test_require_available_capabilities_exits_zero(fixed_report, capsys):
     assert capsys.readouterr().err == ""
 
 
+def _one_document(capsys):
+    """stdout as the single document the json contract asks for.
+
+    Parsing the whole stream only works when the command wrote exactly one
+    document; a second one or any stray line breaks the parse.
+    """
+    captured = capsys.readouterr()
+    return json.loads(captured.out), captured
+
+
 @pytest.mark.parametrize("required", ["reachability:rust", "memory-safety:c"])
-def test_require_unavailable_capability_exits_four(fixed_report, capsys, required):
+def test_require_unavailable_capability_exits_four_in_text(fixed_report, capsys, required):
     """Unavailable and not-implemented capabilities both fail ``--require``,
-    and the report is still printed."""
+    and the text report is still printed next to the message."""
     code = doctor_mod.run_doctor_command(
-        ["--format", "json", "--require", f"vulnerabilities,{required}"]
+        ["--format", "text", "--require", f"vulnerabilities,{required}"]
     )
     captured = capsys.readouterr()
     assert code == doctor_mod.EXIT_REQUIREMENT_NOT_MET == 4
-    assert json.loads(captured.out)["schemaVersion"] == "1"
+    assert captured.out.startswith("dep-scan doctor")
     assert required in captured.err
     assert "vulnerabilities" not in captured.err
+
+
+@pytest.mark.parametrize("required", ["reachability:rust", "memory-safety:c"])
+def test_require_unavailable_capability_exits_four_with_the_error_document(
+    fixed_report, capsys, required
+):
+    """In json format the error document is the one stdout document, with the
+    unmet names in its details; the report yields to it."""
+    code = doctor_mod.run_doctor_command(
+        ["--format", "json", "--require", f"vulnerabilities,{required}"]
+    )
+    assert code == doctor_mod.EXIT_REQUIREMENT_NOT_MET == 4
+    document, captured = _one_document(capsys)
+    assert document["error"] == {
+        "exitCode": 4,
+        "verb": "doctor",
+        "message": document["error"]["message"],
+        "details": {"unmet": [required]},
+    }
+    assert required in document["error"]["message"]
+    assert "vulnerabilities" not in document["error"]["message"]
+    # The same message also goes to stderr as text.
+    assert captured.err == document["error"]["message"] + "\n"
 
 
 def test_require_unknown_capability_is_a_usage_error(fixed_report, capsys):
@@ -759,6 +797,70 @@ def test_require_unknown_capability_is_a_usage_error(fixed_report, capsys):
     assert code == doctor_mod.EXIT_USAGE == 2
     assert captured.out == ""
     assert "reachability:cobol" in captured.err
+
+
+def test_require_unknown_capability_writes_the_error_document(fixed_report, capsys):
+    """In json format the usage error writes the error document, with the
+    unknown names in its details, next to the message on stderr."""
+    code = doctor_mod.run_doctor_command(
+        ["--format", "json", "--require", "reachability:cobol"]
+    )
+    assert code == doctor_mod.EXIT_USAGE == 2
+    document, captured = _one_document(capsys)
+    assert document["error"] == {
+        "exitCode": 2,
+        "verb": "doctor",
+        "message": document["error"]["message"],
+        "details": {"unknownCapabilities": ["reachability:cobol"]},
+    }
+    assert "reachability:cobol" in document["error"]["message"]
+    assert captured.err == document["error"]["message"] + "\n"
+
+
+def test_the_doctor_exit_codes_come_from_the_output_core():
+    """The exit constants are the shared table's, not a doctor-local copy."""
+    source = inspect.getsource(doctor_mod)
+    assert "from depscan.commands import output" in source
+    assert not re.search(r"^EXIT_\w+\s*=", source, flags=re.MULTILINE)
+    assert doctor_mod.EXIT_USAGE is commands_output.EXIT_USAGE
+    assert doctor_mod.EXIT_REQUIREMENT_NOT_MET is commands_output.EXIT_REQUIREMENT_NOT_MET
+    table_codes = [code for code, _meaning in commands_output.EXIT_CODES]
+    assert doctor_mod.EXIT_USAGE in table_codes
+    assert doctor_mod.EXIT_REQUIREMENT_NOT_MET in table_codes
+
+
+def test_the_doctor_module_imports_in_any_order():
+    """Importing the doctor module before the verb registry must work.
+
+    The registry imports this module back through depscan.api, so an import
+    from depscan.commands while the module is still defining itself would
+    leave DoctorReport undefined for api and crash the import. The exit
+    codes are therefore resolved from the shared table on first use, not at
+    module level.
+    """
+    probe = "import depscan.lib.doctor, depscan.lib.scan_directory, depscan.api\nprint('imported')"
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=Path(__file__).parent.parent,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "imported"
+
+
+def test_the_json_report_matches_the_doctor_output_schema(no_network, capsys):
+    """The command's success document carries its own output schema's name."""
+    from analysis_lib.findings.schemas import load_schema, validate
+
+    try:
+        load_schema("depscan-doctor-output")
+    except ValueError:
+        pytest.skip("the depscan-doctor-output schema lands with the schemas piece")
+    assert doctor_mod.run_doctor_command(["--format", "json"]) == 0
+    document = json.loads(capsys.readouterr().out)
+    validate("depscan-doctor-output", document)
 
 
 # --- the command line ----------------------------------------------------------
