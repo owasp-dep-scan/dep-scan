@@ -1,0 +1,21 @@
+test/test_mcp_resources.py
+  s_4319487fa41c8a::t_a316ade2f3bbb3 19,238,257,263,273,287,300,359,369,381,391,400,408,419,430,444,464,490,507,531,557,571,601,616,628,638
+test/test_mcp_tools.py
+  s_4319487fa41c8a::t_ee27b8c236633e 245,248-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "327bde02463b9be79995e69df40c8f1cfd469117",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
