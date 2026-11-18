@@ -153,6 +153,14 @@ def test_spinners_enabled_follows_stderr():
     assert logger.spinners_enabled(_FakeTty()) is True
 
 
+def test_progress_disabled_keeps_the_small_run_rule(monkeypatch):
+    import depscan.lib.package_query.metadata as metadata
+
+    monkeypatch.setattr(metadata, "spinners_enabled", lambda: True)
+    assert metadata._progress_disabled(9) is True
+    assert metadata._progress_disabled(10) is False
+
+
 def test_console_status_is_quiet_for_a_redirected_stderr(monkeypatch):
     drawn = []
 
@@ -183,6 +191,40 @@ def test_console_status_spins_for_a_terminal(monkeypatch):
     monkeypatch.setattr(logger, "spinners_enabled", lambda: True)
     assert logger.console_status("Generating BOM", spinner="dots") is marker
     assert recorded == {"args": ("Generating BOM",), "kwargs": {"spinner": "dots"}}
+
+
+def test_bom_spins_through_the_console_status_helper(monkeypatch, tmp_path):
+    """The blint BOM generator runs inside the gated status context."""
+    from depscan.lib import bom
+
+    entered = []
+
+    def spy_status(message, **kwargs):
+        entered.append((message, kwargs))
+        return logger._QuietStatus()
+
+    class StubGenerator:
+        def __init__(self, src_dir, bom_file, logger=None, options=None):
+            self.bom_file = bom_file
+
+        def generate(self):
+            Path(self.bom_file).write_text("{}", encoding="utf-8")
+            return SimpleNamespace(success=True)
+
+    monkeypatch.setattr(bom, "console_status", spy_status)
+    monkeypatch.setattr(bom, "BlintGenerator", StubGenerator)
+    assert bom.create_blint_bom(str(tmp_path / "bom.json"), str(tmp_path)) is True
+    assert entered == [
+        (f"Generating BOM for the source '{tmp_path}' with blint.", {"spinner": bom.SPINNER})
+    ]
+
+
+def test_bom_has_no_ungated_spinner_sites():
+    """Every spinner in bom.py draws through console_status."""
+    from depscan.lib import bom
+
+    source = Path(bom.__file__).read_text(encoding="utf-8")
+    assert "log_console.status" not in source
 
 
 def _run_console_child(extra_env):

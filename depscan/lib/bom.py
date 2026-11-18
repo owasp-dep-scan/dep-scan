@@ -34,7 +34,7 @@ from depscan.lib.config import (
     RUSI_DEFAULT_DATAFLOW_MODE,
     RUSI_REACHABLES_SLICE_FILE,
 )
-from depscan.lib.logger import LOG, SPINNER, log_console
+from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -546,7 +546,7 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     if lifecycle_analysis_mode:
         return create_lifecycle_boms(cdxgen_lib, src_dir, options)
     # Invoke the cdxgen library directly
-    with log_console.status(
+    with console_status(
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
         bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
@@ -708,7 +708,7 @@ def _run_rusi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     backend = options.get("rust_analyzer_backend") or RUSI_DEFAULT_BACKEND
     if options.get("deep_scan") or options.get("deep"):
         backend = "compiler"
-    with log_console.status(f"Running rusi Rust reachability on '{src_dir}'.", spinner=SPINNER):
+    with console_status(f"Running rusi Rust reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_rusi(
             src_dir,
             report_path,
@@ -748,7 +748,7 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     # cgo off, packages that need cgo are not loaded and their reachability is
     # missing.
     allow_cgo = bool(options.get("go_analyzer_cgo"))
-    with log_console.status(f"Running golem Go reachability on '{src_dir}'.", spinner=SPINNER):
+    with console_status(f"Running golem Go reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_golem(
             src_dir,
             report_path,
@@ -785,7 +785,7 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
         LOG.debug("dosai runner unavailable: %s", e)
         return None
     pattern_packs = options.get("dotnet_pattern_packs") or DOSAI_PATTERN_PACKS_DEFAULT
-    with log_console.status(f"Running dosai .NET reachability on '{src_dir}'.", spinner=SPINNER):
+    with console_status(f"Running dosai .NET reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_dosai(
             src_dir,
             analysis_report_dir(bom_dir, "dosai"),
@@ -1191,9 +1191,7 @@ def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] 
     if reachability_analyzer != "off" and not options.get("deep"):
         options["deep"] = True
     blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=options)
-    with log_console.status(
-        f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER
-    ):
+    with console_status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:
             LOG.info("The blint invocation was unsuccessful. Try generating the BOM separately.")
@@ -1250,7 +1248,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             return False
         return os.path.exists(stage_file)
 
-    with log_console.status(
+    with console_status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
     ) as status:
         # Start with build BOM generation.
