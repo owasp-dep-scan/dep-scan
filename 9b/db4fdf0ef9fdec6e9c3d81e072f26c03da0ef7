@@ -1,0 +1,19 @@
+documentation/docs/env-var.mdx
+  s_803c32b02d4a7d::t_45632a06c52e52 58-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9bdb4fdf0ef9fdec6e9c3d81e072f26c03da0ef7",
+  "prompts": {},
+  "sessions": {
+    "s_803c32b02d4a7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
