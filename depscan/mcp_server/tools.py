@@ -137,17 +137,48 @@ def _confined(args: Dict[str, Any], roots: Tuple[str, ...], key: str) -> str:
     return confinement.confine(str(args[key]), roots)
 
 
-def _loaded_scan(scan_dir: str) -> api.ScanResult:
+def _loaded_scan(scan_dir: str, roots: Tuple[str, ...]) -> api.ScanResult:
     """The scan result of a confined scan directory.
 
     A directory that cannot be read as a scan is a tool error carrying
     api.load_scan's message, which names the directory and the file or
-    manifest entry that was missing.
+    manifest entry that was missing. A symlink inside the directory that
+    leads out of the roots refuses the whole directory before anything in
+    it is read.
     """
+    confinement.confine_contents(scan_dir, roots)
     try:
-        return api.load_scan(scan_dir)
+        result = api.load_scan(scan_dir)
     except api.ScanError as exc:
         raise ToolError(str(exc)) from exc
+    _check_documents(scan_dir, result)
+    return result
+
+
+def _check_documents(scan_dir: str, result: api.ScanResult) -> None:
+    """Refuse a scan whose manifest or findings break their schemas.
+
+    The tools reshape these documents into their own outputs, so a
+    hand-edited or corrupted manifest or finding would otherwise surface as
+    an output that breaks the tool's published schema, or as an attribute
+    error, instead of an error naming the file.
+    """
+    if result.manifest is not None:
+        try:
+            validate("depscan-manifest", result.manifest)
+        except SchemaValidationError as exc:
+            raise ToolError(
+                f"the manifest of the scan at {json_path(scan_dir)} does not "
+                f"satisfy the depscan-manifest schema: {exc}"
+            ) from exc
+    for index, finding in enumerate(result.findings or []):
+        try:
+            validate("depscan-finding", finding)
+        except SchemaValidationError as exc:
+            raise ToolError(
+                f"finding {index} of the scan at {json_path(scan_dir)} does "
+                f"not satisfy the depscan-finding schema: {exc}"
+            ) from exc
 
 
 def _finding_by_id(result: api.ScanResult, finding_id: str) -> Dict[str, Any]:
@@ -194,7 +225,7 @@ def scan_summary_tool(args, roots, allow_scans=False):
     """The manifest summary and the finding counts of one scan directory."""
     del allow_scans
     scan_dir = _confined(args, roots, "scan_dir")
-    result = _loaded_scan(scan_dir)
+    result = _loaded_scan(scan_dir, roots)
     findings = [finding for finding in result.findings if isinstance(finding, dict)]
     document = {
         "scanDir": json_path(scan_dir),
@@ -304,7 +335,7 @@ def list_findings_tool(args, roots, allow_scans=False):
     """One page of the scan's findings, filtered by the finding fields."""
     del allow_scans
     scan_dir = _confined(args, roots, "scan_dir")
-    result = _loaded_scan(scan_dir)
+    result = _loaded_scan(scan_dir, roots)
     matched = _filtered_findings(
         args, [finding for finding in result.findings if isinstance(finding, dict)]
     )
@@ -321,7 +352,7 @@ def get_finding_tool(args, roots, allow_scans=False):
     """One finding of the scan, exactly as the finding schema defines it."""
     del allow_scans
     scan_dir = _confined(args, roots, "scan_dir")
-    result = _loaded_scan(scan_dir)
+    result = _loaded_scan(scan_dir, roots)
     finding = _finding_by_id(result, str(args["finding_id"]))
     return finding, [finding], scan_dir
 
@@ -335,7 +366,7 @@ def explain_finding_tool(args, roots, allow_scans=False):
     """
     del allow_scans
     scan_dir = _confined(args, roots, "scan_dir")
-    result = _loaded_scan(scan_dir)
+    result = _loaded_scan(scan_dir, roots)
     finding = _finding_by_id(result, str(args["finding_id"]))
     mode = str(args.get("mode") or "EndpointsAndReachables")
     try:
@@ -350,7 +381,7 @@ def coverage_tool(args, roots, allow_scans=False):
     """A scan directory's stages, not-assessed reasons and checks not run."""
     del allow_scans
     scan_dir = _confined(args, roots, "scan_dir")
-    result = _loaded_scan(scan_dir)
+    result = _loaded_scan(scan_dir, roots)
     manifest = result.manifest
     stages = list((manifest or {}).get("stages") or [])
     not_assessed: List[Dict[str, Any]] = []
@@ -417,7 +448,10 @@ def _bom_files(scan_dir: str, result: api.ScanResult) -> List[str]:
     for _project_type, relative in scan_directory.stage_outputs(
         result.manifest or {}, "inventory"
     ):
-        path = os.path.join(scan_dir, *relative.split("/"))
+        try:
+            path = scan_directory.output_path(scan_dir, relative)
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
         if os.path.isfile(path) and path not in seen:
             seen.add(path)
             paths.append(path)
@@ -478,7 +512,7 @@ def list_components_tool(args, roots, allow_scans=False):
     """One page of the scan's BOM components."""
     del allow_scans
     scan_dir = _confined(args, roots, "scan_dir")
-    result = _loaded_scan(scan_dir)
+    result = _loaded_scan(scan_dir, roots)
     components = _bom_components(scan_dir, result)
     limit = _page_limit(args)
     offset = _page_offset(args)
@@ -494,8 +528,8 @@ def diff_scans_tool(args, roots, allow_scans=False):
     del allow_scans
     old_scan_dir = _confined(args, roots, "old_scan_dir")
     new_scan_dir = _confined(args, roots, "new_scan_dir")
-    old_result = _loaded_scan(old_scan_dir)
-    new_result = _loaded_scan(new_scan_dir)
+    old_result = _loaded_scan(old_scan_dir, roots)
+    new_result = _loaded_scan(new_scan_dir, roots)
     diff = api.diff(old_result, new_result)
 
     def entries(group):
@@ -723,6 +757,10 @@ def run_scan_tool(args, roots, allow_scans=False):
                 spill_dir = None
         return entry, [entry], spill_dir
     _confined_target(target, roots)
+    if args.get("reports_dir"):
+        # The argv the dry run returns is the command the server would run,
+        # so a reports directory the real run would refuse is refused here.
+        confinement.confine(str(args["reports_dir"]), roots)
     argv = _scan_argv(args)
     document = {"argv": argv, "options": _options_document(_parsed_scan_args(argv))}
     return document, [document], None
@@ -843,6 +881,13 @@ async def handle_call_tool(ctx, params) -> types.CallToolResult:
     allow_scans = bool(state.get("allow_scans"))
     roots = await server_mod.effective_roots_for(ctx, startup_roots)
     document, items, spill_dir = spec.run(args, roots, allow_scans=allow_scans)
+    try:
+        validate(f"depscan-mcp-{spec.name}-output", document)
+    except SchemaValidationError as exc:
+        raise ToolError(
+            f"the {spec.name} result does not satisfy its published output "
+            f"schema, so it is withheld: {exc}"
+        ) from exc
     return _document_result(params.name, args, document, items, spill_dir, roots)
 
 

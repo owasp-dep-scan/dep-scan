@@ -94,9 +94,9 @@ With uvx, the command is `uvx` and the argument array is `["--from", "owasp-deps
 
 ## Allowed roots
 
-Every path a tool takes resolves, with `os.path.realpath`, inside an allowed root before the tool runs. A `..` that climbs out of a root, a symlink that points outside one, and an absolute path elsewhere are refused with a tool error that names the rule. The rule covers the scan directories the tools read, the target and the reports directory of a scan, and the response files the server writes (see [response size and paging](#response-size-and-paging)).
+Every path a tool takes resolves, with `os.path.realpath`, inside an allowed root before the tool runs. A `..` that climbs out of a root, a symlink that points outside one, and an absolute path elsewhere are refused with a tool error that names the rule. The rule covers the scan directories the tools read and every file inside them (a symlinked findings document, manifest, VDR or BOM that leads out of the roots refuses the whole directory, and a manifest entry that climbs out of its scan directory is refused), the target and the reports directory of a scan, in a dry run as well as a real one, and the response files the server writes (see [response size and paging](#response-size-and-paging)). A manifest or finding that does not satisfy its published schema is a tool error naming the file, and so is a result that would not satisfy the tool's own output schema.
 
-The allowed roots are the client's MCP roots plus each `--allow-dir` given when the server started; the two sources add up. With neither, the server's working directory is the only root.
+The allowed roots are the client's MCP roots plus each `--allow-dir` given when the server started; the two sources add up, so a client that announces a wider root, `/` for example, widens what the session may read and, with `--allow-scans`, where it may scan. Start the server only for clients you would let read those directories. With neither, the server's working directory is the only root. The server asks for the client's roots only when the client declared the roots capability, and goes on with the `--allow-dir` roots when a client does not answer within ten seconds.
 
 ## Scans are dry runs by default
 
@@ -104,7 +104,7 @@ The `run_scan` tool is the only tool that runs a scan, and it is a dry run by de
 
 A real run needs two things at once. The server must have been started with `--allow-scans`, and the tool call must pass `execute: true`. Without the flag, `execute: true` is a tool error that names the flag which was never given; no combination of tool arguments turns scans on. Only the person who starts the server can widen this default.
 
-A real run takes only targets that resolve inside the allowed roots, never runs a project's install or build steps, and always runs cdxgen in secure mode (`CDXGEN_SECURE_MODE=true`), the same constraint an untrusted source target gets on the command line. The result is the scan entry the `depscan scan --format json` document carries for a target: `target`, `kind`, `scanDir`, `manifest` and `findings`.
+A real run takes local targets (a directory, a BOM file, an archive or an OCI layout) only when they resolve inside the allowed roots; a package URL, a git URL or a container image reference is not a local path and is fetched by cdxgen as on the command line. Either way the scan directory must resolve inside the roots. A real run never runs a project's install or build steps, and always runs cdxgen in secure mode (`CDXGEN_SECURE_MODE=true`), the same constraint an untrusted source target gets on the command line. The result is the scan entry the `depscan scan --format json` document carries for a target: `target`, `kind`, `scanDir`, `manifest` and `findings`.
 
 ## The tools
 

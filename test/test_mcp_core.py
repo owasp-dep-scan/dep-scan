@@ -455,6 +455,44 @@ def test_effective_roots_do_not_duplicate_a_root(rooted):
     assert confinement.effective_roots(startup, [str(rooted.root)]) == startup
 
 
+#: The initialize parameters of a client that declared the roots capability.
+_ROOTS_CLIENT = SimpleNamespace(capabilities=SimpleNamespace(roots=SimpleNamespace()))
+
+
+def test_client_roots_skips_a_client_without_the_roots_capability(rooted):
+    """A client that declared no roots capability never answers roots/list,
+    so it is never asked: the call goes on with the startup roots."""
+    import asyncio
+
+    class Session:
+        client_params = SimpleNamespace(capabilities=SimpleNamespace(roots=None))
+        asked = False
+
+        async def list_roots(self):
+            Session.asked = True
+            raise AssertionError("roots/list sent to a client without roots")
+
+    assert asyncio.run(server_mod.client_roots(SimpleNamespace(session=Session()))) == ()
+    assert not Session.asked
+
+
+def test_client_roots_gives_up_on_a_client_that_never_answers(rooted, monkeypatch, capsys):
+    """A client that declared roots but never answers does not hang the
+    call: after the timeout it contributes no roots and stderr says so."""
+    import asyncio
+
+    monkeypatch.setattr(server_mod, "ROOTS_TIMEOUT_SECONDS", 0.05)
+
+    class Silent:
+        client_params = _ROOTS_CLIENT
+
+        async def list_roots(self):
+            await asyncio.sleep(30)
+
+    assert asyncio.run(server_mod.client_roots(SimpleNamespace(session=Silent()))) == ()
+    assert "roots/list request failed (TimeoutError)" in capsys.readouterr().err
+
+
 def test_client_roots_reads_the_session(rooted):
     """The client's file:// roots become local paths; a client that cannot
     answer the roots request contributes nothing."""
@@ -462,6 +500,8 @@ def test_client_roots_reads_the_session(rooted):
 
     class RecordingSession:
         """A stand-in for the SDK session's roots request."""
+
+        client_params = _ROOTS_CLIENT
 
         def __init__(self, roots, fail=False):
             self.roots = roots
@@ -492,6 +532,8 @@ def test_effective_roots_for_merges_the_session_roots(rooted):
     startup = tuple(confinement.startup_roots([str(rooted.root)]))
 
     class RootsSession:
+        client_params = _ROOTS_CLIENT
+
         def __init__(self, roots):
             self.roots = roots
 

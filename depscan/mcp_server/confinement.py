@@ -139,3 +139,27 @@ def confine(path: str, roots: Iterable[str]) -> str:
         f"refusing {path}: {rule} "
         f"(it resolves to {resolved}; allowed roots: {', '.join(roots_tuple)})"
     )
+
+
+def confine_contents(scan_dir: str, roots: Iterable[str]) -> None:
+    """Refuse a scan directory holding a symlink that leads out of the roots.
+
+    Confining the directory alone is not enough: a scan directory inside a
+    root can carry a findings document, a manifest, a VDR or a BOM that is
+    a symlink to a file anywhere, and every reader would follow it. Each
+    symlink below ``scan_dir`` (files and directories, without following
+    any) must itself resolve inside the roots; one that does not raises
+    :class:`PathOutsideRootsError` with the symlink rule.
+    """
+    roots_tuple = tuple(roots)
+    for current, dirnames, filenames in os.walk(scan_dir, followlinks=False):
+        for name in [*dirnames, *filenames]:
+            entry = os.path.join(current, name)
+            if os.path.islink(entry) or _is_junction(entry):
+                confine(entry, roots_tuple)
+
+
+def _is_junction(path: str) -> bool:
+    """Whether ``path`` is a Windows junction (Python 3.12 and later)."""
+    is_junction = getattr(os.path, "isjunction", None)
+    return bool(is_junction and is_junction(path))

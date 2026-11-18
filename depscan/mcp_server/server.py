@@ -43,6 +43,7 @@ any library print land next to the logs on stderr and never on the wire.
 """
 
 import os
+import sys
 from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version as pkg_version
 from typing import Any, AsyncIterator, Dict, Tuple
@@ -53,6 +54,10 @@ from depscan.mcp_server import confinement
 
 #: The server name clients see.
 SERVER_NAME = "dep-scan"
+
+#: How long one roots/list request may take before the call goes on with
+#: the --allow-dir roots alone.
+ROOTS_TIMEOUT_SECONDS = 10
 
 try:
     SERVER_VERSION = pkg_version("owasp-depscan")
@@ -126,10 +131,24 @@ async def client_roots(ctx: Any) -> Tuple[str, ...]:
     ``file://`` URI and is converted to a local path the way this platform
     spells it.
     """
+    import anyio  # an mcp dependency; imported here like the SDK itself
+
     roots = []
+    session = ctx.session
+    capabilities = getattr(getattr(session, "client_params", None), "capabilities", None)
+    if getattr(capabilities, "roots", None) is None:
+        # A client that did not declare the roots capability never answers
+        # roots/list; asking would hang the call.
+        return ()
     try:
-        result = await ctx.session.list_roots()
-    except Exception:  # noqa: BLE001 - a client without roots support has none
+        with anyio.fail_after(ROOTS_TIMEOUT_SECONDS):
+            result = await session.list_roots()
+    except Exception as exc:  # noqa: BLE001 - no answer means no client roots
+        print(
+            f"depscan mcp: the client's roots/list request failed ({type(exc).__name__}); "
+            "confining this call to the --allow-dir roots",
+            file=sys.stderr,
+        )
         return ()
     for root in result.roots or []:
         parsed = urlparse(str(root.uri))
@@ -145,7 +164,9 @@ async def effective_roots_for(ctx: Any, startup_roots: Tuple[str, ...]) -> Tuple
     """The roots one request is confined by: startup roots plus client roots.
 
     The client's roots add to the ``--allow-dir`` roots, they never replace
-    them; only the person who started the server decides where it may read.
+    them: the directory the person who started the server allowed stays
+    allowed, and a client that announces a wider root widens what this
+    session may read and, with ``--allow-scans``, where it may scan.
     """
     return confinement.effective_roots(startup_roots, await client_roots(ctx))
 

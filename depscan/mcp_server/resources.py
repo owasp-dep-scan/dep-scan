@@ -290,6 +290,7 @@ async def handle_read_resource(ctx, params) -> types.ReadResourceResult:
     parsed = parse_scan_uri(params.uri)
     try:
         scan_root = confinement.confine(parsed.scan_dir, roots)
+        confinement.confine_contents(scan_root, roots)
     except confinement.PathOutsideRootsError as exc:
         raise _refused_error(exc) from exc
     if not os.path.isdir(scan_root):

@@ -17,6 +17,7 @@ text.
 """
 
 import asyncio
+import dataclasses
 import base64
 import contextlib
 import hashlib
@@ -1107,16 +1108,11 @@ def test_doctor_returns_the_report_document(open_session, fixed_doctor_report):
 
 
 def test_doctor_over_the_budget_is_an_error_without_a_scan_directory(open_session, monkeypatch):
-    report = doctor_mod.DoctorReport(
-        schema_version="1",
-        depscan_version="7.0.0",
-        platform={"os": "linux", "arch": "x86_64", "libc": "glibc"},
-        tools=[],
-        data={
-            "vulnerabilityDatabase": {"present": False},
-            "blob": "a" * (TOOL_BUDGET_BYTES + 1),
-        },
-        capabilities=[],
+    # A real report, so the oversized result still satisfies the output
+    # schema and the budget is what refuses it.
+    real = doctor_mod.doctor()
+    report = dataclasses.replace(
+        real, depscan_version=real.depscan_version + "+" + "a" * (TOOL_BUDGET_BYTES + 1)
     )
     monkeypatch.setattr(doctor_mod, "doctor", lambda: report)
 
@@ -1185,14 +1181,17 @@ def test_vdb_status_returns_the_info_document(open_session, vdb_home, monkeypatc
 
 
 def test_vdb_status_over_the_budget_is_an_error_without_a_scan_directory(
-    open_session, monkeypatch
+    open_session, monkeypatch, vdb_home
 ):
     from depscan import vdb_cli
 
+    # The real info of the scratch vdb home, with an oversized home path, so
+    # the result still satisfies the output schema and the budget refuses it.
+    real_collect = vdb_cli._collect_info
     monkeypatch.setattr(
         vdb_cli,
         "_collect_info",
-        lambda: {"vdbHome": "a" * (TOOL_BUDGET_BYTES + 1), "shardStore": {"storeDir": None}},
+        lambda: {**real_collect(), "vdbHome": "/" + "a" * (TOOL_BUDGET_BYTES + 1)},
     )
 
     async def scenario(session):
@@ -1738,3 +1737,114 @@ def test_stdout_carries_only_jsonrpc_messages(tmp_path):
     assert not [tool["name"] for tool in tools if tool["name"] in FORBIDDEN_TOOLS]
     for tool in tools:
         assert tool["inputSchema"]["$id"] == f"urn:owasp:depscan:schema:mcp-{tool['name']}-input:1"
+
+
+# --- documents inside a confined scan directory ------------------------------------
+
+
+def _outside(tmp_path):
+    """A directory next to the scan directories, outside the roots."""
+    outside = tmp_path.parent / (tmp_path.name + "-outside")
+    outside.mkdir(exist_ok=True)
+    return outside
+
+
+def _point_inventory_at(scan_dir, relative):
+    manifest_path = scan_dir / "depscan.manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    for stage in manifest["stages"]:
+        if stage.get("name") == "inventory":
+            for output in stage.get("outputs") or []:
+                output["file"] = relative
+    manifest_path.write_text(json.dumps(manifest))
+
+
+def test_a_manifest_output_that_climbs_out_is_refused(open_session, make_scan_dir, tmp_path):
+    scan_dir = make_scan_dir("climb")
+    secret = _outside(tmp_path) / "secret.cdx.json"
+    secret.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "components": [{"name": "SECRET-DOTDOT", "type": "library"}],
+            }
+        )
+    )
+    _point_inventory_at(scan_dir, os.path.relpath(secret, scan_dir).replace(os.sep, "/"))
+
+    async def scenario(session):
+        return await call_error(session, "list_components", {"scan_dir": str(scan_dir)})
+
+    message = drive(open_session, scenario, (scan_dir.parent,))
+    assert "resolves outside the scan directory" in message
+    assert "SECRET-DOTDOT" not in message
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need privileges on Windows")
+def test_a_symlinked_document_leading_out_refuses_the_scan(open_session, make_scan_dir, tmp_path):
+    scan_dir = make_scan_dir("linked")
+    findings = scan_dir / "depscan.findings.json"
+    copy = _outside(tmp_path) / "findings.json"
+    copy.write_text(findings.read_text().replace(VULN_HIGH["id"], "SECRET-LINKED"))
+    findings.unlink()
+    findings.symlink_to(copy)
+
+    async def tool(session):
+        return await call_error(session, "list_findings", {"scan_dir": str(scan_dir)})
+
+    async def resource(session):
+        from depscan.mcp_server.resources import scan_resource_uri
+
+        try:
+            result = await session.read_resource(scan_resource_uri(str(scan_dir), "findings"))
+        except Exception as exc:  # noqa: BLE001 - the refusal is the expected path
+            return str(exc)
+        return result.contents[0].text
+
+    for scenario in (tool, resource):
+        message = drive(open_session, scenario, (scan_dir.parent,))
+        assert "a symlink that resolves outside the allowed roots" in message
+        assert "SECRET-LINKED" not in message
+
+
+def test_a_finding_that_breaks_its_schema_is_a_tool_error(open_session, make_scan_dir):
+    scan_dir = make_scan_dir("malformed")
+    path = scan_dir / "depscan.findings.json"
+    document = json.loads(path.read_text())
+    document["findings"].append({"id": "x", "junk": 1})
+    path.write_text(json.dumps(document))
+
+    async def scenario(session):
+        return await call_error(session, "list_findings", {"scan_dir": str(scan_dir)})
+
+    message = drive(open_session, scenario, (scan_dir.parent,))
+    assert "does not satisfy the depscan-finding schema" in message
+
+
+def test_a_manifest_that_breaks_its_schema_is_a_tool_error(open_session, make_scan_dir):
+    scan_dir = make_scan_dir("badmanifest")
+    path = scan_dir / "depscan.manifest.json"
+    manifest = json.loads(path.read_text())
+    manifest["startUtc"] = 5
+    path.write_text(json.dumps(manifest))
+
+    async def scenario(session):
+        return await call_error(session, "coverage", {"scan_dir": str(scan_dir)})
+
+    message = drive(open_session, scenario, (scan_dir.parent,))
+    assert "does not satisfy the depscan-manifest schema" in message
+
+
+def test_the_dry_run_refuses_a_reports_dir_outside_the_roots(open_session, tmp_path):
+    source = tmp_path / "src"
+    source.mkdir()
+    outside = _outside(tmp_path) / "reports"
+
+    async def scenario(session):
+        return await call_error(
+            session, "run_scan", {"target": str(source), "reports_dir": str(outside)}
+        )
+
+    message = drive(open_session, scenario, (tmp_path,))
+    assert "an absolute path outside every allowed root" in message
