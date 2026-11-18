@@ -1,0 +1,21 @@
+test/test_docs_cli.py
+  s_803c32b02d4a7d::t_a2ce55ad426799 43-47
+  s_803c32b02d4a7d::t_694cc212ba6092 196-203
+  s_803c32b02d4a7d::t_3d9d4b1b98f1ca 10-13,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ba632a01bed4fe455db87efbef287084732131c",
+  "prompts": {},
+  "sessions": {
+    "s_803c32b02d4a7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
