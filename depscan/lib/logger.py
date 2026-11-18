@@ -39,51 +39,133 @@ IS_CI = os.getenv("CI") or os.getenv("CONTINUOUS_INTEGRATION")
 VALID_COLOR_SYSTEMS = ("auto", "standard", "256", "truecolor", "windows")
 
 
-def _color_system():
-    """Translate CONSOLE_COLOR_SCHEME into a rich-acceptable value.
+def _color_arguments():
+    """Decide the colour arguments for the dep-scan consoles.
 
-    An unrecognized value (e.g. a typo) falls back to None so rich
-    auto-detects color support instead of crashing on startup.
+    Colour follows the stream unless the user asked otherwise. NO_COLOR set to
+    any non-empty value turns colour off on every stream, including a real
+    terminal. FORCE_COLOR set to any non-empty value, or an explicitly set
+    CONSOLE_COLOR_SCHEME, turns colour on even when the stream is not a
+    terminal: the named scheme when valid, otherwise rich's own detection of
+    the best colour system. With none of the variables set, rich detects
+    colour support per stream, so a file or a pipe receives plain text.
     """
-    scheme = os.getenv("CONSOLE_COLOR_SCHEME", "256")
-    return scheme if scheme in VALID_COLOR_SYSTEMS else None
+    if os.getenv("NO_COLOR", ""):
+        return {"color_system": None}
+    scheme = os.getenv("CONSOLE_COLOR_SCHEME") or ""
+    if scheme and scheme in VALID_COLOR_SYSTEMS:
+        # The scheme goes to rich directly and bypasses detection, so it
+        # holds for redirected streams too: that is what setting it
+        # explicitly means.
+        return {"color_system": scheme}
+    if not scheme and not os.getenv("FORCE_COLOR", ""):
+        return {"color_system": "auto"}
+    if os.getenv("TERM", "").strip().lower() in ("dumb", "unknown"):
+        # rich would auto-detect no colour support on a terminal that calls
+        # itself dumb, but the request for colour here is explicit, so keep a
+        # plain 16-colour system instead of none.
+        return {"color_system": "standard", "force_terminal": True}
+    return {"color_system": "auto", "force_terminal": True}
 
 
-def _emoji_enabled():
+def _is_terminal(stream=None):
+    """Whether the given stream (stderr by default) is a terminal.
+
+    ``isatty`` raises ValueError on a closed stream, which happens during test
+    teardown; a closed stream is not a terminal.
+    """
+    if stream is None:
+        stream = sys.stderr
+    try:
+        return stream.isatty()
+    except ValueError:
+        return False
+
+
+def _emoji_enabled(file):
+    """Whether emoji shortcodes render on the console for ``file``.
+
+    Emoji follow DISABLE_CONSOLE_EMOJI and are also off when the stream is
+    not a terminal: an emoji pasted into a redirected stream is noise for the
+    agent or script reading it.
+    """
     if os.getenv("DISABLE_CONSOLE_EMOJI", "") in ("true", "1"):
+        return False
+    if not _is_terminal(file):
         return False
     return not (sys.platform == "win32" and IS_CI)
 
 
-console = Console(
-    log_time=False,
-    log_path=False,
-    theme=custom_theme,
-    color_system=_color_system(),
-    width=140 if IS_CI else None,
-    highlight=not IS_CI,
-    tab_size=2,
-    highlighter=CustomHighlighter(),
-    record=sys.platform == "win32",
-    emoji=_emoji_enabled(),
-)
+def _build_console(file, **overrides):
+    """Build a rich console with dep-scan's colour, emoji and width rules.
+
+    Both dep-scan consoles go through this builder so they always agree on
+    the colour, emoji and CI-width rules.
+    """
+    kwargs = dict(
+        file=file,
+        log_time=False,
+        log_path=False,
+        theme=custom_theme,
+        width=140 if IS_CI else None,
+        highlight=not IS_CI,
+        tab_size=2,
+        highlighter=CustomHighlighter(),
+        emoji=_emoji_enabled(file),
+    )
+    kwargs.update(_color_arguments())
+    kwargs.update(overrides)
+    return Console(**kwargs)
+
+
+console = _build_console(sys.stdout, record=sys.platform == "win32")
 
 # Logs, warnings and progress print on stderr so the stdout console carries
 # only rendered output (tables, summaries, explanations) and its HTML and
-# text exports stay free of log lines. The same theme and colour system apply;
+# text exports stay free of log lines. The same theme and colour rules apply;
 # this console records nothing because no report exports it.
-log_console = Console(
-    file=sys.stderr,
-    log_time=False,
-    log_path=False,
-    theme=custom_theme,
-    color_system=_color_system(),
-    width=140 if IS_CI else None,
-    highlight=not IS_CI,
-    tab_size=2,
-    highlighter=CustomHighlighter(),
-    emoji=_emoji_enabled(),
-)
+log_console = _build_console(sys.stderr)
+
+
+def spinners_enabled(stream=None):
+    """Whether progress bars and spinners may draw.
+
+    A spinner or progress bar animates by erasing and redrawing itself, which
+    only a terminal can do, so they stay off whenever stderr is redirected.
+    The check is on the real stream: it does not follow FORCE_COLOR, which
+    only decides colour.
+    """
+    return _is_terminal(stream)
+
+
+class _QuietStatus:
+    """Stand-in for a rich spinner when stderr is not a terminal.
+
+    The context yields itself and ``update`` accepts the same arguments as
+    the rich status object without drawing anything, so callers that use
+    ``status.update`` mid-way keep working unchanged.
+    """
+
+    def update(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+
+def console_status(*args, **kwargs):
+    """Show a status message with a spinner on stderr.
+
+    On a redirected stderr nothing is drawn: the message would only repeat
+    once per refresh into the file or pipe a caller is capturing.
+    """
+    if spinners_enabled():
+        return log_console.status(*args, **kwargs)
+    return _QuietStatus()
+
 
 logging.basicConfig(
     level=logging.INFO,
