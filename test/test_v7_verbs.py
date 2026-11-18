@@ -559,47 +559,7 @@ def test_download_failure_hint_names_the_v7_command(monkeypatch, caplog):
 
 
 # --- validate --------------------------------------------------------------------
-
-
-def test_validate_vdr_fixture_text(monkeypatch, capsys):
-    assert run_main(monkeypatch, ["validate", str(VDR_FIXTURE)]) == 0
-    out = capsys.readouterr().out
-    assert "[VALID]   " in out
-    assert "cyclonedx" in out
-
-
-def test_validate_vdr_fixture_json(monkeypatch, capsys):
-    code = run_main(monkeypatch, ["validate", str(VDR_FIXTURE), "--format", "json"])
-    assert code == 0
-    document = json.loads(capsys.readouterr().out)
-    assert document == [
-        {"file": str(VDR_FIXTURE), "format": "cyclonedx", "valid": True, "errors": []}
-    ]
-
-
-def test_validate_invalid_document_text(monkeypatch, capsys, tmp_path):
-    document = json.loads(VDR_FIXTURE.read_text())
-    document["specVersion"] = "9.9"
-    broken = tmp_path / "broken.vdr.json"
-    broken.write_text(json.dumps(document))
-    code = run_main(monkeypatch, ["validate", str(broken)])
-    assert code == 1
-    out = capsys.readouterr().out
-    assert "[INVALID]" in out
-    assert "unsupported CycloneDX specVersion '9.9'" in out
-
-
-def test_validate_invalid_document_json(monkeypatch, capsys, tmp_path):
-    document = json.loads(VDR_FIXTURE.read_text())
-    document["specVersion"] = "9.9"
-    broken = tmp_path / "broken.vdr.json"
-    broken.write_text(json.dumps(document))
-    code = run_main(monkeypatch, ["validate", str(broken), "--format", "json"])
-    assert code == 1
-    entries = json.loads(capsys.readouterr().out)
-    assert entries[0]["valid"] is False
-    assert entries[0]["errors"]
-    assert any("specVersion" in error for error in entries[0]["errors"])
+# The validate verb's own tests live in test_v7_validate_report.py.
 
 
 # --- doctor ----------------------------------------------------------------------
