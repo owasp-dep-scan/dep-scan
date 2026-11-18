@@ -1,0 +1,45 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.owasp-dep-scan/dep-scan",
+  "title": "OWASP dep-scan",
+  "description": "MCP server for OWASP dep-scan: scan directories, findings, coverage, diffs and scans over stdio.",
+  "version": "7.0.0.dev0",
+  "websiteUrl": "https://depscan.readthedocs.io/",
+  "repository": {
+    "url": "https://github.com/owasp-dep-scan/dep-scan",
+    "source": "github",
+    "id": "236836976"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "owasp-depscan",
+      "version": "7.0.0.dev0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "--from",
+          "value": "owasp-depscan[mcp]==7.0.0.dev0",
+          "description": "Install the package with the mcp extra, which carries the MCP SDK the server runs on."
+        },
+        {
+          "type": "positional",
+          "value": "depscan",
+          "description": "The dep-scan command that the package installs."
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "description": "Run the MCP server over stdio."
+        }
+      ]
+    }
+  ]
+}
