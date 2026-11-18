@@ -1,0 +1,28 @@
+depscan/mcp_server/resources.py
+  s_4319487fa41c8a::t_4520433d2cb297 198-204
+depscan/lib/scan_directory.py
+  s_4319487fa41c8a::t_bd2b17dd72e82f 600-605,609-613,615
+  s_4319487fa41c8a::t_bf58bda736f9e0 614
+test/test_scan_directory.py
+  s_4319487fa41c8a::t_b66728e24262ad 1152-1171
+depscan/api.py
+  s_4319487fa41c8a::t_8720c976ffcb2b 705-708
+test/test_mcp_tools.py
+  s_4319487fa41c8a::t_fe98b118f92606 469-487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "837f2f634abbbded190ae32d406c595b85a6c5d5",
+  "prompts": {},
+  "sessions": {
+    "s_4319487fa41c8a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
