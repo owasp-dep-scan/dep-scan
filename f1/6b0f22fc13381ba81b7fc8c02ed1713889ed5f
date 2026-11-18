@@ -1,0 +1,22 @@
+depscan/mcp_server/confinement.py
+  s_257c086714955c::t_1e8159823afbfe 47-53
+test/test_mcp_core.py
+  s_257c086714955c::t_3726379e0c8ff7 4-7
+  s_257c086714955c::t_6f2c676e54744a 329-340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f16b0f22fc13381ba81b7fc8c02ed1713889ed5f",
+  "prompts": {},
+  "sessions": {
+    "s_257c086714955c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_5d7e3c74-282d-40bf-917c-88f55153ae9c",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
