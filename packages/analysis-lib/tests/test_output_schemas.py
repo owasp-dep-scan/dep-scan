@@ -299,13 +299,18 @@ def test_vdb_info_output_validates_with_and_without_a_database():
 
 
 def test_vdb_download_output_validates_both_variants():
+    # The download document's marker is the path of the marker file the
+    # download wrote, .depscan-vdb-image under the vdb home, not the
+    # recorded image reference or shard-set marker the info document
+    # reports under the same field name.
+    marker_path = "/tmp/vdb/.depscan-vdb-image"
     _valid(
         "depscan-vdb-download-output",
-        {"image": "ghcr.io/appthreat/vdb7:main", "marker": "ghcr.io/appthreat/vdb7:main"},
+        {"image": "ghcr.io/appthreat/vdb7:main", "marker": marker_path},
     )
-    _valid("depscan-vdb-download-output", {"shards": ["npm", "pypi"], "marker": "shards:npm,pypi"})
-    _invalid("depscan-vdb-download-output", {"marker": "x"})
-    _invalid("depscan-vdb-download-output", {"image": "x", "shards": ["npm"], "marker": "m"})
+    _valid("depscan-vdb-download-output", {"shards": ["npm", "pypi"], "marker": marker_path})
+    _invalid("depscan-vdb-download-output", {"marker": marker_path})
+    _invalid("depscan-vdb-download-output", {"image": "x", "shards": ["npm"], "marker": marker_path})
 
 
 def test_vdb_path_output_validates():
