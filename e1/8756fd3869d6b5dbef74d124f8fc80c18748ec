@@ -1,0 +1,29 @@
+documentation/docs/cli-usage.mdx
+  s_803c32b02d4a7d::t_ac0b26c7f155ee 180-182,187,189,191
+  s_803c32b02d4a7d::t_f51842fdae2c94 281,283,289-291
+  s_8cbdd9e5002975::t_d98d4bdfe6cc46 292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e18756fd3869d6b5dbef74d124f8fc80c18748ec",
+  "prompts": {},
+  "sessions": {
+    "s_803c32b02d4a7d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    },
+    "s_8cbdd9e5002975": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_6069faca-92d9-4572-89fa-ecc8c90e7b25",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
