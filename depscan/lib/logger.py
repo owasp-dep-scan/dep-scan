@@ -96,11 +96,16 @@ def _emoji_enabled(file):
     return not (sys.platform == "win32" and IS_CI)
 
 
-def _build_console(file, **overrides):
+def _build_console(file=None, **overrides):
     """Build a rich console with dep-scan's colour, emoji and width rules.
 
     Both dep-scan consoles go through this builder so they always agree on
-    the colour, emoji and CI-width rules.
+    the colour, emoji and CI-width rules. A console built without ``file``
+    pins no stream: rich writes to the current ``sys.stdout`` on every call,
+    so a harness that replaces that stream after import (pytest's capsys,
+    for example) keeps capturing the console's output. The emoji decision is
+    still made here, against ``sys.stdout``, and does not follow the
+    replacement.
     """
     kwargs = dict(
         file=file,
@@ -111,14 +116,17 @@ def _build_console(file, **overrides):
         highlight=not IS_CI,
         tab_size=2,
         highlighter=CustomHighlighter(),
-        emoji=_emoji_enabled(file),
+        emoji=_emoji_enabled(file if file is not None else sys.stdout),
     )
     kwargs.update(_color_arguments())
     kwargs.update(overrides)
     return Console(**kwargs)
 
 
-console = _build_console(sys.stdout, record=sys.platform == "win32")
+# The stdout console pins no file, so it follows the current sys.stdout at
+# write time; the stderr console below is built with its stream and stays on
+# it.
+console = _build_console(record=sys.platform == "win32")
 
 # Logs, warnings and progress print on stderr so the stdout console carries
 # only rendered output (tables, summaries, explanations) and its HTML and
