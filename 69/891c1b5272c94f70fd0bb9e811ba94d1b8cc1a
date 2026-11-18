@@ -1,0 +1,20 @@
+test/test_repotests_workflow.py
+  s_30b704f208c121::t_f0d97bd99da60e 1-132,134-342
+  s_30b704f208c121::t_1ad34d544a1db4 133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "69891c1b5272c94f70fd0bb9e811ba94d1b8cc1a",
+  "prompts": {},
+  "sessions": {
+    "s_30b704f208c121": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
