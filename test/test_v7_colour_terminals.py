@@ -2,8 +2,9 @@
 
 Colour follows the stream unless the user asked otherwise: NO_COLOR set to
 any non-empty value turns colour off everywhere, FORCE_COLOR or an explicit
-CONSOLE_COLOR_SCHEME turns it on even for a redirected stream, and with none
-of them set rich detects colour support per stream. Emoji follow
+CONSOLE_COLOR_SCHEME other than ``auto`` turns it on even for a redirected
+stream, and with none of them set rich detects colour support per stream.
+Emoji follow
 DISABLE_CONSOLE_EMOJI and stay off on a non-terminal. Progress bars and
 spinners stay off whenever stderr is not a terminal.
 """

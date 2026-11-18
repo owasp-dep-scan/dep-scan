@@ -44,19 +44,22 @@ def _color_arguments():
 
     Colour follows the stream unless the user asked otherwise. NO_COLOR set to
     any non-empty value turns colour off on every stream, including a real
-    terminal. FORCE_COLOR set to any non-empty value, or an explicitly set
-    CONSOLE_COLOR_SCHEME, turns colour on even when the stream is not a
-    terminal: the named scheme when valid, otherwise rich's own detection of
-    the best colour system. With none of the variables set, rich detects
-    colour support per stream, so a file or a pipe receives plain text.
+    terminal. FORCE_COLOR set to any non-empty value, or a CONSOLE_COLOR_SCHEME
+    set to a named scheme or an unknown value, turns colour on even when the
+    stream is not a terminal: the named scheme when valid, otherwise rich's
+    own detection of the best colour system. Setting the scheme to ``auto``
+    asks rich to detect support without forcing colour, so a redirected
+    stream stays plain unless FORCE_COLOR is also set. With none of the
+    variables set, rich detects colour support per stream, so a file or a
+    pipe receives plain text.
     """
     if os.getenv("NO_COLOR", ""):
         return {"color_system": None}
     scheme = os.getenv("CONSOLE_COLOR_SCHEME") or ""
     if scheme and scheme in VALID_COLOR_SYSTEMS:
-        # The scheme goes to rich directly and bypasses detection, so it
-        # holds for redirected streams too: that is what setting it
-        # explicitly means.
+        # The scheme goes to rich directly and bypasses detection, so a named
+        # scheme holds for redirected streams too. ``auto`` is the value
+        # that keeps detection per stream.
         return {"color_system": scheme}
     if not scheme and not os.getenv("FORCE_COLOR", ""):
         return {"color_system": "auto"}
