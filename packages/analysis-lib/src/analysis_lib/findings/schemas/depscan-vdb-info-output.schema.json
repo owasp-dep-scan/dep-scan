@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.owasp.org/schemas/depscan-vdb-info-output.schema.json",
+  "title": "dep-scan vdb info output",
+  "description": "The document `depscan vdb info --format json` writes on stdout: the local database and shard store as a read-only inspection records them. A missing database, a stale shard or a coverage gap is recorded as such, never hidden. The paths in vdbHome and shardStore.storeDir are absolute with / separators; the marker is the last download's image reference or shard-set marker, not a path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "vdbHome",
+    "marker",
+    "markerKind",
+    "flavor",
+    "mainDb",
+    "metadataRows",
+    "extendedFlavor",
+    "shardStore"
+  ],
+  "properties": {
+    "vdbHome": {
+      "type": "string",
+      "description": "The VDB_HOME directory, absolute and normalised, with / as the separator on every platform."
+    },
+    "marker": {
+      "type": ["string", "null"],
+      "description": "The last download marker: an image reference for a complete flavor, or a shards marker naming the refreshed shard set. Null when nothing was ever downloaded."
+    },
+    "markerKind": {
+      "enum": ["image", "shards", null],
+      "description": "What kind of marker the last download wrote."
+    },
+    "flavor": {
+      "type": ["string", "null"],
+      "description": "The published flavor name read from the image marker, or null when the marker names no known flavor, names shards, or is missing."
+    },
+    "mainDb": {
+      "$ref": "#/$defs/mainDb"
+    },
+    "metadataRows": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Rows in the metadata tables. Zero unless the extended flavor is installed."
+    },
+    "extendedFlavor": {
+      "type": "boolean",
+      "description": "Whether the metadata tables are populated, which is what the extended flavors add."
+    },
+    "shardStore": {
+      "$ref": "#/$defs/shardStore"
+    }
+  },
+  "$defs": {
+    "mainDb": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/mainDbEntry"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The main database as its build metadata records it, or null when no database was found."
+    },
+    "mainDbEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "builtUtc",
+        "stale",
+        "maxAgeHours",
+        "completeness",
+        "dataRows",
+        "indexRows"
+      ],
+      "properties": {
+        "builtUtc": {
+          "type": ["string", "null"],
+          "description": "When the database was built, as the metadata records it. Null when the metadata is unreadable."
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "Whether the database is past the VDB_AGE_HOURS window."
+        },
+        "maxAgeHours": {
+          "type": "number",
+          "description": "The VDB_AGE_HOURS window this installation uses."
+        },
+        "completeness": {
+          "enum": ["full", "partial"],
+          "description": "full for a complete flavor, partial for a shard installed as the main database, which under-reports outside its scope."
+        },
+        "dataRows": {
+          "type": ["integer", "string"],
+          "description": "Rows in the cve_data tables at build time, or the string ? when the metadata does not say."
+        },
+        "indexRows": {
+          "type": ["integer", "string"],
+          "description": "Rows in the cve_index tables at build time, or the string ? when the metadata does not say."
+        }
+      }
+    },
+    "shardStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "storeDir",
+        "shards",
+        "coverage",
+        "mixedBuilds",
+        "missingGroupShards"
+      ],
+      "properties": {
+        "storeDir": {
+          "type": ["string", "null"],
+          "description": "The shard store directory, absolute and normalised, with / as the separator on every platform."
+        },
+        "shards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/shard"
+          },
+          "description": "One entry per installed shard."
+        },
+        "coverage": {
+          "type": "string",
+          "description": "full when every group shard is present, otherwise partial with the missing shards named."
+        },
+        "mixedBuilds": {
+          "type": "boolean",
+          "description": "Whether the installed shards come from more than one build."
+        },
+        "missingGroupShards": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The purl types with no local shard. They are reported as coverage gaps at search time, never silently skipped."
+        }
+      }
+    },
+    "shard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "buildId",
+        "builtUtc",
+        "ageDays",
+        "typeCount",
+        "types",
+        "stale"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The shard name in the local store."
+        },
+        "buildId": {
+          "type": "string",
+          "description": "The build the shard came from."
+        },
+        "builtUtc": {
+          "type": ["string", "null"],
+          "description": "When the shard was built, or null when the store does not say."
+        },
+        "ageDays": {
+          "type": ["number", "null"],
+          "description": "The shard's age in days, or null when the store does not say."
+        },
+        "typeCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many purl types the shard holds."
+        },
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The purl types the shard holds."
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "Whether the shard is much older than its siblings, which a refresh should fix."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://depscan.owasp.org/schemas/depscan-scan-output.schema.json",
+  "title": "dep-scan scan output",
+  "description": "The document `depscan scan --format json` writes on stdout: one object with a scans array, whatever the exit code and however many targets were given, one entry per given target in the order they were given, also for zero targets, which means the current directory. A scanned entry carries the target and its detected or forced kind, the scan directory the scan wrote, its manifest and its findings. A target the detection refused, or whose scan stopped with an unexpected error, is never dropped: its entry carries kind null and the reason. Paths in scanDir are absolute with / separators; inside the manifest and the findings, paths keep the scan-directory-relative form those schemas define, with scanDir as their root.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scans"],
+  "properties": {
+    "scans": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/entry"
+      },
+      "description": "One entry per given target, in the given order."
+    }
+  },
+  "$defs": {
+    "entry": {
+      "oneOf": [
+        {
+          "title": "a scanned target",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "kind", "scanDir", "manifest", "findings"],
+          "properties": {
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The target as it was given: a path, a package URL, a git URL, an image reference or a binary file."
+            },
+            "kind": {
+              "enum": [
+                "purl",
+                "git",
+                "container",
+                "bom",
+                "bom-dir",
+                "binary",
+                "android",
+                "source"
+              ],
+              "description": "The kind the detection found or --target-kind forced. A kind this version cannot scan, ios or firmware, refuses the whole run and produces the error document instead, so it never appears here."
+            },
+            "scanDir": {
+              "$ref": "#/$defs/scanDir"
+            },
+            "manifest": {
+              "$ref": "#/$defs/manifest"
+            },
+            "findings": {
+              "$ref": "#/$defs/findings"
+            }
+          }
+        },
+        {
+          "title": "a refused target",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "kind", "error"],
+          "properties": {
+            "target": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The target as it was given."
+            },
+            "kind": {
+              "const": null,
+              "description": "Null: the target was never scanned."
+            },
+            "error": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Why the target was refused, for example a source target that does not exist, or the unexpected error the scan stopped with."
+            }
+          }
+        }
+      ]
+    },
+    "scanDir": {
+      "type": "string",
+      "description": "The scan directory the scan wrote, absolute and normalised, with / as the separator on every platform. It is the root the manifest's and findings' relative paths resolve against."
+    },
+    "manifest": {
+      "oneOf": [
+        {
+          "$ref": "depscan-manifest.schema.json"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The scan directory's manifest document. Null when the scan stopped before it wrote one."
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "depscan-finding.schema.json"
+      },
+      "description": "The scan's findings, the array inside the scan directory's depscan.findings.json."
+    }
+  }
+}
