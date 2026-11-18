@@ -1,0 +1,178 @@
+---
+title: MCP server
+description: The depscan mcp server, ten tools over stdio for saved scan directories, confined to allowed roots, with paging, resources and prompts.
+---
+
+# The MCP server
+
+`depscan mcp` runs dep-scan as a Model Context Protocol (MCP) server over stdio. An MCP client starts the process, lists the tools, and reads saved scan directories through them: the manifest summary, the findings with filters, one finding, its explanation, the coverage of the scan, the BOM's components, the difference between two scans, the doctor report, the vulnerability database state, and, when the operator allows it, a scan itself. The server is built on the official Python MCP SDK (`mcp[cli]>=2.0.0,<3.0.0`).
+
+Every path a tool takes stays inside the allowed roots, scan requests are dry runs until the operator allows them when the server starts, and every oversized result pages or spills into the scan directory it came from. The rest of this page describes each of those rules, and the tools that follow them.
+
+## Install
+
+The server ships as the optional `mcp` extra of the `owasp-depscan` package, because scans from the command line never need the SDK:
+
+```bash
+pip install "owasp-depscan[mcp]"
+```
+
+Without the extra, `depscan mcp` refuses to start: it exits with code 4 and names `owasp-depscan[mcp]` as the extra to install on stderr. `depscan doctor` reports the same fact through its `mcp` capability, whose reason names the extra that satisfies it, so a machine can be checked before a client is configured.
+
+To run the server without a permanent install, use uvx with the same extra:
+
+```bash
+uvx --from "owasp-depscan[mcp]" depscan mcp --allow-dir /path/to/scan-dir
+```
+
+## Starting the server
+
+```bash
+depscan mcp [--allow-dir DIR]... [--allow-scans]
+```
+
+`--allow-dir` adds a directory to the allowed roots; repeat it for several. `--allow-scans` lets the `run_scan` tool run real scans for the life of the session; without it, every scan request stays a dry run. Both options are read once when the server starts, and no tool argument can widen them afterwards. The verb has no `--format` option, because stdout is the protocol channel: every line the server writes to stdout is a protocol message, and logs, warnings and any stray library output go to stderr for the whole session.
+
+## Client configuration
+
+The server speaks stdio, so a client starts `depscan mcp` as a process and talks to it over the protocol. The client must find `depscan` on its `PATH`; desktop clients that do not inherit a shell's `PATH` need the absolute path (`which depscan` prints it), or the uvx form at the end of this section, which resolves the package itself.
+
+### Claude Code
+
+```bash
+claude mcp add dep-scan -- depscan mcp --allow-dir /path/to/scan-dir
+```
+
+The equivalent `.mcp.json` project entry:
+
+```json
+{
+  "mcpServers": {
+    "dep-scan": {
+      "type": "stdio",
+      "command": "depscan",
+      "args": ["mcp", "--allow-dir", "/path/to/scan-dir"]
+    }
+  }
+}
+```
+
+### Claude Desktop
+
+Put the entry in the desktop configuration file, `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS and `%APPDATA%\Claude\claude_desktop_config.json` on Windows, and restart the client:
+
+```json
+{
+  "mcpServers": {
+    "dep-scan": {
+      "command": "/absolute/path/to/depscan",
+      "args": ["mcp", "--allow-dir", "/path/to/scan-dir"]
+    }
+  }
+}
+```
+
+### VS Code
+
+VS Code reads `.vscode/mcp.json` in the workspace:
+
+```json
+{
+  "servers": {
+    "dep-scan": {
+      "type": "stdio",
+      "command": "depscan",
+      "args": ["mcp", "--allow-dir", "/path/to/scan-dir"]
+    }
+  }
+}
+```
+
+`code --add-mcp '{"name":"dep-scan","type":"stdio","command":"depscan","args":["mcp","--allow-dir","/path/to/scan-dir"]}'` adds the same server definition from the command line.
+
+With uvx, the command is `uvx` and the argument array is `["--from", "owasp-depscan[mcp]", "depscan", "mcp", "--allow-dir", "/path/to/scan-dir"]`, which installs the extra on demand and needs no global install.
+
+## Allowed roots
+
+Every path a tool takes resolves, with `os.path.realpath`, inside an allowed root before the tool runs. A `..` that climbs out of a root, a symlink that points outside one, and an absolute path elsewhere are refused with a tool error that names the rule. The rule covers the scan directories the tools read, the target and the reports directory of a scan, and the response files the server writes (see [response size and paging](#response-size-and-paging)).
+
+The allowed roots are the client's MCP roots plus each `--allow-dir` given when the server started; the two sources add up. With neither, the server's working directory is the only root.
+
+## Scans are dry runs by default
+
+The `run_scan` tool is the only tool that runs a scan, and it is a dry run by default: it returns the exact `depscan scan` command line the server would run, together with the effective options the `depscan config show` machinery produces, and does nothing else.
+
+A real run needs two things at once. The server must have been started with `--allow-scans`, and the tool call must pass `execute: true`. Without the flag, `execute: true` is a tool error that names the flag which was never given; no combination of tool arguments turns scans on. Only the person who starts the server can widen this default.
+
+A real run takes only targets that resolve inside the allowed roots, never runs a project's install or build steps, and always runs cdxgen in secure mode (`CDXGEN_SECURE_MODE=true`), the same constraint an untrusted source target gets on the command line. The result is the scan entry the `depscan scan --format json` document carries for a target: `target`, `kind`, `scanDir`, `manifest` and `findings`.
+
+## The tools
+
+Ten tools are registered. Each is a thin layer over `depscan.api` or a verb's JSON document, so results match what the command line produces. Argument names are snake_case; field names inside JSON documents keep the camelCase forms the published schemas define.
+
+| Tool | Arguments | Result |
+| --- | --- | --- |
+| `scan_summary` | `scan_dir` | The manifest summary and the finding counts by category and severity. |
+| `list_findings` | `scan_dir`, `category?`, `severity?`, `purl?`, `cwe?`, `rule?`, `reachable?`, `cursor?`, `limit?` | One page of findings, plus `nextCursor` when more remain. |
+| `get_finding` | `scan_dir`, `finding_id` | One finding, by its fingerprint id. |
+| `explain_finding` | `scan_dir`, `finding_id`, `mode?` | The finding plus the explanation text `depscan.api.explain` renders. |
+| `coverage` | `scan_dir` | The manifest's stages, the not-assessed reasons and the checks not run. |
+| `list_components` | `scan_dir`, `cursor?`, `limit?` | One page of the scan's BOM components, plus `nextCursor`. |
+| `diff_scans` | `old_scan_dir`, `new_scan_dir` | The new, fixed and changed pairs `depscan.api.diff` reports. |
+| `doctor` | none | The doctor report document. |
+| `vdb_status` | none | The vdb info document. |
+| `run_scan` | `target`, `execute?`, `reports_dir?`, `profile?`, `checks?`, `reachability_analyzer?`, `explain?` | The dry-run command line and effective options, or the scan entry of a real run. |
+
+Optional arguments carry the question mark above. `mode` defaults to `EndpointsAndReachables`, the `--explanation-mode` default; `execute` defaults to false.
+
+The findings filters match the fields the finding schema records today: `category`, `severity`, `purl`, `cwe`, `rule`, and `reachable` for the reachability a finding records. A finding must match every filter given, and a filter name the finding schema does not define is a tool error, never a silently ignored filter.
+
+`explain_finding` returns the explanation text of the scan directory as a whole: this version's explainer renders scan-wide text and cannot explain one finding in isolation, and the tool's description says so.
+
+`doctor` and `vdb_status` take no path and never page; they return the same documents `depscan doctor --format json` and `depscan vdb info --format json` print.
+
+## Response size and paging
+
+A tool result is at most 32 KB of JSON, measured on the compact serialization of the whole result document. The list tools page their results: `limit` caps the page, 50 by default and 200 at most, and a larger limit is a tool error. `cursor` is opaque: pass back the `nextCursor` a page returned to receive the page that follows, and an invalid cursor is a tool error.
+
+A single result that is still over the budget is written to a file inside the scan directory it came from, `<scan-dir>/mcp/<tool>-<sha256 of the arguments>.json`, and the tool returns that file's absolute path in `file` with the number of items in `count`, instead of the oversized document. The file is never written outside the allowed roots. `doctor` and `vdb_status` have no scan directory to spill into, so they never page and never spill; a result of theirs over the budget would be a tool error naming the budget.
+
+## Resources
+
+Resources expose a scan directory's documents by URI. Three templates are registered:
+
+| Template | What it returns |
+| --- | --- |
+| `depscan://scan/{scan_dir}/manifest` | The scan directory's manifest document. |
+| `depscan://scan/{scan_dir}/findings` | The scan directory's findings document. |
+| `depscan://scan/{scan_dir}/findings/{finding_id}` | One finding, by its fingerprint id. |
+
+`{scan_dir}` is the absolute path of the scan directory, percent-encoded as the URI requires, so `/path/to/scan-dir` becomes `%2Fpath%2Fto%2Fscan-dir`; the finding id is percent-encoded the same way, `dsf1%3A` followed by the digest. A URI whose path does not resolve inside the allowed roots is refused, under the same rule the tools apply. Reading a resource returns the document as JSON text.
+
+## Prompts
+
+Two prompts render short instructions an agent can follow:
+
+| Prompt | Argument | What it does |
+| --- | --- | --- |
+| `triage_findings` | `scan_dir?` | Names the tools to call, in order, to triage the findings of a scan directory. |
+| `plan_fixes` | `scan_dir?` | Names the tools to call, in order, to plan fixes for a scan's findings. |
+
+`scan_dir` is optional. Each prompt is a short template that lists the tools to call and claims nothing those tools do not return.
+
+## Schemas
+
+Every tool's input and output has a published JSON Schema, under the names `depscan-mcp-<tool>-input` and `depscan-mcp-<tool>-output`, listed by `depscan schema` with the other published schemas. The server advertises each tool's input schema from its file, so a client shows the exact arguments the tool accepts, and the output schemas describe the results, the paging envelope (`findings`, `nextCursor`) and the spill envelope (`file`, `count`) included.
+
+## Trying it without a client
+
+The MCP inspector's CLI mode drives the server the way a client does:
+
+```bash
+npx @modelcontextprotocol/inspector --cli depscan mcp --allow-dir /path/to/scan-dir --method tools/list
+npx @modelcontextprotocol/inspector --cli depscan mcp --allow-dir /path/to/scan-dir --method tools/call --tool-name scan_summary --tool-arg scan_dir=/path/to/scan-dir
+```
+
+## Registry metadata
+
+The repository carries the `server.json` the MCP registry expects for `io.github.owasp-dep-scan/dep-scan`: the `pypi` package `owasp-depscan` with the `mcp` extra, the stdio transport, and the command `depscan mcp`. The file exists for clients and registries that read it; the maintainers publish it to the registry after a release, and nothing in this repository publishes it.
