@@ -38,6 +38,7 @@ from depscan import api
 from depscan.cli_options import build_parser, validate_spec_version
 from depscan.commands import checks as checks_table
 from depscan.commands.output import (
+    EXIT_FAILURE,
     EXIT_REQUIREMENT_NOT_MET,
     EXIT_USAGE,
     json_path,
@@ -838,7 +839,10 @@ def run(args: argparse.Namespace) -> int:
     as a whole writes the error document on stdout in json format, next to
     the message on stderr; a run whose targets partly fail still writes the
     ``{"scans": [...]}`` object, with each failed target's error inside its
-    entry, and exits with the highest code.
+    entry, and exits with the highest code. An error that is not the
+    expected one, in json format, never leaves stdout without a document:
+    a scan that crashes is its target's failed entry, and anything that
+    stops the verb itself writes the error document and exits 1.
     """
     json_output = args.format == "json"
     names = checks_table.parse_checks(getattr(args, "checks", None))
@@ -869,35 +873,60 @@ def run(args: argparse.Namespace) -> int:
         else:
             LOG.error(gate_refusal.message)
         return gate_refusal.exit_code
-    resolution = checks_table.resolve(args, doctor_report=report)
-    internal = scan_namespace(args, resolution=resolution)
-    saved_stdout = sys.stdout
-    if json_output:
-        # The stdout console moves to stderr for the duration and the process
-        # stdout is redirected with it, so stdout carries exactly one JSON
-        # document: the tables, the banner, the logs and any stray print from
-        # a library the scan calls all land on stderr instead. ``_file`` is
-        # None while the console follows sys.stdout, and None is what the
-        # restore puts back: pinning the current sys.stdout object instead
-        # would break under a harness that replaces the stream between runs.
-        internal.no_banner = True
-        saved_file = console._file
-        console.file = sys.stderr
-        sys.stdout = sys.stderr
-        try:
+    try:
+        resolution = checks_table.resolve(args, doctor_report=report)
+        internal = scan_namespace(args, resolution=resolution)
+        saved_stdout = sys.stdout
+        if json_output:
+            # The stdout console moves to stderr for the duration and the process
+            # stdout is redirected with it, so stdout carries exactly one JSON
+            # document: the tables, the banner, the logs and any stray print from
+            # a library the scan calls all land on stderr instead. ``_file`` is
+            # None while the console follows sys.stdout, and None is what the
+            # restore puts back: pinning the current sys.stdout object instead
+            # would break under a harness that replaces the stream between runs.
+            internal.no_banner = True
+            saved_file = console._file
+            console.file = sys.stderr
+            sys.stdout = sys.stderr
+            try:
+                outcomes = _run_all_scans(args, internal, resolution, entries, report)
+            finally:
+                sys.stdout = saved_stdout
+                # Assigning the private attribute is deliberate: the public
+                # setter's declared type does not accept None, and None is the
+                # value that makes the console follow sys.stdout again.
+                console._file = saved_file
+        else:
             outcomes = _run_all_scans(args, internal, resolution, entries, report)
-        finally:
-            sys.stdout = saved_stdout
-            # Assigning the private attribute is deliberate: the public
-            # setter's declared type does not accept None, and None is the
-            # value that makes the console follow sys.stdout again.
-            console._file = saved_file
-    else:
-        outcomes = _run_all_scans(args, internal, resolution, entries, report)
-    exit_code = max(code for code, _ in outcomes)
+        exit_code = max(code for code, _ in outcomes)
+        if json_output:
+            _print_json_outcomes(outcomes, saved_stdout)
+        return exit_code
+    except Exception as exc:
+        # api.scan translates a stopped stage into ScanError, so this is an
+        # error of the verb itself: the resolution, the namespace, or the
+        # printing. The redirect above is already undone by its finally.
+        return _unexpected_failure(json_output, exc)
+
+
+def _unexpected_failure(json_output: bool, exc: Exception) -> int:
+    """Report a scan verb that stopped with an unexpected error.
+
+    The message goes on stderr as text with its traceback; in json format
+    the error document follows on stdout, so the stream never carries
+    nothing. The exit code is 1, the "could not run" code of the table.
+    """
+    message = _unexpected_error_message(exc)
+    LOG.exception("The scan stopped with an unexpected error: %s", message)
     if json_output:
-        _print_json_outcomes(outcomes, saved_stdout)
-    return exit_code
+        print_error_document(EXIT_FAILURE, "scan", message)
+    return EXIT_FAILURE
+
+
+def _unexpected_error_message(exc: Exception) -> str:
+    """One-line description of an unexpected error, never empty."""
+    return f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__
 
 
 def _run_all_scans(args, internal, resolution, entries, doctor_report):
@@ -906,22 +935,28 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
     Returns one ``(exit_code, entry)`` per given target, in the given order:
     a scanned entry is ``{"target", "kind", "scanDir", "manifest",
     "findings"}``, and a refused entry is ``{"target", "kind": None,
-    "error": <refusal reason>}`` for a target the detection refused, so the
-    json output never silently drops a target. More than one target
+    "error": <refusal reason>}`` for a target the detection refused or whose
+    scan crashed with an unexpected error, so the json output never silently
+    drops a target and the remaining targets still run. More than one target
     writes each scan into ``<reports-dir>/<n>-<name>/``, with ``n`` the
     target's 1-based index in the given list; zero or one target uses
-    ``--reports-dir`` as given. Zero targets scans the current directory
-    the internal options name, as the one entry's ``target``.
+    ``--reports-dir`` as given. Zero targets scans the source the internal
+    options name, as the one entry's ``target``: the normalised absolute
+    path it names when it names a path, and the value verbatim otherwise,
+    as an image reference from the environment is.
     """
     base_reports_dir = internal.reports_dir
     given = list(getattr(args, "targets", None) or [])
     if not given:
         # Zero targets means the current directory, with the internal
         # default and no per-target override.
-        code, document = _scan_one(argparse.Namespace(**vars(internal)), resolution, doctor_report)
-        return [
-            (code, {"target": json_path(internal.src_dir_image), "kind": "source", **document})
-        ]
+        target = _zero_target_target(internal)
+        options = argparse.Namespace(**vars(internal))
+        try:
+            code, document = _scan_one(options, resolution, doctor_report)
+        except Exception as exc:
+            return [(1, _crash_entry(target, exc))]
+        return [(code, {"target": target, "kind": "source", **document})]
     multiple = len(given) > 1
     outcomes = []
     for index, (target, kind, refusal) in enumerate(entries, start=1):
@@ -930,22 +965,55 @@ def _run_all_scans(args, internal, resolution, entries, doctor_report):
             outcomes.append((1, {"target": target, "kind": None, "error": refusal}))
             continue
         options = argparse.Namespace(**vars(internal))
-        _apply_target_options(options, target, kind, args, resolution)
-        if multiple:
-            options.reports_dir = os.path.join(
-                base_reports_dir, f"{index}-{_target_directory_name(target)}"
-            )
-        elif kind == "bom-dir" and _no_reports_dir_requested(args, internal):
-            # v6's reuse rule: a lone BOM directory target with no reports
-            # directory requested writes its reports into the BOM directory,
-            # so the scan directory, the VDR and the findings land together
-            # and the directory loads back. The internal reports directory
-            # is never empty (the env variable or <cwd>/reports), so the
-            # pipeline's own rule cannot fire from this verb.
-            options.reports_dir = os.path.realpath(target)
-        code, document = _scan_one(options, resolution, doctor_report)
+        try:
+            _apply_target_options(options, target, kind, args, resolution)
+            if multiple:
+                options.reports_dir = os.path.join(
+                    base_reports_dir, f"{index}-{_target_directory_name(target)}"
+                )
+            elif kind == "bom-dir" and _no_reports_dir_requested(args, internal):
+                # v6's reuse rule: a lone BOM directory target with no reports
+                # directory requested writes its reports into the BOM directory,
+                # so the scan directory, the VDR and the findings land together
+                # and the directory loads back. The internal reports directory
+                # is never empty (the env variable or <cwd>/reports), so the
+                # pipeline's own rule cannot fire from this verb.
+                options.reports_dir = os.path.realpath(target)
+            code, document = _scan_one(options, resolution, doctor_report)
+        except Exception as exc:
+            outcomes.append((1, _crash_entry(target, exc)))
+            continue
         outcomes.append((code, {"target": target, "kind": kind, **document}))
     return outcomes
+
+
+def _zero_target_target(internal) -> str:
+    """The target string the zero-target entry reports.
+
+    The internal source is the current directory or whatever
+    ``DEPSCAN_SOURCE_DIR_IMAGE`` names. A path keeps the absolute,
+    slash-separated form; a value that names no path, as an image reference
+    does, is reported verbatim instead of becoming a path that was never
+    scanned.
+    """
+    source = internal.src_dir_image
+    if os.path.isabs(source) or os.path.exists(source):
+        return json_path(source)
+    return source
+
+
+def _crash_entry(target: str, exc: Exception) -> dict:
+    """The failed entry of a scan that crashed with an unexpected error.
+
+    The entry keeps the refused shape, ``kind`` null, so an entry without a
+    scan document is always an ``error`` entry with no kind. The message and
+    its traceback are logged on stderr.
+    """
+    message = _unexpected_error_message(exc)
+    LOG.exception(
+        "The scan of the target %s stopped with an unexpected error: %s", target, message
+    )
+    return {"target": target, "kind": None, "error": message}
 
 
 def _no_reports_dir_requested(args: argparse.Namespace, internal) -> bool:

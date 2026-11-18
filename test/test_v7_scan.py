@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from depscan import api, cli
+from depscan.commands import checks as checks_table
 from depscan.commands.targets import detect_kind
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
@@ -1237,6 +1238,151 @@ def test_json_format_gated_check_prints_the_error_document(
     assert not reports.exists(), "the gate must not create the reports directory"
     # Positive control of the hidden-tool stub: the scan never ran.
     assert scan_stubs["matching"] == []
+
+
+# ---------------------------------------------------------------------------
+# an error that is not the expected one
+# ---------------------------------------------------------------------------
+
+
+def test_json_format_crashed_scan_prints_the_failed_entry(
+    scan_stubs, monkeypatch, capfd, caplog, tmp_path
+):
+    """A scan that stops with an error api.scan does not translate keeps the
+    contract: the target's failed entry in the scans object, exit 1, the
+    message and its traceback on stderr."""
+    monkeypatch.setattr(api, "scan", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    with caplog.at_level(logging.ERROR, logger=LOG.name):
+        code = run_main(
+            monkeypatch,
+            ["scan", bom, "--reports-dir", str(reports), "--format", "json"],
+        )
+    assert code == 1
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)  # the whole of stdout is the one document
+    entry = document["scans"][0]
+    assert set(entry) == {"target", "kind", "error"}
+    assert entry["target"] == bom
+    assert entry["kind"] is None
+    assert entry["error"] == "RuntimeError: boom"
+    # The rich log console holds the stream it was built with, so the log
+    # line is asserted through caplog, as in the refusal tests.
+    messages = " ".join(r.getMessage() for r in caplog.records)
+    assert "RuntimeError: boom" in messages
+    assert "stopped with an unexpected error" in messages
+
+
+def test_a_crash_in_the_second_target_keeps_the_scans_object(
+    scan_stubs, monkeypatch, capfd, caplog, tmp_path
+):
+    """A target whose scan crashes becomes its failed entry and the
+    remaining targets still run: one entry per given target, exit 1."""
+    real_scan = api.scan
+    calls = []
+
+    def crashing_second(options, *a, **k):
+        calls.append(1)
+        if len(calls) == 2:
+            raise RuntimeError("boom")
+        return real_scan(options, *a, **k)
+
+    monkeypatch.setattr(api, "scan", crashing_second)
+    first = _write_bom(tmp_path / "first.cdx.json", name="first")
+    second = _write_bom(tmp_path / "second.cdx.json", name="second")
+    reports = tmp_path / "reports"
+    with caplog.at_level(logging.ERROR, logger=LOG.name):
+        code = run_main(
+            monkeypatch,
+            [
+                "scan",
+                first,
+                second,
+                "--reports-dir",
+                str(reports),
+                "--format",
+                "json",
+                "--no-banner",
+            ],
+        )
+    assert code == 1
+    entries = json.loads(capfd.readouterr().out)["scans"]
+    assert len(entries) == 2
+    assert set(entries[0]) == {"target", "kind", "scanDir", "manifest", "findings"}
+    assert entries[0]["target"] == first
+    assert set(entries[1]) == {"target", "kind", "error"}
+    assert entries[1]["target"] == second
+    assert entries[1]["kind"] is None
+    assert entries[1]["error"] == "RuntimeError: boom"
+    assert "RuntimeError: boom" in " ".join(r.getMessage() for r in caplog.records)
+    # Positive control: the first scan ran to matching, the second crashed.
+    assert len(scan_stubs["matching"]) == 1
+
+
+def test_a_crashed_zero_target_scan_prints_the_failed_entry(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    """The same crash with zero targets: one failed entry for the current
+    directory, exit 1, and stdout is still the one scans object."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("DEPSCAN_SOURCE_DIR_IMAGE", raising=False)
+    (tmp_path / "app.py").write_text("import requests\n")
+    monkeypatch.setattr(api, "scan", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")))
+    code = run_main(monkeypatch, ["scan", "--bom-engine", "CdxgenGenerator", "--format", "json"])
+    assert code == 1
+    entry = json.loads(capfd.readouterr().out)["scans"][0]
+    assert set(entry) == {"target", "kind", "error"}
+    assert entry["target"] == os.getcwd().replace(os.sep, "/")
+    assert entry["kind"] is None
+    assert entry["error"] == "RuntimeError: boom"
+
+
+def test_an_unexpected_verb_error_prints_the_error_document(
+    scan_stubs, monkeypatch, capfd, caplog, tmp_path
+):
+    """An error outside the scans, in the resolution the verb builds, stops
+    the verb as a whole: the error document on stdout, exit 1."""
+    monkeypatch.setattr(
+        checks_table,
+        "resolve",
+        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("blew up")),
+    )
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    with caplog.at_level(logging.ERROR, logger=LOG.name):
+        code = run_main(
+            monkeypatch,
+            ["scan", bom, "--reports-dir", str(reports), "--format", "json"],
+        )
+    assert code == 1
+    captured = capfd.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 1
+    assert document["error"]["verb"] == "scan"
+    assert document["error"]["message"] == "RuntimeError: blew up"
+    assert "RuntimeError: blew up" in " ".join(r.getMessage() for r in caplog.records)
+    # The same message on stderr as text, next to the document on stdout.
+    assert "RuntimeError: blew up" in captured.err
+    assert not reports.exists(), "the verb stopped before any scan"
+
+
+def test_json_format_zero_targets_reports_a_non_path_source_verbatim(
+    scan_stubs, monkeypatch, capfd, tmp_path
+):
+    """A DEPSCAN_SOURCE_DIR_IMAGE that names no path, as an image reference,
+    is reported verbatim instead of being turned into a path never scanned."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DEPSCAN_SOURCE_DIR_IMAGE", "registry.example/app:1.0")
+    (tmp_path / "app.py").write_text("import requests\n")
+    code = run_main(monkeypatch, ["scan", "--bom-engine", "CdxgenGenerator", "--format", "json"])
+    assert code == 0
+    entry = json.loads(capfd.readouterr().out)["scans"][0]
+    assert entry["target"] == "registry.example/app:1.0"
+    assert entry["kind"] == "source"
+    assert set(entry) == {"target", "kind", "scanDir", "manifest", "findings"}
+    # Positive control: the scan ran against the configured source.
+    assert scan_stubs["matching"], "the matching stage never ran"
 
 
 def test_text_format_leaves_the_scan_tables_on_stdout(
