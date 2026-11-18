@@ -1,0 +1,19 @@
+.github/workflows/repotests.yml
+  s_30b704f208c121::t_d24205ee079c1d 6-12,17-25,39-44,74-75,81,87,127-227,233-237,239,245-276,292-317,319,328-355,360-380,382,386-401,406-429,523-581,583,588-591,598-623,639,642-644,646,655-658,666-692,701-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55557fcefb736edbd2a5caa9a06a3d8a1db47838",
+  "prompts": {},
+  "sessions": {
+    "s_30b704f208c121": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-2d46a987-49ef-4e92-b465-c5bd1be9f1ae-actor_1_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
