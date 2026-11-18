@@ -1,0 +1,25 @@
+test/test_v7_validate_report.py
+  s_946f4290a94b1c::t_00c614b23d3b8f 1-10,22,25,27,30-32,43-283
+  s_946f4290a94b1c::t_29a49e6909df41 347
+depscan/validate_cli.py
+  s_946f4290a94b1c::t_d79d66553687de 13-14,18-21,37-46,48-50,58-65,67
+  s_946f4290a94b1c::t_9c60e4562135a5 101-103,109,113,117,127,130,134-140,142-164,166-167
+test/test_v7_verbs.py
+  s_946f4290a94b1c::t_6a454d31d51d69 562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d9d4735eb51401d29cd7a11f3d48636c1f20c74",
+  "prompts": {},
+  "sessions": {
+    "s_946f4290a94b1c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606fc2c7-ae28-46f4-8e6d-a7c192c90f51-actor_4_2",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}
