@@ -485,6 +485,39 @@ def test_a_corrupted_findings_document_is_a_tool_error(open_session, make_scan_d
         assert "not valid JSON" in message
 
 
+def test_an_oversized_summary_spills_inside_the_scan_directory(open_session, make_scan_dir):
+    """A summary over the response budget spills into the scan directory
+    and returns the spill envelope, which the summary's output schema
+    carries like every other tool's."""
+    scan_dir = make_scan_dir("fat-summary")
+    fat_type = "python" + "a" * (TOOL_BUDGET_BYTES + 1000)
+    manifest_path = scan_dir / "depscan.manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    stage = next(s for s in manifest["stages"] if s["name"] == "inventory")
+    stage["projectType"] = fat_type
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    arguments = {"scan_dir": str(scan_dir)}
+
+    async def scenario(session):
+        result = await session.call_tool("scan_summary", arguments)
+        assert result.is_error is False, [content.text for content in result.content]
+        envelope = json.loads(result.content[0].text)
+        validate("depscan-mcp-scan_summary-output", envelope)
+        return envelope
+
+    envelope = drive(open_session, scenario, (scan_dir.parent,))
+    # The envelope carries only the spill shape, never the summary shape.
+    assert "scanDir" not in envelope
+    assert "findingCount" not in envelope
+    assert envelope["count"] == 1
+    assert envelope["file"].startswith(expected_path(scan_dir) + "/mcp/")
+    spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
+    assert spilled["findingCount"] == 1
+    # The fat type is the inventory stage's; the later stages still carry
+    # the plain one, so both are listed, in first-seen order.
+    assert spilled["manifestSummary"]["projectTypes"] == [fat_type, "python"]
+
+
 # --- list_findings ------------------------------------------------------------------
 
 
@@ -742,6 +775,32 @@ def test_get_finding_refuses_an_unknown_id(open_session, make_scan_dir):
     assert missing in message
 
 
+def test_an_oversized_finding_spills_to_a_file(open_session, make_scan_dir):
+    """A single finding over the response budget spills into the scan
+    directory and returns the spill envelope, validated against the
+    get_finding output schema."""
+    fat = dict(VULN_HIGH)
+    fat["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
+    scan_dir = make_scan_dir("fat-finding", vulns=[fat])
+    published = published_findings(scan_dir)[0]
+    arguments = {"scan_dir": str(scan_dir), "finding_id": published["id"]}
+
+    async def scenario(session):
+        result = await session.call_tool("get_finding", arguments)
+        assert result.is_error is False, [content.text for content in result.content]
+        envelope = json.loads(result.content[0].text)
+        validate("depscan-mcp-get_finding-output", envelope)
+        return envelope
+
+    envelope = drive(open_session, scenario, (scan_dir.parent,))
+    # The envelope carries only the spill shape, never the finding itself.
+    assert "id" not in envelope
+    assert envelope["count"] == 1
+    assert envelope["file"].startswith(expected_path(scan_dir) + "/mcp/")
+    spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
+    assert spilled == published
+
+
 # --- explain_finding ----------------------------------------------------------------
 
 
@@ -786,6 +845,37 @@ def test_explain_finding_names_what_is_missing(open_session, make_scan_dir):
 
     message = drive(open_session, scenario, (scan_dir.parent,))
     assert "reachables slices" in message
+
+
+def test_an_oversized_explanation_spills_to_a_file(open_session, make_scan_dir):
+    """A finding and its explanation over the response budget spill into
+    the scan directory and return the spill envelope, validated against
+    the explain_finding output schema."""
+    fat = dict(VULN_HIGH)
+    fat["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
+    scan_dir = make_scan_dir("fat-explain", vulns=[fat])
+    published = published_findings(scan_dir)[0]
+    (scan_dir / "python-reachables.slices.json").write_bytes(
+        (DATA_DIR / "rust-reachables.slices.json").read_bytes()
+    )
+    arguments = {"scan_dir": str(scan_dir), "finding_id": published["id"]}
+
+    async def scenario(session):
+        result = await session.call_tool("explain_finding", arguments)
+        assert result.is_error is False, [content.text for content in result.content]
+        envelope = json.loads(result.content[0].text)
+        validate("depscan-mcp-explain_finding-output", envelope)
+        return envelope
+
+    envelope = drive(open_session, scenario, (scan_dir.parent,))
+    # The envelope carries only the spill shape, never the document.
+    assert "finding" not in envelope
+    assert "explanation" not in envelope
+    assert envelope["count"] == 1
+    assert envelope["file"].startswith(expected_path(scan_dir) + "/mcp/")
+    spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
+    assert spilled["finding"] == published
+    assert spilled["explanation"].strip()
 
 
 # --- coverage ------------------------------------------------------------------------
@@ -845,6 +935,36 @@ def test_coverage_of_a_directory_without_a_manifest_is_empty(open_session, make_
     assert document["stages"] == []
     assert document["notAssessedReasons"] == []
     assert document["checksNotRun"] == []
+
+
+def test_an_oversized_coverage_report_spills_inside_the_scan_directory(
+    open_session, make_scan_dir
+):
+    """A coverage report over the response budget spills into the scan
+    directory and returns the spill envelope, whose count is the stage
+    count, validated against the coverage output schema."""
+    scan_dir = make_scan_dir("fat-coverage")
+    manifest_path = scan_dir / "depscan.manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    stage = next(s for s in manifest["stages"] if s["name"] == "matching")
+    stage["reason"] = "a" * (TOOL_BUDGET_BYTES + 1000)
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    arguments = {"scan_dir": str(scan_dir)}
+
+    async def scenario(session):
+        result = await session.call_tool("coverage", arguments)
+        assert result.is_error is False, [content.text for content in result.content]
+        envelope = json.loads(result.content[0].text)
+        validate("depscan-mcp-coverage-output", envelope)
+        return envelope
+
+    envelope = drive(open_session, scenario, (scan_dir.parent,))
+    # The envelope carries only the spill shape, never the stages.
+    assert "stages" not in envelope
+    assert envelope["count"] == len(manifest["stages"])
+    assert envelope["file"].startswith(expected_path(scan_dir) + "/mcp/")
+    spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
+    assert {s["name"] for s in spilled["stages"]} == {s["name"] for s in manifest["stages"]}
 
 
 # --- list_components -----------------------------------------------------------------
@@ -951,6 +1071,44 @@ def test_diff_scans_refuses_a_directory_that_is_not_a_scan(open_session, make_sc
 
     message = drive(open_session, scenario, (scanned.parent,))
     assert "Cannot load a scan" in message
+
+
+def test_an_oversized_diff_spills_into_the_new_scan_directory(open_session, tmp_path, make_scan_dir):
+    """A diff whose entries exceed the response budget spills into the
+    later scan directory, the one a reader of the diff is moving to, and
+    returns the spill envelope, validated against the diff_scans output
+    schema."""
+    fat_high = dict(VULN_HIGH)
+    fat_high["properties"] = [
+        {"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}
+    ]
+    fat_critical = dict(VULN_CRITICAL)
+    fat_critical["properties"] = [
+        {"name": "depscan:probe", "value": "b" * (TOOL_BUDGET_BYTES + 1000)}
+    ]
+    old_dir = make_scan_dir("fat-old", vulns=[fat_high])
+    new_dir = make_scan_dir("fat-new", vulns=[fat_critical, VULN_NEW])
+    arguments = {"old_scan_dir": str(old_dir), "new_scan_dir": str(new_dir)}
+
+    async def scenario(session):
+        result = await session.call_tool("diff_scans", arguments)
+        assert result.is_error is False, [content.text for content in result.content]
+        envelope = json.loads(result.content[0].text)
+        validate("depscan-mcp-diff_scans-output", envelope)
+        return envelope
+
+    envelope = drive(open_session, scenario, (tmp_path,))
+    # The envelope carries only the spill shape, never the diff groups.
+    assert "new" not in envelope
+    assert "fixed" not in envelope
+    assert "changed" not in envelope
+    # One changed pair and one new pair spilled, into the new scan.
+    assert envelope["count"] == 2
+    assert envelope["file"].startswith(expected_path(new_dir) + "/mcp/")
+    spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
+    assert [entry["id"] for entry in spilled["new"]] == ["CVE-2024-3333"]
+    assert spilled["fixed"] == []
+    assert [entry["id"] for entry in spilled["changed"]] == ["CVE-2024-1111"]
 
 
 # --- doctor --------------------------------------------------------------------------
@@ -1398,6 +1556,40 @@ def test_run_scan_real_run_does_not_leak_the_run_flags(
     assert document["kind"] == "source"
     stages = {stage["name"]: stage for stage in document["manifest"]["stages"]}
     assert stages["licenses"]["status"] == "completed"
+
+
+def test_an_oversized_scan_entry_spills_inside_its_scan_directory(
+    open_session, tmp_path, scan_stubs
+):
+    """A real run whose scan entry exceeds the response budget spills the
+    entry into the run's scan directory and returns the spill envelope,
+    validated against the run_scan output schema."""
+    fat = dict(VULN_HIGH)
+    fat["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
+    scan_stubs["state"]["vulns"] = [dict(fat)]
+    target = tmp_path / "project"
+    target.mkdir()
+    (target / "app.py").write_text("import requests\n", encoding="utf-8")
+    reports_dir = tmp_path / "spill-reports"
+    arguments = {"target": str(target), "execute": True, "reports_dir": str(reports_dir)}
+
+    async def scenario(session):
+        result = await session.call_tool("run_scan", arguments)
+        assert result.is_error is False, [content.text for content in result.content]
+        envelope = json.loads(result.content[0].text)
+        validate("depscan-mcp-run_scan-output", envelope)
+        return envelope
+
+    envelope = drive(open_session, scenario, (tmp_path,), allow_scans=True)
+    # The envelope carries only the spill shape, never the scan entry.
+    assert "manifest" not in envelope
+    assert "findings" not in envelope
+    assert envelope["count"] == 1
+    assert envelope["file"].startswith(expected_path(reports_dir) + "/mcp/")
+    spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
+    assert spilled["kind"] == "source"
+    assert len(spilled["findings"]) == 1
+    assert (reports_dir / "depscan.manifest.json").is_file()
 
 
 # --- confinement through the tools ----------------------------------------------------

@@ -2,19 +2,42 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:owasp:depscan:schema:mcp-explain_finding-output:1",
   "title": "dep-scan mcp explain_finding output",
-  "description": "The document the explain_finding tool of `depscan mcp` returns: the finding the id names, exactly as the published finding schema defines it, and the text api.explain renders. In this version the explanation is rendered for the whole scan rather than for the finding alone, and the tool description says so; a caller reads it as the scan's context around the finding.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["finding", "explanation"],
-  "properties": {
-    "finding": {
-      "$ref": "depscan-finding.schema.json",
-      "description": "The finding the id names, as the finding schema defines it."
+  "description": "The document the explain_finding tool of `depscan mcp` returns: the finding the id names, exactly as the published finding schema defines it, and the text api.explain renders, or, when the document exceeds the server's response budget, the spill envelope with the file it was written to and its count. In this version the explanation is rendered for the whole scan rather than for the finding alone, and the tool description says so; a caller reads it as the scan's context around the finding. The two shapes are never mixed.",
+  "oneOf": [
+    {
+      "title": "the finding and the explanation",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["finding", "explanation"],
+      "properties": {
+        "finding": {
+          "$ref": "depscan-finding.schema.json",
+          "description": "The finding the id names, as the finding schema defines it."
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The explanation api.explain renders for the scan directory, with the same content the --explain rendering prints, colour codes stripped. The text covers the scan, not only this finding; an explanation that produced no text is a tool error that names what was missing, never an empty string."
+        }
+      }
     },
-    "explanation": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The explanation api.explain renders for the scan directory, with the same content the --explain rendering prints, colour codes stripped. The text covers the scan, not only this finding; an explanation that produced no text is a tool error that names what was missing, never an empty string."
+    {
+      "title": "the result spilled to a file",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "count"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The absolute path, with / separators, of the file the result was written to, inside the scan directory's mcp/ directory. The file name is the tool name followed by the SHA-256 digest of the canonical arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of findings the spilled file holds: one, the finding the id names."
+        }
+      }
     }
-  }
+  ]
 }

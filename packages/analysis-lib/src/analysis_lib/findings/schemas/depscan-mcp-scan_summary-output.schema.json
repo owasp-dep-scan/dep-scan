@@ -2,65 +2,94 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:owasp:depscan:schema:mcp-scan_summary-output:1",
   "title": "dep-scan mcp scan_summary output",
-  "description": "The document the scan_summary tool of `depscan mcp` returns: the scan directory's manifest in summary form and the counts of its findings by category and severity. A directory that cannot be read as a scan is a tool error, never an empty summary; a missing tool or a skipped stage shows up in the stage counts instead of being hidden.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": ["scanDir", "manifestSummary", "findingCount", "countsByCategory", "countsBySeverity"],
-  "properties": {
-    "scanDir": {
-      "type": "string",
-      "description": "The scan directory that was summarised, absolute and normalised, with / as the separator on every platform."
-    },
-    "manifestSummary": {
-      "oneOf": [
-        {
-          "$ref": "#/$defs/manifestSummary"
-        },
-        {
-          "type": "null"
-        }
+  "description": "The document the scan_summary tool of `depscan mcp` returns: the scan directory's manifest in summary form and the counts of its findings by category and severity, or, when the summary exceeds the server's response budget, the spill envelope with the file it was written to and the number of findings it counts. A directory that cannot be read as a scan is a tool error, never an empty summary; a missing tool or a skipped stage shows up in the stage counts instead of being hidden. The two shapes are never mixed.",
+  "oneOf": [
+    {
+      "title": "the summary of the scan",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scanDir",
+        "manifestSummary",
+        "findingCount",
+        "countsByCategory",
+        "countsBySeverity"
       ],
-      "description": "The manifest's summary. Null when the directory holds no manifest and was read through the older VDR-only layout."
+      "properties": {
+        "scanDir": {
+          "type": "string",
+          "description": "The scan directory that was summarised, absolute and normalised, with / as the separator on every platform."
+        },
+        "manifestSummary": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/manifestSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The manifest's summary. Null when the directory holds no manifest and was read through the older VDR-only layout."
+        },
+        "findingCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of findings in the scan directory's depscan.findings.json."
+        },
+        "countsByCategory": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "vulnerability",
+              "malware",
+              "memory-safety",
+              "supply-chain",
+              "binary-hardening",
+              "mobile",
+              "code",
+              "license",
+              "crypto",
+              "health"
+            ]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "The findings counted by category, using the finding schema's category values. Every category with at least one finding is present; a category with no findings is absent."
+        },
+        "countsBySeverity": {
+          "type": "object",
+          "propertyNames": {
+            "enum": ["critical", "high", "medium", "low", "info", "unknown"]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "The findings counted by severity, using the finding schema's severity values. Every severity with at least one finding is present; a severity with no findings is absent."
+        }
+      }
     },
-    "findingCount": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "The number of findings in the scan directory's depscan.findings.json."
-    },
-    "countsByCategory": {
+    {
+      "title": "the result spilled to a file",
       "type": "object",
-      "propertyNames": {
-        "enum": [
-          "vulnerability",
-          "malware",
-          "memory-safety",
-          "supply-chain",
-          "binary-hardening",
-          "mobile",
-          "code",
-          "license",
-          "crypto",
-          "health"
-        ]
-      },
-      "additionalProperties": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "description": "The findings counted by category, using the finding schema's category values. Every category with at least one finding is present; a category with no findings is absent."
-    },
-    "countsBySeverity": {
-      "type": "object",
-      "propertyNames": {
-        "enum": ["critical", "high", "medium", "low", "info", "unknown"]
-      },
-      "additionalProperties": {
-        "type": "integer",
-        "minimum": 0
-      },
-      "description": "The findings counted by severity, using the finding schema's severity values. Every severity with at least one finding is present; a severity with no findings is absent."
+      "additionalProperties": false,
+      "required": ["file", "count"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The absolute path, with / separators, of the file the result was written to, inside the scan directory's mcp/ directory. The file name is the tool name followed by the SHA-256 digest of the canonical arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of findings the spilled summary counts."
+        }
+      }
     }
-  },
+  ],
   "$defs": {
     "manifestSummary": {
       "type": "object",

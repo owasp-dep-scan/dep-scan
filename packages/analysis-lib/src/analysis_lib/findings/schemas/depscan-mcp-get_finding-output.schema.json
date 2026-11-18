@@ -2,6 +2,28 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:owasp:depscan:schema:mcp-get_finding-output:1",
   "title": "dep-scan mcp get_finding output",
-  "description": "The document the get_finding tool of `depscan mcp` returns: the one finding the id names, exactly as the published finding schema defines it. An id no finding in the scan carries is a tool error, never a null result.",
-  "$ref": "depscan-finding.schema.json"
+  "description": "The document the get_finding tool of `depscan mcp` returns: the one finding the id names, exactly as the published finding schema defines it, or, when that finding alone exceeds the server's response budget, the spill envelope with the file it was written to and its count. An id no finding in the scan carries is a tool error, never a null result. The two shapes are never mixed.",
+  "oneOf": [
+    {
+      "$ref": "depscan-finding.schema.json"
+    },
+    {
+      "title": "the result spilled to a file",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "count"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The absolute path, with / separators, of the file the result was written to, inside the scan directory's mcp/ directory. The file name is the tool name followed by the SHA-256 digest of the canonical arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of findings the spilled file holds: one, the finding the id names."
+        }
+      }
+    }
+  ]
 }
