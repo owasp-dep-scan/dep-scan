@@ -226,7 +226,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The unsatisfied requirements, as tool:<name> or data:vdb. Empty unless the status is unavailable."
+          "description": "The unsatisfied requirements, as tool:<name>, data:vdb or python:<module>. Empty unless the status is unavailable."
         },
         "requirements": {
           "type": "array",
