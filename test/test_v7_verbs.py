@@ -364,11 +364,17 @@ def test_config_init_writes_and_refuses(monkeypatch, capsys, tmp_path, clean_opt
 
 @pytest.fixture
 def serve_stubs(monkeypatch):
-    """Stub the server start and the database stage it prepares; record both."""
+    """Stub the server start and the database stage it prepares; record both.
+
+    The fake start runs the startup hook the way the real one does, once it
+    is serving; a test whose start fails replaces the fake.
+    """
     calls = {"server": [], "database": 0}
 
-    def fake_start(ctx):
-        calls["server"].append(ctx)
+    def fake_start(ctx, started_hook=None):
+        calls["server"].append((ctx, started_hook))
+        if started_hook is not None:
+            started_hook()
         return 0
 
     def fake_database(ctx):
@@ -386,18 +392,56 @@ def test_serve_starts_the_server_with_the_given_address(monkeypatch, capsys, ser
     )
     assert code == 0
     captured = capsys.readouterr()
-    # The startup line is the only stdout content; the database stage's own
-    # logging stays on stderr, inside the stubbed server start.
-    assert captured.out == '{"serve": "0.0.0.0:9999"}\n'
+    # The serving document is the only stdout content, and it shows a
+    # wildcard host as 127.0.0.1 in the url: an address a caller on the same
+    # machine can reach.
+    document = json.loads(captured.out)
+    assert document == {
+        "serving": {"host": "0.0.0.0", "port": "9999", "url": "http://127.0.0.1:9999"}
+    }
     # Positive controls: the server was started once, in server mode, with
-    # the passed address, and the verb did not run the database stage itself
-    # (start_server_mode owns it, so a stale database downloads once).
+    # the passed address and a hook to announce the running server, and the
+    # verb did not run the database stage itself (start_server_mode owns it,
+    # so a stale database downloads once).
     assert len(serve_stubs["server"]) == 1
-    args = serve_stubs["server"][0].args
-    assert args.server_mode is True
-    assert args.server_host == "0.0.0.0"
-    assert args.server_port == "9999"
+    ctx, started_hook = serve_stubs["server"][0]
+    assert ctx.args.server_mode is True
+    assert ctx.args.server_host == "0.0.0.0"
+    assert ctx.args.server_port == "9999"
+    assert started_hook is not None
     assert serve_stubs["database"] == 0
+
+
+def test_serve_document_keeps_the_loopback_host_verbatim(monkeypatch, capsys, serve_stubs):
+    """Only the wildcard and IPv6-any hosts are shown as 127.0.0.1."""
+    code = run_main(monkeypatch, ["serve", "--server-host", "127.0.0.1", "--format", "json"])
+    assert code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["serving"]["host"] == "127.0.0.1"
+    assert document["serving"]["url"] == "http://127.0.0.1:7070"
+
+
+def test_serve_document_honours_the_host_and_port_environment(
+    monkeypatch, capsys, serve_stubs
+):
+    monkeypatch.setenv("DEPSCAN_HOST", "0.0.0.0")
+    monkeypatch.setenv("DEPSCAN_PORT", "8443")
+    code = run_main(monkeypatch, ["serve", "--format", "json"])
+    assert code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["serving"] == {
+        "host": "0.0.0.0",
+        "port": "8443",
+        "url": "http://127.0.0.1:8443",
+    }
+
+
+def test_serve_document_shows_the_ipv6_any_host_as_loopback(monkeypatch, capsys, serve_stubs):
+    code = run_main(monkeypatch, ["serve", "--server-host", "::", "--format", "json"])
+    assert code == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["serving"]["host"] == "::"
+    assert document["serving"]["url"] == "http://127.0.0.1:7070"
 
 
 def test_serve_passes_only_what_was_set(monkeypatch, capsys, serve_stubs):
@@ -408,36 +452,74 @@ def test_serve_passes_only_what_was_set(monkeypatch, capsys, serve_stubs):
     # Text mode writes nothing to stdout; the server's own logging reports
     # the startup.
     assert captured.out == ""
-    args = serve_stubs["server"][0].args
-    assert args.server_mode is True
-    assert args.server_host == "127.0.0.1"
-    assert args.server_port == "7070"
+    ctx, started_hook = serve_stubs["server"][0]
+    assert ctx.args.server_mode is True
+    assert ctx.args.server_host == "127.0.0.1"
+    assert ctx.args.server_port == "7070"
+    # Text mode announces nothing.
+    assert started_hook is None
     assert serve_stubs["database"] == 0
 
 
 def test_serve_reports_a_failed_database_stage(monkeypatch, capsys, serve_stubs):
-    def failing(ctx):
+    def failing(ctx, started_hook=None):
         raise pipeline.ScanStageError("the database could not be prepared")
 
     monkeypatch.setattr(pipeline, "start_server_mode", failing)
     code = run_main(monkeypatch, ["serve"])
     assert code == 1
+    # Text mode leaves the report to the stage that logged it.
+    captured = capsys.readouterr()
+    assert captured.out == ""
 
 
-def test_serve_returns_four_when_the_server_cannot_start(monkeypatch, capsys, serve_stubs):
-    """A server that cannot run (missing packages, refused bind) exits 4."""
-    monkeypatch.setattr(pipeline, "start_server_mode", lambda ctx: False)
+def test_serve_reports_a_failed_database_stage_in_json(monkeypatch, capsys, serve_stubs):
+    def failing(ctx, started_hook=None):
+        raise pipeline.ScanStageError("the database could not be prepared")
+
+    monkeypatch.setattr(pipeline, "start_server_mode", failing)
+    code = run_main(monkeypatch, ["serve", "--format", "json"])
+    assert code == 1
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 1
+    assert document["error"]["verb"] == "serve"
+    assert document["error"]["message"] == "the database could not be prepared"
+    assert "details" not in document["error"]
+    assert "the database could not be prepared" in captured.err
+
+
+def test_serve_reports_a_missing_server_capability(monkeypatch, caplog, capsys, serve_stubs):
+    def missing(ctx, started_hook=None):
+        raise pipeline.ServerRequirementError(
+            "The required packages for server mode are unavailable."
+        )
+
+    monkeypatch.setattr(pipeline, "start_server_mode", missing)
     code = run_main(monkeypatch, ["serve"])
     assert code == 4
+    assert capsys.readouterr().out == ""
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("The required packages for server mode are unavailable." in m for m in messages)
 
 
-def test_serve_returns_four_in_json_mode_too(monkeypatch, capsys, serve_stubs):
-    monkeypatch.setattr(pipeline, "start_server_mode", lambda ctx: False)
+def test_serve_reports_a_missing_server_capability_in_json(monkeypatch, capsys, serve_stubs):
+    def missing(ctx, started_hook=None):
+        raise pipeline.ServerRequirementError("the server packages are missing")
+
+    monkeypatch.setattr(pipeline, "start_server_mode", missing)
     code = run_main(monkeypatch, ["serve", "--format", "json"])
     assert code == 4
-    # The startup line precedes the start attempt, so it is already on
-    # stdout when the start is refused; the exit code carries the failure.
-    assert capsys.readouterr().out == '{"serve": "127.0.0.1:7070"}\n'
+    captured = capsys.readouterr()
+    document = json.loads(captured.out)
+    assert document["error"]["exitCode"] == 4
+    assert document["error"]["verb"] == "serve"
+    assert document["error"]["message"] == "the server packages are missing"
+    assert document["error"]["details"] == {
+        "capability": "server",
+        "reason": "the server packages are missing",
+    }
+    assert "the server packages are missing" in captured.err
 
 
 # --- vdb -------------------------------------------------------------------------
