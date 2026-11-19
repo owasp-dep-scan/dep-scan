@@ -64,8 +64,10 @@ def _write_json(tree, relative, document):
 def _skill_tree(tmp_path, name="depscan-scan"):
     """A tree whose plugin carries one clean skill, for the per-check tests."""
     tree = _make_tree(tmp_path)
+    # The copied tree already carries the shipped skills, so the clean
+    # skill is written over the copied one rather than created beside it.
     skill_dir = tree / "agent-plugin" / "skills" / name
-    skill_dir.mkdir(parents=True)
+    skill_dir.mkdir(parents=True, exist_ok=True)
     _write(
         tree,
         f"agent-plugin/skills/{name}/SKILL.md",
@@ -76,9 +78,6 @@ def _skill_tree(tmp_path, name="depscan-scan"):
         "# Scan\n\n"
         "Read [safety](../../reference/safety.md) first.\n",
     )
-    reference = tree / "agent-plugin" / "reference"
-    reference.mkdir()
-    _write(tree, "agent-plugin/reference/safety.md", "# Safety\n")
     return tree
 
 
@@ -197,7 +196,7 @@ def test_hook_script_missing(tmp_path):
     """A hooks.json entry pointing at a file that does not exist is named."""
     tree = _make_tree(tmp_path)
     hooks_dir = tree / "agent-plugin" / "hooks"
-    hooks_dir.mkdir()
+    hooks_dir.mkdir(exist_ok=True)
     _write_json(
         tree,
         "agent-plugin/hooks/hooks.json",
