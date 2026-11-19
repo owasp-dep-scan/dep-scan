@@ -20,8 +20,8 @@ byte-stable: two-space indent, fixed key order and a trailing newline, so a
 second run changes nothing.
 
 Usage:
-    python contrib/gen_agent_manifests.py           # write the files
-    python contrib/gen_agent_manifests.py --check   # exit 1 and name files that differ
+    python -m contrib.gen_agent_manifests           # write the files
+    python -m contrib.gen_agent_manifests --check   # exit 1 and name files that differ
 
 Exit codes:
     0: files written, or all up to date with --check
@@ -291,7 +291,7 @@ def run(argv: list[str]) -> int:
         if stale:
             print(
                 "These manifests differ from the generated output; run "
-                "`python contrib/gen_agent_manifests.py`:",
+                "`python -m contrib.gen_agent_manifests`:",
                 file=sys.stderr,
             )
             for file in stale:
