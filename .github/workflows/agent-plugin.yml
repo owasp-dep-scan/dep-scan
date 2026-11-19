@@ -73,3 +73,41 @@ jobs:
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
       - name: Test the hooks
         run: uv run python -m pytest -q -p no:cacheprovider test/test_agent_plugin_hooks.py
+
+  tool-commands:
+    # Checks every sibling-tool command the skills publish against the
+    # tools' own help: golem, rusi, kosi, dosai, trivy and trustinspector
+    # from the plugins package, atom, cdx-audit, and the blint, atom-tools
+    # and vdb versions dep-scan pins. Without these installs the test skips
+    # each tool with a reason, so this job is where it actually runs.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78  # v6.2.0
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73  # v6.1.0
+        with:
+          dotnet-version: '10.x'
+      - name: Install dependencies
+        run: uv sync --all-extras --all-packages --dev --quiet
+      - name: Install the sibling tools at pinned versions
+        run: |
+          npm install --no-save --no-fund --prefix "$RUNNER_TEMP/tools" \
+            @cdxgen/cdxgen@13.8.0 \
+            @cdxgen/cdxgen-plugins-bin-linux-amd64@4.3.1 \
+            @appthreat/atom@4.0.2
+          echo "$RUNNER_TEMP/tools/node_modules/.bin" >> "$GITHUB_PATH"
+          echo "DEPSCAN_PLUGINS_DIR=$RUNNER_TEMP/tools/node_modules/@cdxgen/cdxgen-plugins-bin-linux-amd64/plugins" >> "$GITHUB_ENV"
+      - name: Check the published sibling-tool commands
+        run: uv run python -m pytest -q -p no:cacheprovider -o addopts="" -rs test/test_agent_plugin_tool_commands.py

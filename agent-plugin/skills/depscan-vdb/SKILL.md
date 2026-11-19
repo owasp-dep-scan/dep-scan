@@ -30,9 +30,10 @@ this skill.
 depscan vdb info --format json
 ```
 
-The document carries the local flavor, the marker it was published from,
-`mainDb` with `builtUtc`, `stale` and `completeness`, and the shard store
-with per-type coverage. Exit 0 with a missing database is itself a finding:
+The document carries `vdbHome`, the local `flavor`, the `marker` it was
+published from, `mainDb` with `builtUtc`, `stale` and `completeness`,
+`metadataRows` and `extendedFlavor` (whether the advisory text and alias
+tables are present), and the shard store with per-type coverage. Exit 0 with a missing database is itself a finding:
 report the database as absent rather than assuming scans will work.
 
 ```bash
@@ -44,8 +45,14 @@ Prints `{"path": "..."}` with the `VDB_HOME` directory the commands use.
 ## Download a flavor
 
 ```bash
-depscan vdb download --flavor app-only --format json
+depscan vdb download --flavor full --format json
 ```
+
+Choose the flavor with the user: `full` is the default and the one a
+container scan needs. A scan asks for its own flavor and re-downloads when
+the local one differs, so download the flavor the user's scans use.
+For a store that holds only the ecosystems a project uses, fetch type
+shards instead: `depscan vdb download --shards npm pypi --format json`.
 
 | Flavor | Carries |
 | --- | --- |
@@ -86,9 +93,12 @@ command line, flags only); the commands above are the vulnerability-db 7
 command line in the dep-scan environment, so resolve `vdb` through the
 same environment that runs dep-scan before using them.
 
-Each search reads the store the same way a scan does, so a search against
-a store with a coverage gap returns what the store has, and the result
-tells you which store it read. `depscan vdb info --format json` remains
+The text, alias and symbol searches read the advisory metadata tables,
+which only the `-extended` flavors (`app-extended`, `app-10y-extended`)
+carry. On `full` or `app-only` (`extendedFlavor: false`, `metadataRows: 0`
+in `vdb info`) they print "No results found!" and exit 0: that is not
+assessed, never "nothing known". Purl and CPE searches (`vdb --search
+<purl>`) read the main tables and work on every flavor. `depscan vdb info --format json` remains
 the freshness and completeness answer; the searches answer "what does the
 store know about X". Run these read-only commands freely; they only read.
 

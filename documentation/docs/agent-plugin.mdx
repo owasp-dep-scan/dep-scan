@@ -1,27 +1,27 @@
 ---
 title: Agent plugin
-description: The dep-scan agent plugin, skills and a read-only triage agent for coding agents, with the MCP server configuration.
+description: The dep-scan agent plugin, its skills and agents for coding agents, with the MCP server configuration.
 ---
 
 # The agent plugin
 
-dep-scan ships a coding-agent plugin in `agent-plugin/`. It gives an agent the skills to scan projects and container images, triage findings, manage the vulnerability database, close coverage gaps and produce VEX documents, plus a read-only triage agent and the configuration that connects the MCP server. The skills tell the agent which command and flags to use, and they carry the safety rules in [safety.md](https://github.com/owasp-dep-scan/dep-scan/blob/master/agent-plugin/reference/safety.md): untrusted projects stay untrusted, absolute paths, no installs or build scripts of the scanned project, and never a clean result that the scan manifest does not support.
+dep-scan ships a coding-agent plugin in `agent-plugin/`. It gives an agent the skills to scan projects and container images, triage findings, manage the vulnerability database, close coverage gaps and produce VEX documents, plus three agents that do not modify the project (triage, binary review, exposure analysis) and the configuration that connects the MCP server. The skills tell the agent which command and flags to use, and they carry the safety rules in [safety.md](https://github.com/owasp-dep-scan/dep-scan/blob/master/agent-plugin/reference/safety.md): untrusted projects stay untrusted, absolute paths, no installs or build scripts of the scanned project, and never a clean result that the scan manifest does not support.
 
 The plugin lives in [`agent-plugin/`](https://github.com/owasp-dep-scan/dep-scan/tree/master/agent-plugin). It ships instructions, not the tool, so install dep-scan too (`pip install owasp-depscan`, or one of the other methods in the README). The skills are plain [Agent Skills](https://agentskills.io/specification), and the plugin has a root `plugin.json` in the [Agent Plugins](https://agent-plugins.org) format, so one folder serves every client below.
 
 ## What the skills cover
 
-The six dep-scan-front skills cover what dep-scan's code delivers today; a check that exits 4 because its analyzer is not implemented has no skill here. The eight toolchain skills reach the sibling analyzers directly for what dep-scan does not surface yet, and each one says so at the step; the mapping from questions to skills is in [the toolchain page](agent-skills-toolchain), and the tool lookup in the plugin's `reference/tools.md`.
+The six dep-scan-front skills cover what dep-scan's code delivers today. The eight toolchain skills reach the sibling analyzers directly for what dep-scan does not report yet (including the binary, memory-safety, mobile and crypto checks, which still exit 4 in dep-scan), and each one says so at the step; the mapping from questions to skills is in [the toolchain page](agent-skills-toolchain), and the tool lookup in the plugin's `reference/tools.md`.
 
 | Skill | Use | Model-invocable |
 | --- | --- | --- |
 | `depscan-scan` | Scan a source project and report what to fix first, branching on the exit codes and the manifest stages | yes |
 | `depscan-container-image` | Scan an image reference, rootfs or tar, with the cdxgen 13.8.0 minimum, the empty-findings trap an old cdxgen produces, and the rootfs link closure, trust material and installed-file provenance steps | yes |
 | `depscan-triage` | Read a scan directory back, explain and rank findings; records no decisions, because the MCP server has no `record_triage` tool | yes |
-| `depscan-vex-compliance` | Produce the CSAF VEX document a scan exports with `--csaf`, and validate CSAF or VDR documents | yes |
-| `depscan-vdb` | Check and refresh the vulnerability database, and answer advisory questions from the store with the v7 vdb CLI | yes |
-| `depscan-coverage-loop` | Scan, read `depscan doctor` and the manifest's failed and skipped stages, fix the missing tool, data or option each names, and re-scan | no, on request |
-| `depscan-reachability-proof` | Prove or disprove reach for a finding with witness paths and root sets (golem, rusi, dosai; Kotlin stays not assessed) | yes |
+| `depscan-vex-compliance` | Produce the CSAF VEX document a scan exports with `--csaf`, explain the `known_not_affected` statements dep-scan derives from reachability, and validate CSAF or VDR documents | yes |
+| `depscan-vdb` | Check and refresh the vulnerability database, and answer advisory questions from the store with the v7 vdb CLI | no, on request |
+| `depscan-coverage-loop` | Scan, read `depscan doctor` and the manifest's stages that did not complete, fix the missing tool, data or option each names, and re-scan | no, on request |
+| `depscan-reachability-proof` | Prove or disprove reach for a finding with witness paths and root sets (golem, rusi, kosi, dosai, atom) | yes |
 | `depscan-attack-surface` | Map exposure tiers, trust zones and the join to vulnerable packages (atom-tools, dosai) | yes |
 | `depscan-change-risk` | Answer what changed between scans, builds or revisions (MCP `diff_scans`, dosai diff, atom-tools drift) | yes |
 | `depscan-binary` | Review an executable, installer or driver with blint, with blintdb as a consent-gated tens-of-gigabytes download | yes |
@@ -38,13 +38,13 @@ A client marked "not yet tested" should load the plugin according to its own doc
 
 | Client | Status |
 | --- | --- |
-| Claude Code | Adds the marketplace from a checkout, installs the plugin, lists the six skills, the agent and the two hooks, and passes `claude plugin validate --strict` (Claude Code 2.1.311). The MCP server the plugin configures answers `tools/list` with its ten tools. The same install, listing, uninstall and marketplace removal were verified on the Windows 11 ARM64 VM with Claude Code 2.1.328. Running a skill inside a session was not tested: the machine's Claude Code credentials are not valid (the key its `apiKeyHelper` resolves is rejected by the API). |
+| Claude Code | Adds the marketplace from a checkout, installs the plugin, lists the fourteen skills, the three agents, the two hooks and the MCP server, and passes `claude plugin validate --strict` (Claude Code 2.1.311). The MCP server the plugin configures answers `tools/list` with its ten tools. The install, listing, uninstall and marketplace removal were also verified on the Windows 11 ARM64 VM with Claude Code 2.1.328, before the eight toolchain skills were added. Running a skill inside a session was not tested: the machine's Claude Code credentials are not valid (the key its `apiKeyHelper` resolves is rejected by the API). |
 | Codex | Adds the marketplace and installs the plugin from a local checkout (codex-cli 0.170.0), which caches `mcp.json`. Skill invocation is not tested: the first session needs an OpenAI login this machine does not have. `codex mcp list` shows no server; whether the plugin's `mcp.json` reaches a session is untested. |
 | Copilot CLI and app | Not yet tested |
 | Cursor | Not yet tested |
 | Gemini CLI | Not yet tested |
 | Kiro | Not yet tested |
-| opencode | Lists all six skills when its `skills` setting points at the skills folder as `{"paths": [...]}` (opencode 1.19.6 rejects the array form its own published schema allows). Skill invocation is not yet tested. |
+| opencode | Lists all fourteen skills when its `skills` setting points at the skills folder as `{"paths": [...]}` (opencode 1.19.6 rejects the array form its own published schema allows). Skill invocation is not yet tested. |
 
 ## Claude Code
 
@@ -57,11 +57,11 @@ claude plugin install depscan@depscan-plugins
 
 Update with `claude plugin marketplace update depscan-plugins` followed by `claude plugin update depscan@depscan-plugins`.
 
-Invoke a skill by describing the task, or by name as `/depscan:depscan-scan`. `depscan-vdb` and `depscan-coverage-loop` run only when you type their slash command, `/depscan:depscan-vdb` and `/depscan:depscan-coverage-loop`, because they change state. The `depscan:vuln-triager` agent preloads the triage, scan, reachability-proof and attack-surface skills; the plugin also carries the read-only `depscan:binary-reviewer` and `depscan:exposure-analyst` agents.
+Invoke a skill by describing the task, or by name as `/depscan:depscan-scan`. `depscan-vdb` and `depscan-coverage-loop` run only when you type their slash command, `/depscan:depscan-vdb` and `/depscan:depscan-coverage-loop`, because they change state. The `depscan:vuln-triager` agent preloads the triage, reachability-proof and attack-surface skills; the plugin also carries the `depscan:binary-reviewer` and `depscan:exposure-analyst` agents. None of the three modifies the project; they have Bash, so this rests on their instructions, and their analyzer reports go to `/tmp`.
 
 Only Claude Code has these parts of the plugin:
 
-- the `depscan:vuln-triager` agent, a read-only reviewer for an existing scan directory
+- the three agents: `depscan:vuln-triager` for an existing scan directory, `depscan:binary-reviewer` for binaries and app artifacts, and `depscan:exposure-analyst` for exposure and reachability questions
 - the `SessionStart` hook that warns when `depscan` is missing or older than the plugin, or when the `mcp` extra is missing, and the opt-in lockfile reminder hook
 - the `userConfig` options below, which Claude Code asks for when the plugin is enabled and substitutes into the skills as `${user_config.KEY}`
 
@@ -93,7 +93,7 @@ codex plugin marketplace add owasp-dep-scan/dep-scan
 codex plugin add depscan@depscan-plugins
 ```
 
-Codex reads `.agents/plugins/marketplace.json` in the repository and the portable `plugin.json` in `agent-plugin/`. Invoke a skill by naming it with a dollar sign, for example `$depscan-scan`, or describe the task. Codex ignores the hooks, the `vuln-triager` agent and `userConfig`; the skills then fall back to their defaults.
+Codex reads `.agents/plugins/marketplace.json` in the repository and the portable `plugin.json` in `agent-plugin/`. Invoke a skill by naming it with a dollar sign, for example `$depscan-scan`, or describe the task. Codex ignores the hooks, the agents and `userConfig`; the skills then fall back to their defaults.
 
 ## Cursor
 
@@ -107,7 +107,7 @@ Gemini CLI installs an extension from a directory that holds `gemini-extension.j
 gemini extensions install ./agent-plugin
 ```
 
-Not yet tested. The hooks, the `vuln-triager` agent and `userConfig` do not apply.
+Not yet tested. The hooks, the agents and `userConfig` do not apply.
 
 ## Kiro
 
@@ -124,7 +124,7 @@ opencode does not look inside plugin folders. It reads skills from the paths in 
 }
 ```
 
-`opencode debug skill` then lists the six skills (verified on opencode 1.19.6). The skills link to `../../reference/safety.md`, so keep the `reference/` folder beside `skills/`. The hooks, the `vuln-triager` agent and `userConfig` do not apply.
+`opencode debug skill` then lists the fourteen skills (verified on opencode 1.19.6). The skills link to `../../reference/`, so keep the `reference/` folder beside `skills/`. The hooks, the agents and `userConfig` do not apply.
 
 ## Clients without a plugin MCP configuration
 
@@ -138,7 +138,7 @@ The server exits 4 when the `mcp` extra is missing; install it with `pip install
 
 ## Privacy
 
-The plugin sends nothing anywhere. It contains instructions, two Python hook scripts the client runs locally, and a configuration that starts `depscan mcp` on your machine. The tools it runs are the user's own dep-scan, reading the user's own projects, and a scan talks to the network only for the vulnerability database the user chooses to download.
+The plugin sends nothing anywhere. It contains instructions, two Python hook scripts the client runs locally, and a configuration that starts `depscan mcp` on your machine. The tools it runs are the user's own dep-scan and its sibling tools, reading the user's own projects. A scan does use the network: it downloads the vulnerability database when the local one is missing, older than 48 hours or of another flavor (`--profile offline` prevents it), pulls the `ghcr.io/cdxgen/cdxgen` image for a source scan when `docker` is on `PATH` and `--bom-engine` is left on `auto` (`--bom-engine CdxgenGenerator` uses the local cdxgen and `CDXGEN_CMD`), and lets golem fetch Go modules unless `--go-analyzer-network offline` is passed. The skills tell the agent to say which of these will happen before a scan.
 
 ## Keeping the manifests in step
 

@@ -8,8 +8,8 @@ description: Scans a source repository or directory with OWASP dep-scan and repo
 Use this skill for the common case: a user wants to know what is vulnerable
 in a repository or directory. For container images and rootfs directories
 use `depscan-container-image`; to read an existing scan back and explain its
-findings use `depscan-triage`; when the environment is missing tools or data
-use `depscan-coverage-loop`.
+findings use `depscan-triage`; when the environment is missing tools or data,
+suggest that the user run `/depscan:depscan-coverage-loop`.
 
 The rules in [reference/safety.md](../../reference/safety.md) apply to every
 command this skill produces, including commands that are only shown to the
@@ -32,12 +32,16 @@ no keys or tokens.
 | Preferred runtime | `${user_config.runtime}` | the `depscan` on `PATH` |
 
 A set database directory is exported as `VDB_HOME`; a set flavor is passed
-as `--vdb-flavor`; a set cdxgen command is exported as `CDXGEN_CMD`.
+as `--vdb-flavor` (a flavor other than the local one triggers a download,
+see Step 1); a set cdxgen command is exported as `CDXGEN_CMD` together with
+`--bom-engine CdxgenGenerator`, because the default `auto` engine prefers
+the cdxgen container image whenever `docker` is on `PATH` (outside
+Windows) and then ignores `CDXGEN_CMD`.
 
 ## Core syntax
 
 ```bash
-depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
 ```
 
 The target is optional and defaults to the current directory, but always
@@ -45,12 +49,28 @@ pass it explicitly; `-o` names the reports directory the scan manifest,
 findings document and BOM land in. `--format json` makes the verb write one
 JSON document to stdout: `{"scans": [entry, ...]}`, one entry per target,
 each with `target`, `kind`, `scanDir`, `manifest` and `findings`. Logs and
-tables go to stderr.
+tables go to stderr. `CDXGEN_SECURE_MODE=true` keeps cdxgen from running
+package managers or builds; dep-scan sets it by itself only for git URLs
+and purls, so keep it for any local project the user has not vouched for.
 
-## Step 1: run the scan
+## Step 1: check what the scan will fetch, then run it
 
 ```bash
-depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
+depscan vdb info --format json
+depscan config show --format json
+```
+
+A scan downloads the vulnerability database by itself when it is missing,
+older than 48 hours, or of a different flavor (`full` is gigabytes). When
+`vdb info` shows that a download would follow, tell the user before
+scanning, or add `--profile offline` to scan against the database as it is.
+`config show` prints the effective options and where each came from. A
+source scan also lets golem fetch Go modules unless
+`--go-analyzer-network offline` is passed, and with `docker` on `PATH` the
+`auto` engine pulls the `ghcr.io/cdxgen/cdxgen` image; say which applies.
+
+```bash
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
 ```
 
 Exit codes to branch on:
@@ -61,7 +81,11 @@ Exit codes to branch on:
 - 2: a usage error; the error document on stdout names the problem.
 - 4: a requested capability cannot run on this machine. Do not retry with
   different flags to make it disappear; report what the machine lacks, and
-  offer `depscan-coverage-loop`.
+  suggest `/depscan:depscan-coverage-loop` to the user.
+
+In CI, add `--fail-on-error`: without it a failed inventory degrades to
+exit 0 with an empty result. `--debug` adds the debug log (for cdxgen too)
+when a run goes wrong.
 
 ## Step 2: read the manifest before calling it clean
 
@@ -72,9 +96,10 @@ until the manifest agrees. Check the `manifest.stages` entries first:
 depscan report /absolute/path/to/reports --format json
 ```
 
-A stage with `"status": "failed"` or `"skipped"` and a reason means part of
-the analysis did not run; report "not assessed" with that reason rather
-than a clean result. `depscan doctor --format json` shows the same state
+Any stage whose status is not `completed` (`failed`, `skipped`,
+`not-assessed`), and any stage missing after one that stopped the run,
+means part of the analysis did not run; report "not assessed" with the
+stage's reason rather than a clean result. `depscan doctor --format json` shows the same state
 machine-wide.
 
 ## Choosing checks and profiles
@@ -84,8 +109,16 @@ machine-wide.
 depscan scan /absolute/path/to/project --checks vulnerabilities,license --format json -o /absolute/path/to/reports
 
 # The CI profile: vulnerabilities and reachability, no explanations
-depscan scan /absolute/path/to/project --profile ci --format json -o /absolute/path/to/reports
+depscan scan /absolute/path/to/project --profile ci --fail-on-error --format json -o /absolute/path/to/reports
+
+# Every check that can run here; the others are recorded as not assessed
+depscan scan /absolute/path/to/project --checks all --format json -o /absolute/path/to/reports
 ```
+
+An explicitly named check, and every check a `--profile` implies, is gated:
+if one cannot run on this machine the verb exits 4 before any scan work
+(`--profile ci` exits 4 without a cdxgen of 13.8.0 or newer). `all` never
+gates; checks that cannot run become not-assessed entries in the manifest.
 
 | Checks value | What it adds |
 | --- | --- |
@@ -94,6 +127,13 @@ depscan scan /absolute/path/to/project --profile ci --format json -o /absolute/p
 | `reachability` | Reachability enrichment; needs cdxgen 13.8.0 or newer. |
 | `supply-chain` | The supply-chain risk audit, for the project types it supports. |
 | `binary`, `memory-safety`, `mobile`, `code`, `crypto` | Present as names, but several are not implemented in this version and exit 4 with the reason. Probe with `depscan doctor` before promising one. |
+| `all` | Every check; the ones that cannot run are recorded, not refused. |
+
+Other options worth knowing: `--exclude-type <type>` drops a detected
+project type, `--severity <level>` limits the reported findings,
+`--private-ns <prefix>` marks the user's own packages, `--malware-only`
+looks for known malicious packages only, and several targets can be passed
+in one run.
 
 Profiles: `quick` (vulnerabilities only), `ci`, `deep` (adds license and
 supply-chain with semantic reachability), `research` (deep plus cdxgen's
@@ -114,6 +154,6 @@ For a readable explanation of a finished scan use `depscan-triage`.
 Offer the natural next step rather than stopping at the findings file:
 
 - Explain and rank what to fix first: `depscan-triage`
-- Check the database is current: `depscan-vdb`
-- Fix the environment a failed or skipped stage names: `depscan-coverage-loop`
+- Check or refresh the database: suggest `/depscan:depscan-vdb`
+- Fix the environment a stage that did not complete names: suggest `/depscan:depscan-coverage-loop`
 - Produce a CSAF VEX or check a VDR document: `depscan-vex-compliance`

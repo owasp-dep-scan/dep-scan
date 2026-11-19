@@ -34,27 +34,30 @@ Two things decide whether a container scan delivers:
 1. **cdxgen 13.8.0 or newer.** An older cdxgen makes the scan exit 0 with
    an empty findings list and a manifest whose `inventory` stage failed;
    stderr names the required version and the `CDXGEN_CMD` fix. Check
-   `depscan doctor --format json` (`tools[].name == "cdxgen"`) or trust the
-   `depscan-coverage-loop` skill to repair it.
+   `depscan doctor --format json` (the `tools` entry named `cdxgen`, its
+   `version` and `minVersion`), and suggest that the user run
+   `/depscan:depscan-coverage-loop` to repair it.
 2. **The full database flavor.** Distro packages (apk, deb, rpm) match
    against the OS advisories, which the `app-only` flavor does not carry.
-   `depscan vdb info --format json` reports the local flavor;
-   `depscan-coverage-loop` or `depscan-vdb` downloads `full` with the
-   user's consent.
+   `depscan vdb info --format json` reports the local flavor. A scan whose
+   flavor differs from the local one downloads `full` by itself (gigabytes),
+   so tell the user first; they can also run `/depscan:depscan-vdb`.
 
 ## The commands
 
 ```bash
 # An image reference, from a local daemon or a registry
-depscan scan --target-kind container alpine:3.19 --format json -o /absolute/path/to/reports
+depscan scan --target-kind container alpine:3.19 --deep --format json -o /absolute/path/to/reports
 
 # An exported rootfs directory (docker export)
 depscan scan --target-kind container /absolute/path/to/rootfs --format json -o /absolute/path/to/reports
 ```
 
-Both exit 0 when the inventory stage completed and write
-`sbom-docker.cdx.json`, `depscan.findings.json`, `depscan.manifest.json`
-and `depscan.vdr.json` into the reports directory. The findings list
+`--deep` asks cdxgen for the deeper image and OS package inventory the help
+recommends for images. Both exit 0 when the inventory stage completed and
+write `sbom-docker.cdx.json`, `depscan.findings.json`,
+`depscan.manifest.json` and the VDR `sbom-docker.vdr.json` into the reports
+directory. The findings list
 carries one entry per vulnerable package with its purl
 (`pkg:apk/alpine/...`, `pkg:deb/debian/...`, `pkg:rpm/...`), severity and
 coverage state.
@@ -77,19 +80,24 @@ or scan an image the user did not ask about.
 | An image reference the user named | `depscan scan --target-kind container <image> --format json -o <reports>` |
 | A rootfs directory | `depscan scan --target-kind container <dir> --format json -o <reports>` |
 | An image tarball on disk | `depscan scan --target-kind container <file.tar> --format json -o <reports>` |
-| The scan exits 0 with no findings | Read `depscan.manifest.json` stages; `inventory` failed means not assessed, usually the cdxgen version |
-| Distro CVEs are missing with a complete inventory | The database flavor is not `full`; see `depscan-vdb` |
+| The scan exits 0 with no findings | Read `depscan.manifest.json` stages; any stage not `completed` means not assessed, usually the cdxgen version |
+| Distro CVEs are missing with a complete inventory | The database flavor is not `full`; suggest `/depscan:depscan-vdb` |
 | Which libraries are actually loaded, and by what | blint's link closure, below |
 | What the image trusts, and which files came from packages | trustinspector and trivy-cdxgen, below |
 
 ## Link closure, trust material and installed-file provenance
 
 Three deeper container questions are answered by the sibling tools
-directly, because dep-scan does not surface them yet:
+directly, because dep-scan does not report them yet. The link closure needs
+blint 4.0.0 or newer; dep-scan's tool extra pins blint 3.2.x, which ignores
+these variables and writes no closure, so check the version first
+(`python -c "import importlib.metadata as m; print(m.version('blint'))"`).
+trustinspector and trivy-cdxgen sit in the cdxgen plugins package under
+`plugins/trustinspector/` and `plugins/trivy/`.
 
 ```bash
-# Which shared libraries each executable declares and imports
-# (env-only in this blint; never set BLINT_LINK_ROOT to the scan host)
+# Which shared libraries each executable declares and resolves
+# (blint 4.0.0 or newer; never set BLINT_LINK_ROOT to the scan host)
 BLINT_RESOLVE_LINK_CLOSURE=1 BLINT_LINK_ROOT=/absolute/path/to/rootfs \
   blint -i /absolute/path/to/rootfs/usr/bin -o /absolute/path/to/blint-reports --no-banner
 
@@ -100,9 +108,9 @@ trustinspector-cdxgen-<platform> rootfs /absolute/path/to/rootfs
 trivy-cdxgen-<platform> rootfs --output /tmp/trivy-rootfs.cdx /absolute/path/to/rootfs
 ```
 
-The link closure lands in each binary's `-metadata.json`:
-`dynamic_entries` carries the NEEDED libraries and `import_dependencies`
-the resolved imports, which answers "is this vulnerable library actually
+The link closure lands in each binary's `-metadata.json` under
+`link_closure`, next to `dynamic_entries` (the NEEDED libraries) and
+`import_dependencies` (the resolved imports). That answers "is this vulnerable library actually
 loaded by some executable, or installed but unused"; unused is not
 `not_affected`, it is a weaker presence claim with this evidence. The
 trust report carries the certificate material with its hashes and trust
@@ -125,5 +133,5 @@ matching in this version. Say so when summarising.
 ## After the scan
 
 - Explain and rank what to fix first: `depscan-triage`
-- Download the `full` flavor for distro matching: `depscan-vdb`
-- Fix a missing tool or flavor: `depscan-coverage-loop`
+- Download the `full` flavor for distro matching: suggest `/depscan:depscan-vdb`
+- Fix a missing tool or flavor: suggest `/depscan:depscan-coverage-loop`

@@ -10,11 +10,17 @@ than loud.
 Assume every scanned project is hostile until the user says otherwise.
 
 - Never run the scanned project's build scripts, test commands or
-  package-manager installs. dep-scan reads manifests and lockfiles in
-  secure mode and needs none of them.
-- Keep cdxgen in secure mode (`CDXGEN_SECURE_MODE=true`) for source the
-  user has not vouched for. Never run secure mode as root, and never grant
+  package-manager installs. dep-scan reads manifests and lockfiles and
+  needs none of them.
+- cdxgen can run package managers and builds unless it is in secure mode,
+  and dep-scan turns secure mode on by itself only for git URLs, purls and
+  the MCP `run_scan` tool, not for a local directory. Prefix every scan of
+  a local project the user has not vouched for with
+  `CDXGEN_SECURE_MODE=true`. Never run secure mode as root, and never grant
   `--allow-fs-read="*"` or `--allow-fs-write="*"`.
+- golem's cgo loading (`--go-analyzer-cgo`, or `CGO_ENABLED=1` on a direct
+  golem run) runs the host C compiler with flags the scanned code chooses.
+  It needs the user's consent and is never used on untrusted input.
 - Never pass `--allow-scans` to `depscan mcp`. The flag is the person who
   starts the server choosing to let its `run_scan` tool execute scans;
   an agent does not grant it, in the shipped `.mcp.json`, in a command
@@ -46,13 +52,16 @@ failure to retry with different flags until it disappears.
 ## A clean result must be earned
 
 A scan that exits 0 with no findings is not evidence of a clean project
-until the manifest agrees. Read the scan manifest's `stages` entries: an
-`inventory` stage that failed, a check skipped for the target type, or a
-tool below its minimum version (an old cdxgen leaves a container scan
-exit 0 with an empty findings list) all mean the result is **not
-assessed**, and "not assessed" is reported as unknown rather than clean.
-`depscan doctor --format json` reports the same state machine-wide, and
-`depscan-coverage-loop` is the skill that fixes it.
+until the manifest agrees. Read the scan manifest's `stages` entries: any
+stage whose status is not `completed` (`failed`, `skipped` or
+`not-assessed`), and any stage missing after a stage that stopped the run,
+means that part of the result is **not assessed**, and "not assessed" is
+reported as unknown rather than clean. An old cdxgen, for example, leaves
+a container scan exit 0 with an empty findings list and a failed
+`inventory` stage. In CI, pass `--fail-on-error` so a failed inventory
+exits non-zero instead of degrading. `depscan doctor --format json`
+reports the same state machine-wide, and the user can run
+`/depscan:depscan-coverage-loop` to fix it.
 
 ## Never claim more than the evidence says
 
@@ -60,6 +69,11 @@ assessed**, and "not assessed" is reported as unknown rather than clean.
   "not reachable", unless the evidence in the scan covers the vulnerable
   function and the deployed entry points. Reachability output names the
   analyzer and its limits; quote them.
+- dep-scan's own `--csaf` export writes `known_not_affected` with the flag
+  `vulnerable_code_not_in_execute_path` for every affected package that is
+  missing from the scan's reached set, whenever that set is not empty.
+  That basis is "not in the reached set of this analyzer", not proof; read `product_status.known_not_affected` before the document
+  leaves the machine and say what it rests on.
 - Findings carry a `coverage.state`; findings whose state is `assessed`
   were matched, and everything else was not. Say which when summarising.
 
@@ -70,18 +84,26 @@ package indexes and tokens. Never repeat a secret, key or token in a
 report, a summary or a command line, including one the user pasted. Name
 the component and the property instead of pasting the value.
 
-## State changes need the user's consent
+## State changes and network use need the user's consent
 
-Two skills change state, and both say so at the step:
-
-- `depscan-vdb` downloads data (a flavor can be gigabytes) over the
-  network. Ask before the first download of a session; do not re-download
-  a fresh database silently.
-- `depscan-coverage-loop` installs dep-scan's own tools and data (a newer
-  cdxgen, the full database flavor, a missing analyzer). It never installs
-  the scanned project's dependencies and never runs its build scripts, and
-  it asks before each install that is not already covered by an explicit
-  instruction from the user.
+- `depscan scan` downloads the vulnerability database by itself when it is
+  missing, older than 48 hours, or of a different flavor from the one the
+  scan asks for (the `full` flavor is gigabytes). Before a scan, read
+  `depscan vdb info --format json`; when a download would follow, tell the
+  user and ask, or scan with `--profile offline` against the database as
+  it is.
+- On Linux and macOS with `docker` on `PATH`, a source scan with the
+  default `--bom-engine auto` pulls the `ghcr.io/cdxgen/cdxgen` image and
+  ignores `CDXGEN_CMD`. Pass `--bom-engine CdxgenGenerator` to use the
+  local cdxgen instead, and say which one ran.
+- golem fetches Go modules for a source scan unless
+  `--go-analyzer-network offline` is passed.
+- `depscan-vdb` and `depscan-coverage-loop` change state and run only when
+  the user types their slash commands (`/depscan:depscan-vdb`,
+  `/depscan:depscan-coverage-loop`). Other skills suggest them to the user
+  rather than loading them. The coverage loop installs dep-scan's own tools
+  and data, never the scanned project's dependencies, and asks before each
+  install that an explicit instruction does not already cover.
 
 ## Steps that run project code, clone upstream, or download data
 
@@ -92,8 +114,8 @@ waits for the user's consent in the conversation:
 - **Running project code.** dosai's `--restore`/`--build` run MSBuild on
   the project; the rusi `compiler` backend compiles the crate; atom's
   `--fetch-deps` runs project tooling; cdxgen's `tracebom` executes the
-  program (sandboxed, still consent); golem's cgo analysis runs the host C
-  compiler. Never pass these for an untrusted project, and on a trusted
+  program (sandboxed, still consent); golem with `CGO_ENABLED=1` (or
+  `--go-analyzer-cgo`) runs the host C compiler. Never pass these for an untrusted project, and on a trusted
   one name what will execute before doing it.
 - **Cloning upstream.** cdx-audit's predictive mode clones third-party
   repositories over the network. The direct-bom-audit form needs no

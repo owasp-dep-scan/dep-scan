@@ -52,20 +52,32 @@ is missing; installing `owasp-depscan[mcp]` into the environment the server
 launches from is a state change, so ask the user first, and never pass
 `--allow-scans`.
 
+The server reads only its working directory and the roots the client
+announces; the plugin's configuration passes no `--allow-dir`. A scan
+directory outside those roots is refused, so fall back to
+`depscan report <scan-dir> --format json` rather than widening the server.
+The `reachable` filter of `list_findings` reads each finding's
+`exploitability.axes.reach`, which no dep-scan stage fills in yet: both
+`reachable=true` and `reachable=false` return nothing today. Answer
+reachability from the scan's reachability output instead, and never read
+an empty filtered page as "nothing is reachable".
+
 ## How to triage
 
-1. Read the manifest's `stages` first. A failed or skipped stage means the
-   categories it would have produced are **not assessed**; report them as
-   unknown rather than clean, with the stage's reason.
+1. Read the manifest's `stages` first. Any stage whose status is not
+   `completed`, or a stage missing after one that stopped the run, means
+   the categories it would have produced are **not assessed**; report them
+   as unknown rather than clean, with the stage's reason.
 2. Group the findings by severity, then by category. For each finding read
    `coverage.state`: `assessed` means the matcher evaluated it against the
    database; anything else was not evaluated.
 3. Rank what to fix first by severity, reachability state where the scan
    recorded one, and whether a fixed version exists. Say what each ranking
    rests on.
-4. Answer reachability questions with what the finding records. Absence of
-   a reachability entry is not evidence of "not reachable"; say the scan
-   did not assess it.
+4. Answer reachability questions with what the scan records (the
+   reachability slices and the explanation with `--explain`). Absence of a
+   reachability entry is not evidence of "not reachable"; say the scan did
+   not assess it.
 5. Never mark a finding `not_affected`, never record a decision, and never
    quote a secret the findings or BOM carry. Name the component instead.
 
@@ -79,5 +91,5 @@ tool or a fresh `depscan scan` into a new reports directory.
 
 ## After triage
 
-- Fix the environment a stage's failure names: `depscan-coverage-loop`
+- Fix the environment a stage's failure names: suggest `/depscan:depscan-coverage-loop`
 - Produce a CSAF VEX document from the scan: `depscan-vex-compliance`

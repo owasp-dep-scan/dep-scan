@@ -1,6 +1,6 @@
 ---
 name: depscan-supply-chain
-description: 'Audits how software is built and delivered rather than which CVEs it carries: dep-scan''s supply-chain check and risk audit, cdx-audit''s rule packs (ci-permission, dependency-source, package-integrity, build-fidelity, mcp-server, ai-* and the extension packs) run directly on a BOM, malicious-package matching from the vulnerability database, AI and MCP inventory through cdxgen''s ai-bom skill, and provenance and trusted publishing. Use when asked about install scripts, CI workflow risk, dependency confusion, AI or MCP supply chain, or whether a package is known malicious.'
+description: 'Audits how software is built and delivered rather than which CVEs it carries: dep-scan''s supply-chain check and risk audit, cdx-audit''s rule packs (package-integrity, dependency-source, ci-permission, build-fidelity, mcp-server, the ai-* packs and the extension packs) run directly on a BOM, malicious-package matching from the vulnerability database, AI and MCP inventory through cdxgen''s ai-bom skill, and provenance and trusted publishing. Use when asked about install scripts, CI workflow risk, dependency confusion, AI or MCP supply chain, or whether a package is known malicious.'
 ---
 
 # Audit the supply chain
@@ -8,8 +8,8 @@ description: 'Audits how software is built and delivered rather than which CVEs 
 Use this skill when the question is about how the software is built and
 delivered rather than which advisories match. dep-scan's own supply-chain
 check runs the risk audit for the project types it supports; cdx-audit's
-rule packs are reached directly because dep-scan does not run them yet,
-and each step below says so. The rules in
+rule packs are run directly because dep-scan does not run them yet, and
+each step below says so. The rules in
 [reference/safety.md](../../reference/safety.md) apply; in particular
 cdx-audit's predictive mode clones upstream repositories, which needs the
 user's consent, and the step says so before it runs.
@@ -29,46 +29,61 @@ depscan scan /absolute/path/to/project --checks supply-chain --format json -o /a
 ```
 
 On the project types the risk audit supports this reports the risk audit
-findings; on others the manifest's risk stage reads `skipped: the risk
-audit was not requested for this type`, which is not assessed, not clean.
-Malicious packages (`MAL-` advisories) match through the vulnerability
-database at every version when the database carries them; `depscan vdb
-info --format json` shows whether it does.
+results; on others the manifest's risk stage is `skipped` with the reason,
+which is not assessed, not clean. Malicious packages (`MAL-` advisories)
+match through the vulnerability database when the database carries them;
+`depscan vdb info --format json` shows the flavor and whether it does.
 
 ## Step 2: cdx-audit on a BOM
 
 This runs cdx-audit directly because dep-scan does not run the rule packs
-yet.
+yet. cdx-audit ships with cdxgen.
 
 ```bash
-cdxgen -o /absolute/path/to/bom.json --no-install-deps /absolute/path/to/project
-cdx-audit --bom /absolute/path/to/bom.json --direct-bom-audit --report json
+CDXGEN_SECURE_MODE=true cdxgen --no-install-deps \
+  -o /absolute/path/to/bom.json /absolute/path/to/project
+cdx-audit --bom /absolute/path/to/bom.json --direct-bom-audit \
+  --report json -o /absolute/path/to/audit.json
 ```
 
-The results document carries the findings with rule ids and severity from
-the packs that apply to the BOM's ecosystems. The predictive mode
-(`--no-direct-bom-audit`) clones upstream repositories to compare what
-you ship against what upstream publishes: it is the stronger audit, and
-it needs the user's consent in the conversation because it runs network
-clones of third-party code. Exit code 3 means at least one target met or
-exceeded `--fail-severity`.
+Always pass `--direct-bom-audit`: without it, cdx-audit runs its
+predictive mode, which is the default. The predictive mode clones the
+upstream repositories of the BOM's packages to compare what you ship
+against what upstream publishes. It is the stronger audit, and it runs
+network clones of third-party code, so it needs the user's consent in the
+conversation, with the clone count stated first.
 
-The packs that matter, by question: install scripts and integrity
+The report carries `auditMode` and, per input, the findings with rule ids
+and severity. In direct mode every category applies unless
+`--categories` narrows it. Exit code 3 means a target reached
+`--fail-severity` (default `high`); it is a result, not a failure to
+retry.
+
+The categories that matter, by question: install scripts and integrity
 (`package-integrity`), where a dependency comes from
 (`dependency-source`), CI workflow permissions and untrusted input
 (`ci-permission`), build reproducibility (`build-fidelity`), MCP server
 configurations (`mcp-server`), agent and model inventory (`ai-agent`,
-`ai-provenance`, `ai-governance`, `ai-security`), and browser or editor
+`ai-governance`, `ai-oversight`, `ai-provenance`), language evidence
+(`golem-security`, `go-security`, `cargo-security`, `php-security`,
+`scala-security`), cryptography (`cbom-security`), and browser or editor
 extensions (`vscode-extension`, `chrome-extension`).
 
 ## Step 3: AI and MCP inventory
 
 For the model, server and skill inventory itself, use cdxgen's `ai-bom`
-skill (this plugin names it rather than repeating cdxgen's commands):
+skill (this plugin names it rather than repeating its guidance). The two
+project types it starts from:
 
 ```bash
-cdxgen -t ai -o /absolute/path/to/ai-bom.json --no-install-deps /absolute/path/to/project
+CDXGEN_SECURE_MODE=true cdxgen -t mcp --no-install-deps \
+  -o /absolute/path/to/mcp-bom.json /absolute/path/to/project
+CDXGEN_SECURE_MODE=true cdxgen -t ai-skill --no-install-deps \
+  -o /absolute/path/to/skills-bom.json /absolute/path/to/project
 ```
+
+Then `cdx-audit --bom <file> --direct-bom-audit --categories
+mcp-server,ai-agent --report json` audits what they found.
 
 ## Provenance and trusted publishing
 
@@ -81,12 +96,13 @@ tampering.
 ## What this proves and what it does not
 
 The audit proves what the rules matched in the BOM and CI files the run
-read. It does not prove the pipeline is safe: a rule pack that had no
+read. It does not prove the pipeline is safe: a category that had no
 findings on an ecosystem cdx-audit does not cover is not assessed, and
 predictive results are a hypothesis about upstream, not a statement about
-the artifact you were given. Name rule ids, and say which packs ran.
+the artifact you were given. Name rule ids, and say which categories ran.
 
 ## After the audit
 
-- Refresh the database the malware match used: `depscan-vdb`
+- Refresh the database the malware match used: ask the user to run
+  `/depscan:depscan-vdb`
 - Produce a disclosure from the findings: `depscan-vex-compliance`

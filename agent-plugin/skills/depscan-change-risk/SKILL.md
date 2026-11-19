@@ -1,12 +1,12 @@
 ---
 name: depscan-change-risk
-description: 'Reports what changed between two dep-scan scans, builds or source revisions and whether it made things worse: the MCP diff_scans tool or a fresh scan pair for findings, dosai diff for .NET data-flow deltas, blint diff for binary hardening regressions, and atom-tools drift for flow-level risk deltas. Use for pull-request and release questions such as "did this change add exposure", "what new findings did this introduce", or "did the new build lose hardening".'
+description: 'Reports what changed between two dep-scan scans, builds or source revisions and whether it made things worse: the MCP diff_scans tool or a fresh scan pair for findings, dosai diff for .NET data-flow deltas, atom-tools drift for flow-level risk deltas with a pass or fail gate, and blint diff for binary hardening regressions. Use for pull-request and release questions such as "did this change add exposure", "what new findings did this introduce", or "did the new build lose hardening".'
 ---
 
 # Answer what a change did to risk
 
 Use this skill when there are two of something: two scan directories, two
-dosai reports, two binaries. The question is always "worse, better, or
+engine reports, two binaries. The question is always "worse, better, or
 unchanged, and where". The rules in
 [reference/safety.md](../../reference/safety.md) apply; a risk delta that
 rests on a stage that did not run is reported as not assessed, never as
@@ -36,10 +36,11 @@ depscan scan /absolute/path/to/old-revision --format json -o /tmp/old-reports
 depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
 ```
 
-Read both manifests' `stages` first: a stage that failed on one side makes
-the delta for its categories not assessed. Then diff the findings by id:
-added ids are new findings, missing ids are fixed ones, and shared ids
-with a changed severity or coverage changed state.
+Read both manifests' `stages` first: a stage that is anything but
+`completed` on one side makes the delta for its categories not assessed.
+Then diff the findings by id: added ids are new findings, missing ids are
+fixed ones, and shared ids with a changed severity or coverage changed
+state.
 
 ## .NET data-flow deltas: dosai
 
@@ -52,38 +53,58 @@ dosai diff --old /tmp/dosai-old.json --new /tmp/dosai-new.json \
   --o /tmp/dosai-diff.json
 ```
 
-The document carries `AddedEntryPoints`, `RemovedEntryPoints`,
-`AddedPackages`, `AddedSlices`, `AddedWeaknesses` and the statistics of
-both sides. Added entry points are exposure changes even when no
-weakness accompanies them. Both runs need the same dosai version; a
-version mismatch makes the delta unreliable, and the diff document's
-`Metadata` records what ran. dosai's `--restore`/`--build` run MSBuild:
-consent, and never on an untrusted project.
+The diff carries `AddedEntryPoints`, `RemovedEntryPoints`, `AddedSlices`,
+`RemovedSlices`, `AddedWeaknesses`, `RemovedWeaknesses`, `AddedPackages`,
+`RemovedPackages`, `OldStatistics`, `NewStatistics` and a `RiskDelta`
+whose `NewAnonymousEndpoints`, `NewHighSeveritySlices` and
+`NewlyReachablePackages` are the headline numbers. Added entry points are
+exposure changes even when no weakness accompanies them. Both inputs need
+the same dosai version: compare the `Metadata` of the two dataflows files,
+because the diff document does not repeat it. dosai's `--restore`/`--build`
+run MSBuild: consent, and never on an untrusted project.
 
 ## Flow-level risk deltas across engines: atom-tools drift
 
 This runs atom-tools directly because dep-scan has no cross-engine drift
-view yet.
+view yet. Both sides must be reports from the same engine (dosai
+dataflows, golem, rusi, kosi or atom reachables), produced with the same
+options.
 
 ```bash
 atom-tools drift --old /tmp/golem-old.json --new /tmp/golem-new.json \
-  -o /tmp/drift.json -f json
+  -o /tmp/drift.json -f json --fail-on new-high
 ```
 
-Both sides must come from the same engine (the command refuses mixed
-engines). The drift document carries `AddedFlows`, `RemovedFlows`,
-`MovedFlows`, `AddedEntryPoints` and a `RiskDelta` with the tier changes;
-`NewAnonymousEndpoints` is the headline number for a pull request.
+The drift document carries `AddedFlows`, `RemovedFlows`, `MovedFlows`,
+`WitnessChangedFlows`, `AddedEntryPoints`, `AddedPackages`,
+`NewSinkCategories` and a `RiskDelta`; `coverage.regressed` says whether
+the new report covers less than the old one. With `--fail-on`, exit 2
+means a gate tripped, and the console line names which and why. A gate
+the engine cannot evaluate also trips: golem and rusi reports carry no
+authentication state, so `new-anonymous-endpoint` on them reports "not
+computed" and exits 2. Only dosai classifies authentication, so pass
+`new-anonymous-endpoint` only with dosai reports, and when the console
+says a gate "cannot be evaluated", report that gate as not assessed,
+never as a regression or a pass.
 
 ## Binaries and builds: blint diff
 
-blint's `diff` subcommand compares two builds' metadata, hardening and
-findings. It exists in blint master but not yet in a released blint
-(the releases this plugin's tools carry stop at `sbom`,
-`callgraph-match`, `canonicalize` and `db`); check `blint --help` first
-and, when the subcommand is missing, say the binary hardening delta is
-not assessable with the installed blint rather than substituting a
-weaker check.
+`blint diff` compares two builds' hardening, findings, reviews,
+dependencies and identity. It ships in blint 4.0.0 and newer; dep-scan's
+`ext` extra pins blint 3.2.x, which does not have it, so check
+`blint --help` for `diff` first.
+
+```bash
+blint diff /absolute/path/to/old-binary /absolute/path/to/new-binary --json \
+  > /tmp/blint-diff.json
+```
+
+The document carries `summary`, `hardening`, `findings`, `reviews`,
+`dependencies`, `imports`, `symbols` and `identity` deltas. Add
+`--disassemble` for the function-level delta (added, removed or changed
+by content hash), which needs `blint[extended]`. With only blint 3.2.x
+installed, say the binary hardening delta is not assessable here rather
+than substituting a weaker check.
 
 ## What this proves and what it does not
 

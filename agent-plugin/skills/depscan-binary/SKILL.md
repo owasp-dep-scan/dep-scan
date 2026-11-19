@@ -11,8 +11,8 @@ firmware-adjacent binaries. For an Android or iOS app use
 `depscan-container-image` first and this skill for its unpackaged
 binaries.
 
-blint is reached directly because dep-scan's binary check needs a binary
-target and reports the BOM only, not blint's findings. The rules in
+blint is run directly because dep-scan's binary check reports the BOM
+only, not blint's findings. The rules in
 [reference/safety.md](../../reference/safety.md) apply: a binary from an
 untrusted source is still untrusted input; never execute it, and never
 run its installer.
@@ -23,6 +23,17 @@ run its installer.
 | --- | --- | --- |
 | Vulnerability database directory | `${user_config.vdb_home}` | dep-scan's own default |
 
+## Which blint
+
+dep-scan's `ext` extra installs blint 3.2.x. blint 4.0.0 and newer add the
+analysis coverage report, `capabilities`, `diff`, ELF link closure and a
+parse cache. Read the version first
+(`python -c "import importlib.metadata as m; print(m.version('blint'))"`
+in the environment that runs blint) and use only what that version has.
+On blint 4, `blint capabilities --json` prints the catalog of checks and
+reviews the installed blint runs, which is the list to quote when the user
+asks what was checked.
+
 ## The security review
 
 ```bash
@@ -30,18 +41,20 @@ mkdir -p /absolute/path/to/blint-reports
 blint -i /absolute/path/to/binary -o /absolute/path/to/blint-reports --no-banner
 ```
 
-Outputs in the reports directory: `findings.json` (hardening and behaviour
-findings with rule ids, e.g. missing PIE or NX), `reviews.json` (behaviour
-reviews: dynamic code loading, weak crypto, embedded secret shapes), the
-binary's `-metadata.json` (format, sections, linked libraries, signatures
-on Windows), `fuzzables.json` (functions that take attacker-controlled
-input shapes), and `analysis-coverage.json` (what blint could and could
-not analyse). Review `analysis-coverage.json` before summarising: what
-blint left out is not assessed, and the summary says so.
+Outputs in the reports directory: the binary's `<name>-metadata.json`
+(format, sections, linked libraries, signatures on Windows),
+`reviews.json` (behaviour reviews: dynamic code loading, weak crypto,
+embedded secret shapes), `findings.json` when a hardening rule fired (for
+example missing PIE or NX), and `blint-output.html`. A missing
+`findings.json` means no hardening rule fired, not that none ran. Add
+`--suggest-fuzzable` for `fuzzables.json`, and `--disassemble` for
+function-level call graphs (it needs the extended install,
+`blint[extended]`, and takes longer).
 
-Add `--disassemble` for function-level call graphs; it needs the extended
-install (`blint[extended]`) and takes longer. Add `--suggest-fuzzable` to
-rank fuzzable functions.
+blint 4 also writes `analysis-coverage.json`: what blint could and could
+not analyse. Read it before summarising; what blint left out is not
+assessed. On blint 3.2.x there is no coverage report, so the coverage of
+the review is unknown and the summary says so.
 
 ## What each artifact kind delivers
 
@@ -55,26 +68,35 @@ rank fuzzable functions.
 
 ## Component identification
 
-`blint sbom -i <binary> -o <dir>` produces a CycloneDX BOM of the binary's
-components, which `depscan scan --target-kind bom <bom-file>` matches
-against the vulnerability database:
+`blint sbom` produces a CycloneDX BOM of the binary's components, which
+`depscan scan --target-kind bom <bom-file>` matches against the
+vulnerability database. Global options such as `--no-banner` go before the
+subcommand.
 
 ```bash
-blint sbom -i /absolute/path/to/binary -o /absolute/path/to/blint-reports --no-banner
-depscan scan --target-kind bom /absolute/path/to/blint-reports/sbom-binary-postbuild.cdx.json --format json -o /absolute/path/to/reports
+blint --no-banner sbom -i /absolute/path/to/binary \
+  -o /absolute/path/to/blint-reports/binary.cdx.json
+depscan scan --target-kind bom /absolute/path/to/blint-reports/binary.cdx.json --format json -o /absolute/path/to/reports
 ```
 
-Exact identification at scale uses blintdb:
-`blint db --download` fetches the identification database, and it is tens
-of gigabytes. State the size, and do not start it without the user's
-consent; without blintdb, identification rests on exports, embedded
-signatures and link metadata, and the summary says which method produced
-each component.
+Exact identification at scale uses blintdb (`--use-blintdb`), and
+`blint db --download` fetches it: tens of gigabytes. State the size, and
+do not start it without the user's consent; without blintdb,
+identification rests on exports, embedded signatures and link metadata,
+and the summary says which method produced each component.
 
-For stripped ELF files, `blint canonicalize <name>` normalises C++/Rust
-symbols and `blint callgraph-match` compares a stripped binary's call
-graph against a source-built one (check `blint --help`; both need a blint
-new enough to carry them).
+For stripped binaries, `blint canonicalize` normalises C++, Rust and Swift
+symbols, and `blint callgraph-match` compares a stripped binary's call
+graph against one built from source (`--profile precision`, `balanced`
+or `recall`). Both are in blint 3.2.x and 4.
+
+## Linked libraries on ELF (blint 4)
+
+With blint 4, setting `BLINT_RESOLVE_LINK_CLOSURE=1` resolves each ELF's
+needed libraries against a root filesystem (`BLINT_LINK_ROOT`, plus
+`BLINT_LINK_SEARCH_PATH` for extra directories) and records the result in
+the metadata's `link_closure`: missing libraries, the search paths used,
+and unused or undeclared dependencies. blint 3.2.x ignores these variables.
 
 ## What this proves and what it does not
 
@@ -88,3 +110,4 @@ Name the rule ids in the answer and mark the coverage gaps not assessed.
 
 - Match the component BOM against advisories: the `depscan scan` above
 - Compare two builds' hardening: `depscan-change-risk`
+- Review a container's trust store: `depscan-container-image`

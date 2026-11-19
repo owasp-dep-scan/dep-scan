@@ -7,9 +7,9 @@ description: Which question is answered by which agent skill, and which tool eac
 
 The dep-scan plugin's skills answer the questions users actually ask. This
 page maps each question to its skill and names the sibling tool a skill
-reaches directly, because dep-scan does not surface that output yet; the
+runs directly, because dep-scan does not report that output yet; the
 skill says so at the step, and moves to the dep-scan path when a later
-version wires the output up. Start at [the agent plugin](agent-plugin) for
+version reports it. Start at [the agent plugin](agent-plugin) for
 installation and [the MCP server](mcp) for the read tools.
 
 ## "Which dependencies have known CVEs?" and "what do I fix first?"
@@ -21,13 +21,14 @@ installation and [the MCP server](mcp) for the read tools.
 
 ## "Is this finding actually exploitable here?"
 
-- Prove or disprove reach with witness paths and root sets : 
-  `depscan-reachability-proof` (golem for Go, rusi for Rust, dosai for
-  .NET, atom as corroboration; Kotlin stays not assessed while cdxgen
-  deletes kosi's report)
+- Prove or disprove reach with witness paths and root sets:
+  `depscan-reachability-proof` (golem for Go, kosi for Kotlin and JVM,
+  rusi for Rust, dosai for .NET, atom reachables and callsites for the
+  languages atom reads)
 - Map what is exposed and which anonymous endpoints reach vulnerable
-  packages: `depscan-attack-surface` (atom-tools `ingest` and
-  `attack-surface`, dosai's AttackSurface and trust zones)
+  packages: `depscan-attack-surface` (atom-tools `attack-surface` over the
+  engine reports, dosai's AttackSurface and trust zones, and the
+  chokepoint metric for the fix that cuts the most flows)
 - Rank memory-safety defects by reach: `depscan-memory-safety`
   (atom with chen's rules)
 
@@ -37,10 +38,11 @@ installation and [the MCP server](mcp) for the read tools.
   (`depscan-change-risk`)
 - Compare .NET data-flow reports: `dosai diff` through
   `depscan-change-risk`
-- Compare binaries' hardening: `blint diff`, when a blint release ships
-  it
-- Compare flows across engines: `atom-tools drift` through
+- Compare binaries' hardening: `blint diff` (blint 4.0 and newer;
+  dep-scan's `ext` extra installs blint 3.2.x) through
   `depscan-change-risk`
+- Compare flows from the same engine and gate a pull request on them:
+  `atom-tools drift --fail-on` through `depscan-change-risk`
 
 ## "Is this binary safe to ship?" and "is this app leaking data?"
 
@@ -49,16 +51,16 @@ installation and [the MCP server](mcp) for the read tools.
   tens-of-gigabytes consent-gated download)
 - Analyse an APK, AAB or IPA: `depscan-mobile-app` (blint `sbom --deep`,
   per-ABI review, the JNI join, entitlements and privacy manifests)
-- Review what a container trusts: trustinspector through
-  `depscan-binary` and the rootfs steps of `depscan-container-image`
+- Review what a container trusts: trustinspector through the rootfs
+  steps of `depscan-container-image` and through `depscan-crypto`
 
 ## "Are there memory-safety defects in our native code?"
 
 - Find them and rank by reach: `depscan-memory-safety` (atom and chen's
   37 rules, compile commands, SARIF)
-- Inventory the unsafe boundaries in Go, Rust and Kotlin code: the same
-  skill (golem cgo and native-interop signals, rusi unsafe-code and FFI,
-  blint's JNI join)
+- Inventory the unsafe boundaries in Go, Rust and Android apps: the same
+  skill (golem's cgo packages and native boundary, rusi unsafe-code and
+  FFI signals, blint's JNI join)
 
 ## "Is our supply chain sound?" and "is anything in our tree malicious?"
 
@@ -66,17 +68,19 @@ installation and [the MCP server](mcp) for the read tools.
   fidelity: `depscan-supply-chain` (dep-scan's supply-chain check, then
   cdx-audit's rule packs directly; the predictive mode clones upstream and
   needs consent)
-- Inventory AI models and MCP servers: `depscan-supply-chain` naming
-  cdxgen's `ai-bom` skill
+- Inventory AI models, MCP servers and agent skills:
+  `depscan-supply-chain` (cdxgen's `mcp` and `ai-skill` project types,
+  with cdxgen's `ai-bom` skill for the details)
 
 ## "What cryptography do we use, and is it ready for post-quantum?"
 
-- Inventory algorithms, protocols and key material per language : 
-  `depscan-crypto` (golem's crypto findings, rusi `cryptos`, dosai's CBOM,
-  cdxgen's `crypto-bom` skill for the broader CBOM)
+- Inventory algorithms, protocols and key material per language:
+  `depscan-crypto` (golem's crypto findings, rusi's crypto report, dosai's
+  crypto report and CBOM, cdxgen's `crypto-bom` skill for the broader
+  CBOM)
 - Join the inventory to entry-point reachability: `depscan-crypto`
-  (atom-tools `crypto-reach`), and trustinspector for the certificates a
-  container trusts
+  (atom-tools `crypto-reach` over the golem, rusi and dosai reports), and
+  trustinspector for the certificates a container trusts
 
 ## "Is this document a valid disclosure?"
 

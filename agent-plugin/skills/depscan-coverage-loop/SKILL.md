@@ -1,6 +1,6 @@
 ---
 name: depscan-coverage-loop
-description: Runs the dep-scan coverage loop, which scans, reads depscan doctor and the scan manifest's failed and skipped stages, fixes the missing tool, database flavor or option each one names, and re-scans until coverage stops improving. Use when a scan came back empty or partly not assessed, when depscan doctor reports a missing tool or an unavailable capability, or when the user asks to make dep-scan coverage complete on this machine. Runs only when the user asks for it, because it installs dep-scan's own tools and data.
+description: Runs the dep-scan coverage loop, which scans, reads depscan doctor and the scan manifest's stages that did not complete, fixes the missing tool, database flavor or option each one names, and re-scans until coverage stops improving. Use when a scan came back empty or partly not assessed, when depscan doctor reports a missing tool or an unavailable capability, or when the user asks to make dep-scan coverage complete on this machine. Runs only when the user asks for it, because it installs dep-scan's own tools and data.
 disable-model-invocation: true
 ---
 
@@ -31,37 +31,51 @@ a stage that did not run is reported as not assessed, never as clean.
 for iteration in 1..5:
     read the machine's state with:
         depscan doctor --format json
-    for each capability whose status is unavailable:
-        report the capability's reason; the reason names the tool and
-        the version it needs; fix it under the consent rule above
-    for each tool whose version is null or below the reason's minimum:
-        report and fix it the same way
+    for each capability whose status is "unavailable":
+        its "missing" list names requirements such as "tool:cdxgen" or
+        "data:vdb"; look each tool up in "tools" by name and read its
+        "reason" and "minVersion"; fix it under the consent rule above
+    for each capability whose status is "not-implemented":
+        report it with its "issue" link; there is nothing to fix here
     read the target's stages with:
-        depscan scan /absolute/path/to/target --format json -o /absolute/path/to/reports
-    for each manifest stage whose status is failed or skipped:
+        depscan scan /absolute/path/to/target --checks all --format json -o /absolute/path/to/reports
+    for each manifest stage whose status is not "completed", and each
+    stage missing after one that stopped the run:
         the stage's reason names what was missing; report it as not
         assessed, and fix it under the consent rule above
     if every stage that applies to the target is completed, and doctor
     reports no unavailable capability the user cares about:
-        STOP - coverage complete for this target
+        STOP - success: coverage complete for this target
     if this iteration changed nothing (same doctor state, same stages):
-        STOP - stalled; report what is still missing and why
+        STOP - stalled: report what is still missing and why
+    if every remaining gap is not-implemented or not applicable:
+        STOP - nothing further available on this machine
+    if a fix needs the user's consent and they declined:
+        STOP - blocked: report the fix that would have helped
 STOP - budget exhausted; report the stages and capabilities still missing
 ```
+
+`--checks all` runs every check that can run and records the others as not
+assessed, instead of refusing with exit 4 the way a named check does.
 
 ## The fixes the reasons name
 
 The reasons come from dep-scan's own output, and the fixes are theirs to
 read, not guesses:
 
-| Reason says | Fix |
+| dep-scan says | Fix |
 | --- | --- |
-| `cdxgen 13.3.0 was found, but dep-scan needs 13.8.0 or newer` | Install a new enough cdxgen (`npm install -g @cdxgen/cdxgen@13.8.0` or newer), or install it into a prefix and export `CDXGEN_CMD` pointing at it. A prefix install is the reversible choice. |
-| `capability reachability is unavailable: tool:cdxgen` | The same cdxgen fix; reachability needs 13.8.0 or newer. |
+| A `tools` entry for cdxgen with `version` below `minVersion` (13.8.0), or `reason` "not found on PATH" | Install a new enough cdxgen (`npm install -g @cdxgen/cdxgen@13.8.0` or newer), or install it into a prefix and export `CDXGEN_CMD` pointing at it. A prefix install is the reversible choice. On a machine with `docker`, a source scan uses the cdxgen image unless `--bom-engine CdxgenGenerator` is passed, so pass it on the re-scan to test the local install. |
+| A capability `unavailable` with `missing: ["tool:cdxgen"]` | The same cdxgen fix; reachability needs 13.8.0 or newer. |
 | The database flavor lacks distro advisories (apk, deb, rpm) | `depscan vdb download --flavor full`, with the consent rule. |
 | `the risk audit was not requested for this type` | Not a defect: the stage does not apply to the target's type. Record it as not applicable, not as work. |
-| `<check> is not implemented in this version` | Nothing to fix on this machine; the capability is dep-scan's backlog. Report the check as not implemented, with the reason's issue link. |
-| A missing analyzer the doctor's `tools` list shows as version null | The reason names the tool; install it with consent or tell the user the analysis that stays not assessed without it. |
+| A capability `not-implemented` | Nothing to fix on this machine; the capability is dep-scan's backlog. Report it with its `issue` link. |
+| Any other tool whose `version` is null | Its `reason` names the tool and how dep-scan looks for it; install it with consent, or tell the user which analysis stays not assessed without it. |
+
+Rules for executing a fix: one fix per gap per iteration, name the command
+before running it, install into a prefix or the dep-scan environment
+rather than system-wide where a choice exists, and never install, build or
+run anything from the scanned project.
 
 ## Verify on the next iteration
 
@@ -82,8 +96,9 @@ beyond the stages:
   dependencies only, which caps what the matching stage can see.
 - **atom's `--parse-report`**: when a run produced one, the files it lists
   were not fully read, and their defects and usages are not assessed.
-- **blint's `analysis-coverage.json`**: for binary and app targets it
-  names what blint could not analyse.
+- **blint's `Analysis-Coverage.json`** (blint 4.0.0 or newer): for binary
+  and app targets it names what blint could not analyse; with the pinned
+  blint 3.2.x it is absent, and binary coverage is then unknown.
 
 Each of these is a coverage fact about the run, not a defect in the
 project; carry them into the final report as not-assessed entries with
@@ -100,4 +115,4 @@ the final report.
 ## After the loop
 
 - Re-read the finished scan: `depscan-triage`
-- Refresh the database the loop downloaded: `depscan-vdb`
+- Check the database the loop downloaded: suggest `/depscan:depscan-vdb`
