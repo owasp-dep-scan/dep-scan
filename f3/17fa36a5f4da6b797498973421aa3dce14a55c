@@ -1,0 +1,20 @@
+test/test_agent_plugin_check.py
+  s_a7047eb50a1dba::t_d7fcf0e1f151c2 199
+  s_a7047eb50a1dba::t_10a6279e417445 67-68,70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f317fa36a5f4da6b797498973421aa3dce14a55c",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
