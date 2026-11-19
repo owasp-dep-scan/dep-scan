@@ -1,0 +1,27 @@
+README.md
+  s_a7047eb50a1dba::t_bb717e61ec26a6 27,645
+documentation/sidebars.ts
+  s_a7047eb50a1dba::t_1b275abcfa1ab3 22
+documentation/docs/mcp.mdx
+  s_a7047eb50a1dba::t_fb43e4c8f907d6 10
+test/test_agent_plugin_plugin.py
+  s_a7047eb50a1dba::t_d680d592bd5bea 1-66
+documentation/docs/agents.mdx
+  s_a7047eb50a1dba::t_fc05628cf2cd18 9-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d6f257c090b3bb7e737f443d52e72c9d1c4d7b7",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
