@@ -617,6 +617,9 @@ def test_golem_runs_no_c_compiler_by_default_and_cc_with_opt_in(
     module_dir = _write_cgo_probe(tmp_path)
     wrapper, log = _write_cc_wrapper(tmp_path)
     monkeypatch.setenv("CC", wrapper)
+    # A fresh build cache: with the shared one, a cgo compile of the same
+    # probe from an earlier run is reused and the compiler never runs.
+    monkeypatch.setenv("GOCACHE", str(tmp_path / "gocache"))
     monkeypatch.delenv("CGO_ENABLED", raising=False)
     for var in (
         "CGO_CFLAGS_ALLOW",
@@ -646,5 +649,5 @@ def test_golem_runs_no_c_compiler_by_default_and_cc_with_opt_in(
         f"golem output was: {result.command_output[:2000]}"
     )
     assert "PROBE_MARKER" in log.read_text(encoding="utf-8"), (
-        "the #cgo CFLAGS flag from the scanned code reached the C compiler"
+        "the #cgo CFLAGS flag from the scanned code never reached the C compiler"
     )
