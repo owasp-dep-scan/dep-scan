@@ -7,7 +7,7 @@ description: The depscan mcp server, ten tools over stdio for saved scan directo
 
 `depscan mcp` runs dep-scan as a Model Context Protocol (MCP) server over stdio. An MCP client starts the process, lists the tools, and reads saved scan directories through them: the manifest summary, the findings with filters, one finding, its explanation, the coverage of the scan, the BOM's components, the difference between two scans, the doctor report, the vulnerability database state, and, when the operator allows it, a scan itself. The server is built on the official Python MCP SDK (`mcp[cli]>=2.0.0,<3.0.0`).
 
-Every path a tool takes stays inside the allowed roots, scan requests are dry runs until the operator allows them when the server starts, and every oversized result pages or spills into the scan directory it came from. The rest of this page describes each of those rules, and the tools that follow them.
+Every path a tool takes stays inside the allowed roots, scan requests are dry runs until the operator allows them when the server starts, and every oversized result pages or spills into the scan directory it came from. The rest of this page describes each of those rules, and the tools that follow them. The agent plugin ships this server's configuration, so installing the plugin in a client that reads one connects the tools without a manual client setup; see [the agent plugin](agent-plugin).
 
 ## Install
 
