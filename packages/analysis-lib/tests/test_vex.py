@@ -747,6 +747,62 @@ def test_vulnerability_without_cve_gets_synthesized_id():
     assert model.ids and model.ids[0]["text"] == "DLA-4485-1"
 
 
+@pytest.mark.parametrize("version", VERSIONS)
+def test_go_advisory_without_cve_carries_its_id_and_validates(version):
+    """A Go advisory with no CVE alias gets its GO id in ``ids`` (§6.1.27.8).
+
+    The id lives only in the VDR id and bom-ref, the way the vulnerability
+    database stores Go vulnerability database entries.
+    """
+    bom = _load_demo()
+    purl = "pkg:golang/golang.org/x/crypto@v0.9.0"
+    bom["components"].append(
+        {"type": "library", "name": "golang.org/x/crypto", "version": "v0.9.0",
+         "purl": purl, "bom-ref": purl}
+    )
+    go_vuln = {
+        "id": "GO-2026-5932",
+        "bom-ref": f"GO-2026-5932/{purl}",
+        "affects": [{"ref": purl}],
+        "references": [
+            {"id": "", "source": {"name": "github", "url": "https://github.com/go-yaml/yaml"}}
+        ],
+    }
+    vulns = [*bom["vulnerabilities"], go_vuln]
+    doc = build_csaf(bom, vulns, reached_purls={purl: 1}, csaf_version=version)
+    assert validate(doc, version) == []
+    entry = next(v for v in doc["vulnerabilities"] if "GO-2026-5932" in v["title"])
+    assert "cve" not in entry
+    assert entry["ids"] == [{"system_name": "Go Vulnerability Database", "text": "GO-2026-5932"}]
+
+
+def test_go_shaped_names_in_urls_are_not_taken_for_ids():
+    """``go-yaml`` in a URL is a project name, not a Go advisory id."""
+    refs, ids = build_references_and_ids(
+        [{"id": "", "source": {"name": "github", "url": "https://github.com/go-yaml/yaml"}}],
+        [{"title": "PYSEC-2024-12", "url": "https://osv.dev/vulnerability/PYSEC-2024-12"}],
+    )
+    assert [i["text"] for i in ids] == ["PYSEC-2024-12"]
+    assert synthesize_id("RUSTSEC-2023-0071/pkg:cargo/rsa@0.9.6") == {
+        "system_name": "RustSec Advisory Database",
+        "text": "RUSTSEC-2023-0071",
+    }
+
+
+def test_an_unrecognised_advisory_id_is_kept_as_the_id():
+    """An id no known prefix matches still names the vulnerability."""
+    vuln = {
+        "id": "ACME-SA-77",
+        "bom-ref": "ACME-SA-77/pkg:npm/demo@1.0.0",
+        "affects": [{"ref": "pkg:npm/demo@1.0.0"}],
+        "source": {"name": "acme-feed"},
+    }
+    pid = "pkg:npm/demo@1.0.0"
+    model = build_vulnerability(vuln, {pid: pid}, {pid: 1}, "2.0")
+    assert model is not None
+    assert model.ids == [{"system_name": "acme-feed", "text": "ACME-SA-77"}]
+
+
 def test_scores_deduped_per_cvss_version():
     # Two different v3.1 vectors on the same product -> only one v3 score
     # (§6.1.7).

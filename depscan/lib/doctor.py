@@ -45,7 +45,12 @@ from xbom_lib.cdxgen import (
     resource_path,
 )
 from xbom_lib.plugins import get_plugins_bin_target
-from xbom_lib.process import build_command, find_executable, tool_env
+from xbom_lib.process import (
+    build_command,
+    find_executable,
+    find_in_interpreter_scripts,
+    tool_env,
+)
 
 #: How long one tool's version probe may run.
 PROBE_TIMEOUT_SEC = 10
@@ -997,9 +1002,10 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
         ),
         _versioned_tool(
             "atom-tools",
-            find_executable("atom-tools"),
+            find_executable("atom-tools") or find_in_interpreter_scripts("atom-tools"),
             _parse_regex(_ATOM_TOOLS_VERSION_RE),
-            "atom-tools was not found on PATH; install it with `pip install atom-tools`",
+            "atom-tools was not found on PATH or next to the Python that runs "
+            "dep-scan; install it with `pip install atom-tools`",
         ),
         _versioned_tool(
             "edga",

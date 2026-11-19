@@ -302,8 +302,9 @@ def _run_stages(
                 ctx,
                 tscan,
                 project_type=project_type,
-                skipped_reason="the risk audit was not requested for this type",
+                skipped_reason="the risk audit was not requested",
                 failed_reason=lambda: tscan.risk_error,
+                not_assessed_reason=lambda: tscan.risk_not_assessed,
             )
             pipeline.announce_scan_targets(ctx, tscan)
             _stage(
@@ -382,6 +383,7 @@ def _stage(
     skipped_reason=None,
     record_extra=None,
     failed_reason=None,
+    not_assessed_reason=None,
 ):
     """Run one stage and record what it did in the scan directory's manifest.
 
@@ -395,7 +397,10 @@ def _stage(
     are only known once it has run, for example the inventory stage's
     not-assessed reasons. ``failed_reason`` is called after a stage that
     degrades instead of stopping the scan; a reason it returns records the
-    stage as failed while the scan goes on.
+    stage as failed while the scan goes on. ``not_assessed_reason`` is called
+    after a stage that returns False; a reason it returns records the stage
+    as not assessed: the work was requested but nothing in the scan could be
+    analysed by it.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
@@ -420,8 +425,11 @@ def _stage(
         record("failed", str(exc) or f"the stage stopped the scan ({type(exc).__name__})")
         raise
     degraded = failed_reason() if failed_reason else None
+    unassessed = not_assessed_reason() if not_assessed_reason and result is False else None
     if degraded:
         record("failed", degraded)
+    elif unassessed:
+        record("not-assessed", unassessed)
     elif result is False or skipped:
         record("skipped", skipped_reason or "the stage had nothing to do")
     else:

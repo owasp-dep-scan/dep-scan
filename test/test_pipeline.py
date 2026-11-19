@@ -429,6 +429,70 @@ def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch
     assert "Deprecated" in rows[0]["Identified Risks"]
 
 
+def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path, monkeypatch):
+    """A source scan is typed universal; its npm and PyPI packages are audited.
+
+    The maven package is left out because the audit reads no Maven metadata,
+    and both ecosystems' rows land in the one risk report.
+    """
+    calls = []
+
+    def fake_risk_audit(project_type, scoped_pkgs, private_ns, pkg_list):
+        calls.append((project_type, [pkg["purl"] for pkg in pkg_list]))
+        name = pkg_list[0]["name"]
+        return {name: {"scope": "required", "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True}}}
+
+    monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
+    ctx = _ctx(tmp_path, ["-t", "universal"])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="universal")
+    scan.pkg_list = [
+        {"name": "left-pad", "version": "1.0.0", "purl": "pkg:npm/left-pad@1.0.0"},
+        {"name": "requests", "version": "2.0.0", "purl": "pkg:pypi/requests@2.0.0"},
+        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"},
+    ]
+    scan.risk_report_file = os.path.join(ctx.reports_dir, "depscan-risk-universal.json")
+
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+
+    assert calls == [
+        ("npm", ["pkg:npm/left-pad@1.0.0"]),
+        ("pypi", ["pkg:pypi/requests@2.0.0"]),
+    ]
+    assert scan.risk_not_assessed is None
+    rows = [
+        json.loads(line)
+        for line in Path(scan.risk_report_file).read_text().splitlines()
+    ]
+    assert [row["Package"] for row in rows] == ["left-pad", "requests"]
+
+
+def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
+    tmp_path, monkeypatch
+):
+    """Only Maven packages: the audit was requested and could not run.
+
+    Positive control: the same scan with the audit off returns False with no
+    not-assessed reason, which the manifest records as skipped.
+    """
+    monkeypatch.setattr(
+        pipeline, "risk_audit", lambda *a: pytest.fail("nothing here can be audited")
+    )
+    ctx = _ctx(tmp_path, ["-t", "universal"])
+    scan = pipeline.TypeScan(project_type="universal")
+    scan.pkg_list = [
+        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}
+    ]
+    ctx.perform_risk_audit = False
+    assert pipeline.stage_analysis_risk(ctx, scan) is False
+    assert scan.risk_not_assessed is None
+    ctx.perform_risk_audit = True
+    assert pipeline.stage_analysis_risk(ctx, scan) is False
+    reason = scan.risk_not_assessed or ""
+    assert "no npm, PyPI or Cargo packages" in reason
+    assert "universal" in reason
+
+
 # ---------------------------------------------------------------------------
 # enrichment
 # ---------------------------------------------------------------------------

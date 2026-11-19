@@ -1472,13 +1472,70 @@ def export_bom(bom_data, ds_version, pkg_vulnerabilities, vdr_file):
     if isinstance(tools, dict):
         bom_data = update_tools_metadata(tools, bom_data, ds_version)
     bom_data = trim_vdr_bom_data(bom_data)
-    bom_data["vulnerabilities"] = pkg_vulnerabilities
+    bom_data["vulnerabilities"] = [
+        _with_rfc3339_dates(vuln) if isinstance(vuln, dict) else vuln
+        for vuln in pkg_vulnerabilities or []
+    ]
     json_dump(
         vdr_file,
         bom_data,
         compact=True,
         error_msg=f"Unable to generate VDR file at {vdr_file}",
     )
+
+
+#: The date-time fields of a CycloneDX vulnerability, and of its analysis.
+_VULN_DATE_FIELDS = ("created", "published", "updated", "rejected")
+_ANALYSIS_DATE_FIELDS = ("firstIssued", "lastUpdated")
+
+
+def to_rfc3339(value):
+    """A CycloneDX ``date-time`` string for ``value``, or None.
+
+    CycloneDX date-times are RFC 3339 and carry a timezone. The vulnerability
+    database stores naive UTC times ("2021-09-02T17:16:46"), so a value
+    without an offset is read as UTC and written with a ``Z``. A value that
+    is empty or cannot be read as a date returns None, and the caller drops
+    the field rather than write a document that fails its own schema.
+    """
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str) and value.strip():
+        text = value.strip()
+        if text.endswith(("Z", "z")):
+            text = text[:-1] + "+00:00"
+        try:
+            parsed = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    else:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    if parsed.utcoffset() == timezone.utc.utcoffset(None):
+        return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return parsed.isoformat(timespec="seconds")
+
+
+def _with_rfc3339_dates(vuln):
+    """The vulnerability with every date-time field in RFC 3339 form."""
+    for key in _VULN_DATE_FIELDS:
+        if key in vuln:
+            converted = to_rfc3339(vuln[key])
+            if converted:
+                vuln[key] = converted
+            else:
+                del vuln[key]
+    analysis = vuln.get("analysis")
+    if isinstance(analysis, dict):
+        for key in _ANALYSIS_DATE_FIELDS:
+            if key in analysis:
+                converted = to_rfc3339(analysis[key])
+                if converted:
+                    analysis[key] = converted
+                else:
+                    del analysis[key]
+    return vuln
 
 
 def trim_vdr_bom_data(bom_data):

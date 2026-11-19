@@ -230,6 +230,59 @@ def test_export_bom_preserves_source_spec_version(tmp_path):
     assert vdr["specVersion"] == "1.7"
 
 
+def test_export_bom_writes_dates_the_validator_accepts(tmp_path):
+    """Naive database times become RFC 3339 UTC, and the VDR validates.
+
+    The vulnerability database stores naive UTC times; CycloneDX date-time
+    needs an offset, so without the conversion ``depscan validate`` rejects
+    every VDR a scan writes.
+    """
+    import json
+
+    from analysis_lib.validation import validate_document
+    from depscan.lib.bom import export_bom
+
+    bom_data = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "version": 1,
+        "metadata": {"tools": {"components": []}},
+        "components": [
+            {"type": "library", "name": "lodash", "version": "4.17.20",
+             "purl": "pkg:npm/lodash@4.17.20", "bom-ref": "pkg:npm/lodash@4.17.20"}
+        ],
+    }
+    vulnerabilities = [
+        {
+            "bom-ref": "CVE-2021-23337/pkg:npm/lodash@4.17.20",
+            "id": "CVE-2021-23337",
+            "published": "2021-02-15T13:15:12",
+            "updated": "2021-09-02T17:16:46.123",
+            "affects": [{"ref": "pkg:npm/lodash@4.17.20"}],
+            "analysis": {"state": "exploitable", "firstIssued": "2021-02-15T13:15:12"},
+        },
+        {
+            "bom-ref": "GHSA-x/pkg:npm/lodash@4.17.20",
+            "id": "GHSA-35jh-r3h4-6jhm",
+            "published": "",
+            "updated": "2021-09-02T17:16:46+02:00",
+            "affects": [{"ref": "pkg:npm/lodash@4.17.20"}],
+        },
+    ]
+    vdr_file = tmp_path / "test.vdr.json"
+    export_bom(bom_data, "1.0.0", vulnerabilities, str(vdr_file))
+    vdr = json.loads(vdr_file.read_text(encoding="utf-8"))
+    first, second = vdr["vulnerabilities"]
+    assert first["published"] == "2021-02-15T13:15:12Z"
+    assert first["updated"] == "2021-09-02T17:16:46Z"
+    assert first["analysis"]["firstIssued"] == "2021-02-15T13:15:12Z"
+    assert "published" not in second
+    assert second["updated"] == "2021-09-02T17:16:46+02:00"
+    detected, errors = validate_document(vdr)
+    assert detected == "cyclonedx"
+    assert errors == []
+
+
 # ---------------------------------------------------------------------------
 # create_bom / BomResult contract
 #

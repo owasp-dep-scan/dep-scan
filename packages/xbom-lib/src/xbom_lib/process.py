@@ -39,6 +39,7 @@ import re
 import shutil
 import subprocess
 import sys
+import sysconfig
 from typing import Callable, List, Optional, Sequence, Union
 
 WINDOWS_BATCH_SUFFIXES = (".bat", ".cmd")
@@ -143,6 +144,44 @@ def find_executable(name: str) -> Optional[str]:
     if sys.platform == "win32":
         return windows_which(name)
     return shutil.which(name)
+
+
+def interpreter_scripts_dirs() -> list:
+    """The directories that hold the console scripts of the running Python.
+
+    pip and uv install the scripts of dep-scan's Python extras (atom-tools,
+    vdb) into the environment's ``bin`` (``Scripts`` on Windows) directory,
+    which is not on ``PATH`` when depscan is started by its full path.
+    """
+    dirs = []
+    for candidate in (sysconfig.get_path("scripts"), os.path.dirname(sys.executable)):
+        if candidate and os.path.isabs(candidate) and candidate not in dirs:
+            dirs.append(candidate)
+    return dirs
+
+
+def find_in_interpreter_scripts(name: str) -> Optional[str]:
+    """Find a console script next to the Python that runs dep-scan.
+
+    Only the scripts directories of the running interpreter are searched, so
+    a tool installed into dep-scan's own environment is found even when that
+    environment's ``bin`` is not on ``PATH``.
+    """
+    path_env = os.pathsep.join(interpreter_scripts_dirs())
+    if not path_env:
+        return None
+    if sys.platform == "win32":
+        return windows_which(name, path_env=path_env)
+    return shutil.which(name, path=path_env)
+
+
+def find_python_tool(name: str) -> Optional[str]:
+    """Find a console script from one of dep-scan's Python extras.
+
+    ``PATH`` is searched first, as :func:`find_executable` does, and then the
+    scripts directories of the running interpreter.
+    """
+    return find_executable(name) or find_in_interpreter_scripts(name)
 
 
 def tool_env(env: Optional[dict] = None) -> dict:

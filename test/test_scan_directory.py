@@ -633,6 +633,39 @@ def test_interrupted_scan_writes_a_manifest_naming_the_failed_stage(
     assert "matching stage did not complete" in str(excinfo.value)
 
 
+@pytest.mark.parametrize(
+    "purl,expected",
+    [
+        ("pkg:maven/com.google/guava@1.0", "not-assessed"),
+        ("pkg:pypi/requests@2.32.1", "completed"),
+    ],
+)
+def test_a_requested_risk_audit_records_what_it_could_audit(
+    scan_stubs, monkeypatch, tmp_path, purl, expected
+):
+    """A BOM with only Maven packages cannot be audited; one with PyPI can.
+
+    The requested audit that had nothing to read is recorded as not
+    assessed with its reason, never as "not requested".
+    """
+    monkeypatch.setattr(
+        pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], [])
+    )
+    monkeypatch.setattr(pipeline, "risk_audit", lambda *a: {})
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True, risk_audit=True),
+        render=False,
+    )
+    manifest = _manifest_of(reports)
+    validate("depscan-manifest", manifest)
+    risk = next(stage for stage in manifest["stages"] if stage["name"] == "risk")
+    assert risk["status"] == expected
+    if expected == "not-assessed":
+        assert "no npm, PyPI or Cargo packages" in risk["reason"]
+
+
 def test_interrupted_manifest_write_keeps_the_previous_content(tmp_path, monkeypatch):
     """The manifest goes through a temporary file and a rename, so a crash
     mid-write leaves the previous manifest intact and no debris behind."""

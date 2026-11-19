@@ -138,6 +138,9 @@ def clean_env(tmp_path, monkeypatch):
         "DEPSCAN_DOSAI_BINARY",
     ):
         monkeypatch.delenv(var, raising=False)
+    # The test environment's own bin directory carries a real atom-tools;
+    # only the fakes may answer here.
+    monkeypatch.setattr(doctor_mod, "find_in_interpreter_scripts", lambda name: None)
     return tmp_path
 
 
@@ -334,6 +337,31 @@ def test_tool_states(case, name, fakes, monkeypatch):
         assert "minimum" in entry.reason
     else:
         assert entry.reason is None, f"{name} stays usable: {entry.reason}"
+
+
+def test_atom_tools_next_to_the_interpreter_is_found_without_path(fakes, monkeypatch):
+    """depscan started by its full path still finds atom-tools in its own venv.
+
+    PATH is stripped by the fixture; the only copy of atom-tools sits in the
+    running interpreter's scripts directory.
+    """
+    from xbom_lib import process as process_mod
+
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    scripts = fakes.record.parent / "venv-bin"
+    scripts.mkdir()
+    source = fakes.script("atom-tools", "Atom Tools (version 9.9.9)")
+    name = "atom-tools.exe" if sys.platform == "win32" else "atom-tools"
+    target = scripts / name
+    target.write_bytes(source.read_bytes())
+    target.chmod(0o755)
+    monkeypatch.setattr(process_mod, "interpreter_scripts_dirs", lambda: [str(scripts)])
+    monkeypatch.setattr(
+        doctor_mod, "find_in_interpreter_scripts", process_mod.find_in_interpreter_scripts
+    )
+    entry = _tool_entries(doctor_mod.doctor())["atom-tools"]
+    assert entry.path == str(target)
+    assert entry.version == "9.9.9"
 
 
 def test_python_runtime_is_always_reported(clean_env):
