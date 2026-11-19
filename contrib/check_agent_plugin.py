@@ -212,7 +212,7 @@ def check_hooks(plugin_root: Path, problems: list) -> None:
         for group in groups or []:
             for handler in group.get("hooks", []) or []:
                 for arg in [handler.get("command"), *(handler.get("args") or [])]:
-                    match = re.search(r"\$\{CLAUDE_PLUGIN_ROOT\}/(\S+)", arg or "")
+                    match = re.search(r"\$\{CLAUDE_PLUGIN_ROOT\}/([^\s\"']+)", arg or "")
                     if match and not (plugin_root / match.group(1)).exists():
                         problems.append(
                             {
@@ -243,6 +243,15 @@ def check_mcp_configs(plugin_root: Path, problems: list) -> None:
                 "problem": "differs from mcp.json; the two MCP configurations must be identical",
             }
         )
+    servers = (read_json(claude).get("mcpServers") or {}).values()
+    for server in servers:
+        if server.get("args") != ["mcp"]:
+            problems.append(
+                {
+                    "file": str(claude.relative_to(REPO_ROOT)),
+                    "problem": "the MCP server must start as `depscan mcp` with no further arguments",
+                }
+            )
     text = claude.read_text(encoding="utf-8")
     if "allow-scans" in text:
         problems.append(
@@ -327,7 +336,16 @@ def collect_problems(repo_root: Path | None = None) -> list:
             )
         marketplace = read_json(REPO_ROOT / ".claude-plugin" / "marketplace.json")
         for plugin in marketplace.get("plugins", []):
-            plugin_root = (REPO_ROOT / plugin.get("source", "")).resolve()
+            source = plugin.get("source")
+            if not isinstance(source, str) or not source.startswith("./"):
+                problems.append(
+                    {
+                        "file": ".claude-plugin/marketplace.json",
+                        "problem": f"{plugin.get('name')}: source must be a ./ path in this repository",
+                    }
+                )
+                continue
+            plugin_root = (REPO_ROOT / source).resolve()
             manifest = plugin_root / ".claude-plugin" / "plugin.json"
             if not manifest.exists():
                 problems.append(

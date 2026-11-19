@@ -1,5 +1,5 @@
 {
   "name": "depscan",
-  "version": "7.0.0-dev0",
+  "version": "7.0.0-0.dev.0",
   "description": "OWASP dep-scan toolkit for coding agents: scan source projects and container images for vulnerabilities, triage findings, manage the vulnerability database, and produce VEX and CSAF documents."
 }

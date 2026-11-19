@@ -14,9 +14,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def _run_module(module):
+def _run_module(module, *args):
     proc = subprocess.run(
-        [sys.executable, "-m", module],
+        [sys.executable, "-m", module, *args],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,
@@ -27,7 +27,7 @@ def _run_module(module):
 
 def test_generated_manifests_are_not_stale():
     """The committed manifests equal what the generator writes."""
-    proc = _run_module("contrib.gen_agent_manifests")
+    proc = _run_module("contrib.gen_agent_manifests", "--check")
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "up to date" in proc.stdout
 

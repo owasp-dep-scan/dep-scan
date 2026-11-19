@@ -21,7 +21,7 @@ HOOKS_DIR = os.path.join(
 )
 CHECK_SCRIPT = os.path.join(HOOKS_DIR, "check_depscan.py")
 STALE_SCRIPT = os.path.join(HOOKS_DIR, "stale_lockfile.py")
-PLUGIN_VERSION = "7.0.0-dev0"
+PLUGIN_VERSION = "7.0.0-0.dev.0"
 
 #: The environment of a machine where depscan cannot be found at all.
 HIDDEN_ENV = {
@@ -128,20 +128,51 @@ def test_missing_mcp_module_warns(tmp_path):
     assert "exit 4" in result["systemMessage"]
 
 
+def test_mcp_check_reads_the_site_packages_that_holds_depscan(tmp_path):
+    """A prefix with several Pythons is read where dep-scan is installed.
+
+    Homebrew-style prefixes carry lib/python3.11 ... lib/python3.15; the
+    first sorted one is empty here, and dep-scan with the mcp extra lives
+    in python3.12. Positive control: removing mcp there brings the warning.
+    """
+    fake_env = tmp_path / "prefix"
+    bin_dir = fake_env / "bin"
+    bin_dir.mkdir(parents=True)
+    script = bin_dir / "depscan"
+    script.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    script.chmod(0o755)
+    (fake_env / "lib" / "python3.11" / "site-packages").mkdir(parents=True)
+    packages = fake_env / "lib" / "python3.12" / "site-packages"
+    (packages / "owasp_depscan-9.9.9.dist-info").mkdir(parents=True)
+    (packages / "mcp").mkdir()
+    assert _parse_hook_output(_run_hook(CHECK_SCRIPT, env=_env_with(fake_env))) is None
+    (packages / "mcp").rmdir()
+    result = _parse_hook_output(_run_hook(CHECK_SCRIPT, env=_env_with(fake_env)))
+    assert result is not None
+    assert "mcp extra" in result["systemMessage"]
+
+
 def test_version_parser_reads_both_forms():
     """The semver manifest form and the PEP 440 installed form compare."""
     sys.path.insert(0, HOOKS_DIR)
     try:
         check_depscan = importlib.import_module("check_depscan")
 
-        assert check_depscan.parse_version("7.0.0-dev0") == check_depscan.parse_version(
+        assert check_depscan.parse_version("7.0.0-0.dev.0") == check_depscan.parse_version(
             "7.0.0.dev0"
         )
-        assert check_depscan.is_older("6.9.9", "7.0.0-dev0")
-        assert not check_depscan.is_older("7.0.0", "7.0.0-dev0")
+        assert check_depscan.parse_version("7.0.0-alpha.1") == check_depscan.parse_version(
+            "7.0.0a1"
+        )
+        assert check_depscan.parse_version("7.0.0-rc.2") == check_depscan.parse_version(
+            "7.0.0rc2"
+        )
+        assert check_depscan.is_older("6.9.9", "7.0.0-0.dev.0")
+        assert not check_depscan.is_older("7.0.0", "7.0.0-0.dev.0")
         assert check_depscan.is_older("7.0.0.dev0", "7.0.0")
-        assert not check_depscan.is_older("8.0.0.dev1", "7.0.0-dev0")
-        assert not check_depscan.is_older("garbage", "7.0.0-dev0")
+        assert check_depscan.is_older("7.0.0.dev3", "7.0.0-alpha.1")
+        assert not check_depscan.is_older("8.0.0.dev1", "7.0.0-0.dev.0")
+        assert not check_depscan.is_older("garbage", "7.0.0-0.dev.0")
     finally:
         sys.path.pop(0)
         sys.modules.pop("check_depscan", None)
@@ -242,3 +273,38 @@ def test_invalid_stdin_is_silent(tmp_path):
     )
     assert proc.returncode == 0
     assert proc.stdout.strip() == ""
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"session_id": "s", "tool_input": None},
+        {"session_id": "s", "tool_input": "uv.lock"},
+        {"session_id": "s", "tool_input": {"file_path": 7}},
+        [1, 2, 3],
+    ],
+)
+def test_odd_payloads_are_silent(tmp_path, payload):
+    """Payload shapes the hook does not expect exit 0 with no output."""
+    env = dict(os.environ)
+    env["CLAUDE_PLUGIN_OPTION_LOCKFILE_REMINDER"] = "true"
+    env["CLAUDE_PLUGIN_DATA"] = str(tmp_path)
+    assert _parse_hook_output(_run_hook(STALE_SCRIPT, payload, env=env)) is None
+
+
+def test_corrupt_marker_file_still_reminds(tmp_path):
+    """A marker that is not a list is treated as empty, not as a crash."""
+    marker_dir = tmp_path / "stale-lockfile"
+    marker_dir.mkdir()
+    (marker_dir / "sess-corrupt.json").write_text('{"x": 1}', encoding="utf-8")
+    env = dict(os.environ)
+    env["CLAUDE_PLUGIN_OPTION_LOCKFILE_REMINDER"] = "true"
+    env["CLAUDE_PLUGIN_DATA"] = str(tmp_path)
+    payload = {
+        "session_id": "sess-corrupt",
+        "tool_name": "Edit",
+        "tool_input": {"file_path": "/home/dev/work/app/go.mod"},
+    }
+    result = _parse_hook_output(_run_hook(STALE_SCRIPT, payload, env=env))
+    assert result is not None
+    assert "go.mod changed" in result["hookSpecificOutput"]["additionalContext"]

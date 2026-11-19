@@ -81,6 +81,8 @@ def first_time(data_dir, session_id, file_path):
             seen = json.load(handle)
     except (OSError, ValueError):
         seen = []
+    if not isinstance(seen, list):
+        seen = []
     if file_path in seen:
         return False
     try:
@@ -95,8 +97,9 @@ def first_time(data_dir, session_id, file_path):
 def remind(payload, env=None):
     """The reminder for this edit, or None when there is nothing to say."""
     env = env if env is not None else os.environ
-    file_path = (payload or {}).get("tool_input", {}).get("file_path")
-    if not enabled(env) or not is_dependency_file(file_path):
+    tool_input = (payload or {}).get("tool_input") or {}
+    file_path = tool_input.get("file_path") if isinstance(tool_input, dict) else None
+    if not isinstance(file_path, str) or not enabled(env) or not is_dependency_file(file_path):
         return None
     if not first_time(env.get("CLAUDE_PLUGIN_DATA"), payload.get("session_id"), file_path):
         return None
@@ -114,10 +117,10 @@ def remind(payload, env=None):
 
 def main():
     try:
-        payload = json.loads(sys.stdin.read())
-    except ValueError:
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+        result = remind(payload if isinstance(payload, dict) else {})
+    except Exception:  # noqa: BLE001 - a reminder hook must never fail the edit
         return 0
-    result = remind(payload if isinstance(payload, dict) else {})
     if result:
         sys.stdout.write(json.dumps(result))
     return 0

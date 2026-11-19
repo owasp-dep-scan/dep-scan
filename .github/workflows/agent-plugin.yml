@@ -7,12 +7,16 @@ on:
   pull_request:
     paths:
       - '.github/workflows/agent-plugin.yml'
+      - '.agents/**'
       - '.claude-plugin/**'
+      - '.cursor-plugin/**'
+      - '.gitattributes'
       - 'agent-plugin/**'
       - 'contrib/agent_manifests_template.json'
       - 'contrib/gen_agent_manifests.py'
       - 'contrib/check_agent_plugin.py'
       - 'contrib/schemas/**'
+      - 'pyproject.toml'
       - 'test/test_agent_plugin_*.py'
   push:
     branches:
@@ -20,13 +24,18 @@ on:
       - release/*
     paths:
       - '.github/workflows/agent-plugin.yml'
+      - '.agents/**'
       - '.claude-plugin/**'
+      - '.cursor-plugin/**'
+      - '.gitattributes'
       - 'agent-plugin/**'
       - 'contrib/agent_manifests_template.json'
       - 'contrib/gen_agent_manifests.py'
       - 'contrib/check_agent_plugin.py'
       - 'contrib/schemas/**'
+      - 'pyproject.toml'
       - 'test/test_agent_plugin_*.py'
+  merge_group:
   workflow_dispatch:
 
 permissions: {}

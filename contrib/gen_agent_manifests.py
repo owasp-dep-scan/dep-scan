@@ -4,11 +4,14 @@ manifest from pyproject.toml and contrib/agent_manifests_template.json.
 
 The version comes from pyproject.toml. dep-scan publishes PEP 440 versions
 (``7.0.0.dev0``) while the agent clients expect a semver string, so
-:func:`pep440_to_semver` converts the version: the release part is kept,
-a ``devN`` segment becomes ``-devN``, an ``aN``/``bN``/``rcN`` (PEP 440 also
-allows ``cN``) segment becomes ``-aN``/``-bN``/``-rcN``, and ``postN``
-segments are dropped because semver has no post-release. ``7.0.0.dev0``
-therefore lands in every manifest as ``7.0.0-dev0``.
+:func:`pep440_to_semver` converts the version into a semver string that
+sorts in the same order: ``7.0.0.dev3`` becomes ``7.0.0-0.dev.3`` (a numeric
+first identifier sorts below every alphanumeric one), ``7.0.0a1``,
+``7.0.0b2`` and ``7.0.0rc1`` (``c1`` is read as ``rc1``) become
+``7.0.0-alpha.1``, ``7.0.0-beta.2`` and ``7.0.0-rc.1``. Versions that have no
+order-preserving semver form (a pre-release combined with a dev segment, a
+post-release or a local segment) stop the generator with exit 2 instead of
+writing a version that clients would sort wrongly.
 
 The description, author, homepage, repository and keywords come from the
 template. Fields that only one client reads (``userConfig``,
@@ -35,7 +38,6 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE = REPO_ROOT / "contrib" / "agent_manifests_template.json"
 AGENT_PLUGINS_SCHEMA_URL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 PLUGIN_NAME = "depscan"
 PLUGIN_DIR = "./agent-plugin"
@@ -46,25 +48,38 @@ PLUGIN_DIR = "./agent-plugin"
 MCP_CONFIG = {"mcpServers": {"depscan": {"command": "depscan", "args": ["mcp"]}}}
 
 _VERSION_RE = re.compile(
-    r"^(?P<release>\d+(?:\.\d+)*)(?:\.?(?P<pre>a|b|c|rc|dev)\.?(?P<prenum>\d+))?(?:\.post\d+)*(?:\+.*)?$"
+    r"^(?P<release>\d+(?:\.\d+)*)"
+    r"(?:(?P<pre>a|b|c|rc)(?P<prenum>\d+)|\.dev(?P<dev>\d+))?$"
 )
+_SEMVER_RE = re.compile(
+    r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:\.[0-9A-Za-z]+)*)?$"
+)
+_PRE_NAMES = {"a": "alpha", "b": "beta", "c": "rc", "rc": "rc"}
 
 
 def pep440_to_semver(version: str) -> str:
-    """Convert a PEP 440 version to the semver form the clients expect.
+    """Convert a PEP 440 version to a semver string with the same ordering.
 
-    ``7.0.0`` stays ``7.0.0``; ``7.0.0.dev0`` becomes ``7.0.0-dev0``;
-    ``7.0.0rc1`` becomes ``7.0.0-rc1``. Post-release and local segments are
-    dropped. A version the regex cannot read is returned unchanged, so a
-    future versioning change surfaces as a schema or review problem rather
-    than a crash.
+    ``7.0.0`` stays ``7.0.0``; ``7.0.0.dev0`` becomes ``7.0.0-0.dev.0``;
+    ``7.0.0rc1`` becomes ``7.0.0-rc.1``. A release with fewer than three
+    parts is padded with zeros. Anything else raises ``ValueError``.
     """
     match = _VERSION_RE.match(version.strip())
     if not match:
-        return version
-    semver = match.group("release")
+        raise ValueError(
+            f"pyproject.toml version {version!r} has no order-preserving semver "
+            "form; use X.Y.Z, X.Y.Z.devN, X.Y.ZaN, X.Y.ZbN or X.Y.ZrcN"
+        )
+    parts = match.group("release").split(".")
+    if len(parts) > 3:
+        raise ValueError(f"pyproject.toml version {version!r} has more than three release parts")
+    semver = ".".join(parts + ["0"] * (3 - len(parts)))
     if match.group("pre"):
-        semver += f"-{match.group('pre')}{match.group('prenum') or ''}"
+        semver += f"-{_PRE_NAMES[match.group('pre')]}.{int(match.group('prenum'))}"
+    elif match.group("dev") is not None:
+        semver += f"-0.dev.{int(match.group('dev'))}"
+    if not _SEMVER_RE.match(semver):
+        raise ValueError(f"converted version {semver!r} is not semver")
     return semver
 
 
@@ -95,7 +110,7 @@ def shared_fields() -> dict:
     if not version_match:
         raise RuntimeError("pyproject.toml has no version")
     pep440_version = version_match.group(1)
-    template = read_json(TEMPLATE)
+    template = read_json(REPO_ROOT / "contrib" / "agent_manifests_template.json")
     return {
         "version": pep440_to_semver(pep440_version),
         "description": template["description"],
@@ -232,8 +247,7 @@ TARGETS = [
 def update_marketplace(shared, existing):
     """Update the plugin entry of the Claude marketplace, keeping its shape.
 
-    The entry may carry fields the generator does not own (displayName,
-    category); assigning by key keeps each of them where it already is.
+    Assigning by key keeps each field where it already is in the entry.
     """
     marketplace = json.loads(json.dumps(existing))
     entry = next(
@@ -248,8 +262,10 @@ def update_marketplace(shared, existing):
         raise RuntimeError(
             f'.claude-plugin/marketplace.json has no "{PLUGIN_NAME}" plugin'
         )
-    for key in ("description", "homepage", "repository"):
+    for key in ("description", "homepage", "repository", "keywords"):
         entry[key] = shared[key]
+    entry["displayName"] = shared["marketplace"]["displayName"]
+    entry["category"] = shared["marketplace"]["category"]
     return marketplace
 
 

@@ -50,12 +50,13 @@ def find_on_path(command, env=None):
 def parse_version(version):
     """A version string as ((major, minor, patch), pre_order, pre_number).
 
-    Reads both the plugin manifest's semver form (7.0.0-dev0) and the
+    Reads both the plugin manifest's semver form (7.0.0-0.dev.0,
+    7.0.0-alpha.1) and the
     distribution's PEP 440 form (7.0.0.dev0). A version the parser cannot
     read returns None and the caller stays silent.
     """
     match = re.match(
-        r"^(\d+)\.(\d+)\.(\d+)(?:[.-]?(dev|a|alpha|b|beta|c|rc)\.?(\d+))?",
+        r"^(\d+)\.(\d+)\.(\d+)(?:[.-]?(?:0\.)?(dev|a|alpha|b|beta|c|rc)\.?(\d+))?",
         (version or "").strip(),
     )
     if not match:
@@ -80,13 +81,16 @@ def is_older(installed, expected):
 
 
 def site_packages_of(binary):
-    """The site-packages directory the console script belongs to, if any.
+    """The site-packages directory that holds dep-scan's distribution, if any.
 
     pip and uv lay the package out as <env>/bin/depscan with the packages
     under <env>/lib/pythonX.Y/site-packages; a Windows venv keeps them in
     Lib\\site-packages next to Scripts. The walk starts at the script's
     directory and looks at those layouts under each ancestor, because the
-    depth of the pythonX.Y level varies.
+    depth of the pythonX.Y level varies. A shared prefix such as
+    /opt/homebrew can hold several Pythons, so only a directory that
+    carries the owasp_depscan dist-info counts; without one the caller
+    stays silent rather than guess.
     """
     real = os.path.realpath(binary)
     current = os.path.dirname(real)
@@ -97,9 +101,9 @@ def site_packages_of(binary):
     )
     for _ in range(4):
         for relative in patterns:
-            matches = sorted(glob.glob(os.path.join(current, relative)))
-            if matches:
-                return matches[0]
+            for candidate in sorted(glob.glob(os.path.join(current, relative))):
+                if glob.glob(os.path.join(candidate, "owasp_depscan-*.dist-info")):
+                    return candidate
         parent = os.path.dirname(current)
         if parent == current:
             break
@@ -140,7 +144,7 @@ def plugin_version():
         return None
 
 
-def check(plugin_version_value, env=None, platform=None):
+def check(plugin_version_value, env=None):
     """The warning for this machine, or None when everything is in place."""
     binary = find_on_path("depscan", env)
     if not binary:

@@ -164,7 +164,7 @@ def test_version_mismatch(tmp_path):
     problems = _problems(tree)
     assert any("release versions differ" in p["problem"] for p in problems)
     mismatch = next(p for p in problems if "release versions differ" in p["problem"])
-    assert "pyproject.toml=7.0.0-dev0" in mismatch["problem"]
+    assert "pyproject.toml=7.0.0-0.dev.0" in mismatch["problem"]
     assert "9.9.9" in mismatch["problem"]
 
 
@@ -300,17 +300,22 @@ def test_exit_two_when_the_marketplace_is_missing(tmp_path, monkeypatch):
         check.REPO_ROOT = original_root
 
 
-def test_real_repository_checker_is_wireable(capsys, monkeypatch):
-    """The checker runs over the real repository and reports its state.
-
-    While the plugin's pieces are still landing the checker names what is
-    missing; the whole-repository exit-0 assertion lives in
-    test_agent_plugin_plugin.py, which runs once the plugin is complete.
-    """
+def test_real_repository_json_report_is_clean(capsys, monkeypatch):
+    """The --json report over the real repository is empty and exits 0."""
     monkeypatch.setattr(sys, "argv", ["check_agent_plugin.py", "--json"])
-    assert check.main() in (0, 1)
+    assert check.main() == 0
     report = json.loads(capsys.readouterr().out)
-    assert report["total"] == len(report["problems"])
+    assert report["total"] == len(report["problems"]) == 0
+
+
+def test_mcp_server_with_extra_arguments_is_reported(tmp_path):
+    """A server started with anything but `depscan mcp` is named."""
+    tree = _make_tree(tmp_path)
+    config = {"mcpServers": {"depscan": {"command": "depscan", "args": ["mcp", "--verbose"]}}}
+    _write_json(tree, "agent-plugin/.mcp.json", config)
+    _write_json(tree, "agent-plugin/mcp.json", config)
+    problems = _problems(tree)
+    assert any("no further arguments" in p["problem"] for p in problems)
 
 
 @pytest.mark.parametrize(

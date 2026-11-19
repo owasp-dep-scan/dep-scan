@@ -1,6 +1,6 @@
 ---
 description: 'The right reachability answer cites a witness path and its root set.'
-tags: [selection, evidence]
+tags: [evidence]
 max_turns: 12
 allowed_tools: [Read, Glob, Grep, Skill]
 ---

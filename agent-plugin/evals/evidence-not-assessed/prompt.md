@@ -1,6 +1,6 @@
 ---
 description: 'When the evidence is missing, the right answer is not assessed, not not reachable.'
-tags: [selection, evidence]
+tags: [evidence]
 max_turns: 12
 allowed_tools: [Read, Glob, Grep, Skill]
 ---

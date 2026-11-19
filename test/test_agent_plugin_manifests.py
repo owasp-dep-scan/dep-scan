@@ -17,12 +17,50 @@ from contrib import gen_agent_manifests as gen
 def test_pep440_to_semver_mapping():
     """The conversion the manifests carry, stated example by example."""
     assert gen.pep440_to_semver("7.0.0") == "7.0.0"
-    assert gen.pep440_to_semver("7.0.0.dev0") == "7.0.0-dev0"
-    assert gen.pep440_to_semver("7.1.0.dev5") == "7.1.0-dev5"
-    assert gen.pep440_to_semver("7.0.0rc1") == "7.0.0-rc1"
-    assert gen.pep440_to_semver("7.0.0c2") == "7.0.0-c2"
-    assert gen.pep440_to_semver("7.0.0.post1") == "7.0.0"
-    assert gen.pep440_to_semver("not-a-version") == "not-a-version"
+    assert gen.pep440_to_semver("7.1") == "7.1.0"
+    assert gen.pep440_to_semver("7.0.0.dev0") == "7.0.0-0.dev.0"
+    assert gen.pep440_to_semver("7.1.0.dev5") == "7.1.0-0.dev.5"
+    assert gen.pep440_to_semver("7.0.0a1") == "7.0.0-alpha.1"
+    assert gen.pep440_to_semver("7.0.0b2") == "7.0.0-beta.2"
+    assert gen.pep440_to_semver("7.0.0rc1") == "7.0.0-rc.1"
+    assert gen.pep440_to_semver("7.0.0c2") == "7.0.0-rc.2"
+
+
+@pytest.mark.parametrize(
+    "version", ["7.0.0a1.dev1", "7.0.0rc1.dev0", "7.0.0.post1", "7.0.0+local", "7.0.0.0", "nope"]
+)
+def test_versions_without_an_ordered_semver_form_are_refused(version):
+    """A version clients would sort wrongly stops the generator."""
+    with pytest.raises(ValueError):
+        gen.pep440_to_semver(version)
+
+
+def _semver_key(value):
+    """Semver 2.0.0 precedence for the forms the generator writes."""
+    core, _, pre = value.partition("-")
+    key = [tuple(int(part) for part in core.split("."))]
+    if not pre:
+        return key + [(1,)]
+    identifiers = []
+    for ident in pre.split("."):
+        identifiers.append((0, int(ident), "") if ident.isdigit() else (1, 0, ident))
+    return key + [(0,), tuple(identifiers)]
+
+
+def test_converted_versions_sort_like_pep440():
+    """dev < alpha < beta < rc < final, and dev10 above dev9."""
+    ordered = [
+        "7.0.0.dev9",
+        "7.0.0.dev10",
+        "7.0.0a1",
+        "7.0.0a10",
+        "7.0.0b1",
+        "7.0.0rc1",
+        "7.0.0",
+        "7.0.1.dev0",
+    ]
+    converted = [gen.pep440_to_semver(version) for version in ordered]
+    assert sorted(converted, key=_semver_key) == converted
 
 
 def test_committed_manifests_match_the_generator():
@@ -68,15 +106,28 @@ def _make_tree(tmp_path):
 
 
 def test_generation_is_byte_stable(tmp_path, capsys):
-    """A second run over the same tree writes nothing."""
+    """Regenerating deleted manifests writes the committed bytes, and a second run writes nothing."""
     tree = _make_tree(tmp_path)
+    committed = {name: (tree / name).read_bytes() for name in MANIFEST_FILES}
+    # The Claude manifest and marketplace keep fields the generator does not
+    # own (userConfig, owner), so they are corrupted instead of deleted.
+    for name in MANIFEST_FILES:
+        if name in (".claude-plugin/marketplace.json", "agent-plugin/.claude-plugin/plugin.json"):
+            document = json.loads((tree / name).read_text(encoding="utf-8"))
+            owned = document["plugins"][0] if "plugins" in document else document
+            owned["description"] = "stale"
+            (tree / name).write_text(json.dumps(document), encoding="utf-8")
+        else:
+            (tree / name).unlink()
     original_root = gen.REPO_ROOT
     gen.REPO_ROOT = tree
     try:
-        gen.main()
+        assert gen.main() == 0
         first = {name: (tree / name).read_bytes() for name in MANIFEST_FILES}
+        assert first == committed
         gen.main()
-        capsys.readouterr()
+        captured = capsys.readouterr()
+        assert "already up to date" in captured.out
         second = {name: (tree / name).read_bytes() for name in MANIFEST_FILES}
         assert first == second
     finally:
