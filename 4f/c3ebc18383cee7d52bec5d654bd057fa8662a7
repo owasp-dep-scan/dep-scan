@@ -1,0 +1,83 @@
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_7318da1b9edd46::t_8c717b5cf34729 85-92,138-141,505,529-531
+packages/analysis-lib/tests/test_blint_convert.py
+  s_7318da1b9edd46::t_e8fa3cabf42d3b 79-110
+packages/analysis-lib/tests/test_reachability.py
+  s_7318da1b9edd46::t_627422aa0aec44 758-785
+test/test_doctor.py
+  s_7318da1b9edd46::t_7a9295606603a4 78-83,100,949-970
+packages/analysis-lib/src/analysis_lib/findings/blint_convert.py
+  s_7318da1b9edd46::t_3ddb93dfa1d863 19,48-51,53-55,61-74,78-82
+  s_7318da1b9edd46::t_e8fa3cabf42d3b 52,75-77
+depscan/lib/bom.py
+  s_7318da1b9edd46::t_854a6d4a2e724c 1003-1013,1033-1035,1111-1116
+  s_7318da1b9edd46::t_9c38ae58c6a299 1036-1038,1514-1516
+  s_7318da1b9edd46::t_ecff32d258d90a 1150-1151,1513
+packages/analysis-lib/src/analysis_lib/reachability.py
+  s_7318da1b9edd46::t_fdb0e7a589d0c9 16,229-283
+  s_7318da1b9edd46::t_919486eb154e7d 284-285
+test/test_pipeline.py
+  s_7318da1b9edd46::t_83719553259bde 710-772
+  s_7318da1b9edd46::t_627422aa0aec44 773-799
+packages/analysis-lib/tests/test_vdr_convert.py
+  s_7318da1b9edd46::t_9c38ae58c6a299 215-217,241-250,270-272,279-281,319
+  s_7318da1b9edd46::t_948466ddeec0b2 342
+  s_7318da1b9edd46::t_77fc037004989d 197-199,225-231,234,292,299-305,310-318,320-341,343-385
+depscan/lib/doctor.py
+  s_7318da1b9edd46::t_ed7c0ae683ea01 301-319,357
+documentation/docs/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_7f872403bd594e 118
+depscan/lib/scan_directory.py
+  s_7318da1b9edd46::t_4b20d046199c46 604,615-616,624-625
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  s_7318da1b9edd46::t_a98c573af0b746 15
+packages/xbom-lib/src/xbom_lib/blint.py
+  s_7318da1b9edd46::t_4b20d046199c46 69-74
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  s_7318da1b9edd46::t_fdb0e7a589d0c9 19,159-173,183-189,196-197,199-201,208-220,222-246,252-257,259,268-269,271,276-277
+test/test_blint_reviews.py
+  s_7318da1b9edd46::t_83719553259bde 171,184-195,197-216
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_948466ddeec0b2 46
+  s_7318da1b9edd46::t_00ada6a987462f 73,1021-1027
+  s_7318da1b9edd46::t_4b20d046199c46 67,699-702
+  s_7318da1b9edd46::t_fdb0e7a589d0c9 1417-1420,1436-1438,1444-1445
+test/test_mcp_tools.py
+  s_7318da1b9edd46::t_4174eb7882efe5 663-667
+agent-plugin/skills/depscan-reachability-proof/SKILL.md
+  s_7318da1b9edd46::t_6c9800868b7d03 38-41,44-45,95,98-103,146-153
+test/test_bom.py
+  s_7318da1b9edd46::t_16a995ddb07046 1,5-6,462-463,492
+  s_7318da1b9edd46::t_35f0e4cff61d0e 432-461,464-491,493-510
+packages/analysis-lib/tests/test_golem_runner.py
+  s_7318da1b9edd46::t_8c717b5cf34729 618-619,624-633,635-636
+packages/analysis-lib/src/analysis_lib/dosai_slices.py
+  s_7318da1b9edd46::t_1ba35152ab5b7a 413,415-416,419-424,451-456,464-465,472-473,503,545-548,619,629-632,834-836
+  s_7318da1b9edd46::t_9c38ae58c6a299 433
+  s_7318da1b9edd46::t_88661f6a27b714 1043
+documentation/docs/languages/dotnet-reachability.mdx
+  s_7318da1b9edd46::t_88661f6a27b714 57
+packages/analysis-lib/tests/test_dosai_slices.py
+  s_7318da1b9edd46::t_88661f6a27b714 449,499-502,505-510,513,515-518,521-523,525-532,535,539-540,563
+packages/analysis-lib/src/analysis_lib/kosi_slices.py
+  s_7318da1b9edd46::t_2d9ec916319b4e 25-27,33-34,155-160,174,185,228-231
+packages/analysis-lib/tests/test_kosi_slices.py
+  s_7318da1b9edd46::t_2d9ec916319b4e 98-99,168-201,203-210,212
+  s_7318da1b9edd46::t_9c38ae58c6a299 202,211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4fc3ebc18383cee7d52bec5d654bd057fa8662a7",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
