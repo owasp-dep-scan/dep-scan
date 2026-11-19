@@ -81,7 +81,10 @@ reports the same state machine-wide, and the user can run
 Findings, BOMs and manifests can carry URLs with credentials, private
 package indexes and tokens. Never repeat a secret, key or token in a
 report, a summary or a command line, including one the user pasted. Name
-the component and the property instead of pasting the value.
+the component and the property instead of pasting the value. That covers
+any part of the value too: no prefix, suffix or partial string offered as
+a search term (`ghp_Qx7Z...` is still a leak). To help someone find the
+entry, give the purl without the credential, or the account name and host.
 
 ## State changes and network use need the user's consent
 
