@@ -31,7 +31,7 @@ The settings hold no keys or tokens: `lockfile_reminder` (the opt-in stale-scan 
 
 ## Privacy
 
-The plugin sends nothing anywhere. It contains instructions, two Python hook scripts the client runs locally, and a configuration that starts `depscan mcp` on your machine. The tools it runs are the user's own dep-scan and its sibling tools, reading the user's own projects. A scan does use the network: it downloads the vulnerability database when the local one is missing, older than 48 hours or of another flavor (`--profile offline` prevents it), pulls the `ghcr.io/cdxgen/cdxgen` image for a source scan when `docker` is on `PATH` and the engine is left on `auto`, and lets golem fetch Go modules unless `--go-analyzer-network offline` is passed. The skills tell the agent to say which of these will happen before a scan.
+The plugin sends nothing anywhere. It contains instructions, two Python hook scripts the client runs locally, and a configuration that starts `depscan mcp` on your machine. The tools it runs are the user's own dep-scan and its sibling tools, reading the user's own projects. A scan does use the network: it downloads the vulnerability database when the local one is missing, older than 48 hours or of another flavor (`--profile offline` prevents it), pulls the `ghcr.io/cdxgen/cdxgen` image for a source scan when no usable local cdxgen exists, `docker` is on `PATH` and the engine is left on `auto`, and lets golem fetch Go modules unless `--go-analyzer-network offline` is passed. The skills tell the agent to say which of these will happen before a scan.
 
 ## The cdxgen plugin is the companion for BOM generation
 

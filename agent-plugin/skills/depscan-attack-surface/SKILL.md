@@ -7,9 +7,10 @@ description: 'Maps what an application exposes: it groups the entry points, auth
 
 Use this skill to answer "what is exposed". It needs a source project and,
 for the vulnerable-package join, a dep-scan scan of the same project. The
-tools are run directly because dep-scan does not report attack-surface
-tiers or trust zones yet; each step says so, and moves to the dep-scan
-path when a later version reports them.
+tools are run directly because dep-scan reports exposure tiers and trust
+zones only for .NET (in `analysis/dosai/dotnet-reachability.facts.json`
+and the `dosai` entries of `dotnet-reachables.slices.json`); for other
+languages each step says what it adds.
 
 The rules in [reference/safety.md](../../reference/safety.md) apply. Steps
 that run project code (dosai's `--restore`/`--build`, golem with cgo on,

@@ -11,8 +11,20 @@ firmware-adjacent binaries. For an Android or iOS app use
 `depscan-container-image` first and this skill for its unpackaged
 binaries.
 
-blint is run directly because dep-scan's binary check reports the BOM
-only, not blint's findings. The rules in
+Start with dep-scan's binary check, which runs blint's security review
+and records each hardening finding in the findings document under the
+`binary-hardening` category:
+
+```bash
+depscan scan /absolute/path/to/binary --target-kind binary --checks binary --format json -o /absolute/path/to/reports
+```
+
+blint's raw `findings.json` (only when a rule fired), `reviews.json` and
+`analysis-coverage.json` land under `analysis/blint/` in the reports
+directory, and the manifest lists them. Behaviour reviews stay in
+`reviews.json`; they are not findings. The steps below run blint directly
+for what the check does not cover: the deep SBOM, `capabilities`, `diff`
+and the link closure. The rules in
 [reference/safety.md](../../reference/safety.md) apply: a binary from an
 untrusted source is still untrusted input; never execute it, and never
 run its installer.
@@ -25,8 +37,8 @@ run its installer.
 
 ## Which blint
 
-dep-scan's `ext` extra installs blint 3.2.x. blint 4.0.0 and newer add the
-analysis coverage report, `capabilities`, `diff`, ELF link closure and a
+dep-scan's `ext` extra installs blint 4.0.x. Older blint 3.2.x installs
+lack the analysis coverage report, `capabilities`, `diff`, ELF link closure and a
 parse cache. Read the version first
 (`python -c "import importlib.metadata as m; print(m.version('blint'))"`
 in the environment that runs blint) and use only what that version has.

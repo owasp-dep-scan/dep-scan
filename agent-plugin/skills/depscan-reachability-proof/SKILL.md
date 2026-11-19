@@ -7,10 +7,11 @@ description: 'Proves or disproves that a vulnerable package or function is reach
 
 Use this skill when the question is "is this finding reachable here", after
 a scan exists. dep-scan's own reachability enrichment runs through
-`depscan scan --profile ci` or `--checks reachability`; the analyzers below
-are run directly because dep-scan does not report their witness paths, root
-sets or exploit chains yet, and each step below says so. When a later
-dep-scan version reports one of them, the step changes to the dep-scan path.
+`depscan scan --profile ci` or `--checks reachability`, and its outputs
+come first: the `*-reachables.slices.json` files next to the BOM, the raw
+reports under `analysis/<tool>/`, and each finding's
+`exploitability.axes.reach`. The analyzers below are run directly only for
+what a scan does not record, and each step says what that is.
 
 The rules in [reference/safety.md](../../reference/safety.md) apply, in
 particular: a reach claim names its analyzer and root set; "not reachable"
@@ -34,8 +35,12 @@ examples use `/tmp/reach`), with absolute paths.
 
 ## Go: golem with an explicit root set
 
-This runs golem directly because dep-scan does not report witness paths
-or root sets yet.
+When dep-scan runs golem itself it passes the root set `main,init,handlers`
+and records each call-graph node's `reachableFromRoots`, `minDepth` and
+`rootIds` in `go-reachables.slices.json` (the raw report is
+`analysis/golem/golem.json`). It does not ask for witness paths to a
+vulnerable symbol, because golem runs before the advisories are matched,
+so this step runs golem directly with the symbol named.
 
 ```bash
 mkdir -p /tmp/reach
@@ -85,8 +90,12 @@ and do not present an empty graph as "nothing is reachable".
 
 ## Kotlin and JVM: kosi
 
-This runs kosi directly because dep-scan has no converter for kosi's
-report yet, and cdxgen deletes its own copy after parsing (cdxgen#4806).
+For Kotlin, Android and Gradle scans dep-scan runs kosi's `syntax`
+backend itself (it reads source only and starts no build) and writes
+`kosi-reachables.slices.json`, with the raw report in
+`analysis/kosi/kosi.json`. The syntax tier has library usages and imports
+but no call graph or data flow, so this step runs the `resolved` backend
+directly for root sets and witness paths.
 
 ```bash
 kosi analyze --dir /absolute/path/to/project --backend resolved \
@@ -127,8 +136,13 @@ user's consent in the conversation, stated at the step.
 
 ## .NET: dosai
 
-This runs dosai directly because dep-scan does not report exploit chains,
-attack-surface tiers or trust zones yet.
+dep-scan keeps dosai's exploit chains, attack-surface tiers, sanitized
+flows and service trust zones: `analysis/dosai/dotnet-reachability.facts.json`
+carries `exploit_chains`, `attack_surface`, `sanitized_flows` and
+`services`, and each slice in `dotnet-reachables.slices.json` carries a
+`dosai` entry with its `exposure`, `exploitChains` and `sanitized` state.
+A sanitized slice adds no reached package. Read those first; run dosai
+directly only when no scan exists or for `agent-context`.
 
 ```bash
 dosai dataflows --path /absolute/path/to/project \

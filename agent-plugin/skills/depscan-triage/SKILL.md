@@ -63,10 +63,13 @@ announces; the plugin's configuration passes no `--allow-dir`. A scan
 directory outside those roots is refused, so fall back to
 `depscan report <scan-dir> --format json` rather than widening the server.
 The `reachable` filter of `list_findings` reads each finding's
-`exploitability.axes.reach`, which no dep-scan stage fills in yet: both
-`reachable=true` and `reachable=false` return nothing today. Answer
-reachability from the scan's reachability output instead, and never read
-an empty filtered page as "nothing is reachable".
+`exploitability.axes.reach`. A scan with reachability records `likely`
+for a package in an analyzer's reached set, `unknown` for one absent from
+a non-empty reached set, and `not_assessed` when no analyzer covered the
+type; `exploitability.rule` names the analyzers. `reachable=true` returns
+the `likely` findings. dep-scan writes no `unlikely` or `refuted` value,
+so `reachable=false` returns nothing, and an empty page from either value
+is never "nothing is reachable".
 
 ## How to triage
 

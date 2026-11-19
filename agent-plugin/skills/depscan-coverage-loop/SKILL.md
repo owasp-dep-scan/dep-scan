@@ -65,7 +65,7 @@ read, not guesses:
 
 | dep-scan says | Fix |
 | --- | --- |
-| A `tools` entry for cdxgen with `version` below `minVersion` (13.8.0), or `reason` "not found on PATH" | Install a new enough cdxgen (`npm install -g @cdxgen/cdxgen@13.8.0` or newer), or install it into a prefix and export `CDXGEN_CMD` pointing at it. A prefix install is the reversible choice. On a machine with `docker`, a source scan uses the cdxgen image unless `--bom-engine CdxgenGenerator` is passed, so pass it on the re-scan to test the local install. |
+| A `tools` entry for cdxgen with `version` below `minVersion` (13.8.0), or `reason` "not found on PATH" | Install a new enough cdxgen (`npm install -g @cdxgen/cdxgen@13.8.0` or newer), or install it into a prefix and export `CDXGEN_CMD` pointing at it. A prefix install is the reversible choice. The default `auto` engine uses `CDXGEN_CMD` or a new enough cdxgen on `PATH` before the container image, so the re-scan tests the local install. |
 | A capability `unavailable` with `missing: ["tool:cdxgen"]` | The same cdxgen fix; reachability needs 13.8.0 or newer. |
 | The database flavor lacks distro advisories (apk, deb, rpm) | `depscan vdb download --flavor full`, with the consent rule. |
 | The risk stage `skipped` with `the risk audit was not requested` | Not a defect: the supply-chain check was not asked for. Add `--checks supply-chain` only if the user wants it. |
@@ -98,8 +98,9 @@ beyond the stages:
 - **atom's `--parse-report`**: when a run produced one, the files it lists
   were not fully read, and their defects and usages are not assessed.
 - **blint's `Analysis-Coverage.json`** (blint 4.0.0 or newer): for binary
-  and app targets it names what blint could not analyse; with the pinned
-  blint 3.2.x it is absent, and binary coverage is then unknown.
+  and app targets it names what blint could not analyse. A scan with the
+  binary check writes it under `analysis/blint/`; with an older blint 3.2.x
+  it is absent, and binary coverage is then unknown.
 
 Each of these is a coverage fact about the run, not a defect in the
 project; carry them into the final report as not-assessed entries with

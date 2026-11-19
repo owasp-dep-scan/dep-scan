@@ -33,10 +33,9 @@ no keys or tokens.
 
 A set database directory is exported as `VDB_HOME`; a set flavor is passed
 as `--vdb-flavor` (a flavor other than the local one triggers a download,
-see Step 1); a set cdxgen command is exported as `CDXGEN_CMD` together with
-`--bom-engine CdxgenGenerator`, because the default `auto` engine prefers
-the cdxgen container image whenever `docker` is on `PATH` (outside
-Windows) and then ignores `CDXGEN_CMD`.
+see Step 1); a set cdxgen command is exported as `CDXGEN_CMD`, which the
+default `auto` engine then uses before it considers the cdxgen container
+image.
 
 ## Core syntax
 
@@ -66,8 +65,10 @@ older than 48 hours, or of a different flavor (`full` is gigabytes). When
 scanning, or add `--profile offline` to scan against the database as it is.
 `config show` prints the effective options and where each came from. A
 source scan also lets golem fetch Go modules unless
-`--go-analyzer-network offline` is passed, and with `docker` on `PATH` the
-`auto` engine pulls the `ghcr.io/cdxgen/cdxgen` image; say which applies.
+`--go-analyzer-network offline` is passed, and when no usable local cdxgen
+exists (neither `CDXGEN_CMD` nor a cdxgen on `PATH` at the minimum version)
+and `docker` is on `PATH`, the `auto` engine pulls the
+`ghcr.io/cdxgen/cdxgen` image; say which applies.
 
 ```bash
 CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports

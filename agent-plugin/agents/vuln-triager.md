@@ -55,8 +55,9 @@ in your context, load it with the Skill tool before using it). When you run as t
    big scans: `scan_summary`, `list_findings`, `get_finding`,
    `explain_finding`, `coverage`. The server reads only its working
    directory and the client's roots; when it refuses the scan directory,
-   use `depscan report` instead. Its `reachable` filter returns nothing
-   today, because no stage fills in the reach axis it reads. Do not call
+   use `depscan report` instead. Its `reachable=true` filter returns the
+   findings an analyzer reached (`likely`); `reachable=false` returns
+   nothing, because dep-scan never records a finding as unreachable. Do not call
    `run_scan`; it is a dry run by default and a real run is the parent's
    decision.
 

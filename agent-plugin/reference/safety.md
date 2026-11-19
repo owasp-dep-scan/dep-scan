@@ -69,11 +69,10 @@ reports the same state machine-wide, and the user can run
   "not reachable", unless the evidence in the scan covers the vulnerable
   function and the deployed entry points. Reachability output names the
   analyzer and its limits; quote them.
-- dep-scan's own `--csaf` export writes `known_not_affected` with the flag
-  `vulnerable_code_not_in_execute_path` for every affected package that is
-  missing from the scan's reached set, whenever that set is not empty.
-  That basis is "not in the reached set of this analyzer", not proof; read `product_status.known_not_affected` before the document
-  leaves the machine and say what it rests on.
+- dep-scan's own `--csaf` export marks a package `known_affected` when it
+  is in the scan's reached set and `under_investigation` otherwise; it
+  never writes `known_not_affected`. Do not upgrade an
+  `under_investigation` to `not_affected` by hand.
 - Findings carry a `coverage.state`; findings whose state is `assessed`
   were matched, and everything else was not. Say which when summarising.
 
@@ -92,10 +91,10 @@ the component and the property instead of pasting the value.
   `depscan vdb info --format json`; when a download would follow, tell the
   user and ask, or scan with `--profile offline` against the database as
   it is.
-- On Linux and macOS with `docker` on `PATH`, a source scan with the
-  default `--bom-engine auto` pulls the `ghcr.io/cdxgen/cdxgen` image and
-  ignores `CDXGEN_CMD`. Pass `--bom-engine CdxgenGenerator` to use the
-  local cdxgen instead, and say which one ran.
+- A source scan with the default `--bom-engine auto` uses `CDXGEN_CMD`, or
+  a cdxgen on `PATH` at the minimum version, first. Only when neither
+  exists and `docker` is on `PATH` (outside Windows) does it pull the
+  `ghcr.io/cdxgen/cdxgen` image. Say which one ran.
 - golem fetches Go modules for a source scan unless
   `--go-analyzer-network offline` is passed.
 - `depscan-vdb` and `depscan-coverage-loop` change state and run only when

@@ -34,17 +34,14 @@ result:
 | Reachability result | CSAF product status |
 | --- | --- |
 | The package is in the scan's reached set | `known_affected` |
-| The reached set is not empty, and this package is not in it | `known_not_affected`, flag `vulnerable_code_not_in_execute_path` |
-| The reached set is empty (no reachable flows, `--profile quick`, `--reachability-analyzer off`) | `under_investigation` |
+| Anything else (not in the reached set, no reachability ran, `--profile quick`, `--reachability-analyzer off`) | `under_investigation` |
 
-So dep-scan does write `known_not_affected` by itself, on the basis "not in
-the reached set of this analyzer". Before the document goes anywhere, read
-`product_status.known_not_affected` in each vulnerability and tell the user
-which packages it lists and what that rests on: the analyzer named in the
-manifest, its root set, and the stages that completed. When the user wants
-no reachability-based statements in the disclosure, re-run with
-`--reachability-analyzer off`, which leaves every matched package
-`under_investigation`.
+dep-scan never writes `known_not_affected`: absence from a reached set is
+not evidence that the vulnerable code is outside the execute path, and no
+analyzer gives that evidence today. Before the document goes anywhere,
+tell the user which packages are `known_affected` and what that rests on:
+the analyzer named in the manifest, its root set, and the stages that
+completed.
 
 A target without a BOM cannot carry the export: a purl scan with `--csaf`
 exits 0 but skips the export with a stderr warning, because there is no BOM
@@ -87,8 +84,8 @@ hand-edited disclosure no longer reflects the scan that produced it.
 A valid document proves its structure matches the CSAF or CycloneDX schema.
 It does not prove the statements inside are true beyond the scan: each
 status reflects what the scan assessed as of the database date, and a
-`known_not_affected` from dep-scan means "not in the reached set", which is
-as strong as the analyzer and root set behind it. Never edit a statement to
+`known_affected` is as strong as the analyzer and root set behind it.
+`under_investigation` means "not established either way". Never edit a statement to
 `not_affected` by hand; a `not_affected` claim needs evidence that covers
 the vulnerable function and the deployed entry points, and saying plainly
 what the evidence covers is the correct disclosure.

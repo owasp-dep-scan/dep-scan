@@ -89,8 +89,9 @@ or scan an image the user did not ask about.
 
 Three deeper container questions are answered by the sibling tools
 directly, because dep-scan does not report them yet. The link closure needs
-blint 4.0.0 or newer; dep-scan's tool extra pins blint 3.2.x, which ignores
-these variables and writes no closure, so check the version first
+blint 4.0.0 or newer, which dep-scan's tool extra installs; an older blint
+3.2.x ignores these variables and writes no closure, so check the version
+first
 (`python -c "import importlib.metadata as m; print(m.version('blint'))"`).
 trustinspector and trivy-cdxgen sit in the cdxgen plugins package under
 `plugins/trustinspector/` and `plugins/trivy/`.

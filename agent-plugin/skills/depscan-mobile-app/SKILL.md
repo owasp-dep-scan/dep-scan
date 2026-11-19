@@ -42,7 +42,7 @@ positions, plus the app's `-metadata.json`. iOS IPA files add
 entitlements, provisioning profiles, the privacy manifest and the
 required-reason API review.
 
-dep-scan's `ext` extra installs blint 3.2.x. blint 4 adds
+dep-scan's `ext` extra installs blint 4.0.x, which writes
 `analysis-coverage.json` (read it first: what blint could not analyse is
 not assessed) and `--android-abi` to restrict the native review to the
 ABIs the user ships. On blint 3.2.x the review's coverage is unknown, and

@@ -92,9 +92,9 @@ from `dosai diff`'s own `RiskDelta`, and report any gate the console says
 ## Binaries and builds: blint diff
 
 `blint diff` compares two builds' hardening, findings, reviews,
-dependencies and identity. It ships in blint 4.0.0 and newer; dep-scan's
-`ext` extra pins blint 3.2.x, which does not have it, so check
-`blint --help` for `diff` first.
+dependencies and identity. It ships in blint 4.0.0 and newer, which
+dep-scan's `ext` extra installs; a blint 3.2.x found elsewhere does not
+have it, so check `blint --help` for `diff` first.
 
 ```bash
 blint diff /absolute/path/to/old-binary /absolute/path/to/new-binary --json \
@@ -105,7 +105,7 @@ The document carries `summary`, `hardening`, `findings`, `reviews`,
 `dependencies`, `imports`, `symbols` and `identity` deltas. Add
 `--disassemble` for the function-level delta (added, removed or changed
 by content hash), which needs `blint[extended]`. With only blint 3.2.x
-installed, say the binary hardening delta is not assessable here rather
+available, say the binary hardening delta is not assessable here rather
 than substituting a weaker check.
 
 ## What this proves and what it does not
