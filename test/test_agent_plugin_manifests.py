@@ -43,14 +43,23 @@ def test_mcp_configurations_are_identical_and_conservative():
     assert claude["mcpServers"]["depscan"]["args"] == ["mcp"]
 
 
+#: The generator's targets as plain names, because a typed copy of the
+#: TARGETS list would carry its build callables into the copy loop's types.
+MANIFEST_FILES = (
+    "agent-plugin/.claude-plugin/plugin.json",
+    "agent-plugin/plugin.json",
+    ".claude-plugin/marketplace.json",
+    ".agents/plugins/marketplace.json",
+    ".cursor-plugin/marketplace.json",
+    "agent-plugin/gemini-extension.json",
+    "agent-plugin/.mcp.json",
+    "agent-plugin/mcp.json",
+)
+
+
 def _make_tree(tmp_path):
     """A repository copy with everything the generator reads and writes."""
-    for item in gen.TARGETS:
-        source = gen.REPO_ROOT / item["file"]
-        target = tmp_path / item["file"]
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(source.read_bytes())
-    for name in ("pyproject.toml", "contrib/agent_manifests_template.json"):
+    for name in MANIFEST_FILES + ("pyproject.toml", "contrib/agent_manifests_template.json"):
         source = gen.REPO_ROOT / name
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -65,10 +74,10 @@ def test_generation_is_byte_stable(tmp_path, capsys):
     gen.REPO_ROOT = tree
     try:
         gen.main()
-        first = {item["file"]: (tree / item["file"]).read_bytes() for item in gen.TARGETS}
+        first = {name: (tree / name).read_bytes() for name in MANIFEST_FILES}
         gen.main()
         capsys.readouterr()
-        second = {item["file"]: (tree / item["file"]).read_bytes() for item in gen.TARGETS}
+        second = {name: (tree / name).read_bytes() for name in MANIFEST_FILES}
         assert first == second
     finally:
         gen.REPO_ROOT = original_root

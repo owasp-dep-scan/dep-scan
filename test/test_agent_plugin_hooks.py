@@ -8,6 +8,7 @@ case has a positive control in the same harness that proves the output
 path works.
 """
 
+import importlib
 import json
 import os
 import subprocess
@@ -131,7 +132,7 @@ def test_version_parser_reads_both_forms():
     """The semver manifest form and the PEP 440 installed form compare."""
     sys.path.insert(0, HOOKS_DIR)
     try:
-        import check_depscan
+        check_depscan = importlib.import_module("check_depscan")
 
         assert check_depscan.parse_version("7.0.0-dev0") == check_depscan.parse_version(
             "7.0.0.dev0"
@@ -221,7 +222,7 @@ def test_dependency_file_predicate_covers_the_ecosystems(tmp_path, name):
     """The manifest patterns cover the ecosystems dep-scan reads."""
     sys.path.insert(0, HOOKS_DIR)
     try:
-        import stale_lockfile
+        stale_lockfile = importlib.import_module("stale_lockfile")
 
         assert stale_lockfile.is_dependency_file(name)
         assert not stale_lockfile.is_dependency_file("notes.txt")
