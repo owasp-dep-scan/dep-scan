@@ -360,7 +360,9 @@ def test_atom_tools_next_to_the_interpreter_is_found_without_path(fakes, monkeyp
         doctor_mod, "find_in_interpreter_scripts", process_mod.find_in_interpreter_scripts
     )
     entry = _tool_entries(doctor_mod.doctor())["atom-tools"]
-    assert entry.path == str(target)
+    # Windows lookups append the PATHEXT extension as PATHEXT spells it
+    # (.EXE); the file system there is case-insensitive.
+    assert os.path.normcase(entry.path) == os.path.normcase(str(target))
     assert entry.version == "9.9.9"
 
 
