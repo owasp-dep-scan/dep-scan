@@ -207,7 +207,9 @@ def test_no_v6_invocations_remain_in_the_docs():
 
 def test_no_console_script_names_remain_in_the_docs():
     """The removed console scripts are named only where their removal is
-    documented, and the marker file keeps its own name."""
+    documented, where a schema names the verb's document, and where the
+    agent plugin names its skill: the skill `depscan-vdb` is a skill, not
+    the removed `depscan-vdb` console script, and the same text is both."""
     problems = []
     for path in sorted(DOCS_DIR.rglob("*")):
         if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
@@ -216,6 +218,8 @@ def test_no_console_script_names_remain_in_the_docs():
             if "depscan-vdb" not in line and "depscan-validate" not in line:
                 continue
             if MARKER_FILE in line:
+                continue
+            if path.name == "agent-plugin.mdx" and "depscan-validate" not in line:
                 continue
             without_schema_names = line
             for name in SCHEMA_NAMES:
