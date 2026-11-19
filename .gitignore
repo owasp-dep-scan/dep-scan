@@ -176,3 +176,8 @@ devenv.local.nix
 # pre-commit
 .pre-commit-config.yaml
 local.properties
+
+# The plugin ships its MCP server configuration for Claude Code (.mcp.json)
+# and Codex (mcp.json). The user-level global ignore that hides local
+# .mcp.json files must not hide the plugin's copy.
+!agent-plugin/.mcp.json

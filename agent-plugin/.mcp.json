@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "depscan": {
+      "command": "depscan",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

@@ -49,12 +49,12 @@ def _make_tree(tmp_path):
         source = gen.REPO_ROOT / item["file"]
         target = tmp_path / item["file"]
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        target.write_bytes(source.read_bytes())
     for name in ("pyproject.toml", "contrib/agent_manifests_template.json"):
         source = gen.REPO_ROOT / name
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+        target.write_bytes(source.read_bytes())
     return tmp_path
 
 
@@ -80,7 +80,7 @@ def test_check_names_the_drifted_file(tmp_path, capsys, monkeypatch):
     manifest = tree / "agent-plugin" / "gemini-extension.json"
     document = json.loads(manifest.read_text(encoding="utf-8"))
     document["version"] = "0.0.0"
-    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+    manifest.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8", newline="\n")
     original_root = gen.REPO_ROOT
     gen.REPO_ROOT = tree
     monkeypatch.setattr(sys, "argv", ["gen_agent_manifests.py", "--check"])

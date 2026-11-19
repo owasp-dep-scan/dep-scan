@@ -1,1 +1,12 @@
 test/data/scan-directory/** -text
+# The generated agent-plugin manifests are compared byte for byte by the
+# generator's drift check, so they stay LF on every checkout, including the
+# Windows clones a CRLF checkout would otherwise rewrite.
+.claude-plugin/marketplace.json text eol=lf
+.agents/plugins/marketplace.json text eol=lf
+.cursor-plugin/marketplace.json text eol=lf
+agent-plugin/plugin.json text eol=lf
+agent-plugin/.claude-plugin/plugin.json text eol=lf
+agent-plugin/gemini-extension.json text eol=lf
+agent-plugin/.mcp.json text eol=lf
+agent-plugin/mcp.json text eol=lf

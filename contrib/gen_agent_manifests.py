@@ -263,7 +263,9 @@ def render_all():
     for target in TARGETS:
         path = REPO_ROOT / target["file"]
         content = serialize(target["build"](shared, read_existing(path)))
-        current = path.read_text(encoding="utf-8") if path.exists() else None
+        # Compare bytes so a CRLF checkout counts as drift instead of
+        # matching through universal-newline translation.
+        current = path.read_bytes().decode("utf-8") if path.exists() else None
         rendered.append({"file": target["file"], "content": content, "current": current})
     return rendered
 
@@ -304,7 +306,7 @@ def run(argv: list[str]) -> int:
         if item["content"] != item["current"]:
             path = REPO_ROOT / item["file"]
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(item["content"], encoding="utf-8")
+            path.write_text(item["content"], encoding="utf-8", newline="\n")
             print(f"wrote {item['file']}")
             wrote = True
     if not wrote:

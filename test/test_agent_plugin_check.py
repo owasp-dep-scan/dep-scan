@@ -34,7 +34,9 @@ def _make_tree(tmp_path):
             shutil.copytree(source, target)
         else:
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            # Copy bytes: a translated line ending would make every copied
+            # manifest stale on Windows.
+            target.write_bytes(source.read_bytes())
     return tmp_path
 
 
