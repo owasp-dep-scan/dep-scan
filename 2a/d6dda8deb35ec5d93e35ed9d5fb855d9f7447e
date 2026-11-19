@@ -1,0 +1,24 @@
+agent-plugin/README.md
+  s_a7047eb50a1dba::t_fb34057a4499e2 1-41
+documentation/docs/agent-plugin.mdx
+  s_a7047eb50a1dba::t_2d9f80cf0d6706 1-137
+test/test_docs_cli.py
+  s_a7047eb50a1dba::t_fa803e029d1dcf 210-212,222
+  s_a7047eb50a1dba::t_b6fbbba26ba5f8 223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ad6dda8deb35ec5d93e35ed9d5fb855d9f7447e",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
