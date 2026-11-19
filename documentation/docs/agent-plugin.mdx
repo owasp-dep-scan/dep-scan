@@ -30,7 +30,7 @@ A client marked "not yet tested" should load the plugin according to its own doc
 
 | Client | Status |
 | --- | --- |
-| Claude Code | Adds the marketplace from a checkout, installs the plugin, lists the six skills, the agent and the two hooks, and passes `claude plugin validate --strict` (Claude Code 2.1.311). The MCP server the plugin configures answers `tools/list` with its ten tools. Running a skill inside a session was not tested: the machine's Claude Code credentials are not valid (the key its `apiKeyHelper` resolves is rejected by the API). |
+| Claude Code | Adds the marketplace from a checkout, installs the plugin, lists the six skills, the agent and the two hooks, and passes `claude plugin validate --strict` (Claude Code 2.1.311). The MCP server the plugin configures answers `tools/list` with its ten tools. The same install, listing, uninstall and marketplace removal were verified on the Windows 11 ARM64 VM with Claude Code 2.1.328. Running a skill inside a session was not tested: the machine's Claude Code credentials are not valid (the key its `apiKeyHelper` resolves is rejected by the API). |
 | Codex | Adds the marketplace and installs the plugin from a local checkout (codex-cli 0.170.0), which caches `mcp.json`. Skill invocation is not tested: the first session needs an OpenAI login this machine does not have. `codex mcp list` shows no server; whether the plugin's `mcp.json` reaches a session is untested. |
 | Copilot CLI and app | Not yet tested |
 | Cursor | Not yet tested |
@@ -59,7 +59,7 @@ Only Claude Code has these parts of the plugin:
 
 ### The hooks
 
-The hooks are standard-library Python and warn; they never install, never scan and never print secrets. They are launched in exec form (`python3` from `PATH`, the script as the argument), so a missing interpreter is Claude Code's documented non-blocking one-line status rather than a hook error; `python3` is the interpreter name on macOS and Linux, and a Windows install needs `python3.exe` on `PATH` (for example from a Python install with the store alias enabled or a shim), which the Windows test run confirms.
+The hooks are standard-library Python and warn; they never install, never scan and never print secrets. They are launched in exec form (`python3` from `PATH`, the script as the argument), so a missing interpreter is Claude Code's documented non-blocking one-line status rather than a hook error. On the Windows VM the measured behavior is: `python3` there resolves to the Microsoft Store alias, which prints its one "Python was not found" line and exits without running the hook; with a real interpreter on `PATH` the hook runs and produces its warning JSON correctly (verified with the VM's `python.exe`). Windows users who see the Store line can disable the `python3` app-execution alias in Windows Settings or put a real `python3.exe` on `PATH`.
 
 - `check_depscan.py` (`SessionStart`): warns once when `depscan` is not on `PATH`, is older than the plugin, or lacks the `mcp` extra its configured server needs. The version is read from the distribution metadata next to the binary, so the check has no side effects; a version it cannot read this way is accepted silently.
 - `stale_lockfile.py` (`PostToolUse`, matcher `Write|Edit`): off unless the `lockfile_reminder` option is on, then reminds the agent once per file that the last scan is stale after it edits a lockfile or dependency manifest.
