@@ -11,7 +11,7 @@ The plugin ships instructions, not the tool, so install dep-scan too (`pip insta
 - `hooks/`, two standard-library Python scripts that warn and never act: a `SessionStart` check that warns when the `depscan` CLI is missing, older than the plugin, or missing the `mcp` extra, and an opt-in reminder that the last scan is stale after a lockfile edit.
 - `.mcp.json` and `mcp.json`, the same conservative MCP server configuration (`depscan mcp`, never `--allow-scans`) for Claude Code and Codex, the two clients that read one from a plugin today.
 - `reference/safety.md` (the shared rules every skill links to), `reference/commands.md` (the dep-scan verbs with the documents each writes, and the sibling-tool commands) and `reference/tools.md` (how each sibling tool is found and versioned).
-- `evals/`, the plugin's eval cases: one selection case per model-invocable skill, one not-invoked case per state-changing skill, and one case per safety rule.
+- `evals/`, the plugin's eval cases: one selection case per model-invocable skill, one not-invoked case per state-changing skill, one case per safety rule and two evidence cases. Run them with `claude plugin eval ./agent-plugin --threshold 0.8`; each case also runs once without the plugin, so the report shows what the plugin adds.
 
 ## Install per client
 
