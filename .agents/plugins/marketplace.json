@@ -1,0 +1,20 @@
+{
+  "name": "depscan-plugins",
+  "interface": {
+    "displayName": "OWASP dep-scan"
+  },
+  "plugins": [
+    {
+      "name": "depscan",
+      "source": {
+        "source": "local",
+        "path": "./agent-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}
