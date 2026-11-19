@@ -1,0 +1,50 @@
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_7318da1b9edd46::t_2960d240a695cf 95-97,108
+agent-plugin/README.md
+  s_7318da1b9edd46::t_5cc88c7c4bab9b 34
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_7318da1b9edd46::t_2960d240a695cf 101-103
+  s_7318da1b9edd46::t_5cc88c7c4bab9b 68
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  s_7318da1b9edd46::t_5471d8714a5a68 37-44,87-88
+agent-plugin/skills/depscan-binary/SKILL.md
+  s_7318da1b9edd46::t_2960d240a695cf 40-41
+  s_7318da1b9edd46::t_945b33db62800a 14-27
+agent-plugin/skills/depscan-attack-surface/SKILL.md
+  s_7318da1b9edd46::t_14a3ac795ff7b5 10-13
+agent-plugin/skills/depscan-container-image/SKILL.md
+  s_7318da1b9edd46::t_2960d240a695cf 92-94
+agent-plugin/agents/binary-reviewer.md
+  s_7318da1b9edd46::t_2960d240a695cf 37-38
+agent-plugin/reference/safety.md
+  s_7318da1b9edd46::t_5cc88c7c4bab9b 94-97
+  s_7318da1b9edd46::t_5471d8714a5a68 72-75
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_7318da1b9edd46::t_5cc88c7c4bab9b 36-38,68-71
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_7318da1b9edd46::t_6d046919de9aa1 66-72
+agent-plugin/agents/vuln-triager.md
+  s_7318da1b9edd46::t_6d046919de9aa1 58-60
+agent-plugin/skills/depscan-reachability-proof/SKILL.md
+  s_7318da1b9edd46::t_14a3ac795ff7b5 10-14,38-43,93-98,139-145
+agent-plugin/reference/tools.md
+  s_7318da1b9edd46::t_2960d240a695cf 15
+agent-plugin/skills/depscan-mobile-app/SKILL.md
+  s_7318da1b9edd46::t_2960d240a695cf 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55c8cbd0beb743383b17a9a3cbffe13e5fd1c2ad",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
