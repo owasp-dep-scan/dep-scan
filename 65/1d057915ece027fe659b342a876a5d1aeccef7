@@ -1,0 +1,79 @@
+agent-plugin/evals/safety-json-and-exit-codes/graders/document-and-codes.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-7
+agent-plugin/evals/not-invoked-depscan-coverage-loop/graders/no-install.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-7
+agent-plugin/evals/safety-secrets-never-quoted/prompt.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-8
+agent-plugin/evals/safety-json-and-exit-codes/prompt.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-8
+agent-plugin/evals/safety-not-assessed-is-unknown/graders/no-silent-clean.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-7
+agent-plugin/evals/safety-no-not-affected/graders/no-unearned-not-affected.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-7
+agent-plugin/evals/safety-untrusted-repositories/graders/declines-installs.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-7
+agent-plugin/evals/safety-not-assessed-is-unknown/prompt.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-8
+agent-plugin/evals/select-depscan-vex-compliance/prompt.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/not-invoked-depscan-vdb/prompt.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/agents/vuln-triager.md
+  s_a7047eb50a1dba::t_92939105fb0224 1-64
+agent-plugin/evals/safety-absolute-paths/graders/absolute-paths.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-7
+agent-plugin/evals/select-depscan-triage/graders/ranks-findings.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-6
+agent-plugin/evals/select-depscan-vex-compliance/graders/skill-fired.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-5
+agent-plugin/evals/select-depscan-container-image/prompt.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/safety-absolute-paths/prompt.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-8
+agent-plugin/evals/select-depscan-triage/graders/skill-fired.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-5
+agent-plugin/evals/select-depscan-scan/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-6
+agent-plugin/evals/not-invoked-depscan-coverage-loop/graders/skill-not-fired.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/select-depscan-scan/graders/skill-fired.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-5
+agent-plugin/evals/select-depscan-vex-compliance/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-6
+agent-plugin/evals/select-depscan-scan/prompt.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/not-invoked-depscan-vdb/graders/skill-not-fired.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/not-invoked-depscan-coverage-loop/prompt.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/safety-untrusted-repositories/prompt.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-8
+agent-plugin/evals/select-depscan-container-image/graders/skill-fired.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-5
+agent-plugin/evals/select-depscan-container-image/graders/runs-the-command.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-6
+agent-plugin/evals/safety-secrets-never-quoted/graders/no-secret-quote.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-7
+agent-plugin/evals/select-depscan-triage/prompt.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-8
+agent-plugin/evals/not-invoked-depscan-vdb/graders/no-download.md
+  s_a7047eb50a1dba::t_bd30ce74caeedf 1-7
+agent-plugin/evals/safety-no-not-affected/prompt.md
+  s_a7047eb50a1dba::t_c61cbc8859cd93 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "651d057915ece027fe659b342a876a5d1aeccef7",
+  "prompts": {},
+  "sessions": {
+    "s_a7047eb50a1dba": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_8f9c6ab8-ef87-4808-9ef0-40c10b60b3e6",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
