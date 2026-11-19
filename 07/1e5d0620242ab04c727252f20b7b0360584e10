@@ -1,0 +1,34 @@
+agent-plugin/evals/safety-secrets-never-quoted/graders/names-the-component.md
+  s_7318da1b9edd46::t_0e8af6acc5b63a 6
+agent-plugin/evals/select-depscan-reachability-proof/graders/runs-the-command.md
+  s_7318da1b9edd46::t_95452824a57d5b 4,6
+agent-plugin/evals/select-depscan-memory-safety/graders/runs-the-command.md
+  s_7318da1b9edd46::t_95452824a57d5b 4,6
+agent-plugin/evals/safety-json-and-exit-codes/graders/document-and-codes.md
+  s_7318da1b9edd46::t_0e8af6acc5b63a 6-7
+agent-plugin/evals/select-depscan-mobile-app/graders/names-the-steps.md
+  s_7318da1b9edd46::t_0e8af6acc5b63a 6-7
+  s_7318da1b9edd46::t_95452824a57d5b 1-5
+agent-plugin/evals/evidence-witness-path/graders/cites-root-set.md
+  s_7318da1b9edd46::t_0e8af6acc5b63a 6-7
+agent-plugin/reference/safety.md
+  s_7318da1b9edd46::t_d3e9567d23334e 84-87
+agent-plugin/evals/select-depscan-binary/graders/names-the-review.md
+  s_7318da1b9edd46::t_95452824a57d5b 1-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "071e5d0620242ab04c727252f20b7b0360584e10",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
