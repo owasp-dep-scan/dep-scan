@@ -86,5 +86,5 @@ Name the rule ids in the answer and mark the coverage gaps not assessed.
 
 ## After the review
 
-- Match the component BOM against advisories — the `depscan scan` above
-- Compare two builds' hardening — `depscan-change-risk`
+- Match the component BOM against advisories: the `depscan scan` above
+- Compare two builds' hardening: `depscan-change-risk`

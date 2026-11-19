@@ -124,6 +124,6 @@ matching in this version. Say so when summarising.
 
 ## After the scan
 
-- Explain and rank what to fix first — `depscan-triage`
-- Download the `full` flavor for distro matching — `depscan-vdb`
-- Fix a missing tool or flavor — `depscan-coverage-loop`
+- Explain and rank what to fix first: `depscan-triage`
+- Download the `full` flavor for distro matching: `depscan-vdb`
+- Fix a missing tool or flavor: `depscan-coverage-loop`

@@ -90,5 +90,5 @@ everything else is the application's.
 
 ## After the findings
 
-- Prove the reach of one defect — `depscan-reachability-proof`
-- Check the binary's hardening — `depscan-binary`
+- Prove the reach of one defect: `depscan-reachability-proof`
+- Check the binary's hardening: `depscan-binary`

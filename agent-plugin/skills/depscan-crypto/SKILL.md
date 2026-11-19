@@ -89,5 +89,5 @@ granularity in the answer.
 
 ## After the inventory
 
-- Prove the reach of one weak primitive — `depscan-reachability-proof`
-- Check the container's trust material — `depscan-container-image`
+- Prove the reach of one weak primitive: `depscan-reachability-proof`
+- Check the container's trust material: `depscan-container-image`

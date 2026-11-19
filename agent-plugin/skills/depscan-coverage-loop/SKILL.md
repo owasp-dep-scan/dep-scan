@@ -99,5 +99,5 @@ the final report.
 
 ## After the loop
 
-- Re-read the finished scan — `depscan-triage`
-- Refresh the database the loop downloaded — `depscan-vdb`
+- Re-read the finished scan: `depscan-triage`
+- Refresh the database the loop downloaded: `depscan-vdb`

@@ -96,5 +96,5 @@ the answer.
 
 ## After the delta
 
-- Prove the reach of a finding the delta added — `depscan-reachability-proof`
-- Show the new build's surface — `depscan-attack-surface`
+- Prove the reach of a finding the delta added: `depscan-reachability-proof`
+- Show the new build's surface: `depscan-attack-surface`

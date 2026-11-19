@@ -102,5 +102,5 @@ question is "did this scan see current advisories".
 
 ## After the download
 
-- Re-run the scan that prompted this — `depscan-scan` or `depscan-container-image`
-- Check what a scan could actually see here — `depscan-triage`
+- Re-run the scan that prompted this: `depscan-scan` or `depscan-container-image`
+- Check what a scan could actually see here: `depscan-triage`

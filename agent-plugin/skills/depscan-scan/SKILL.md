@@ -113,7 +113,7 @@ For a readable explanation of a finished scan use `depscan-triage`.
 
 Offer the natural next step rather than stopping at the findings file:
 
-- Explain and rank what to fix first — `depscan-triage`
-- Check the database is current — `depscan-vdb`
-- Fix the environment a failed or skipped stage names — `depscan-coverage-loop`
-- Produce a CSAF VEX or check a VDR document — `depscan-vex-compliance`
+- Explain and rank what to fix first: `depscan-triage`
+- Check the database is current: `depscan-vdb`
+- Fix the environment a failed or skipped stage names: `depscan-coverage-loop`
+- Produce a CSAF VEX or check a VDR document: `depscan-vex-compliance`

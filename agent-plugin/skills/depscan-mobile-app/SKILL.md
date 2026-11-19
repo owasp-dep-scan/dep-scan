@@ -75,5 +75,5 @@ ABIs in the answer, and mark the gaps not assessed.
 
 ## After the analysis
 
-- Read and rank the findings — `depscan-triage`
-- Review an embedded native library alone — `depscan-binary`
+- Read and rank the findings: `depscan-triage`
+- Review an embedded native library alone: `depscan-binary`

@@ -96,5 +96,5 @@ actually analysed.
 
 ## After the surface map
 
-- Prove a specific finding's reach — `depscan-reachability-proof`
-- Compare the surface before and after a change — `depscan-change-risk`
+- Prove a specific finding's reach: `depscan-reachability-proof`
+- Compare the surface before and after a change: `depscan-change-risk`

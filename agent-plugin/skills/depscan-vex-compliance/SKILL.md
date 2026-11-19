@@ -74,5 +74,5 @@ output carries, and saying so plainly is the correct disclosure.
 
 ## After the document
 
-- Explain the findings behind it — `depscan-triage`
-- Refresh the database the statements rest on — `depscan-vdb`
+- Explain the findings behind it: `depscan-triage`
+- Refresh the database the statements rest on: `depscan-vdb`

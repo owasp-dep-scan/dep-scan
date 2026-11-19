@@ -79,5 +79,5 @@ tool or a fresh `depscan scan` into a new reports directory.
 
 ## After triage
 
-- Fix the environment a stage's failure names — `depscan-coverage-loop`
-- Produce a CSAF VEX document from the scan — `depscan-vex-compliance`
+- Fix the environment a stage's failure names: `depscan-coverage-loop`
+- Produce a CSAF VEX document from the scan: `depscan-vex-compliance`

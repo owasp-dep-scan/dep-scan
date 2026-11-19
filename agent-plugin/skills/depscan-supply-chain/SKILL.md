@@ -88,5 +88,5 @@ the artifact you were given. Name rule ids, and say which packs ran.
 
 ## After the audit
 
-- Refresh the database the malware match used — `depscan-vdb`
-- Produce a disclosure from the findings — `depscan-vex-compliance`
+- Refresh the database the malware match used: `depscan-vdb`
+- Produce a disclosure from the findings: `depscan-vex-compliance`
