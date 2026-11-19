@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-scan_summary-output:1",
+  "title": "dep-scan mcp scan_summary output",
+  "description": "The document the scan_summary tool of `depscan mcp` returns: the scan directory's manifest in summary form and the counts of its findings by category and severity, or, when the summary exceeds the server's response budget, the spill envelope with the file it was written to and the number of findings it counts. A directory that cannot be read as a scan is a tool error, never an empty summary; a missing tool or a skipped stage shows up in the stage counts instead of being hidden. The two shapes are never mixed.",
+  "oneOf": [
+    {
+      "title": "the summary of the scan",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scanDir",
+        "manifestSummary",
+        "findingCount",
+        "countsByCategory",
+        "countsBySeverity"
+      ],
+      "properties": {
+        "scanDir": {
+          "type": "string",
+          "description": "The scan directory that was summarised, absolute and normalised, with / as the separator on every platform."
+        },
+        "manifestSummary": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/manifestSummary"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "The manifest's summary. Null when the directory holds no manifest and was read through the older VDR-only layout."
+        },
+        "findingCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of findings in the scan directory's depscan.findings.json."
+        },
+        "countsByCategory": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "vulnerability",
+              "malware",
+              "memory-safety",
+              "supply-chain",
+              "binary-hardening",
+              "mobile",
+              "code",
+              "license",
+              "crypto",
+              "health"
+            ]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "The findings counted by category, using the finding schema's category values. Every category with at least one finding is present; a category with no findings is absent."
+        },
+        "countsBySeverity": {
+          "type": "object",
+          "propertyNames": {
+            "enum": ["critical", "high", "medium", "low", "info", "unknown"]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "The findings counted by severity, using the finding schema's severity values. Every severity with at least one finding is present; a severity with no findings is absent."
+        }
+      }
+    },
+    {
+      "title": "the result spilled to a file",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "count"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The absolute path, with / separators, of the file the result was written to, inside the scan directory's mcp/ directory. The file name is the tool name followed by the SHA-256 digest of the canonical arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of findings the spilled summary counts."
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "manifestSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "layoutVersion",
+        "depscanVersion",
+        "startUtc",
+        "endUtc",
+        "projectTypes",
+        "stageCount",
+        "stagesByStatus",
+        "inputCount",
+        "fileCount"
+      ],
+      "properties": {
+        "layoutVersion": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+$",
+          "description": "The scan directory layout version the manifest records, as major.minor."
+        },
+        "depscanVersion": {
+          "type": "string",
+          "description": "The version of dep-scan that ran the scan."
+        },
+        "startUtc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the scan started, in UTC, as an RFC 3339 date-time."
+        },
+        "endUtc": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the scan ended, in UTC, as an RFC 3339 date-time. A scan that stopped early still records its end."
+        },
+        "projectTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One project type the stages ran for, in first-seen stage order."
+          },
+          "description": "The project types the scan ran for, from the stages' projectType fields, each listed once."
+        },
+        "stageCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of stage entries the manifest records, check stages included."
+        },
+        "stagesByStatus": {
+          "type": "object",
+          "propertyNames": {
+            "enum": ["completed", "failed", "skipped", "not-assessed"]
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "The stages counted by status, using the manifest's stage status values. Every status with at least one stage is present; a status with no stages is absent."
+        },
+        "inputCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of inputs the manifest records."
+        },
+        "fileCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of files the manifest records."
+        }
+      }
+    }
+  }
+}

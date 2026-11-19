@@ -20,7 +20,11 @@ date as annotations.
   where endpoints were found, `<language>-openapi.json` files.
 - `generate.sh NAME SRC_DIR OUT_DIR` clones the pinned commit and runs that
   generation, then writes `generation.json` with the provenance of the run
-  (`write_provenance.py`). It executes the project's build tooling, so it
+  (`write_provenance.py`). A project with a `dotnet` type also gets the
+  `dotnet-reachables.slices.json` dosai writes (`native_reachability.py`,
+  which needs `DEPSCAN_PYTHON` pointing at a Python with dep-scan
+  installed), because atom writes no reachables slice for C#. It executes
+  the project's build tooling, so it
   runs only in the generate job, which holds no write token, or
   deliberately on a workstation.
 - `validate.py` is the validator; the same checks run in the producer and

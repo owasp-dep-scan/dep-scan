@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-doctor-output:1",
+  "title": "dep-scan mcp doctor output",
+  "description": "The document the doctor tool of `depscan mcp` returns: the doctor report itself, exactly as the published doctor schema defines it. A missing tool or database is a reported state inside the report, never an error.",
+  "$ref": "depscan-doctor.schema.json"
+}

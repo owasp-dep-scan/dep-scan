@@ -18,6 +18,7 @@ const sidebars: SidebarsConfig = {
     'getting-started',
     'cli-usage',
     'agents',
+    'mcp',
     'doctor',
     'python-api',
     'vulnerability-database',

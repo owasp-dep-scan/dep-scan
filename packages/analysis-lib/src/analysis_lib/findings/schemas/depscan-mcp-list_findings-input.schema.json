@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-list_findings-input:1",
+  "title": "dep-scan mcp list_findings input",
+  "description": "The arguments the list_findings tool of `depscan mcp` accepts: a scan directory, the filters over the fields the finding schema has today, and the page controls. The server validates the arguments against this schema, so an argument outside this set is a tool error rather than a silently ignored filter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scan_dir"],
+  "properties": {
+    "scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The scan directory whose findings are listed, as an absolute path. The tool refuses a path that does not resolve, with os.path.realpath, inside a root the server was started with."
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "vulnerability",
+        "malware",
+        "memory-safety",
+        "supply-chain",
+        "binary-hardening",
+        "mobile",
+        "code",
+        "license",
+        "crypto",
+        "health"
+      ],
+      "description": "Keep only findings of this category, the finding schema's category value."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info", "unknown"],
+      "description": "Keep only findings of this severity, the finding schema's severity value."
+    },
+    "purl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Keep only findings whose components include this package URL. The comparison follows the tool's purl matching."
+    },
+    "cwe": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Keep only findings whose cwes include this CWE number, for example 77 for command injection."
+    },
+    "rule": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Keep only findings with this rule id, for example CVE-2021-23337 or an analyzer rule id."
+    },
+    "reachable": {
+      "type": "boolean",
+      "description": "Keep only findings whose recorded reachability matches the value: true for findings the analysis marked reachable, false for those it marked not reachable. A finding that records no reachability matches neither value."
+    },
+    "cursor": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The opaque page cursor a previous call returned as nextCursor. The cursor is the base64url encoding of the page offset; a value the server cannot decode is a tool error."
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200,
+      "default": 50,
+      "description": "The maximum number of findings on the page. The default is 50 and the maximum 200; a larger value is a tool error."
+    }
+  }
+}

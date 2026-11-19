@@ -717,6 +717,12 @@ def requirement_reason(
         if not vdb.get("present"):
             return "the vulnerability database is not present"
         return "the vulnerability database has no searchable rows"
+    if requirement.startswith("python:"):
+        module = requirement[len("python:") :]
+        return (
+            f"the {module} module is not installed; install dep-scan with "
+            f"the matching extra: `pip install owasp-depscan[{module}]`"
+        )
     return f"{requirement} is not available"
 
 
@@ -762,9 +768,10 @@ class CapabilitySpec:
 
 
 #: The single source for what each capability needs. Requirement names are
-#: ``tool:<name>`` matching a tools entry, or ``data:vdb`` for the
-#: vulnerability database. Later analysis steps read this table through
-#: :func:`requirement_missing` rather than keeping their own copy.
+#: ``tool:<name>`` matching a tools entry, ``data:vdb`` for the
+#: vulnerability database, or ``python:<module>`` for an importable Python
+#: module this interpreter must have. Later analysis steps read this table
+#: through :func:`requirement_missing` rather than keeping their own copy.
 CAPABILITIES: Tuple[CapabilitySpec, ...] = (
     CapabilitySpec(
         name="vulnerabilities",
@@ -806,6 +813,13 @@ CAPABILITIES: Tuple[CapabilitySpec, ...] = (
         description="License risk from the licence data vendored with dep-scan.",
         issue=592,
         requirements=(),
+        implemented=True,
+    ),
+    CapabilitySpec(
+        name="mcp",
+        description="The MCP server over stdio (`depscan mcp`) for agents.",
+        issue=631,
+        requirements=("python:mcp",),
         implemented=True,
     ),
     CapabilitySpec(
@@ -884,7 +898,9 @@ def requirement_missing(
     A tool requirement needs a tools entry with a path and no reason. The
     database requirement needs a present database with index rows; a present
     database whose row count is unknown does not satisfy it, because a scan
-    cannot know it is not empty.
+    cannot know it is not empty. A ``python:<module>`` requirement needs the
+    module to be importable in this interpreter, looked up with
+    :func:`importlib.util.find_spec` without importing it.
     """
     if requirement.startswith("tool:"):
         status = tools.get(requirement[len("tool:") :])
@@ -894,6 +910,15 @@ def requirement_missing(
     if requirement == "data:vdb":
         vdb = data.get("vulnerabilityDatabase") or {}
         if not vdb.get("present") or not vdb.get("cveIndexCount"):
+            return requirement
+        return None
+    if requirement.startswith("python:"):
+        module = requirement[len("python:") :]
+        try:
+            found = util.find_spec(module)
+        except (ImportError, ValueError):
+            found = None
+        if found is None:
             return requirement
         return None
     return requirement

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-coverage-input:1",
+  "title": "dep-scan mcp coverage input",
+  "description": "The arguments the coverage tool of `depscan mcp` accepts: one scan directory whose coverage is reported. The server validates the arguments against this schema, so an unknown argument is a tool error rather than a silently ignored one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["scan_dir"],
+  "properties": {
+    "scan_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The scan directory whose coverage is reported, as an absolute path. The tool refuses a path that does not resolve, with os.path.realpath, inside a root the server was started with."
+    }
+  }
+}

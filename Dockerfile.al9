@@ -1,10 +1,10 @@
-FROM almalinux:9-minimal
+FROM almalinux:9.9-minimal
 
 LABEL maintainer="OWASP Foundation" \
       org.opencontainers.image.authors="Team AppThreat <cloud@appthreat.com>" \
       org.opencontainers.image.source="https://github.com/owasp-dep-scan/dep-scan" \
       org.opencontainers.image.url="https://owasp.org/www-project-dep-scan" \
-      org.opencontainers.image.version="6.3.x" \
+      org.opencontainers.image.version="7.0.x" \
       org.opencontainers.image.vendor="owasp-dep-scan" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.title="dep-scan" \
@@ -12,17 +12,18 @@ LABEL maintainer="OWASP Foundation" \
       org.opencontainers.docker.cmd="docker run --rm -v /tmp:/tmp -v $(pwd):/app:rw -t ghcr.io/owasp-dep-scan/dep-scan depscan scan"
 
 ARG TARGETPLATFORM
-ARG JAVA_VERSION=26.0.1-tem
-ARG MAVEN_VERSION=3.9.16
-ARG GRADLE_VERSION=9.6.1
-ARG PYTHON_VERSION=3.12
-ARG GO_VERSION=1.26.11
+ARG JAVA_VERSION=26.0.2.1+1-tem
+ARG MAVEN_VERSION=3.10.1
+ARG GRADLE_VERSION=9.9.1
+ARG PYTHON_VERSION=3.14
+ARG GO_VERSION=1.27.4
 
 ENV GOPATH=/opt/app-root/go \
     GO_VERSION=$GO_VERSION \
     JAVA_VERSION=$JAVA_VERSION \
     MAVEN_VERSION=$MAVEN_VERSION \
     GRADLE_VERSION=$GRADLE_VERSION \
+    UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     GRADLE_OPTS="-Dorg.gradle.daemon=false" \
     JAVA_HOME="/opt/java/${JAVA_VERSION}" \
     MAVEN_HOME="/opt/maven/${MAVEN_VERSION}" \
@@ -33,7 +34,7 @@ ENV GOPATH=/opt/app-root/go \
     PYTHON_CMD=/usr/bin/python3 \
     CDXGEN_NO_BANNER=true \
     CDXGEN_CMD=cdxgen
-ENV PATH=/opt/dep-scan/.venv/bin:${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/usr/local/bin/:/root/.local/bin:
+ENV PATH=/opt/dep-scan/.venv/bin:${PATH}:${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${GRADLE_HOME}/bin:${GOPATH}/bin:/usr/local/go/bin:/root/.local/bin
 
 COPY . /opt/dep-scan
 
@@ -49,9 +50,9 @@ RUN set -e; \
             ;; \
         *) echo >&2 "error: unsupported architecture: '$ARCH_NAME'"; exit 1 ;; \
     esac; \
-    echo -e "[nodejs]\nname=nodejs\nstream=22\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
+    echo -e "[nodejs]\nname=nodejs\nstream=24\nprofiles=\nstate=enabled\n" > /etc/dnf/modules.d/nodejs.module \
     && microdnf install -y php php-curl php-zip php-bcmath php-json php-pear php-mbstring php-devel make gcc git-core \
-        python3 python3-devel python3-pip python3.12 python3.12-pip diffutils \
+        python3 python3-devel python3-pip diffutils openssl \
         pcre2 which tar zip unzip sudo nodejs npm ncurses glibc-common glibc-all-langpacks \
     && python3 --version \
     && node --version \
@@ -63,7 +64,7 @@ RUN set -e; \
     && sdk install gradle $GRADLE_VERSION \
     && mv /root/.sdkman/candidates/* /opt/ \
     && rm -rf /root/.sdkman \
-    && npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom-parsetools \
+    && npm install -g @cdxgen/cdxgen@13.8.0 @appthreat/atom-parsetools@2.0.0 \
     && cdxgen --version \
     && curl -LO "https://dl.google.com/go/go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz" \
     && tar -C /usr/local -xzf go${GO_VERSION}.linux-${GOBIN_VERSION}.tar.gz \
@@ -87,6 +88,8 @@ RUN set -e; \
     && which astgen \
     && which phpastgen \
     && rm ~/.local/bin/uv ~/.local/bin/uvx \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /root/.cache \
     && chown -R owasp:owasp /opt \
     && chmod a-w -R /opt \
     && rm -rf /var/cache/yum \

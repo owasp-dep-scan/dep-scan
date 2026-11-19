@@ -1322,13 +1322,34 @@ def test_every_published_schema_is_valid_draft_2020_12():
 
 
 def _agents_table_rows():
-    """The verbs table as ``{verb: schema}``, in the page's order."""
+    """The verbs table as ``{verb: schema}``, in the page's order.
+
+    The verbs table comes first on the page; the MCP tools' table after it
+    names its tools in the same three-column shape, and where a verb and a
+    tool share a name (``doctor``) the verbs table's row is the one kept,
+    because the worked examples below name the verbs. Schema names carry an
+    underscore where the tool they belong to does
+    (``depscan-mcp-vdb_status-output``), so both tables parse with the same
+    pattern.
+    """
     rows = {}
     for line in AGENTS_PAGE.read_text(encoding="utf-8").split("\n"):
-        match = re.match(r"^\| `([^`]+)` \| .* \| `([a-z0-9-]+)` \|$", line)
+        match = re.match(r"^\| `([^`]+)` \| .* \| `([a-z0-9_-]+)` \|$", line)
         if match:
-            rows[match.group(1)] = match.group(2)
+            rows.setdefault(match.group(1), match.group(2))
     return rows
+
+
+def _agents_row_schemas():
+    """Every schema name any document table row on the page names, the
+    verbs' and the MCP tools' together."""
+    return set(
+        re.findall(
+            r"^\| `[^`]+` \| .* \| `([a-z0-9_-]+)` \|$",
+            AGENTS_PAGE.read_text(encoding="utf-8"),
+            flags=re.MULTILINE,
+        )
+    )
 
 
 def _agents_examples():
@@ -1379,15 +1400,18 @@ EXAMPLE_PROFILES = {
 
 
 def test_agents_page_table_covers_the_published_schemas():
-    """Every output schema is named in the page's verbs table, and only those.
+    """Every output schema is named in one of the page's document tables,
+    and only those.
 
-    The error schema is the one output document outside the table; it has
-    its own section.
+    The verbs table covers the documents the verbs write in json format and
+    the MCP tools' table the documents its ten tools return over the
+    protocol. The error schema is the one output document outside the
+    tables; it has its own section.
     """
-    rows = _agents_table_rows()
+    rows = _agents_row_schemas()
     expected = {name for name in schema_names() if name.endswith("-output")}
-    assert set(rows.values()) == expected, (
-        f"the verbs table and the published output schemas disagree: {sorted(rows.values())}"
+    assert rows == expected, (
+        f"the page's document tables and the published output schemas disagree: {sorted(rows)}"
     )
 
 

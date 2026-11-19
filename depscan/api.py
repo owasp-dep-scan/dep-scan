@@ -619,6 +619,14 @@ def load_scan(reports_dir: str) -> ScanResult:
     return _load_vdr_scan(reports_dir)
 
 
+def _manifest_output(reports_dir: str, relative: str) -> str:
+    """A manifest output's path, refused when it leads out of the scan."""
+    try:
+        return scan_directory.output_path(reports_dir, relative)
+    except ValueError as exc:
+        raise ScanError(f"Cannot load a scan from '{reports_dir}': {exc}") from exc
+
+
 def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResult:
     """Read a scan directory that carries a manifest.
 
@@ -642,7 +650,7 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
     for project_type, relative in scan_directory.stage_outputs(manifest, "inventory"):
         if project_type not in assessed:
             continue
-        path = os.path.join(reports_dir, *relative.split("/"))
+        path = _manifest_output(reports_dir, relative)
         if os.path.isfile(path):
             by_type[project_type] = TypeScanResult(project_type=project_type, bom_file=path)
             if project_type not in order:
@@ -654,7 +662,7 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
             f"'{outside[0][1]}' was written outside the scan directory."
         )
     for project_type, relative in scan_directory.stage_outputs(manifest, "vdr"):
-        path = os.path.join(reports_dir, *relative.split("/"))
+        path = _manifest_output(reports_dir, relative)
         if not os.path.isfile(path):
             raise ScanError(
                 f"Cannot load a scan from '{reports_dir}': the manifest "
@@ -702,7 +710,10 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
             order.append(project_type)
     types = [by_type[project_type] for project_type in order if project_type in by_type]
     all_types = scan_directory.project_types(manifest)
-    findings_document = scan_directory.read_findings(reports_dir)
+    try:
+        findings_document = scan_directory.read_findings(reports_dir)
+    except ValueError as exc:
+        raise ScanError(f"Cannot load a scan from '{reports_dir}': {exc}") from exc
     return ScanResult(
         reports_dir=reports_dir,
         project_types=all_types + [t for t in order if t not in all_types],

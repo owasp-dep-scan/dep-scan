@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-run_scan-input:1",
+  "title": "dep-scan mcp run_scan input",
+  "description": "The arguments the run_scan tool of `depscan mcp` accepts: one target and the scan options. The tool is a dry run unless the server was started with --allow-scans and the caller passes execute: true; the arguments alone can never turn a dry run into a real scan. The server validates the arguments against this schema, so an argument outside this set is a tool error rather than a silently ignored one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["target"],
+  "properties": {
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What to scan: a source directory, git URL, container image reference, BOM file, BOM directory or package URL, in the form the depscan scan command accepts. A directory target must be an absolute path that resolves, with os.path.realpath, inside a root the server was started with."
+    },
+    "execute": {
+      "type": "boolean",
+      "default": false,
+      "description": "Request a real scan instead of the dry run. A real run also needs the server to have been started with --allow-scans; with execute: true but no --allow-scans the tool refuses with an error that names the flag."
+    },
+    "reports_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The directory the scan writes its files to, as an absolute path inside the roots the server was started with. The scan chooses a directory when this is absent."
+    },
+    "profile": {
+      "type": "string",
+      "enum": ["quick", "ci", "deep", "research", "offline"],
+      "description": "The scan profile, one of the values the --profile option of the depscan scan command accepts."
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "all",
+          "vulnerabilities",
+          "reachability",
+          "license",
+          "supply-chain",
+          "binary",
+          "memory-safety",
+          "mobile",
+          "code",
+          "crypto"
+        ],
+        "description": "One check to run, as the --checks option names them."
+      },
+      "uniqueItems": true,
+      "minItems": 1,
+      "description": "The checks to run, as the --checks option accepts them. An explicit list defines the whole optional set; vulnerabilities always runs."
+    },
+    "reachability_analyzer": {
+      "type": "string",
+      "enum": ["off", "FrameworkReachability", "SemanticReachability"],
+      "description": "The reachability analyzer to use, one of the values the --reachability-analyzer option accepts."
+    },
+    "explain": {
+      "type": "boolean",
+      "description": "Ask the scan to render its explanation, as the --explain option does."
+    }
+  }
+}

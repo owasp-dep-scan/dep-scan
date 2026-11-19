@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-vdb_status-output:1",
+  "title": "dep-scan mcp vdb_status output",
+  "description": "The document the vdb_status tool of `depscan mcp` returns: the vdb info document itself, exactly as the published vdb info output schema defines it. A missing database or a missing shard is a recorded state inside the document, never an error.",
+  "$ref": "depscan-vdb-info-output.schema.json"
+}

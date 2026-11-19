@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-run_scan-output:1",
+  "title": "dep-scan mcp run_scan output",
+  "description": "The document the run_scan tool of `depscan mcp` returns. The default is a dry run: the depscan scan command the tool would run, as its argument vector, and the effective scan options in the form `depscan config show --format json` writes them, with nothing executed. A real run, which needs the server to have been started with --allow-scans and execute: true, returns the scan entry the scans document carries for the target, scanned or refused exactly as that document's schema defines it, or, when the entry exceeds the server's response budget, the spill envelope with the file it was written to, inside the run's scan directory, and its count. The shapes are never mixed; a dry run has no scan directory to spill into, so an oversized dry run is a tool error naming the budget.",
+  "oneOf": [
+    {
+      "title": "a dry run",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv", "options"],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One argument of the command."
+          },
+          "minItems": 1,
+          "description": "The depscan scan command the real run would execute, as its argument vector, starting with the program name."
+        },
+        "options": {
+          "$ref": "depscan-config-show-output.schema.json",
+          "description": "The effective options the scan would receive, in the form `depscan config show --format json` writes: one entry per option with its value and the source that set it."
+        }
+      }
+    },
+    {
+      "$ref": "depscan-scan-output.schema.json#/$defs/entry"
+    },
+    {
+      "title": "the result spilled to a file",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "count"],
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The absolute path, with / separators, of the file the result was written to, inside the run's scan directory's mcp/ directory. The file name is the tool name followed by the SHA-256 digest of the canonical arguments."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The number of scan entries the spilled file holds: one, the entry of the target this call scanned."
+        }
+      }
+    }
+  ]
+}

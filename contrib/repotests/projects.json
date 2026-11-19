@@ -138,6 +138,47 @@
       "minReachablePurls": 0,
       "mustReach": [],
       "notes": "Pinned at the commit tag curl-8_13_0 points to. Formulation is off because cdxgen 13.8.0 writes a literal GitHub Actions if: condition as a boolean property value, which fails schema validation (cdxgen/cdxgen#4850). C slices carry no purls."
+    },
+    {
+      "name": "java-sec-code",
+      "directory": "java",
+      "git": "https://github.com/HooliCorp/java-sec-code",
+      "commit": "7f7f02a9e030736dd4ef4fa657511b26c4c5c016",
+      "types": ["java"],
+      "cdxgenArgs": ["--profile", "research"],
+      "minReachablePurls": 18,
+      "mustReach": ["fastjson", "log4j-core"]
+    },
+    {
+      "name": "vulnerable-aws-koa-app",
+      "directory": "js",
+      "git": "https://github.com/HooliCorp/vulnerable-aws-koa-app",
+      "commit": "dde4187bf21f0d56b6867fffd09f93ff0e275a80",
+      "types": ["js"],
+      "cdxgenArgs": ["--profile", "research"],
+      "minReachablePurls": 5,
+      "mustReach": ["koa", "jsonwebtoken"]
+    },
+    {
+      "name": "dotnet-podcasts",
+      "directory": "dotnet",
+      "git": "https://github.com/microsoft/dotnet-podcasts",
+      "commit": "5ee8be2990b81eb681bbd100875c263aaa5ab68a",
+      "types": ["dotnet"],
+      "cdxgenArgs": ["--profile", "research"],
+      "minReachablePurls": 2,
+      "mustReach": ["Microsoft.Extensions.Logging"],
+      "notes": "atom writes no reachables slice for C#; generate.sh adds the dosai dotnet-reachables slice, which needs DEPSCAN_PYTHON and a .NET runtime dosai runs on."
+    },
+    {
+      "name": "dejacode",
+      "directory": "python",
+      "git": "https://github.com/aboutcode-org/dejacode",
+      "commit": "229e64908819ee697e7bbd813964443f4a72f990",
+      "types": ["python"],
+      "cdxgenArgs": ["--profile", "research"],
+      "minReachablePurls": 8,
+      "mustReach": ["django", "requests"]
     }
   ]
 }

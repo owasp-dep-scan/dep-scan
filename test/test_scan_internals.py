@@ -220,6 +220,55 @@ def test_the_container_run_command_carries_the_excluded_types(tmp_path):
     assert excluded == ["os", "docker"]
 
 
+def _env_values(run_command_args):
+    """The values of the docker run command's -e arguments."""
+    return [
+        run_command_args[i + 1] for i, arg in enumerate(run_command_args) if arg == "-e"
+    ]
+
+
+def test_the_container_run_command_names_the_mount_point_for_the_temp_dir(
+    monkeypatch, tmp_path
+):
+    """A caller-provided temp directory is mounted at /tmp inside the
+    container, and the environment the container sees must name /tmp: the
+    host path does not exist inside the container, and the image's cdxgen
+    dies creating it there (EACCES mkdir of the host path)."""
+    temp_dir = tmp_path / "caller-temp"
+    temp_dir.mkdir()
+    monkeypatch.setenv("CDXGEN_TEMP_DIR", str(temp_dir))
+    gen = cdxgen_mod.CdxgenImageBasedGenerator(
+        str(tmp_path),
+        str(tmp_path / "bom.cdx.json"),
+        options={"project_type": ["python"]},
+    )
+    _, run_command_args = gen._container_run_cmd()
+    env_values = _env_values(run_command_args)
+    assert "CDXGEN_TEMP_DIR=/tmp" in env_values
+    # The name-only form is how the host value reaches the container; it
+    # must not appear beside the mapped one.
+    assert "CDXGEN_TEMP_DIR" not in env_values
+    mounts = [run_command_args[i + 1] for i, arg in enumerate(run_command_args) if arg == "-v"]
+    assert f"{temp_dir}:/tmp:rw" in mounts
+
+
+def test_the_container_run_command_maps_the_generated_temp_dir(monkeypatch, tmp_path):
+    """The temp directory the generator creates itself is mounted at /tmp
+    and mapped the same way: the container never sees the host path."""
+    monkeypatch.delenv("CDXGEN_TEMP_DIR", raising=False)
+    gen = cdxgen_mod.CdxgenImageBasedGenerator(
+        str(tmp_path),
+        str(tmp_path / "bom.cdx.json"),
+        options={"project_type": ["python"]},
+    )
+    _, run_command_args = gen._container_run_cmd()
+    env_values = _env_values(run_command_args)
+    assert "CDXGEN_TEMP_DIR=/tmp" in env_values
+    assert "CDXGEN_TEMP_DIR" not in env_values
+    mounts = [run_command_args[i + 1] for i, arg in enumerate(run_command_args) if arg == "-v"]
+    assert f"{gen.cdxgen_temp_dir}:/tmp:rw" in mounts
+
+
 # ---------------------------------------------------------------------------
 # the offline database
 # ---------------------------------------------------------------------------

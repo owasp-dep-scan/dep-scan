@@ -580,6 +580,26 @@ def write_findings(reports_dir: str, vulnerabilities: List[Dict[str, Any]], deps
     return document
 
 
+def output_path(reports_dir: str, relative: str) -> str:
+    """The file a manifest output names, joined under ``reports_dir``.
+
+    Manifest outputs are scan-directory-relative paths with ``/``
+    separators. One that resolves outside the scan directory (a ``..``
+    segment, or a symlink that leads out) raises ValueError naming it, so a
+    hand-edited or hostile manifest cannot make a reader open a file
+    elsewhere.
+    """
+    path = os.path.join(str(reports_dir), *str(relative).split("/"))
+    root = os.path.realpath(str(reports_dir))
+    resolved = os.path.realpath(path)
+    if resolved != root and not resolved.startswith(root.rstrip(os.sep) + os.sep):
+        raise ValueError(
+            f"The manifest output '{relative}' resolves outside the scan "
+            f"directory '{reports_dir}'."
+        )
+    return path
+
+
 def read_manifest(reports_dir: str) -> Optional[Dict[str, Any]]:
     """The manifest of a scan directory, or None when there is none.
 
@@ -597,11 +617,22 @@ def read_manifest(reports_dir: str) -> Optional[Dict[str, Any]]:
 
 
 def read_findings(reports_dir: str) -> Optional[Dict[str, Any]]:
-    """The findings document of a scan directory, or None when absent."""
+    """The findings document of a scan directory, or None when absent.
+
+    A file that exists but is not valid JSON raises: the error names the
+    file and the parse failure, because a corrupted findings document must
+    never read back as a scan with no findings.
+    """
     path = os.path.join(str(reports_dir), FINDINGS_FILE)
     if not os.path.isfile(path):
         return None
-    document = json_load(path)
+    try:
+        with open(path, encoding="utf-8") as fp:
+            document = json.load(fp)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"The findings file at '{path}' is unreadable: it is not valid JSON ({exc})."
+        ) from exc
     if not isinstance(document, dict):
         raise ValueError(f"The findings file at '{path}' is not a JSON object.")
     return document

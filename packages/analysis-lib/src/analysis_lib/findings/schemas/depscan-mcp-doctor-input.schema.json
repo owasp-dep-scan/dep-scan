@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:mcp-doctor-input:1",
+  "title": "dep-scan mcp doctor input",
+  "description": "The arguments the doctor tool of `depscan mcp` accepts: none. The server validates the arguments against this schema, so any argument at all is a tool error.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}

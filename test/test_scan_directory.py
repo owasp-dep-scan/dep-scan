@@ -1149,3 +1149,23 @@ def test_a_vdr_outside_the_scan_directory_is_not_read_as_clean(scan_stubs, tmp_p
     assert not os.path.isabs(vdr_stage["outputs"][0]["file"])
     with pytest.raises(api.ScanError, match="outside the scan directory"):
         api.load_scan(str(reports))
+
+
+def test_a_corrupted_findings_document_is_refused_not_read_as_clean(scan_stubs, tmp_path):
+    """A depscan.findings.json that is not valid JSON must not load as a
+    scan with no findings: the directory refuses to load and names the
+    file and the parse failure."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True), render=False
+    )
+    assert result.findings, "the scan itself found the stubbed vulnerability"
+    (Path(result.reports_dir) / "depscan.findings.json").write_text(
+        "{not json at all", encoding="utf-8"
+    )
+    with pytest.raises(api.ScanError) as excinfo:
+        api.load_scan(str(reports))
+    message = str(excinfo.value)
+    assert "depscan.findings.json" in message
+    assert "not valid JSON" in message
