@@ -80,12 +80,14 @@ The drift document carries `AddedFlows`, `RemovedFlows`, `MovedFlows`,
 `NewSinkCategories` and a `RiskDelta`; `coverage.regressed` says whether
 the new report covers less than the old one. With `--fail-on`, exit 2
 means a gate tripped, and the console line names which and why. A gate
-the engine cannot evaluate also trips: golem and rusi reports carry no
-authentication state, so `new-anonymous-endpoint` on them reports "not
-computed" and exits 2. Only dosai classifies authentication, so pass
-`new-anonymous-endpoint` only with dosai reports, and when the console
-says a gate "cannot be evaluated", report that gate as not assessed,
-never as a regression or a pass.
+the engine cannot evaluate also trips. In atom-tools 1.0.x the drift
+`RiskDelta.NewAnonymousEndpoints` is `null` ("not computed") for every
+engine, because the unified model carries no exposure tier, so
+`--fail-on new-anonymous-endpoint` always exits 2. Do not pass that gate;
+read `AddedEntryPoints` (each with `method`, `path`, `kind` and `file`)
+for new exposure, take authentication from `depscan-attack-surface` or
+from `dosai diff`'s own `RiskDelta`, and report any gate the console says
+"cannot be evaluated" as not assessed, never as a regression or a pass.
 
 ## Binaries and builds: blint diff
 

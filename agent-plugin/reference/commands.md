@@ -45,6 +45,7 @@ see [safety.md](safety.md).
 | `depscan mcp` | The MCP server over stdio: ten tools, nine that read and a `run_scan` that only plans a scan unless the person starting the server passed `--allow-scans` | no document: stdout is the protocol channel; `--format` is refused |
 | `depscan serve` | dep-scan as an HTTP server | `{"serving": {"host", "port", "url"}}` |
 | `depscan config show` | The effective scan options and where each came from | `{"options": {...}}` |
+| `depscan config init` | Write `./depscan.toml` with the effective scan options (a file write: ask first) | `{"written": "..."}` |
 | `depscan help [verb]` | The help text as a document | `{"help": "..."}` |
 
 `depscan mcp` without the `mcp` extra exits 4 with a message naming

@@ -80,8 +80,13 @@ depscan scan --target-kind bom /absolute/path/to/blint-reports/binary.cdx.json -
 ```
 
 Exact identification at scale uses blintdb (`--use-blintdb`), and
-`blint db --download` fetches it: tens of gigabytes. State the size, and
-do not start it without the user's consent; without blintdb,
+`blint db --download` fetches it: tens of gigabytes. blint turns blintdb
+on by itself when `blint.db` already exists under `BLINTDB_HOME`, and it
+downloads the database when `--use-blintdb` or `USE_BLINTDB` is set and
+the file is missing, or when `BLINTDB_REFRESH` is set. So never pass
+`--use-blintdb` or set those variables unless the file exists or the user
+agreed to the download, state the size, and do not start it without the
+user's consent; without blintdb,
 identification rests on exports, embedded signatures and link metadata,
 and the summary says which method produced each component.
 

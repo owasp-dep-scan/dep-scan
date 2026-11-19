@@ -8,5 +8,6 @@ test/data/scan-directory/** -text
 agent-plugin/plugin.json text eol=lf
 agent-plugin/.claude-plugin/plugin.json text eol=lf
 agent-plugin/gemini-extension.json text eol=lf
+agent-plugin/.zcode-plugin/plugin.json text eol=lf
 agent-plugin/.mcp.json text eol=lf
 agent-plugin/mcp.json text eol=lf

@@ -234,6 +234,24 @@ TARGETS = [
         },
     },
     {
+        # ZCode discovers a plugin's skills and MCP server only when the
+        # plugin carries .zcode-plugin/plugin.json; without it the plugin
+        # installs with its hooks and nothing else. The component pointers
+        # name the same files Claude Code reads.
+        "file": "agent-plugin/.zcode-plugin/plugin.json",
+        "build": lambda shared, existing: {
+            "name": PLUGIN_NAME,
+            "version": shared["version"],
+            "description": shared["description"],
+            "author": shared["author"],
+            "homepage": shared["homepage"],
+            "repository": shared["repository"],
+            "skills": "./skills",
+            "hooks": "./hooks/hooks.json",
+            "mcpServers": "./.mcp.json",
+        },
+    },
+    {
         "file": "agent-plugin/.mcp.json",
         "build": lambda shared, existing: MCP_CONFIG,
     },

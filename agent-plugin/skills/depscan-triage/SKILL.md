@@ -39,7 +39,10 @@ depscan report /absolute/path/to/scan-dir --format json --explain
 ```
 
 The explanation is rendered for the whole scan in this version; read it as
-the scan's context around each finding, not as a per-finding text.
+the scan's context around each finding, not as a per-finding text. It is
+built from the slices and OpenAPI files in the scan directory, so a scan
+that ran without reachability (`--profile quick`, a skipped or failed
+reachability stage) has nothing to explain, and the output says so.
 
 ## The MCP server
 
@@ -47,7 +50,10 @@ When Claude Code offers the plugin's MCP tools, the same data is available
 over `depscan mcp`: `scan_summary`, `list_findings` (filters: category,
 severity, purl, cwe, rule, reachable), `get_finding`, `explain_finding`,
 `coverage`, `list_components`, `diff_scans`, `doctor`, `vdb_status` and
-`run_scan` (a dry run by default). The server exits 4 when the `mcp` extra
+`run_scan` (a dry run by default). List results are paged: when a result
+carries `nextCursor`, pass it back as `cursor` until it is absent before
+counting or ranking, and a result too large for the reply is written to a
+spill file in the scan directory whose path the result names. The server exits 4 when the `mcp` extra
 is missing; installing `owasp-depscan[mcp]` into the environment the server
 launches from is a state change, so ask the user first, and never pass
 `--allow-scans`.

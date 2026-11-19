@@ -20,9 +20,10 @@ The full instructions, including the tested status of each client, are in [the d
 - Claude Code: `claude plugin marketplace add owasp-dep-scan/dep-scan` then `claude plugin install depscan@depscan-plugins`.
 - Codex: `codex plugin marketplace add owasp-dep-scan/dep-scan` then `codex plugin add depscan@depscan-plugins`.
 - opencode: point the `skills` setting in `opencode.json` at this folder's `skills/` as `{"paths": [".../agent-plugin/skills"]}`; `opencode debug skill` lists the fourteen skills.
+- ZCode: `zcode plugins marketplace add owasp-dep-scan/dep-scan` then `zcode plugins install depscan@depscan-plugins`; ZCode needs `.zcode-plugin/plugin.json`, which this folder carries.
 - Cursor, Gemini CLI, Kiro, Copilot CLI: each reads the manifest format it documents (`.cursor-plugin/marketplace.json`, `gemini-extension.json`, the Agent Plugins `plugin.json`); these clients are not yet tested.
 
-Only Claude Code has the agents, the hooks and the `userConfig` options; on every other client the skills read `${user_config.KEY}` as plain text and fall back to their defaults.
+Only Claude Code has the agents and the `userConfig` options, and only Claude Code and ZCode run the hooks; on every other client the skills read `${user_config.KEY}` as plain text and fall back to their defaults.
 
 ## Plugin settings
 

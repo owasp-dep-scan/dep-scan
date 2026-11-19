@@ -1,6 +1,6 @@
 """The generated agent manifests match the template and the pyproject version.
 
-The six client manifests and the two MCP configurations are written by
+The seven client manifests and the two MCP configurations are written by
 ``contrib/gen_agent_manifests.py``; this module keeps the committed files
 equal to what the generator produces, keeps generation byte-stable, and
 checks the PEP 440 to semver conversion the manifests carry.
@@ -90,6 +90,7 @@ MANIFEST_FILES = (
     ".agents/plugins/marketplace.json",
     ".cursor-plugin/marketplace.json",
     "agent-plugin/gemini-extension.json",
+    "agent-plugin/.zcode-plugin/plugin.json",
     "agent-plugin/.mcp.json",
     "agent-plugin/mcp.json",
 )

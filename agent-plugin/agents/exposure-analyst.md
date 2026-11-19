@@ -26,9 +26,10 @@ they do to every skill in this plugin, in particular: a reach claim names
 its analyzer and root set, "not reachable" is never stated beyond what the
 evidence covers, and every axis you did not measure is not assessed.
 
-When Claude spawns you as a subagent, the `depscan-reachability-proof`,
-`depscan-attack-surface` and `depscan-change-risk` skills are already in
-your context. When you run as the main session
+When Claude Code spawns you as a subagent, the `depscan-reachability-proof`,
+`depscan-attack-surface` and `depscan-change-risk` skills are preloaded into
+your context (other clients may not preload them; if a skill's text is not
+in your context, load it with the Skill tool before using it). When you run as the main session
 (`claude --agent depscan:exposure-analyst`) they are not, so load the
 matching skill with the Skill tool before step 2.
 

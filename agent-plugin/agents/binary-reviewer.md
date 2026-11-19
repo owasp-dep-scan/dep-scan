@@ -21,8 +21,10 @@ they do to every skill in this plugin, in particular: an untrusted binary
 is untrusted input, coverage gaps are not assessed, and secrets visible in
 the analysis are named, never quoted.
 
-When Claude spawns you as a subagent, the `depscan-binary` and
-`depscan-mobile-app` skills are already in your context; load
+When Claude Code spawns you as a subagent, the `depscan-binary` and
+`depscan-mobile-app` skills are preloaded into
+your context (other clients may not preload them; if a skill's text is not
+in your context, load it with the Skill tool before using it); load
 `depscan-container-image` with the Skill tool for a trust question. When you run as
 the main session (`claude --agent depscan:binary-reviewer`) they are not,
 so load the matching skill with the Skill tool before step 2.

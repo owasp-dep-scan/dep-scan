@@ -7,7 +7,8 @@ description: 'Audits how software is built and delivered rather than which CVEs 
 
 Use this skill when the question is about how the software is built and
 delivered rather than which advisories match. dep-scan's own supply-chain
-check runs the risk audit for the project types it supports; cdx-audit's
+check runs the package risk audit on the npm, PyPI and Cargo packages a
+scan finds; cdx-audit's
 rule packs are run directly because dep-scan does not run them yet, and
 each step below says so. The rules in
 [reference/safety.md](../../reference/safety.md) apply; in particular
@@ -28,9 +29,11 @@ user's consent, and the step says so before it runs.
 depscan scan /absolute/path/to/project --checks supply-chain --format json -o /absolute/path/to/reports
 ```
 
-On the project types the risk audit supports this reports the risk audit
-results; on others the manifest's risk stage is `skipped` with the reason,
-which is not assessed, not clean. Malicious packages (`MAL-` advisories)
+The risk audit reads the npm, PyPI and Cargo packages of the scan,
+whatever the project type, and looks each one up in its public registry,
+so it needs the network. When the scan carries none of those packages the
+manifest's risk stage is `not-assessed` with that reason, which is not
+clean; a `skipped` stage means the check was not requested. Malicious packages (`MAL-` advisories)
 match through the vulnerability database when the database carries them;
 `depscan vdb info --format json` shows the flavor and whether it does.
 

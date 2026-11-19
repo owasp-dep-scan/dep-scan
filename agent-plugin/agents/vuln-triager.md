@@ -31,8 +31,9 @@ as unknown rather than clean, never claim a finding is `not_affected` or a
 component "not reachable" beyond what the evidence says, and never quote a
 secret the findings or BOM carry.
 
-When Claude spawns you as a subagent, the three skills above are already in
-your context. When you run as the main session
+When Claude Code spawns you as a subagent, the three skills above are preloaded into
+your context (other clients may not preload them; if a skill's text is not
+in your context, load it with the Skill tool before using it). When you run as the main session
 (`claude --agent depscan:vuln-triager`) they are not, so load
 `depscan-triage` with the Skill tool before step 2.
 
@@ -63,7 +64,8 @@ your context. When you run as the main session
 
 Return at most about 40 lines:
 
-- the scan: target, date, database marker, and the stages that did not
+- the scan: target, date, the manifest's `database` entry (flavor and
+  age), and the stages that did not
   complete, each as not assessed with its reason
 - the findings grouped by severity, with the three most important named by
   purl and rule

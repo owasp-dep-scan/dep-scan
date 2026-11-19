@@ -44,6 +44,7 @@ A client marked "not yet tested" should load the plugin according to its own doc
 | Cursor | Not yet tested |
 | Gemini CLI | Not yet tested |
 | Kiro | Not yet tested |
+| ZCode | Adds the marketplace from a checkout and installs the plugin; `zcode plugins list` shows the fourteen skills, the two hooks and the MCP server (ZCode 0.17.1). ZCode loads skills and MCP servers only from a plugin that carries `.zcode-plugin/plugin.json`, which the generator writes. Skill invocation inside a ZCode session was exercised separately against a test copy of the plugin. |
 | opencode | Lists all fourteen skills when its `skills` setting points at the skills folder as `{"paths": [...]}` (opencode 1.19.6 rejects the array form its own published schema allows). Skill invocation is not yet tested. |
 
 ## Claude Code
@@ -62,7 +63,7 @@ Invoke a skill by describing the task, or by name as `/depscan:depscan-scan`. `d
 Only Claude Code has these parts of the plugin:
 
 - the three agents: `depscan:vuln-triager` for an existing scan directory, `depscan:binary-reviewer` for binaries and app artifacts, and `depscan:exposure-analyst` for exposure and reachability questions
-- the `SessionStart` hook that warns when `depscan` is missing or older than the plugin, or when the `mcp` extra is missing, and the opt-in lockfile reminder hook
+- the `SessionStart` hook that warns when `depscan` is missing or older than the plugin, or when the `mcp` extra is missing, and the opt-in lockfile reminder hook (ZCode also runs both hooks)
 - the `userConfig` options below, which Claude Code asks for when the plugin is enabled and substitutes into the skills as `${user_config.KEY}`
 
 ### The hooks
@@ -98,6 +99,16 @@ Codex reads `.agents/plugins/marketplace.json` in the repository and the portabl
 ## Cursor
 
 Cursor loads plugins that follow the Agent Plugins format, and its plugins reference describes a multi-plugin repository with `.cursor-plugin/marketplace.json` at its root, which this repository has. Plugins are installed and managed from Cursor's Customize page. Not yet tested.
+
+## ZCode
+
+```bash
+zcode plugins marketplace add owasp-dep-scan/dep-scan
+zcode plugins install depscan@depscan-plugins
+zcode plugins list
+```
+
+ZCode reads `agent-plugin/.zcode-plugin/plugin.json`, which points at the same `skills/`, `hooks/hooks.json` and `.mcp.json` Claude Code uses. Without that file ZCode installs the plugin with its hooks only, so keep it in place when copying the plugin.
 
 ## Gemini CLI
 

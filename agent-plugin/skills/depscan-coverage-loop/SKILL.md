@@ -68,7 +68,8 @@ read, not guesses:
 | A `tools` entry for cdxgen with `version` below `minVersion` (13.8.0), or `reason` "not found on PATH" | Install a new enough cdxgen (`npm install -g @cdxgen/cdxgen@13.8.0` or newer), or install it into a prefix and export `CDXGEN_CMD` pointing at it. A prefix install is the reversible choice. On a machine with `docker`, a source scan uses the cdxgen image unless `--bom-engine CdxgenGenerator` is passed, so pass it on the re-scan to test the local install. |
 | A capability `unavailable` with `missing: ["tool:cdxgen"]` | The same cdxgen fix; reachability needs 13.8.0 or newer. |
 | The database flavor lacks distro advisories (apk, deb, rpm) | `depscan vdb download --flavor full`, with the consent rule. |
-| `the risk audit was not requested for this type` | Not a defect: the stage does not apply to the target's type. Record it as not applicable, not as work. |
+| The risk stage `skipped` with `the risk audit was not requested` | Not a defect: the supply-chain check was not asked for. Add `--checks supply-chain` only if the user wants it. |
+| The risk stage `not-assessed` because the scan has no npm, PyPI or Cargo packages | Not fixable on this machine: the risk audit reads only those ecosystems. Report it as not assessed. |
 | A capability `not-implemented` | Nothing to fix on this machine; the capability is dep-scan's backlog. Report it with its `issue` link. |
 | Any other tool whose `version` is null | Its `reason` names the tool and how dep-scan looks for it; install it with consent, or tell the user which analysis stays not assessed without it. |
 
