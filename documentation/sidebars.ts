@@ -20,6 +20,7 @@ const sidebars: SidebarsConfig = {
     'agents',
     'mcp',
     'agent-plugin',
+    'agent-skills-toolchain',
     'doctor',
     'python-api',
     'vulnerability-database',

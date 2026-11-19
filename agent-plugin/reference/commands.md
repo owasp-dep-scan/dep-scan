@@ -68,3 +68,41 @@ Exit codes: 0 success, 1 could not run, 2 usage error, 4 capability
 unavailable. Findings never change the exit code. The full contract, the
 error document and the paths rule are in
 [the agents page](https://depscan.readthedocs.io/agents).
+
+## The sibling tools
+
+The skills reach these directly for what dep-scan does not surface yet;
+[tools.md](tools.md) records how each is found and versioned, and what to
+say when one is missing. Flag order matters for the Go tools: flags go
+before the positional path.
+
+| Tool | Command | Verified output |
+| --- | --- | --- |
+| `golem` | `golem analyze -callgraph rta -roots main -dataflow security -reachable-symbols <file> -o <out.json> <path>` | call graph with `reachableFromRoots`, `minDepth` and `rootIds`; `securitySignals`; `crypto.*`; `apiEndpoints` |
+| `rusi` | `rusi analyze --dir <path> --backend stable -o <out.json>` | `security_signals` (unsafe-code, native-interop), purl and position |
+| `rusi` | `rusi cryptos --dir <path> -o <out.json>` | the Rust crypto inventory |
+| `dosai` | `dosai dataflows --path <path> --o <out.json>` | `ExploitChains`, `AttackSurface`, `SanitizedFlows`, `PackageReachability` |
+| `dosai` | `dosai methods --path <path> --o <out.json>` | `Reachability`, `DeadCode`, `SecurityFindings`, `Services`, `EntryPoints` |
+| `dosai` | `dosai crypto --path <path> --format cyclonedx --o <out.json>` | a CycloneDX CBOM |
+| `dosai` | `dosai diff --old <a.json> --new <b.json> --o <diff.json>` | `AddedEntryPoints`, `AddedPackages`, `AddedWeaknesses`, statistics of both sides |
+| `atom` | `atom memory-safety -l c --auto-defines --min-confidence medium --slice-outfile <f> <path>` | findings with rule id, CWE, confidence and flow (JSON; `--format sarif` for SARIF 2.1.0) |
+| `atom` | `atom reachables -l <lang> --reuse-atom --sink-tag memory-safety --slice-outfile <f> <path>` | the defects entry points reach |
+| `atom-tools` | `atom-tools ingest -i <reports> -o <unified.json>` | the unified flow model across engines |
+| `atom-tools` | `atom-tools attack-surface -i <unified.json> -o <f> -f json` | exposure tiers with entry points |
+| `atom-tools` | `atom-tools drift --old <a.json> --new <b.json> -o <f> -f json` | `AddedFlows`, `AddedEntryPoints`, `RiskDelta` |
+| `atom-tools` | `atom-tools crypto-reach -i <engine report> -o <f>` | crypto joined to reach, per engine granularity |
+| `blint` | `blint -i <artifact> -o <dir> --no-banner` | findings, reviews, metadata, coverage |
+| `blint` | `blint sbom -i <artifact> -o <dir> --deep --no-banner` | the component BOM with per-ABI native libraries and the DEX callgraph |
+| `blint` | `blint canonicalize --json <names>` | normalised symbols for stripped binaries |
+| `blint` | `BLINT_RESOLVE_LINK_CLOSURE=1 BLINT_LINK_ROOT=<rootfs> blint -i <dir> -o <reports> --no-banner` | the NEEDED and imported libraries per binary in the metadata |
+| `trustinspector` | `trustinspector-cdxgen-<platform> rootfs <dir>` | trust materials with hashes and trust domains |
+| `trivy-cdxgen` | `trivy-cdxgen-<platform> rootfs --output <f.cdx> <dir>` | the OS-package BOM with installed files |
+| `vdb` (v7 CLI) | `vdb --search-text <text>` / `--search-alias <id>` / `--search-symbol <s>` / `--list-malware` | advisory answers from the store |
+| `vdb` (v7 CLI) | `vdb db status --json` | per-shard age, coverage and `needs_update` |
+| `cdx-audit` | `cdx-audit --bom <bom.json> --direct-bom-audit --report json` | rule-pack findings with rule ids; exit 3 on fail severity |
+
+Consent-gated shapes the skills name and this table deliberately omits:
+dosai `--restore`/`--build`, the rusi `compiler` backend, atom
+`--fetch-deps`, cdx-audit's predictive mode, `blint db --download` and
+cdxgen's `tracebom` and `hbom --sensitive`. See
+[safety.md](safety.md).

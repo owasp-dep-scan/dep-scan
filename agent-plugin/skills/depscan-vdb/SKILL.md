@@ -60,6 +60,38 @@ the download failed. A failed download is reported as such; a scan that
 runs against the old database afterwards is not assessed for the advisories
 the download would have added.
 
+## Advisory search and the malware list
+
+dep-scan's `vdb` verb reports the store state. The sibling `vdb` command
+that ships with vulnerability-db (the dep-scan venv carries it; `depscan
+doctor --format json` names the tools it found) answers advisory questions
+directly from the store:
+
+```bash
+vdb --search-text "jwt"
+vdb --search-alias CVE-2026-25645
+vdb --search-symbol <function-or-symbol>
+vdb --list-malware
+```
+
+The store's own coverage and staleness, per shard, with `needs_update`
+flags:
+
+```bash
+vdb db status --json
+```
+
+A machine can carry an older `vdb` on `PATH` (the vulnerability-db 6
+command line, flags only); the commands above are the vulnerability-db 7
+command line in the dep-scan environment, so resolve `vdb` through the
+same environment that runs dep-scan before using them.
+
+Each search reads the store the same way a scan does, so a search against
+a store with a coverage gap returns what the store has, and the result
+tells you which store it read. `depscan vdb info --format json` remains
+the freshness and completeness answer; the searches answer "what does the
+store know about X". Run these read-only commands freely; they only read.
+
 ## What this proves and what it does not
 
 `vdb info` proves the local database's date, flavor and completeness.

@@ -70,6 +70,25 @@ scan manifest, never by the install command's exit code. A fix that leaves
 the doctor state unchanged is recorded as no-change and not retried at the
 same target.
 
+## Deeper coverage signals
+
+Three more signals tell the loop whether the analysis itself was complete,
+beyond the stages:
+
+- **cdxgen's fidelity tiers**: the loop may invoke cdxgen's
+  `sbom-fidelity-loop` skill, which grades each ecosystem
+  (resolved, lockfile, manifest, heuristic, absent) and ranks fixes; a
+  `manifest` tier on an ecosystem means the BOM carried direct
+  dependencies only, which caps what the matching stage can see.
+- **atom's `--parse-report`**: when a run produced one, the files it lists
+  were not fully read, and their defects and usages are not assessed.
+- **blint's `analysis-coverage.json`**: for binary and app targets it
+  names what blint could not analyse.
+
+Each of these is a coverage fact about the run, not a defect in the
+project; carry them into the final report as not-assessed entries with
+their reason.
+
 ## What this proves and what it does not
 
 A completed loop proves that, on this machine, the target's stages all ran

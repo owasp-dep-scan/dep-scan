@@ -79,6 +79,39 @@ or scan an image the user did not ask about.
 | An image tarball on disk | `depscan scan --target-kind container <file.tar> --format json -o <reports>` |
 | The scan exits 0 with no findings | Read `depscan.manifest.json` stages; `inventory` failed means not assessed, usually the cdxgen version |
 | Distro CVEs are missing with a complete inventory | The database flavor is not `full`; see `depscan-vdb` |
+| Which libraries are actually loaded, and by what | blint's link closure, below |
+| What the image trusts, and which files came from packages | trustinspector and trivy-cdxgen, below |
+
+## Link closure, trust material and installed-file provenance
+
+Three deeper container questions are answered by the sibling tools
+directly, because dep-scan does not surface them yet:
+
+```bash
+# Which shared libraries each executable declares and imports
+# (env-only in this blint; never set BLINT_LINK_ROOT to the scan host)
+BLINT_RESOLVE_LINK_CLOSURE=1 BLINT_LINK_ROOT=/absolute/path/to/rootfs \
+  blint -i /absolute/path/to/rootfs/usr/bin -o /absolute/path/to/blint-reports --no-banner
+
+# The certificates and trust material the image carries
+trustinspector-cdxgen-<platform> rootfs /absolute/path/to/rootfs
+
+# The OS-package inventory of the unpacked rootfs, with installed files
+trivy-cdxgen-<platform> rootfs --output /tmp/trivy-rootfs.cdx /absolute/path/to/rootfs
+```
+
+The link closure lands in each binary's `-metadata.json`:
+`dynamic_entries` carries the NEEDED libraries and `import_dependencies`
+the resolved imports, which answers "is this vulnerable library actually
+loaded by some executable, or installed but unused"; unused is not
+`not_affected`, it is a weaker presence claim with this evidence. The
+trust report carries the certificate material with its hashes and trust
+domains; the hash list feeds a distrust review, and certificate contents
+are never quoted. trivy-cdxgen's inventory includes the installed files
+and trust state behind each OS package, which separates a real package
+from a lookalike directory. The cdxgen audit packs `container-risk` and
+`rootfs-hardening` apply to these BOMs through the cdx-audit step in
+`depscan-supply-chain`.
 
 ## What this proves and what it does not
 

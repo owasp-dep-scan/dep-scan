@@ -82,3 +82,32 @@ Two skills change state, and both say so at the step:
   the scanned project's dependencies and never runs its build scripts, and
   it asks before each install that is not already covered by an explicit
   instruction from the user.
+
+## Steps that run project code, clone upstream, or download data
+
+The analysis skills reach the toolchain directly, and three shapes of step
+go beyond reading the project. Each one states what it does at the step and
+waits for the user's consent in the conversation:
+
+- **Running project code.** dosai's `--restore`/`--build` run MSBuild on
+  the project; the rusi `compiler` backend compiles the crate; atom's
+  `--fetch-deps` runs project tooling; cdxgen's `tracebom` executes the
+  program (sandboxed, still consent); golem's cgo analysis runs the host C
+  compiler. Never pass these for an untrusted project, and on a trusted
+  one name what will execute before doing it.
+- **Cloning upstream.** cdx-audit's predictive mode clones third-party
+  repositories over the network. The direct-bom-audit form needs no
+  clones; the predictive form names the clones before it runs.
+- **Large downloads and redaction.** `blint db --download` fetches tens of
+  gigabytes; cdxgen's `hbom --sensitive` turns redaction off and its raw
+  golem values (`go:generate` commands, environment values, keys) are
+  never quoted regardless. Name the size or the redaction change, and wait.
+
+## Reach claims name their root set
+
+Reachability is always stated with its analyzer and root set (`golem -callgraph rta -roots main`), because the same code is reachable from one
+root set and not another. "Not reachable" is never a `not_affected`
+justification unless the evidence covers the vulnerable function and the
+deployed entry points; an analyzer that did not run, a root set that found
+no roots, or a report that a tool deleted all mean the axis is **not
+assessed**, and "not assessed" is reported as unknown rather than clean.

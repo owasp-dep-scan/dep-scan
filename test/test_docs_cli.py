@@ -219,7 +219,10 @@ def test_no_console_script_names_remain_in_the_docs():
                 continue
             if MARKER_FILE in line:
                 continue
-            if path.name == "agent-plugin.mdx" and "depscan-validate" not in line:
+            if (
+                path.name in ("agent-plugin.mdx", "agent-skills-toolchain.mdx")
+                and "depscan-validate" not in line
+            ):
                 continue
             without_schema_names = line
             for name in SCHEMA_NAMES:

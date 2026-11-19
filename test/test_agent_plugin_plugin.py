@@ -48,9 +48,17 @@ def test_the_plugin_carries_every_published_skill():
     skills_dir = REPO_ROOT / "agent-plugin" / "skills"
     shipped = sorted(entry.name for entry in skills_dir.iterdir() if entry.is_dir())
     assert shipped == [
+        "depscan-attack-surface",
+        "depscan-binary",
+        "depscan-change-risk",
         "depscan-container-image",
         "depscan-coverage-loop",
+        "depscan-crypto",
+        "depscan-memory-safety",
+        "depscan-mobile-app",
+        "depscan-reachability-proof",
         "depscan-scan",
+        "depscan-supply-chain",
         "depscan-triage",
         "depscan-vdb",
         "depscan-vex-compliance",
