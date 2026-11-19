@@ -29,6 +29,7 @@ from typing import Any, Dict, List, Optional
 from custom_json_diff.lib.utils import json_load
 
 from depscan.lib import doctor as doctor_lib
+from depscan.lib.logger import LOG
 from depscan.lib.doctor import DoctorReport
 
 #: The version of the ``depscan.findings.json`` document shape.
@@ -562,16 +563,62 @@ def write_manifest(scan_dir: ScanDirectory, manifest: Dict[str, Any]) -> None:
     atomic_write_json(os.path.join(scan_dir.reports_dir, MANIFEST_FILE), manifest)
 
 
-def write_findings(reports_dir: str, vulnerabilities: List[Dict[str, Any]], depscan_version: str):
-    """Write ``depscan.findings.json`` from the scan's VDR entries.
+#: The blint security check findings of a binary scan, kept by blint's own
+#: name under the tool's raw report directory.
+BLINT_FINDINGS_PATH = (ANALYSIS_DIR, "blint", "findings.json")
+
+
+def blint_findings(reports_dir: str, scan_root: Optional[str] = None) -> list:
+    """The ``binary-hardening`` findings of the scan's blint review, if any.
+
+    Reads ``analysis/blint/findings.json``; a missing file means blint did not
+    review binaries in this scan, and an unreadable one is logged and read as
+    empty, so a damaged review report cannot stop the findings document.
+    """
+    from analysis_lib.findings.blint_convert import findings_from_blint
+
+    path = os.path.join(str(reports_dir), *BLINT_FINDINGS_PATH)
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path, encoding="utf-8") as fp:
+            document = json.load(fp)
+    except (OSError, ValueError) as e:
+        LOG.warning("The blint findings report %s could not be read: %s", path, e)
+        return []
+    try:
+        from importlib.metadata import version
+
+        blint_version = version("blint")
+    except Exception:
+        blint_version = "unknown"
+    return findings_from_blint(document, producer_version=blint_version, scan_root=scan_root)
+
+
+def write_findings(
+    reports_dir: str,
+    vulnerabilities: List[Dict[str, Any]],
+    depscan_version: str,
+    scan_root: Optional[str] = None,
+    reach_scopes: Optional[List[Any]] = None,
+):
+    """Write ``depscan.findings.json`` from the scan's VDR entries and the
+    blint binary review.
 
     A scan with no vulnerabilities writes the file with an empty findings
     array, so a reader can tell an assessed-empty scan from a directory
-    nobody scanned. Returns the document written.
+    nobody scanned. ``scan_root`` is the scanned directory, which the
+    binary-hardening findings are made relative to. ``reach_scopes`` is the
+    reachability result of each project type's scan; each vulnerability
+    finding then records the ``reach`` axis of its ``exploitability`` from it.
+    Returns the document written.
     """
     from analysis_lib.findings.vdr_convert import findings_from_vdr
 
-    findings = findings_from_vdr(vulnerabilities, producer_version=depscan_version)
+    findings = findings_from_vdr(
+        vulnerabilities, producer_version=depscan_version, reach_scopes=reach_scopes
+    )
+    findings.extend(blint_findings(reports_dir, scan_root))
     document = {
         "schemaVersion": FINDINGS_SCHEMA_VERSION,
         "findings": [finding.to_dict() for finding in findings],

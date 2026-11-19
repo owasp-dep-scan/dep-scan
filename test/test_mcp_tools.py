@@ -625,6 +625,115 @@ def test_the_reachable_filter_matches_only_findings_that_record_it(open_session,
     assert outcomes["reachable_false"] == []
 
 
+class _StubReachability:
+    """A reachability engine that reports the purls the test hands it."""
+
+    def __init__(self, reached, success=True):
+        self.reached = reached
+        self.success = success
+
+    def process(self):
+        return dataclasses.make_dataclass(
+            "StubResult",
+            [
+                "success",
+                "direct_purls",
+                "reached_purls",
+                "reached_services",
+                "endpoint_reached_purls",
+            ],
+        )(self.success, {}, dict(self.reached), {}, {})
+
+
+@pytest.fixture
+def reachability_stub(monkeypatch):
+    """Make a stubbed scan's reachability stage report a chosen reached set.
+
+    The fake cdxgen also drops an atom ``python-reachables.slices.json`` next
+    to the BOM, the file the enrichment stage reads to record that the atom
+    analyzer ran, so the scan's findings are written by the real pipeline.
+    """
+    state = {"reached": {}, "success": True, "slices": True}
+    write_bom = cdxgen_mod.exec_tool
+
+    def exec_with_slices(args, *a, **k):
+        result = write_bom(args, *a, **k)
+        if state["slices"] and "-o" in args:
+            bom_file = Path(args[args.index("-o") + 1])
+            (bom_file.parent / "python-reachables.slices.json").write_text("[]", encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(cdxgen_mod, "exec_tool", exec_with_slices)
+    monkeypatch.setattr(
+        pipeline,
+        "get_reachability_impl",
+        lambda analyzer, options: _StubReachability(state["reached"], state["success"]),
+    )
+    return state
+
+
+def _list_reach(open_session, scan_dir, **filters):
+    async def scenario(session):
+        document = await call_document(
+            session,
+            "list_findings",
+            {"scan_dir": str(scan_dir), **filters},
+            "depscan-mcp-list_findings-output",
+        )
+        return [finding["rule"] for finding in document["findings"]]
+
+    return drive(open_session, scenario, (scan_dir.parent,))
+
+
+VULN_UNREACHED = {
+    "id": "CVE-2024-4444",
+    "bom-ref": "CVE-2024-4444/pkg:pypi/urllib3@2.2.0",
+    "affects": [{"ref": "pkg:pypi/urllib3@2.2.0"}],
+    "ratings": [{"severity": "medium", "score": 5.0, "method": "CVSSv31"}],
+}
+
+
+def test_a_scan_records_reach_so_the_reachable_filter_matches_end_to_end(
+    open_session, make_scan_dir, reachability_stub
+):
+    """The scan, not the test, writes the exploitability reach axis: a purl in
+    the reached set of an analyzer that ran is likely, one absent from that
+    non-empty set is unknown, and the filter reads both through the tool."""
+    reachability_stub["reached"] = {"pkg:pypi/requests@2.32.1": 2}
+    scan_dir = make_scan_dir("reach", vulns=[VULN_HIGH, VULN_UNREACHED])
+    by_rule = {finding["rule"]: finding for finding in published_findings(scan_dir)}
+    reached = by_rule["CVE-2024-1111"]["exploitability"]
+    assert reached["axes"]["reach"] == "likely"
+    assert reached["rule"] == "reachability:atom"
+    absent = by_rule["CVE-2024-4444"]["exploitability"]
+    assert absent["axes"]["reach"] == "unknown"
+    for finding in by_rule.values():
+        validate("finding", finding)
+    assert _list_reach(open_session, scan_dir, reachable=True) == ["CVE-2024-1111"]
+    # unknown is not "not reachable": the false filter matches neither finding
+    assert _list_reach(open_session, scan_dir, reachable=False) == []
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ["no-slices", "engine-failed", "nothing-reached"],
+)
+def test_a_scan_without_usable_reachability_records_not_assessed(
+    open_session, make_scan_dir, reachability_stub, mode
+):
+    if mode == "no-slices":
+        reachability_stub["slices"] = False
+        reachability_stub["reached"] = {"pkg:pypi/requests@2.32.1": 2}
+    elif mode == "engine-failed":
+        reachability_stub["success"] = False
+    scan_dir = make_scan_dir(mode, vulns=[VULN_HIGH])
+    (finding,) = published_findings(scan_dir)
+    assert finding["exploitability"]["axes"]["reach"] == "not_assessed"
+    assert "rule" not in finding["exploitability"]
+    assert _list_reach(open_session, scan_dir, reachable=True) == []
+    assert _list_reach(open_session, scan_dir, reachable=False) == []
+
+
 def test_an_unknown_filter_is_a_tool_error(open_session, make_scan_dir):
     scan_dir = make_scan_dir("plain")
 

@@ -309,7 +309,6 @@ def test_config_show_json(monkeypatch, capsys, tmp_path, clean_option_env):
         "rust_analyzer_backend",
         "go_analyzer_network",
         "go_analyzer_cgo",
-        "dotnet_analyzer_mode",
         "suggest",
         "risk_audit",
         "fail_on_error",

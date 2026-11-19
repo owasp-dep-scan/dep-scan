@@ -458,6 +458,20 @@ GOLEM_DEFAULT_DATAFLOW_MODE = "all"
 # glob-based discovery in ReachabilityAnalysisKV picks it up unchanged.
 GOLEM_REACHABLES_SLICE_FILE = "go-reachables.slices.json"
 
+# --- kosi (Kotlin Source Inspector) reachability -------------------------
+# env override for the kosi binary path. Mirrors KOSI_BINARY_ENV in
+# xbom_lib/kosi.py; duplicated here so the CLI/config layer is standalone.
+KOSI_BINARY_ENV = "DEPSCAN_KOSI_BINARY"
+# kosi reports carry schemaVersion "kosi/1" and are detected by that prefix,
+# see analysis_lib.kosi_slices. The default ``syntax`` backend parses source
+# only and never runs Gradle or Maven.
+KOSI_DEFAULT_BACKEND = "syntax"
+# Slice file dep-scan writes from a kosi report. The name ends in
+# ``reachables.slices.json`` so the glob-based discovery in
+# ReachabilityAnalysisKV picks it up unchanged, and it is not
+# ``kotlin-reachables``, which is the file atom writes for a kotlin scan.
+KOSI_REACHABLES_SLICE_FILE = "kosi-reachables.slices.json"
+
 # --- dosai (Dotnet Source and Assembly Inspector) reachability -----------
 # env override for the dosai binary path. Mirrors DOSAI_BINARY_ENV in
 # xbom_lib/dosai.py; duplicated here so the CLI/config layer is standalone.

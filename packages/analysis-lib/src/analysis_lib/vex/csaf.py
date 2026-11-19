@@ -24,8 +24,9 @@ from analysis_lib.vex.vulnerabilities import build_vulnerability
 LEGAL_DISCLAIMER = (
     "Depscan reachability analysis only covers the project source code, not "
     "the code of dependencies. A dependency may execute vulnerable code when "
-    "called even if it is not in the project's source code. Regard the "
-    "'vulnerable_code_not_in_execute_path' flag with this in mind."
+    "called even if it is not in the project's source code. A product that "
+    "no analyzer observed on an executed path is reported as "
+    "'under_investigation', not as 'known_not_affected'."
 )
 
 

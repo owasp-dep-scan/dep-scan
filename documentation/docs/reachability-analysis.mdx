@@ -50,7 +50,7 @@ Reachability is on by default for every supported language once the slices are p
 
 ## From reachability to prioritization and compliance
 
-Reachability feeds two downstream outputs that matter to analysts and compliance teams. First, the prioritization engine tags reachable (and especially endpoint-reachable or malicious-and-reachable) findings with the CycloneDX property `depscan:prioritized` and surfaces them in the Top Priority table; see [How dep-scan prioritizes](concepts/prioritization). Second, the VEX exporter maps reachability to machine-readable status: reachable dependencies become `known_affected`, while present-but-unreachable dependencies become `known_not_affected` carrying the `vulnerable_code_not_in_execute_path` justification. That mapping is the core of the [CSAF VEX guide](output/vex-csaf-guide) and is the strongest argument for investing in reachability when you produce compliance artifacts.
+Reachability feeds two downstream outputs that matter to analysts and compliance teams. First, the prioritization engine tags reachable (and especially endpoint-reachable or malicious-and-reachable) findings with the CycloneDX property `depscan:prioritized` and surfaces them in the Top Priority table; see [How dep-scan prioritizes](concepts/prioritization). Second, the VEX exporter maps reachability to machine-readable status: reachable dependencies become `known_affected`, while dependencies that were not observed on a reached path stay `under_investigation`, because absence from a reached set is not proof that the vulnerable code is not executed. That mapping is the core of the [CSAF VEX guide](output/vex-csaf-guide).
 
 ## Read order
 

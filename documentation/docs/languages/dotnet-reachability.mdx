@@ -41,9 +41,6 @@ depscan scan ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --bom-
 
 # Point dep-scan at a specific dosai binary
 DEPSCAN_DOSAI_BINARY=/path/to/dosai depscan scan ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --bom-profile research --explain
-
-# Force source inspection explicitly
-depscan scan ./test/data/dosai/repos/reachable-app -o ./reports -t dotnet --dotnet-analyzer-mode source --explain
 ```
 
 The control is `unreachable-app`, which references the same `Newtonsoft.Json 13.0.3` in its `.csproj` but never calls any Newtonsoft API.
@@ -53,11 +50,11 @@ The control is `unreachable-app`, which references the same `Newtonsoft.Json 13.
 depscan scan ./test/data/dosai/repos/unreachable-app -o ./reports -t dotnet --bom-profile research --explain
 ```
 
-Reachability is on by default (`--reachability-analyzer FrameworkReachability`). The `--dotnet-analyzer-mode` flag selects how dosai inspects the target. The values are:
+Reachability is on by default (`--reachability-analyzer FrameworkReachability`). dosai chooses how to inspect the target from what the path holds: Roslyn-based source inspection for C#, VB, F# and R sources, and Reflection and IL inspection for `.dll` and `.exe` files, including bin- or `.nupkg`-only inputs. There is no option to force one of the two. The `--dotnet-analyzer-mode` flag of dep-scan 6 was removed because dosai never had a matching switch.
 
-- `auto` (default): inspects source when a source tree is present, falls back to assembly inspection for bin- or `.nupkg`-only inputs.
-- `source`: forces Roslyn-based C#/VB/F#/R source inspection.
-- `assembly`: forces Reflection-based `.dll`/`.exe` inspection.
+### Exposure, exploit chains and sanitizers
+
+When dosai 4.1 or later reports them, dep-scan keeps the exploit chains, the exposure tier of each entry point (`anonymous-http`, `authenticated-http`, `queue`, `cli` and so on), the sanitized flows and the service trust zones. Each flow in `dotnet-reachables.slices.json` carries an optional `dosai` object with its exploit chains, its most exposed tier and whether a sanitizer neutralised it; endpoint flows carry the tier and the `trustZone` of their service. A slice that dosai's sanitized flows neutralise keeps its nodes but loses its `purls`, so it does not count as a reachable flow, and a package that was reached only through such slices is not reported as reached. The `analysis/dosai/dotnet-reachability.facts.json` file lists the chains, the attack surface roll-ups, the sanitized flows and the services.
 
 Switch to `SemanticReachability` only when you also want reached services and endpoints attributed.
 
@@ -114,7 +111,7 @@ flowchart LR
 
 ## Reading the artifacts
 
-Three files in the reports directory tell the story. The `dotnet-reachables.slices.json` is the atom projection; check here first if no package is Reachable, because an empty or purl-less file explains the silence. The `*-semantics.slices.json` carries the combined native report with the `PackageReachability[]` entries, which is the authoritative source for confidence and evidence kinds. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached package becomes `known_affected` while a present-but-unreached package becomes `known_not_affected` carrying `vulnerable_code_not_in_execute_path`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
+Three files in the reports directory tell the story. The `dotnet-reachables.slices.json` is the atom projection; check here first if no package is Reachable, because an empty or purl-less file explains the silence. The `*-semantics.slices.json` carries the combined native report with the `PackageReachability[]` entries, which is the authoritative source for confidence and evidence kinds. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached package becomes `known_affected` while a package that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
 
 ## Troubleshooting
 
@@ -122,4 +119,4 @@ If dosai reports that the .NET runtime is missing, install a runtime or switch t
 
 ## Summary
 
-dosai gives .NET the same reachable-versus-present semantics every other language enjoys in dep-scan, with the added precision of an explicit native reachability verdict per package. The `reachable-app` fixture shows `Newtonsoft.Json@13.0.3` marked Reachable with high confidence because `JsonConvert.DeserializeObject` is called on a controlled input, while `unreachable-app` shows the same package merely referenced and therefore never reached. Restore your tree for versioned purls, pick source or assembly mode with `--dotnet-analyzer-mode`, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters [Rust reachability](rust-reachability) and [Go reachability](go-reachability) cover the other native slicers, the [Framework reachability](../analyzers/framework-reachability) chapter explains the engine these slicers feed, and the compliance story continues in the [VDR guide](../output/vdr-guide) and [CSAF VEX guide](../output/vex-csaf-guide).
+dosai gives .NET the same reachable-versus-present semantics every other language enjoys in dep-scan, with the added precision of an explicit native reachability verdict per package. The `reachable-app` fixture shows `Newtonsoft.Json@13.0.3` marked Reachable with high confidence because `JsonConvert.DeserializeObject` is called on a controlled input, while `unreachable-app` shows the same package merely referenced and therefore never reached. Restore your tree for versioned purls, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters [Rust reachability](rust-reachability) and [Go reachability](go-reachability) cover the other native slicers, the [Framework reachability](../analyzers/framework-reachability) chapter explains the engine these slicers feed, and the compliance story continues in the [VDR guide](../output/vdr-guide) and [CSAF VEX guide](../output/vex-csaf-guide).

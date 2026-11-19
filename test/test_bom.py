@@ -322,6 +322,7 @@ def test_create_bom_reports_the_document_it_wrote(tmp_path, monkeypatch):
     monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
     monkeypatch.setattr(bom_mod, "run_rusi_reachability", lambda *a, **k: None)
     monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: None)
     monkeypatch.setattr(bom_mod, "run_dosai_reachability", lambda *a, **k: None)
 
     target = str(tmp_path / "sbom-rust.cdx.json")

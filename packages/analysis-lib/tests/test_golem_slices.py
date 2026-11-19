@@ -794,3 +794,78 @@ def test_category_to_service_tag_mapping_is_conservative():
     existing SERVICE_TAGS."""
     for cat, tag in GOLEM_CATEGORY_TO_SERVICE_TAG.items():
         assert tag in SERVICE_TAGS, f"category {cat} maps to unknown tag {tag}"
+
+
+# ---------------------------------------------------------------------------
+# Root set reachability (callGraph.roots / callGraph.reachability)
+# ---------------------------------------------------------------------------
+
+
+def _with_root_reachability(report):
+    report["callGraph"]["roots"] = [
+        {"id": "cg-app-main", "function": "main.main", "rootReason": "main"}
+    ]
+    report["callGraph"]["reachability"] = {
+        "nodes": [
+            {
+                "nodeId": "cg-app-main",
+                "reachableFromRoots": True,
+                "minDepth": 0,
+                "rootIds": ["cg-app-main"],
+            },
+            {
+                "nodeId": "cg-pgx-connect",
+                "reachableFromRoots": True,
+                "minDepth": 1,
+                "rootIds": ["cg-app-main"],
+            },
+            {"nodeId": "cg-gin-handle", "reachableFromRoots": False, "rootIds": []},
+        ],
+        "paths": [
+            {
+                "symbol": "pgx.Connect",
+                "nodeIds": ["cg-app-main", "cg-pgx-connect"],
+                "edgeIds": ["e1"],
+                "depth": 1,
+            }
+        ],
+    }
+    return report
+
+
+def _sink_by_purl(flows, purl):
+    return [
+        f["flows"][-1]
+        for f in flows
+        if f["purls"] == [purl] and f["flows"][-1].get("id", "").startswith("golem-cg-")
+    ]
+
+
+def test_converter_carries_node_root_reachability(bom_index):
+    flows = convert_golem_report(_with_root_reachability(_golem_report_fixture()), bom_index)
+    (pgx,) = _sink_by_purl(flows, "pkg:golang/github.com/jackc/pgx/v4@v4.18.1")
+    assert pgx["reachableFromRoots"] is True
+    assert pgx["minDepth"] == 1
+    assert pgx["rootIds"] == ["cg-app-main"]
+    assert pgx["rootLabels"] == ["main.main"]
+    (gin,) = _sink_by_purl(flows, "pkg:golang/github.com/gin-gonic/gin@v1.9.1")
+    # an explicit "not reached from the roots" verdict is carried as is
+    assert gin["reachableFromRoots"] is False
+    assert "minDepth" not in gin
+
+
+def test_converter_without_root_reachability_adds_no_keys(bom_index):
+    flows = convert_golem_report(_golem_report_fixture(), bom_index)
+    for f in flows:
+        for node in f["flows"]:
+            assert "reachableFromRoots" not in node
+
+
+def test_converter_emits_witness_path_flow(bom_index):
+    flows = convert_golem_report(_with_root_reachability(_golem_report_fixture()), bom_index)
+    witness = [f for f in flows if f["flows"][-1].get("witnessSymbol")]
+    assert len(witness) == 1
+    flow = witness[0]
+    assert flow["purls"] == ["pkg:golang/github.com/jackc/pgx/v4@v4.18.1"]
+    assert [n["id"] for n in flow["flows"]] == ["cg-app-main", "cg-pgx-connect"]
+    assert flow["flows"][-1]["witnessSymbol"] == "pgx.Connect"

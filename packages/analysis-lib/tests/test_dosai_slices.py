@@ -423,3 +423,133 @@ def test_write_slices_file_splits_over_1000(tmp_path):
 
     batches = glob.glob(base + "*")
     assert len(batches) >= 2
+
+
+# ---------------------------------------------------------------------------
+# Transparency facts: exploit chains, exposure tiers, sanitized flows, services
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture()
+def chains_report():
+    """Real dosai 4.1.0 dataflows + methods output for a small MVC service with
+    one anonymous command-injection action and one authenticated file action
+    (``HtmlEncode`` is recorded as a sanitized flow)."""
+    return _load("dosai-exploit-chains.sample.json")
+
+
+def _flow_for_slice(flows, slice_id):
+    return next(f for f in flows if (f.get("dosai") or {}).get("sliceId") == slice_id)
+
+
+def test_slice_flow_carries_exploit_chain_and_exposure(chains_report):
+    flows = convert_dosai_report(chains_report)
+    flow = _flow_for_slice(flows, "dfs1")
+    assert flow["dosai"]["exposure"] == "anonymous-http"
+    assert flow["dosai"]["sanitized"] is False
+    (chain,) = flow["dosai"]["exploitChains"]
+    assert chain["id"] == "ec1"
+    assert chain["route"] == "/api/run"
+    assert flow["purls"] == ["pkg:nuget/System.Diagnostics.Process"]
+
+
+def test_reachability_flow_carries_exposure(chains_report):
+    flows = convert_dosai_report(chains_report)
+    pkg = next(
+        f
+        for f in flows
+        if f["purls"] == ["pkg:nuget/System.Diagnostics.Process"] and "sliceId" not in f["dosai"]
+    )
+    assert pkg["dosai"]["exposure"] == "anonymous-http"
+    assert pkg["dosai"]["exploitChainIds"] == ["ec1"]
+
+
+def test_endpoint_flows_carry_exposure_and_trust_zone(chains_report):
+    flows = convert_dosai_report(chains_report)
+    run = next(f for f in flows if f["flows"][0]["name"] == "api/run")
+    assert run["dosai"]["exposure"] == "anonymous-http"
+    assert run["dosai"]["trustZone"] == "public"
+    page = next(f for f in flows if f["flows"][0]["name"] == "api/page")
+    assert page["dosai"]["exposure"] == "authenticated-http"
+    # the trust zone is the owning service's: one anonymous action makes the
+    # whole controller service public, while the exposure tier stays per route
+    assert page["dosai"]["trustZone"] == "public"
+
+
+def _sanitize_run_slice(report):
+    """Record a sanitizer on the node dfn2 of slice dfs1, the same file and
+    line, sharing source dfn1, and removing every taint kind."""
+    report["dataflows"]["SanitizedFlows"].append(
+        {
+            "Id": "sf9",
+            "Kind": "SanitizerMatch",
+            "SourceIds": ["dfn1"],
+            "SourceCategory": "http",
+            "SanitizerSymbol": "Svc.Quote.Shell",
+            "SanitizerCategory": "shell-quoting",
+            "RemovesTaintKinds": [],
+            "FileName": "Controllers.cs",
+            "LineNumber": 18,
+            "ColumnNumber": 9,
+        }
+    )
+    return report
+
+
+def test_sanitized_slice_is_not_a_reachable_flow(chains_report):
+    flows = convert_dosai_report(_sanitize_run_slice(chains_report))
+    flow = _flow_for_slice(flows, "dfs1")
+    assert flow["dosai"]["sanitized"] is True
+    assert flow["dosai"]["sanitizedBy"] == ["sf9"]
+    assert flow["purls"] == []
+    assert flow["dosai"]["suppressedPurls"] == ["pkg:nuget/System.Diagnostics.Process"]
+    # the package is no longer reached through any flow
+    assert not [
+        f for f in flows if "pkg:nuget/System.Diagnostics.Process" in f["purls"]
+    ]
+
+
+def test_sanitized_slice_is_dropped_from_native_reachability(chains_report):
+    facts = extract_native_reachability(_sanitize_run_slice(chains_report))
+    assert "pkg:nuget/System.Diagnostics.Process" not in facts["reached_purls"]
+    assert facts["sanitized_purls"] == {"pkg:nuget/System.Diagnostics.Process": True}
+    assert facts["sanitized_slice_ids"] == ["dfs1"]
+    assert "pkg:nuget/System.Diagnostics.Process" not in facts["reached_services"]
+
+
+def test_sanitizer_that_leaves_the_taint_kind_does_not_neutralise(chains_report):
+    report = _sanitize_run_slice(chains_report)
+    report["dataflows"]["SanitizedFlows"][-1]["RemovesTaintKinds"] = ["sql"]
+    flow = _flow_for_slice(convert_dosai_report(report), "dfs1")
+    assert flow["dosai"]["sanitized"] is False
+    assert flow["purls"] == ["pkg:nuget/System.Diagnostics.Process"]
+
+
+def test_sanitizer_off_the_slice_path_does_not_neutralise(chains_report):
+    report = _sanitize_run_slice(chains_report)
+    report["dataflows"]["SanitizedFlows"][-1]["LineNumber"] = 99
+    flow = _flow_for_slice(convert_dosai_report(report), "dfs1")
+    assert flow["dosai"]["sanitized"] is False
+
+
+def test_native_facts_include_chains_surface_and_services(chains_report):
+    facts = extract_native_reachability(chains_report)
+    reached = facts["reached_purls"]["pkg:nuget/System.Diagnostics.Process"]
+    assert reached["exposure"] == "anonymous-http"
+    assert reached["exploitChainIds"] == ["ec1"]
+    assert {c["id"] for c in facts["exploit_chains"]} == {"ec1", "ec2", "ec3"}
+    assert {g["exposure"] for g in facts["attack_surface"]} == {
+        "anonymous-http",
+        "authenticated-http",
+    }
+    assert facts["sanitized_flows"][0]["sanitizer"] == "System.Net.WebUtility.HtmlEncode"
+    assert facts["services"][0]["trust_zone"] == "public"
+
+
+def test_report_without_transparency_sections_has_no_annotations(combined):
+    flows = convert_dosai_report(combined)
+    assert flows
+    assert not any("dosai" in f for f in flows)
+    facts = extract_native_reachability(combined)
+    assert facts["exploit_chains"] == []
+    assert facts["sanitized_purls"] == {}

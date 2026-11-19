@@ -69,7 +69,7 @@ For reporting beyond the console and the VDR JSON, dep-scan can render a [Jinja]
 
 To extract the reachable subset of a VDR programmatically, filter the `vulnerabilities` array on entries whose `depscan:insights` property contains "Reachable" or "Endpoint-Reachable". To extract the prioritized subset, filter on `depscan:prioritized=true`. The two subsets usually overlap but are not identical: a finding can be prioritized for reasons other than reachability (many CVEs on one package, known exploits), and a reachable finding may not be prioritized if its severity is low. The committed `test/data/jinja-report.vdr.json` fixture, which carries `depscan:insights` of "Direct dependency" and `depscan:prioritized=false`, is a good example of an entry that appears in the full report but not in the Top Priority table.
 
-When you also generate a VEX document with `--csaf`, the same reachability maps drive the CSAF status, so a reached component becomes `known_affected` in the VEX while a present-but-unreached component becomes `known_not_affected`. The two artifacts are consistent by construction, which matters when an analyst and a compliance reviewer are looking at the same scan. That mapping is the subject of the [CSAF VEX guide](vex-csaf-guide).
+When you also generate a VEX document with `--csaf`, the same reachability maps drive the CSAF status, so a reached component becomes `known_affected` in the VEX while a component that was not observed on a reached path stays `under_investigation`. The two artifacts are consistent by construction, which matters when an analyst and a compliance reviewer are looking at the same scan. That mapping is the subject of the [CSAF VEX guide](vex-csaf-guide).
 
 ## Summary
 

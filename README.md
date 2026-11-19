@@ -210,7 +210,6 @@ usage: depscan scan [-h]
                     [--cdxgen-server CDXGEN_SERVER]
                     [--rust-analyzer-backend {stable,compiler}]
                     [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo]
-                    [--dotnet-analyzer-mode {source,assembly,auto}]
                     [--no-suggest] [--fail-on-error]
                     [-t PROJECT_TYPE [PROJECT_TYPE ...]]
                     [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search]
@@ -336,19 +335,6 @@ options:
                         and its dependencies, so use it only for input you
                         trust. Can also be enabled with
                         DEPSCAN_GO_ANALYZER_CGO.
-  --dotnet-analyzer-mode {source,assembly,auto}
-                        dosai (Dotnet Source and Assembly Inspector) analysis
-                        mode for .NET reachability. ``auto`` (default)
-                        inspects source when a source tree is present and
-                        falls back to assembly inspection for bin/.nupkg-only
-                        inputs. ``source`` forces Roslyn-based C#/VB/F# source
-                        inspection; ``assembly`` forces Reflection-based
-                        .dll/.exe inspection. Pattern packs default to
-                        ``all``. dosai requires a .NET runtime (or a self-
-                        contained ``-full`` binary). Set DOSAI_CMD to point at
-                        a non-PATH dosai binary. dep-scan does NOT run
-                        ``dotnet restore``; a restored tree yields the best
-                        versioned NuGet purls.
   --no-suggest          Disable suggest mode
   --fail-on-error       Abort the scan with a non-zero exit code instead of
                         silently degrading. Passed through to cdxgen so

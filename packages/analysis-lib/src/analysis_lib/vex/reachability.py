@@ -3,9 +3,19 @@
 dep-scan's reachability analyzer records which purls carry reachable flows
 (``vdr_result.reached_purls``). This module turns that into VEX semantics:
 
-* reachable   -> ``known_affected``
-* unreachable -> ``known_not_affected`` + flag ``vulnerable_code_not_in_execute_path``
-* unknown     -> ``under_investigation`` (no reachability data available)
+* reached     -> ``known_affected``
+* not reached -> ``under_investigation``
+* no reachability data -> ``under_investigation``
+
+A package missing from a reached set is not evidence that its vulnerable code
+is outside the execute path: the framework and semantic analyzers only record
+what they observed, and a call through reflection, an interface, a callback or
+a language the analyzer does not follow leaves no trace. No analyzer records
+positive evidence that vulnerable code is not executed, so ``classify`` never
+asserts ``known_not_affected`` and never sets the
+``vulnerable_code_not_in_execute_path`` flag. :data:`KNOWN_NOT_AFFECTED` and
+:data:`NOT_IN_PATH_LABEL` remain for documents that carry such statements from
+another source.
 
 Only product_ids that resolve in the product tree are emitted, so a status or
 flag can never reference an undefined product.
@@ -50,14 +60,11 @@ def classify(
     :return: ``(product_status, flags, score_product_ids)`` where every id is
         guaranteed to resolve in the product tree.
     """
-    has_reachability = bool(reached_purls)
-
     status_buckets: Dict[str, List[str]] = {
         KNOWN_AFFECTED: [],
         KNOWN_NOT_AFFECTED: [],
         UNDER_INVESTIGATION: [],
     }
-    not_affected_ids: List[str] = []
     score_product_ids: List[str] = []
 
     for purl in _affected_purls(vuln):
@@ -67,23 +74,13 @@ def classify(
             # an undefined product.
             continue
         score_product_ids.append(product_id)
-        if not has_reachability:
-            status_buckets[UNDER_INVESTIGATION].append(product_id)
-            continue
-        if reached_purls.get(purl) or reached_purls.get(product_id):
+        if reached_purls and (reached_purls.get(purl) or reached_purls.get(product_id)):
             status_buckets[KNOWN_AFFECTED].append(product_id)
         else:
-            status_buckets[KNOWN_NOT_AFFECTED].append(product_id)
-            not_affected_ids.append(product_id)
+            # Not observed is not "not in the execute path".
+            status_buckets[UNDER_INVESTIGATION].append(product_id)
 
     flags: List[Dict] = []
-    if not_affected_ids:
-        flags.append(
-            {
-                "label": NOT_IN_PATH_LABEL,
-                "product_ids": sorted(set(not_affected_ids)),
-            }
-        )
 
     # Drop empty buckets; callers serialize what remains.
     product_status = {k: sorted(set(v)) for k, v in status_buckets.items() if v}

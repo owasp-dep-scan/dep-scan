@@ -34,6 +34,7 @@ from vdb.lib import db as vdb_db
 from depscan.lib.config import VDB_AGE_HOURS, read_vdb_image_marker
 from xbom_lib import dosai as dosai_mod
 from xbom_lib import golem as golem_mod
+from xbom_lib import kosi as kosi_mod
 from xbom_lib import rusi as rusi_mod
 from xbom_lib.cdxgen import _VERSION_RE as _CDXGEN_VERSION_RE
 from xbom_lib.cdxgen import (
@@ -293,11 +294,15 @@ _PLUGIN_FINDERS = {
     "golem": golem_mod.find_golem_binary,
     "rusi": rusi_mod.find_rusi_binary,
     "dosai": dosai_mod.find_dosai_binary,
+    "kosi": kosi_mod.find_kosi_binary,
 }
 
 
+_KOSI_VERSION_RE = re.compile(r'"version"\s*:\s*"([^"]+)"')
+
+
 def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
-    """golem, rusi or dosai: env override, PATH, then the plugins directory."""
+    """golem, rusi, dosai or kosi: env override, PATH, then the plugins directory."""
     status = ToolStatus(name=name)
     env_match = None
     for env_name in env_names:
@@ -326,7 +331,15 @@ def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
         status.source = "path"
     output = _run_version_probe(path, ["--version"])
     if output:
-        status.version = _parse_dosai(output) if name == "dosai" else _parse_first_number(output)
+        if name == "dosai":
+            status.version = _parse_dosai(output)
+        elif name == "kosi":
+            # kosi prints a JSON object, {"version": "4.3.1", ...}, and a
+            # native image may add JVM warnings around it.
+            found = _KOSI_VERSION_RE.search(output)
+            status.version = found.group(1) if found else None
+        else:
+            status.version = _parse_first_number(output)
     if name == "rusi":
         # A soft gate in the scan: an older rusi still runs, with a warning,
         # so the minimum is reported without making the tool unusable.
@@ -425,13 +438,13 @@ def _blintdb_status() -> ToolStatus:
 # --- the cdxgen plugins directory ---------------------------------------------
 
 #: Plugin binaries cdxgen invokes but depscan never resolves itself. golem,
-#: rusi and dosai have their own entries because depscan runs them directly.
+#: rusi, dosai and kosi have their own entries because depscan runs them
+#: directly.
 #: The binary names follow cdxgen's ``plugin_binary_name`` scheme; osquery
 #: ships a macOS app bundle and sourcekitten a plain name.
 _PLUGIN_BINARY_NAMES = {
     "trivy": "trivy-cdxgen-{platform}-{arch}{extn}",
     "trustinspector": "trustinspector-cdxgen-{platform}-{arch}{extn}",
-    "kosi": "kosi-{platform}-{arch}{extn}",
     "cdxrs": "cdxrs-{platform}-{arch}{extn}",
     "cdxui": "cdxui-{platform}-{arch}{extn}",
     "sourcekitten": "sourcekitten",
@@ -699,6 +712,7 @@ ANALYZER_CAPABILITIES = {
     "rusi": "reachability:rust",
     "golem": "reachability:go",
     "dosai": "reachability:dotnet",
+    "kosi": "reachability:kotlin",
 }
 
 
@@ -804,6 +818,13 @@ CAPABILITIES: Tuple[CapabilitySpec, ...] = (
         description="Go reachability through the golem plugin and the Go toolchain.",
         issue=603,
         requirements=("tool:cdxgen", "tool:golem", "tool:go"),
+        implemented=True,
+    ),
+    CapabilitySpec(
+        name="reachability:kotlin",
+        description="Kotlin and JVM reachability through the kosi plugin (syntax backend, no build).",
+        issue=602,
+        requirements=("tool:kosi",),
         implemented=True,
     ),
     CapabilitySpec(
@@ -990,6 +1011,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
     golem = _plugin_tool_status("golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV))
     rusi = _plugin_tool_status("rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV))
     dosai = _plugin_tool_status("dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV))
+    kosi = _plugin_tool_status("kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV))
     entries = [
         cdxgen,
         _versioned_tool(
@@ -1027,6 +1049,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
         rusi,
         dosai,
         _dotnet_status(dosai.path),
+        kosi,
         _blint_status(),
         _blintdb_status(),
     ]

@@ -46,7 +46,6 @@ DEST_TO_ENV = {
     "rust_analyzer_backend": "DEPSCAN_RUSI_BACKEND",
     "go_analyzer_network": "DEPSCAN_GO_ANALYZER_NETWORK",
     "go_analyzer_cgo": "DEPSCAN_GO_ANALYZER_CGO",
-    "dotnet_analyzer_mode": "DEPSCAN_DOTNET_ANALYZER_MODE",
     "risk_audit": "ENABLE_OSS_RISK",
     "fail_on_error": "DEPSCAN_FAIL_ON_ERROR",
     "cdxgen_args": "CDXGEN_ARGS",

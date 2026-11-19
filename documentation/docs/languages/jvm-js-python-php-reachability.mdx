@@ -12,6 +12,8 @@ After this chapter you will be able to run dep-scan reachability on Java, JavaSc
 
 [atom](https://github.com/AppThreat/atom) is the slicer dep-scan uses for the four ecosystems that started the reachability feature: Java and the wider JVM (Groovy, Kotlin, Scala), JavaScript and TypeScript, Python, and PHP. atom builds a language-agnostic intermediate representation, performs static slicing for reachability and usages, and emits the `*-reachables.slices.json` files the shared engine consumes. Because one slicer covers four languages, they behave consistently and accept the same workflow, which is why they are covered in a single chapter. The native slicers for Rust (rusi), Go (golem), and .NET (dosai) are separate and have their own chapters; from the engine's point of view all four slicers produce the same purl-keyed slice shape.
 
+For Kotlin, Android and Gradle projects dep-scan also runs [kosi](https://github.com/cdxgen/cdxgen-plugins-bin) from the cdxgen plugins package when it is installed (`KOSI_CMD` or `DEPSCAN_KOSI_BINARY` name the binary). It uses kosi's `syntax` backend, which reads source only and starts no Gradle or Maven build, keeps the raw report as `analysis/kosi/kosi.json`, and writes `kosi-reachables.slices.json` next to the BOM, so its flows join atom's in the same engine. The syntax tier records library usages joined to imports; it has no call graph or data flow, so a dependency it does not attribute is reported as not observed, never as unreachable. `depscan doctor` reports kosi and the `reachability:kotlin` capability.
+
 ## Prerequisites
 
 The prerequisites are per-language because atom loads and slices real source.
@@ -90,7 +92,7 @@ Use the `MAX_REACHABLE_EXPLANATIONS` environment variable to customize the numbe
 
 ## Reading the artifacts
 
-The `*-reachables.slices.json` file holds the atom slices; check here first if no finding is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` (or `depscan-universal.vdr.json` for multi-BOM runs) carries the `depscan:prioritized` property and the `depscan:insights` text per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached component becomes `known_affected` while a present-but-unreached component becomes `known_not_affected` carrying `vulnerable_code_not_in_execute_path`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
+The `*-reachables.slices.json` file holds the atom slices; check here first if no finding is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` (or `depscan-universal.vdr.json` for multi-BOM runs) carries the `depscan:prioritized` property and the `depscan:insights` text per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached component becomes `known_affected` while a component that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
 
 ## Troubleshooting
 

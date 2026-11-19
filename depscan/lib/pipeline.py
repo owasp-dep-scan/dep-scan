@@ -152,6 +152,9 @@ class TypeScan:
     reached_purls: Dict = field(default_factory=dict)
     reached_services: Dict = field(default_factory=dict)
     endpoint_reached_purls: Dict = field(default_factory=dict)
+    #: True once the reachability engine ran and returned a result for this
+    #: type; slices on disk alone do not make the analysis succeeded.
+    reachability_succeeded: bool = False
     results: List = field(default_factory=list)
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
@@ -202,6 +205,9 @@ class ScanContext:
     txt_report_file: Optional[str] = None
     llm_prompt_file: Optional[str] = None
     all_pkg_vulnerabilities: List = field(default_factory=list)
+    #: One entry per project type scan: what reachability said about the
+    #: components that scan matched, for the findings' exploitability.
+    reach_scopes: List = field(default_factory=list)
     all_pkg_group_rows: Dict = field(default_factory=dict)
     summary: Optional[Dict] = None
     vdr_file: Optional[str] = None
@@ -683,7 +689,11 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     if scan_dir is None:
         return None
     findings_document = scan_directory.write_findings(
-        ctx.reports_dir, ctx.all_pkg_vulnerabilities, get_version()
+        ctx.reports_dir,
+        ctx.all_pkg_vulnerabilities,
+        get_version(),
+        scan_root=ctx.src_dir,
+        reach_scopes=ctx.reach_scopes,
     )
     manifest = scan_dir.build(
         options=ctx.depscan_options,
@@ -1341,6 +1351,7 @@ def stage_enrichment(ctx, scan):
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
     reach_result = get_reachability_impl(reachability_analyzer, reachability_options).process()
     if reach_result and reach_result.success:
+        scan.reachability_succeeded = True
         scan.direct_purls = reach_result.direct_purls
         scan.reached_purls = reach_result.reached_purls
         scan.reached_services = reach_result.reached_services
@@ -1375,6 +1386,42 @@ def stage_matching(ctx, scan):
         exclude_malware=ctx.depscan_options.get("exclude_malware", False),
     )
     scan.vdr_result = VDRAnalyzer(vdr_options=options).process()
+
+
+def _reach_scope(ctx, scan, pkg_vulnerabilities):
+    """What the reachability analysis said about the components this type's
+    scan matched, for the exploitability of the findings written from them.
+
+    The analyzers named are those the enrichment stage read slices from
+    (the manifest's ``completed`` entries). When reachability was off, failed
+    or produced no purls, the scope says so and every finding of the type
+    records ``reach`` as not assessed.
+    """
+    from analysis_lib.findings.vdr_convert import ReachScope
+
+    options = scan.reachability_options
+    analyzers: List[str] = []
+    if options is not None:
+        analyzers = [
+            entry["name"]
+            for entry in scan_directory.analyzer_entries(
+                ctx.doctor_report, [scan.project_type], options.slices_files
+            )
+            if entry.get("status") == "completed"
+        ]
+    refs = {
+        str(affect["ref"])
+        for vuln in pkg_vulnerabilities
+        if isinstance(vuln, dict)
+        for affect in vuln.get("affects") or []
+        if isinstance(affect, dict) and affect.get("ref")
+    }
+    return ReachScope(
+        refs=refs,
+        analyzers=analyzers,
+        reached=set((scan.reached_purls or {}).keys()),
+        succeeded=scan.reachability_succeeded,
+    )
 
 
 def stage_analysis_vdr(ctx, scan):
@@ -1427,6 +1474,7 @@ def stage_analysis_vdr(ctx, scan):
     scan.summary = summary
     if vdr_result.pkg_vulnerabilities:
         ctx.all_pkg_vulnerabilities += vdr_result.pkg_vulnerabilities
+        ctx.reach_scopes.append(_reach_scope(ctx, scan, vdr_result.pkg_vulnerabilities))
     if vdr_result.prioritized_pkg_vuln_trees:
         ctx.all_pkg_group_rows.update(vdr_result.prioritized_pkg_vuln_trees)
     ctx.summary = summary

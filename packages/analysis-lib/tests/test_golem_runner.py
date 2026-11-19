@@ -569,3 +569,102 @@ def test_run_golem_failure_returns_not_success(stub_binary, monkeypatch, tmp_pat
     result = run_golem(str(tmp_path), out_path)
     assert not result.success
     assert not result.skipped
+
+
+# ---------------------------------------------------------------------------
+# Root set and witness paths (--roots, --reachable-symbols)
+# ---------------------------------------------------------------------------
+
+
+def _capture_run(monkeypatch, out_path):
+    captured = {}
+
+    def fake_run(full_cmd, **kwargs):
+        import json
+        from subprocess import CompletedProcess
+
+        captured["args"] = full_cmd
+        with open(out_path, "w") as f:
+            json.dump({"tool": {"name": "golem"}, "callGraph": {"nodes": []}}, f)
+        return CompletedProcess(args=full_cmd, returncode=0, stdout="ok", stderr="")
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    return captured
+
+
+def test_build_args_without_roots_passes_no_root_flags():
+    args = _build_golem_args(
+        "/tmp/src", "/tmp/out.json", callgraph_mode="static", dataflow_mode="all", deep=False
+    )
+    assert "--roots" not in args
+    assert "--reachable-symbols" not in args
+
+
+def test_build_args_passes_roots_and_symbols_file():
+    args = _build_golem_args(
+        "/tmp/src",
+        "/tmp/out.json",
+        callgraph_mode="static",
+        dataflow_mode="all",
+        deep=False,
+        roots=("main", "handlers"),
+        reachable_symbols_file="/tmp/symbols.txt",
+    )
+    assert args[args.index("--roots") + 1] == "main,handlers"
+    assert args[args.index("--reachable-symbols") + 1] == "/tmp/symbols.txt"
+    assert "--max-paths-per-symbol" in args
+
+
+def test_run_golem_requests_default_root_set(stub_binary, monkeypatch, tmp_path):
+    """The default run names its root set and records it on the result."""
+    out_path = str(tmp_path / "golem.json")
+    monkeypatch.setattr(golem_mod, "golem_supports_roots", lambda binary, logger=None: True)
+    captured = _capture_run(monkeypatch, out_path)
+    result = run_golem(str(tmp_path), out_path)
+    args = captured["args"]
+    assert args[args.index("--roots") + 1] == ",".join(golem_mod.DEFAULT_ROOTS)
+    assert result.roots == golem_mod.DEFAULT_ROOTS
+    assert "--reachable-symbols" not in args
+
+
+def test_run_golem_writes_reachable_symbols_file(stub_binary, monkeypatch, tmp_path):
+    out_path = str(tmp_path / "golem.json")
+    monkeypatch.setattr(golem_mod, "golem_supports_roots", lambda binary, logger=None: True)
+    captured = _capture_run(monkeypatch, out_path)
+    run_golem(str(tmp_path), out_path, reachable_symbols=["yaml.Unmarshal", " ", "yaml.Unmarshal"])
+    args = captured["args"]
+    symbols_path = args[args.index("--reachable-symbols") + 1]
+    with open(symbols_path, encoding="utf-8") as fp:
+        assert fp.read() == "yaml.Unmarshal\n"
+
+
+def test_run_golem_skips_root_flags_on_older_golem(stub_binary, monkeypatch, tmp_path):
+    """A golem without --roots must not be handed flags it rejects."""
+    out_path = str(tmp_path / "golem.json")
+    monkeypatch.setattr(golem_mod, "golem_supports_roots", lambda binary, logger=None: False)
+    captured = _capture_run(monkeypatch, out_path)
+    result = run_golem(str(tmp_path), out_path, reachable_symbols=["yaml.Unmarshal"])
+    assert result.success
+    assert "--roots" not in captured["args"]
+    assert "--reachable-symbols" not in captured["args"]
+    assert result.roots == ()
+
+
+@pytest.mark.parametrize(
+    ("help_text", "expected"),
+    [
+        ("  -roots string\n    \tx\n  -reachable-symbols string\n    \ty\n", True),
+        ("  -callgraph string\n    \tcall graph mode\n  -dataflow string\n", False),
+        ("  -roots string\n    \tx\n", False),
+    ],
+)
+def test_golem_supports_roots_reads_help(monkeypatch, help_text, expected):
+    from subprocess import CompletedProcess
+
+    golem_mod._ROOTS_FLAG_SUPPORT.clear()
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda cmd, **kw: CompletedProcess(args=cmd, returncode=0, stdout=help_text, stderr=""),
+    )
+    assert golem_mod.golem_supports_roots("/x/golem-probe") is expected
+    golem_mod._ROOTS_FLAG_SUPPORT.clear()

@@ -178,3 +178,103 @@ def test_every_produced_document_validates_with_the_published_validator():
         finding = finding_from_vdr(vuln, ref, producer_version="1")
         errors = list(validator.iter_errors(finding.to_dict()))
         assert not errors
+
+
+# ---------------------------------------------------------------------------
+# exploitability.axes.reach from the scan's reachability result
+# ---------------------------------------------------------------------------
+
+from analysis_lib.findings.vdr_convert import (  # noqa: E402
+    ReachScope,
+    exploitability_from_reach,
+    reach_axis,
+)
+
+REF = "pkg:pypi/requests@2.32.1"
+OTHER = "pkg:pypi/urllib3@2.2.0"
+
+
+def _exploitability(finding):
+    assert finding.exploitability is not None
+    return finding.exploitability
+
+
+def _reach(finding):
+    return _exploitability(finding).axes.reach
+
+
+def test_findings_without_scopes_record_no_exploitability():
+    (finding,) = findings_from_vdr([VULN], producer_version="1")
+    assert finding.exploitability is None
+
+
+def test_reached_package_is_likely_and_names_the_analyzer():
+    scope = ReachScope(refs={REF}, analyzers=["atom"], reached={REF}, succeeded=True)
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "likely"
+    assert _exploitability(finding).rule == "reachability:atom"
+    validate("finding", finding.to_dict())
+
+
+def test_absent_from_a_non_empty_reached_set_is_unknown_never_refuted():
+    scope = ReachScope(refs={REF}, analyzers=["golem"], reached={OTHER}, succeeded=True)
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "unknown"
+    assert _exploitability(finding).rule == "reachability:golem"
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        ReachScope(refs={REF}, analyzers=[], reached={REF}, succeeded=True),
+        ReachScope(refs={REF}, analyzers=["atom"], reached={REF}, succeeded=False),
+        ReachScope(refs={REF}, analyzers=["atom"], reached=set(), succeeded=True),
+    ],
+    ids=["no-analyzer-ran", "engine-failed", "nothing-observed"],
+)
+def test_no_usable_reachability_is_not_assessed(scope):
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "not_assessed"
+    assert _exploitability(finding).grade == "unassessed"
+    assert _exploitability(finding).rule is None
+    assert _exploitability(finding).unassessed == [
+        "presence",
+        "reach",
+        "exposure",
+        "barrier",
+        "pressure",
+    ]
+    validate("finding", finding.to_dict())
+
+
+def test_ref_in_no_scope_is_not_assessed():
+    scope = ReachScope(refs={OTHER}, analyzers=["atom"], reached={OTHER}, succeeded=True)
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "not_assessed"
+
+
+def test_scope_that_assessed_the_ref_wins_over_one_that_did_not():
+    blind = ReachScope(refs={REF}, analyzers=[], reached=set(), succeeded=False)
+    seeing = ReachScope(refs={REF}, analyzers=["atom"], reached={REF}, succeeded=True)
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[blind, seeing])
+    assert _reach(finding) == "likely"
+
+
+def test_purl_spelling_differences_still_match():
+    scope = ReachScope(
+        refs={REF},
+        analyzers=["atom"],
+        reached={"pkg:pypi/requests@2.32.1?type=jar"},
+        succeeded=True,
+    )
+    assert reach_axis(scope, REF) == "likely"
+    assert reach_axis(scope, "pkg:pypi/requests%402.32.1") == "likely"
+
+
+def test_only_reach_is_graded_and_the_rest_listed_unassessed():
+    scope = ReachScope(refs={REF}, analyzers=["atom", "golem"], reached={REF}, succeeded=True)
+    exploitability = exploitability_from_reach(scope, REF)
+    assert exploitability.axes.presence == "not_assessed"
+    assert exploitability.grade is None
+    assert exploitability.unassessed == ["presence", "exposure", "barrier", "pressure"]
+    assert exploitability.rule == "reachability:atom+golem"

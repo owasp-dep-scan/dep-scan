@@ -29,6 +29,8 @@ from depscan.lib.config import (
     GOLEM_DEFAULT_CALLGRAPH_MODE,
     GOLEM_DEFAULT_DATAFLOW_MODE,
     GOLEM_REACHABLES_SLICE_FILE,
+    KOSI_DEFAULT_BACKEND,
+    KOSI_REACHABLES_SLICE_FILE,
     RUSI_DEFAULT_BACKEND,
     RUSI_DEFAULT_CALLGRAPH_MODE,
     RUSI_DEFAULT_DATAFLOW_MODE,
@@ -467,6 +469,24 @@ def _refuse_old_cdxgen(logger=None) -> bool:
     return False
 
 
+def _local_cdxgen_preferred() -> bool:
+    """Whether ``--bom-engine auto`` should run a local cdxgen before the image.
+
+    True when ``CDXGEN_CMD`` is set (the user named the command, so it is used
+    and refused with the usual message if it is too old), or when a cdxgen
+    command that dep-scan can find reports at least the minimum version. A
+    local cdxgen that is missing, unreadable or too old is not preferred, and
+    the container image stays the fallback.
+    """
+    if os.getenv("CDXGEN_CMD", "").strip():
+        return True
+    cdxgen_cmd = find_cdxgen_cmd() or find_cdxgen_cmd(False)
+    if not cdxgen_cmd:
+        return False
+    accepted, _version = check_cdxgen_version(cdxgen_cmd)
+    return accepted
+
+
 def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     """
     Method to create BOM file by executing cdxgen command
@@ -496,7 +516,9 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         or "post-build" in lifecycles
         or any([t in ("binary", "apk") for t in project_type_list])
     ):
-        blint_ok = create_blint_bom(bom_file, src_dir, options=options)
+        blint_ok = create_blint_bom(
+            bom_file, src_dir, options=options, reviews=blint_reviews_requested(options)
+        )
         return BomResult(
             success=blint_ok,
             bom_files=[bom_file] if blint_ok else [],
@@ -533,6 +555,11 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
                 # local_bin/. Use it instead of pulling a cdxgen container
                 # image: the whole point of the SEA binary is to work with no
                 # Node.js, no Docker and no network pull for BOM generation.
+                cdxgen_lib = CdxgenGenerator
+            elif _local_cdxgen_preferred():
+                # A cdxgen the user named, or one new enough on this machine,
+                # runs before the container image: the image pulls a large
+                # layer and ignores the local setup.
                 cdxgen_lib = CdxgenGenerator
             elif shutil.which(os.getenv("DOCKER_CMD", "docker")) and sys.platform != "win32":
                 cdxgen_lib = CdxgenImageBasedGenerator
@@ -581,6 +608,9 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         # the BOM. No-op for non-go projects or when reachability is off /
         # golem is absent.
         run_golem_reachability(bom_file, src_dir, options=options)
+        # Kotlin and JVM reachability via kosi: emits
+        # kosi-reachables.slices.json next to the BOM.
+        run_kosi_reachability(bom_file, src_dir, options=options)
         # .NET reachability via dosai: emits dotnet-reachables.slices.json next
         # to the BOM. No-op for non-dotnet projects or when reachability is off
         # / dosai is absent. PRIMARY path consumes the cdxgen-persisted
@@ -771,6 +801,38 @@ def _run_golem_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     )
 
 
+def _run_kosi_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
+    """Invoke kosi directly. cdxgen does not persist a kosi report next to
+    the BOM, so for Kotlin this is the normal path, not only a fallback.
+    The syntax backend reads source only and never starts Gradle or Maven."""
+    fail_on_error = bool(options.get("fail_on_error"))
+    try:
+        from xbom_lib.kosi import run_kosi
+    except ImportError as e:
+        if fail_on_error:
+            raise ScanFailureError(f"kosi runner unavailable: {e}") from e
+        LOG.debug("kosi runner unavailable: %s", e)
+        return None
+    report_path = os.path.join(analysis_report_dir(bom_dir, "kosi"), "kosi.json")
+    with console_status(f"Running kosi Kotlin reachability on '{src_dir}'.", spinner=SPINNER):
+        res = run_kosi(src_dir, report_path, backend=KOSI_DEFAULT_BACKEND, logger=LOG)
+    if res.skipped or not res.success or not os.path.exists(report_path):
+        if fail_on_error:
+            raise ScanFailureError(
+                f"kosi reachability failed (skipped={res.skipped}, "
+                f"success={res.success}, report={report_path}); no slices were produced."
+            )
+        return None
+    return _load_tool_report(
+        "kosi",
+        report_path,
+        is_report_ok,
+        json_load,
+        require_report=False,
+        fail_on_error=fail_on_error,
+    )
+
+
 def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     """Invoke dosai directly when cdxgen did not produce a report. Returns the
     parsed combined report ``{Metadata, methods, dataflows}`` or None. Kept as
@@ -851,6 +913,23 @@ def _import_golem_converter():
         is_report_ok=is_golem_report,
         build_index=build_bom_purl_index,
         convert=convert_golem_report,
+        write_slices=write_slices_file,
+    )
+
+
+def _import_kosi_converter():
+    """Lazily import the kosi slice converter behind the shared interface."""
+    from analysis_lib.kosi_slices import (
+        build_bom_purl_index,
+        convert_kosi_report,
+        is_kosi_report,
+        write_slices_file,
+    )
+
+    return SimpleNamespace(
+        is_report_ok=is_kosi_report,
+        build_index=build_bom_purl_index,
+        convert=convert_kosi_report,
         write_slices=write_slices_file,
     )
 
@@ -1044,6 +1123,21 @@ GOLEM_TOOL = ReachabilityTool(
     ),
 )
 
+KOSI_TOOL = ReachabilityTool(
+    name="kosi",
+    # cdxgen labels Kotlin projects "kotlin" (alias "kt") and Android ones
+    # "android"; Gradle builds are usually labelled "gradle".
+    project_types=("kotlin", "kt", "android", "gradle"),
+    default_prefix="kotlin",
+    slice_file=KOSI_REACHABLES_SLICE_FILE,
+    import_converter=_import_kosi_converter,
+    run_fallback=_run_kosi_fallback,
+    no_report_error=(
+        "No kosi report was available for this Kotlin project; reachability "
+        "slices were not produced."
+    ),
+)
+
 DOSAI_TOOL = ReachabilityTool(
     name="dosai",
     # cdxgen labels .csproj projects "dotnet"; accept csharp/nuget aliases.
@@ -1063,7 +1157,7 @@ DOSAI_TOOL = ReachabilityTool(
 
 #: Every reachability tool, for the code that reasons about the set rather
 #: than one tool: which analyzers a scan's project types could use.
-_REACHABILITY_TOOLS = (RUSI_TOOL, GOLEM_TOOL, DOSAI_TOOL)
+_REACHABILITY_TOOLS = (RUSI_TOOL, GOLEM_TOOL, KOSI_TOOL, DOSAI_TOOL)
 
 
 def reachability_analyzers_for_types(project_types: List[str]) -> List[str]:
@@ -1156,6 +1250,20 @@ def run_golem_reachability(
     return _run_reachability_tool(bom_file, src_dir, options, GOLEM_TOOL)
 
 
+def run_kosi_reachability(
+    bom_file: str,
+    src_dir: str,
+    options: Optional[Dict] = None,
+) -> bool:
+    """Run kosi + the slice converter for a Kotlin project and drop the
+    atom-shaped reachables slice next to the BOM.
+
+    No-op (returns False) unless the project is Kotlin AND reachability is
+    on. Gracefully degrades when the kosi binary is missing.
+    """
+    return _run_reachability_tool(bom_file, src_dir, options, KOSI_TOOL)
+
+
 def run_dosai_reachability(
     bom_file: str,
     src_dir: str,
@@ -1175,13 +1283,37 @@ def run_dosai_reachability(
     return _run_reachability_tool(bom_file, src_dir, options, DOSAI_TOOL)
 
 
-def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] = None) -> bool:
+def blint_reviews_requested(options: Optional[Dict]) -> bool:
+    """Whether the scan asked for blint's security review of the binaries.
+
+    The binary check (``--checks binary``, which sets the binary-analysis
+    technique), a binary or apk project type and an explicit blint BOM engine
+    all ask for it. The post-build BOM that lifecycle analysis adds does not:
+    it is a side input to a source scan, not a request to review binaries.
+    """
+    options = options or {}
+    project_types = options.get("project_type") or []
+    return bool(
+        options.get("bom_engine") == "BlintGenerator"
+        or "binary-analysis" in (options.get("techniques") or [])
+        or any(t in ("binary", "apk") for t in project_types)
+    )
+
+
+def create_blint_bom(
+    bom_file: str,
+    src_dir: str = ".",
+    options: Optional[Dict] = None,
+    reviews: bool = False,
+) -> bool:
     """
     Method to create BOM file by using blint
 
     :param bom_file: BOM file
     :param src_dir: Source directory
     :param options: Additional options for generating the BOM file.
+    :param reviews: Also run blint's security checks and capability reviews
+        and keep their reports under ``analysis/blint/`` next to the BOM.
     :returns: True if the bom was generated successfully. False otherwise.
     """
     if options is None:
@@ -1190,7 +1322,12 @@ def create_blint_bom(bom_file: str, src_dir: str = ".", options: Optional[Dict] 
     # The side effect is that we will almost always run blint in deep mode
     if reachability_analyzer != "off" and not options.get("deep"):
         options["deep"] = True
-    blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=options)
+    generator_options = dict(options)
+    if reviews:
+        generator_options["blint_reviews_dir"] = analysis_report_dir(
+            os.path.dirname(os.path.abspath(bom_file)), "blint"
+        )
+    blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=generator_options)
     with console_status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:
@@ -1352,6 +1489,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     # absent.
     if any_success and any(pt in ("go", "golang") for pt in (options.get("project_type") or [])):
         run_golem_reachability(build_bom_file, src_dir, options=options)
+        run_kosi_reachability(build_bom_file, src_dir, options=options)
     # .NET reachability via dosai: run once against the source and drop the
     # slice next to the build BOM (the bom_dir the reachability engine scans).
     # No-op for non-dotnet projects, when reachability is off, or when dosai is

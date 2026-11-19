@@ -20,7 +20,9 @@ flags emit no value. ``--profile X`` is emitted as ``--bom-profile X``
 and ``--risk-audit`` as ``--checks supply-chain``. Unknown tokens are
 dropped. An argv that sets nothing translatable (for example ``-h``) or
 is not a valid v6 command line (a bad choice, a mutually exclusive
-conflict, an option without its value) translates to None.
+conflict, an option without its value) translates to None. A removed v6
+option (``--dotnet-analyzer-mode``) is dropped with its value, like an
+unknown token.
 """
 
 import argparse
@@ -36,12 +38,15 @@ from depscan.cli_options import build_parser
 
 # Row kinds. TARGET rows move their value into the positional target,
 # SERVER and VERSION rows switch the verb, FLAG rows emit v7_flag plus the
-# value, CHECKS rows emit v7_flag plus the fixed v7_value.
+# value, CHECKS rows emit v7_flag plus the fixed v7_value, REMOVED rows name
+# a v6 option that v7 no longer registers: the translator drops it and its
+# value.
 TARGET = "target"
 FLAG = "flag"
 CHECKS = "checks"
 SERVER = "server"
 VERSION = "version"
+REMOVED = "removed"
 
 
 @dataclass(frozen=True)
@@ -176,11 +181,13 @@ OPTION_TABLE: tuple[OptionRow, ...] = (
     ),
     OptionRow(
         v6_flags=("--dotnet-analyzer-mode",),
-        dest="dotnet_analyzer_mode",
-        kind=FLAG,
-        v7_flag="--dotnet-analyzer-mode",
-        v7_display="depscan scan --dotnet-analyzer-mode",
-        note="Unchanged.",
+        dest=None,
+        kind=REMOVED,
+        v7_display="(removed)",
+        note="dosai has no source or assembly mode switch, so the flag never "
+        "changed what dosai ran. dosai reads sources and assemblies from the "
+        "same path on its own. Drop the flag and the "
+        "DEPSCAN_DOTNET_ANALYZER_MODE variable.",
     ),
     OptionRow(
         v6_flags=("--no-suggest",),

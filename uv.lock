@@ -1,11 +1,11 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
     "python_full_version == '3.13.*'",
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
+    "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')",
 ]
 
 [manifest]
@@ -17,8 +17,8 @@ members = [
     "owasp-depscan",
 ]
 constraints = [
-    { name = "multi-demangle", specifier = "~=1.0" },
-    { name = "wasm-tools", specifier = "~=1.0" },
+    { name = "multi-demangle", specifier = "~=2.1" },
+    { name = "wasm-tools", specifier = "~=2.1" },
 ]
 
 [[package]]
@@ -246,7 +246,7 @@ wheels = [
 
 [[package]]
 name = "blint"
-version = "3.2.4"
+version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "apkinspector" },
@@ -265,9 +265,9 @@ dependencies = [
     { name = "rich" },
     { name = "wasm-tools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/78/6f/25266999b9da53b0ec55598b05c2b222dedb622a278cbb79c41723c8471f/blint-3.2.4.tar.gz", hash = "sha256:3802e2ed7f7f8458ce5648918d64b4f7e14037f533c965e58fa24c60fa4f6e53", size = 305456, upload-time = "2026-08-11T12:08:36.136Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/69/b3/dd4898b70f09ed74a1ce2ca93af7b92dd7ecd379497397f7404c8c14811e/blint-4.0.1.tar.gz", hash = "sha256:7e6aaf6df449af2f8abc897848a5a145d09e0b7ecc333888842e1a32d7760f68", size = 1250700, upload-time = "2026-10-05T10:46:03.059Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/e6/77a2b62d8ec6f643383bb1faa35aa20d0a7f79d23ef75394b121ce934f2a/blint-3.2.4-py3-none-any.whl", hash = "sha256:7cc02a69025061c19c25069bf9c9ef4be04dda0a02ba06eaa8f23667e0187009", size = 332571, upload-time = "2026-08-11T12:08:34.45Z" },
+    { url = "https://files.pythonhosted.org/packages/d8/6a/addfe5091f74da59ea7d35d48cdbf970f396abb2a779d1dd4b01b31d0b70/blint-4.0.1-py3-none-any.whl", hash = "sha256:fa5368e954f79c76dd907c988c51cfdfeb7c39ed7d651e7b92f96d2d4df58725", size = 1327761, upload-time = "2026-10-05T10:46:01.091Z" },
 ]
 
 [[package]]
@@ -951,8 +951,8 @@ name = "httpcore2"
 version = "2.16.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11" },
-    { name = "truststore" },
+    { name = "h11", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
+    { name = "truststore", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/92/9d/df40b41f7db0370f82019820709244e7b660c52aa3da3c9e5c4e8141f6e6/httpcore2-2.16.2.tar.gz", hash = "sha256:6c519d0f7b44f7269fa9bbb4d2763db395a4a2370f046d8e8e0a4b38227815d2", size = 70064, upload-time = "2026-11-16T10:12:19.491Z" }
 wheels = [
@@ -1368,58 +1368,70 @@ wheels = [
 
 [[package]]
 name = "multi-demangle"
-version = "1.0.4"
+version = "2.1.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ef/3e/2a729b9f1774ee5930f1c74f80281d4f5c263c07ee0f5286d16285c04ad6/multi_demangle-1.0.4.tar.gz", hash = "sha256:38f76281a52433d98c79f69fd3d63b5f5815654de2974118d2a0c81d656196d3", size = 189632, upload-time = "2026-05-08T11:36:09.692Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/7b/56d77b4171d89276ad93a3ab11fbb2a44d85b0904c0467841cb9d41c5997/multi_demangle-2.1.1.tar.gz", hash = "sha256:e453c1c1286935e0653ffc570a327dc9b2509bba5c29170660d63a1640537366", size = 403237, upload-time = "2026-10-10T16:14:01.897Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/0f/b70e2651a2a6f76d30adf8fc65a06e14055c67d7744911a5e8d2e9a1f304/multi_demangle-1.0.4-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:b5b642134ff35e88988940422a4fe73e7e937fdaeb03ead4f67fefcafd341a2a", size = 694840, upload-time = "2026-05-08T11:34:32.689Z" },
-    { url = "https://files.pythonhosted.org/packages/0d/5d/407d0c8073aa4246bd139efd888d7bc99d7af631550b6ffbbe2bd7b766a8/multi_demangle-1.0.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:62a37bca4d844a29af89220ec255731f28b65e4cde96823e0ea409011d134a09", size = 674966, upload-time = "2026-05-08T11:34:34.27Z" },
-    { url = "https://files.pythonhosted.org/packages/1d/6a/7799def0b6f82248cfb306ca0c3be3091f8cb272b51fb93c2e9cb26ce497/multi_demangle-1.0.4-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:28fbac22de64c13a9317d8c1135e92f106e1e6557bca3a2ab82703437e6ba492", size = 749345, upload-time = "2026-05-08T11:34:36.066Z" },
-    { url = "https://files.pythonhosted.org/packages/48/d7/abe78179d859ae007d080bb546350e96a5d4831f78a5f7c51e50373e59c1/multi_demangle-1.0.4-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:4a1c9bf486cedc5518df7a8616da79c37471d58482a4ec9a706a9e39ea51d397", size = 827775, upload-time = "2026-05-08T11:34:38.792Z" },
-    { url = "https://files.pythonhosted.org/packages/0e/38/2f33877b8cfca9063275c73db9450cc9cc89349c3d04034c07a300d1646b/multi_demangle-1.0.4-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3ebc8f451aa0b9d9e99058987a191dab79c68af0c9d619ef4e52a2fe9cdb5a39", size = 755837, upload-time = "2026-05-08T11:34:40.789Z" },
-    { url = "https://files.pythonhosted.org/packages/a3/12/643f208eed6455b28b23925ab913ecd38c6fa217b7a930e1ad04e080a1d9/multi_demangle-1.0.4-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:d1c032caded421cf789f33db939016af8bda4e5a95d7626db0a652a1304e3e70", size = 7189975, upload-time = "2026-05-08T11:34:42.705Z" },
-    { url = "https://files.pythonhosted.org/packages/3d/ff/6cec906eb370f267fd7656bb7c44c4c93dcaf8a6124fb4c78a432bace4fe/multi_demangle-1.0.4-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:7b6c1f9b22b32454ee2d7a9655abc3925cb0a2381a586cbe426dd1ffac1179f3", size = 7350736, upload-time = "2026-05-08T11:34:44.94Z" },
-    { url = "https://files.pythonhosted.org/packages/0e/81/29d0de8b151647d2b80a019da5c40a81a237a6d73d6b75d02dccedd237ee/multi_demangle-1.0.4-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:5e66d92307cde0c573885bc2f870469c34606d93f2bedb3e4aecade924be9bca", size = 7422315, upload-time = "2026-05-08T11:34:47.131Z" },
-    { url = "https://files.pythonhosted.org/packages/06/8e/3c085f8769745d329d90427b940301b9cd889449557789eface10b28f0c1/multi_demangle-1.0.4-cp311-cp311-win_amd64.whl", hash = "sha256:ae194ac3d77a0e282dd6c3d0d2bfc14f6a2a0085c1526dd5f81a6366a36af5d0", size = 591357, upload-time = "2026-05-08T11:34:49.216Z" },
-    { url = "https://files.pythonhosted.org/packages/d5/e9/57c2a0838b8e569c0918ddad5d2a0b7022f7d8fffcbd1ebf6ca3c09e830b/multi_demangle-1.0.4-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:00789c8f889e7f71ef5847bbe866b97d9bae98e2cdde0769dcc3e5533a945a25", size = 693459, upload-time = "2026-05-08T11:34:51.22Z" },
-    { url = "https://files.pythonhosted.org/packages/95/88/3dd29df010acc1f58fadcbc02f86df30b6bd6acd70af964e4cc947a29f32/multi_demangle-1.0.4-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:598f520a78dc355fd706317efecc48eb6201c78d4a2b76fb735e53be621299a0", size = 673000, upload-time = "2026-05-08T11:34:52.757Z" },
-    { url = "https://files.pythonhosted.org/packages/ca/96/432412341c326d50c6d9212c95f99a92701845fc66ce8814a27a29e55c16/multi_demangle-1.0.4-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6e4d8dcfcaf3779a82eca36f3b8cba90fe3ca8148f6198d3b607823c8209973c", size = 748314, upload-time = "2026-05-08T11:34:54.792Z" },
-    { url = "https://files.pythonhosted.org/packages/70/8b/eef6845251f93d4e19ef806158bc23d5801c790ee1ac07f48e0d57106e60/multi_demangle-1.0.4-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:4fe6c4574b7165ee6a51adc3beeebcaf382c5bded34d8c95d872ee2c511878ce", size = 824565, upload-time = "2026-05-08T11:34:56.357Z" },
-    { url = "https://files.pythonhosted.org/packages/61/40/c8179d6ce86822d12eeb37fafc4a46041afa56d8e545b5fb2b13059c08b9/multi_demangle-1.0.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d40a11a06056ef3f074558baef04f4cad4f1190027f83a1f0bcba3ed58f93b88", size = 754639, upload-time = "2026-05-08T11:34:58.072Z" },
-    { url = "https://files.pythonhosted.org/packages/f0/09/e27c969b68679f4c0a5323b943887402fd6727f745575d139abdc7399879/multi_demangle-1.0.4-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:dce98e10d1b1efedc3a81b6def7d74188255847826e2291be35c391d50d2d333", size = 7189932, upload-time = "2026-05-08T11:34:59.955Z" },
-    { url = "https://files.pythonhosted.org/packages/e5/1f/25f944fbf26c57fa8e19ebb7cc8c3a3d55d983115989c294992490627a5b/multi_demangle-1.0.4-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:960460974b7190f30e1205d88c81a87804f3e35718891d607294ab2a7552211b", size = 7347861, upload-time = "2026-05-08T11:35:02.313Z" },
-    { url = "https://files.pythonhosted.org/packages/a9/d9/f21d1f844c6621fa7bfca0644cea78c5f90cecd80fa8926064b00330cd8f/multi_demangle-1.0.4-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:a8cc97f0c3045e44acd210ea811128a46c1de8a8986ffaa1dce14fd8f7562746", size = 7422139, upload-time = "2026-05-08T11:35:04.673Z" },
-    { url = "https://files.pythonhosted.org/packages/ec/b5/2ff6fb5ac7b0eaea8a1c2b3214fb38a11bcb78a324e525e3e8124f94b5b3/multi_demangle-1.0.4-cp312-cp312-win_amd64.whl", hash = "sha256:7ab716d91a3fcae02fd6a662b764399223f3cd93c68be560b0ed4ccf37eff423", size = 593358, upload-time = "2026-05-08T11:35:06.617Z" },
-    { url = "https://files.pythonhosted.org/packages/3a/b9/44ace542ef4f2be06fa7103eaa6f39b36cf74653de25b0392468d12294eb/multi_demangle-1.0.4-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:4fd80ee7fe15b1702e3647b0aadc80373e96169056fbc34d0b62d42bad4521ca", size = 693082, upload-time = "2026-05-08T11:35:08.234Z" },
-    { url = "https://files.pythonhosted.org/packages/67/29/ede9ded6c1488ef0e0babe83881026ff64d63d2f17b0048e778179a9d86f/multi_demangle-1.0.4-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:30670f7c7e1d8dc0b5e5997dc53073dade015a6586f9310c2a3a2135a83c8dc1", size = 672138, upload-time = "2026-05-08T11:35:10.562Z" },
-    { url = "https://files.pythonhosted.org/packages/16/67/170e27a8e75f97a6c141c06b40656077cc6db7865f1361332fb4ce62ec63/multi_demangle-1.0.4-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c1dbe42cc9be99672d58cf4b872fd3e846f19200c1afd048f7b3455651d1c23a", size = 748253, upload-time = "2026-05-08T11:35:12.224Z" },
-    { url = "https://files.pythonhosted.org/packages/8f/1d/f7105be589bfc0cd8a6c918b68b4fc4bc8d37872322a1aeefba08eaf0adb/multi_demangle-1.0.4-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b738691f7ef9445025df0c39e9e1cedd3fb461a61d2bbf850d5417d0e72fd888", size = 824088, upload-time = "2026-05-08T11:35:13.909Z" },
-    { url = "https://files.pythonhosted.org/packages/52/38/dd9ee14f7f3276b8744d6fc1e8380bb876e6e8d596f8f50affee5830b42a/multi_demangle-1.0.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5bf8e84df4e145a792b9a0077e87293d5ca2008042dbf617860eba8501ec98ab", size = 754078, upload-time = "2026-05-08T11:35:15.73Z" },
-    { url = "https://files.pythonhosted.org/packages/e9/e6/114c12247cbf811c659717f57a26027ec90e07c5089fe68fd60eb872b33e/multi_demangle-1.0.4-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:1bb9b7711d24815aa1e35222673c2ff97a4218b4088d09b836d6b456db9b8609", size = 7189914, upload-time = "2026-05-08T11:35:17.648Z" },
-    { url = "https://files.pythonhosted.org/packages/86/d8/0e1d34e286ee6a8fb449f12a066047577a9d5e0964ab18a5b7cdba01edff/multi_demangle-1.0.4-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:cf0920fd40ed0a19a3e618da1cb524ce2c037ca478ca1db1840e2b56f17aaf73", size = 7347713, upload-time = "2026-05-08T11:35:20.192Z" },
-    { url = "https://files.pythonhosted.org/packages/06/1d/3b4de2474072430a96c71146eba837984da1cc58a31c5497ed19b169454f/multi_demangle-1.0.4-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:d02ab1523732ca6ff8e67168e05b5a07ddf211cf516ac9ac45fe0f973a5ca8dd", size = 7421566, upload-time = "2026-05-08T11:35:22.476Z" },
-    { url = "https://files.pythonhosted.org/packages/05/9e/f8e91a0f36a45392a70d171119d71566afb48cbe7f78c145e0fb060dc6c4/multi_demangle-1.0.4-cp313-cp313-win_amd64.whl", hash = "sha256:4cbf786570a635d326bf86ea158207ea80c563f07828777986054592d6303c59", size = 592856, upload-time = "2026-05-08T11:35:24.388Z" },
-    { url = "https://files.pythonhosted.org/packages/c8/99/f095806f1ba6255340634049c409ab85c9756dd633761cf8f4086a3d5c8f/multi_demangle-1.0.4-cp313-cp313t-musllinux_1_2_aarch64.whl", hash = "sha256:8d316661c000ca0f68653443f264fb560f7edb26e434367ee3a116718e07d84d", size = 7186742, upload-time = "2026-05-08T11:35:26.451Z" },
-    { url = "https://files.pythonhosted.org/packages/c7/1b/4810cd46bd3756079efd1a258962206b10f84c584cd1a380d8f629faa374/multi_demangle-1.0.4-cp313-cp313t-musllinux_1_2_i686.whl", hash = "sha256:8609921e0c640e49f945883c21467deee9b254dc2e4e2c1818ef34c7ca35d3bf", size = 7347775, upload-time = "2026-05-08T11:35:28.874Z" },
-    { url = "https://files.pythonhosted.org/packages/02/14/dedd04c3cfe2950ec3f8c79bbe4cd72e151b6813d3927f4d74d6a1e9ecba/multi_demangle-1.0.4-cp313-cp313t-musllinux_1_2_x86_64.whl", hash = "sha256:4110379427779b9540129cdbd67422f9cc11b417b0191d0c4af3ad2643ad6ae6", size = 7417987, upload-time = "2026-05-08T11:35:31.037Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/8a/2388c04bdce094639ea48da8ab9eefb59cce14be9f9b0b4e65d3c9e005d6/multi_demangle-1.0.4-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:822ef73a0fbcb882bc956cbec374b4fed1b4e83e08499c0228e8015a9396916e", size = 691688, upload-time = "2026-05-08T11:35:33.369Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/fc/a9160deb41ae9d15698d83d3c4550fdd4c9922d70ff974d204631e92f3b7/multi_demangle-1.0.4-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:bab5a61d76bbe0fbe2579919a685d378eecd458a1399e1030ce8d3776fb4f82b", size = 668191, upload-time = "2026-05-08T11:35:35.016Z" },
-    { url = "https://files.pythonhosted.org/packages/f0/7f/31bd82bed013c4fbb51153b86a30c0f68dde96ff1bdfd150d9fc94aeebdf/multi_demangle-1.0.4-cp314-cp314-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:1c39f207f5c57bd8f486f035790e3f8763e492a210d4b5fc7990fa461da39604", size = 748499, upload-time = "2026-05-08T11:35:36.837Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/52/cac4b5e00d66b56a362906e2e00405ac1154a535755d7aeb5dca19359dc8/multi_demangle-1.0.4-cp314-cp314-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:dacf623402926acb5dce9f6529c96e60bdce77242eb866adf353d412b38991f1", size = 824344, upload-time = "2026-05-08T11:35:38.497Z" },
-    { url = "https://files.pythonhosted.org/packages/61/d2/ba9bebd08b2540d5023bc1962e156112aefdd28c0f159142fa578a2e012e/multi_demangle-1.0.4-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f02e269895a6cda6d7f81c973d79fc970b6d4dcf01a545b1665712a90c191dc5", size = 753577, upload-time = "2026-05-08T11:35:40.007Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/9a/7218914607dd36b3f2952cb32f757ac2ee093a4aa7262a8218bf54fc9fdc/multi_demangle-1.0.4-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:a591ba17a82e2fcf98b493410d0197bddba12bb63832f108f30b8bc659cd69ac", size = 7189671, upload-time = "2026-05-08T11:35:41.75Z" },
-    { url = "https://files.pythonhosted.org/packages/7d/9d/72aacbec3f7d35a4b74757ab065c965b201658531eeb35b1a2fc4690c06c/multi_demangle-1.0.4-cp314-cp314-musllinux_1_2_i686.whl", hash = "sha256:3b006001ca9e8d61b68cfb2aff69efdfa91c8e26bd9a97977a5eb1b3468c69c7", size = 7347627, upload-time = "2026-05-08T11:35:43.875Z" },
-    { url = "https://files.pythonhosted.org/packages/dd/58/3ceb6aee9731684c19e585c6e34d2ddefcfd3a59d0421195de31f2d4b96f/multi_demangle-1.0.4-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:aabf4706017e319243d6a36bb072b91de5c068526032f907341145a19fd21f21", size = 7422203, upload-time = "2026-05-08T11:35:46.036Z" },
-    { url = "https://files.pythonhosted.org/packages/68/51/49119416aeb7e0d2e184d5bcadf80b925aca7d22870304aa61f263774ddb/multi_demangle-1.0.4-cp314-cp314-win_amd64.whl", hash = "sha256:fab797db62b93bba5d24a871ec6e57806513eb80aaefe41c4218f1e3f505ff2e", size = 593352, upload-time = "2026-05-08T11:35:47.82Z" },
-    { url = "https://files.pythonhosted.org/packages/4c/6f/1c7aca57684a411383a94a24212785424817b5e27836efb1165cae4c4833/multi_demangle-1.0.4-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:8d37c425e901140d809723a0b03e1595fbff3604df41d769469e148838ed8ef6", size = 7186499, upload-time = "2026-05-08T11:35:49.776Z" },
-    { url = "https://files.pythonhosted.org/packages/95/3e/07e94372c293b8c106d1df986384a4166f2760573c4885bfcb8e26fdf023/multi_demangle-1.0.4-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:ca09afc39d6f7d05896c62db9c12781c665bc6cb4116f32a7a4a7a60c6855abb", size = 7347605, upload-time = "2026-05-08T11:35:52.395Z" },
-    { url = "https://files.pythonhosted.org/packages/46/c3/1e6a66ad1d51db8c4f3f4df69803ccaf84b332e4ff6d1e9226f9577e39aa/multi_demangle-1.0.4-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:9bcf72ac5d41e5052ee154a0799f5d19d6fd5fa4dd9771958d2d01f7c2531487", size = 7417461, upload-time = "2026-05-08T11:35:54.665Z" },
-    { url = "https://files.pythonhosted.org/packages/c8/12/ad5c605acf5b853c70506fe48fe8312816a8ab4a49d74380b78cc4c6b3cf/multi_demangle-1.0.4-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0e3b8772478bf1512be3f2ca4c00f4ff4bd04d1a46f57f1098c4815ef0c9b210", size = 750489, upload-time = "2026-05-08T11:35:56.906Z" },
-    { url = "https://files.pythonhosted.org/packages/ed/f6/337c5e88b567ccce150a7457fd7579bed5c2ae5a6c6baedd5744d478d2a0/multi_demangle-1.0.4-pp311-pypy311_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:68132ab63b4f5a147ccf9cfe762a4ed1be04895515fc5f7736b5865953419bf1", size = 829105, upload-time = "2026-05-08T11:35:58.445Z" },
-    { url = "https://files.pythonhosted.org/packages/3c/7b/e172aade5e8d10d3aa31b45a0fd9771b023dd7388650863aff9f978b1f86/multi_demangle-1.0.4-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:45ec545fbab0db4db7e10d2b6f83f543c7b6eab0bd08f98966fcf6e821794b6c", size = 756587, upload-time = "2026-05-08T11:35:59.979Z" },
-    { url = "https://files.pythonhosted.org/packages/5d/61/dd01e7d58df46f30424529860f5e3ba08f9baecbf185c38949bb4dc1a05a/multi_demangle-1.0.4-pp311-pypy311_pp73-musllinux_1_2_aarch64.whl", hash = "sha256:902f64d779b927114e065388a5eda4aff74cc1e64e3b9740723731a09331ade5", size = 7191023, upload-time = "2026-05-08T11:36:01.9Z" },
-    { url = "https://files.pythonhosted.org/packages/74/ad/18367234850509ad0275444d0269eb577fa686f9b11cfb28ad1d0f53dcbe/multi_demangle-1.0.4-pp311-pypy311_pp73-musllinux_1_2_i686.whl", hash = "sha256:f75615859c284415d6fba26d68a9f335817c1251c42d5bd8d98eb6f90b2e69b4", size = 7352235, upload-time = "2026-05-08T11:36:04.823Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/80/daf4eedb7dec5a7dbeb2382bbc14ddba0b24bb52c0ecfdf61d45259cdf1d/multi_demangle-1.0.4-pp311-pypy311_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:1b7097c92f63bac057e5a724278fb80446c4016153dc3c3a9b7e890061d7aaff", size = 7423580, upload-time = "2026-05-08T11:36:06.928Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/6f/1b99f955311e1068f6fb5136538475284b82c0e5644e13659319a339be93/multi_demangle-2.1.1-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:c8a8c6138bc7073640b4aec95aeca9450ffe72eb35a744696398b47d7189ddd3", size = 870399, upload-time = "2026-10-10T16:11:36.534Z" },
+    { url = "https://files.pythonhosted.org/packages/d2/e2/707ff37403cd998cb2fbb373720cfa0bec76e60804677346c93dbcba0b44/multi_demangle-2.1.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:49fac8d357aaada128acd2056e969f2100f15427eecc68c4f27046a05eedeb3e", size = 846708, upload-time = "2026-10-10T16:11:38.119Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/df/089a2c77f5be03c296b57ef6e1b729c465ee309f42557a3f47fb24dcf01f/multi_demangle-2.1.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:2d2ce30022f20f2fa1bca8166eff047c46aa5f6239740b25137b467e87f4331d", size = 945203, upload-time = "2026-10-10T16:11:39.837Z" },
+    { url = "https://files.pythonhosted.org/packages/f2/d2/3d95156569dcffc2d1f574a63d11bfd62fb317959a50d89f13fb6c3e5914/multi_demangle-2.1.1-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:323d89bd07a749416e0f6ae547ab0b93cd8a32672631ba51508bc3d85ac544b9", size = 1039475, upload-time = "2026-10-10T16:11:41.486Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/13/8529c6bd59ad17a6d86ea838f0aab274c9946d6e4a596dc7c789aa02b9d1/multi_demangle-2.1.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:33a347c7c294407d2185682afb6d18bcbc2127cbae3f3c997b9d508849f59b82", size = 948069, upload-time = "2026-10-10T16:11:43.491Z" },
+    { url = "https://files.pythonhosted.org/packages/56/d1/ea2f4ecb8cf2cade73077f8d9aaddc84bd9ef50745d988264f234b748561/multi_demangle-2.1.1-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:3e60b780e249e8118356944156cf5fd9ae5be8fa4c5089464dc6b864b943beb6", size = 7386240, upload-time = "2026-10-10T16:11:45.661Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/0a/bddc7be8eb1e29f3b30bd46a77f3f6ea18311671e94d54c46e79980b7db0/multi_demangle-2.1.1-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:e3ec35fb7df1de53aab62bb9fb8d8697ea592eb4cb02b9868c1a8dd27c131884", size = 7548798, upload-time = "2026-10-10T16:11:48.223Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/40/1a13a6b57d6c0e0b5ae40e56af220dbf53bc7324bf2991ed2626e625f675/multi_demangle-2.1.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:33e081b67280188d52be51a5cb37f610e12ebab971a84184fed0ab178c0b4bcc", size = 7615844, upload-time = "2026-10-10T16:11:50.675Z" },
+    { url = "https://files.pythonhosted.org/packages/21/1a/0d1f411c4acbbb7a6a1c68ad408cb15851ee5f8df49a45acecafc7454ea4/multi_demangle-2.1.1-cp311-cp311-win_amd64.whl", hash = "sha256:76d5e7013bd3b5337b07176d2304ce40cb86b5657f4a1ace40f76a87277fbb85", size = 766132, upload-time = "2026-10-10T16:11:52.645Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/68/3f4fb942440421fcc37304c11647f0e211fa4c670e8b4953aee62bedc82b/multi_demangle-2.1.1-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:3d64afbde0d1d0007213eb56b12e293c1a587a5fb747354894edd36040b12e04", size = 868215, upload-time = "2026-10-10T16:11:54.468Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/59/12531b03977de0b6eb735c1098e9c52e9d1d9389b657c2b15e41d6a8408e/multi_demangle-2.1.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:ad5bf3f6815c35255e4940509b8f065e398333e134b55bfab11852bbee5124dc", size = 842509, upload-time = "2026-10-10T16:11:56.147Z" },
+    { url = "https://files.pythonhosted.org/packages/73/90/bf8a495e8dcb6995234b378b6b140d332de3b7af6e6a2698818016cbc0bd/multi_demangle-2.1.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:65cf7aba8fc874d0f5cc74fd8d9265e09886ab616d5910ea5f37bc4db80b24e1", size = 941076, upload-time = "2026-10-10T16:11:57.794Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/11/54ace15d404174a8ad5e81cc759319653da13c6e91ebe641000282fc2941/multi_demangle-2.1.1-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:142cdf5ee06a8fa1dc328cd0815108f6ae395a2a917c535ca08c4b99134eed31", size = 1032643, upload-time = "2026-10-10T16:11:59.558Z" },
+    { url = "https://files.pythonhosted.org/packages/69/a5/203a192f2a7ed1bcafc10566d37b972e81f60864688aee213011934e0ef0/multi_demangle-2.1.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ba48bdcf225ef6f7134cdcfca8bcc1ca92df807a067eed39e2bd535934fb191b", size = 944573, upload-time = "2026-10-10T16:12:01.282Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/93/799a0ea36c75ab9ac59a2479ea8dd9e5540f5d9e6f6e686787f02ee21261/multi_demangle-2.1.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:55d4dc7e7831850e0cf43ca99cfe872044ca84000916170be8b22bf3c73d2976", size = 7382073, upload-time = "2026-10-10T16:12:03.418Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/af/5b2b26e55e6d393eec6f035696d7dd22713d47d6e80cd3630b1a072158d9/multi_demangle-2.1.1-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:2bcd4a6e54598c1a45f656b20ae9d11943ef6b2ee6657e5eb850face1a62f21f", size = 7542962, upload-time = "2026-10-10T16:12:05.798Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/a7/8254b550c0f6fe172c4d0a481b51b56e1cefcad313999d0452ff7960d5a4/multi_demangle-2.1.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:e35fa04c534248c7c7b18bda2d2bcb05bb581899a6a87aee253d64d5dac35f60", size = 7611990, upload-time = "2026-10-10T16:12:08.531Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/12/6298a85b6e9a02641cc33b31db4ceb11820c22b69c6d2a50f2eb8451348e/multi_demangle-2.1.1-cp312-cp312-win_amd64.whl", hash = "sha256:a24686a6eb7615f3dee75797ebcf7826c3da2e8420c4fd53e78ba5a0b72e252d", size = 765431, upload-time = "2026-10-10T16:12:11.095Z" },
+    { url = "https://files.pythonhosted.org/packages/e5/54/898652cf08598459a3385830d1d935d6083cb292dba66210864805791141/multi_demangle-2.1.1-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:053fa9a994a40d9772a6339c990295d62c446112ba74aa99e43e5d2b96a730f9", size = 869245, upload-time = "2026-10-10T16:12:12.967Z" },
+    { url = "https://files.pythonhosted.org/packages/82/eb/91ea08762f2f816974ad960cf1c2f8f8041c8138440e92496ac36d6f6d66/multi_demangle-2.1.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:dd21739f687043e2a036487b6c22b14fbc0e12217400ae46969df1d73992328b", size = 838835, upload-time = "2026-10-10T16:12:14.641Z" },
+    { url = "https://files.pythonhosted.org/packages/28/54/8f74977d2a7fe74b5d84b827d187aa78ae11902f42369f7efe7ffd060d60/multi_demangle-2.1.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:84b49d7d1a42e7d79c16d10560e367f2ab011ddccbab6d6f9f06ced008eb3e5a", size = 941249, upload-time = "2026-10-10T16:12:16.333Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/38/d46ec020f65e4ba0b97042024a015d42b3eda3e8333e031f83f5ef7cf60d/multi_demangle-2.1.1-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:35ebccc51ff56a764de8b2138c8e2c01582dd8fc65d157e3ebcb8afd2c2bfa94", size = 1033717, upload-time = "2026-10-10T16:12:18.027Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/29/98c3a43d526ae79148fbb15769b070a20540567c6ec9a8644f5c457b03b4/multi_demangle-2.1.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f0d5a5c26b39c20d91116e0c1bb057163e2942b7d1baaaab6fabd58f228837b4", size = 944091, upload-time = "2026-10-10T16:12:20.023Z" },
+    { url = "https://files.pythonhosted.org/packages/c4/28/4023dac6f8c684fd8eb88167c56572ffdc26c7f907094341b6c157178751/multi_demangle-2.1.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:9553d921ef01851a4ec8dd1cc64c0a69ba4aedbe2b0c5caaf2b2e0ceabe5fb54", size = 7381782, upload-time = "2026-10-10T16:12:22.25Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/e0/f1f7505863d8e4664ae28bf756a22bbe87c2833f5981d54392b4c008f3d2/multi_demangle-2.1.1-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:bb109034e0d28410ef8f8308bb5941fd732faf6e6e4df161aec41dba8eb1259b", size = 7544210, upload-time = "2026-10-10T16:12:25.034Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/bb/bf02818252b360a3d8bea41341db0f9328a85049b1428fc248ec8bf2ef7e/multi_demangle-2.1.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:650d2a00828e23ebd644b56d2e49bf206abb838d133c81aa571a1a50d0940d57", size = 7611110, upload-time = "2026-10-10T16:12:27.78Z" },
+    { url = "https://files.pythonhosted.org/packages/10/7c/58fa6d676c025059e0b881100d2ae25016bafb3daf5fd17553203c816ece/multi_demangle-2.1.1-cp313-cp313-win_amd64.whl", hash = "sha256:5ca6432c050414bdb6b5e1ef7d70cd3f884372840699be2745b3b673bc74546c", size = 764721, upload-time = "2026-10-10T16:12:29.768Z" },
+    { url = "https://files.pythonhosted.org/packages/14/0a/72adc441acdbdcdbc9bad28af01dd3f42d02db54cbd47fb0415c45cfaff5/multi_demangle-2.1.1-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:311de426ef2144b138000495b5c26a40d3e126fb6ccf1c5443b8992c36a17965", size = 868777, upload-time = "2026-10-10T16:12:31.522Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/b2/98d51a502b40da628d612b13b7e68f2c0a4ba5ed2cfbcc2564c32b80d265/multi_demangle-2.1.1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:371cdf830332703aadf419461dcdc7bc988823fc99d8e6ebe1acfd3b554c2294", size = 843143, upload-time = "2026-10-10T16:12:33.194Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/a7/e33584fcdc59d822841f4ab9d1a1f411ad3a4f0d7536bf15fdca3bb36bb5/multi_demangle-2.1.1-cp314-cp314-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bfadc1b22241eab2bb8a1d20943327f171a91677e766347384a54bd4ae05a02b", size = 941932, upload-time = "2026-10-10T16:12:35.321Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/10/bde1cb765292c238a83a5ffcf2ff2df320be74c88836ccec6bba828171a5/multi_demangle-2.1.1-cp314-cp314-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:3aedfbe2f71a2152c1c5adb601dca7c1e73c55ac1bca8cebe8d1389bc6c9adc6", size = 1034008, upload-time = "2026-10-10T16:12:37.323Z" },
+    { url = "https://files.pythonhosted.org/packages/6f/19/0a3815918c5d1bec5762823d5a7b72fa1671d7e40b9fcfb97a0bfded2279/multi_demangle-2.1.1-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5cea72a7f70ae37d0794dbc42e76a04c8028381c66e7c51a8ccfcfbcee2fc506", size = 947179, upload-time = "2026-10-10T16:12:39.272Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/a2/33dd19c5214804fdfb1c122af130a99a3c17f51cde623af152bd4da7b186/multi_demangle-2.1.1-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:276379bec0a5fbfcc8f33414713a1379b9948235cecc7d0b529424c2c04516c8", size = 7383378, upload-time = "2026-10-10T16:12:41.428Z" },
+    { url = "https://files.pythonhosted.org/packages/1b/45/39de97407f43363f19a52ca93eb110a9ae79a98e6fcf9c333f2625d47a21/multi_demangle-2.1.1-cp314-cp314-musllinux_1_2_i686.whl", hash = "sha256:42e676b6759d3844a534ade1c9bfb32375c247bb71c456826e5f235c1d1e9a6e", size = 7545215, upload-time = "2026-10-10T16:12:43.977Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/da/9417697fa5ef541b67266d8ec0fb98c2a887e953af0ede37bf999e515635/multi_demangle-2.1.1-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:3bfca9c81353173b77d9ab7a2070e8e6ff2ebcc04861bc4be2038181e290751a", size = 7612128, upload-time = "2026-10-10T16:12:46.51Z" },
+    { url = "https://files.pythonhosted.org/packages/11/77/b2372e1e6824a060a5cf5cc351bb0364c065188f8bd443c322f80288747e/multi_demangle-2.1.1-cp314-cp314-win_amd64.whl", hash = "sha256:d3ab785e385bccc81f94dae58eaddcad9402997c1c9a1fe389dbc1fccd4fe8de", size = 764860, upload-time = "2026-10-10T16:12:48.515Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/58/554d9a45a003ce9a333d57ebda9d774f27c3fe51f585dde98a40f8ad291b/multi_demangle-2.1.1-cp314-cp314t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f0ec9977396421d001f353a3ac18cfdf6c6e5913582dba02f39b347478914332", size = 942159, upload-time = "2026-10-10T16:12:50.203Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/f7/a0f4a1f1154b7758e74c7266a3a605ddef96a49c89bd4c7388eaa6596b69/multi_demangle-2.1.1-cp314-cp314t-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:a8cdb56cf4ee3935964ccedf1d02c296e96c1b7fbd40eb87703fa63b2cee8369", size = 1033207, upload-time = "2026-10-10T16:12:51.88Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/9e/08ad2515ac803ebcf0699a17546ebadb3f0b3cce777104a8e5331426a6d3/multi_demangle-2.1.1-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d3b9966d683e1c095c04ae2e9d175888d6012a68dad6dd952f52bf0b3154e747", size = 945333, upload-time = "2026-10-10T16:12:54.143Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/dc/203a7363eaf223bc0ed381d4cb282ade58a106e58dc18334368cd873c9f1/multi_demangle-2.1.1-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:9c871f508072616a900f6a2f361f5cac19301e2ea1a0b173aaf898e75f6f112c", size = 7383349, upload-time = "2026-10-10T16:12:56.308Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/de/b17ca6c912aa39c2755d2ebcaae698b8f555247f5255a104b9fcf29bdd6e/multi_demangle-2.1.1-cp314-cp314t-musllinux_1_2_i686.whl", hash = "sha256:9b9dde326895c7e50e7ee317c7a47add0ad645a47d1d1a570a708377558594f8", size = 7543885, upload-time = "2026-10-10T16:12:58.791Z" },
+    { url = "https://files.pythonhosted.org/packages/94/66/5131c1b87f2e41ffd88c191570dc6bb99acfd6ff39ca06c9ed140830eb62/multi_demangle-2.1.1-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:6e076e58a4909ca8c1cd0d2ea43a2fc0528800012006708cfb3b2377de03d3d0", size = 7612125, upload-time = "2026-10-10T16:13:01.621Z" },
+    { url = "https://files.pythonhosted.org/packages/89/c1/eadd3e3b781e8a4e56ac66473346b60d86215526af55195d40b3f194e392/multi_demangle-2.1.1-cp315-cp315-macosx_10_12_x86_64.whl", hash = "sha256:c1a3706e2ea06318a93da6820ff2c01f32b864c7ddd3f180be9966f419c757f7", size = 870779, upload-time = "2026-10-10T16:13:03.919Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/52/14c42ce51b2f2ab902bdad6b93dbcfc3c4a0ff2a6ebc3032b63f9425c123/multi_demangle-2.1.1-cp315-cp315-macosx_11_0_arm64.whl", hash = "sha256:d8093cf54fceb98c8eb2da77e8312946fa8186854d1f430d3639a545133d07f9", size = 843290, upload-time = "2026-10-10T16:13:06.008Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/d9/b24be26ccf70121b724b35d426275ae4dea32cb7beec31679dc82b22eeed/multi_demangle-2.1.1-cp315-cp315-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e6b5e9f7896ffd8d34bd2f4e24e484210d2a7db26c83adf38b58a1fe55b6df7c", size = 941775, upload-time = "2026-10-10T16:13:08.008Z" },
+    { url = "https://files.pythonhosted.org/packages/92/fb/92330c0f51004c5f727734850b148827a8f6e012ef40502fbf090c5897ce/multi_demangle-2.1.1-cp315-cp315-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e7f2c0d8c04bb0bfc680adbe2ec78481e72ccf49b7fbc954a22df0d98a81cc75", size = 1035004, upload-time = "2026-10-10T16:13:10.345Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/88/073c06f23760594d3e9a70f372c0a342982871e7e7601a78eb100fe08d58/multi_demangle-2.1.1-cp315-cp315-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0b8ea0339108eea3da4106fef3ea53def1ae5166ed9b5e6c111a8bd0485afd5d", size = 947387, upload-time = "2026-10-10T16:13:12.047Z" },
+    { url = "https://files.pythonhosted.org/packages/2c/b6/a3482b68a3cf655555880fb1d011e67b911c6b02f75cea5442eac7039bcb/multi_demangle-2.1.1-cp315-cp315-win32.whl", hash = "sha256:a3c8bb0588e0b2e6785551e84264be4f229516b206de160fcfe238b31aa70de1", size = 706823, upload-time = "2026-10-10T16:13:14.004Z" },
+    { url = "https://files.pythonhosted.org/packages/30/1d/faec46d8e814e1208c04544b1693f5713dc4ba29a3dffb4e54064214891d/multi_demangle-2.1.1-cp315-cp315-win_amd64.whl", hash = "sha256:649705943610bd8e96882a9a74823f2611be95105bd0e10dcdce3fd3acf06585", size = 765374, upload-time = "2026-10-10T16:13:15.715Z" },
+    { url = "https://files.pythonhosted.org/packages/59/bb/4e1bf65bdcfcb260caba0c9094b72f4a3b5a5eee344ecc3f02eb90c5f9dc/multi_demangle-2.1.1-cp315-cp315t-macosx_10_12_x86_64.whl", hash = "sha256:e95f32c103098c74600f1c78fee290035b90278edb67cc1f4483ea1645aa9977", size = 870457, upload-time = "2026-10-10T16:13:17.485Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/4d/9161a82bd30664a8ddc87a7567a1502048f2d136fa6e68d5d017c2ab860f/multi_demangle-2.1.1-cp315-cp315t-macosx_11_0_arm64.whl", hash = "sha256:ce5685a432154f823a51b3c960afc9b78085932a34e864ed7062ff164b7544ca", size = 841583, upload-time = "2026-10-10T16:13:19.82Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/8b/efb70330493129ed70d96a918b2a26ab443841889a87e009a60048fdcc80/multi_demangle-2.1.1-cp315-cp315t-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:83c6b6be37208c95b4f857b27853fbc93eeccf8eb89edb7e5379ec75d772c7b3", size = 941162, upload-time = "2026-10-10T16:13:21.751Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/26/de7989c52ed7b506be2bb0f9120cfb1e332746bbf73fb44cd47a9e1e3cc4/multi_demangle-2.1.1-cp315-cp315t-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:6e35a811bd5b84a2badc1e8c7b5c8eb335ae32defa73e15a7775fa603a437d1b", size = 1033739, upload-time = "2026-10-10T16:13:23.488Z" },
+    { url = "https://files.pythonhosted.org/packages/82/53/5d4657a404af71cd9337bb49bd49e0e6071a3e3851fa34ca054e5f77cfac/multi_demangle-2.1.1-cp315-cp315t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2f511be5d9c73b0fb1dabf2affc688a1fa7d6f7860003b3c4ea19063742525ab", size = 945923, upload-time = "2026-10-10T16:13:25.289Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/93/09b83b8ff2ae3cff41079449cd629edbb97102c2f85d07115344fc5d443f/multi_demangle-2.1.1-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c69643e8a5517888d4ad4a622678ed978352ee3a323c106933299e83872af34d", size = 947066, upload-time = "2026-10-10T16:13:49.169Z" },
+    { url = "https://files.pythonhosted.org/packages/de/21/ac94e1d2224e3d6ae9d2a3e1dd914d56f8fffdc4483aed3c41e40b4cb266/multi_demangle-2.1.1-pp311-pypy311_pp73-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:307c0e25d8135bba2ff81ac33b4eba038aa100ed0e22f04a908d54ff0f4030d0", size = 1039685, upload-time = "2026-10-10T16:13:50.879Z" },
+    { url = "https://files.pythonhosted.org/packages/00/80/c5372cebe2153f207ac798f0f542fa6c01225a4655c30337c8c9e54dd5fc/multi_demangle-2.1.1-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5184791866b9278fb0c936d198c8221ab419a68aa1627aeaca7beb88c2a4cd7f", size = 949618, upload-time = "2026-10-10T16:13:52.84Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/71/edd790e5819104539e7a752a3ec0e09283ca0c3b81334dac1411c2b9547e/multi_demangle-2.1.1-pp311-pypy311_pp73-musllinux_1_2_aarch64.whl", hash = "sha256:f09fd666dcb89297b9077e5a69d264f3d70222ad4b360a6dd465fff8a2d4aa6f", size = 7387749, upload-time = "2026-10-10T16:13:54.994Z" },
+    { url = "https://files.pythonhosted.org/packages/09/63/14496bd4e930625c7d0dc5dac28c0ed134d98ddc675494d067e4d2f77958/multi_demangle-2.1.1-pp311-pypy311_pp73-musllinux_1_2_i686.whl", hash = "sha256:d9530589eb951ef7e6d2f8de2b8325758f5117b53cd3d16a183584aaeede2c04", size = 7550130, upload-time = "2026-10-10T16:13:57.476Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/d0/8df0e6c93235dcf2875a238e12954dab3c55742a082fdad672c82d423da7/multi_demangle-2.1.1-pp311-pypy311_pp73-musllinux_1_2_x86_64.whl", hash = "sha256:9d6d09bb951a47c6caf705553488f336563ef6d6a2591504a61c1a95e9e36198", size = 7618628, upload-time = "2026-10-10T16:13:59.828Z" },
 ]
 
 [[package]]
@@ -1560,8 +1572,8 @@ requires-dist = [
     { name = "appthreat-vulnerability-db", specifier = ">=7.0.6,<8" },
     { name = "atom-tools", marker = "extra == 'all'", specifier = "~=1.0.5" },
     { name = "atom-tools", marker = "extra == 'ext'", specifier = "~=1.0.5" },
-    { name = "blint", marker = "extra == 'all'", specifier = "~=3.2.3" },
-    { name = "blint", marker = "extra == 'ext'", specifier = "~=3.2.3" },
+    { name = "blint", marker = "extra == 'all'", specifier = "~=4.0.1" },
+    { name = "blint", marker = "extra == 'ext'", specifier = "~=4.0.1" },
     { name = "custom-json-diff", specifier = "~=2.1.6" },
     { name = "cvss", specifier = "~=3.6" },
     { name = "defusedxml", specifier = "~=0.7.1" },
@@ -2029,18 +2041,18 @@ version = "0.22.0"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version < '3.12' or (python_full_version == '3.12.*' and sys_platform != 'emscripten')",
+    "(python_full_version < '3.13' and sys_platform != 'emscripten') or (python_full_version < '3.12' and sys_platform == 'emscripten')",
 ]
 dependencies = [
-    { name = "aiofiles" },
-    { name = "blinker" },
-    { name = "click" },
-    { name = "flask" },
-    { name = "hypercorn" },
-    { name = "itsdangerous" },
-    { name = "jinja2" },
-    { name = "markupsafe" },
-    { name = "werkzeug" },
+    { name = "aiofiles", marker = "python_full_version < '3.13'" },
+    { name = "blinker", marker = "python_full_version < '3.13'" },
+    { name = "click", marker = "python_full_version < '3.13'" },
+    { name = "flask", marker = "python_full_version < '3.13'" },
+    { name = "hypercorn", marker = "python_full_version < '3.13'" },
+    { name = "itsdangerous", marker = "python_full_version < '3.13'" },
+    { name = "jinja2", marker = "python_full_version < '3.13'" },
+    { name = "markupsafe", marker = "python_full_version < '3.13'" },
+    { name = "werkzeug", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/82/8a/13962df31309fa024b1811102981577b1702916779d3f17067bbf1f7691d/quart-0.22.0.tar.gz", hash = "sha256:6ba567bb29e0ea66f7c0a0297c2b6225bb531e37dbf9b75dbf4a6e1713c4c934", size = 65475, upload-time = "2026-08-19T19:53:30.212Z" }
 wheels = [
@@ -2056,15 +2068,15 @@ resolution-markers = [
     "python_full_version == '3.13.*'",
 ]
 dependencies = [
-    { name = "aiofiles" },
-    { name = "blinker" },
-    { name = "click" },
-    { name = "flask" },
-    { name = "hypercorn" },
-    { name = "itsdangerous" },
-    { name = "jinja2" },
-    { name = "markupsafe" },
-    { name = "werkzeug" },
+    { name = "aiofiles", marker = "python_full_version >= '3.13'" },
+    { name = "blinker", marker = "python_full_version >= '3.13'" },
+    { name = "click", marker = "python_full_version >= '3.13'" },
+    { name = "flask", marker = "python_full_version >= '3.13'" },
+    { name = "hypercorn", marker = "python_full_version >= '3.13'" },
+    { name = "itsdangerous", marker = "python_full_version >= '3.13'" },
+    { name = "jinja2", marker = "python_full_version >= '3.13'" },
+    { name = "markupsafe", marker = "python_full_version >= '3.13'" },
+    { name = "werkzeug", marker = "python_full_version >= '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6b/81/34396f67e09e7a0609261f1ef0f43b26f5d67e8f2dc4d34b4953061560f2/quart-0.23.1.tar.gz", hash = "sha256:1ca848415910bd2eb75e9d9b452388f892a37be222602a373622e6c633d1efbf", size = 65636, upload-time = "2026-08-29T15:58:35.767Z" }
 wheels = [
@@ -2508,8 +2520,8 @@ name = "uvicorn"
 version = "0.54.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click" },
-    { name = "h11" },
+    { name = "click", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
+    { name = "h11", marker = "python_full_version != '3.12.*' or sys_platform != 'emscripten'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/da/34/30e9280707135d2cfc589dfff3cb796bd07a3aeb1a3e415ba09dd89d7bb4/uvicorn-0.54.0.tar.gz", hash = "sha256:a2e33cbfaa0306f8e6b0c13e0cb89d7d7a2da3e62b90c66e18c33d9807b28620", size = 112283, upload-time = "2026-09-25T06:52:37.601Z" }
 wheels = [
@@ -2518,11 +2530,11 @@ wheels = [
 
 [[package]]
 name = "wasm-tools"
-version = "1.0.3"
+version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/46/cd/7553ad8f2ef6d6fb3c48fc6f6e4850b14d6ee0cc5161f03b3155166b14f6/wasm_tools-1.0.3.tar.gz", hash = "sha256:ea042f436198350068960feb5a8915e61bdaf7a36f7d9e0a80443da5c12ef7b1", size = 42473, upload-time = "2026-04-22T00:40:04.121Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/f9/3a6260818f6b7b7aa23b204a06e8a8ea6cb1f7d64cd2ab47eb1afaefe332/wasm_tools-2.1.0.tar.gz", hash = "sha256:fbfd4a962462e6128eb37446957d9ccac4e18b34d2cb894821697139d12f26d4", size = 53708, upload-time = "2026-09-01T22:05:23.711Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/21/a4/38960e88dd16334a019b990524219b1b7f216d539c11d749dc5921d5b236/wasm_tools-1.0.3-py3-none-any.whl", hash = "sha256:8d4cbd8c7025bedb394d33076517a5e4a5427e6cf35fecaf8b9a5793cd930378", size = 36316, upload-time = "2026-04-22T00:40:02.869Z" },
+    { url = "https://files.pythonhosted.org/packages/13/6f/4d9a1e23bc9b50fc65b7afa73992cac27f263fc10668c5fe963250299e1a/wasm_tools-2.1.0-py3-none-any.whl", hash = "sha256:237d68dd5767c639a3a76633ebfc628062ec3d5da48be902ffa62b351f8d61f9", size = 55545, upload-time = "2026-09-01T22:05:22.19Z" },
 ]
 
 [[package]]
