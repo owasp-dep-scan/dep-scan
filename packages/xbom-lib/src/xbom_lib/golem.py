@@ -82,16 +82,14 @@ DEFAULT_DATAFLOW_MODE = "all"
 # dependency is reached. This is always on; no override.
 INCLUDE_ALL_FLOWS = True
 
-# Entry points golem measures reachability from, passed as ``--roots``.
-# ``main`` is golem's own default (it already adds ``init`` and type-resolved
-# framework registrations); naming ``init`` and ``handlers`` as well records the
-# choice on the command line and adds functions shaped like
-# ``func(http.ResponseWriter, *http.Request)``, which serve requests without
-# being called from ``main``. ``exported`` is left out on purpose: for an
-# application it would mark every public function reached and make the
-# per-node verdicts meaningless. A library with no ``main`` therefore reports
-# no reachability, which golem records as ``skipped`` rather than "unreachable".
-DEFAULT_ROOTS = ("main", "init", "handlers")
+# Entry points golem measures reachability from, passed as ``--roots`` only
+# when a caller asks. By default no ``--roots`` is passed, so golem's own root
+# set applies: it adds framework registrations, cobra ``Run`` functions and
+# goroutine targets to the walk, and a library with ``ServeHTTP`` methods is
+# reported as skipped rather than reduced to its handlers. Naming roots
+# explicitly would drop those. The set golem used is recorded in the report's
+# ``callGraph.roots``.
+DEFAULT_ROOTS: tuple = ()
 
 # Witness paths per requested symbol, passed as ``--max-paths-per-symbol``
 # whenever symbols are requested. Matches golem's own default.
@@ -137,8 +135,10 @@ class GolemResult:
     command_output: str = ""
     version: Optional[str] = None
     timed_out: bool = False
-    #: The ``--roots`` specifiers the run asked for; empty when the golem
-    #: binary predates the flag and its own default root set applied.
+    #: The ``--roots`` specifiers a caller asked for; empty when none were
+    #: passed (the default) or the golem binary predates the flag. Golem's
+    #: own default root set then applies and is recorded in the report's
+    #: ``callGraph.roots``.
     roots: tuple = ()
 
 
@@ -502,7 +502,7 @@ def run_golem(
     network_mode: str = "auto",
     deep: bool = False,
     allow_cgo: bool = False,
-    roots: Optional[tuple] = DEFAULT_ROOTS,
+    roots: Optional[tuple] = None,
     reachable_symbols: Optional[list] = None,
     logger: Optional[Logger] = None,
     timeout: Optional[int] = DEFAULT_TIMEOUT,
@@ -526,9 +526,9 @@ def run_golem(
     and its dependencies; the toolchain release is checked and warned about
     when it predates the Go releases that refuse those flags.
 
-    ``roots``: the entry-point set golem measures reachability from (see
-    :data:`DEFAULT_ROOTS`); the report's ``callGraph.roots`` records what was
-    resolved. ``reachable_symbols``: names (case-insensitive substrings of a
+    ``roots``: an explicit entry-point set for ``--roots``; by default none
+    is passed and golem's own root set applies (see :data:`DEFAULT_ROOTS`),
+    which the report's ``callGraph.roots`` records. ``reachable_symbols``: names (case-insensitive substrings of a
     node id or label) to emit witness paths for, such as the vulnerable
     functions of matched advisories. Both are skipped, with a debug message,
     when the golem binary does not know the flags.

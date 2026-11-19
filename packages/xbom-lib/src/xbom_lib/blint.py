@@ -66,6 +66,12 @@ def run_blint_reviews(
     A failure never raises: it is returned as ``success=False`` with the
     reason, so a review problem cannot take the SBOM down with it.
     """
+    # A reports directory reused by an earlier scan can hold reports from it.
+    # They go before the review starts, so a review that fails or does not run
+    # leaves nothing that reads as this scan's result.
+    for stale in (BLINT_FINDINGS_FILE, BLINT_REVIEWS_FILE, BLINT_COVERAGE_FILE):
+        with contextlib.suppress(OSError):
+            os.remove(os.path.join(reports_dir, stale))
     if not BLINT_AVAILABLE:
         return BlintReviewResult(
             success=False, command_output="blint is not installed; no review was run."
@@ -95,11 +101,6 @@ def run_blint_reviews(
         }
         files = []
         os.makedirs(reports_dir, exist_ok=True)
-        # A reports directory reused by an earlier scan can hold reports from
-        # it; only this run's reports may stay.
-        for stale in (BLINT_FINDINGS_FILE, BLINT_REVIEWS_FILE):
-            with contextlib.suppress(OSError):
-                os.remove(os.path.join(reports_dir, stale))
         export_metadata(reports_dir, {**header, **runner.analysis_coverage()}, "Analysis-Coverage")
         files.append(BLINT_COVERAGE_FILE)
         if findings:

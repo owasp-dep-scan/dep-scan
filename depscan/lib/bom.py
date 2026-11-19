@@ -1000,6 +1000,17 @@ class ReachabilityTool:
     persist_report: Optional[Callable] = None
 
 
+def _remove_tool_slice(path: str) -> None:
+    """Delete one tool slice file if it exists."""
+    try:
+        os.remove(path)
+        LOG.debug("Removed the reachability slice %s left by an earlier run.", path)
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        LOG.debug("Could not remove the reachability slice %s: %s", path, e)
+
+
 def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     """Run one reachability tool and drop its reachables slice next to the BOM.
 
@@ -1019,6 +1030,12 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     project_type_list: List[str] = options.get("project_type") or []
     if not any(pt in tool.project_types for pt in project_type_list):
         return False
+    if bom_file:
+        # A slice left by an earlier scan must not outlive a run where this
+        # tool does not produce one, or the analyzer would read as completed.
+        _remove_tool_slice(
+            os.path.join(os.path.dirname(os.path.abspath(bom_file)), tool.slice_file)
+        )
     if options.get("reachability_analyzer") == "off":
         return False
     if not bom_file or not os.path.exists(bom_file):
@@ -1091,8 +1108,12 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     bom_index = converter.build_index(components, extra_components=extra)
     if tool.persist_report:
         tool.persist_report(report, converter, bom_index, bom_dir, options)
-    flows = converter.convert(report, bom_index)
-    converter.write_slices(slice_path, flows)
+    try:
+        flows = converter.convert(report, bom_index)
+        converter.write_slices(slice_path, flows)
+    except BaseException:
+        _remove_tool_slice(slice_path)
+        raise
     LOG.debug("%s reachability: wrote %d flows to %s", tool.name, len(flows), slice_path)
     return True
 
@@ -1126,8 +1147,8 @@ GOLEM_TOOL = ReachabilityTool(
 KOSI_TOOL = ReachabilityTool(
     name="kosi",
     # cdxgen labels Kotlin projects "kotlin" (alias "kt") and Android ones
-    # "android"; Gradle builds are usually labelled "gradle".
-    project_types=("kotlin", "kt", "android", "gradle"),
+    # "android". Pure-Java Gradle builds are left to atom.
+    project_types=("kotlin", "kt", "android"),
     default_prefix="kotlin",
     slice_file=KOSI_REACHABLES_SLICE_FILE,
     import_converter=_import_kosi_converter,
@@ -1489,6 +1510,10 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     # absent.
     if any_success and any(pt in ("go", "golang") for pt in (options.get("project_type") or [])):
         run_golem_reachability(build_bom_file, src_dir, options=options)
+    # Kotlin reachability via kosi, with its own guard on the kosi types.
+    if any_success and any(
+        pt in KOSI_TOOL.project_types for pt in (options.get("project_type") or [])
+    ):
         run_kosi_reachability(build_bom_file, src_dir, options=options)
     # .NET reachability via dosai: run once against the source and drop the
     # slice next to the build BOM (the bom_dir the reachability engine scans).

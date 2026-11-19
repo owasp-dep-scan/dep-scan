@@ -35,12 +35,14 @@ examples use `/tmp/reach`), with absolute paths.
 
 ## Go: golem with an explicit root set
 
-When dep-scan runs golem itself it passes the root set `main,init,handlers`
-and records each call-graph node's `reachableFromRoots`, `minDepth` and
-`rootIds` in `go-reachables.slices.json` (the raw report is
+When dep-scan runs golem itself it leaves golem's own default root set in
+place (recorded in the report's `callGraph.roots`) and copies each
+call-graph node's `reachableFromRoots`, `minDepth` and `rootIds` into
+`go-reachables.slices.json` (the raw report is
 `analysis/golem/golem.json`). It does not ask for witness paths to a
 vulnerable symbol, because golem runs before the advisories are matched,
-so this step runs golem directly with the symbol named.
+so this step runs golem directly with the symbol named and, when the
+claim needs it, an explicit `-roots` set.
 
 ```bash
 mkdir -p /tmp/reach
@@ -90,12 +92,15 @@ and do not present an empty graph as "nothing is reachable".
 
 ## Kotlin and JVM: kosi
 
-For Kotlin, Android and Gradle scans dep-scan runs kosi's `syntax`
+For Kotlin and Android scans dep-scan runs kosi's `syntax`
 backend itself (it reads source only and starts no build) and writes
 `kosi-reachables.slices.json`, with the raw report in
-`analysis/kosi/kosi.json`. The syntax tier has library usages and imports
-but no call graph or data flow, so this step runs the `resolved` backend
-directly for root sets and witness paths.
+`analysis/kosi/kosi.json`. The syntax tier has library usages joined to
+explicit imports (a wildcard import or an import that matches more than
+one artifact attributes nothing), and no call graph or data flow, so this
+step runs the `resolved` backend directly for root sets and witness paths.
+Per-node `rootScopes` there are kosi's scope names (`main`, `handlers`),
+not node ids.
 
 ```bash
 kosi analyze --dir /absolute/path/to/project --backend resolved \
@@ -138,11 +143,14 @@ user's consent in the conversation, stated at the step.
 
 dep-scan keeps dosai's exploit chains, attack-surface tiers, sanitized
 flows and service trust zones: `analysis/dosai/dotnet-reachability.facts.json`
-carries `exploit_chains`, `attack_surface`, `sanitized_flows` and
-`services`, and each slice in `dotnet-reachables.slices.json` carries a
-`dosai` entry with its `exposure`, `exploitChains` and `sanitized` state.
-A sanitized slice adds no reached package. Read those first; run dosai
-directly only when no scan exists or for `agent-context`.
+carries `exploit_chains`, `attack_surface`, `sanitized_flows`,
+`sanitizers_nearby` and `services`, and each slice in
+`dotnet-reachables.slices.json` carries a `dosai` entry with its
+`exposure`, `exploitChains` and `sanitizersNearby`. dosai emits no slice
+for a trace it sanitized, so a nearby sanitizer is context, not a reason
+to discount the slice; quote its category (an HTML encoder does not
+sanitize a SQL or command sink). Read those first; run dosai directly
+only when no scan exists or for `agent-context`.
 
 ```bash
 dosai dataflows --path /absolute/path/to/project \

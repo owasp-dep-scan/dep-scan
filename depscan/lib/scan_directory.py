@@ -601,6 +601,7 @@ def write_findings(
     depscan_version: str,
     scan_root: Optional[str] = None,
     reach_scopes: Optional[List[Any]] = None,
+    blint_reviews: bool = False,
 ):
     """Write ``depscan.findings.json`` from the scan's VDR entries and the
     blint binary review.
@@ -611,6 +612,8 @@ def write_findings(
     binary-hardening findings are made relative to. ``reach_scopes`` is the
     reachability result of each project type's scan; each vulnerability
     finding then records the ``reach`` axis of its ``exploitability`` from it.
+    ``blint_reviews`` says this scan asked for blint's review; without it a
+    findings file under ``analysis/blint/`` is not this scan's and is ignored.
     Returns the document written.
     """
     from analysis_lib.findings.vdr_convert import findings_from_vdr
@@ -618,7 +621,8 @@ def write_findings(
     findings = findings_from_vdr(
         vulnerabilities, producer_version=depscan_version, reach_scopes=reach_scopes
     )
-    findings.extend(blint_findings(reports_dir, scan_root))
+    if blint_reviews:
+        findings.extend(blint_findings(reports_dir, scan_root))
     document = {
         "schemaVersion": FINDINGS_SCHEMA_VERSION,
         "findings": [finding.to_dict() for finding in findings],

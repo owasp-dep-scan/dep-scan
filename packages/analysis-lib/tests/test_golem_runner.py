@@ -615,16 +615,25 @@ def test_build_args_passes_roots_and_symbols_file():
     assert "--max-paths-per-symbol" in args
 
 
-def test_run_golem_requests_default_root_set(stub_binary, monkeypatch, tmp_path):
-    """The default run names its root set and records it on the result."""
+def test_run_golem_passes_no_roots_by_default(stub_binary, monkeypatch, tmp_path):
+    """Explicit roots change golem's semantics, so the default run passes none."""
     out_path = str(tmp_path / "golem.json")
     monkeypatch.setattr(golem_mod, "golem_supports_roots", lambda binary, logger=None: True)
     captured = _capture_run(monkeypatch, out_path)
     result = run_golem(str(tmp_path), out_path)
+    assert "--roots" not in captured["args"]
+    assert golem_mod.DEFAULT_ROOTS == ()
+    assert result.roots == ()
+
+
+def test_run_golem_passes_roots_a_caller_asks_for(stub_binary, monkeypatch, tmp_path):
+    out_path = str(tmp_path / "golem.json")
+    monkeypatch.setattr(golem_mod, "golem_supports_roots", lambda binary, logger=None: True)
+    captured = _capture_run(monkeypatch, out_path)
+    result = run_golem(str(tmp_path), out_path, roots=("main", "handlers"))
     args = captured["args"]
-    assert args[args.index("--roots") + 1] == ",".join(golem_mod.DEFAULT_ROOTS)
-    assert result.roots == golem_mod.DEFAULT_ROOTS
-    assert "--reachable-symbols" not in args
+    assert args[args.index("--roots") + 1] == "main,handlers"
+    assert result.roots == ("main", "handlers")
 
 
 def test_run_golem_writes_reachable_symbols_file(stub_binary, monkeypatch, tmp_path):

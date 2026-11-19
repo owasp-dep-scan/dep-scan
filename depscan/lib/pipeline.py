@@ -43,7 +43,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
-from analysis_lib.reachability import get_reachability_impl
+from analysis_lib.reachability import get_reachability_impl, reached_by_analyzer
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.vex.emit import export_csaf
@@ -64,11 +64,13 @@ from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
     ScanFailureError,
     annotate_vdr,
+    blint_reviews_requested,
     create_bom,
     create_empty_vdr,
     determine_spec_version,
     export_bom,
     get_pkg_by_type,
+    reachability_slice_files,
 )
 from depscan.lib.config import (
     DEPSCAN_DEFAULT_VDR_FILE,
@@ -694,6 +696,10 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         get_version(),
         scan_root=ctx.src_dir,
         reach_scopes=ctx.reach_scopes,
+        blint_reviews=any(
+            blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
+            for project_type in (ctx.project_types or [None])
+        ),
     )
     manifest = scan_dir.build(
         options=ctx.depscan_options,
@@ -1012,6 +1018,13 @@ def _generate_boms(ctx, scan):
         if path
     }:
         remove_stale_slices(scan.project_type, bom_dir, logger=LOG)
+        # Tool slices carry the tool's name rather than a project type, so a
+        # scan of another type would otherwise read an old one.
+        for tool_slice in reachability_slice_files().values():
+            tool_slice_path = os.path.join(bom_dir, tool_slice)
+            if os.path.isfile(tool_slice_path):
+                os.remove(tool_slice_path)
+                LOG.debug("Removed the tool slice %s left by a previous run.", tool_slice_path)
     try:
         return create_bom(
             scan.target_bom_file,
@@ -1401,6 +1414,10 @@ def _reach_scope(ctx, scan, pkg_vulnerabilities):
 
     options = scan.reachability_options
     analyzers: List[str] = []
+    tool_stems = {
+        name: file_name.split(".slices", 1)[0]
+        for name, file_name in reachability_slice_files().items()
+    }
     if options is not None:
         analyzers = [
             entry["name"]
@@ -1416,11 +1433,16 @@ def _reach_scope(ctx, scan, pkg_vulnerabilities):
         for affect in vuln.get("affects") or []
         if isinstance(affect, dict) and affect.get("ref")
     }
+    by_analyzer = (
+        reached_by_analyzer(options.slices_files, tool_stems) if options is not None else {}
+    )
     return ReachScope(
         refs=refs,
         analyzers=analyzers,
         reached=set((scan.reached_purls or {}).keys()),
         succeeded=scan.reachability_succeeded,
+        analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
+        reached_by={name: entry["purls"] for name, entry in by_analyzer.items()},
     )
 
 

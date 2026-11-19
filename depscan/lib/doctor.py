@@ -298,7 +298,25 @@ _PLUGIN_FINDERS = {
 }
 
 
-_KOSI_VERSION_RE = re.compile(r'"version"\s*:\s*"([^"]+)"')
+def _parse_kosi(output: str) -> Optional[str]:
+    """The top-level ``version`` of the JSON object kosi prints.
+
+    The object also carries nested ``version`` keys (the Kotlin compiler's,
+    for one) and a native image may print JVM warnings around it, so a
+    regular expression would take the wrong one. Every object that starts a
+    line is decoded and only its own ``version`` key counts.
+    """
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"^\s*\{", output, re.M):
+        start = match.end() - 1
+        try:
+            document, _end = decoder.raw_decode(output, start)
+        except ValueError:
+            continue
+        version = document.get("version") if isinstance(document, dict) else None
+        if isinstance(version, str) and version:
+            return version
+    return None
 
 
 def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
@@ -336,8 +354,7 @@ def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
         elif name == "kosi":
             # kosi prints a JSON object, {"version": "4.3.1", ...}, and a
             # native image may add JVM warnings around it.
-            found = _KOSI_VERSION_RE.search(output)
-            status.version = found.group(1) if found else None
+            status.version = _parse_kosi(output)
         else:
             status.version = _parse_first_number(output)
     if name == "rusi":

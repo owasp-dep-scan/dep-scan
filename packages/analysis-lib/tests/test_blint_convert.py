@@ -76,3 +76,35 @@ def test_findings_from_document_skips_damaged_entries_and_repeats():
     assert [f.rule for f in findings] == ["CHECK_NX", "CHECK_PIE"]
     assert findings_from_blint(None, producer_version="4") == []
     assert findings_from_blint({"findings": "x"}, producer_version="4") == []
+
+
+def _binary(filename, root):
+    finding = finding_from_blint(dict(NX, filename=filename), producer_version="4", scan_root=root)
+    return (finding.locations or [])[0].binary, finding.id
+
+
+def test_single_binary_target_uses_the_file_name_not_a_dot(tmp_path):
+    binary = tmp_path / "server"
+    binary.write_text("x")
+    assert _binary(str(binary), str(binary))[0] == "server"
+
+
+def test_relative_and_absolute_directory_targets_agree(tmp_path, monkeypatch):
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "server").write_text("x")
+    monkeypatch.chdir(tmp_path)
+    relative = _binary(os.path.join("target", "bin", "server"), "target")
+    absolute = _binary(str(tmp_path / "target" / "bin" / "server"), str(tmp_path / "target"))
+    assert relative == absolute
+    assert relative[0] == "bin/server"
+    dotted = _binary(os.path.join(".", "target", "bin", "server"), os.path.join(".", "target"))
+    assert dotted == relative
+
+
+def test_windows_style_paths_match_the_posix_result():
+    windows, windows_id = _binary("C:\\src\\app\\bin\\server.exe", "C:\\src\\app")
+    posix, posix_id = _binary("/src/app/bin/server.exe", "/src/app")
+    assert windows == posix == "bin/server.exe"
+    assert windows_id == posix_id
+    assert _binary("C:\\src\\app\\server.exe", "C:\\src\\app\\server.exe")[0] == "server.exe"
+    assert _binary("C:\\src\\app\\bin\\a.exe", "c:/src/app")[0] == "bin/a.exe"

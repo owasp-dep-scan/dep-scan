@@ -1,5 +1,8 @@
+import dataclasses
 import json
 import os
+
+import pytest
 
 from depscan.lib.bom import (
     create_empty_vdr,
@@ -426,3 +429,82 @@ def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
     )
     assert bom["metadata"]["tools"]["components"][0]["name"] == "owasp-depscan"
     assert bom["specVersion"] == "1.6"
+
+
+@pytest.mark.parametrize(
+    "project_type, kosi_expected, golem_expected",
+    [("go", False, True), ("kotlin", True, False), ("python", False, False)],
+)
+def test_lifecycle_boms_guard_each_reachability_tool_by_its_types(
+    tmp_path, monkeypatch, project_type, kosi_expected, golem_expected
+):
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+    ran = []
+    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: ran.append("golem"))
+    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: ran.append("kosi"))
+    options = {
+        "project_type": [project_type],
+        "prebuild_bom_file": str(tmp_path / "sbom-prebuild.cdx.json"),
+        "build_bom_file": str(tmp_path / "sbom-build.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container.cdx.json"),
+    }
+    bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
+    assert ("kosi" in ran) is kosi_expected
+    assert ("golem" in ran) is golem_expected
+
+
+def test_a_pure_java_gradle_project_does_not_select_kosi():
+    from depscan.lib import bom as bom_mod
+
+    assert "gradle" not in bom_mod.KOSI_TOOL.project_types
+    assert {"kotlin", "kt", "android"} <= set(bom_mod.KOSI_TOOL.project_types)
+
+
+def test_a_tool_slice_from_an_earlier_scan_is_removed(tmp_path):
+    from depscan.lib import bom as bom_mod
+
+    bom_file = tmp_path / "sbom-kotlin.cdx.json"
+    bom_file.write_text("{}")
+    stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
+    stale.write_text("{}")
+    # The tool applies but reachability is off: no slice may remain.
+    bom_mod.run_kosi_reachability(
+        str(bom_file),
+        str(tmp_path),
+        options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
+    )
+    assert not stale.exists()
+
+
+def test_a_tool_slice_is_removed_when_the_tool_produces_no_report(tmp_path, monkeypatch):
+    from depscan.lib import bom as bom_mod
+
+    bom_file = tmp_path / "sbom-kotlin.cdx.json"
+    bom_file.write_text("{}")
+    stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
+    stale.write_text("{}")
+    monkeypatch.setattr(
+        bom_mod,
+        "KOSI_TOOL",
+        dataclasses.replace(bom_mod.KOSI_TOOL, run_fallback=lambda *a, **k: None),
+    )
+    assert not bom_mod.run_kosi_reachability(
+        str(bom_file), str(tmp_path), options={"project_type": ["kotlin"]}
+    )
+    assert not stale.exists()
+
+
+def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_path):
+    from depscan.lib import bom as bom_mod
+
+    bom_file = tmp_path / "sbom-go.cdx.json"
+    bom_file.write_text("{}")
+    other = tmp_path / bom_mod.KOSI_TOOL.slice_file
+    other.write_text("{}")
+    bom_mod.run_golem_reachability(
+        str(bom_file), str(tmp_path), options={"project_type": ["go"], "reachability_analyzer": "off"}
+    )
+    assert other.exists()

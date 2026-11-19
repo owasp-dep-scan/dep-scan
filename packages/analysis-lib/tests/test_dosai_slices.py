@@ -446,7 +446,7 @@ def test_slice_flow_carries_exploit_chain_and_exposure(chains_report):
     flows = convert_dosai_report(chains_report)
     flow = _flow_for_slice(flows, "dfs1")
     assert flow["dosai"]["exposure"] == "anonymous-http"
-    assert flow["dosai"]["sanitized"] is False
+    assert "sanitizersNearby" not in flow["dosai"]
     (chain,) = flow["dosai"]["exploitChains"]
     assert chain["id"] == "ec1"
     assert chain["route"] == "/api/run"
@@ -496,40 +496,48 @@ def _sanitize_run_slice(report):
     return report
 
 
-def test_sanitized_slice_is_not_a_reachable_flow(chains_report):
+PROCESS = "pkg:nuget/System.Diagnostics.Process"
+
+
+def test_sanitizer_beside_a_slice_only_annotates_it(chains_report):
     flows = convert_dosai_report(_sanitize_run_slice(chains_report))
     flow = _flow_for_slice(flows, "dfs1")
-    assert flow["dosai"]["sanitized"] is True
-    assert flow["dosai"]["sanitizedBy"] == ["sf9"]
-    assert flow["purls"] == []
-    assert flow["dosai"]["suppressedPurls"] == ["pkg:nuget/System.Diagnostics.Process"]
-    # the package is no longer reached through any flow
-    assert not [
-        f for f in flows if "pkg:nuget/System.Diagnostics.Process" in f["purls"]
-    ]
+    assert flow["dosai"]["sanitizersNearby"] == [{"id": "sf9", "category": "shell-quoting"}]
+    assert "sanitized" not in flow["dosai"]
+    assert "suppressedPurls" not in flow["dosai"]
+    # the slice keeps its purls and the package stays reached
+    assert flow["purls"] == [PROCESS]
+    assert [f for f in flows if PROCESS in f["purls"]]
 
 
-def test_sanitized_slice_is_dropped_from_native_reachability(chains_report):
+def test_sanitizer_never_removes_a_reached_package_from_native_facts(chains_report):
     facts = extract_native_reachability(_sanitize_run_slice(chains_report))
-    assert "pkg:nuget/System.Diagnostics.Process" not in facts["reached_purls"]
-    assert facts["sanitized_purls"] == {"pkg:nuget/System.Diagnostics.Process": True}
-    assert facts["sanitized_slice_ids"] == ["dfs1"]
-    assert "pkg:nuget/System.Diagnostics.Process" not in facts["reached_services"]
+    assert PROCESS in facts["reached_purls"]
+    assert "sanitized_purls" not in facts
+    assert facts["sanitizers_nearby"] == {"dfs1": ["sf9"]}
+    assert facts["sanitized_flows"][-1]["id"] == "sf9"
 
 
-def test_sanitizer_that_leaves_the_taint_kind_does_not_neutralise(chains_report):
+def test_category_scoped_sanitizer_does_not_empty_an_unrelated_slice(chains_report):
+    """HtmlEncode-style sanitizers list no taint kinds; that must not read as
+    removing every kind from an unrelated command slice."""
     report = _sanitize_run_slice(chains_report)
-    report["dataflows"]["SanitizedFlows"][-1]["RemovesTaintKinds"] = ["sql"]
-    flow = _flow_for_slice(convert_dosai_report(report), "dfs1")
-    assert flow["dosai"]["sanitized"] is False
-    assert flow["purls"] == ["pkg:nuget/System.Diagnostics.Process"]
+    report["dataflows"]["SanitizedFlows"][-1].update(
+        SanitizerSymbol="System.Net.WebUtility.HtmlEncode",
+        SanitizerCategory="html-encoding",
+        RemovesTaintKinds=[],
+    )
+    flows = convert_dosai_report(report)
+    assert _flow_for_slice(flows, "dfs1")["purls"] == [PROCESS]
+    assert extract_native_reachability(report)["reached_purls"][PROCESS]
 
 
-def test_sanitizer_off_the_slice_path_does_not_neutralise(chains_report):
+def test_sanitizer_off_the_slice_path_is_not_listed(chains_report):
     report = _sanitize_run_slice(chains_report)
     report["dataflows"]["SanitizedFlows"][-1]["LineNumber"] = 99
     flow = _flow_for_slice(convert_dosai_report(report), "dfs1")
-    assert flow["dosai"]["sanitized"] is False
+    assert "sanitizersNearby" not in flow["dosai"]
+    assert flow["purls"] == [PROCESS]
 
 
 def test_native_facts_include_chains_surface_and_services(chains_report):
@@ -552,4 +560,4 @@ def test_report_without_transparency_sections_has_no_annotations(combined):
     assert not any("dosai" in f for f in flows)
     facts = extract_native_reachability(combined)
     assert facts["exploit_chains"] == []
-    assert facts["sanitized_purls"] == {}
+    assert facts["sanitizers_nearby"] == {}

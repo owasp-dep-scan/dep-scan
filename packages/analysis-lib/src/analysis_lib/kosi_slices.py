@@ -22,15 +22,16 @@ Attribution of a name to a BOM dependency, in order: the ``purl`` kosi itself
 resolved (resolved tier, matched to the jar whose package prefix the import
 carries); otherwise a package-prefix match of the fully qualified name against
 the Maven group and artifact of each BOM component (see
-:func:`attribute_name`). The prefix match is a heuristic and is limited to
-what the coordinates reveal: a library whose Java package shares nothing with
+:func:`attribute_name`). Star imports attribute nothing, and an import that
+ties several artifacts attributes none. The prefix match is a heuristic and
+is limited to what the coordinates reveal: a library whose Java package shares nothing with
 its Maven group and artifact is not attributed, which leaves it "not
 observed", never reached.
 
 Per-function root reachability from ``callGraph.reachability[]`` (``reached``,
 ``distance``, ``roots``) is carried onto slice frames and call-graph nodes as
-``reachableFromRoots``, ``minDepth`` and ``rootIds``, the keys the golem
-converter uses. Nothing is dropped because a function is not reached: kosi's
+``reachableFromRoots``, ``minDepth`` and ``rootScopes``. kosi's roots are
+scope names such as ``main`` or ``handlers``, not node ids, hence the name. Nothing is dropped because a function is not reached: kosi's
 static call graph misses interface and callback dispatch, so ``reached: false``
 is not evidence that code is unused.
 
@@ -151,10 +152,12 @@ def attribute_name(name: str, bom_index: Dict[str, str]) -> Set[str]:
     """BOM purls whose coordinates match the fully qualified ``name``.
 
     The longest matching package prefix wins; artifact-level prefixes beat
-    group-level ones. Several artifacts of one group can tie on a group-level
-    prefix, and all of them are returned because the name alone cannot tell
-    them apart. Names under a language runtime root (``java``, ``kotlin``,
-    ``android``) are never attributed.
+    group-level ones. A name is attributed only when exactly one BOM artifact
+    owns that best prefix: several artifacts of one group tie on a group-level
+    prefix, and the name alone cannot tell them apart, so none is returned
+    (a package must never be marked reached on a guess). Names under a
+    language runtime root (``java``, ``kotlin``, ``android``) are never
+    attributed.
     """
     if not name or name.split(".", 1)[0] in _RUNTIME_ROOTS:
         return set()
@@ -168,7 +171,7 @@ def attribute_name(name: str, bom_index: Dict[str, str]) -> Set[str]:
                     best_key, best = key, {purl}
                 elif key == best_key:
                     best.add(purl)
-    return best
+    return best if len(best) == 1 else set()
 
 
 def _reach_fields(entry: Optional[dict]) -> dict:
@@ -179,7 +182,7 @@ def _reach_fields(entry: Optional[dict]) -> dict:
     distance = entry.get("distance")
     if isinstance(distance, int) and distance >= 0:
         out["minDepth"] = distance
-    out["rootIds"] = [r for r in entry.get("roots", []) or [] if isinstance(r, str)]
+    out["rootScopes"] = [r for r in entry.get("roots", []) or [] if isinstance(r, str)]
     return out
 
 
@@ -222,9 +225,10 @@ def _qualify_usage(usage: dict, file_imports: List[dict]) -> List[str]:
 
     ``Request.Builder.url`` with ``import okhttp3.Request`` becomes
     ``okhttp3.Request.Builder.url``. The first segment is matched against an
-    import's alias or last segment; a wildcard import contributes its package
-    as a prefix candidate, since the name alone does not say which wildcard
-    owns it.
+    import's alias or last segment. A wildcard import contributes nothing:
+    the name alone does not say which wildcard (or the file's own package)
+    owns it, so a local function would be attributed to the wildcard's
+    library.
     """
     name = usage.get("name") or ""
     if not name:
@@ -236,7 +240,6 @@ def _qualify_usage(usage: dict, file_imports: List[dict]) -> List[str]:
         if not fqn:
             continue
         if imp.get("star"):
-            out.append(f"{fqn}.{name}")
             continue
         bound = imp.get("alias") or fqn.rsplit(".", 1)[-1]
         if bound == head:

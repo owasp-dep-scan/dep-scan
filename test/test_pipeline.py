@@ -707,3 +707,93 @@ def test_set_slices_args_and_stale_removal_use_the_same_paths(tmp_path):
     assert sorted(removed) == sorted(paths)
     assert not any(os.path.exists(path) for path in paths)
 
+
+
+def test_generate_boms_removes_every_old_tool_slice_before_generation(tmp_path, monkeypatch):
+    from depscan.lib.bom import reachability_slice_files
+
+    old = [tmp_path / name for name in reachability_slice_files().values()]
+    for path in old:
+        path.write_text("{}")
+    unrelated = tmp_path / "notes.json"
+    unrelated.write_text("{}")
+    seen = []
+    monkeypatch.setattr(
+        pipeline, "create_bom", lambda *a, **k: seen.append([p.exists() for p in old]) or "bom"
+    )
+    ctx = SimpleNamespace(
+        src_dir=str(tmp_path), depscan_options={}, doctor_report=None
+    )
+    scan = SimpleNamespace(
+        project_type="python",
+        target_bom_file=str(tmp_path / "sbom-python.cdx.json"),
+        prebuild_bom_file=None,
+        build_bom_file=None,
+        postbuild_bom_file=None,
+        container_bom_file=None,
+        operations_bom_file=None,
+    )
+    assert pipeline._generate_boms(ctx, scan) == "bom"
+    assert seen == [[False] * len(old)]
+    assert unrelated.exists()
+
+
+@pytest.mark.parametrize(
+    "options, types, expected",
+    [
+        ({}, ["python"], False),
+        ({}, ["python", "binary"], True),
+        ({"techniques": ["binary-analysis"]}, ["python"], True),
+    ],
+)
+def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
+    monkeypatch, tmp_path, options, types, expected
+):
+    captured = {}
+    monkeypatch.setattr(
+        pipeline.scan_directory,
+        "write_findings",
+        lambda *a, **k: captured.update(k) or {"findings": []},
+    )
+    scan_dir = SimpleNamespace(build=lambda **k: {})
+    monkeypatch.setattr(pipeline.scan_directory, "write_manifest", lambda *a, **k: None)
+    ctx = SimpleNamespace(
+        scan_dir=scan_dir,
+        reports_dir=str(tmp_path),
+        all_pkg_vulnerabilities=[],
+        src_dir=str(tmp_path),
+        reach_scopes=[],
+        depscan_options=options,
+        project_types=types,
+        vdb_flavor=None,
+        shards_connected=False,
+    )
+    pipeline.finish_scan_directory(ctx)
+    assert captured["blint_reviews"] is expected
+
+
+def test_reach_scope_grades_only_the_ecosystems_the_analyzers_covered(tmp_path):
+    from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.findings.vdr_convert import reach_axis
+
+    slice_file = tmp_path / "java-reachables.slices.json"
+    slice_file.write_text(json.dumps([{"flows": [], "purls": ["pkg:maven/a/b@1"]}]))
+    options = ReachabilityAnalysisKV(
+        project_types=["java"],
+        src_dir=str(tmp_path),
+        bom_dir=str(tmp_path),
+        slices_files=[str(slice_file)],
+    )
+    scan = SimpleNamespace(
+        project_type="java",
+        reachability_options=options,
+        reachability_succeeded=True,
+        reached_purls={"pkg:maven/a/b@1": 1},
+    )
+    ctx = SimpleNamespace(doctor_report=None)
+    vulns = [
+        {"affects": [{"ref": "pkg:maven/a/b@1"}, {"ref": "pkg:npm/left-pad@1.0.0"}]}
+    ]
+    scope = pipeline._reach_scope(ctx, scan, vulns)
+    assert reach_axis(scope, "pkg:maven/a/b@1") == "likely"
+    assert reach_axis(scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"

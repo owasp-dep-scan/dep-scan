@@ -95,7 +95,8 @@ def test_slice_frames_carry_root_reachability(bom_index):
     main = by_function["demo.main"]
     assert main["reachableFromRoots"] is True
     assert main["minDepth"] == 0
-    assert main["rootIds"] == ["main"]
+    assert main["rootScopes"] == ["main"]
+    assert "rootIds" not in main
     assert by_function["demo.fetch"]["minDepth"] == 1
 
 
@@ -164,3 +165,48 @@ def test_slice_feeds_framework_reachability(tmp_path, bom_index):
     reached = set((res.reached_purls or {}).keys())
     assert OKHTTP in reached
     assert UNUSED not in reached
+
+
+COROUTINES = "pkg:maven/org.jetbrains.kotlinx/kotlinx-coroutines-core@1.8.0?type=jar"
+SERIALIZATION = "pkg:maven/org.jetbrains.kotlinx/kotlinx-serialization-json@1.6.0?type=jar"
+OKHTTP_LOGGING = "pkg:maven/com.squareup.okhttp3/logging-interceptor@4.12.0?type=jar"
+
+
+def _usage_report(imports, usages):
+    return {
+        "schemaVersion": "kosi/1",
+        "tool": {"name": "kosi"},
+        "imports": [dict(i, filePath="A.kt") for i in imports],
+        "usages": [dict(u, filePath="A.kt", position={"line": 3, "column": 1}) for u in usages],
+    }
+
+
+def test_star_import_does_not_attribute_a_local_function():
+    index = build_bom_purl_index(
+        [{"purl": COROUTINES}, {"purl": SERIALIZATION}], extra_components=[]
+    )
+    report = _usage_report(
+        [{"name": "kotlinx.coroutines", "star": True}], [{"name": "doLocalWork"}]
+    )
+    assert convert_kosi_report(report, index) == []
+
+
+def test_star_import_reaches_nothing_even_for_a_single_artifact():
+    index = build_bom_purl_index([{"purl": COROUTINES}], extra_components=[])
+    report = _usage_report([{"name": "kotlinx.coroutines", "star": True}], [{"name": "launch"}])
+    assert convert_kosi_report(report, index) == []
+
+
+def test_import_that_ties_two_artifacts_of_a_group_attributes_none():
+    two = build_bom_purl_index([{"purl": OKHTTP}, {"purl": OKHTTP_LOGGING}])
+    report = _usage_report([{"name": "okhttp3.Request"}], [{"name": "Request.Builder"}])
+    assert convert_kosi_report(report, two) == []
+    assert attribute_name("okhttp3.Request", two) == set()
+    one = build_bom_purl_index([{"purl": OKHTTP}])
+    assert _reached(convert_kosi_report(report, one)) == {OKHTTP}
+
+
+def test_kotlinx_import_does_not_tie_unrelated_artifacts_of_the_group():
+    index = build_bom_purl_index([{"purl": COROUTINES}, {"purl": SERIALIZATION}])
+    report = _usage_report([{"name": "kotlinx.coroutines.launch"}], [{"name": "launch"}])
+    assert convert_kosi_report(report, index) == []

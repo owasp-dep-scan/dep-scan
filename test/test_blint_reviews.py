@@ -168,7 +168,7 @@ def test_findings_file_carries_the_blint_check_findings(tmp_path):
         )
     )
     document = scan_directory.write_findings(
-        str(reports), [], "7.0.0", scan_root=str(tmp_path / "src")
+        str(reports), [], "7.0.0", scan_root=str(tmp_path / "src"), blint_reviews=True
     )
     (finding,) = document["findings"]
     assert finding["category"] == "binary-hardening"
@@ -181,4 +181,36 @@ def test_damaged_blint_report_does_not_stop_the_findings_file(tmp_path):
     reports = tmp_path / "reports"
     (reports / "analysis" / "blint").mkdir(parents=True)
     (reports / "analysis" / "blint" / "findings.json").write_text("{not json")
+    assert (
+        scan_directory.write_findings(str(reports), [], "7.0.0", blint_reviews=True)["findings"]
+        == []
+    )
+
+
+def test_blint_findings_of_an_earlier_scan_are_ignored_without_a_review_request(tmp_path):
+    reports = tmp_path / "reports"
+    (reports / "analysis" / "blint").mkdir(parents=True)
+    (reports / "analysis" / "blint" / "findings.json").write_text(
+        json.dumps({"findings": [{"id": "CHECK_NX", "title": "x", "severity": "high"}]})
+    )
     assert scan_directory.write_findings(str(reports), [], "7.0.0")["findings"] == []
+
+
+def test_reviews_remove_the_reports_of_an_earlier_scan_before_they_start(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    names = (
+        blint_mod.BLINT_FINDINGS_FILE,
+        blint_mod.BLINT_REVIEWS_FILE,
+        blint_mod.BLINT_COVERAGE_FILE,
+    )
+    for name in names:
+        (reports / name).write_text("{}")
+
+    def boom(*a, **k):
+        raise RuntimeError("runner failed")
+
+    monkeypatch.setattr(blint_mod, "AnalysisRunner", boom)
+    result = blint_mod.run_blint_reviews([str(tmp_path)], str(reports))
+    assert result.success is False
+    assert [n for n in names if (reports / n).exists()] == []

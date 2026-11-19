@@ -16,6 +16,7 @@ separately.
 """
 
 import json
+import ntpath
 import os
 import re
 from typing import Any, Dict, List, Optional
@@ -44,24 +45,41 @@ def _severity(value: Any) -> str:
 def _relative_binary(filename: Any, scan_root: Optional[str]) -> str:
     """The binary's path relative to ``scan_root``, with forward slashes.
 
-    An absolute path (POSIX, a Windows drive or a UNC share) outside the root,
-    or with no root to be relative to, falls back to the file name alone: an
-    absolute path would tie the finding id to one machine's checkout location.
+    Both paths are made absolute first, so a relative and an absolute
+    spelling of the same scan directory give the same result. When the scan
+    root is the binary itself (a single-file target) the result is the file
+    name, not ``.``. A path outside the root, or with no root to be relative
+    to, falls back to the file name alone (a relative name is kept as it is): an absolute path would tie the
+    finding id to one machine's checkout location. A Windows path (a drive
+    or a UNC share, with either kind of separator) is handled with Windows
+    path rules on any host, so the id is the same on every platform.
     """
     path = str(filename or "")
     if not path:
         return ""
     normalised = path.replace("\\", "/")
-    if not (normalised.startswith("/") or _DRIVE_PATH.match(normalised)):
-        return normalised
-    if scan_root:
-        try:
-            relative = os.path.relpath(path, scan_root).replace(os.sep, "/")
-        except ValueError:
-            relative = ""
-        if relative and relative != ".." and not relative.startswith("../"):
-            return relative
-    return normalised.rsplit("/", 1)[-1]
+    name = normalised.rsplit("/", 1)[-1]
+    if not scan_root:
+        return normalised if not _is_absolute(normalised) else name
+    root = str(scan_root)
+    windows = bool(_DRIVE_PATH.match(normalised) or _DRIVE_PATH.match(root.replace("\\", "/")))
+    module = ntpath if windows or normalised.startswith("//") else os.path
+    try:
+        relative = module.relpath(module.abspath(path), module.abspath(root))
+    except ValueError:
+        return name
+    relative = relative.replace("\\", "/")
+    if relative == ".":
+        return name
+    if relative == ".." or relative.startswith("../"):
+        # A relative name that does not sit under the root as written is
+        # taken as already relative to the root.
+        return name if _is_absolute(normalised) else normalised
+    return relative
+
+
+def _is_absolute(normalised: str) -> bool:
+    return normalised.startswith("/") or bool(_DRIVE_PATH.match(normalised))
 
 
 def _evidence(value: Any) -> Optional[List[str]]:

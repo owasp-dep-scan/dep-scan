@@ -75,6 +75,12 @@ ENV_TOOLS = {
     "golem": ("GOLEM_CMD", "golem 9.9.9", "9.9.9"),
     "rusi": ("RUSI_CMD", "rusi 9.9.9", "9.9.9"),
     "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef", "9.9.9"),
+    # The real shape: a nested compiler version comes before the top-level one.
+    "kosi": (
+        "KOSI_CMD",
+        '{"compiler":{"name":"kotlin","version":"2.4.20"},"name":"kosi","version":"9.9.9"}',
+        "9.9.9",
+    ),
 }
 
 # The tools resolved through find_executable, with the output of their own
@@ -91,7 +97,7 @@ FIND_TOOLS = {
 # golem, rusi and dosai also live in a plugins directory; the matrix test
 # needs their file name pattern next to the plugins-only ones.
 PLUGIN_FILENAMES = dict(doctor_mod._PLUGIN_BINARY_NAMES)
-for _tool in ("golem", "rusi", "dosai"):
+for _tool in ("golem", "rusi", "dosai", "kosi"):
     PLUGIN_FILENAMES[_tool] = _tool + "-{platform}-{arch}{extn}"
 
 #: Every plugin binary a full plugins directory carries.
@@ -940,3 +946,25 @@ def test_documented_capability_table_matches_the_code():
     with open(page, encoding="utf-8") as fp:
         text = fp.read()
     assert doctor_mod.capability_table_markdown() in text
+
+
+@pytest.mark.parametrize(
+    "output, expected",
+    [
+        ('{"compiler":{"version":"2.4.20"},"version":"4.3.1"}', "4.3.1"),
+        ('WARNING: jvm noise\n{\n  "compiler": {"version": "2.4.20"},\n  "version": "4.3.1"\n}\n', "4.3.1"),
+        ('{"compiler":{"version":"2.4.20"}}', None),
+        ("kosi", None),
+    ],
+)
+def test_kosi_version_is_the_top_level_key_not_the_compilers(output, expected):
+    assert doctor_mod._parse_kosi(output) == expected
+
+
+def test_kosi_report_entry_carries_the_top_level_version(fakes, monkeypatch):
+    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
+    binary = fakes.script(
+        "kosi", '{"compiler":{"name":"kotlin","version":"2.4.20"},"version":"4.3.1"}'
+    )
+    monkeypatch.setenv("KOSI_CMD", str(binary))
+    assert _tool_entries(doctor_mod.doctor())["kosi"].version == "4.3.1"

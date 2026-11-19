@@ -16,7 +16,7 @@ the shared-id case for repeated copies of one package.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import unquote
 
 from analysis_lib.findings.fingerprint import finding_fingerprint
@@ -156,6 +156,21 @@ def _comparable(purl: str) -> str:
     return unquote(str(purl)).split("?", 1)[0].split("#", 1)[0]
 
 
+#: The purl type each language tool's reachables slice covers. atom's depend
+#: on the slice files it produced and are carried by the scope.
+TOOL_PURL_TYPES = {
+    "golem": frozenset({"golang"}),
+    "rusi": frozenset({"cargo"}),
+    "dosai": frozenset({"nuget"}),
+    "kosi": frozenset({"maven"}),
+}
+
+
+def _purl_type(ref: str) -> str:
+    head = _comparable(ref).split("/", 1)[0]
+    return head[4:].lower() if head.lower().startswith("pkg:") else ""
+
+
 @dataclass
 class ReachScope:
     """What the reachability analysis said about one group of components.
@@ -165,39 +180,83 @@ class ReachScope:
     whose slices the scan read (status completed) and ``reached`` the purls
     those slices put on an executed path. ``succeeded`` is False when the
     reachability engine failed or never ran, whatever slices are on disk.
+
+    A finding is graded only against analyzers that cover its purl type. The
+    language tools each cover one ecosystem (:data:`TOOL_PURL_TYPES`);
+    ``analyzer_types`` names the purl types of the other analyzers (atom's
+    slice files decide them). ``reached_by`` holds the purls each analyzer
+    reached; when it is empty the single ``reached`` set stands for every
+    analyzer.
     """
 
     refs: Set[str] = field(default_factory=set)
     analyzers: List[str] = field(default_factory=list)
     reached: Set[str] = field(default_factory=set)
     succeeded: bool = False
+    analyzer_types: Dict[str, Set[str]] = field(default_factory=dict)
+    reached_by: Dict[str, Set[str]] = field(default_factory=dict)
     _refs_cmp: Optional[Set[str]] = field(default=None, init=False, repr=False, compare=False)
-    _reached_cmp: Optional[Set[str]] = field(default=None, init=False, repr=False, compare=False)
+    _reached_cmp: Optional[Dict[str, Set[str]]] = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
     def covers(self, ref: str) -> bool:
         if self._refs_cmp is None:
             self._refs_cmp = {_comparable(r) for r in self.refs}
         return _comparable(ref) in self._refs_cmp
 
-    def reaches(self, ref: str) -> bool:
+    def covering_analyzers(self, ref: str) -> List[str]:
+        """The completed analyzers that cover the purl type of ``ref``."""
+        purl_type = _purl_type(ref)
+        covering = []
+        for name in self.analyzers:
+            types = self.analyzer_types.get(name)
+            if types is None:
+                types = TOOL_PURL_TYPES.get(name, frozenset())
+            if purl_type in types:
+                covering.append(name)
+        return sorted(covering)
+
+    def _reached_of(self, name: str) -> Set[str]:
         if self._reached_cmp is None:
-            self._reached_cmp = {_comparable(p) for p in self.reached}
-        return _comparable(ref) in self._reached_cmp
+            self._reached_cmp = {}
+        if name not in self._reached_cmp:
+            source = self.reached_by.get(name, set()) if self.reached_by else self.reached
+            self._reached_cmp[name] = {_comparable(p) for p in source}
+        return self._reached_cmp[name]
+
+    def reaches(self, ref: str, analyzers: Optional[List[str]] = None) -> bool:
+        target = _comparable(ref)
+        names = self.analyzers if analyzers is None else analyzers
+        return any(target in self._reached_of(name) for name in names)
+
+    def observed(self, analyzers: List[str]) -> bool:
+        """Whether any of ``analyzers`` reached something at all."""
+        return any(self._reached_of(name) for name in analyzers)
+
+
+def _assess(scope: Optional[ReachScope], ref: str) -> Tuple[str, List[str]]:
+    if scope is None or not scope.succeeded or not scope.analyzers:
+        return REACH_NOT_ASSESSED, []
+    covering = scope.covering_analyzers(ref)
+    if not covering or not scope.observed(covering):
+        return REACH_NOT_ASSESSED, []
+    if scope.reaches(ref, covering):
+        return REACH_REACHED, covering
+    return REACH_NOT_OBSERVED, covering
 
 
 def reach_axis(scope: Optional[ReachScope], ref: str) -> str:
     """The ``reach`` value for the component ``ref`` under ``scope``.
 
-    ``not_assessed`` when no analyzer ran or the run failed, or when it
-    observed nothing at all (a run that found nothing cannot be told from one
-    that saw nothing). ``likely`` when the ref is in the reached set. ``unknown``
-    for a ref absent from a non-empty reached set: not observed, never refuted.
+    ``not_assessed`` when no analyzer ran or the run failed, when no
+    completed analyzer covers the purl type of ``ref``, or when the covering
+    analyzers observed nothing at all (a run that found nothing cannot be
+    told from one that saw nothing). ``likely`` when the ref is in a covering
+    analyzer's reached set. ``unknown`` for a ref absent from a non-empty
+    reached set: not observed, never refuted.
     """
-    if scope is None or not scope.succeeded or not scope.analyzers or not scope.reached:
-        return REACH_NOT_ASSESSED
-    if scope.reaches(ref):
-        return REACH_REACHED
-    return REACH_NOT_OBSERVED
+    return _assess(scope, ref)[0]
 
 
 def exploitability_from_reach(scope: Optional[ReachScope], ref: str) -> Exploitability:
@@ -206,15 +265,16 @@ def exploitability_from_reach(scope: Optional[ReachScope], ref: str) -> Exploita
     Only ``reach`` is graded. The other four axes are ``not_assessed`` and
     listed in ``unassessed``; no grade is given unless every axis is
     unassessed, because a grade over one axis would claim more than the scan
-    knows. ``rule`` names the analyzers the reach value came from.
+    knows. ``rule`` names the covering analyzers whose reached set was
+    consulted.
     """
-    reach = reach_axis(scope, ref)
+    reach, covering = _assess(scope, ref)
     axes = {name: REACH_NOT_ASSESSED for name in _AXES}
     axes["reach"] = reach
     unassessed = [name for name in _AXES if axes[name] == REACH_NOT_ASSESSED]
     rule = None
-    if reach != REACH_NOT_ASSESSED and scope is not None:
-        rule = REACH_RULE_PREFIX + "+".join(sorted(scope.analyzers))
+    if reach != REACH_NOT_ASSESSED:
+        rule = REACH_RULE_PREFIX + "+".join(covering)
     return Exploitability(
         axes=ExploitabilityAxes(**axes),
         grade="unassessed" if len(unassessed) == len(_AXES) else None,

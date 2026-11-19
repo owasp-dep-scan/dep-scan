@@ -660,7 +660,11 @@ def reachability_stub(monkeypatch):
         result = write_bom(args, *a, **k)
         if state["slices"] and "-o" in args:
             bom_file = Path(args[args.index("-o") + 1])
-            (bom_file.parent / "python-reachables.slices.json").write_text("[]", encoding="utf-8")
+            # The reach axis reads each analyzer's reached purls from its slice
+            # file, so the file carries the purls the stubbed engine reports.
+            (bom_file.parent / "python-reachables.slices.json").write_text(
+                json.dumps([{"flows": [], "purls": sorted(state["reached"])}]), encoding="utf-8"
+            )
         return result
 
     monkeypatch.setattr(cdxgen_mod, "exec_tool", exec_with_slices)
