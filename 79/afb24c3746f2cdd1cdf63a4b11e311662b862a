@@ -1,0 +1,23 @@
+documentation/docs/agent-plugin.mdx
+  s_7318da1b9edd46::t_d311192f7cb648 41
+agent-plugin/README.md
+  s_7318da1b9edd46::t_d311192f7cb648 14
+agent-plugin/evals/safety-no-upstream-clones/graders/names-the-clones.md
+  s_7318da1b9edd46::t_9108fa592feac5 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "79afb24c3746f2cdd1cdf63a4b11e311662b862a",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
