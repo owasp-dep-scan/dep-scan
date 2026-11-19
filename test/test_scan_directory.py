@@ -143,6 +143,7 @@ FAKE_TOOLS = {
     "golem": ("GOLEM_CMD", "golem 9.9.9"),
     "rusi": ("RUSI_CMD", "rusi 9.9.9"),
     "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef"),
+    "kosi": ("KOSI_CMD", '{"name": "kosi", "version": "9.9.9"}'),
     "go": (None, "go version go9.9.9 test"),
     "dotnet": (None, "9.9.100"),
 }
@@ -169,6 +170,8 @@ def fake_tools(tmp_path, monkeypatch):
         "DEPSCAN_RUSI_BINARY",
         "DOSAI_CMD",
         "DEPSCAN_DOSAI_BINARY",
+        "KOSI_CMD",
+        "DEPSCAN_KOSI_BINARY",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -515,6 +518,7 @@ ANALYZER_SLICES = {
     "rusi": "rust-reachables.slices.json",
     "golem": "go-reachables.slices.json",
     "dosai": "dotnet-reachables.slices.json",
+    "kosi": "kosi-reachables.slices.json",
 }
 
 
@@ -543,6 +547,7 @@ def _bom_dir_scan(tmp_path, analyzers_with_slices):
         ("rusi", "rusi", "reachability:rust", "rusi was not found"),
         ("golem", "golem", "reachability:go", "golem was not found"),
         ("dosai", "dosai", "reachability:dotnet", "dosai was not found"),
+        ("kosi", "kosi", "reachability:kotlin", "kosi was not found"),
     ],
 )
 def test_a_missing_analyzer_is_not_assessed_with_the_doctor_reason(
@@ -570,7 +575,7 @@ def test_an_installed_analyzer_without_slices_is_not_reported_as_completed(
     the language analyzers produced nothing and say so."""
     analyzers = _enrichment_analyzers(_bom_dir_scan(tmp_path, ["atom"]).manifest)
     assert analyzers["atom"]["status"] == "completed"
-    for name in ("rusi", "golem", "dosai"):
+    for name in ("rusi", "golem", "dosai", "kosi"):
         assert analyzers[name]["status"] == "not-assessed"
         assert analyzers[name]["reason"] == (
             f"no {ANALYZER_SLICES[name]} was produced or given for this scan"
@@ -631,6 +636,39 @@ def test_interrupted_scan_writes_a_manifest_naming_the_failed_stage(
     with pytest.raises(api.ScanError) as excinfo:
         api.load_scan(str(reports))
     assert "matching stage did not complete" in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "purl,expected",
+    [
+        ("pkg:maven/com.google/guava@1.0", "not-assessed"),
+        ("pkg:pypi/requests@2.32.1", "completed"),
+    ],
+)
+def test_a_requested_risk_audit_records_what_it_could_audit(
+    scan_stubs, monkeypatch, tmp_path, purl, expected
+):
+    """A BOM with only Maven packages cannot be audited; one with PyPI can.
+
+    The requested audit that had nothing to read is recorded as not
+    assessed with its reason, never as "not requested".
+    """
+    monkeypatch.setattr(
+        pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], [])
+    )
+    monkeypatch.setattr(pipeline, "risk_audit", lambda *a: {})
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True, risk_audit=True),
+        render=False,
+    )
+    manifest = _manifest_of(reports)
+    validate("depscan-manifest", manifest)
+    risk = next(stage for stage in manifest["stages"] if stage["name"] == "risk")
+    assert risk["status"] == expected
+    if expected == "not-assessed":
+        assert "no npm, PyPI or Cargo packages" in risk["reason"]
 
 
 def test_interrupted_manifest_write_keeps_the_previous_content(tmp_path, monkeypatch):

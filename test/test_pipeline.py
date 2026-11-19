@@ -429,6 +429,70 @@ def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch
     assert "Deprecated" in rows[0]["Identified Risks"]
 
 
+def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path, monkeypatch):
+    """A source scan is typed universal; its npm and PyPI packages are audited.
+
+    The maven package is left out because the audit reads no Maven metadata,
+    and both ecosystems' rows land in the one risk report.
+    """
+    calls = []
+
+    def fake_risk_audit(project_type, scoped_pkgs, private_ns, pkg_list):
+        calls.append((project_type, [pkg["purl"] for pkg in pkg_list]))
+        name = pkg_list[0]["name"]
+        return {name: {"scope": "required", "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True}}}
+
+    monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
+    ctx = _ctx(tmp_path, ["-t", "universal"])
+    ctx.perform_risk_audit = True
+    scan = pipeline.TypeScan(project_type="universal")
+    scan.pkg_list = [
+        {"name": "left-pad", "version": "1.0.0", "purl": "pkg:npm/left-pad@1.0.0"},
+        {"name": "requests", "version": "2.0.0", "purl": "pkg:pypi/requests@2.0.0"},
+        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"},
+    ]
+    scan.risk_report_file = os.path.join(ctx.reports_dir, "depscan-risk-universal.json")
+
+    assert pipeline.stage_analysis_risk(ctx, scan) is True
+
+    assert calls == [
+        ("npm", ["pkg:npm/left-pad@1.0.0"]),
+        ("pypi", ["pkg:pypi/requests@2.0.0"]),
+    ]
+    assert scan.risk_not_assessed is None
+    rows = [
+        json.loads(line)
+        for line in Path(scan.risk_report_file).read_text().splitlines()
+    ]
+    assert [row["Package"] for row in rows] == ["left-pad", "requests"]
+
+
+def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
+    tmp_path, monkeypatch
+):
+    """Only Maven packages: the audit was requested and could not run.
+
+    Positive control: the same scan with the audit off returns False with no
+    not-assessed reason, which the manifest records as skipped.
+    """
+    monkeypatch.setattr(
+        pipeline, "risk_audit", lambda *a: pytest.fail("nothing here can be audited")
+    )
+    ctx = _ctx(tmp_path, ["-t", "universal"])
+    scan = pipeline.TypeScan(project_type="universal")
+    scan.pkg_list = [
+        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}
+    ]
+    ctx.perform_risk_audit = False
+    assert pipeline.stage_analysis_risk(ctx, scan) is False
+    assert scan.risk_not_assessed is None
+    ctx.perform_risk_audit = True
+    assert pipeline.stage_analysis_risk(ctx, scan) is False
+    reason = scan.risk_not_assessed or ""
+    assert "no npm, PyPI or Cargo packages" in reason
+    assert "universal" in reason
+
+
 # ---------------------------------------------------------------------------
 # enrichment
 # ---------------------------------------------------------------------------
@@ -643,3 +707,93 @@ def test_set_slices_args_and_stale_removal_use_the_same_paths(tmp_path):
     assert sorted(removed) == sorted(paths)
     assert not any(os.path.exists(path) for path in paths)
 
+
+
+def test_generate_boms_removes_every_old_tool_slice_before_generation(tmp_path, monkeypatch):
+    from depscan.lib.bom import reachability_slice_files
+
+    old = [tmp_path / name for name in reachability_slice_files().values()]
+    for path in old:
+        path.write_text("{}")
+    unrelated = tmp_path / "notes.json"
+    unrelated.write_text("{}")
+    seen = []
+    monkeypatch.setattr(
+        pipeline, "create_bom", lambda *a, **k: seen.append([p.exists() for p in old]) or "bom"
+    )
+    ctx = SimpleNamespace(
+        src_dir=str(tmp_path), depscan_options={}, doctor_report=None
+    )
+    scan = SimpleNamespace(
+        project_type="python",
+        target_bom_file=str(tmp_path / "sbom-python.cdx.json"),
+        prebuild_bom_file=None,
+        build_bom_file=None,
+        postbuild_bom_file=None,
+        container_bom_file=None,
+        operations_bom_file=None,
+    )
+    assert pipeline._generate_boms(ctx, scan) == "bom"
+    assert seen == [[False] * len(old)]
+    assert unrelated.exists()
+
+
+@pytest.mark.parametrize(
+    "options, types, expected",
+    [
+        ({}, ["python"], False),
+        ({}, ["python", "binary"], True),
+        ({"techniques": ["binary-analysis"]}, ["python"], True),
+    ],
+)
+def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
+    monkeypatch, tmp_path, options, types, expected
+):
+    captured = {}
+    monkeypatch.setattr(
+        pipeline.scan_directory,
+        "write_findings",
+        lambda *a, **k: captured.update(k) or {"findings": []},
+    )
+    scan_dir = SimpleNamespace(build=lambda **k: {})
+    monkeypatch.setattr(pipeline.scan_directory, "write_manifest", lambda *a, **k: None)
+    ctx = SimpleNamespace(
+        scan_dir=scan_dir,
+        reports_dir=str(tmp_path),
+        all_pkg_vulnerabilities=[],
+        src_dir=str(tmp_path),
+        reach_scopes=[],
+        depscan_options=options,
+        project_types=types,
+        vdb_flavor=None,
+        shards_connected=False,
+    )
+    pipeline.finish_scan_directory(ctx)
+    assert captured["blint_reviews"] is expected
+
+
+def test_reach_scope_grades_only_the_ecosystems_the_analyzers_covered(tmp_path):
+    from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.findings.vdr_convert import reach_axis
+
+    slice_file = tmp_path / "java-reachables.slices.json"
+    slice_file.write_text(json.dumps([{"flows": [], "purls": ["pkg:maven/a/b@1"]}]))
+    options = ReachabilityAnalysisKV(
+        project_types=["java"],
+        src_dir=str(tmp_path),
+        bom_dir=str(tmp_path),
+        slices_files=[str(slice_file)],
+    )
+    scan = SimpleNamespace(
+        project_type="java",
+        reachability_options=options,
+        reachability_succeeded=True,
+        reached_purls={"pkg:maven/a/b@1": 1},
+    )
+    ctx = SimpleNamespace(doctor_report=None)
+    vulns = [
+        {"affects": [{"ref": "pkg:maven/a/b@1"}, {"ref": "pkg:npm/left-pad@1.0.0"}]}
+    ]
+    scope = pipeline._reach_scope(ctx, scan, vulns)
+    assert reach_axis(scope, "pkg:maven/a/b@1") == "likely"
+    assert reach_axis(scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"

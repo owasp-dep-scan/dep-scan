@@ -1,0 +1,15 @@
+{
+  "name": "depscan",
+  "version": "7.0.0-0.dev.0",
+  "description": "OWASP dep-scan toolkit for coding agents: scan source projects and container images for vulnerabilities, triage findings, manage the vulnerability database, and produce VEX and CSAF documents.",
+  "author": {
+    "name": "Team AppThreat",
+    "email": "cloud@appthreat.com",
+    "url": "https://github.com/owasp-dep-scan"
+  },
+  "homepage": "https://depscan.readthedocs.io/",
+  "repository": "https://github.com/owasp-dep-scan/dep-scan",
+  "skills": "./skills",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./.mcp.json"
+}

@@ -24,6 +24,7 @@ OWASP dep-scan is a next-generation security and risk audit tool based on known 
     - [Scanning containers locally (Python version)](#scanning-containers-locally-python-version)
     - [Scanning projects locally (Docker container)](#scanning-projects-locally-docker-container)
     - [Server mode](#server-mode)
+- [Coding agents](https://depscan.readthedocs.io/agent-plugin)
 - [Local development](#local-development)
 - [Documentation (depscan.readthedocs.io)](https://depscan.readthedocs.io)
 - [License](#license)
@@ -209,7 +210,6 @@ usage: depscan scan [-h]
                     [--cdxgen-server CDXGEN_SERVER]
                     [--rust-analyzer-backend {stable,compiler}]
                     [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo]
-                    [--dotnet-analyzer-mode {source,assembly,auto}]
                     [--no-suggest] [--fail-on-error]
                     [-t PROJECT_TYPE [PROJECT_TYPE ...]]
                     [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search]
@@ -335,19 +335,6 @@ options:
                         and its dependencies, so use it only for input you
                         trust. Can also be enabled with
                         DEPSCAN_GO_ANALYZER_CGO.
-  --dotnet-analyzer-mode {source,assembly,auto}
-                        dosai (Dotnet Source and Assembly Inspector) analysis
-                        mode for .NET reachability. ``auto`` (default)
-                        inspects source when a source tree is present and
-                        falls back to assembly inspection for bin/.nupkg-only
-                        inputs. ``source`` forces Roslyn-based C#/VB/F# source
-                        inspection; ``assembly`` forces Reflection-based
-                        .dll/.exe inspection. Pattern packs default to
-                        ``all``. dosai requires a .NET runtime (or a self-
-                        contained ``-full`` binary). Set DOSAI_CMD to point at
-                        a non-PATH dosai binary. dep-scan does NOT run
-                        ``dotnet restore``; a restored tree yields the best
-                        versioned NuGet purls.
   --no-suggest          Disable suggest mode
   --fail-on-error       Abort the scan with a non-zero exit code instead of
                         silently degrading. Passed through to cdxgen so
@@ -641,6 +628,7 @@ Full documentation is at [depscan.readthedocs.io](https://depscan.readthedocs.io
     - Language guides: [Rust](https://depscan.readthedocs.io/languages/rust-reachability), [Go](https://depscan.readthedocs.io/languages/go-reachability), [.NET](https://depscan.readthedocs.io/languages/dotnet-reachability), [JVM/JS/Python/PHP](https://depscan.readthedocs.io/languages/jvm-js-python-php-reachability)
     - Analyzers: [Framework reachability](https://depscan.readthedocs.io/analyzers/framework-reachability), [Semantic reachability](https://depscan.readthedocs.io/analyzers/semantic-reachability)
 - Output and compliance: [VDR guide](https://depscan.readthedocs.io/output/vdr-guide), [CSAF VEX guide](https://depscan.readthedocs.io/output/vex-csaf-guide)
+- [Agent plugin for coding agents](https://depscan.readthedocs.io/agent-plugin), [MCP server](https://depscan.readthedocs.io/mcp), [Agents and scripts](https://depscan.readthedocs.io/agents), [Questions to skills](https://depscan.readthedocs.io/agent-skills-toolchain)
 - [Customization through environment variables](https://depscan.readthedocs.io/env-var#customization-through-environment-variables)
 - Advanced usage: [GitHub Security Advisory](https://depscan.readthedocs.io/adv-usage#github-security-advisory), [Suggest mode](https://depscan.readthedocs.io/adv-usage#suggest-mode), [Package Risk audit](https://depscan.readthedocs.io/adv-usage#package-risk-audit), [Live OS scan](https://depscan.readthedocs.io/adv-usage#live-os-scan), [License scan](https://depscan.readthedocs.io/adv-usage#license-scan), [Custom reports](https://depscan.readthedocs.io/adv-usage#custom-reports)
 

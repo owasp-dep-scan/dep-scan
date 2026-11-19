@@ -34,6 +34,7 @@ from vdb.lib import db as vdb_db
 from depscan.lib.config import VDB_AGE_HOURS, read_vdb_image_marker
 from xbom_lib import dosai as dosai_mod
 from xbom_lib import golem as golem_mod
+from xbom_lib import kosi as kosi_mod
 from xbom_lib import rusi as rusi_mod
 from xbom_lib.cdxgen import _VERSION_RE as _CDXGEN_VERSION_RE
 from xbom_lib.cdxgen import (
@@ -45,7 +46,12 @@ from xbom_lib.cdxgen import (
     resource_path,
 )
 from xbom_lib.plugins import get_plugins_bin_target
-from xbom_lib.process import build_command, find_executable, tool_env
+from xbom_lib.process import (
+    build_command,
+    find_executable,
+    find_in_interpreter_scripts,
+    tool_env,
+)
 
 #: How long one tool's version probe may run.
 PROBE_TIMEOUT_SEC = 10
@@ -288,11 +294,33 @@ _PLUGIN_FINDERS = {
     "golem": golem_mod.find_golem_binary,
     "rusi": rusi_mod.find_rusi_binary,
     "dosai": dosai_mod.find_dosai_binary,
+    "kosi": kosi_mod.find_kosi_binary,
 }
 
 
+def _parse_kosi(output: str) -> Optional[str]:
+    """The top-level ``version`` of the JSON object kosi prints.
+
+    The object also carries nested ``version`` keys (the Kotlin compiler's,
+    for one) and a native image may print JVM warnings around it, so a
+    regular expression would take the wrong one. Every object that starts a
+    line is decoded and only its own ``version`` key counts.
+    """
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"^\s*\{", output, re.M):
+        start = match.end() - 1
+        try:
+            document, _end = decoder.raw_decode(output, start)
+        except ValueError:
+            continue
+        version = document.get("version") if isinstance(document, dict) else None
+        if isinstance(version, str) and version:
+            return version
+    return None
+
+
 def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
-    """golem, rusi or dosai: env override, PATH, then the plugins directory."""
+    """golem, rusi, dosai or kosi: env override, PATH, then the plugins directory."""
     status = ToolStatus(name=name)
     env_match = None
     for env_name in env_names:
@@ -321,7 +349,14 @@ def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
         status.source = "path"
     output = _run_version_probe(path, ["--version"])
     if output:
-        status.version = _parse_dosai(output) if name == "dosai" else _parse_first_number(output)
+        if name == "dosai":
+            status.version = _parse_dosai(output)
+        elif name == "kosi":
+            # kosi prints a JSON object, {"version": "4.3.1", ...}, and a
+            # native image may add JVM warnings around it.
+            status.version = _parse_kosi(output)
+        else:
+            status.version = _parse_first_number(output)
     if name == "rusi":
         # A soft gate in the scan: an older rusi still runs, with a warning,
         # so the minimum is reported without making the tool unusable.
@@ -420,13 +455,13 @@ def _blintdb_status() -> ToolStatus:
 # --- the cdxgen plugins directory ---------------------------------------------
 
 #: Plugin binaries cdxgen invokes but depscan never resolves itself. golem,
-#: rusi and dosai have their own entries because depscan runs them directly.
+#: rusi, dosai and kosi have their own entries because depscan runs them
+#: directly.
 #: The binary names follow cdxgen's ``plugin_binary_name`` scheme; osquery
 #: ships a macOS app bundle and sourcekitten a plain name.
 _PLUGIN_BINARY_NAMES = {
     "trivy": "trivy-cdxgen-{platform}-{arch}{extn}",
     "trustinspector": "trustinspector-cdxgen-{platform}-{arch}{extn}",
-    "kosi": "kosi-{platform}-{arch}{extn}",
     "cdxrs": "cdxrs-{platform}-{arch}{extn}",
     "cdxui": "cdxui-{platform}-{arch}{extn}",
     "sourcekitten": "sourcekitten",
@@ -694,6 +729,7 @@ ANALYZER_CAPABILITIES = {
     "rusi": "reachability:rust",
     "golem": "reachability:go",
     "dosai": "reachability:dotnet",
+    "kosi": "reachability:kotlin",
 }
 
 
@@ -799,6 +835,13 @@ CAPABILITIES: Tuple[CapabilitySpec, ...] = (
         description="Go reachability through the golem plugin and the Go toolchain.",
         issue=603,
         requirements=("tool:cdxgen", "tool:golem", "tool:go"),
+        implemented=True,
+    ),
+    CapabilitySpec(
+        name="reachability:kotlin",
+        description="Kotlin and JVM reachability through the kosi plugin (syntax backend, no build).",
+        issue=602,
+        requirements=("tool:kosi",),
         implemented=True,
     ),
     CapabilitySpec(
@@ -985,6 +1028,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
     golem = _plugin_tool_status("golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV))
     rusi = _plugin_tool_status("rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV))
     dosai = _plugin_tool_status("dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV))
+    kosi = _plugin_tool_status("kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV))
     entries = [
         cdxgen,
         _versioned_tool(
@@ -997,9 +1041,10 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
         ),
         _versioned_tool(
             "atom-tools",
-            find_executable("atom-tools"),
+            find_executable("atom-tools") or find_in_interpreter_scripts("atom-tools"),
             _parse_regex(_ATOM_TOOLS_VERSION_RE),
-            "atom-tools was not found on PATH; install it with `pip install atom-tools`",
+            "atom-tools was not found on PATH or next to the Python that runs "
+            "dep-scan; install it with `pip install atom-tools`",
         ),
         _versioned_tool(
             "edga",
@@ -1021,6 +1066,7 @@ def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
         rusi,
         dosai,
         _dotnet_status(dosai.path),
+        kosi,
         _blint_status(),
         _blintdb_status(),
     ]

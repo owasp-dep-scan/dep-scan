@@ -65,7 +65,12 @@ def test_stage_bom_keeps_not_assessed_on_the_scan(tmp_path, monkeypatch):
     """The per-type scan keeps the records for a later stage to write out."""
     monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
     monkeypatch.setattr(bom_mod, "CdxgenGenerator", _timeout_generator())
-    for helper in ("run_rusi_reachability", "run_golem_reachability", "run_dosai_reachability"):
+    for helper in (
+        "run_rusi_reachability",
+        "run_golem_reachability",
+        "run_kosi_reachability",
+        "run_dosai_reachability",
+    ):
         monkeypatch.setattr(bom_mod, helper, lambda *a, **k: None)
     from depscan.cli_options import build_parser
 

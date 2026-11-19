@@ -13,6 +13,7 @@ from collections import defaultdict
 from typing import Dict, Iterable, Iterator, List, Optional
 import hashlib
 import json
+import os
 
 
 def _flow_tags(flow: dict) -> List[str]:
@@ -223,6 +224,63 @@ def _iter_unique_reachable_flows(
                 continue
             seen.add(identity)
             yield flow
+
+
+#: The purl type each atom slice file prefix (``<prefix>-reachables.slices``)
+#: covers, by cdxgen project type and its aliases.
+ATOM_SLICE_PURL_TYPES = {
+    **dict.fromkeys(
+        ("java", "jar", "war", "kotlin", "kt", "android", "scala", "gradle", "maven", "jvm"),
+        "maven",
+    ),
+    **dict.fromkeys(("js", "javascript", "ts", "typescript", "nodejs", "npm", "yarn"), "npm"),
+    **dict.fromkeys(("python", "py", "pypi"), "pypi"),
+    **dict.fromkeys(("php", "composer"), "composer"),
+    **dict.fromkeys(("ruby", "gem"), "gem"),
+}
+
+
+def _purl_type(purl: str) -> str:
+    head = str(purl).split("/", 1)[0]
+    return head[4:].lower() if head.lower().startswith("pkg:") else ""
+
+
+def reached_by_analyzer(
+    slices_files: Optional[Iterable[str]], tool_stems: Dict[str, str]
+) -> Dict[str, Dict[str, set]]:
+    """What each analyzer's reachables slices put on an executed path.
+
+    ``tool_stems`` maps each language tool's name to the file-name stem of the
+    slice it writes (``go-reachables`` for golem); every other reachables file
+    is atom's. Returns ``{analyzer: {"purls": set, "types": set}}`` for the
+    analyzers that produced a reachables file. The purl types of a tool are
+    not read from here (a tool covers one ecosystem); atom's are those its
+    slice file prefixes map to (:data:`ATOM_SLICE_PURL_TYPES`), and a prefix
+    that is not known contributes the purl types its flows carry.
+    """
+    result: Dict[str, Dict[str, set]] = {}
+    for slice_file in slices_files or []:
+        name = os.path.basename(str(slice_file or ""))
+        if "reachables.slices" not in name:
+            continue
+        analyzer = "atom"
+        for tool, stem in tool_stems.items():
+            if name.startswith(stem):
+                analyzer = tool
+                break
+        entry = result.setdefault(analyzer, {"purls": set(), "types": set()})
+        purls = set()
+        for flow in _iter_json_list(slice_file):
+            if isinstance(flow, dict):
+                purls.update(str(p) for p in flow.get("purls") or [])
+        entry["purls"] |= purls
+        if analyzer == "atom":
+            mapped = ATOM_SLICE_PURL_TYPES.get(name.split("-reachables", 1)[0].lower())
+            if mapped:
+                entry["types"].add(mapped)
+            else:
+                entry["types"] |= {t for t in map(_purl_type, purls) if t}
+    return result
 
 
 def get_reachability_impl(

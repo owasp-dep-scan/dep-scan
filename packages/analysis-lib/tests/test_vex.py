@@ -23,7 +23,12 @@ from analysis_lib.vex.product_tree import (
     resolve_purl,
 )
 from analysis_lib.vex.dates import is_rfc3339, now_csaf, to_csaf_datetime
-from analysis_lib.vex.reachability import classify, KNOWN_AFFECTED, KNOWN_NOT_AFFECTED
+from analysis_lib.vex.reachability import (
+    classify,
+    KNOWN_AFFECTED,
+    KNOWN_NOT_AFFECTED,
+    UNDER_INVESTIGATION,
+)
 from analysis_lib.vex.refs import build_references_and_ids, synthesize_id
 from analysis_lib.vex.semantic import validate_semantic
 from analysis_lib.vex.tracking import build_tracking
@@ -392,16 +397,15 @@ def test_reachability_reachable_is_known_affected():
     assert scores == ["pkg:npm/express@4.22.2"]
 
 
-def test_reachability_unreachable_gets_flag_with_justification_label():
+def test_reachability_absence_is_under_investigation_without_flag():
+    """A package missing from the reached set was not observed; that is not
+    evidence that its vulnerable code is outside the execute path."""
     pmap = _purl_map()
     vuln = {"affects": [{"ref": "pkg:npm/left-pad@1.3.0"}]}
     status, flags, scores = classify(vuln, pmap, {"pkg:npm/express@4.22.2": 1})
-    assert status == {KNOWN_NOT_AFFECTED: ["pkg:npm/left-pad@1.3.0"]}
-    assert len(flags) == 1
-    # In CSAF the flag label is itself the justification value.
-    assert flags[0]["label"] == "vulnerable_code_not_in_execute_path"
-    assert "justification" not in flags[0]
-    assert flags[0]["product_ids"] == ["pkg:npm/left-pad@1.3.0"]
+    assert status == {UNDER_INVESTIGATION: ["pkg:npm/left-pad@1.3.0"]}
+    assert KNOWN_NOT_AFFECTED not in status
+    assert flags == []
     assert scores == ["pkg:npm/left-pad@1.3.0"]
 
 
@@ -467,16 +471,14 @@ def test_reachability_rust_reachable_is_known_affected():
     assert scores == ["pkg:cargo/sqlx@0.6.2"]
 
 
-def test_reachability_rust_unreachable_gets_not_in_path_flag():
-    """A Rust crate present but unreached must map to known_not_affected with
-    the vulnerable_code_not_in_execute_path justification flag."""
+def test_reachability_rust_unreachable_absence_is_under_investigation():
+    """An unreached package is under investigation; absence from the reached
+    set is never a not-affected statement and carries no execute-path flag."""
     pmap = _multi_lang_purl_map()
     vuln = {"affects": [{"ref": "pkg:cargo/serde@1.0.152"}]}
     status, flags, scores = classify(vuln, pmap, {"pkg:cargo/sqlx@0.6.2": 3})
-    assert status == {KNOWN_NOT_AFFECTED: ["pkg:cargo/serde@1.0.152"]}
-    assert len(flags) == 1
-    assert flags[0]["label"] == "vulnerable_code_not_in_execute_path"
-    assert flags[0]["product_ids"] == ["pkg:cargo/serde@1.0.152"]
+    assert status == {UNDER_INVESTIGATION: ["pkg:cargo/serde@1.0.152"]}
+    assert flags == []
 
 
 def test_reachability_go_reachable_is_known_affected():
@@ -490,16 +492,14 @@ def test_reachability_go_reachable_is_known_affected():
     assert scores == ["pkg:golang/github.com/jackc/pgx/v4@v4.18.1"]
 
 
-def test_reachability_go_unreachable_gets_not_in_path_flag():
-    """A Go module present but unreached must map to known_not_affected with
-    the vulnerable_code_not_in_execute_path justification flag."""
+def test_reachability_go_unreachable_absence_is_under_investigation():
+    """An unreached package is under investigation; absence from the reached
+    set is never a not-affected statement and carries no execute-path flag."""
     pmap = _multi_lang_purl_map()
     vuln = {"affects": [{"ref": "pkg:golang/gopkg.in/yaml.v2@v2.4.0"}]}
     status, flags, scores = classify(vuln, pmap, {"pkg:golang/github.com/jackc/pgx/v4@v4.18.1": 1})
-    assert status == {KNOWN_NOT_AFFECTED: ["pkg:golang/gopkg.in/yaml.v2@v2.4.0"]}
-    assert len(flags) == 1
-    assert flags[0]["label"] == "vulnerable_code_not_in_execute_path"
-    assert flags[0]["product_ids"] == ["pkg:golang/gopkg.in/yaml.v2@v2.4.0"]
+    assert status == {UNDER_INVESTIGATION: ["pkg:golang/gopkg.in/yaml.v2@v2.4.0"]}
+    assert flags == []
 
 
 def test_reachability_dotnet_reachable_is_known_affected():
@@ -513,16 +513,14 @@ def test_reachability_dotnet_reachable_is_known_affected():
     assert scores == ["pkg:nuget/Newtonsoft.Json@13.0.3"]
 
 
-def test_reachability_dotnet_unreachable_gets_not_in_path_flag():
-    """A NuGet package present but unreached (dosai marks only referenced, not
-    called) must map to known_not_affected with the not-in-execute-path flag."""
+def test_reachability_dotnet_unreachable_absence_is_under_investigation():
+    """An unreached package is under investigation; absence from the reached
+    set is never a not-affected statement and carries no execute-path flag."""
     pmap = _multi_lang_purl_map()
     vuln = {"affects": [{"ref": "pkg:nuget/AWSSDK.Core@3.7.0"}]}
     status, flags, scores = classify(vuln, pmap, {"pkg:nuget/Newtonsoft.Json@13.0.3": 2})
-    assert status == {KNOWN_NOT_AFFECTED: ["pkg:nuget/AWSSDK.Core@3.7.0"]}
-    assert len(flags) == 1
-    assert flags[0]["label"] == "vulnerable_code_not_in_execute_path"
-    assert flags[0]["product_ids"] == ["pkg:nuget/AWSSDK.Core@3.7.0"]
+    assert status == {UNDER_INVESTIGATION: ["pkg:nuget/AWSSDK.Core@3.7.0"]}
+    assert flags == []
 
 
 # ---------------------------------------------------------------------------
@@ -607,10 +605,11 @@ def test_build_csaf_schema_valid_and_semantically_correct(version):
     else:
         assert express["cwes"][0]["id"] == "CWE-787"
 
-    # Unreachable -> known_not_affected + execute-path flag.
+    # Not reached -> under_investigation, never known_not_affected.
     left_pad = by_cve["CVE-2024-20002"]
-    assert left_pad["product_status"]["known_not_affected"] == ["pkg:npm/left-pad@1.3.0"]
-    assert any(f["label"] == "vulnerable_code_not_in_execute_path" for f in left_pad["flags"])
+    assert left_pad["product_status"]["under_investigation"] == ["pkg:npm/left-pad@1.3.0"]
+    assert "known_not_affected" not in left_pad["product_status"]
+    assert left_pad.get("flags", []) == []
 
     # Unknown CWE name -> cwe omitted entirely.
     ghost = by_cve["CVE-2024-30003"]
@@ -745,6 +744,62 @@ def test_vulnerability_without_cve_gets_synthesized_id():
     assert model is not None
     assert model.cve is None
     assert model.ids and model.ids[0]["text"] == "DLA-4485-1"
+
+
+@pytest.mark.parametrize("version", VERSIONS)
+def test_go_advisory_without_cve_carries_its_id_and_validates(version):
+    """A Go advisory with no CVE alias gets its GO id in ``ids`` (§6.1.27.8).
+
+    The id lives only in the VDR id and bom-ref, the way the vulnerability
+    database stores Go vulnerability database entries.
+    """
+    bom = _load_demo()
+    purl = "pkg:golang/golang.org/x/crypto@v0.9.0"
+    bom["components"].append(
+        {"type": "library", "name": "golang.org/x/crypto", "version": "v0.9.0",
+         "purl": purl, "bom-ref": purl}
+    )
+    go_vuln = {
+        "id": "GO-2026-5932",
+        "bom-ref": f"GO-2026-5932/{purl}",
+        "affects": [{"ref": purl}],
+        "references": [
+            {"id": "", "source": {"name": "github", "url": "https://github.com/go-yaml/yaml"}}
+        ],
+    }
+    vulns = [*bom["vulnerabilities"], go_vuln]
+    doc = build_csaf(bom, vulns, reached_purls={purl: 1}, csaf_version=version)
+    assert validate(doc, version) == []
+    entry = next(v for v in doc["vulnerabilities"] if "GO-2026-5932" in v["title"])
+    assert "cve" not in entry
+    assert entry["ids"] == [{"system_name": "Go Vulnerability Database", "text": "GO-2026-5932"}]
+
+
+def test_go_shaped_names_in_urls_are_not_taken_for_ids():
+    """``go-yaml`` in a URL is a project name, not a Go advisory id."""
+    refs, ids = build_references_and_ids(
+        [{"id": "", "source": {"name": "github", "url": "https://github.com/go-yaml/yaml"}}],
+        [{"title": "PYSEC-2024-12", "url": "https://osv.dev/vulnerability/PYSEC-2024-12"}],
+    )
+    assert [i["text"] for i in ids] == ["PYSEC-2024-12"]
+    assert synthesize_id("RUSTSEC-2023-0071/pkg:cargo/rsa@0.9.6") == {
+        "system_name": "RustSec Advisory Database",
+        "text": "RUSTSEC-2023-0071",
+    }
+
+
+def test_an_unrecognised_advisory_id_is_kept_as_the_id():
+    """An id no known prefix matches still names the vulnerability."""
+    vuln = {
+        "id": "ACME-SA-77",
+        "bom-ref": "ACME-SA-77/pkg:npm/demo@1.0.0",
+        "affects": [{"ref": "pkg:npm/demo@1.0.0"}],
+        "source": {"name": "acme-feed"},
+    }
+    pid = "pkg:npm/demo@1.0.0"
+    model = build_vulnerability(vuln, {pid: pid}, {pid: 1}, "2.0")
+    assert model is not None
+    assert model.ids == [{"system_name": "acme-feed", "text": "ACME-SA-77"}]
 
 
 def test_scores_deduped_per_cvss_version():
@@ -1040,14 +1095,15 @@ def test_juice_shop_csaf_is_schema_valid_and_reachability_aware(version):
     # Zero schema errors and no dangling product references.
     assert validate(doc, version) == []
     assert referenced_product_ids(doc) <= defined_product_ids(doc)
-    # Reachability is reflected: some known_affected and some known_not_affected
-    # carrying the execute-path flag.
+    # Reachability is reflected: reached packages are known_affected, the
+    # rest stay under_investigation, and nothing is asserted not affected.
     statuses = set()
     for v in doc["vulnerabilities"]:
         statuses.update((v.get("product_status") or {}).keys())
     assert "known_affected" in statuses
-    assert "known_not_affected" in statuses
-    assert any(
+    assert "under_investigation" in statuses
+    assert "known_not_affected" not in statuses
+    assert not any(
         f.get("label") == "vulnerable_code_not_in_execute_path"
         for v in doc["vulnerabilities"]
         for f in v.get("flags", [])

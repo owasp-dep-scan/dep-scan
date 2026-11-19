@@ -178,3 +178,208 @@ def test_every_produced_document_validates_with_the_published_validator():
         finding = finding_from_vdr(vuln, ref, producer_version="1")
         errors = list(validator.iter_errors(finding.to_dict()))
         assert not errors
+
+
+# ---------------------------------------------------------------------------
+# exploitability.axes.reach from the scan's reachability result
+# ---------------------------------------------------------------------------
+
+from analysis_lib.findings.vdr_convert import (  # noqa: E402
+    ReachScope,
+    exploitability_from_reach,
+    reach_axis,
+)
+
+REF = "pkg:pypi/requests@2.32.1"
+OTHER = "pkg:pypi/urllib3@2.2.0"
+
+
+ATOM_PYPI = {"atom": {"pypi"}}
+
+
+def _exploitability(finding):
+    assert finding.exploitability is not None
+    return finding.exploitability
+
+
+def _reach(finding):
+    return _exploitability(finding).axes.reach
+
+
+def test_findings_without_scopes_record_no_exploitability():
+    (finding,) = findings_from_vdr([VULN], producer_version="1")
+    assert finding.exploitability is None
+
+
+def test_reached_package_is_likely_and_names_the_analyzer():
+    scope = ReachScope(
+        refs={REF}, analyzers=["atom"], reached={REF}, succeeded=True, analyzer_types=ATOM_PYPI
+    )
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "likely"
+    assert _exploitability(finding).rule == "reachability:atom"
+    validate("finding", finding.to_dict())
+
+
+def test_absent_from_a_non_empty_reached_set_is_unknown_never_refuted():
+    scope = ReachScope(
+        refs={REF},
+        analyzers=["atom"],
+        reached={OTHER},
+        succeeded=True,
+        analyzer_types=ATOM_PYPI,
+    )
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "unknown"
+    assert _exploitability(finding).rule == "reachability:atom"
+
+
+@pytest.mark.parametrize(
+    "scope",
+    [
+        ReachScope(refs={REF}, analyzers=[], reached={REF}, succeeded=True),
+        ReachScope(
+            refs={REF},
+            analyzers=["atom"],
+            reached={REF},
+            succeeded=False,
+            analyzer_types=ATOM_PYPI,
+        ),
+        ReachScope(
+            refs={REF}, analyzers=["atom"], reached=set(), succeeded=True, analyzer_types=ATOM_PYPI
+        ),
+    ],
+    ids=["no-analyzer-ran", "engine-failed", "nothing-observed"],
+)
+def test_no_usable_reachability_is_not_assessed(scope):
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "not_assessed"
+    assert _exploitability(finding).grade == "unassessed"
+    assert _exploitability(finding).rule is None
+    assert _exploitability(finding).unassessed == [
+        "presence",
+        "reach",
+        "exposure",
+        "barrier",
+        "pressure",
+    ]
+    validate("finding", finding.to_dict())
+
+
+def test_ref_in_no_scope_is_not_assessed():
+    scope = ReachScope(
+        refs={OTHER}, analyzers=["atom"], reached={OTHER}, succeeded=True, analyzer_types=ATOM_PYPI
+    )
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[scope])
+    assert _reach(finding) == "not_assessed"
+
+
+def test_scope_that_assessed_the_ref_wins_over_one_that_did_not():
+    blind = ReachScope(refs={REF}, analyzers=[], reached=set(), succeeded=False)
+    seeing = ReachScope(
+        refs={REF}, analyzers=["atom"], reached={REF}, succeeded=True, analyzer_types=ATOM_PYPI
+    )
+    (finding,) = findings_from_vdr([VULN], producer_version="1", reach_scopes=[blind, seeing])
+    assert _reach(finding) == "likely"
+
+
+def test_purl_spelling_differences_still_match():
+    scope = ReachScope(
+        refs={REF},
+        analyzers=["atom"],
+        reached={"pkg:pypi/requests@2.32.1?type=jar"},
+        succeeded=True,
+        analyzer_types=ATOM_PYPI,
+    )
+    assert reach_axis(scope, REF) == "likely"
+    assert reach_axis(scope, "pkg:pypi/requests%402.32.1") == "likely"
+
+
+def test_only_reach_is_graded_and_the_rest_listed_unassessed():
+    scope = ReachScope(
+        refs={REF},
+        analyzers=["atom", "golem"],
+        reached={REF},
+        succeeded=True,
+        analyzer_types=ATOM_PYPI,
+    )
+    exploitability = exploitability_from_reach(scope, REF)
+    assert exploitability.axes.presence == "not_assessed"
+    assert exploitability.grade is None
+    assert exploitability.unassessed == ["presence", "exposure", "barrier", "pressure"]
+    # golem covers golang only, so it is not named for a pypi package
+    assert exploitability.rule == "reachability:atom"
+
+
+def _vuln_for(ref):
+    return dict(VULN, affects=[{"ref": ref}])
+
+
+def _reach_of(ref, scope):
+    (finding,) = findings_from_vdr([_vuln_for(ref)], producer_version="1", reach_scopes=[scope])
+    return _reach(finding), _exploitability(finding).rule
+
+
+NPM = "pkg:npm/lodash@4.17.20"
+MAVEN = "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"
+
+
+def test_java_and_npm_repo_with_only_java_slices_leaves_npm_not_assessed():
+    scope = ReachScope(
+        refs={NPM, MAVEN},
+        analyzers=["atom"],
+        reached={MAVEN},
+        succeeded=True,
+        analyzer_types={"atom": {"maven"}},
+        reached_by={"atom": {MAVEN}},
+    )
+    assert _reach_of(MAVEN, scope) == ("likely", "reachability:atom")
+    assert _reach_of(NPM, scope) == ("not_assessed", None)
+
+
+def test_golem_only_reached_set_leaves_pypi_not_assessed():
+    scope = ReachScope(
+        refs={REF, "pkg:golang/github.com/x/z@1.0.0"},
+        analyzers=["golem"],
+        reached={"pkg:golang/github.com/x/y@1.0.0"},
+        succeeded=True,
+        reached_by={"golem": {"pkg:golang/github.com/x/y@1.0.0"}},
+    )
+    assert _reach_of(REF, scope) == ("not_assessed", None)
+    assert _reach_of("pkg:golang/github.com/x/z@1.0.0", scope) == (
+        "unknown",
+        "reachability:golem",
+    )
+
+
+def test_kosi_covers_maven_and_is_named_with_atom_only_when_both_cover_it():
+    scope = ReachScope(
+        refs={MAVEN},
+        analyzers=["atom", "kosi"],
+        reached={MAVEN},
+        succeeded=True,
+        analyzer_types={"atom": {"npm"}},
+        reached_by={"atom": {NPM}, "kosi": {MAVEN}},
+    )
+    assert _reach_of(MAVEN, scope) == ("likely", "reachability:kosi")
+    both = ReachScope(
+        refs={MAVEN},
+        analyzers=["atom", "kosi"],
+        reached={MAVEN},
+        succeeded=True,
+        analyzer_types={"atom": {"maven"}},
+        reached_by={"atom": set(), "kosi": {MAVEN}},
+    )
+    assert _reach_of(MAVEN, both) == ("likely", "reachability:atom+kosi")
+
+
+def test_an_analyzer_that_reached_nothing_does_not_grade_its_ecosystem():
+    scope = ReachScope(
+        refs={MAVEN},
+        analyzers=["atom", "kosi"],
+        reached={NPM},
+        succeeded=True,
+        analyzer_types={"atom": {"npm"}},
+        reached_by={"atom": {NPM}, "kosi": set()},
+    )
+    assert _reach_of(MAVEN, scope) == ("not_assessed", None)

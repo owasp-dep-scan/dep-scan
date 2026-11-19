@@ -134,12 +134,18 @@ def build_vulnerability(
 
     # §6.1.27.8: a CSAF vulnerability item must carry at least one of cve/ids.
     # When neither the CVE nor the reference builder produced an identifier
-    # (e.g. distro advisories like DLA-4485-1 stored only in the title/id),
-    # synthesize one from the raw id or title so the item is never anonymous.
+    # (e.g. distro advisories like DLA-4485-1 or Go ids like GO-2026-5932
+    # stored only in the title/id), synthesize one from the raw id or title,
+    # and fall back to the raw id itself, so the item is never anonymous.
     if not cve and not ids:
         synthetic = synthesize_id(raw_id) or synthesize_id(title)
         if synthetic:
             ids = [synthetic]
+        elif raw_id:
+            # An id no known prefix matches is still the advisory's own
+            # identifier; the source database names the system that issued it.
+            source_name = str((vuln.get("source") or {}).get("name") or "").strip()
+            ids = [{"system_name": source_name or "dep-scan", "text": raw_id}]
 
     return Vulnerability(
         cve=cve,

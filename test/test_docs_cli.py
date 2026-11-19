@@ -136,6 +136,11 @@ def _normalized_help(text: str) -> str:
     )
 
 
+#: The agent plugin's `depscan-vdb` skill, written as a backticked name or
+#: as its slash command, is not the removed console script.
+SKILL_NAME_FORMS = re.compile(r"`depscan-vdb`|/depscan:depscan-vdb\b")
+
+
 def test_usage_page_embeds_the_built_help(monkeypatch):
     """The two usage blocks are the parsers' own output at a fixed width."""
     monkeypatch.setenv("COLUMNS", "200")
@@ -207,7 +212,9 @@ def test_no_v6_invocations_remain_in_the_docs():
 
 def test_no_console_script_names_remain_in_the_docs():
     """The removed console scripts are named only where their removal is
-    documented, and the marker file keeps its own name."""
+    documented, where a schema names the verb's document, and where the
+    agent plugin names its skill: the skill `depscan-vdb` is a skill, not
+    the removed `depscan-vdb` console script, and the same text is both."""
     problems = []
     for path in sorted(DOCS_DIR.rglob("*")):
         if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
@@ -217,7 +224,7 @@ def test_no_console_script_names_remain_in_the_docs():
                 continue
             if MARKER_FILE in line:
                 continue
-            without_schema_names = line
+            without_schema_names = SKILL_NAME_FORMS.sub("", line)
             for name in SCHEMA_NAMES:
                 without_schema_names = without_schema_names.replace(name, "")
             if (

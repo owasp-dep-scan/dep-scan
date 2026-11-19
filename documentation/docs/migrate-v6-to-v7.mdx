@@ -56,7 +56,7 @@ Every v6 option and its v7 equivalent:
 | `--rust-analyzer-backend` | `depscan scan --rust-analyzer-backend` | Unchanged. |
 | `--go-analyzer-network` | `depscan scan --go-analyzer-network` | Unchanged. |
 | `--go-analyzer-cgo` | `depscan scan --go-analyzer-cgo` | Unchanged. |
-| `--dotnet-analyzer-mode` | `depscan scan --dotnet-analyzer-mode` | Unchanged. |
+| `--dotnet-analyzer-mode` | `(removed)` | dosai has no source or assembly mode switch, so the flag never changed what dosai ran. dosai reads sources and assemblies from the same path on its own. Drop the flag and the DEPSCAN_DOTNET_ANALYZER_MODE variable. |
 | `--no-suggest` | `depscan scan --no-suggest` | Unchanged. |
 | `--risk-audit` | `depscan scan --checks supply-chain` | The package risk audit became the supply-chain check. |
 | `--fail-on-error` | `depscan scan --fail-on-error` | Unchanged. |
@@ -114,6 +114,8 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 ## cdxgen (BREAKING)
 
 - **cdxgen 13.8.0 or later is required.** dep-scan refuses an older local cdxgen, and a 13.8.0 pre-release, with the command that installs a supported one.
+- **CSAF no longer claims `known_not_affected` from absence.** v6 marked every affected package missing from a non-empty reached set `known_not_affected` with the flag `vulnerable_code_not_in_execute_path`. Absence from a reached set is not evidence that the vulnerable code is outside the execute path, so v7 marks those packages `under_investigation`; reached packages stay `known_affected`.
+- **`--bom-engine auto` prefers a local cdxgen.** v6 chose the cdxgen container image whenever `docker` was on `PATH`, even when `CDXGEN_CMD` was set or a current cdxgen was installed. v7 uses the command named by `CDXGEN_CMD`, or a cdxgen on `PATH` that meets the minimum version, first, and falls back to the container image only when no such cdxgen exists. When `CDXGEN_CMD` names a cdxgen below the minimum version, v7 refuses the scan with the version message, where v6 would have used the image. `--bom-engine CdxgenImageBasedGenerator` still forces the image.
 - **The npm package is `@cdxgen/cdxgen`.** v6 documentation installed `@cyclonedx/cdxgen`. Install with `npm install -g @cdxgen/cdxgen`, and remove the old package first if both are present, because the older one can stay first on `PATH`.
 - **Untrusted sources run cdxgen in secure mode.** When cdxgen fetches the code itself (a git URL as the source) or the scan was requested through the dep-scan server, cdxgen always runs with `CDXGEN_SECURE_MODE=true`, which limits what it may install or execute. Projects that relied on cdxgen installing packages during such scans need their dependencies resolved beforehand.
 
@@ -132,6 +134,7 @@ dep-scan 7 uses vulnerability-db 7 (`appthreat-vulnerability-db>=7.0.6,<8`), who
 ## Reports directory
 
 - **Every scan now writes a scan directory.** The raw reports of the tools dep-scan runs itself, such as rusi, golem and dosai, moved under `analysis/<tool>/` in the reports directory; files cdxgen writes, and files the user passed in, keep their names and places. Each scan writes `depscan.manifest.json` (the manifest, written last of every file) and `depscan.findings.json` (one finding per advisory and component) at the top of the reports directory. `depscan.api.load_scan` and `depscan report` refuse a directory whose matching stage did not complete, or whose VDR was written outside it (a BOM directory scanned with a separate `--reports-dir`), instead of loading it as a clean scan; a directory without a manifest is still read the way scans before the scan directory wrote them. The layout is documented in [the scan directory](output/scan-directory) page.
+- **The binary check keeps blint's review.** When a scan asks for the binary check (`--checks binary`), a binary or apk project type or the `BlintGenerator` engine, blint also runs its security checks and capability reviews. Its reports (`findings.json`, `reviews.json` and `analysis-coverage.json`) stay in `analysis/blint/`, and each check result appears in `depscan.findings.json` as a `binary-hardening` finding. v6 switched the review off and removed blint's report directory. dep-scan 7 installs blint 4.0.x with the `ext` extra, which needs wasm-tools 2.1 and multi-demangle 2.1 or later.
 
 ## Server mode
 

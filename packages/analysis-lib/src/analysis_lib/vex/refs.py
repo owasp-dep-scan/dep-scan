@@ -52,12 +52,27 @@ _ADVISORY_TOKEN_RE = re.compile(
     + r")-[0-9A-Za-z:.\-]{2,})\b",
     re.IGNORECASE,
 )
+# OSV-style database ids. Their prefixes are short words ("GO", "MAL") that
+# also start ordinary names in URLs ("go-yaml"), so they are matched only in
+# their exact year-and-number shape.
+_OSV_SYSTEMS = {
+    "GO": "Go Vulnerability Database",
+    "PYSEC": "PyPA Advisory Database",
+    "RUSTSEC": "RustSec Advisory Database",
+    "MAL": "OSV Malicious Packages",
+}
+_OSV_TOKEN_RE = re.compile(
+    r"\b((?:" + "|".join(sorted(_OSV_SYSTEMS, key=len, reverse=True)) + r")-\d{4}-\d{1,7})\b",
+    re.IGNORECASE,
+)
 _VALID_SCHEMES = {"http", "https"}
 
 
 def _system_name_for(token: str) -> str:
     """Map an advisory token (e.g. ``DLA-4485-1``) to its issuing system."""
     upper = token.upper()
+    if _OSV_TOKEN_RE.fullmatch(upper):
+        return _OSV_SYSTEMS[upper.split("-", 1)[0]]
     for prefix in sorted(_ADVISORY_SYSTEMS, key=len, reverse=True):
         if upper.startswith(prefix + "-"):
             return _ADVISORY_SYSTEMS[prefix]
@@ -93,6 +108,9 @@ def _extract_advisory_token(url: str, title: str) -> str:
     """Pull a recognizable advisory/CVE id out of a url or title."""
     for source in (url, title or ""):
         m = _ADVISORY_TOKEN_RE.search(source)
+        if m:
+            return m.group(1).upper()
+        m = _OSV_TOKEN_RE.search(source)
         if m:
             return m.group(1).upper()
         m = _CVE_RE.search(source)

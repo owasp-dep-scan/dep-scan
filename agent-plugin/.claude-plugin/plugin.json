@@ -1,0 +1,56 @@
+{
+  "name": "depscan",
+  "description": "OWASP dep-scan toolkit for coding agents: scan source projects and container images for vulnerabilities, triage findings, manage the vulnerability database, and produce VEX and CSAF documents.",
+  "version": "7.0.0-0.dev.0",
+  "author": {
+    "name": "Team AppThreat",
+    "email": "cloud@appthreat.com",
+    "url": "https://github.com/owasp-dep-scan"
+  },
+  "homepage": "https://depscan.readthedocs.io/",
+  "repository": "https://github.com/owasp-dep-scan/dep-scan",
+  "keywords": [
+    "depscan",
+    "owasp",
+    "security",
+    "sca",
+    "vulnerabilities",
+    "vex",
+    "csaf",
+    "sbom",
+    "container-scanning",
+    "supply-chain"
+  ],
+  "documentationUrl": "https://depscan.readthedocs.io/",
+  "supportUrl": "https://github.com/owasp-dep-scan/dep-scan/issues",
+  "privacyPolicyUrl": "https://github.com/owasp-dep-scan/dep-scan/blob/master/agent-plugin/README.md#privacy",
+  "icon": "./.claude-plugin/icon.png",
+  "userConfig": {
+    "lockfile_reminder": {
+      "type": "boolean",
+      "title": "Lockfile reminder",
+      "description": "Remind Claude that the last scan is stale after it edits a lockfile or dependency manifest.",
+      "default": false
+    },
+    "vdb_home": {
+      "type": "string",
+      "title": "Vulnerability database directory",
+      "description": "Directory for the vulnerability database, used as VDB_HOME when the skills run depscan. Leave empty to use the dep-scan default."
+    },
+    "vdb_flavor": {
+      "type": "string",
+      "title": "Vulnerability database flavor",
+      "description": "Value for --vdb-flavor and depscan vdb download --flavor: full, app-only, app-extended, app-10y or app-10y-extended. Leave empty for the dep-scan default."
+    },
+    "cdxgen_cmd": {
+      "type": "string",
+      "title": "cdxgen command",
+      "description": "How dep-scan starts cdxgen, used as CDXGEN_CMD when the skills run a scan. Leave empty to use the cdxgen on PATH."
+    },
+    "runtime": {
+      "type": "string",
+      "title": "Preferred runtime",
+      "description": "Enter local to run the depscan CLI from PATH, or container to run the ghcr.io/owasp-dep-scan/dep-scan image. Leave empty for local."
+    }
+  }
+}

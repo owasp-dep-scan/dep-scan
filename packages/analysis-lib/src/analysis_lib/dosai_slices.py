@@ -48,7 +48,7 @@ import hashlib
 import json
 import os
 import re
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from packageurl import PackageURL
 
@@ -286,6 +286,281 @@ def split_dosai_report(report: Optional[dict]) -> tuple[Optional[dict], Optional
 
 
 # ---------------------------------------------------------------------------
+# Transparency facts: exploit chains, exposure tiers, sanitized flows, services
+# ---------------------------------------------------------------------------
+
+# Entry-point exposure classes dosai derives (Transparency.cs), most exposed
+# first. A class that is not listed ranks after every listed one.
+EXPOSURE_ORDER = (
+    "anonymous-http",
+    "anonymous-rpc",
+    "authenticated-http",
+    "authenticated-rpc",
+    "queue",
+    "mcp",
+    "cli",
+)
+
+# Key added to every atom-shaped flow that carries dosai transparency facts.
+# The reachability engine and the explainer read only ``flows`` and ``purls``
+# from a reachables flow, so the extra key is ignored by them and can grow
+# without a change to the slice readers.
+DOSAI_FLOW_KEY = "dosai"
+
+
+def exposure_rank(exposure: Optional[str]) -> int:
+    """Rank an exposure class, lower is more exposed; unknown classes sort last."""
+    try:
+        return EXPOSURE_ORDER.index(exposure or "")
+    except ValueError:
+        return len(EXPOSURE_ORDER)
+
+
+def _most_exposed(exposures: Iterable[Optional[str]]) -> Optional[str]:
+    """Return the most exposed class among ``exposures``, or ``None`` when empty."""
+    found = [e for e in exposures if isinstance(e, str) and e]
+    return min(found, key=exposure_rank) if found else None
+
+
+def _route_key(method: Optional[str], route: Optional[str]) -> tuple:
+    """Key an HTTP route so the spellings dosai uses in different sections meet:
+    ``ApiEndpoints[].Route`` omits the leading slash that ``Path`` and
+    ``AttackSurface`` rows carry."""
+    path = (route or "").strip()
+    if path and not path.startswith("/"):
+        path = "/" + path
+    return ((method or "").upper(), path)
+
+
+def _line_key(file_name: Optional[str], line) -> tuple:
+    """Case-insensitive base name plus line, the way a sanitizer location is
+    compared with a data-flow node location."""
+    base = os.path.basename(str(file_name or "").replace("\\", "/")).lower()
+    try:
+        return (base, int(line or 0))
+    except (TypeError, ValueError):
+        return (base, 0)
+
+
+class _TransparencyContext:
+    """Lookup tables built once per report from the dosai transparency sections.
+
+    ``ExploitChains``, ``AttackSurface`` and ``SanitizedFlows`` come from the
+    ``dataflows`` command, ``Services`` (with ``TrustZone``) from ``methods``.
+    Any section may be absent in an older dosai report; every table is then
+    simply empty and callers get no annotation.
+    """
+
+    def __init__(self, dataflows: Optional[dict], methods: Optional[dict]):
+        dataflows = dataflows if isinstance(dataflows, dict) else {}
+        methods = methods if isinstance(methods, dict) else {}
+        self.chains: List[dict] = [
+            c for c in (dataflows.get("ExploitChains") or []) if isinstance(c, dict)
+        ]
+        self.sanitized_flows: List[dict] = [
+            f for f in (dataflows.get("SanitizedFlows") or []) if isinstance(f, dict)
+        ]
+        self.attack_surface: List[dict] = [
+            g for g in (dataflows.get("AttackSurface") or []) if isinstance(g, dict)
+        ]
+        self.services: List[dict] = [
+            s for s in (methods.get("Services") or []) if isinstance(s, dict)
+        ]
+        self.entry_exposure: Dict[str, str] = {}
+        self.route_exposure: Dict[tuple, str] = {}
+        self._route_by_entry: Dict[str, str] = {}
+        for group in self.attack_surface:
+            group_exposure = group.get("Exposure")
+            for entry in group.get("EntryPoints") or []:
+                if not isinstance(entry, dict):
+                    continue
+                exposure = entry.get("Exposure") or group_exposure
+                if not exposure:
+                    continue
+                if entry.get("EntryPointId"):
+                    self.entry_exposure[entry["EntryPointId"]] = exposure
+                if entry.get("Route"):
+                    key = _route_key(entry.get("HttpMethod"), entry.get("Route"))
+                    self.route_exposure[key] = (
+                        _most_exposed([exposure, self.route_exposure.get(key)]) or exposure
+                    )
+                    if entry.get("EntryPointId"):
+                        self._route_by_entry[entry["EntryPointId"]] = entry["Route"]
+        for entry in dataflows.get("EntryPoints") or []:
+            if isinstance(entry, dict) and entry.get("Id") and entry.get("Route"):
+                self._route_by_entry.setdefault(entry["Id"], entry["Route"])
+        self.chains_by_slice: Dict[str, List[dict]] = {}
+        for chain in self.chains:
+            exposure = chain.get("Exposure")
+            if exposure and chain.get("EntryPointId"):
+                self.entry_exposure.setdefault(chain["EntryPointId"], exposure)
+            if chain.get("SliceId"):
+                self.chains_by_slice.setdefault(chain["SliceId"], []).append(chain)
+        self.trust_zone_by_route: Dict[tuple, dict] = {}
+        for service in self.services:
+            zone = service.get("TrustZone")
+            if not zone:
+                continue
+            for op in service.get("Operations") or []:
+                if not isinstance(op, dict):
+                    continue
+                path = op.get("Path") or op.get("RouteTemplate") or op.get("Name")
+                if path:
+                    self.trust_zone_by_route[_route_key(op.get("HttpMethod"), path)] = {
+                        "trustZone": zone,
+                        "serviceId": service.get("Id"),
+                    }
+        self.sanitizers_nearby: Dict[str, List[dict]] = self._match_sanitizers(dataflows)
+
+    def _match_sanitizers(self, dataflows: dict) -> Dict[str, List[dict]]:
+        """Map a slice id to the sanitized flows recorded next to it.
+
+        ``SanitizedFlows`` is dosai's negative evidence: traces a sanitizer
+        expression or validation guard stopped. Dosai emits no slice for a
+        trace it sanitized, and a category-scoped sanitizer (``HtmlEncode``)
+        lists no taint kinds, so a sanitized flow says nothing that would
+        justify dropping a slice. It is matched only to annotate: a flow is
+        near a slice when the two share a node and the sanitizer sits on the
+        slice's path (same file and line as one of its nodes).
+        """
+        if not self.sanitized_flows:
+            return {}
+        nodes = {
+            n["Id"]: n
+            for n in (dataflows.get("Nodes") or [])
+            if isinstance(n, dict) and n.get("Id")
+        }
+        matched: Dict[str, List[dict]] = {}
+        for sl in dataflows.get("Slices") or []:
+            if not isinstance(sl, dict) or not sl.get("Id"):
+                continue
+            node_ids = [nid for nid in (sl.get("NodeIds") or []) if isinstance(nid, str)]
+            node_set = set(node_ids)
+            node_locations = {
+                _line_key(_node_file(nodes[nid]), nodes[nid].get("LineNumber"))
+                for nid in node_ids
+                if nid in nodes
+            }
+            for flow in self.sanitized_flows:
+                if not flow.get("Id"):
+                    continue
+                if not node_set.intersection(flow.get("SourceIds") or []):
+                    continue
+                if _line_key(flow.get("FileName"), flow.get("LineNumber")) not in node_locations:
+                    continue
+                matched.setdefault(sl["Id"], []).append(
+                    {
+                        "id": flow["Id"],
+                        "category": flow.get("SanitizerCategory") or flow.get("SanitizerSymbol"),
+                    }
+                )
+        return matched
+
+    def slice_annotation(self, sl: dict) -> Optional[dict]:
+        """The ``dosai`` flow key for one data-flow slice, or ``None`` when the
+        report carries no transparency facts for it."""
+        slice_id = sl.get("Id")
+        chains = self.chains_by_slice.get(slice_id, []) if slice_id else []
+        nearby = self.sanitizers_nearby.get(slice_id, []) if slice_id else []
+        if not chains and not nearby:
+            return None
+        annotation: dict = {
+            "sliceId": slice_id,
+            "exposure": _most_exposed(c.get("Exposure") for c in chains),
+            "exploitChains": [self._compact_chain(c) for c in chains],
+        }
+        if nearby:
+            annotation["sanitizersNearby"] = sorted(nearby, key=lambda n: str(n["id"]))
+        return annotation
+
+    def _compact_chain(self, chain: dict) -> dict:
+        compact = {
+            "id": chain.get("Id"),
+            "entryPointId": chain.get("EntryPointId"),
+            "exposure": chain.get("Exposure"),
+            "hopCount": chain.get("HopCount", 0),
+            "confidence": chain.get("Confidence"),
+        }
+        route = self._route_by_entry.get(chain.get("EntryPointId") or "")
+        if route:
+            compact["route"] = route
+        return compact
+
+    def package_annotation(self, pr: dict) -> Optional[dict]:
+        """The ``dosai`` flow key for a ``PackageReachability`` entry: the
+        exposure of the entry points and exploit chains that reach it."""
+        slice_ids = [s for s in (pr.get("SliceIds") or []) if isinstance(s, str)]
+        exposures = [self.entry_exposure.get(e) for e in (pr.get("EntryPointIds") or [])]
+        chain_ids: List[str] = []
+        for sid in slice_ids:
+            for chain in self.chains_by_slice.get(sid, []):
+                exposures.append(chain.get("Exposure"))
+                if chain.get("Id") and chain["Id"] not in chain_ids:
+                    chain_ids.append(chain["Id"])
+        exposure = _most_exposed(exposures)
+        if not exposure and not chain_ids:
+            return None
+        return {"exposure": exposure, "exploitChainIds": sorted(chain_ids)}
+
+    def endpoint_annotation(self, endpoint: dict) -> Optional[dict]:
+        """The ``dosai`` flow key for an ``ApiEndpoints`` entry: its exposure
+        tier and the trust zone of the service that owns the route."""
+        route = endpoint.get("Route") or endpoint.get("Path")
+        if not route:
+            return None
+        key = _route_key(endpoint.get("HttpMethod"), route)
+        annotation: dict = {}
+        if key in self.route_exposure:
+            annotation["exposure"] = self.route_exposure[key]
+        zone = self.trust_zone_by_route.get(key)
+        if zone:
+            annotation.update(zone)
+        return annotation or None
+
+    def facts(self) -> dict:
+        """Compact transparency facts for the native-reachability sidecar."""
+        return {
+            "exploit_chains": [self._compact_chain(c) | {"sliceId": c.get("SliceId")} for c in self.chains],
+            "attack_surface": [
+                {
+                    "exposure": g.get("Exposure"),
+                    "entry_point_count": g.get("EntryPointCount", 0),
+                    "exploit_chain_count": g.get("ExploitChainCount", 0),
+                    "weakness_count": g.get("WeaknessCount", 0),
+                    "high_severity_weakness_count": g.get("HighSeverityWeaknessCount", 0),
+                }
+                for g in self.attack_surface
+            ],
+            "sanitized_flows": [
+                {
+                    "id": f.get("Id"),
+                    "kind": f.get("Kind"),
+                    "sanitizer": f.get("SanitizerSymbol") or f.get("SanitizerCategory"),
+                    "source_ids": list(f.get("SourceIds") or []),
+                    "file": f.get("FileName"),
+                    "line": f.get("LineNumber"),
+                }
+                for f in self.sanitized_flows
+            ],
+            "sanitizers_nearby": {
+                slice_id: [n["id"] for n in nearby]
+                for slice_id, nearby in sorted(self.sanitizers_nearby.items())
+            },
+            "services": [
+                {
+                    "id": s.get("Id"),
+                    "name": s.get("Name"),
+                    "kind": s.get("ServiceKind"),
+                    "direction": s.get("Direction"),
+                    "trust_zone": s.get("TrustZone"),
+                    "crosses_trust_boundary": s.get("CrossesTrustBoundary"),
+                }
+                for s in self.services
+            ],
+        }
+
+
+# ---------------------------------------------------------------------------
 # Native reachability extraction (the source of truth) -- Gate 3
 # ---------------------------------------------------------------------------
 
@@ -338,6 +613,11 @@ def extract_native_reachability(report, bom_index: Optional[Dict[str, str]] = No
           "weakness_candidates": [ ... ],       # pass-through (CWE-tagged)
           "dangerous_api_reachability": [ ... ],# pass-through
           "source_locations": { purl: [str, ...] },
+          "exploit_chains": [ ... ],            # compact chains with exposure
+          "attack_surface": [ ... ],            # per-exposure rollups
+          "sanitized_flows": [ ... ],           # negative evidence
+          "sanitizers_nearby": { slice: [ids] },# sanitized flows beside a slice
+          "services": [ ... ],                  # inbound/outbound with trust zone
         }
 
     ``reached_purls`` includes every purl whose dosai ``Reachable`` is true; the
@@ -345,9 +625,15 @@ def extract_native_reachability(report, bom_index: Optional[Dict[str, str]] = No
     dataflows and methods slices (dataflows is authoritative for call/dataflow
     evidence). ``ReachabilityKind`` ``DataFlowNode``/``CallGraphEdge`` => High
     (call/dataflow evidence); ``Dependency`` => Low (import/lockfile only).
+
+    Sanitized flows never remove a package from the reached set: dosai emits
+    no slice for a trace it sanitized, so a slice that is present was not
+    stopped. A reached purl carries the ``exposure`` tier of the entry points
+    that reach it and the ids of its exploit chains.
     """
     bom_index = bom_index or {}
     dataflows, methods = split_dosai_report(report)
+    ctx = _TransparencyContext(dataflows, methods)
     reached: Dict[str, dict] = {}
     source_locations: Dict[str, List[str]] = {}
 
@@ -384,7 +670,9 @@ def extract_native_reachability(report, bom_index: Optional[Dict[str, str]] = No
                         source_locations[purl].append(s)
             existing = reached.get(purl)
             if existing is None or _conf_rank(confidence) > _conf_rank(existing.get("confidence")):
-                reached[purl] = {"confidence": confidence, "kind": kind, "sources": sources}
+                fact = {"confidence": confidence, "kind": kind, "sources": sources}
+                fact.update(ctx.package_annotation(pr) or {})
+                reached[purl] = fact
 
     # reached_services: purls that reach a mapped service sink category.
     reached_services: Dict[str, bool] = {}
@@ -408,13 +696,15 @@ def extract_native_reachability(report, bom_index: Optional[Dict[str, str]] = No
             d for d in (dataflows.get("DangerousApiReachability") or []) if isinstance(d, dict)
         ]
 
-    return {
+    facts = {
         "reached_purls": reached,
         "reached_services": reached_services,
         "weakness_candidates": weakness,
         "dangerous_api_reachability": dangerous,
         "source_locations": source_locations,
     }
+    facts.update(ctx.facts())
+    return facts
 
 
 # ---------------------------------------------------------------------------
@@ -530,12 +820,20 @@ def _make_node(
 
 
 def _emit_slice_flows(
-    dataflows: dict, nodes_by_id: Dict[str, dict], bom_index: Dict[str, str]
+    dataflows: dict,
+    nodes_by_id: Dict[str, dict],
+    bom_index: Dict[str, str],
+    ctx: Optional[_TransparencyContext] = None,
 ) -> List[dict]:
     """Emit one atom flow per dosai ``dataflows.Slices[]`` entry (taint witness).
 
     Walks ``NodeIds`` in order to build an atom node path; reconciles slice +
     node purls. Source-file locations only.
+
+    A flow carries the ``dosai`` key with its exploit chains, entry-point
+    exposure tier and the sanitized flows recorded beside it
+    (``sanitizersNearby``) when the report has them. The annotation never
+    changes ``purls``: dosai emits no slice for a trace it sanitized.
     """
     flows: List[dict] = []
     for sl in dataflows.get("Slices", []) or []:
@@ -578,12 +876,19 @@ def _emit_slice_flows(
             )
         if not flow_nodes:
             continue
-        flows.append({"flows": flow_nodes, "purls": sorted(flow_purls)})
+        flow: Dict[str, Any] = {"flows": flow_nodes, "purls": sorted(flow_purls)}
+        annotation = ctx.slice_annotation(sl) if ctx else None
+        if annotation:
+            flow[DOSAI_FLOW_KEY] = annotation
+        flows.append(flow)
     return flows
 
 
 def _emit_reachability_flows(
-    dataflows: dict, methods: dict, bom_index: Dict[str, str]
+    dataflows: dict,
+    methods: dict,
+    bom_index: Dict[str, str],
+    ctx: Optional[_TransparencyContext] = None,
 ) -> List[dict]:
     """Emit an honest 2-node flow per native-reachable PackageReachability entry
     whose ``ReachabilityKind`` is call/dataflow evidence
@@ -654,11 +959,17 @@ def _emit_reachability_flows(
                 "parentMethodName": "",
                 "isExternal": True,
             }
-            flows.append({"flows": [source_node, sink_node], "purls": [purl]})
+            flow: Dict[str, Any] = {"flows": [source_node, sink_node], "purls": [purl]}
+            annotation = ctx.package_annotation(pr) if ctx else None
+            if annotation:
+                flow[DOSAI_FLOW_KEY] = annotation
+            flows.append(flow)
     return flows
 
 
-def _emit_endpoint_flows(methods: dict, bom_index: Dict[str, str]) -> List[dict]:
+def _emit_endpoint_flows(
+    methods: dict, bom_index: Dict[str, str], ctx: Optional[_TransparencyContext] = None
+) -> List[dict]:
     """Emit one flow per dosai ``methods.ApiEndpoints[]`` entry (endpoint
     reachability). Each endpoint becomes a single-node flow tagged with the
     ``api`` service tag so ``reached_services`` picks it up."""
@@ -700,7 +1011,14 @@ def _emit_endpoint_flows(methods: dict, bom_index: Dict[str, str]) -> List[dict]
             "parentMethodName": handler,
             "isExternal": True,
         }
-        flows.append({"flows": [node], "purls": [handler_purl] if handler_purl else []})
+        flow: Dict[str, Any] = {
+            "flows": [node],
+            "purls": [handler_purl] if handler_purl else [],
+        }
+        annotation = ctx.endpoint_annotation(ep) if ctx else None
+        if annotation:
+            flow[DOSAI_FLOW_KEY] = annotation
+        flows.append(flow)
     return flows
 
 
@@ -720,6 +1038,9 @@ def convert_dosai_report(report, bom_index: Optional[Dict[str, str]] = None) -> 
     Every native-reachable purl (``Reachable==true`` with kind
     ``DataFlowNode``/``CallGraphEdge``) appears in at least one flow's ``purls``,
     so the existing engine's ``reached_purls`` loop picks them up unchanged.
+
+    Flows carry an optional ``dosai`` key (exploit chains, exposure tier,
+    trust zone, sanitizers nearby); see :data:`DOSAI_FLOW_KEY`.
 
     Deterministic: flows deduped by identity, then sorted by (purls, first-node
     id) -- mirrors golem/rusi.
@@ -746,10 +1067,11 @@ def convert_dosai_report(report, bom_index: Optional[Dict[str, str]] = None) -> 
     # merge; dataflows nodes take precedence for slice walking
     nodes_by_id = {**cg_nodes, **df_nodes}
 
+    ctx = _TransparencyContext(dataflows, methods)
     flows: List[dict] = []
-    flows.extend(_emit_slice_flows(dataflows, nodes_by_id, bom_index))
-    flows.extend(_emit_reachability_flows(dataflows, methods, bom_index))
-    flows.extend(_emit_endpoint_flows(methods, bom_index))
+    flows.extend(_emit_slice_flows(dataflows, nodes_by_id, bom_index, ctx))
+    flows.extend(_emit_reachability_flows(dataflows, methods, bom_index, ctx))
+    flows.extend(_emit_endpoint_flows(methods, bom_index, ctx))
 
     # dedup identical flows by identity, then sort for determinism
     seen: set = set()

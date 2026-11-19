@@ -365,21 +365,6 @@ def _add_analyzer_options(parser: argparse.ArgumentParser) -> None:
         "the scanned code and its dependencies, so use it only for input you "
         "trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.",
     )
-    parser.add_argument(
-        "--dotnet-analyzer-mode",
-        choices=("source", "assembly", "auto"),
-        default=argparse.SUPPRESS,
-        dest="dotnet_analyzer_mode",
-        help="dosai (Dotnet Source and Assembly Inspector) analysis mode for "
-        ".NET reachability. ``auto`` (default) inspects source when a source "
-        "tree is present and falls back to assembly inspection for bin/.nupkg-"
-        "only inputs. ``source`` forces Roslyn-based C#/VB/F# source "
-        "inspection; ``assembly`` forces Reflection-based .dll/.exe inspection. "
-        "Pattern packs default to ``all``. dosai requires a .NET runtime (or a "
-        "self-contained ``-full`` binary). Set DOSAI_CMD to point at a non-PATH "
-        "dosai binary. dep-scan does NOT run ``dotnet restore``; a restored tree "
-        "yields the best versioned NuGet purls.",
-    )
 
 
 def _add_search_options(parser: argparse.ArgumentParser) -> None:

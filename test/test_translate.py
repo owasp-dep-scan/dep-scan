@@ -5,6 +5,7 @@ import argparse
 from depscan.cli_options import build_parser
 from depscan.commands.translate import (
     OPTION_TABLE,
+    REMOVED,
     V7_INTERNAL_DESTS,
     option_table_markdown,
     translate,
@@ -29,6 +30,10 @@ def _table_flags():
     return {flag for row in OPTION_TABLE for flag in row.v6_flags}
 
 
+def _removed_flags():
+    return {flag for row in OPTION_TABLE if row.kind == REMOVED for flag in row.v6_flags}
+
+
 def test_every_parser_option_has_a_row():
     parser_flags = _parser_option_flags()
     assert "--config" in parser_flags
@@ -37,7 +42,7 @@ def test_every_parser_option_has_a_row():
 
 
 def test_table_rows_name_only_parser_options():
-    stale = sorted(_table_flags() - _parser_option_flags())
+    stale = sorted(_table_flags() - _removed_flags() - _parser_option_flags())
     assert not stale, f"rows for options the parser does not register: {stale}"
 
 
@@ -226,3 +231,19 @@ def test_a_source_given_with_a_bom_input_is_not_a_second_target():
     )
     assert translate(["--src", ".", "--bom", "b.json"]) == "depscan scan b.json"
     assert translate(["--src", ".", "--purl", "pkg:npm/a@1"]) == "depscan scan pkg:npm/a@1"
+
+
+def test_removed_options_are_not_registered_by_the_parser():
+    assert "--dotnet-analyzer-mode" in _removed_flags()
+    assert not _removed_flags() & _parser_option_flags()
+
+
+def test_removed_option_is_dropped_with_its_value():
+    assert translate(["--src", "/app", "--dotnet-analyzer-mode", "source", "-t", "dotnet"]) == (
+        "depscan scan /app --type dotnet"
+    )
+    assert translate(["--src", "/app", "--dotnet-analyzer-mode=assembly"]) == "depscan scan /app"
+
+
+def test_removed_option_alone_translates_to_nothing():
+    assert translate(["--dotnet-analyzer-mode", "auto"]) is None

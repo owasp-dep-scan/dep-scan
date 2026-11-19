@@ -82,6 +82,19 @@ DEFAULT_DATAFLOW_MODE = "all"
 # dependency is reached. This is always on; no override.
 INCLUDE_ALL_FLOWS = True
 
+# Entry points golem measures reachability from, passed as ``--roots`` only
+# when a caller asks. By default no ``--roots`` is passed, so golem's own root
+# set applies: it adds framework registrations, cobra ``Run`` functions and
+# goroutine targets to the walk, and a library with ``ServeHTTP`` methods is
+# reported as skipped rather than reduced to its handlers. Naming roots
+# explicitly would drop those. The set golem used is recorded in the report's
+# ``callGraph.roots``.
+DEFAULT_ROOTS: tuple = ()
+
+# Witness paths per requested symbol, passed as ``--max-paths-per-symbol``
+# whenever symbols are requested. Matches golem's own default.
+DEFAULT_MAX_PATHS_PER_SYMBOL = 3
+
 # Wall-clock cap so a stuck golem process can never block a scan indefinitely.
 # Generous for large Go workspaces; override via ``DEPSCAN_GOLEM_TIMEOUT``
 # (seconds).
@@ -122,6 +135,11 @@ class GolemResult:
     command_output: str = ""
     version: Optional[str] = None
     timed_out: bool = False
+    #: The ``--roots`` specifiers a caller asked for; empty when none were
+    #: passed (the default) or the golem binary predates the flag. Golem's
+    #: own default root set then applies and is recorded in the report's
+    #: ``callGraph.roots``.
+    roots: tuple = ()
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +226,42 @@ def get_golem_version(binary: str, logger: Optional[Logger] = None) -> Optional[
         if tok and tok[0].isdigit():
             return tok
     return None
+
+
+_ROOTS_FLAG_SUPPORT: dict = {}
+
+
+def golem_supports_roots(binary: str, logger: Optional[Logger] = None) -> bool:
+    """Return True if ``binary`` accepts ``--roots`` and ``--reachable-symbols``.
+
+    Releases before the call-graph rework reject both flags and abort, so the
+    flags are only passed after ``golem analyze -h`` lists them. Asking the
+    binary is more reliable than comparing version strings, since a source
+    build reports ``dev``. The answer is remembered per binary path.
+    """
+    if binary in _ROOTS_FLAG_SUPPORT:
+        return _ROOTS_FLAG_SUPPORT[binary]
+    supported = False
+    try:
+        cp = subprocess.run(
+            build_command([binary, "analyze", "-h"]),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            env=tool_env(),
+            shell=False,
+            encoding="utf-8",
+            check=False,
+            timeout=30,
+        )
+        text = cp.stdout or ""
+        supported = bool(re.search(r"^\s+-{1,2}roots\b", text, re.M)) and bool(
+            re.search(r"^\s+-{1,2}reachable-symbols\b", text, re.M)
+        )
+    except (OSError, subprocess.SubprocessError) as e:
+        if logger:
+            logger.debug("golem analyze -h failed: %s", e)
+    _ROOTS_FLAG_SUPPORT[binary] = supported
+    return supported
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +422,9 @@ def _build_golem_args(
     callgraph_mode: str,
     dataflow_mode: str,
     deep: bool,
+    roots: Optional[tuple] = None,
+    reachable_symbols_file: Optional[str] = None,
+    max_paths_per_symbol: int = DEFAULT_MAX_PATHS_PER_SYMBOL,
 ) -> list:
     """Build the ``golem analyze`` argument list.
 
@@ -375,6 +432,11 @@ def _build_golem_args(
     direct-golem fallback produces the same report shape cdxgen would.
     ``--include-all-flows`` is ALWAYS included (non-negotiable for dependency
     reachability -- see module docstring).
+
+    ``roots`` becomes ``--roots`` (comma-separated) and
+    ``reachable_symbols_file`` becomes ``--reachable-symbols`` with
+    ``--max-paths-per-symbol``. Both default to off so callers that talk to an
+    older golem build never pass flags it rejects; :func:`run_golem` decides.
     """
     workers = _dataflow_worker_count()
     # ``--deep`` trades breadth for per-slice depth (fewer, deeper slices),
@@ -419,6 +481,15 @@ def _build_golem_args(
         "--dataflow-skip-generated",
         "--dataflow-skip-tests",
     ]
+    if roots:
+        args += ["--roots", ",".join(roots)]
+    if reachable_symbols_file:
+        args += [
+            "--reachable-symbols",
+            reachable_symbols_file,
+            "--max-paths-per-symbol",
+            str(max_paths_per_symbol),
+        ]
     return args
 
 
@@ -431,6 +502,8 @@ def run_golem(
     network_mode: str = "auto",
     deep: bool = False,
     allow_cgo: bool = False,
+    roots: Optional[tuple] = None,
+    reachable_symbols: Optional[list] = None,
     logger: Optional[Logger] = None,
     timeout: Optional[int] = DEFAULT_TIMEOUT,
 ) -> GolemResult:
@@ -452,6 +525,13 @@ def run_golem(
     which means the C compiler runs with flags taken from the scanned code
     and its dependencies; the toolchain release is checked and warned about
     when it predates the Go releases that refuse those flags.
+
+    ``roots``: an explicit entry-point set for ``--roots``; by default none
+    is passed and golem's own root set applies (see :data:`DEFAULT_ROOTS`),
+    which the report's ``callGraph.roots`` records. ``reachable_symbols``: names (case-insensitive substrings of a
+    node id or label) to emit witness paths for, such as the vulnerable
+    functions of matched advisories. Both are skipped, with a debug message,
+    when the golem binary does not know the flags.
     """
     binary = find_golem_binary(logger=logger)
     if not binary:
@@ -492,12 +572,30 @@ def run_golem(
         logger.debug("golem version: %s", version)
 
     abs_src_dir = os.path.abspath(src_dir)
+    used_roots: tuple = ()
+    symbols_file: Optional[str] = None
+    if roots or reachable_symbols:
+        if golem_supports_roots(binary, logger=logger):
+            used_roots = tuple(roots or ())
+            symbols = sorted({str(s).strip() for s in (reachable_symbols or []) if str(s).strip()})
+            if symbols:
+                symbols_file = out_path + ".symbols.txt"
+                with open(symbols_file, "w", encoding="utf-8") as fp:
+                    fp.write("\n".join(symbols) + "\n")
+        elif logger:
+            logger.debug(
+                "golem %s does not support --roots/--reachable-symbols; "
+                "its default root set applies.",
+                version or binary,
+            )
     args = _build_golem_args(
         abs_src_dir,
         out_path,
         callgraph_mode=callgraph_mode,
         dataflow_mode=dataflow_mode,
         deep=deep,
+        roots=used_roots,
+        reachable_symbols_file=symbols_file,
     )
     full_cmd = [binary] + args
 
@@ -550,7 +648,13 @@ def run_golem(
             out_path,
             schema_msg,
         )
-    return GolemResult(success=True, report_path=out_path, command_output=out, version=version)
+    return GolemResult(
+        success=True,
+        report_path=out_path,
+        command_output=out,
+        version=version,
+        roots=used_roots,
+    )
 
 
 def _check_truncation(out_path: str, logger: Optional[Logger] = None) -> None:

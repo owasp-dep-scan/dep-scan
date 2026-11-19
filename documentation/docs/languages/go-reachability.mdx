@@ -100,7 +100,7 @@ Package loading also compiles the cgo packages it finds, which means the C compi
 
 ## Reading the artifacts
 
-Three files in the reports directory tell the story. The `go-reachables.slices.json` holds the converted slices; check here first if no module is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached module becomes `known_affected` while a present-but-unreached module becomes `known_not_affected` carrying `vulnerable_code_not_in_execute_path`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
+Three files in the reports directory tell the story. The `go-reachables.slices.json` holds the converted slices; check here first if no module is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached module becomes `known_affected` while a module that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
 
 ## Troubleshooting
 

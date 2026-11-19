@@ -31,6 +31,7 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 """
 
 import contextlib
+import json
 import os
 import secrets
 import socket
@@ -42,11 +43,11 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
-from analysis_lib.reachability import get_reachability_impl
+from analysis_lib.reachability import get_reachability_impl, reached_by_analyzer
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.vex.emit import export_csaf
-from custom_json_diff.lib.utils import json_load
+from custom_json_diff.lib.utils import file_write, json_load
 from reporting_lib.htmlgen import ReportGenerator
 from rich.panel import Panel
 from rich.terminal_theme import DEFAULT_TERMINAL_THEME, MONOKAI
@@ -63,11 +64,13 @@ from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
     ScanFailureError,
     annotate_vdr,
+    blint_reviews_requested,
     create_bom,
     create_empty_vdr,
     determine_spec_version,
     export_bom,
     get_pkg_by_type,
+    reachability_slice_files,
 )
 from depscan.lib.config import (
     DEPSCAN_DEFAULT_VDR_FILE,
@@ -136,6 +139,8 @@ class TypeScan:
     risk_report_file: Optional[str] = None
     # Why the risk audit failed when it ran and degraded; the scan goes on.
     risk_error: Optional[str] = None
+    # Why a requested risk audit had nothing it could audit for this type.
+    risk_not_assessed: Optional[str] = None
     # Why BOM generation failed for this type; the scan goes on to the next.
     inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
@@ -149,6 +154,9 @@ class TypeScan:
     reached_purls: Dict = field(default_factory=dict)
     reached_services: Dict = field(default_factory=dict)
     endpoint_reached_purls: Dict = field(default_factory=dict)
+    #: True once the reachability engine ran and returned a result for this
+    #: type; slices on disk alone do not make the analysis succeeded.
+    reachability_succeeded: bool = False
     results: List = field(default_factory=list)
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
@@ -199,6 +207,9 @@ class ScanContext:
     txt_report_file: Optional[str] = None
     llm_prompt_file: Optional[str] = None
     all_pkg_vulnerabilities: List = field(default_factory=list)
+    #: One entry per project type scan: what reachability said about the
+    #: components that scan matched, for the findings' exploitability.
+    reach_scopes: List = field(default_factory=list)
     all_pkg_group_rows: Dict = field(default_factory=dict)
     summary: Optional[Dict] = None
     vdr_file: Optional[str] = None
@@ -680,7 +691,15 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     if scan_dir is None:
         return None
     findings_document = scan_directory.write_findings(
-        ctx.reports_dir, ctx.all_pkg_vulnerabilities, get_version()
+        ctx.reports_dir,
+        ctx.all_pkg_vulnerabilities,
+        get_version(),
+        scan_root=ctx.src_dir,
+        reach_scopes=ctx.reach_scopes,
+        blint_reviews=any(
+            blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
+            for project_type in (ctx.project_types or [None])
+        ),
     )
     manifest = scan_dir.build(
         options=ctx.depscan_options,
@@ -999,6 +1018,13 @@ def _generate_boms(ctx, scan):
         if path
     }:
         remove_stale_slices(scan.project_type, bom_dir, logger=LOG)
+        # Tool slices carry the tool's name rather than a project type, so a
+        # scan of another type would otherwise read an old one.
+        for tool_slice in reachability_slice_files().values():
+            tool_slice_path = os.path.join(bom_dir, tool_slice)
+            if os.path.isfile(tool_slice_path):
+                os.remove(tool_slice_path)
+                LOG.debug("Removed the tool slice %s left by a previous run.", tool_slice_path)
     try:
         return create_bom(
             scan.target_bom_file,
@@ -1201,51 +1227,73 @@ def stage_analysis_licenses(ctx, scan) -> bool:
     return True
 
 
+#: The purl types the risk audit reads package-manager metadata for, with
+#: the risk_audit_map key that audits them.
+RISK_AUDIT_PURL_TYPES = (("npm", "npm"), ("pypi", "pypi"), ("cargo", "cargo"))
+
+
+def _risk_audit_groups(scan):
+    """The (audit type, packages) pairs the risk audit can run on.
+
+    A type the audit knows (npm, python, cargo and their aliases) audits its
+    whole package list. Any other type, such as ``universal`` for a source
+    scan or ``bom``, audits the packages whose purl type the audit reads.
+    """
+    if scan.project_type in risk_audit_map:
+        return [(scan.project_type, scan.pkg_list)] if scan.pkg_list else []
+    groups = []
+    for purl_type, audit_type in RISK_AUDIT_PURL_TYPES:
+        packages = get_pkg_by_type(scan.pkg_list, purl_type)
+        if packages:
+            groups.append((audit_type, packages))
+    return groups
+
+
 def stage_analysis_risk(ctx, scan) -> bool:
     """Run the OSS risk audit for the package managers that support it.
 
-    Returns False when the audit did not run, either because it was not
-    requested or because the type has no packages it can audit.
+    Returns False when the audit did not run. When it was requested but the
+    scan holds no npm, PyPI or Cargo packages, ``scan.risk_not_assessed``
+    says so, and the stage is recorded as not assessed rather than skipped.
     """
     args = ctx.args
-    # Do we support OSS risk audit for this type? If yes, proceed with the relevant checks.
     if not ctx.perform_risk_audit:
         return False
-    pkg_list_to_use = []
-    project_type_to_use = scan.project_type
-    if scan.project_type in risk_audit_map:
-        pkg_list_to_use = scan.pkg_list
-    elif scan.project_type in ("bom",):
-        pkg_list_to_use = get_pkg_by_type(scan.pkg_list, "npm")
-        project_type_to_use = "npm"
-    if not pkg_list_to_use:
+    groups = _risk_audit_groups(scan)
+    if not groups:
+        scan.risk_not_assessed = (
+            f"the risk audit was requested, but the {scan.project_type} scan "
+            "has no npm, PyPI or Cargo packages, the only ecosystems it audits"
+        )
         return False
-    if len(scan.pkg_list) > 1:
+    total = sum(len(packages) for _, packages in groups)
+    if total > 1:
         log_console.print(
             Panel(
                 f"Performing OSS Risk Audit for packages from "
-                f"{ctx.src_dir}\nNo of packages [bold]{len(scan.pkg_list)}"
+                f"{ctx.src_dir}\nNo of packages [bold]{total}"
                 f"[/bold]. This will take a while ...",
                 title="OSS Risk Audit",
                 expand=False,
             )
         )
+    report_rows = []
     try:
-        risk_results = risk_audit(
-            project_type_to_use,
-            scan.scoped_pkgs,
-            args.private_ns,
-            pkg_list_to_use,
-        )
-        rtable, report_data = pkg_risks_table(
-            project_type_to_use,
-            scan.scoped_pkgs,
-            risk_results,
-            pkg_max_risk_score=pkg_max_risk_score,
-            risk_report_file=scan.risk_report_file,
-        )
-        if not args.no_vuln_table and report_data and rtable:
-            console.print(rtable)
+        for audit_type, packages in groups:
+            risk_results = risk_audit(audit_type, scan.scoped_pkgs, args.private_ns, packages)
+            rtable, report_data = pkg_risks_table(
+                audit_type,
+                scan.scoped_pkgs,
+                risk_results,
+                pkg_max_risk_score=pkg_max_risk_score,
+            )
+            if report_data:
+                report_rows.extend(report_data)
+            if not args.no_vuln_table and report_data and rtable:
+                console.print(rtable)
+        if report_rows and scan.risk_report_file:
+            # The risk audit findings are stored in jsonl format.
+            file_write(scan.risk_report_file, "\n".join(json.dumps(row) for row in report_rows))
     except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
         LOG.error(e)
         LOG.error("Risk audit was not successful")
@@ -1316,6 +1364,7 @@ def stage_enrichment(ctx, scan):
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
     reach_result = get_reachability_impl(reachability_analyzer, reachability_options).process()
     if reach_result and reach_result.success:
+        scan.reachability_succeeded = True
         scan.direct_purls = reach_result.direct_purls
         scan.reached_purls = reach_result.reached_purls
         scan.reached_services = reach_result.reached_services
@@ -1350,6 +1399,51 @@ def stage_matching(ctx, scan):
         exclude_malware=ctx.depscan_options.get("exclude_malware", False),
     )
     scan.vdr_result = VDRAnalyzer(vdr_options=options).process()
+
+
+def _reach_scope(ctx, scan, pkg_vulnerabilities):
+    """What the reachability analysis said about the components this type's
+    scan matched, for the exploitability of the findings written from them.
+
+    The analyzers named are those the enrichment stage read slices from
+    (the manifest's ``completed`` entries). When reachability was off, failed
+    or produced no purls, the scope says so and every finding of the type
+    records ``reach`` as not assessed.
+    """
+    from analysis_lib.findings.vdr_convert import ReachScope
+
+    options = scan.reachability_options
+    analyzers: List[str] = []
+    tool_stems = {
+        name: file_name.split(".slices", 1)[0]
+        for name, file_name in reachability_slice_files().items()
+    }
+    if options is not None:
+        analyzers = [
+            entry["name"]
+            for entry in scan_directory.analyzer_entries(
+                ctx.doctor_report, [scan.project_type], options.slices_files
+            )
+            if entry.get("status") == "completed"
+        ]
+    refs = {
+        str(affect["ref"])
+        for vuln in pkg_vulnerabilities
+        if isinstance(vuln, dict)
+        for affect in vuln.get("affects") or []
+        if isinstance(affect, dict) and affect.get("ref")
+    }
+    by_analyzer = (
+        reached_by_analyzer(options.slices_files, tool_stems) if options is not None else {}
+    )
+    return ReachScope(
+        refs=refs,
+        analyzers=analyzers,
+        reached=set((scan.reached_purls or {}).keys()),
+        succeeded=scan.reachability_succeeded,
+        analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
+        reached_by={name: entry["purls"] for name, entry in by_analyzer.items()},
+    )
 
 
 def stage_analysis_vdr(ctx, scan):
@@ -1402,6 +1496,7 @@ def stage_analysis_vdr(ctx, scan):
     scan.summary = summary
     if vdr_result.pkg_vulnerabilities:
         ctx.all_pkg_vulnerabilities += vdr_result.pkg_vulnerabilities
+        ctx.reach_scopes.append(_reach_scope(ctx, scan, vdr_result.pkg_vulnerabilities))
     if vdr_result.prioritized_pkg_vuln_trees:
         ctx.all_pkg_group_rows.update(vdr_result.prioritized_pkg_vuln_trees)
     ctx.summary = summary

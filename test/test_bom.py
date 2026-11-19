@@ -1,5 +1,8 @@
+import dataclasses
 import json
 import os
+
+import pytest
 
 from depscan.lib.bom import (
     create_empty_vdr,
@@ -230,6 +233,59 @@ def test_export_bom_preserves_source_spec_version(tmp_path):
     assert vdr["specVersion"] == "1.7"
 
 
+def test_export_bom_writes_dates_the_validator_accepts(tmp_path):
+    """Naive database times become RFC 3339 UTC, and the VDR validates.
+
+    The vulnerability database stores naive UTC times; CycloneDX date-time
+    needs an offset, so without the conversion ``depscan validate`` rejects
+    every VDR a scan writes.
+    """
+    import json
+
+    from analysis_lib.validation import validate_document
+    from depscan.lib.bom import export_bom
+
+    bom_data = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "version": 1,
+        "metadata": {"tools": {"components": []}},
+        "components": [
+            {"type": "library", "name": "lodash", "version": "4.17.20",
+             "purl": "pkg:npm/lodash@4.17.20", "bom-ref": "pkg:npm/lodash@4.17.20"}
+        ],
+    }
+    vulnerabilities = [
+        {
+            "bom-ref": "CVE-2021-23337/pkg:npm/lodash@4.17.20",
+            "id": "CVE-2021-23337",
+            "published": "2021-02-15T13:15:12",
+            "updated": "2021-09-02T17:16:46.123",
+            "affects": [{"ref": "pkg:npm/lodash@4.17.20"}],
+            "analysis": {"state": "exploitable", "firstIssued": "2021-02-15T13:15:12"},
+        },
+        {
+            "bom-ref": "GHSA-x/pkg:npm/lodash@4.17.20",
+            "id": "GHSA-35jh-r3h4-6jhm",
+            "published": "",
+            "updated": "2021-09-02T17:16:46+02:00",
+            "affects": [{"ref": "pkg:npm/lodash@4.17.20"}],
+        },
+    ]
+    vdr_file = tmp_path / "test.vdr.json"
+    export_bom(bom_data, "1.0.0", vulnerabilities, str(vdr_file))
+    vdr = json.loads(vdr_file.read_text(encoding="utf-8"))
+    first, second = vdr["vulnerabilities"]
+    assert first["published"] == "2021-02-15T13:15:12Z"
+    assert first["updated"] == "2021-09-02T17:16:46Z"
+    assert first["analysis"]["firstIssued"] == "2021-02-15T13:15:12Z"
+    assert "published" not in second
+    assert second["updated"] == "2021-09-02T17:16:46+02:00"
+    detected, errors = validate_document(vdr)
+    assert detected == "cyclonedx"
+    assert errors == []
+
+
 # ---------------------------------------------------------------------------
 # create_bom / BomResult contract
 #
@@ -269,6 +325,7 @@ def test_create_bom_reports_the_document_it_wrote(tmp_path, monkeypatch):
     monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
     monkeypatch.setattr(bom_mod, "run_rusi_reachability", lambda *a, **k: None)
     monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: None)
     monkeypatch.setattr(bom_mod, "run_dosai_reachability", lambda *a, **k: None)
 
     target = str(tmp_path / "sbom-rust.cdx.json")
@@ -372,3 +429,82 @@ def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
     )
     assert bom["metadata"]["tools"]["components"][0]["name"] == "owasp-depscan"
     assert bom["specVersion"] == "1.6"
+
+
+@pytest.mark.parametrize(
+    "project_type, kosi_expected, golem_expected",
+    [("go", False, True), ("kotlin", True, False), ("python", False, False)],
+)
+def test_lifecycle_boms_guard_each_reachability_tool_by_its_types(
+    tmp_path, monkeypatch, project_type, kosi_expected, golem_expected
+):
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+    ran = []
+    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: ran.append("golem"))
+    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: ran.append("kosi"))
+    options = {
+        "project_type": [project_type],
+        "prebuild_bom_file": str(tmp_path / "sbom-prebuild.cdx.json"),
+        "build_bom_file": str(tmp_path / "sbom-build.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container.cdx.json"),
+    }
+    bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
+    assert ("kosi" in ran) is kosi_expected
+    assert ("golem" in ran) is golem_expected
+
+
+def test_a_pure_java_gradle_project_does_not_select_kosi():
+    from depscan.lib import bom as bom_mod
+
+    assert "gradle" not in bom_mod.KOSI_TOOL.project_types
+    assert {"kotlin", "kt", "android"} <= set(bom_mod.KOSI_TOOL.project_types)
+
+
+def test_a_tool_slice_from_an_earlier_scan_is_removed(tmp_path):
+    from depscan.lib import bom as bom_mod
+
+    bom_file = tmp_path / "sbom-kotlin.cdx.json"
+    bom_file.write_text("{}")
+    stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
+    stale.write_text("{}")
+    # The tool applies but reachability is off: no slice may remain.
+    bom_mod.run_kosi_reachability(
+        str(bom_file),
+        str(tmp_path),
+        options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
+    )
+    assert not stale.exists()
+
+
+def test_a_tool_slice_is_removed_when_the_tool_produces_no_report(tmp_path, monkeypatch):
+    from depscan.lib import bom as bom_mod
+
+    bom_file = tmp_path / "sbom-kotlin.cdx.json"
+    bom_file.write_text("{}")
+    stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
+    stale.write_text("{}")
+    monkeypatch.setattr(
+        bom_mod,
+        "KOSI_TOOL",
+        dataclasses.replace(bom_mod.KOSI_TOOL, run_fallback=lambda *a, **k: None),
+    )
+    assert not bom_mod.run_kosi_reachability(
+        str(bom_file), str(tmp_path), options={"project_type": ["kotlin"]}
+    )
+    assert not stale.exists()
+
+
+def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_path):
+    from depscan.lib import bom as bom_mod
+
+    bom_file = tmp_path / "sbom-go.cdx.json"
+    bom_file.write_text("{}")
+    other = tmp_path / bom_mod.KOSI_TOOL.slice_file
+    other.write_text("{}")
+    bom_mod.run_golem_reachability(
+        str(bom_file), str(tmp_path), options={"project_type": ["go"], "reachability_analyzer": "off"}
+    )
+    assert other.exists()

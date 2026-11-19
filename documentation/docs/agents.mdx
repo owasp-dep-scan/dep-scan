@@ -6,6 +6,8 @@ title: Agents and scripts
 
 dep-scan 7's command line is built for programs as much as for people. Every verb accepts `--format json` and then writes exactly one JSON document to stdout, whatever the outcome, while everything a human reads, logs, progress and tables included, goes to stderr. A script or agent starts a verb as a subprocess with stdin closed, parses the whole of stdout as one JSON document, checks the exit code, and shows stderr to a human. This page lists the documents each verb writes, the error document, the exit codes and the rules the command line keeps. The option reference lives in [the usage page](cli-usage).
 
+If you use a coding agent rather than writing one, the agent plugin packages these verbs as skills, three agents and an MCP configuration; see [the agent plugin](agent-plugin).
+
 ## The stdout and stderr rule
 
 In json format a verb writes exactly one JSON document to stdout, followed by a newline, and nothing else on stdout, whatever the exit code: logs, progress, warnings, the result tables and argparse usage text all go to stderr, and the scan verb suppresses its banner. `-h` or `--help` on a command line that asks for json prints the help as the `help` verb's document. An error no verb expected, such as a malformed configuration file, still ends as the error document with exit 1. When a verb fails in json format it also prints its message on stderr as one plain text line, so a human watching stderr sees the failure without reading the document. The default format is text, which prints the verb's human output, the banner and the result tables included, on stdout, and keeps logs, progress, warnings and argparse usage text on stderr.

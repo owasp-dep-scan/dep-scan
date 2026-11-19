@@ -755,3 +755,31 @@ def test_iter_unique_reachable_flows_streams_lazy(tmp_path):
     # Cross-file dedup: the dup is only yielded once.
     flows2 = list(_iter_unique_reachable_flows([str(main_file), str(split_file)]))
     assert len(flows2) == 2
+
+
+def test_reached_by_analyzer_splits_tool_and_atom_slices(tmp_path):
+    import json
+
+    from analysis_lib.reachability import reached_by_analyzer
+
+    def write(name, purls):
+        path = tmp_path / name
+        path.write_text(json.dumps([{"flows": [], "purls": purls}]))
+        return str(path)
+
+    files = [
+        write("java-reachables.slices.json", ["pkg:maven/a/b@1"]),
+        write("go-reachables.slices.json", ["pkg:golang/x/y@1"]),
+        write("kosi-reachables.slices.json", ["pkg:maven/c/d@1"]),
+        write("mystery-reachables.slices.json", ["pkg:hex/e@1"]),
+        write("java-usages.slices.json", ["pkg:npm/ignored@1"]),
+    ]
+    result = reached_by_analyzer(
+        files, {"golem": "go-reachables", "kosi": "kosi-reachables"}
+    )
+    assert set(result) == {"atom", "golem", "kosi"}
+    # an unmapped prefix contributes the purl types its flows carry
+    assert result["atom"]["types"] == {"maven", "hex"}
+    assert result["atom"]["purls"] == {"pkg:maven/a/b@1", "pkg:hex/e@1"}
+    assert result["golem"]["purls"] == {"pkg:golang/x/y@1"}
+    assert result["kosi"]["purls"] == {"pkg:maven/c/d@1"}

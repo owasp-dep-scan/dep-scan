@@ -1,0 +1,32 @@
+{
+  "description": "OWASP dep-scan toolkit for coding agents: scan source projects and container images for vulnerabilities, triage findings, manage the vulnerability database, and produce VEX and CSAF documents.",
+  "author": {
+    "name": "Team AppThreat",
+    "email": "cloud@appthreat.com",
+    "url": "https://github.com/owasp-dep-scan"
+  },
+  "homepage": "https://depscan.readthedocs.io/",
+  "repository": "https://github.com/owasp-dep-scan/dep-scan",
+  "keywords": [
+    "depscan",
+    "owasp",
+    "security",
+    "sca",
+    "vulnerabilities",
+    "vex",
+    "csaf",
+    "sbom",
+    "container-scanning",
+    "supply-chain"
+  ],
+  "marketplace": {
+    "name": "depscan-plugins",
+    "displayName": "OWASP dep-scan",
+    "category": "security"
+  },
+  "codex": {
+    "installation": "AVAILABLE",
+    "authentication": "ON_INSTALL",
+    "category": "Developer Tools"
+  }
+}

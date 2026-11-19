@@ -216,6 +216,37 @@ def _reachable_package_set(sr: Optional[dict]) -> Optional[Set[str]]:
 # ---------------------------------------------------------------------------
 
 
+def _node_reachability(cg: dict) -> Dict[str, dict]:
+    """Per-node root reachability from ``callGraph.reachability.nodes[]``.
+
+    The result maps a call-graph node id to ``reachableFromRoots``,
+    ``minDepth`` and ``rootIds`` as golem reported them, plus ``rootLabels``,
+    the ``function`` text of each root so a reader does not need the node
+    table. An older golem, or a library with no entry root, has no section and
+    the map is empty: a missing entry means "not computed", never "unreachable".
+    """
+    reach = cg.get("reachability") if isinstance(cg, dict) else None
+    if not isinstance(reach, dict):
+        return {}
+    root_labels = {
+        r.get("id"): r.get("function") or r.get("id")
+        for r in cg.get("roots", []) or []
+        if isinstance(r, dict) and r.get("id")
+    }
+    out: Dict[str, dict] = {}
+    for entry in reach.get("nodes", []) or []:
+        if not isinstance(entry, dict) or not entry.get("nodeId"):
+            continue
+        root_ids = [r for r in entry.get("rootIds", []) or [] if isinstance(r, str)]
+        info: dict = {"reachableFromRoots": bool(entry.get("reachableFromRoots"))}
+        if isinstance(entry.get("minDepth"), int):
+            info["minDepth"] = entry["minDepth"]
+        info["rootIds"] = root_ids
+        info["rootLabels"] = [root_labels.get(r, r) for r in root_ids]
+        out[entry["nodeId"]] = info
+    return out
+
+
 def _build_module_path_index(
     report_modules: Optional[Iterable[dict]],
     bom_index: Dict[str, str],
@@ -421,9 +452,13 @@ def convert_golem_report(
             "purl": vpurl,
             "position": pos,
             "source": e.get("sourceName") or "",
+            "source_id": e.get("sourceId"),
+            "target_id": e.get("targetId"),
             "rule_name": "call-graph",
         }
         external_call_records.append(rec)
+
+    node_reach = _node_reachability(cg)
 
     flows: List[dict] = []
 
@@ -579,7 +614,14 @@ def convert_golem_report(
             "parentMethodName": source,
             "isExternal": True,
         }
+        # Root reachability golem computed for each end of the edge: whether an
+        # entry point reaches it, how far away, and from which roots.
+        source_node.update(_reach_fields(node_reach.get(str(rec.get("source_id")))))
+        sink_node.update(_reach_fields(node_reach.get(str(rec.get("target_id")))))
         flows.append({"flows": [source_node, sink_node], "purls": [rec["purl"]]})
+
+    # --- 2b. witness paths for requested symbols --------------------------
+    flows.extend(_witness_flows(cg, cg_nodes, node_reach, bom_index, module_index))
 
     # --- 3. usage flows (PRIMARY signal for simple Go projects) ----------
     # golem's call graph can be sparse for simple apps (SSA-level edges may
@@ -696,6 +738,74 @@ def convert_golem_report(
         unique.append(f)
     unique.sort(key=lambda f: (tuple(f.get("purls", [])), _sort_key_flows(f.get("flows", []))))
     return unique
+
+
+def _reach_fields(info: Optional[dict]) -> dict:
+    """The reachability keys a flow node carries, empty when not computed."""
+    return dict(info) if info else {}
+
+
+def _witness_flows(
+    cg: dict,
+    cg_nodes: Dict,
+    node_reach: Dict[str, dict],
+    bom_index: Dict[str, str],
+    module_index: Dict[str, str],
+) -> List[dict]:
+    """One flow per ``callGraph.reachability.paths[]`` witness path.
+
+    A path runs from a root to a node matching a symbol requested with
+    ``--reachable-symbols``. Each flow node is one function on the path, in
+    call order, so the explainer renders the call stack from an entry point to
+    the symbol. The flow's purls are the dependencies on the path; a path
+    through the application's own code only is dropped.
+    """
+    reach = cg.get("reachability") if isinstance(cg, dict) else None
+    paths = reach.get("paths") if isinstance(reach, dict) else None
+    flows: List[dict] = []
+    for path in paths or []:
+        if not isinstance(path, dict):
+            continue
+        node_ids = [n for n in path.get("nodeIds", []) or [] if isinstance(n, str)]
+        symbol = path.get("symbol") or ""
+        purls: Set[str] = set()
+        nodes: List[dict] = []
+        last_idx = len(node_ids) - 1
+        for idx, nid in enumerate(node_ids):
+            n = cg_nodes.get(nid)
+            if not n:
+                continue
+            vpurl = None
+            if not n.get("standard") and not _is_main_module(n):
+                vpurl = (
+                    reconcile_purl(n.get("purl"), bom_index)
+                    or _module_purl_from_obj(n.get("module"), bom_index)
+                    or _resolve_package_path(n.get("packagePath"), module_index)
+                )
+            if vpurl:
+                purls.add(vpurl)
+            pos = n.get("position") or {}
+            label = n.get("label") or n.get("name") or nid
+            node = {
+                "id": nid,
+                "tags": _build_node_tags(vpurl, "call-graph", "reachable-symbol"),
+                "code": label,
+                "fullName": label,
+                "lineNumber": _pos_line(pos),
+                "columnNumber": _pos_col(pos),
+                "parentFileName": pos.get("filename", ""),
+                "label": "CALL" if idx == last_idx else "IDENTIFIER",
+                "name": n.get("name") or label,
+                "parentMethodName": label,
+                "isExternal": bool(vpurl),
+            }
+            node.update(_reach_fields(node_reach.get(nid)))
+            nodes.append(node)
+        if not purls or not nodes:
+            continue
+        nodes[-1]["witnessSymbol"] = symbol
+        flows.append({"flows": nodes, "purls": sorted(purls)})
+    return flows
 
 
 def _is_main_module(node: dict) -> bool:
