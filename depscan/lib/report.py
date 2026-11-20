@@ -66,8 +66,10 @@ def _graded_pairs(findings, vulnerabilities):
     type, read from the scan directory's findings.
 
     The findings document records each component's own grade; the VDR only
-    holds the most severe grade of a merged entry. Only pairs this type's
-    VDR carries are kept, so a type never shows another type's grades.
+    holds the most severe grade of a merged entry. Only pairs this type's VDR
+    carries are kept. A pair two project types graded shows the assessment
+    the findings kept (the one that assessed more axes), which may be the
+    other type's.
     """
     wanted = {
         (str(vuln.get("id") or ""), str(affect.get("ref")))

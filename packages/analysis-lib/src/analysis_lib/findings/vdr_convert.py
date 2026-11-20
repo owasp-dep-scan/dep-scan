@@ -144,8 +144,11 @@ REACH_NOT_ASSESSED = "not_assessed"
 
 def comparable_purl(purl: str) -> str:
     """A purl without percent-encoding, qualifiers or subpath, so a reached
-    key and an ``affects`` ref spelled differently still compare equal."""
-    return unquote(str(purl)).split("?", 1)[0].split("#", 1)[0]
+    key and an ``affects`` ref spelled differently still compare equal.
+    NuGet package ids and versions are case-insensitive, so a nuget purl is
+    also lowercased."""
+    plain = unquote(str(purl)).split("?", 1)[0].split("#", 1)[0]
+    return plain.lower() if plain[:10].lower() == "pkg:nuget/" else plain
 
 
 #: The purl type each language tool's reachables slice covers. atom's depend
