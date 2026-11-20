@@ -37,7 +37,9 @@ from depscan.lib import doctor as doctor_mod
 
 # The fake tool records every call, prints the version line the test chose
 # and exits with the code the test chose. The shebang marks it as a fake for
-# the patched version command.
+# the patched version command. The record is an append-only JSONL file,
+# because the doctor probes run concurrently and a read-modify-write of one
+# JSON array loses entries of the probes that overlap.
 FAKE_TOOL_SOURCE = """#!/usr/bin/env python3
 import json
 import os
@@ -52,16 +54,9 @@ EXIT_CODE = {exit_code!r}
 def note():
     if not RECORD:
         return
-    entries = []
-    if os.path.exists(RECORD):
-        try:
-            with open(RECORD, encoding="utf-8") as fp:
-                entries = json.load(fp)
-        except ValueError:
-            entries = []
-    entries.append({{"tool": NAME, "argv": sys.argv[1:]}})
-    with open(RECORD, "w", encoding="utf-8") as fp:
-        json.dump(entries, fp)
+    line = json.dumps({{"tool": NAME, "argv": sys.argv[1:]}})
+    with open(RECORD, "a", encoding="utf-8") as fp:
+        fp.write(line + "\\n")
 
 
 note()
@@ -159,7 +154,7 @@ def fakes(tmp_path, monkeypatch, clean_env):
     a lookup nothing serves falls through to the real PATH (which the
     stripped PATH keeps empty); ``record`` collects every fake invocation.
     """
-    record = tmp_path / "record.json"
+    record = tmp_path / "record.jsonl"
 
     def script(name, output, exit_code=0):
         path = tmp_path / f"fake-{name}.py"
@@ -209,7 +204,11 @@ def _capability_signature(report):
 
 def _assert_probed(record, tool, argv):
     """Positive control: the fake tool ran with exactly ``argv``."""
-    entries = json.loads(record.read_text(encoding="utf-8"))
+    entries = [
+        json.loads(line)
+        for line in record.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     assert any(entry["tool"] == tool and entry["argv"] == argv for entry in entries), (
         f"the {tool} fake was never called with {argv}: {entries}"
     )
