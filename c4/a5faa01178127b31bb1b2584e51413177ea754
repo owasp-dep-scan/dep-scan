@@ -1,0 +1,37 @@
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_7318da1b9edd46::t_5a4f6df0db2a67 121-123,126-128,133-135,140,305-307,375,419
+  s_7318da1b9edd46::t_a92f6ec4a5ade5 62-67,69,156-160,165-170,173-180,329-334,337-342,344-346,348-349,380-383,390-395,404,411-418,421-423
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_a92f6ec4a5ade5 1494-1497,1499-1506,1509,1564
+  s_7318da1b9edd46::t_5a4f6df0db2a67 1478-1480
+packages/analysis-lib/src/analysis_lib/output.py
+  s_7318da1b9edd46::t_a92f6ec4a5ade5 172-173,175-178,180-191,197-202,204,216-217,234-236,238,247,249-253,277-279,292,360-362,364-366,368,370-375
+packages/analysis-lib/tests/test_exploitability.py
+  s_7318da1b9edd46::t_a92f6ec4a5ade5 122-135,288-294,343-344,377-433
+  s_7318da1b9edd46::t_9324ae92e2609e 434-435
+depscan/lib/report.py
+  s_7318da1b9edd46::t_a92f6ec4a5ade5 64-90,118-119,130,206
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_7318da1b9edd46::t_a92f6ec4a5ade5 202
+  s_7318da1b9edd46::t_5a4f6df0db2a67 192-194
+packages/analysis-lib/tests/test_output.py
+  s_7318da1b9edd46::t_22e5828390be18 329-356
+test/test_pipeline.py
+  s_7318da1b9edd46::t_e43ec8541b5cea 832-838
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4a5faa01178127b31bb1b2584e51413177ea754",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
