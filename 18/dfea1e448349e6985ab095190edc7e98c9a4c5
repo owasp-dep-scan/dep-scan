@@ -1,0 +1,34 @@
+documentation/docs/mcp.mdx
+  s_376e7604108c38::t_c8a8c513fa5ad0 116,128
+agent-plugin/agents/vuln-triager.md
+  s_376e7604108c38::t_ac525f397bdbc8 60-61,74-76
+documentation/docs/cli-usage.mdx
+  s_376e7604108c38::t_a29f1be4fafe7b 64-68,91,133-135,139
+documentation/sidebars.ts
+  s_376e7604108c38::t_c8a8c513fa5ad0 36
+documentation/docs/reachability-analysis.mdx
+  s_376e7604108c38::t_c8a8c513fa5ad0 16
+agent-plugin/skills/depscan-reachability-proof/SKILL.md
+  s_376e7604108c38::t_170321959e4712 20
+  s_376e7604108c38::t_ac525f397bdbc8 207-209
+documentation/docs/concepts/exploitability.mdx
+  s_376e7604108c38::t_6dfb3450d4993f 1-53
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_376e7604108c38::t_ac525f397bdbc8 69-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18dfea1e448349e6985ab095190edc7e98c9a4c5",
+  "prompts": {},
+  "sessions": {
+    "s_376e7604108c38": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_387cb362-0e14-412a-8ae9-a7b8c308dbfc",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
