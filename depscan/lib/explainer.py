@@ -2,7 +2,6 @@ import glob
 import os
 import re
 from collections import defaultdict
-from functools import lru_cache
 
 from custom_json_diff.lib.utils import json_load
 from rich import box
@@ -606,24 +605,24 @@ def filter_tags(tags):
     return tags
 
 
-@lru_cache(maxsize=65536)
+#: Code that says nothing about a flow: logging, temporaries, returns and
+#: negations. Kept as one tuple so a single ``startswith`` call tests them all.
+_FILTERED_CODE_PREFIXES = (
+    "console.log",
+    "thoughtLog(",
+    "_tmp_",
+    "LOG.debug(",
+    "options.get(",
+    "RET",
+    "this.",
+    "NULL",
+    "!",
+)
+
+
 def is_filterable_code(project_type, code):
-    if len(code) < 3:
-        return True
-    for c in (
-        "console.log",
-        "thoughtLog(",
-        "_tmp_",
-        "LOG.debug(",
-        "options.get(",
-        "RET",
-        "this.",
-        "NULL",
-        "!",
-    ):
-        if code and code.startswith(c):
-            return True
-    return False
+    """True for code too short or too generic to show in a flow."""
+    return len(code) < 3 or code.startswith(_FILTERED_CODE_PREFIXES)
 
 
 def flow_to_str(explanation_mode, flow, project_type):
