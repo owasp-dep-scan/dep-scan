@@ -1,6 +1,6 @@
 [project]
 name = "owasp-depscan"
-version = "7.0.0.dev0"
+version = "7.0.0a1"
 description = "Fully open-source security audit for project dependencies based on known vulnerabilities and advisories."
 authors = [
     {name = "Team AppThreat", email = "cloud@appthreat.com"},
@@ -15,9 +15,9 @@ dependencies = [
     "Jinja2~=3.1.6",
     "packageurl-python~=0.17.6",
     "cvss~=3.6",
-    "ds-xbom-lib~=7.0.0.dev0",
-    "ds-analysis-lib~=7.0.0.dev0",
-    "ds-reporting-lib~=7.0.0.dev0"
+    "ds-xbom-lib~=7.0.0a1",
+    "ds-analysis-lib~=7.0.0a1",
+    "ds-reporting-lib~=7.0.0a1"
 ]
 
 requires-python = ">=3.11"
@@ -51,13 +51,13 @@ dev = [
     "pytest-cov~=7.1.0",
     "mcp[cli]>=2.0.0,<3.0.0",
 ]
-server = ["ds-server-lib~=7.0.0.dev0"]
+server = ["ds-server-lib~=7.0.0a1"]
 ext = ["atom-tools~=1.0.5", "blint~=4.0.1"]
 mcp = ["mcp[cli]>=2.0.0,<3.0.0"]
 all = [
     "atom-tools~=1.0.5",
     "blint~=4.0.1",
-    "ds-server-lib~=7.0.0.dev0",
+    "ds-server-lib~=7.0.0a1",
     "PyGithub~=2.10.0",
     "mcp[cli]>=2.0.0,<3.0.0",
 ]
