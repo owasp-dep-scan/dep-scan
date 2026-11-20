@@ -441,10 +441,14 @@ def _read_blintdb_location() -> Optional[str]:
     Importing ``blint`` executes blint.api and with it the binary analysis
     machinery (lief and friends) that only binary BOM generation needs, so
     every command paid that import just to learn where the database lives.
-    blint's config module needs only the standard library and appdirs, so
-    when blint itself has not been imported yet it is loaded from its file;
-    a config that no longer loads standalone falls back to the plain
-    import, which behaves as before.
+    blint's config module needs only the standard library and appdirs, so it
+    is executed from its file instead. The module is registered in
+    ``sys.modules`` only while it executes, because the dataclass machinery
+    looks the defining module up there, and removed afterwards: a
+    ``blint.config`` entry without its parent package would make a later
+    ``import blint.config`` bind a package that lacks the attribute. When the
+    standalone load fails for any reason, the plain import decides, and a
+    blint that cannot be imported at all counts as not installed.
     """
     try:
         spec = util.find_spec("blint")
@@ -452,34 +456,27 @@ def _read_blintdb_location() -> Optional[str]:
         return None
     if spec is None:
         return None
-    if not spec.origin:
-        from blint.config import BLINTDB_LOC
-
-        return BLINTDB_LOC
+    if "blint.config" in sys.modules:
+        return getattr(sys.modules["blint.config"], "BLINTDB_LOC", None)
     try:
         config_spec = util.spec_from_file_location(
-            "blint.config", os.path.join(os.path.dirname(spec.origin), "config.py")
+            "blint.config", os.path.join(os.path.dirname(spec.origin or ""), "config.py")
         )
         if config_spec is None or config_spec.loader is None:
-            from blint.config import BLINTDB_LOC
-
-            return BLINTDB_LOC
+            raise ImportError("blint.config has no loader")
         module = util.module_from_spec(config_spec)
-        # blint.config defines dataclasses, and the dataclass machinery
-        # resolves the class's module through sys.modules while the module
-        # executes, so the module must be registered first or loading fails
-        # on newer interpreters.
         sys.modules["blint.config"] = module
         try:
             config_spec.loader.exec_module(module)
-        except BaseException:
-            del sys.modules["blint.config"]
-            raise
-    except (ImportError, OSError, AttributeError, SyntaxError):
-        from blint.config import BLINTDB_LOC
-
+        finally:
+            sys.modules.pop("blint.config", None)
+        return module.BLINTDB_LOC
+    except Exception:
+        try:
+            from blint.config import BLINTDB_LOC
+        except Exception:
+            return None
         return BLINTDB_LOC
-    return module.BLINTDB_LOC
 
 
 #: The blintdb path, resolved once at import time. blint.config reads the

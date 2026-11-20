@@ -21,10 +21,11 @@ def test_importing_the_cli_does_not_import_blint_or_lief():
     result = _run(
         "import sys\n"
         "import depscan.cli\n"
-        "heavy = [n for n in ('blint', 'blint.api', 'blint.lib', 'lief') if n in sys.modules]\n"
-        "assert not heavy, f'imported {heavy}'\n"
+        "def heavy():\n"
+        "    return [n for n in ('blint', 'blint.api', 'blint.lib', 'lief') if n in sys.modules]\n"
+        "assert not heavy(), f'imported {heavy()}'\n"
         "import depscan.lib.bom\n"
-        "assert not heavy, f'imported {heavy}'\n"
+        "assert not heavy(), f'imported {heavy()}'\n"
     )
     assert result.returncode == 0, result.stderr
 
@@ -37,6 +38,11 @@ def test_blintdb_status_reads_the_path_without_importing_blint():
         "assert status.name == 'blintdb'\n"
         "assert 'blint' not in sys.modules, 'blint imported'\n"
         "assert 'lief' not in sys.modules, 'lief imported'\n"
+        # The standalone config load must not leave a blint.config entry
+        # without its package, which would break a later import blint.config.
+        "assert 'blint.config' not in sys.modules, 'blint.config left behind'\n"
+        "import blint.config\n"
+        "assert blint.config.BLINTDB_LOC == doctor._BLINTDB_LOC_AT_IMPORT\n"
     )
     assert result.returncode == 0, result.stderr
 
