@@ -1,0 +1,32 @@
+packages/analysis-lib/tests/test_vdr.py
+  s_7318da1b9edd46::t_d24d528a2c3e37 259,262-264
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  s_7318da1b9edd46::t_806b439a9b7d53 147-151
+packages/analysis-lib/tests/test_exploitability.py
+  s_7318da1b9edd46::t_cb1f53b0020103 137,155,247,429-436,438,446,450-505,517-519,536-542
+  s_7318da1b9edd46::t_85bc094439b2d9 543-544
+depscan/lib/report.py
+  s_7318da1b9edd46::t_806b439a9b7d53 69-72
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_7318da1b9edd46::t_806b439a9b7d53 324-326
+  s_7318da1b9edd46::t_d24d528a2c3e37 285-288,298-299,310-312,354-361,468,471
+  s_7318da1b9edd46::t_94588bbd972d51 63-70
+documentation/docs/concepts/exploitability.mdx
+  s_7318da1b9edd46::t_efdb8b2b3e9925 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "476efb6a401a2dd11ebbbe26f314cac880693083",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
