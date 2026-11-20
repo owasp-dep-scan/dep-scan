@@ -806,8 +806,12 @@ def analyze_cve_vuln(
         and purl
         and not is_endpoint_filterable(purl)
     )
-    insights = list(set(insights))
-    plain_insights = list(set(plain_insights))
+    # Dedup while keeping append order: a set would order the strings by
+    # hash, which differs between runs (PYTHONHASHSEED), so the same scan
+    # would render its table and write its VDR with differently ordered
+    # insights.
+    insights = list(dict.fromkeys(insights))
+    plain_insights = list(dict.fromkeys(plain_insights))
     if exploits or pocs:
         vdict["analysis"] = get_analysis(
             {

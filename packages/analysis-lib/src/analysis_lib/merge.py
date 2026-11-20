@@ -152,7 +152,10 @@ def combine_vdrs(v1, v2):
         "bom-ref": preferred.get("bom-ref"),
         # Issue #519: matched_by was missing here
         "matched_by": preferred.get("matched_by") or v1.get("matched_by") or v2.get("matched_by"),
-        "cwes": list(set((v1.get("cwes") or []) + (v2.get("cwes") or []))),
+        # Dedup while keeping first-seen order: a set would order the ids by
+        # hash, which differs between runs, so the merged entry's cwes would
+        # be written in a different order by every run.
+        "cwes": list(dict.fromkeys((v1.get("cwes") or []) + (v2.get("cwes") or []))),
         "detail": v1.get("detail", "") or v2.get("detail", ""),
         "description": v1.get("description", "") or v2.get("description", ""),
         "id": v1.get("id"),
