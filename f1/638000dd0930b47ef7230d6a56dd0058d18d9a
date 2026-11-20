@@ -1,0 +1,28 @@
+depscan/lib/doctor.py
+  s_444cf041c11ded::t_8670c710e63394 438-439,472-486
+  s_444cf041c11ded::t_bd36c117ba852d 822-825,835-842,849-853
+  s_444cf041c11ded::t_645da563fd75d3 487-488
+depscan/commands/scan.py
+  s_444cf041c11ded::t_b4b80903e56eb4 899-901
+  s_444cf041c11ded::t_e1743d7d3bb80e 790-792,805-813,828,833-838
+test/test_v7_scan.py
+  s_444cf041c11ded::t_2679c4dbafe010 1283-1285,1287-1288,1294
+  s_444cf041c11ded::t_68c1b281815c2a 730-731,733-735,739-793
+  s_444cf041c11ded::t_6aa9618acd6ca3 918-950,953-955,957-959,966,968,976
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f1638000dd0930b47ef7230d6a56dd0058d18d9a",
+  "prompts": {},
+  "sessions": {
+    "s_444cf041c11ded": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_19609285-3f8e-426f-9a0c-bfbe09bd1c48",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
