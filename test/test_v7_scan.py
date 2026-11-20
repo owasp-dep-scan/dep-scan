@@ -727,35 +727,70 @@ def test_target_kind_bom_on_a_directory_is_refused_like_the_internal_validation(
 # ---------------------------------------------------------------------------
 
 
-def test_an_explicit_reachability_check_with_cdxgen_hidden_exits_four(
-    scan_stubs, fake_tools, monkeypatch, caplog, tmp_path
+def test_an_explicit_reachability_check_with_cdxgen_hidden_runs_for_a_bom_file(
+    scan_stubs, fake_tools, monkeypatch, tmp_path
 ):
-    """--checks naming reachability stops before any work: exit 4, the
-    doctor's reason logged, and no reports directory."""
+    """A BOM file target never invokes cdxgen, so naming reachability
+    explicitly runs the scan and records reachability not assessed with the
+    doctor's reason, the same as the default checks do."""
     fake_tools["remove"]("cdxgen")
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
-    with caplog.at_level(logging.ERROR, logger=LOG.name):
-        code = run_main(
-            monkeypatch,
-            [
-                "scan",
-                bom,
-                "--checks",
-                "vulnerabilities,reachability",
-                "--reports-dir",
-                str(reports),
-                "--no-banner",
-            ],
-        )
-    assert code == 4
-    message = " ".join(record.getMessage() for record in caplog.records)
-    assert "reachability" in message
-    assert "capability reachability is unavailable" in message
-    assert "cdxgen" in message
-    assert not reports.exists(), "the gate must not create the reports directory"
-    # Positive control of the hidden-tool stub: the scan never ran.
-    assert scan_stubs["matching"] == []
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            bom,
+            "--checks",
+            "vulnerabilities,reachability",
+            "--reports-dir",
+            str(reports),
+            "--no-banner",
+        ],
+    )
+    assert code == 0
+    assert (reports / "depscan.manifest.json").is_file()
+    # Positive control: the scan really ran.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    manifest = _manifest_of(reports)
+    enrichment = next(stage for stage in manifest["stages"] if stage["name"] == "enrichment")
+    analyzers = {entry["name"]: entry for entry in enrichment["analyzers"]}
+    assert analyzers["atom"]["status"] == "not-assessed"
+    assert "cdxgen" in analyzers["atom"]["reason"]
+
+
+def test_an_explicit_reachability_check_with_cdxgen_hidden_runs_for_a_bom_directory(
+    scan_stubs, fake_tools, monkeypatch, tmp_path
+):
+    """The same for a BOM directory: the slices it needs sit beside the
+    inventory, so cdxgen being absent cannot refuse the scan."""
+    fake_tools["remove"]("cdxgen")
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "one.cdx.json")
+    _write_bom(bom_dir / "two.cdx.json", name="two")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            str(bom_dir),
+            "--checks",
+            "vulnerabilities,reachability",
+            "--reports-dir",
+            str(reports),
+            "--no-banner",
+        ],
+    )
+    assert code == 0
+    assert (reports / "depscan.manifest.json").is_file()
+    # Positive control: the scan really ran.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    manifest = _manifest_of(reports)
+    enrichment = next(stage for stage in manifest["stages"] if stage["name"] == "enrichment")
+    analyzers = {entry["name"]: entry for entry in enrichment["analyzers"]}
+    assert analyzers["atom"]["status"] == "not-assessed"
+    assert "cdxgen" in analyzers["atom"]["reason"]
 
 
 def test_the_default_checks_are_never_gated(scan_stubs, fake_tools, monkeypatch, tmp_path):
@@ -880,22 +915,57 @@ def test_profile_deep_runs_the_license_analysis_for_a_bom_target(
 # ---------------------------------------------------------------------------
 
 
-def test_checks_named_alongside_all_are_gated(
+def test_checks_named_alongside_all_run_for_a_bom_inventory(
+    scan_stubs, fake_tools, monkeypatch, tmp_path
+):
+    """A check named next to all is gated like a directly named check, and a
+    BOM directory never invokes cdxgen: with cdxgen hidden, all,reachability
+    runs and records reachability not assessed with the doctor's reason."""
+    fake_tools["remove"]("cdxgen")
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "one.cdx.json")
+    reports = tmp_path / "reports"
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            str(bom_dir),
+            "--checks",
+            "all,reachability",
+            "--reports-dir",
+            str(reports),
+            "--no-banner",
+        ],
+    )
+    assert code == 0
+    manifest = _manifest_of(reports)
+    stages = {stage["name"]: stage for stage in manifest["stages"]}
+    assert stages["check-reachability"]["status"] == "not-assessed"
+    assert "cdxgen" in stages["check-reachability"]["reason"]
+    # Positive control: the scan ran and matched the BOM's packages.
+    assert scan_stubs["matching"], "the matching stage never ran"
+
+
+def test_checks_named_alongside_all_still_gate_a_capability_no_inventory_lifts(
     scan_stubs, fake_tools, monkeypatch, caplog, tmp_path
 ):
-    """A check named next to all is gated like a directly named check: with
-    cdxgen unusable, all,reachability refuses the run before any work."""
+    """The inventory exception covers the cdxgen requirement only. A named
+    check whose capability stays unavailable for a BOM directory, such as
+    the not-implemented memory-safety, still refuses the run."""
     fake_tools["remove"]("cdxgen")
-    bom = _write_bom(tmp_path / "given.cdx.json")
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "one.cdx.json")
     reports = tmp_path / "reports"
     with caplog.at_level(logging.ERROR, logger=LOG.name):
         code = run_main(
             monkeypatch,
             [
                 "scan",
-                bom,
+                str(bom_dir),
                 "--checks",
-                "all,reachability",
+                "all,memory-safety",
                 "--reports-dir",
                 str(reports),
                 "--no-banner",
@@ -903,7 +973,7 @@ def test_checks_named_alongside_all_are_gated(
         )
     assert code == 4
     message = " ".join(record.getMessage() for record in caplog.records)
-    assert "capability reachability is unavailable" in message
+    assert "memory-safety is not implemented" in message
     assert not reports.exists(), "the gate must not create the reports directory"
     # Positive control of the hidden-tool stub: the scan never ran.
     assert scan_stubs["matching"] == []
@@ -1210,15 +1280,18 @@ def test_json_format_gated_check_prints_the_error_document(
     scan_stubs, fake_tools, monkeypatch, capfd, tmp_path
 ):
     """A named check whose capability cannot run stops the verb with the
-    error document: the capability and the doctor's reason in details."""
+    error document: the capability and the doctor's reason in details. A
+    source target keeps the refusal, because such a scan needs cdxgen to
+    produce the slices at all."""
     fake_tools["remove"]("cdxgen")
-    bom = _write_bom(tmp_path / "given.cdx.json")
+    src = tmp_path / "src"
+    src.mkdir()
     reports = tmp_path / "reports"
     code = run_main(
         monkeypatch,
         [
             "scan",
-            bom,
+            str(src),
             "--checks",
             "vulnerabilities,reachability",
             "--reports-dir",

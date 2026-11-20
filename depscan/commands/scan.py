@@ -787,7 +787,9 @@ def _missing_source_message(target: str) -> str:
     return f"The source target '{target}' does not exist."
 
 
-def _capability_gate(args: argparse.Namespace, names):
+def _capability_gate(
+    args: argparse.Namespace, names, kinds: Optional[List[str]] = None
+):
     """Collect one doctor report when checks or a profile were requested.
 
     Each explicitly requested check whose doctor capability is
@@ -800,6 +802,15 @@ def _capability_gate(args: argparse.Namespace, names):
     ``(report, refusal)``, ``refusal`` the :class:`_Refusal` to report when
     the gate stopped the verb; the report is the one the scans reuse. The
     refusal is logged by the caller, in the format the caller writes.
+
+    ``kinds`` lists the kinds of the targets the verb will actually scan. A
+    run whose every scannable target is a BOM file or BOM directory produces
+    no BOM and never invokes cdxgen, so the reachability capability cannot
+    fail on cdxgen being missing: the slices the check reads already sit
+    next to the inventory, and where they are missing the scan records
+    reachability as not assessed, exactly as when no check was named. Every
+    other kind (a source or container target) keeps the refusal, since such
+    a scan needs cdxgen to produce the slices at all.
     """
     profile_name = getattr(args, "profile", None)
     named = [name for name in names if name != checks_table.ALL_CHECKS]
@@ -814,11 +825,17 @@ def _capability_gate(args: argparse.Namespace, names):
         # Only the all expansion was requested.
         return report, None
     tools = report.tools_by_name()
+    inventory_only = bool(kinds) and all(kind in ("bom", "bom-dir") for kind in kinds)
     for name in requested:
         capability = checks_table.CHECKS[name].capability
         if capability is None:
             continue
-        reason = doctor_lib.capability_unavailable_reason(capability, tools, report.data)
+        reason = doctor_lib.capability_unavailable_reason(
+            capability,
+            tools,
+            report.data,
+            skip_requirements=("tool:cdxgen",) if inventory_only else (),
+        )
         if reason:
             return None, _Refusal(
                 EXIT_REQUIREMENT_NOT_MET,
@@ -879,7 +896,9 @@ def run(args: argparse.Namespace) -> int:
         else:
             LOG.error(refusal.message)
         return refusal.exit_code
-    report, gate_refusal = _capability_gate(args, names)
+    report, gate_refusal = _capability_gate(
+        args, names, [kind for _target, kind, _refusal in entries if kind is not None]
+    )
     if gate_refusal is not None:
         if json_output:
             print_error_document(

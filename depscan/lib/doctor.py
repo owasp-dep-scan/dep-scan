@@ -435,8 +435,8 @@ def _blint_status() -> ToolStatus:
     return status
 
 
-def _blintdb_location() -> Optional[str]:
-    """The blintdb database path, read without importing the blint package.
+def _read_blintdb_location() -> Optional[str]:
+    """The blintdb database path from blint's config, without importing blint.
 
     Importing ``blint`` executes blint.api and with it the binary analysis
     machinery (lief and friends) that only binary BOM generation needs, so
@@ -446,9 +446,6 @@ def _blintdb_location() -> Optional[str]:
     a config that no longer loads standalone falls back to the plain
     import, which behaves as before.
     """
-    config = sys.modules.get("blint.config")
-    if config is not None:
-        return getattr(config, "BLINTDB_LOC", None)
     try:
         spec = util.find_spec("blint")
     except (ImportError, ValueError):
@@ -470,6 +467,23 @@ def _blintdb_location() -> Optional[str]:
 
         return BLINTDB_LOC
     return module.BLINTDB_LOC
+
+
+#: The blintdb path, resolved once at import time. blint.config reads the
+#: environment when it executes, and the plain import this replaces resolved
+#: the path during the startup import too, so the doctor report and the
+#: manifest it feeds show the location the process started with however late
+#: the report is collected.
+_BLINTDB_LOC_AT_IMPORT = _read_blintdb_location()
+
+
+def _blintdb_location() -> Optional[str]:
+    """The blintdb path for this report: an already imported blint.config
+    wins (tests stub it there), else the import-time resolution."""
+    config = sys.modules.get("blint.config")
+    if config is not None:
+        return getattr(config, "BLINTDB_LOC", None)
+    return _BLINTDB_LOC_AT_IMPORT
 
 
 def _blintdb_status() -> ToolStatus:
@@ -805,7 +819,10 @@ def requirement_reason(
 
 
 def capability_unavailable_reason(
-    name: str, tools: Dict[str, ToolStatus], data: Dict[str, Any]
+    name: str,
+    tools: Dict[str, ToolStatus],
+    data: Dict[str, Any],
+    skip_requirements: Tuple[str, ...] = (),
 ) -> Optional[str]:
     """Why a capability cannot run here, or None when it can.
 
@@ -815,13 +832,25 @@ def capability_unavailable_reason(
     message the doctor report prints for the tool or data behind it. An
     unknown name and a capability this version does not implement are
     reported as reasons too, because both mean the step cannot run.
+
+    ``skip_requirements`` names requirements the caller's scan shape cannot
+    fail. The capability gate passes the cdxgen requirement for a run whose
+    every target is a BOM file or BOM directory: those scans produce no BOM
+    and never invoke cdxgen, and where the slices it would have produced are
+    missing the scan records reachability as not assessed rather than
+    refusing to run. The requirements stay in :data:`CAPABILITIES`; this
+    argument only scopes them to the caller's inventory.
     """
     spec = next((spec for spec in CAPABILITIES if spec.name == name), None)
     if spec is None:
         return f"{name} is not a capability this version knows"
     if not spec.implemented:
         return f"{name} is not implemented in this version ({issue_url(spec.issue)})"
-    missing = [r for r in spec.requirements if requirement_missing(r, tools, data)]
+    missing = [
+        r
+        for r in spec.requirements
+        if r not in skip_requirements and requirement_missing(r, tools, data)
+    ]
     if not missing:
         return None
     detail = "; ".join(f"{r} ({requirement_reason(r, tools, data)})" for r in missing)
