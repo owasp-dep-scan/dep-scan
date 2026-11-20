@@ -1,7 +1,7 @@
 {
   "name": "depscan",
   "description": "OWASP dep-scan toolkit for coding agents: scan source projects and container images for vulnerabilities, triage findings, manage the vulnerability database, and produce VEX and CSAF documents.",
-  "version": "7.0.0-0.dev.0",
+  "version": "7.0.0-alpha.1",
   "author": {
     "name": "Team AppThreat",
     "email": "cloud@appthreat.com",
