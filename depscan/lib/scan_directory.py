@@ -229,6 +229,12 @@ def input_entries(options: Dict[str, Any]) -> List[Dict[str, Any]]:
             add({"type": "file", "path": custom, "sha256": sha256_file(custom)})
         else:
             add({"type": "file", "path": custom})
+    if options.get("exploitability_rules"):
+        rules = str(options["exploitability_rules"])
+        if os.path.isfile(rules):
+            add({"type": "file", "path": rules, "sha256": sha256_file(rules)})
+        else:
+            add({"type": "file", "path": rules})
     if options.get("report_template"):
         template = str(options["report_template"])
         if os.path.isfile(template):

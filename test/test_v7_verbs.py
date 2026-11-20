@@ -787,6 +787,47 @@ def test_scan_with_an_invalid_exploitability_rules_file_is_a_usage_error(
     assert "schema rejected" in err
 
 
+def test_an_invalid_rules_file_is_refused_before_any_target_resolves(
+    monkeypatch, capsys, tmp_path
+):
+    """The rule table is checked first: a missing target directory would
+    otherwise exit with its own code and hide the broken table."""
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            str(tmp_path / "no-such-project"),
+            "--exploitability-rules",
+            str(tmp_path / "missing.yaml"),
+            "--format",
+            "json",
+        ],
+    )
+    assert code == 2
+    document = json.loads(capsys.readouterr().out)
+    assert "exploitability rules file is unusable" in document["error"]["message"]
+
+
+def test_a_relative_rules_path_in_depscan_toml_resolves_next_to_the_file(
+    monkeypatch, capsys, tmp_path, clean_option_env
+):
+    config_dir = tmp_path / "conf"
+    config_dir.mkdir()
+    (config_dir / "rules.yaml").write_text(
+        "rules:\n  - id: everything\n    grade: low\n", encoding="utf-8"
+    )
+    config = config_dir / "depscan.toml"
+    config.write_text('exploitability_rules = "rules.yaml"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    code = run_main(
+        monkeypatch, ["config", "show", "--config", str(config), "--format", "json"]
+    )
+    assert code == 0
+    origin = json.loads(capsys.readouterr().out)["exploitabilityRules"]
+    assert origin["source"] == "override"
+    assert os.path.realpath(origin["path"]) == os.path.realpath(config_dir / "rules.yaml")
+
+
 def test_config_show_reports_what_a_profile_and_checks_set(monkeypatch, capsys, clean_option_env):
     """``config show`` resolves --profile and --checks the way the scan verb
     does, so the printed options are the ones a scan would use."""

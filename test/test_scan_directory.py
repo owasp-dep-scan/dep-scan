@@ -518,7 +518,7 @@ def test_fixture_is_a_valid_scan_directory():
         assert entry["sha256"] == actual, f"the digest of {path}"
 
     findings = json.loads((FIXTURE_DIR / "depscan.findings.json").read_text())
-    assert findings["schemaVersion"] == "1"
+    assert findings["schemaVersion"] == scan_directory.FINDINGS_SCHEMA_VERSION
     assert len(findings["findings"]) == 1
     validate("finding", findings["findings"][0])
     vdr = json.loads((FIXTURE_DIR / "django-app.vdr.json").read_text())
@@ -1274,3 +1274,17 @@ def test_a_corrupted_findings_document_is_refused_not_read_as_clean(scan_stubs, 
     message = str(excinfo.value)
     assert "depscan.findings.json" in message
     assert "not valid JSON" in message
+
+
+def test_a_rules_override_is_recorded_as_an_input_with_its_digest(tmp_path):
+    """A scan graded with a replacement rule table says which table, so two
+    scans with different grades can be told apart from their manifests."""
+    rules = tmp_path / "rules.yaml"
+    rules.write_text("rules:\n  - id: everything\n    grade: low\n", encoding="utf-8")
+    entries = scan_directory.input_entries(
+        {"bom": None, "src_dir": str(tmp_path), "exploitability_rules": str(rules)}
+    )
+    recorded = [entry for entry in entries if entry.get("path") == str(rules)]
+    assert recorded == [
+        {"type": "file", "path": str(rules), "sha256": scan_directory.sha256_file(str(rules))}
+    ]

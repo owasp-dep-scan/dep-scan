@@ -18,6 +18,13 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, TypeVar, Union
 _NamespaceT = TypeVar("_NamespaceT", bound=argparse.Namespace)
 
 
+#: Path keys that a relative value in depscan.toml resolves against the
+#: directory of that file, so a rule table kept next to the config is found
+#: whatever directory the scan runs from. Keys older than v7 keep resolving
+#: against the working directory, as they always have.
+CONFIG_RELATIVE_PATHS = ("exploitability_rules",)
+
+
 class ArgumentParser(argparse.ArgumentParser):
     """A wrapper of the argparse.ArgumentParser class that adds the ability to
     specify the values for arguments using a TOML file.
@@ -147,6 +154,8 @@ class ArgumentParser(argparse.ArgumentParser):
             # command-line arguments win over the TOML config.
             dest = key.replace("-", "_")
             if dest not in changed_args:
+                if dest in CONFIG_RELATIVE_PATHS and isinstance(value, str) and value:
+                    value = os.path.join(os.path.dirname(os.path.abspath(config)), value)
                 setattr(sys_args, dest, value)
 
         return sys_args
