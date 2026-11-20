@@ -816,3 +816,23 @@ def test_reached_by_analyzer_splits_tool_and_atom_slices(tmp_path):
     assert result["atom"]["purls"] == {"pkg:maven/a/b@1", "pkg:hex/e@1"}
     assert result["golem"]["purls"] == {"pkg:golang/x/y@1"}
     assert result["kosi"]["purls"] == {"pkg:maven/c/d@1"}
+
+
+def test_per_file_purl_sets_include_flows_first_seen_in_another_file(tmp_path):
+    """The dedup is across every file, so a golem flow that atom's file
+    already held is not yielded again. Its purls must still land in the
+    golem file's set, or the golem analyzer would lose them."""
+    from analysis_lib.reachability import _iter_unique_reachable_flows, reached_by_analyzer
+
+    shared = {"flows": [{"id": "n1", "tags": "web"}], "purls": ["pkg:golang/a/b@v1.0.0"]}
+    atom_file = _write(tmp_path / "java-reachables.slices.json", [shared])
+    own = {"flows": [{"id": "n2", "tags": "api"}], "purls": ["pkg:golang/c/d@v2.0.0"]}
+    golem_file = _write(tmp_path / "go-reachables.slices.json", [shared, own])
+    files = [str(atom_file), str(golem_file)]
+    purls_by_file = {}
+    flows = list(_iter_unique_reachable_flows(files, purls_by_file))
+    # Positive control: the second copy really was deduplicated away.
+    assert len(flows) == 2
+    assert purls_by_file[str(golem_file)] == {"pkg:golang/a/b@v1.0.0", "pkg:golang/c/d@v2.0.0"}
+    stems = {"golem": "go-reachables"}
+    assert reached_by_analyzer(files, stems, purls_by_file) == reached_by_analyzer(files, stems)

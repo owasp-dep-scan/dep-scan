@@ -163,9 +163,9 @@ class ReachabilityResult:
     reached_services: Optional[Dict[str, int]] = None
     endpoint_reached_purls: Optional[Dict[str, int]] = None
     #: The reached purls of each reachables slice file the analysis pass
-    #: read, keyed by file path. The deduped flow iteration carries every
-    #: distinct purl a file holds, so callers that only need per-file purl
-    #: sets can take them from here instead of parsing the slices again.
+    #: read, keyed by file path, built from every flow in the file, those
+    #: deduplicated against an earlier file included. Callers that only need
+    #: per-file purl sets take them from here instead of parsing again.
     purls_by_file: Optional[Dict[str, set]] = None
 
 

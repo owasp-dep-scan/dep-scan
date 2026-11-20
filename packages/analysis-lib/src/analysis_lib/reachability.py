@@ -193,11 +193,11 @@ def _iter_json_list(file_path: str):
             idx += 1
 
 
-def _iter_unique_reachable_flows_by_file(
+def _iter_unique_reachable_flows(
     slices_files: Optional[Iterable[str]],
-) -> Iterator[tuple]:
-    """Yield ``(slice_file, flow)`` for each unique reachables flow, the
-    slice file the flow was read from included.
+    purls_by_file: Optional[Dict[str, set]] = None,
+) -> Iterator[dict]:
+    """Yield each unique reachables flow across all slice files.
 
     atom reachables slices are bare JSON arrays, split into one
     ``slices.json`` plus ``slices_1..N.json`` files capped at 1000 flow
@@ -207,10 +207,12 @@ def _iter_unique_reachable_flows_by_file(
     SET. But intra-set duplication is heavy, and counting a flow twice
     inflates ``reached_purls[purl] += 1`` without changing which purls are
     reached. This iterator yields each flow once (identity == canonical
-    JSON of the whole flow object), so callers can count freely and collect
-    each file's purl set from the flows it actually yielded: a duplicate
-    flow carries the same purls as the copy that was yielded, so the per
-    file set matches a full read of the file.
+    JSON of the whole flow object), so callers can count freely.
+
+    ``purls_by_file``, when given, receives the purl set of every file read,
+    built from every flow in it, duplicates included: a flow first seen in
+    another file still belongs to this file's set, so the sets equal a full
+    read of each file and a later per-file consumer need not parse again.
 
     Memory: slices are streamed via ``_iter_json_list`` so the full parsed
     tree is never materialized; only the file text + one flow at a time.
@@ -220,26 +222,17 @@ def _iter_unique_reachable_flows_by_file(
     for slice_file in slices_files or []:
         if not slice_file or "reachables" not in slice_file:
             continue
+        file_purls = None if purls_by_file is None else purls_by_file.setdefault(slice_file, set())
         for flow in _iter_json_list(slice_file):
             if not isinstance(flow, dict):
                 continue
+            if file_purls is not None:
+                file_purls.update(str(p) for p in flow.get("purls") or [])
             identity = _flow_identity(flow)
             if identity in seen:
                 continue
             seen.add(identity)
-            yield slice_file, flow
-
-
-def _iter_unique_reachable_flows(
-    slices_files: Optional[Iterable[str]],
-) -> Iterator[dict]:
-    """Yield each unique reachables flow across all slice files.
-
-    See :func:`_iter_unique_reachable_flows_by_file`, which this wraps when
-    the caller does not need the file each flow came from.
-    """
-    for _slice_file, flow in _iter_unique_reachable_flows_by_file(slices_files):
-        yield flow
+            yield flow
 
 
 #: The purl type each atom slice file prefix (``<prefix>-reachables.slices``)
@@ -357,18 +350,15 @@ class FrameworkReachability(ReachabilityAnalyzer):
             # duplicates. The reached SET is unchanged; only counts drop.
             # Each file's purl set is collected on the way, so a caller that
             # needs per-file sets can take them instead of re-reading.
-            for slice_file, flow in _iter_unique_reachable_flows_by_file(
-                analysis_options.slices_files
-            ):
-                purls_by_file.setdefault(slice_file, set()).update(
-                    str(p) for p in flow.get("purls") or []
-                )
+            for flow in _iter_unique_reachable_flows(analysis_options.slices_files, purls_by_file):
                 for apurl in flow.get("purls") or []:
                     reached_purls[apurl] += 1
         if not direct_purls and not reached_purls:
             status = False
         return ReachabilityResult(
-            success=status, direct_purls=direct_purls, reached_purls=reached_purls,
+            success=status,
+            direct_purls=direct_purls,
+            reached_purls=reached_purls,
             purls_by_file=purls_by_file,
         )
 
@@ -529,12 +519,7 @@ class SemanticReachability(FrameworkReachability):
             # SETS are unchanged; only counts drop. Each file's purl set is
             # collected on the way, so a caller that needs per-file sets can
             # take them instead of re-reading the slices.
-            for slice_file, flow in _iter_unique_reachable_flows_by_file(
-                analysis_options.slices_files
-            ):
-                purls_by_file.setdefault(slice_file, set()).update(
-                    str(p) for p in flow.get("purls") or []
-                )
+            for flow in _iter_unique_reachable_flows(analysis_options.slices_files, purls_by_file):
                 # Associate SERVICE_TAGS with the purl named in the SAME node's
                 # tag string (positional), instead of flattening all node tags
                 # across the flow and applying them to every flow purl. This
