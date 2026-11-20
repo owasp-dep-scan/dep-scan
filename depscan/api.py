@@ -87,7 +87,8 @@ class ScanResult:
     document and ``findings`` the array of ``depscan.findings.json``; both
     are set for a scan of this version and for a manifest-backed
     :func:`load_scan`, and carry the earlier values (None and []) when a
-    directory without a manifest is loaded.
+    directory without a manifest is loaded. ``findings_version`` is the
+    findings document's ``schemaVersion`` as read, or None without one.
     """
 
     reports_dir: str
@@ -95,6 +96,7 @@ class ScanResult:
     types: List[TypeScanResult] = field(default_factory=list)
     manifest: Optional[Dict[str, Any]] = None
     findings: List[Dict[str, Any]] = field(default_factory=list)
+    findings_version: Optional[str] = None
 
     @property
     def vulnerabilities(self) -> List[Dict[str, Any]]:
@@ -728,6 +730,7 @@ def _load_manifest_scan(reports_dir: str, manifest: Dict[str, Any]) -> ScanResul
         types=types,
         manifest=manifest,
         findings=(findings_document or {}).get("findings") or [],
+        findings_version=(findings_document or {}).get("schemaVersion"),
     )
 
 

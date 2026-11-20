@@ -681,6 +681,54 @@ def test_the_grade_filter_matches_one_or_more_grades(open_session, make_scan_dir
     assert outcomes["grade_either"] == [high["rule"], ungraded["rule"]]
 
 
+def test_the_grade_filter_rejects_bad_input_and_skips_ungraded_findings(
+    open_session, make_scan_dir
+):
+    scan_dir = make_scan_dir("ungraded", vulns=[VULN_HIGH])
+    findings_path = scan_dir / "depscan.findings.json"
+    document = json.loads(findings_path.read_text(encoding="utf-8"))
+    for finding in document["findings"]:
+        finding.pop("exploitability", None)
+    findings_path.write_text(json.dumps(document), encoding="utf-8")
+
+    async def scenario(session):
+        base = {"scan_dir": str(scan_dir)}
+        return {
+            "string": await call_error(session, "list_findings", {**base, "grade": "high"}),
+            "unknown": await call_error(session, "list_findings", {**base, "grade": ["severe"]}),
+            "empty": await call_error(session, "list_findings", {**base, "grade": []}),
+            "ungraded": await call_document(
+                session,
+                "list_findings",
+                {**base, "grade": ["high", "moderate", "low", "unassessed"]},
+                "depscan-mcp-list_findings-output",
+            ),
+        }
+
+    outcomes = drive(open_session, scenario, (scan_dir.parent,))
+    for key in ("string", "unknown", "empty"):
+        assert "grade" in outcomes[key], outcomes[key]
+    # A finding with no recorded grade matches no grade.
+    assert outcomes["ungraded"]["findings"] == []
+
+
+def test_findings_of_an_older_schema_version_are_refused_by_name(open_session, make_scan_dir):
+    """A scan written before the Pressure axis was removed says which
+    version it is instead of failing on a schema error per finding."""
+    scan_dir = make_scan_dir("older", vulns=[VULN_HIGH])
+    findings_path = scan_dir / "depscan.findings.json"
+    document = json.loads(findings_path.read_text(encoding="utf-8"))
+    document["schemaVersion"] = "1"
+    findings_path.write_text(json.dumps(document), encoding="utf-8")
+
+    async def scenario(session):
+        return await call_error(session, "list_findings", {"scan_dir": str(scan_dir)})
+
+    message = drive(open_session, scenario, (scan_dir.parent,))
+    assert "findings schema version 1" in message
+    assert "scan the project again" in message
+
+
 class _StubReachability:
     """A reachability engine that reports the purls the test hands it."""
 

@@ -504,7 +504,7 @@ async def test_an_unreadable_manifest_is_an_error_naming_the_file(scan_env, cont
     [
         "{not json at all",
         "{}",
-        '{"schemaVersion": "1"}',
+        '{"schemaVersion": "2"}',
         '{"findings": []}',
     ],
     ids=["not-json", "empty-object", "no-findings-key", "no-schema-version"],
@@ -525,6 +525,22 @@ async def test_an_unreadable_findings_document_is_an_error_naming_the_file(scan_
         message = read_error_text(error)
         assert "depscan.findings.json" in message
         assert "unreadable" in message
+
+
+@pytest.mark.asyncio
+async def test_findings_of_an_older_schema_version_are_refused_by_name(scan_env):
+    older = scan_env.root / "older-findings"
+    older.mkdir()
+    (older / "depscan.findings.json").write_text(
+        '{"schemaVersion": "1", "findings": []}', encoding="utf-8"
+    )
+    uri = res_mod.scan_resource_uri(str(older), "findings")
+    async with mcp_client([scan_env.root]) as client:
+        with pytest.raises(MCPError) as excinfo:
+            await client.read_resource(uri)
+    message = read_error_text(excinfo)
+    assert "findings schema version 1" in message
+    assert "scan the project again" in message
 
 
 @pytest.mark.asyncio

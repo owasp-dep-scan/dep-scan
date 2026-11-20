@@ -210,6 +210,16 @@ def _document(scan_root: str, parsed: ParsedResourceUri) -> Any:
         raise _unreadable_document_error(
             scan_root, scan_directory.FINDINGS_FILE, "schemaVersion and findings array"
         )
+    version = findings_document["schemaVersion"]
+    if version != scan_directory.FINDINGS_SCHEMA_VERSION:
+        raise MCPError(
+            code=types.INVALID_PARAMS,
+            message=(
+                f"{scan_directory.FINDINGS_FILE} of '{scan_root}' uses findings schema "
+                f"version {version}, and this dep-scan reads version "
+                f"{scan_directory.FINDINGS_SCHEMA_VERSION}; scan the project again"
+            ),
+        )
     if parsed.kind == "findings":
         return findings_document
     for finding in findings_document.get("findings") or []:
@@ -297,8 +307,7 @@ async def handle_read_resource(ctx, params) -> types.ReadResourceResult:
         raise MCPError(
             code=types.INVALID_PARAMS,
             message=(
-                f"the scan directory '{parsed.scan_dir}' does not exist or "
-                "is not a directory"
+                f"the scan directory '{parsed.scan_dir}' does not exist or is not a directory"
             ),
         )
     try:
@@ -340,9 +349,9 @@ def _render_triage_findings(scan_dir: Optional[str]) -> str:
         "\n"
         "Call the dep-scan MCP tools in this order:\n"
         "\n"
-        f"1. Call scan_summary with {SCAN_DIR_ARGUMENT} \"{directory}\" to "
+        f'1. Call scan_summary with {SCAN_DIR_ARGUMENT} "{directory}" to '
         "read the finding counts by category and severity.\n"
-        f"2. Call list_findings with {SCAN_DIR_ARGUMENT} \"{directory}\", "
+        f'2. Call list_findings with {SCAN_DIR_ARGUMENT} "{directory}", '
         "using its severity, category, purl, cwe, rule and reachable "
         "filters where they help, and follow nextCursor until no page "
         "remains.\n"
@@ -350,7 +359,7 @@ def _render_triage_findings(scan_dir: Optional[str]) -> str:
         "read the details a list page leaves out.\n"
         "4. Call explain_finding when reachability matters; the text it "
         "returns covers the whole scan, not one finding.\n"
-        f"5. Call coverage with {SCAN_DIR_ARGUMENT} \"{directory}\" to read "
+        f'5. Call coverage with {SCAN_DIR_ARGUMENT} "{directory}" to read '
         "the checks that were not assessed, so the triage can say where "
         "the scan is blind.\n"
         "\n"
@@ -381,14 +390,14 @@ def _render_plan_fixes(scan_dir: Optional[str]) -> str:
         "\n"
         "Call the dep-scan MCP tools in this order:\n"
         "\n"
-        f"1. Call list_findings with {SCAN_DIR_ARGUMENT} \"{directory}\" "
+        f'1. Call list_findings with {SCAN_DIR_ARGUMENT} "{directory}" '
         "and follow nextCursor until every page is read.\n"
         "2. Call get_finding for each finding the plan will cover, to "
         "read the fix field when the finding carries one, with its "
         "coverage and exploitability.\n"
         "3. Call explain_finding when reachability should shape the order; "
         "the text it returns covers the whole scan, not one finding.\n"
-        f"4. Call coverage with {SCAN_DIR_ARGUMENT} \"{directory}\" to read "
+        f'4. Call coverage with {SCAN_DIR_ARGUMENT} "{directory}" to read '
         "the checks that were not assessed, and say in the plan where the "
         "scan is blind.\n"
         "\n"
@@ -456,10 +465,7 @@ async def handle_get_prompt(ctx, params) -> types.GetPromptResult:
     if spec is None:
         raise MCPError(
             code=types.INVALID_PARAMS,
-            message=(
-                f"unknown prompt '{name}'; this server defines: "
-                f"{', '.join(PROMPT_NAMES)}"
-            ),
+            message=(f"unknown prompt '{name}'; this server defines: {', '.join(PROMPT_NAMES)}"),
         )
     arguments = params.arguments or {}
     scan_dir_value = arguments.get(SCAN_DIR_ARGUMENT)

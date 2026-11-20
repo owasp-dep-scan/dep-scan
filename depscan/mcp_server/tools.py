@@ -171,6 +171,13 @@ def _check_documents(scan_dir: str, result: api.ScanResult) -> None:
                 f"the manifest of the scan at {json_path(scan_dir)} does not "
                 f"satisfy the depscan-manifest schema: {exc}"
             ) from exc
+    version = result.findings_version
+    if version is not None and str(version) != scan_directory.FINDINGS_SCHEMA_VERSION:
+        raise ToolError(
+            f"the findings of the scan at {json_path(scan_dir)} use findings "
+            f"schema version {version}, and this dep-scan reads version "
+            f"{scan_directory.FINDINGS_SCHEMA_VERSION}; scan the project again"
+        )
     for index, finding in enumerate(result.findings or []):
         try:
             validate("depscan-finding", finding)
