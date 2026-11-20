@@ -69,8 +69,9 @@ a non-empty reached set, and `not_assessed` when no analyzer covered the
 type; `exploitability.sources.reach` names the analyzers. `reachable=true`
 returns the `likely` findings. The `grade` filter takes an array and
 matches a finding whose `exploitability.grade` is one of the listed
-grades, so `grade=["high"]` is the fastest page of the worst-graded
-findings; a grade is never inferred from severity. dep-scan writes no `unlikely` or `refuted` value,
+grades, so `grade=["critical", "high"]` is the fastest page of the
+worst-graded findings (the bundled table grades no higher than `high`, a
+replacement table can); a grade is never inferred from severity. dep-scan writes no `unlikely` or `refuted` value,
 so `reachable=false` returns nothing, and an empty page from either value
 is never "nothing is reachable".
 

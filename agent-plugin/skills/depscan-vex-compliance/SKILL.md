@@ -56,6 +56,15 @@ CycloneDX VDR next to the BOM in the reports directory, named after it:
 `depscan-universal.vdr.json` for a BOM directory. A purl scan writes no
 VDR.
 
+Each VDR vulnerability carries the exploitability assessment as
+properties: `depscan:exploitability:grade`, `depscan:exploitability:rule`
+and one `depscan:exploitability:axis:<name>` per axis. CycloneDX
+properties belong to the vulnerability, not to an affected component, so
+an entry that lists several affected components carries the grade of its
+most severely graded one; quote a component's own grade from
+`depscan.findings.json`. The grade is triage context only: it never
+changes a CSAF product status and is never a `not_affected` justification.
+
 ## Validate a document
 
 ```bash

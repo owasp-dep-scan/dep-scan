@@ -88,7 +88,7 @@ options:
   --format {text,json}  text for people, json for scripts (default: text)
   --config CONFIG       Path to the configuration file. Default: $PWD/.config/depscan.toml
   --no-banner           Do not display the logo and donation banner. Please make a donation to OWASP before using this argument.
-  -o REPORTS_DIR, --reports-dir REPORTS_DIR
+  -o, --reports-dir REPORTS_DIR
                         Reports directory
   --debug               Run depscan in debug mode.
   -q, --quiet           Makes depscan quiet.
@@ -136,7 +136,7 @@ options:
   --no-suggest          Disable suggest mode
   --fail-on-error       Abort the scan with a non-zero exit code instead of silently degrading. Passed through to cdxgen so extractor failures fail BOM generation, and applied to blint, rusi, golem,
                         and dosai failures, unreadable reachability reports, empty slices, and empty package lists.
-  -t PROJECT_TYPE [PROJECT_TYPE ...], --type PROJECT_TYPE [PROJECT_TYPE ...]
+  -t, --type PROJECT_TYPE [PROJECT_TYPE ...]
                         Override project types if auto-detection is incorrect. Multiple values supported.
   --private-ns PRIVATE_NS
                         Private namespace to use while performing oss risk audit. Private packages should not be available in public registries by default. Comma separated values accepted.
