@@ -129,13 +129,12 @@ class Coverage(_SchemaObject):
 
 @dataclass
 class ExploitabilityAxes(_SchemaObject):
-    """The five exploitability axes, each graded on the same scale."""
+    """The four exploitability axes, each graded on the same scale."""
 
     presence: str
     reach: str
     exposure: str
     barrier: str
-    pressure: str
 
 
 @dataclass
@@ -147,6 +146,7 @@ class Exploitability(_SchemaObject):
     grade: Optional[str] = None
     rule: Optional[str] = None
     unassessed: Optional[List[str]] = None
+    sources: Optional[Dict[str, List[str]]] = None
     witness: Optional[str] = None
 
 

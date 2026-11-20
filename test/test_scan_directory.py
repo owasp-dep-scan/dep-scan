@@ -76,6 +76,7 @@ def _write_bom(path, name="app"):
 class _StubVdrResult:
     success = True
     prioritized_pkg_vuln_trees = {}
+    exploitability = None
 
     def __init__(self, pkg_vulnerabilities, success=True):
         self.pkg_vulnerabilities = pkg_vulnerabilities
@@ -109,9 +110,19 @@ def scan_stubs(monkeypatch):
     class StubVDRAnalyzer:
         def __init__(self, vdr_options):
             calls["matching"].append(vdr_options)
+            self.vdr_options = vdr_options
 
         def process(self):
-            return _StubVdrResult([dict(VULN_REQUESTS)])
+            # The stub replaces only the vulnerability search, so it runs the
+            # same exploitability grading step the real analyzer runs.
+            from analysis_lib.findings.exploitability import annotate_exploitability
+
+            vulns = [dict(VULN_REQUESTS)]
+            result = _StubVdrResult(vulns)
+            result.exploitability = annotate_exploitability(
+                vulns, self.vdr_options.exploitability_inputs
+            )
+            return result
 
     monkeypatch.setattr(pipeline, "VDRAnalyzer", StubVDRAnalyzer)
     monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(_FULL_VDB_DATA))
@@ -282,7 +293,7 @@ def test_findings_are_the_conversion_of_the_vdr_entries(scan_stubs, tmp_path):
     assert finding["id"].startswith("dsf1:")
     # The written file carries the same array the result holds.
     written = json.loads((Path(result.reports_dir) / "depscan.findings.json").read_text())
-    assert written["schemaVersion"] == "1"
+    assert written["schemaVersion"] == "2"
     assert written["findings"] == result.findings
 
 
@@ -296,6 +307,62 @@ def test_fingerprints_are_stable_across_runs(scan_stubs, tmp_path):
     )
     assert [f["id"] for f in first.findings] == [f["id"] for f in second.findings]
     assert first.findings == second.findings
+
+
+def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(
+    scan_stubs, tmp_path
+):
+    """The grade the scan computed reaches the findings document and the VDR
+    file as the same assessment: axes, grade, rule and sources in the
+    findings, depscan:exploitability: properties in the VDR."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True),
+        render=False,
+    )
+    (finding,) = result.findings
+    exploitability = finding["exploitability"]
+    assert exploitability["grade"] == "moderate"
+    assert exploitability["rule"] == "assessed"
+    assert exploitability["axes"] == {
+        "presence": "likely",
+        "reach": "not_assessed",
+        "exposure": "not_assessed",
+        "barrier": "not_assessed",
+    }
+    # The BOM component was read for presence, but no analyzer reached it.
+    assert exploitability["sources"] == {"presence": ["vdb", "cdxgen"]}
+    vdr = json.loads((Path(result.reports_dir) / "given.vdr.json").read_text())
+    properties = {
+        prop["name"]: prop["value"] for prop in vdr["vulnerabilities"][0]["properties"]
+    }
+    assert properties["depscan:exploitability:grade"] == "moderate"
+    assert properties["depscan:exploitability:rule"] == "assessed"
+    assert properties["depscan:exploitability:axis:presence"] == "likely"
+    assert properties["depscan:exploitability:axis:reach"] == "not_assessed"
+
+
+def test_an_override_rule_table_reaches_the_grading(scan_stubs, tmp_path):
+    """A valid --exploitability-rules file replaces the bundled table for the
+    whole pipeline: its row's grade and id are what the findings carry."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    rules = tmp_path / "rules.yaml"
+    rules.write_text(
+        'rules:\n  - id: org-standard\n    match:\n      presence: [likely]\n    grade: low\n',
+        encoding="utf-8",
+    )
+    result = api.scan(
+        api.scan_options(
+            bom=bom,
+            reports_dir=str(tmp_path / "reports"),
+            exploitability_rules=str(rules),
+            no_banner=True,
+        ),
+        render=False,
+    )
+    (finding,) = result.findings
+    assert finding["exploitability"]["grade"] == "low"
+    assert finding["exploitability"]["rule"] == "org-standard"
 
 
 # ---------------------------------------------------------------------------

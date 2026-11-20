@@ -32,8 +32,9 @@ from depscan.lib import doctor as doctor_lib
 from depscan.lib.logger import LOG
 from depscan.lib.doctor import DoctorReport
 
-#: The version of the ``depscan.findings.json`` document shape.
-FINDINGS_SCHEMA_VERSION = "1"
+#: The version of the ``depscan.findings.json`` document shape. Version 2
+#: drops the Pressure axis from exploitability and adds its sources.
+FINDINGS_SCHEMA_VERSION = "2"
 
 #: The scan directory layout this version writes and reads.
 LAYOUT_VERSION = "1.0"
@@ -79,6 +80,7 @@ _PATH_OPTIONS = (
     "txt_report_file",
     "llm_prompt_file",
     "config",
+    "exploitability_rules",
 )
 
 #: The suffixes of the cdxgen slice files, for role and project type parsing.
@@ -600,7 +602,7 @@ def write_findings(
     vulnerabilities: List[Dict[str, Any]],
     depscan_version: str,
     scan_root: Optional[str] = None,
-    reach_scopes: Optional[List[Any]] = None,
+    exploitability: Optional[Dict[Any, Any]] = None,
     blint_reviews: bool = False,
 ):
     """Write ``depscan.findings.json`` from the scan's VDR entries and the
@@ -609,9 +611,9 @@ def write_findings(
     A scan with no vulnerabilities writes the file with an empty findings
     array, so a reader can tell an assessed-empty scan from a directory
     nobody scanned. ``scan_root`` is the scanned directory, which the
-    binary-hardening findings are made relative to. ``reach_scopes`` is the
-    reachability result of each project type's scan; each vulnerability
-    finding then records the ``reach`` axis of its ``exploitability`` from it.
+    binary-hardening findings are made relative to. ``exploitability`` is
+    the (advisory id, affects ref) -> Exploitability map the scan graded;
+    each vulnerability finding records its assessment from it.
     ``blint_reviews`` says this scan asked for blint's review; without it a
     findings file under ``analysis/blint/`` is not this scan's and is ignored.
     Returns the document written.
@@ -619,7 +621,7 @@ def write_findings(
     from analysis_lib.findings.vdr_convert import findings_from_vdr
 
     findings = findings_from_vdr(
-        vulnerabilities, producer_version=depscan_version, reach_scopes=reach_scopes
+        vulnerabilities, producer_version=depscan_version, exploitability=exploitability
     )
     if blint_reviews:
         findings.extend(blint_findings(reports_dir, scan_root))

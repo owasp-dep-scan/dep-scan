@@ -52,6 +52,16 @@
       "type": "boolean",
       "description": "Keep only findings whose recorded reachability matches the value: true for findings the analysis marked reachable, false for those it marked not reachable. A finding that records no reachability matches neither value."
     },
+    "grade": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["critical", "high", "moderate", "low", "shielded", "unassessed"]
+      },
+      "description": "Keep only findings whose exploitability grade is one of these values. A finding that records no grade matches no value."
+    },
     "cursor": {
       "type": "string",
       "minLength": 1,

@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import max_distro_vulnerabilities, risk_help_text
+from analysis_lib.findings.exploitability import GRADE_PROPERTY, RULE_PROPERTY
 from analysis_lib.helpers import is_malware_vuln, max_version
 from custom_json_diff.lib.utils import file_write
 from rich import box
@@ -168,6 +169,26 @@ def _affects_fix_version(affects_entry):
     return ""
 
 
+def _exploitability_cell(vdr):
+    """The grade and rule id a graded entry carries, as one table cell.
+
+    The grading step writes them as ``depscan:exploitability:`` properties
+    before this table is built; an entry it did not grade renders an empty
+    cell rather than an invented value.
+    """
+    grade = rule = ""
+    for prop in vdr.get("properties") or []:
+        if not isinstance(prop, dict):
+            continue
+        if prop.get("name") == GRADE_PROPERTY:
+            grade = str(prop.get("value") or "")
+        elif prop.get("name") == RULE_PROPERTY:
+            rule = str(prop.get("value") or "")
+    if not grade:
+        return ""
+    return f"{grade}\n{rule}" if rule else grade
+
+
 def _expanded_vuln_rows(vdr, bom_dependency_tree):
     """One (purl_prefix, p_rich_tree, fix_version) tuple per affected component.
 
@@ -246,6 +267,7 @@ def generate_console_output(
                     fixed_location or purl_fixed_location.get(purl_prefix),
                     severity,
                     score,
+                    _exploitability_cell(vdr),
                 ]
             )
     # Caption counts (id, affects ref) pairs so merged multi-component entries
@@ -268,6 +290,7 @@ def generate_console_output(
         "Fix Version",
         "Severity",
         "Score",
+        "Grade",
     ]:
         justify = "left"
         if h == "Score":
@@ -305,10 +328,32 @@ def generate_console_output(
                 f"[bold]{group_fix}[/bold]" if i == 0 else "",
                 arow[5],
                 arow[6],
+                arow[7],
                 end_section=(i == len(row_indices) - 1),
                 style=Style(dim=True) if not arow[3] or arow[5] in dimmable_severities else None,
             )
     return pkg_group_rows, table
+
+
+def exploitability_grade_stats(vulnerabilities):
+    """The grade distribution of the entries, most severe grade first.
+
+    Counts the ``depscan:exploitability:grade`` property the grading step
+    wrote; entries without one count nowhere, so a scan that graded nothing
+    reports {} and no line is printed for it.
+    """
+    counts = {}
+    for vdr in vulnerabilities or []:
+        for prop in vdr.get("properties") or []:
+            if isinstance(prop, dict) and prop.get("name") == GRADE_PROPERTY:
+                grade = str(prop.get("value") or "")
+                if grade:
+                    counts[grade] = counts.get(grade, 0) + 1
+    return {
+        grade: counts[grade]
+        for grade in ("critical", "high", "moderate", "low", "shielded", "unassessed")
+        if grade in counts
+    }
 
 
 def check_malware_cve(cve_list):

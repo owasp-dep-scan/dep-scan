@@ -306,6 +306,7 @@ def test_config_show_json(monkeypatch, capsys, tmp_path, clean_option_env):
         "bom_engine",
         "vuln_analyzer",
         "reachability_analyzer",
+        "exploitability_rules",
         "rust_analyzer_backend",
         "go_analyzer_network",
         "go_analyzer_cgo",
@@ -769,6 +770,21 @@ def test_scan_unknown_profile_is_a_usage_error(monkeypatch, capsys):
     code = run_main(monkeypatch, ["scan", ".", "--profile", "bogus"])
     assert code == 2
     assert "invalid choice: 'bogus'" in capsys.readouterr().err
+
+
+def test_scan_with_an_invalid_exploitability_rules_file_is_a_usage_error(
+    monkeypatch, capsys, tmp_path
+):
+    """A replacement rule table is validated before the scan starts, so an
+    invalid file exits 2 carrying the schema error instead of grading on a
+    table nobody checked."""
+    bad = tmp_path / "rules.yaml"
+    bad.write_text("rules:\n  - id: nope\n    grade: catastrophic\n", encoding="utf-8")
+    code = run_main(monkeypatch, ["scan", ".", "--exploitability-rules", str(bad)])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "exploitability rules file is unusable" in err
+    assert "schema rejected" in err
 
 
 def test_config_show_reports_what_a_profile_and_checks_set(monkeypatch, capsys, clean_option_env):

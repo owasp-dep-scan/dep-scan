@@ -41,7 +41,12 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
-from analysis_lib.output import licenses_risk_table, pkg_risks_table, summary_stats
+from analysis_lib.output import (
+    exploitability_grade_stats,
+    licenses_risk_table,
+    pkg_risks_table,
+    summary_stats,
+)
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from analysis_lib.reachability import get_reachability_impl, reached_by_analyzer
 from analysis_lib.search import get_pkgs_by_scope
@@ -207,9 +212,12 @@ class ScanContext:
     txt_report_file: Optional[str] = None
     llm_prompt_file: Optional[str] = None
     all_pkg_vulnerabilities: List = field(default_factory=list)
-    #: One entry per project type scan: what reachability said about the
-    #: components that scan matched, for the findings' exploitability.
-    reach_scopes: List = field(default_factory=list)
+    #: The (advisory id, affects ref) -> Exploitability map the project type
+    #: scans graded, for the findings document; a pair whose reach was
+    #: assessed keeps the assessment over a later unassessed one.
+    exploitability: Dict = field(default_factory=dict)
+    #: The rule table this scan grades with, loaded once before matching.
+    grading_rules: Optional[Any] = None
     all_pkg_group_rows: Dict = field(default_factory=dict)
     summary: Optional[Dict] = None
     vdr_file: Optional[str] = None
@@ -654,6 +662,17 @@ def stage_setup(ctx):
         LOG.debug("Automatically switching to the `LifecycleAnalyzer` for vulnerability analysis.")
         ctx.depscan_options["vuln_analyzer"] = "LifecycleAnalyzer"
         args.vuln_analyzer = "LifecycleAnalyzer"
+    # The exploitability rule table is loaded once, before any matching: an
+    # override file that fails its schema stops the scan here, carrying the
+    # schema error, instead of grading on a table nobody validated. The scan
+    # verb reports the same failure as a usage error before the scan starts;
+    # this path covers the server and the API.
+    from analysis_lib.findings.exploitability import load_rules
+
+    try:
+        ctx.grading_rules = load_rules(ctx.depscan_options.get("exploitability_rules"))
+    except ValueError as e:
+        raise ScanStageError(str(e)) from e
     _start_scan_directory(ctx)
 
 
@@ -695,7 +714,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         ctx.all_pkg_vulnerabilities,
         get_version(),
         scan_root=ctx.src_dir,
-        reach_scopes=ctx.reach_scopes,
+        exploitability=ctx.exploitability,
         blint_reviews=any(
             blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
             for project_type in (ctx.project_types or [None])
@@ -1397,19 +1416,25 @@ def stage_matching(ctx, scan):
         severity=ctx.depscan_options.get("severity"),
         malware_only=ctx.depscan_options.get("malware_only", False),
         exclude_malware=ctx.depscan_options.get("exclude_malware", False),
+        exploitability_inputs=(
+            _exploitability_inputs(ctx, scan) if ctx.grading_rules is not None else None
+        ),
     )
     scan.vdr_result = VDRAnalyzer(vdr_options=options).process()
 
 
-def _reach_scope(ctx, scan, pkg_vulnerabilities):
-    """What the reachability analysis said about the components this type's
-    scan matched, for the exploitability of the findings written from them.
+def _exploitability_inputs(ctx, scan):
+    """What this scan produced for the exploitability of the findings the
+    matching stage is about to grade, for one project type's scan.
 
     The analyzers named are those the enrichment stage read slices from
-    (the manifest's ``completed`` entries). When reachability was off, failed
+    (the manifest's ``completed`` entries); when reachability was off, failed
     or produced no purls, the scope says so and every finding of the type
-    records ``reach`` as not assessed.
+    records ``reach`` as not assessed. The dosai facts and reachables slices
+    are read only when dosai completed for this scan, so a report left by an
+    earlier run is never graded on.
     """
+    from analysis_lib.findings.exploitability import ExploitabilityInputs
     from analysis_lib.findings.vdr_convert import ReachScope
 
     options = scan.reachability_options
@@ -1426,24 +1451,55 @@ def _reach_scope(ctx, scan, pkg_vulnerabilities):
             )
             if entry.get("status") == "completed"
         ]
-    refs = {
-        str(affect["ref"])
-        for vuln in pkg_vulnerabilities
-        if isinstance(vuln, dict)
-        for affect in vuln.get("affects") or []
-        if isinstance(affect, dict) and affect.get("ref")
-    }
     by_analyzer = (
         reached_by_analyzer(options.slices_files, tool_stems) if options is not None else {}
     )
-    return ReachScope(
-        refs=refs,
+    scope = ReachScope(
         analyzers=analyzers,
         reached=set((scan.reached_purls or {}).keys()),
         succeeded=scan.reachability_succeeded,
         analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
         reached_by={name: entry["purls"] for name, entry in by_analyzer.items()},
     )
+    dosai_facts = None
+    dosai_flows: List[Dict] = []
+    if "dosai" in analyzers:
+        facts_path = os.path.join(
+            scan.bom_dir or ctx.reports_dir, "analysis", "dosai", "dotnet-reachability.facts.json"
+        )
+        if os.path.isfile(facts_path):
+            dosai_facts = json_load(facts_path, log=LOG)
+        for slice_file in (options.slices_files if options is not None else []) or []:
+            if os.path.basename(slice_file).startswith("dotnet-reachables"):
+                try:
+                    with open(slice_file, encoding="utf-8") as fp:
+                        dosai_flows.extend(json.load(fp))
+                except (OSError, ValueError) as e:
+                    LOG.warning("The dosai reachables slices %s could not be read: %s", slice_file, e)
+    return ExploitabilityInputs(
+        rules=ctx.grading_rules,
+        scope=scope,
+        bom_components=scan.pkg_list,
+        dosai_ran="dosai" in analyzers,
+        dosai_facts=dosai_facts,
+        dosai_flows=dosai_flows,
+    )
+
+
+def _collect_exploitability(ctx, vdr_result):
+    """Fold one project type's graded assessments into the scan's mapping.
+
+    A pair several types graded keeps the assessment whose reach was
+    assessed over one whose reach was not, mirroring how the findings
+    reader used to prefer the scope that assessed the ref.
+    """
+    for key, exploitability in (vdr_result.exploitability or {}).items():
+        existing = ctx.exploitability.get(key)
+        if existing is None or (
+            existing.axes.reach == "not_assessed"
+            and exploitability.axes.reach != "not_assessed"
+        ):
+            ctx.exploitability[key] = exploitability
 
 
 def stage_analysis_vdr(ctx, scan):
@@ -1496,7 +1552,15 @@ def stage_analysis_vdr(ctx, scan):
     scan.summary = summary
     if vdr_result.pkg_vulnerabilities:
         ctx.all_pkg_vulnerabilities += vdr_result.pkg_vulnerabilities
-        ctx.reach_scopes.append(_reach_scope(ctx, scan, vdr_result.pkg_vulnerabilities))
+        _collect_exploitability(ctx, vdr_result)
+        grade_stats = exploitability_grade_stats(vdr_result.pkg_vulnerabilities)
+        if grade_stats:
+            console.print(
+                "Exploitability grades for project type '{}': {}".format(
+                    scan.project_type,
+                    ", ".join(f"{name}: {count}" for name, count in grade_stats.items()),
+                )
+            )
     if vdr_result.prioritized_pkg_vuln_trees:
         ctx.all_pkg_group_rows.update(vdr_result.prioritized_pkg_vuln_trees)
     ctx.summary = summary

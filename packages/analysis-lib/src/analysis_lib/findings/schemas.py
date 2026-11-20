@@ -8,7 +8,9 @@ not this code.
 A schema's name is its file name without ``.schema.json``:
 ``depscan-scan-output`` for ``depscan-scan-output.schema.json``. Each schema's
 ``$id`` is ``urn:owasp:depscan:schema:<name without depscan->:1``; the finding,
-doctor and manifest identifiers predate the output schemas and are unchanged.
+doctor and manifest identifiers predate the output schemas and are unchanged,
+except the finding schema, which is at ``:2`` since its exploitability axes
+dropped Pressure and gained sources.
 The fingerprint test vectors next to the schemas are data, not a schema, and
 are not listed. The legacy short name ``finding`` stays accepted as an
 alias so existing callers keep working. The published names are listed in
@@ -34,6 +36,9 @@ _SCHEMA_FILES = (
     "depscan-finding.schema.json",
     "depscan-doctor.schema.json",
     "depscan-manifest.schema.json",
+    # The data-file schema: the shape of the exploitability rule table a
+    # scan grades with and an organisation may replace.
+    "depscan-exploitability-rules.schema.json",
     # The output schemas, verb by verb in the verb registry's order, each
     # verb's subcommands in the order the verb registers them.
     "depscan-scan-output.schema.json",

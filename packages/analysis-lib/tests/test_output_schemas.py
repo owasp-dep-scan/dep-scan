@@ -74,7 +74,10 @@ def test_every_schema_is_valid_2020_12(name):
 @pytest.mark.parametrize("name", SCHEMA_NAMES)
 def test_every_schema_carries_the_published_id_and_a_title(name):
     schema = load_schema(name)
-    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:1"
+    # The finding schema moved to version 2 when its exploitability axes
+    # dropped Pressure and gained sources; every other schema is at 1.
+    version = 2 if name == "depscan-finding" else 1
+    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:{version}"
     assert isinstance(schema["title"], str) and schema["title"]
     assert isinstance(schema.get("description"), str) and schema["description"]
 
@@ -90,7 +93,7 @@ def test_the_listing_order_is_the_registration_order():
     assert [entry["name"] for entry in summaries] == SCHEMA_NAMES
     assert summaries[0] == {
         "name": "depscan-finding",
-        "$id": "urn:owasp:depscan:schema:finding:1",
+        "$id": "urn:owasp:depscan:schema:finding:2",
         "title": "dep-scan finding",
     }
     assert summaries[-1]["name"] == "depscan-error"
@@ -101,10 +104,11 @@ def test_the_listing_order_is_the_registration_order():
 
 
 def test_the_document_schemas_come_first_and_the_error_schema_last():
-    assert SCHEMA_NAMES[:3] == [
+    assert SCHEMA_NAMES[:4] == [
         "depscan-finding",
         "depscan-doctor",
         "depscan-manifest",
+        "depscan-exploitability-rules",
     ]
     assert SCHEMA_NAMES[-1] == "depscan-error"
 

@@ -133,6 +133,7 @@ FULL_VDB_DATA = {
 class _StubVdrResult:
     success = True
     prioritized_pkg_vuln_trees = {}
+    exploitability = None
 
     def __init__(self, pkg_vulnerabilities):
         self.pkg_vulnerabilities = pkg_vulnerabilities
@@ -194,9 +195,19 @@ def scan_stubs(monkeypatch):
     class StubVDRAnalyzer:
         def __init__(self, vdr_options):
             calls["matching"].append(vdr_options)
+            self.vdr_options = vdr_options
 
         def process(self):
-            return _StubVdrResult([dict(vuln) for vuln in state["vulns"]])
+            vulns = [dict(vuln) for vuln in state["vulns"]]
+            # The real analyzer grades the exploitability of its entries from
+            # the inputs the pipeline hands it; the stub replaces only the
+            # vulnerability search, so it runs the same grading step.
+            from analysis_lib.findings.exploitability import annotate_exploitability
+
+            graded = annotate_exploitability(vulns, self.vdr_options.exploitability_inputs)
+            result = _StubVdrResult(vulns)
+            result.exploitability = graded
+            return result
 
     monkeypatch.setattr(pipeline, "VDRAnalyzer", StubVDRAnalyzer)
     monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(FULL_VDB_DATA))
@@ -590,7 +601,6 @@ def test_the_reachable_filter_matches_only_findings_that_record_it(open_session,
             "reach": "proven",
             "exposure": "unknown",
             "barrier": "unknown",
-            "pressure": "unknown",
         }
     }
     unrecorded["exploitability"] = {
@@ -599,7 +609,6 @@ def test_the_reachable_filter_matches_only_findings_that_record_it(open_session,
             "reach": "unknown",
             "exposure": "unknown",
             "barrier": "unknown",
-            "pressure": "unknown",
         }
     }
     findings_path.write_text(json.dumps(document), encoding="utf-8")
@@ -623,6 +632,53 @@ def test_the_reachable_filter_matches_only_findings_that_record_it(open_session,
     outcomes = drive(open_session, scenario, (scan_dir.parent,))
     assert outcomes["reachable_true"] == [reachable["rule"]]
     assert outcomes["reachable_false"] == []
+
+
+def test_the_grade_filter_matches_one_or_more_grades(open_session, make_scan_dir):
+    scan_dir = make_scan_dir("graded", vulns=[VULN_HIGH, VULN_LOW])
+    findings_path = scan_dir / "depscan.findings.json"
+    document = json.loads(findings_path.read_text(encoding="utf-8"))
+    high, ungraded = document["findings"]
+    high["exploitability"] = {
+        "axes": {
+            "presence": "proven",
+            "reach": "likely",
+            "exposure": "likely",
+            "barrier": "unknown",
+        },
+        "grade": "high",
+        "rule": "anonymous-route-reached",
+        "sources": {"reach": ["atom"], "exposure": ["dosai"]},
+    }
+    ungraded["exploitability"] = {
+        "axes": {
+            "presence": "likely",
+            "reach": "not_assessed",
+            "exposure": "not_assessed",
+            "barrier": "not_assessed",
+        },
+        "grade": "unassessed",
+        "rule": "unassessed-cap",
+    }
+    findings_path.write_text(json.dumps(document), encoding="utf-8")
+
+    async def scenario(session):
+        async def page(**extra):
+            arguments = {"scan_dir": str(scan_dir), **extra}
+            return await call_document(
+                session, "list_findings", arguments, "depscan-mcp-list_findings-output"
+            )
+
+        return {
+            "grade_high": [f["rule"] for f in (await page(grade=["high"]))["findings"]],
+            "grade_either": [
+                f["rule"] for f in (await page(grade=["high", "unassessed"]))["findings"]
+            ],
+        }
+
+    outcomes = drive(open_session, scenario, (scan_dir.parent,))
+    assert outcomes["grade_high"] == [high["rule"]]
+    assert outcomes["grade_either"] == [high["rule"], ungraded["rule"]]
 
 
 class _StubReachability:
@@ -708,7 +764,10 @@ def test_a_scan_records_reach_so_the_reachable_filter_matches_end_to_end(
     by_rule = {finding["rule"]: finding for finding in published_findings(scan_dir)}
     reached = by_rule["CVE-2024-1111"]["exploitability"]
     assert reached["axes"]["reach"] == "likely"
-    assert reached["rule"] == "reachability:atom"
+    # The analyzer names moved onto sources; the rule names the table row.
+    assert reached["rule"] == "reached"
+    assert reached["sources"]["reach"] == ["atom"]
+    assert reached["grade"] == "moderate"
     absent = by_rule["CVE-2024-4444"]["exploitability"]
     assert absent["axes"]["reach"] == "unknown"
     for finding in by_rule.values():
@@ -733,7 +792,10 @@ def test_a_scan_without_usable_reachability_records_not_assessed(
     scan_dir = make_scan_dir(mode, vulns=[VULN_HIGH])
     (finding,) = published_findings(scan_dir)
     assert finding["exploitability"]["axes"]["reach"] == "not_assessed"
-    assert "rule" not in finding["exploitability"]
+    # The database match keeps presence assessed, so the fixed rules cap the
+    # grade at moderate instead of grading the finding unassessed.
+    assert finding["exploitability"]["grade"] == "moderate"
+    assert finding["exploitability"]["unassessed"] == ["reach", "exposure", "barrier"]
     assert _list_reach(open_session, scan_dir, reachable=True) == []
     assert _list_reach(open_session, scan_dir, reachable=False) == []
 

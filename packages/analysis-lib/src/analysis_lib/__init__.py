@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from importlib.metadata import distribution
 from logging import Logger
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 import fnmatch
 
 from rich.console import Console
@@ -55,6 +55,10 @@ class VdrAnalysisKV:
     severity: Optional[str] = None
     exclude_malware: bool = False
     malware_only: bool = False
+    #: What this scan produced for the exploitability axes, or None when
+    #: the caller grades no exploitability. An
+    #: analysis_lib.findings.exploitability.ExploitabilityInputs.
+    exploitability_inputs: Optional[Any] = None
 
 
 @dataclass
@@ -75,6 +79,9 @@ class VDRResult:
     reached_services: Optional[Dict[str, int]] = None
     endpoint_reached_purls: Optional[Dict[str, int]] = None
     purl_identities: Optional[Dict[str, List]] = None
+    #: The (advisory id, affects ref) -> Exploitability map the entries were
+    #: graded into, or None when this run graded no exploitability.
+    exploitability: Optional[Dict] = None
 
 
 class Counts:

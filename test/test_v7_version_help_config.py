@@ -120,7 +120,12 @@ def test_config_show_json_prints_values_verbatim(monkeypatch, capsys, clean_opti
         == 0
     )
     document, captured = read_one_document(capsys)
-    assert set(document) == {"options"}
+    assert set(document) == {"options", "exploitabilityRules"}
+    # Without an override the scan grades with the table dep-scan ships.
+    assert document["exploitabilityRules"] == {
+        "source": "bundled",
+        "path": "analysis_lib/data/exploitability_rules.yaml",
+    }
     # The value mirrors what the scan receives; config show does not rewrite
     # the paths it is given.
     assert document["options"]["reports_dir"] == {

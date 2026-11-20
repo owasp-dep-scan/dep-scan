@@ -365,6 +365,15 @@ def _add_analyzer_options(parser: argparse.ArgumentParser) -> None:
         "the scanned code and its dependencies, so use it only for input you "
         "trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.",
     )
+    parser.add_argument(
+        "--exploitability-rules",
+        default=argparse.SUPPRESS,
+        dest="exploitability_rules",
+        help="Path to a replacement exploitability rule table (YAML), validated "
+        "against the depscan-exploitability-rules schema before the scan "
+        "starts; an invalid file is a usage error. Default: the bundled "
+        "table, analysis_lib/data/exploitability_rules.yaml.",
+    )
 
 
 def _add_search_options(parser: argparse.ArgumentParser) -> None:
@@ -872,6 +881,18 @@ def run(args: argparse.Namespace) -> int:
         internal = scan_namespace(args, resolution=resolution)
         if json_output:
             internal.no_banner = True
+        rules_error = _exploitability_rules_error(internal)
+        if rules_error is not None:
+            if json_output:
+                print_error_document(
+                    EXIT_USAGE,
+                    "scan",
+                    rules_error,
+                    {"path": json_path(str(internal.exploitability_rules))},
+                )
+            else:
+                print(rules_error, file=sys.stderr)
+            return EXIT_USAGE
         with stdout_on_stderr(json_output) as saved_stdout:
             outcomes = _run_all_scans(args, internal, resolution, entries, report)
         exit_code = max(code for code, _ in outcomes)
@@ -883,6 +904,27 @@ def run(args: argparse.Namespace) -> int:
         # error of the verb itself: the resolution, the namespace, or the
         # printing. The redirect above is already undone by its finally.
         return _unexpected_failure(json_output, exc)
+
+
+def _exploitability_rules_error(internal) -> Optional[str]:
+    """Why the exploitability rule table cannot be used, or None.
+
+    The scan validates a named override against the published schema before
+    any target resolves, so a broken table is a usage error (exit 2) naming
+    the schema's findings, never a scan that grades on a table nobody
+    checked. The bundled table needs no check here: it is validated by its
+    own tests.
+    """
+    path = getattr(internal, "exploitability_rules", None)
+    if not path:
+        return None
+    from analysis_lib.findings.exploitability import load_rules
+
+    try:
+        load_rules(str(path))
+    except ValueError as exc:
+        return f"depscan scan: the exploitability rules file is unusable: {exc}"
+    return None
 
 
 def _unexpected_failure(json_output: bool, exc: Exception) -> int:

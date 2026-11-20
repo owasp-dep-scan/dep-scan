@@ -11,6 +11,7 @@ dependencies = [
     "cvss~=3.6",
     "jsonschema~=4.26.0",
     "packageurl-python~=0.17.6",
+    "PyYAML~=6.0.2",
     "referencing~=0.37.0",
     "rich~=15.0.0",
     "toml~=0.10.2"
@@ -44,7 +45,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.package-data]
 "analysis_lib.vex.data" = ["*.json", "cvss/*.json"]
-"analysis_lib.data" = ["cyclonedx/*.json"]
+"analysis_lib.data" = ["cyclonedx/*.json", "*.yaml"]
 "analysis_lib.findings" = ["schemas/*.json"]
 
 [tool.pytest.ini_options]

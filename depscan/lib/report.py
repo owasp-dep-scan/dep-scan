@@ -13,7 +13,7 @@ import sys
 from typing import List
 
 from analysis_lib import VdrAnalysisKV
-from analysis_lib.output import generate_console_output, summary_stats
+from analysis_lib.output import exploitability_grade_stats, generate_console_output, summary_stats
 
 from depscan import api
 from depscan.commands.output import (
@@ -98,6 +98,14 @@ def _render_results(tscan) -> None:
             "Summary for project type '{}': {}".format(
                 tscan.project_type,
                 ", ".join(f"{name.lower()}: {count}" for name, count in stats.items() if count),
+            )
+        )
+    grade_stats = exploitability_grade_stats(tscan.vulnerabilities)
+    if grade_stats:
+        console.print(
+            "Exploitability grades for project type '{}': {}".format(
+                tscan.project_type,
+                ", ".join(f"{name}: {count}" for name, count in grade_stats.items()),
             )
         )
     if not tscan.vulnerabilities:

@@ -143,6 +143,15 @@ def build_parser():
         help="Reachability analyzer to use. Default FrameworkReachability.",
     )
     parser.add_argument(
+        "--exploitability-rules",
+        default=None,
+        dest="exploitability_rules",
+        help="Path to a replacement exploitability rule table (YAML), validated "
+        "against the depscan-exploitability-rules schema before the scan "
+        "starts; an invalid file is a usage error. Default: the bundled "
+        "table, analysis_lib/data/exploitability_rules.yaml.",
+    )
+    parser.add_argument(
         "--rust-analyzer-backend",
         choices=("stable", "compiler"),
         default=os.getenv("DEPSCAN_RUSI_BACKEND", "stable"),
