@@ -141,11 +141,17 @@ def unknown_checks(names: List[str]) -> List[str]:
     return [name for name in names if name != ALL_CHECKS and name not in CHECKS]
 
 
-def resolve(args, doctor_report=None) -> Resolution:
+def resolve(
+    args, doctor_report=None, skip_requirements: Tuple[str, ...] = (), expand: bool = True
+) -> Resolution:
     """Resolve the checks and profile of a parsed scan command line.
 
     ``doctor_report`` is a report the caller already collected for the ``all``
-    expansion; without one the expansion collects its own. Validation of the
+    expansion; without one the expansion collects its own.
+    ``skip_requirements`` is passed to the expansion, so it agrees with the
+    capability gate on what the scan's targets cannot fail on. A caller that
+    reads only the resolved options passes ``expand=False``, which leaves the
+    ``all`` expansion out and so never probes the tools. Validation of the
     names is the caller's job (the usage error needs the verb's context).
     """
     names = parse_checks(getattr(args, "checks", None))
@@ -153,9 +159,9 @@ def resolve(args, doctor_report=None) -> Resolution:
     checks_defined = bool(names) or profile_name is not None
     not_assessed: List[Dict[str, str]] = []
     options: Dict[str, Any] = {}
-    if ALL_CHECKS in names:
+    if ALL_CHECKS in names and expand:
         report = doctor_report if doctor_report is not None else doctor_lib.doctor()
-        expanded, not_assessed = expand_all(report)
+        expanded, not_assessed = expand_all(report, skip_requirements)
         named = [name for name in names if name != ALL_CHECKS]
         names = list(dict.fromkeys([*expanded, *named]))
     if profile_name is not None:
@@ -191,12 +197,16 @@ def resolve(args, doctor_report=None) -> Resolution:
     )
 
 
-def expand_all(report) -> Tuple[List[str], List[Dict[str, str]]]:
+def expand_all(
+    report, skip_requirements: Tuple[str, ...] = ()
+) -> Tuple[List[str], List[Dict[str, str]]]:
     """Split the checks into the enabled and the not-assessed for one report.
 
     Every check whose doctor capability is available is enabled; each
     not-implemented or unavailable capability yields a not-assessed entry
     carrying the doctor's reason, and its check stays off.
+    ``skip_requirements`` are requirements the scan's targets cannot fail on
+    (see :func:`doctor_lib.capability_unavailable_reason`).
     """
     tools = report.tools_by_name()
     enabled: List[str] = []
@@ -205,7 +215,9 @@ def expand_all(report) -> Tuple[List[str], List[Dict[str, str]]]:
         if spec.capability is None:
             enabled.append(name)
             continue
-        reason = doctor_lib.capability_unavailable_reason(spec.capability, tools, report.data)
+        reason = doctor_lib.capability_unavailable_reason(
+            spec.capability, tools, report.data, skip_requirements
+        )
         if reason is None:
             enabled.append(name)
         else:

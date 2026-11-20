@@ -757,6 +757,39 @@ def test_iter_unique_reachable_flows_streams_lazy(tmp_path):
     assert len(flows2) == 2
 
 
+def test_reached_by_analyzer_reuses_the_analysis_pass_purl_sets(tmp_path):
+    """The per-file purl sets the analysis pass collects while deduplicating
+    must give reached_by_analyzer exactly the result a fresh read gives,
+    duplicates across the split files included."""
+    from analysis_lib.reachability import reached_by_analyzer
+
+    dup = {
+        "flows": [{"id": "n1", "tags": "web"}],
+        "purls": ["pkg:npm/express@4.22.2"],
+    }
+    other = {
+        "flows": [{"id": "n2", "tags": "api"}],
+        "purls": ["pkg:npm/lodash@4.17.21", "pkg:npm/express@4.22.2"],
+    }
+    main_file = _write(tmp_path / "js-reachables.slices.json", [dup, other])
+    split_file = _write(tmp_path / "js-reachables.slices_1.json", [dup])
+    files = [str(main_file), str(split_file)]
+    options = _make_options(tmp_path)
+    options.slices_files = files
+    result = SemanticReachability(options).process()
+    assert result.purls_by_file is not None
+    stems = {"golem": "go-reachables", "kosi": "kosi-reachables"}
+    reused = reached_by_analyzer(files, stems, result.purls_by_file)
+    fresh = reached_by_analyzer(files, stems)
+    assert reused == fresh
+    # The dup file's purls arrive from the flow that was yielded, although
+    # the file holds only the duplicate.
+    assert reused["atom"]["purls"] == {
+        "pkg:npm/express@4.22.2",
+        "pkg:npm/lodash@4.17.21",
+    }
+
+
 def test_reached_by_analyzer_splits_tool_and_atom_slices(tmp_path):
     import json
 
@@ -783,3 +816,23 @@ def test_reached_by_analyzer_splits_tool_and_atom_slices(tmp_path):
     assert result["atom"]["purls"] == {"pkg:maven/a/b@1", "pkg:hex/e@1"}
     assert result["golem"]["purls"] == {"pkg:golang/x/y@1"}
     assert result["kosi"]["purls"] == {"pkg:maven/c/d@1"}
+
+
+def test_per_file_purl_sets_include_flows_first_seen_in_another_file(tmp_path):
+    """The dedup is across every file, so a golem flow that atom's file
+    already held is not yielded again. Its purls must still land in the
+    golem file's set, or the golem analyzer would lose them."""
+    from analysis_lib.reachability import _iter_unique_reachable_flows, reached_by_analyzer
+
+    shared = {"flows": [{"id": "n1", "tags": "web"}], "purls": ["pkg:golang/a/b@v1.0.0"]}
+    atom_file = _write(tmp_path / "java-reachables.slices.json", [shared])
+    own = {"flows": [{"id": "n2", "tags": "api"}], "purls": ["pkg:golang/c/d@v2.0.0"]}
+    golem_file = _write(tmp_path / "go-reachables.slices.json", [shared, own])
+    files = [str(atom_file), str(golem_file)]
+    purls_by_file = {}
+    flows = list(_iter_unique_reachable_flows(files, purls_by_file))
+    # Positive control: the second copy really was deduplicated away.
+    assert len(flows) == 2
+    assert purls_by_file[str(golem_file)] == {"pkg:golang/a/b@v1.0.0", "pkg:golang/c/d@v2.0.0"}
+    stems = {"golem": "go-reachables"}
+    assert reached_by_analyzer(files, stems, purls_by_file) == reached_by_analyzer(files, stems)

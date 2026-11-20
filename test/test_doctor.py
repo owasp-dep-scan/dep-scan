@@ -37,10 +37,11 @@ from depscan.lib import doctor as doctor_mod
 
 # The fake tool records every call, prints the version line the test chose
 # and exits with the code the test chose. The shebang marks it as a fake for
-# the patched version command.
+# the patched version command. Each fake records into its own file, named
+# after the tool, because the doctor probes run concurrently and a shared
+# file loses entries: appending is not atomic across processes on Windows.
 FAKE_TOOL_SOURCE = """#!/usr/bin/env python3
 import json
-import os
 import sys
 
 RECORD = {record!r}
@@ -52,16 +53,9 @@ EXIT_CODE = {exit_code!r}
 def note():
     if not RECORD:
         return
-    entries = []
-    if os.path.exists(RECORD):
-        try:
-            with open(RECORD, encoding="utf-8") as fp:
-                entries = json.load(fp)
-        except ValueError:
-            entries = []
-    entries.append({{"tool": NAME, "argv": sys.argv[1:]}})
-    with open(RECORD, "w", encoding="utf-8") as fp:
-        json.dump(entries, fp)
+    line = json.dumps({{"tool": NAME, "argv": sys.argv[1:]}})
+    with open(RECORD, "a", encoding="utf-8") as fp:
+        fp.write(line + "\\n")
 
 
 note()
@@ -157,15 +151,23 @@ def fakes(tmp_path, monkeypatch, clean_env):
     ``script(name, output)`` writes a fake tool and returns its path;
     ``found`` maps a tool name to the path the PATH lookup answers with, and
     a lookup nothing serves falls through to the real PATH (which the
-    stripped PATH keeps empty); ``record`` collects every fake invocation.
+    stripped PATH keeps empty); every fake invocation appends one line to
+    ``record-<tool>.jsonl`` next to ``record``, which the positive controls
+    read back.
     """
-    record = tmp_path / "record.json"
+    record = tmp_path / "record"
+
+    def record_path(tool):
+        return record.with_name(f"record-{tool}.jsonl")
 
     def script(name, output, exit_code=0):
         path = tmp_path / f"fake-{name}.py"
         path.write_text(
             FAKE_TOOL_SOURCE.format(
-                record=str(record), name=name, output=output, exit_code=exit_code
+                record=str(record_path(name)),
+                name=name,
+                output=output,
+                exit_code=exit_code,
             ),
             encoding="utf-8",
         )
@@ -193,7 +195,7 @@ def fakes(tmp_path, monkeypatch, clean_env):
         return found.get(name) or real_find(name)
 
     monkeypatch.setattr(doctor_mod, "find_executable", find)
-    return SimpleNamespace(script=script, record=record, found=found)
+    return SimpleNamespace(script=script, record=record, record_path=record_path, found=found)
 
 
 def _tool_entries(report):
@@ -208,8 +210,16 @@ def _capability_signature(report):
 
 
 def _assert_probed(record, tool, argv):
-    """Positive control: the fake tool ran with exactly ``argv``."""
-    entries = json.loads(record.read_text(encoding="utf-8"))
+    """Positive control: the fake tool ran with exactly ``argv``.
+
+    Each fake appends to its own ``record-<tool>.jsonl``, so a missing file
+    means the fake never ran at all."""
+    record_file = record.with_name(f"record-{tool}.jsonl")
+    entries = [
+        json.loads(line)
+        for line in record_file.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
     assert any(entry["tool"] == tool and entry["argv"] == argv for entry in entries), (
         f"the {tool} fake was never called with {argv}: {entries}"
     )
@@ -475,7 +485,7 @@ def plugins_env(fakes, monkeypatch):
         elif tool in ("golem", "rusi", "dosai"):
             path.write_text(
                 FAKE_TOOL_SOURCE.format(
-                    record=str(fakes.record),
+                    record=str(fakes.record_path(tool)),
                     name=tool,
                     output=f"{tool} 9.9.9",
                     exit_code=0,

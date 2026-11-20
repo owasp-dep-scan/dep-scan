@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 from collections import defaultdict
 from types import SimpleNamespace
 from typing import Any
@@ -22,6 +24,7 @@ def _make_vdr(
     fixed_location="",
     insights=None,
     properties=None,
+    cwes=None,
     matching_vers="vers:apache/>=0.0.1|<9.0.0",
     ratings=None,
 ):
@@ -39,7 +42,7 @@ def _make_vdr(
         "source": {},
         "references": [],
         "advisories": [],
-        "cwes": [],
+        "cwes": list(cwes or []),
         "description": "",
         "fixed_location": fixed_location,
         "detail": "",
@@ -718,6 +721,66 @@ def test_combine_vdrs_preserves_matched_by():
     assert "matched_by" in merged
     # preferred is v1 (neither is prioritized), so matched_by comes from v1
     assert merged["matched_by"] == "pkg:maven/org.springframework/spring-web@5.3.22"
+
+
+def test_combine_vdrs_cwes_keep_first_seen_order():
+    """The merged cwes array is written to the VDR document as it is, so its
+    order must be deterministic: first the first entry's ids, then the new
+    ones of the second, whatever the process hash seed is."""
+    v1 = _make_vdr("CVE-2024-5003", "pkg:npm/demo@1.0.0", cwes=[79, 22])
+    v2 = _make_vdr("CVE-2024-5003", "pkg:npm/demo@2.0.0", cwes=[89, 79])
+
+    merged = merge.combine_vdrs(v1, v2)
+
+    assert merged["cwes"] == [79, 22, 89]
+
+
+def test_analyze_cve_vuln_insights_keep_append_order_on_every_hash_seed():
+    """The insights dedup used a set, whose iteration order follows the
+    string hash, which the interpreter randomizes per process: the same scan
+    wrote its VDR and rendered its table with differently ordered insights
+    from one run to the next. Two processes with different hash seeds must
+    print the same insights, in append order."""
+    script = """
+import json
+from types import SimpleNamespace
+from analysis_lib.prioritize import analyze_cve_vuln
+
+counts = SimpleNamespace(
+    malicious_count=0, pkg_attention_count=0, fix_version_count=0,
+    critical_count=0, has_reachable_poc_count=0, has_reachable_exploit_count=0,
+    has_poc_count=0, has_exploit_count=0, wont_fix_version_count=0,
+    distro_packages_count=0, has_os_packages=False, ids_seen={},
+)
+purl = "pkg:npm/left-pad@1.3.0"
+vuln = {
+    "cve_id": "CVE-2026-1234",
+    "matched_by": purl,
+    "matching_vers": "vers:npm/<1.3.0",
+    "purl_prefix": "pkg:npm/left-pad",
+    "source_data": {"containers": {"cna": {}}},
+    "fix_version": "*",
+    "type": "npm",
+}
+_, vdict, _, _ = analyze_cve_vuln(
+    vuln, {}, {}, {}, {}, [], [purl], {}, {}, {purl: True}, {}, [], counts
+)
+print(json.dumps(vdict["insights"]))
+"""
+    outputs = set()
+    for seed in ("1", "2", "3"):
+        proc = subprocess.run(
+            [sys.executable, "-c", script],
+            capture_output=True,
+            text=True,
+            timeout=180,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+        )
+        assert proc.returncode == 0, proc.stderr
+        outputs.add(proc.stdout.strip())
+    # Append order: the unmaintained insight comes from the fix branch,
+    # the deployed-dependency insight from the usage branch after it.
+    assert outputs == {'["Not maintained", ":package: Deployed dependency"]'}
 
 
 def test_combine_vdrs_matched_by_prefers_prioritized_entry():

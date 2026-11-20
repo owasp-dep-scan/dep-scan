@@ -22,6 +22,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +56,11 @@ from xbom_lib.process import (
 
 #: How long one tool's version probe may run.
 PROBE_TIMEOUT_SEC = 10
+
+#: How many tool lookups may probe at once. Each lookup waits on a
+#: subprocess for most of its time, so this caps concurrent processes, not
+#: threads doing work.
+PROBE_WORKERS = 6
 
 #: The version of the doctor report document itself.
 SCHEMA_VERSION = "1"
@@ -429,6 +435,67 @@ def _blint_status() -> ToolStatus:
     return status
 
 
+def _read_blintdb_location() -> Optional[str]:
+    """The blintdb database path from blint's config, without importing blint.
+
+    Importing ``blint`` executes blint.api and with it the binary analysis
+    machinery (lief and friends) that only binary BOM generation needs, so
+    every command paid that import just to learn where the database lives.
+    blint's config module needs only the standard library and appdirs, so it
+    is executed from its file instead. The module is registered in
+    ``sys.modules`` only while it executes, because the dataclass machinery
+    looks the defining module up there, and removed afterwards: a
+    ``blint.config`` entry without its parent package would make a later
+    ``import blint.config`` bind a package that lacks the attribute. When the
+    standalone load fails for any reason, the plain import decides, and a
+    blint that cannot be imported at all counts as not installed.
+    """
+    try:
+        spec = util.find_spec("blint")
+    except (ImportError, ValueError):
+        return None
+    if spec is None:
+        return None
+    if "blint.config" in sys.modules:
+        return getattr(sys.modules["blint.config"], "BLINTDB_LOC", None)
+    try:
+        config_spec = util.spec_from_file_location(
+            "blint.config", os.path.join(os.path.dirname(spec.origin or ""), "config.py")
+        )
+        if config_spec is None or config_spec.loader is None:
+            raise ImportError("blint.config has no loader")
+        module = util.module_from_spec(config_spec)
+        sys.modules["blint.config"] = module
+        try:
+            config_spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop("blint.config", None)
+        return module.BLINTDB_LOC
+    except Exception:
+        try:
+            from blint.config import BLINTDB_LOC
+        except Exception:
+            return None
+        return BLINTDB_LOC
+
+
+#: The blintdb path, resolved once at import time. blint.config reads the
+#: environment when it executes, and the plain import this replaces resolved
+#: the path during the startup import too, so the doctor report and the
+#: manifest it feeds show the location the process started with however late
+#: the report is collected.
+_BLINTDB_LOC_AT_IMPORT = _read_blintdb_location()
+
+
+def _blintdb_location() -> Optional[str]:
+    """The blintdb path for this report: an already imported blint.config
+    wins (tests stub it there), else the import-time resolution."""
+    config = sys.modules.get("blint.config")
+    if config is not None:
+        return getattr(config, "BLINTDB_LOC", None)
+    return _BLINTDB_LOC_AT_IMPORT
+
+
 def _blintdb_status() -> ToolStatus:
     """The blintdb function-matching database blint downloads on demand.
 
@@ -436,17 +503,16 @@ def _blintdb_status() -> ToolStatus:
     fetching one is a download this command never performs.
     """
     status = ToolStatus(name="blintdb")
-    try:
-        from blint.config import BLINTDB_LOC
-    except ImportError:
+    blintdb_loc = _blintdb_location()
+    if blintdb_loc is None:
         status.reason = "blint is not installed, so blintdb cannot be used"
         return status
-    if os.path.exists(BLINTDB_LOC):
-        status.path = BLINTDB_LOC
+    if os.path.exists(blintdb_loc):
+        status.path = blintdb_loc
         status.source = "library"
     else:
         status.reason = (
-            f"no blintdb at {BLINTDB_LOC}; blint downloads one on first use "
+            f"no blintdb at {blintdb_loc}; blint downloads one on first use "
             "when USE_BLINTDB is set"
         )
     return status
@@ -763,7 +829,10 @@ def requirement_reason(
 
 
 def capability_unavailable_reason(
-    name: str, tools: Dict[str, ToolStatus], data: Dict[str, Any]
+    name: str,
+    tools: Dict[str, ToolStatus],
+    data: Dict[str, Any],
+    skip_requirements: Tuple[str, ...] = (),
 ) -> Optional[str]:
     """Why a capability cannot run here, or None when it can.
 
@@ -773,13 +842,23 @@ def capability_unavailable_reason(
     message the doctor report prints for the tool or data behind it. An
     unknown name and a capability this version does not implement are
     reported as reasons too, because both mean the step cannot run.
+
+    ``skip_requirements`` names requirements the caller's scan cannot fail
+    on. The capability gate passes :data:`BOM_PRODUCER_REQUIREMENTS` for a
+    run whose every target is a BOM file or BOM directory. The requirements
+    stay in :data:`CAPABILITIES`; this argument only scopes them to the
+    caller's targets.
     """
     spec = next((spec for spec in CAPABILITIES if spec.name == name), None)
     if spec is None:
         return f"{name} is not a capability this version knows"
     if not spec.implemented:
         return f"{name} is not implemented in this version ({issue_url(spec.issue)})"
-    missing = [r for r in spec.requirements if requirement_missing(r, tools, data)]
+    missing = [
+        r
+        for r in spec.requirements
+        if r not in skip_requirements and requirement_missing(r, tools, data)
+    ]
     if not missing:
         return None
     detail = "; ".join(f"{r} ({requirement_reason(r, tools, data)})" for r in missing)
@@ -801,6 +880,24 @@ class CapabilitySpec:
     issue: int
     requirements: Tuple[str, ...] = ()
     implemented: bool = False
+
+
+#: The requirements on the tools that run only while dep-scan produces a
+#: BOM: cdxgen, and the language plugins and runtimes it and dep-scan's
+#: BOM step drive to write reachables slices. A scan of a BOM file or BOM
+#: directory produces no BOM, so none of these runs; the scan reads any
+#: slices already next to the inventory and records reachability as not
+#: assessed where there are none. The capability gate drops these for such
+#: scans instead of refusing over a tool the scan would never call.
+BOM_PRODUCER_REQUIREMENTS: Tuple[str, ...] = (
+    "tool:cdxgen",
+    "tool:golem",
+    "tool:go",
+    "tool:rusi",
+    "tool:dosai",
+    "tool:dotnet",
+    "tool:kosi",
+)
 
 
 #: The single source for what each capability needs. Requirement names are
@@ -1023,53 +1120,83 @@ def _platform_status(target: Dict[str, str]) -> Dict[str, Any]:
 
 
 def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
-    """Locate every tool; returns the entries in report order and by name."""
-    cdxgen = _cdxgen_status()
-    golem = _plugin_tool_status("golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV))
-    rusi = _plugin_tool_status("rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV))
-    dosai = _plugin_tool_status("dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV))
-    kosi = _plugin_tool_status("kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV))
-    entries = [
-        cdxgen,
-        _versioned_tool(
+    """Locate every tool; returns the entries in report order and by name.
+
+    Each version probe spends its time waiting on a subprocess and the tool
+    lookups are independent of one another, so they run on a small thread
+    pool and their results are assembled in report order afterwards. Two
+    lookups need another tool's resolved path first: the cdxgen plugins
+    directory follows cdxgen, and the .NET runtime entry follows dosai,
+    whose self-contained binary bundles a runtime of its own.
+    """
+    with ThreadPoolExecutor(max_workers=PROBE_WORKERS) as pool:
+        cdxgen = pool.submit(_cdxgen_status)
+        atom = pool.submit(
+            _versioned_tool,
             "atom",
             find_executable("atom"),
             _parse_regex(_ATOM_VERSION_RE),
             "atom was not found on PATH; cdxgen runs the atom it installs "
             "itself, and dep-scan calls atom directly only for the "
             "memory-safety check",
-        ),
-        _versioned_tool(
+        )
+        atom_tools = pool.submit(
+            _versioned_tool,
             "atom-tools",
             find_executable("atom-tools") or find_in_interpreter_scripts("atom-tools"),
             _parse_regex(_ATOM_TOOLS_VERSION_RE),
             "atom-tools was not found on PATH or next to the Python that runs "
             "dep-scan; install it with `pip install atom-tools`",
-        ),
-        _versioned_tool(
+        )
+        edga = pool.submit(
+            _versioned_tool,
             "edga",
             find_executable("edga"),
             _parse_regex(_EDGA_VERSION_RE),
             "edga was not found on PATH; it ships in atom's container images "
             "and improves the C and C++ front end",
-        ),
-        _versioned_tool(
+        )
+        node = pool.submit(
+            _versioned_tool,
             "node",
             find_executable("node"),
             _parse_node,
             "node was not found on PATH; cdxgen needs it unless it runs from a bundled binary",
-        ),
-        _python_status(),
-        *_plugins_status(cdxgen.path, get_plugins_bin_target()),
-        golem,
-        _go_status(),
-        rusi,
-        dosai,
-        _dotnet_status(dosai.path),
-        kosi,
-        _blint_status(),
-        _blintdb_status(),
-    ]
+        )
+        golem = pool.submit(
+            _plugin_tool_status, "golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV)
+        )
+        rusi = pool.submit(
+            _plugin_tool_status, "rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV)
+        )
+        dosai = pool.submit(
+            _plugin_tool_status, "dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV)
+        )
+        kosi = pool.submit(
+            _plugin_tool_status, "kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV)
+        )
+        go = pool.submit(_go_status)
+        cdxgen_status = cdxgen.result()
+        plugins = pool.submit(_plugins_status, cdxgen_status.path, get_plugins_bin_target())
+        dosai_status = dosai.result()
+        dotnet = pool.submit(_dotnet_status, dosai_status.path)
+        entries = [
+            cdxgen_status,
+            atom.result(),
+            atom_tools.result(),
+            edga.result(),
+            node.result(),
+            _python_status(),
+            *plugins.result(),
+            golem.result(),
+            go.result(),
+            rusi.result(),
+            dosai_status,
+            dotnet.result(),
+            kosi.result(),
+            _blint_status(),
+            _blintdb_status(),
+        ]
     return entries, {entry.name: entry for entry in entries}
 
 

@@ -164,6 +164,10 @@ class TypeScan:
     #: True once the reachability engine ran and returned a result for this
     #: type; slices on disk alone do not make the analysis succeeded.
     reachability_succeeded: bool = False
+    #: The purl set of each reachables slice file the reachability engine
+    #: already read, keyed by file path. The exploitability inputs take them
+    #: from here instead of parsing the slices a second time.
+    reach_purls_by_file: Optional[Dict[str, set]] = None
     results: List = field(default_factory=list)
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
@@ -1395,6 +1399,7 @@ def stage_enrichment(ctx, scan):
         scan.reached_purls = reach_result.reached_purls
         scan.reached_services = reach_result.reached_services
         scan.endpoint_reached_purls = reach_result.endpoint_reached_purls
+        scan.reach_purls_by_file = reach_result.purls_by_file
     console.record = True
 
 
@@ -1459,7 +1464,9 @@ def _exploitability_inputs(ctx, scan):
             if entry.get("status") == "completed"
         ]
     by_analyzer = (
-        reached_by_analyzer(options.slices_files, tool_stems) if options is not None else {}
+        reached_by_analyzer(options.slices_files, tool_stems, scan.reach_purls_by_file)
+        if options is not None
+        else {}
     )
     scope = ReachScope(
         analyzers=analyzers,

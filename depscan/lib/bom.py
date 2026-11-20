@@ -11,7 +11,6 @@ from urllib.parse import unquote_plus
 
 from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
-from xbom_lib.blint import BlintGenerator
 from xbom_lib.cdxgen import (
     CDXGEN_MIN_VERSION,
     CdxgenGenerator,
@@ -42,6 +41,30 @@ from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 from typing import Callable, Dict, List, Optional, Tuple
+
+
+def _blint_generator_class() -> type:
+    """The BlintGenerator class, imported on first use.
+
+    Importing blint pulls in the binary analysis machinery (lief and
+    friends) and costs a large part of a second, and only binary BOM
+    generation needs it, so a command that never produces a binary BOM
+    skips that import. A caller that set ``BlintGenerator`` on this module
+    (tests stub it there) wins over the import.
+    """
+    generator = globals().get("BlintGenerator")
+    if generator is not None:
+        return generator
+    from xbom_lib.blint import BlintGenerator
+
+    return BlintGenerator
+
+
+def __getattr__(name: str):
+    """Resolve ``BlintGenerator`` on first use instead of at import time."""
+    if name == "BlintGenerator":
+        return _blint_generator_class()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 class ScanFailureError(RuntimeError):
@@ -1390,7 +1413,7 @@ def create_blint_bom(
         generator_options["blint_reviews_dir"] = analysis_report_dir(
             os.path.dirname(os.path.abspath(bom_file)), "blint"
         )
-    blint_lib = BlintGenerator(src_dir, bom_file, logger=LOG, options=generator_options)
+    blint_lib = _blint_generator_class()(src_dir, bom_file, logger=LOG, options=generator_options)
     with console_status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:

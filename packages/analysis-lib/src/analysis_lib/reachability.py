@@ -195,6 +195,7 @@ def _iter_json_list(file_path: str):
 
 def _iter_unique_reachable_flows(
     slices_files: Optional[Iterable[str]],
+    purls_by_file: Optional[Dict[str, set]] = None,
 ) -> Iterator[dict]:
     """Yield each unique reachables flow across all slice files.
 
@@ -208,6 +209,11 @@ def _iter_unique_reachable_flows(
     reached. This iterator yields each flow once (identity == canonical
     JSON of the whole flow object), so callers can count freely.
 
+    ``purls_by_file``, when given, receives the purl set of every file read,
+    built from every flow in it, duplicates included: a flow first seen in
+    another file still belongs to this file's set, so the sets equal a full
+    read of each file and a later per-file consumer need not parse again.
+
     Memory: slices are streamed via ``_iter_json_list`` so the full parsed
     tree is never materialized; only the file text + one flow at a time.
     A file that is not a bare JSON array yields nothing.
@@ -216,9 +222,12 @@ def _iter_unique_reachable_flows(
     for slice_file in slices_files or []:
         if not slice_file or "reachables" not in slice_file:
             continue
+        file_purls = None if purls_by_file is None else purls_by_file.setdefault(slice_file, set())
         for flow in _iter_json_list(slice_file):
             if not isinstance(flow, dict):
                 continue
+            if file_purls is not None:
+                file_purls.update(str(p) for p in flow.get("purls") or [])
             identity = _flow_identity(flow)
             if identity in seen:
                 continue
@@ -246,7 +255,9 @@ def _purl_type(purl: str) -> str:
 
 
 def reached_by_analyzer(
-    slices_files: Optional[Iterable[str]], tool_stems: Dict[str, str]
+    slices_files: Optional[Iterable[str]],
+    tool_stems: Dict[str, str],
+    purls_by_file: Optional[Dict[str, set]] = None,
 ) -> Dict[str, Dict[str, set]]:
     """What each analyzer's reachables slices put on an executed path.
 
@@ -257,6 +268,10 @@ def reached_by_analyzer(
     not read from here (a tool covers one ecosystem); atom's are those its
     slice file prefixes map to (:data:`ATOM_SLICE_PURL_TYPES`), and a prefix
     that is not known contributes the purl types its flows carry.
+
+    ``purls_by_file`` carries the per-file purl sets a reachability
+    analysis pass collected while reading the same slices. A file present
+    there is not parsed again; a file it does not cover is read as before.
     """
     result: Dict[str, Dict[str, set]] = {}
     for slice_file in slices_files or []:
@@ -269,10 +284,12 @@ def reached_by_analyzer(
                 analyzer = tool
                 break
         entry = result.setdefault(analyzer, {"purls": set(), "types": set()})
-        purls = set()
-        for flow in _iter_json_list(slice_file):
-            if isinstance(flow, dict):
-                purls.update(str(p) for p in flow.get("purls") or [])
+        purls = (purls_by_file or {}).get(slice_file)
+        if purls is None:
+            purls = set()
+            for flow in _iter_json_list(slice_file):
+                if isinstance(flow, dict):
+                    purls.update(str(p) for p in flow.get("purls") or [])
         entry["purls"] |= purls
         if analyzer == "atom":
             mapped = ATOM_SLICE_PURL_TYPES.get(name.split("-reachables", 1)[0].lower())
@@ -326,17 +343,23 @@ class FrameworkReachability(ReachabilityAnalyzer):
                     if c.get("evidence") and c["evidence"].get("occurrences"):
                         direct_purls[purl] += len(c["evidence"].get("occurrences"))
         # Collect the reached purls from the slices
+        purls_by_file: Dict[str, set] = {}
         if analysis_options.slices_files:
             # Dedup flow-objects by identity across all slice files so
             # reached_purls[purl] += 1 is not inflated by intra-set
             # duplicates. The reached SET is unchanged; only counts drop.
-            for flow in _iter_unique_reachable_flows(analysis_options.slices_files):
+            # Each file's purl set is collected on the way, so a caller that
+            # needs per-file sets can take them instead of re-reading.
+            for flow in _iter_unique_reachable_flows(analysis_options.slices_files, purls_by_file):
                 for apurl in flow.get("purls") or []:
                     reached_purls[apurl] += 1
         if not direct_purls and not reached_purls:
             status = False
         return ReachabilityResult(
-            success=status, direct_purls=direct_purls, reached_purls=reached_purls
+            success=status,
+            direct_purls=direct_purls,
+            reached_purls=reached_purls,
+            purls_by_file=purls_by_file,
         )
 
 
@@ -488,12 +511,15 @@ class SemanticReachability(FrameworkReachability):
                                 if postbuild_purls.get(purl):
                                     interesting_postbuild_purls[purl] = True
         # Collect the reached purls from the slices
+        purls_by_file: Dict[str, set] = {}
         if analysis_options.slices_files:
             # Dedup flow-objects by identity across all slice files so
             # reached_purls[purl] += 1 / reached_services / endpoint
             # counts are not inflated by intra-set duplicates. The reached
-            # SETS are unchanged; only counts drop.
-            for flow in _iter_unique_reachable_flows(analysis_options.slices_files):
+            # SETS are unchanged; only counts drop. Each file's purl set is
+            # collected on the way, so a caller that needs per-file sets can
+            # take them instead of re-reading the slices.
+            for flow in _iter_unique_reachable_flows(analysis_options.slices_files, purls_by_file):
                 # Associate SERVICE_TAGS with the purl named in the SAME node's
                 # tag string (positional), instead of flattening all node tags
                 # across the flow and applying them to every flow purl. This
@@ -530,4 +556,5 @@ class SemanticReachability(FrameworkReachability):
             reached_purls=reached_purls,
             reached_services=reached_services,
             endpoint_reached_purls=endpoint_reached_purls,
+            purls_by_file=purls_by_file,
         )

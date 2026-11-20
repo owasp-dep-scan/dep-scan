@@ -51,6 +51,7 @@ from depscan.commands.config import _option_sources
 from depscan.commands.output import json_path
 from depscan.commands.scan import (
     _apply_target_options,
+    _inventory_skip_requirements,
     _json_target,
     _resolve_targets,
     add_scan_options,
@@ -755,7 +756,9 @@ def run_scan_tool(args, roots, allow_scans=False):
                 [],
                 None,
             )
-        resolution = checks_table.resolve(scan_args)
+        resolution = checks_table.resolve(
+            scan_args, skip_requirements=_inventory_skip_requirements([kind])
+        )
         # The real run builds the namespace the way the scan verb does, so
         # the requested checks land the same way, the license pseudo type
         # included; the environment the builder and the scan touch is
