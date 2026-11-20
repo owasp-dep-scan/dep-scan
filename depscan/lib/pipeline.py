@@ -1475,7 +1475,9 @@ def _exploitability_inputs(ctx, scan):
                     with open(slice_file, encoding="utf-8") as fp:
                         dosai_flows.extend(json.load(fp))
                 except (OSError, ValueError) as e:
-                    LOG.warning("The dosai reachables slices %s could not be read: %s", slice_file, e)
+                    LOG.warning(
+                        "The dosai reachables slices %s could not be read: %s", slice_file, e
+                    )
     return ExploitabilityInputs(
         rules=ctx.grading_rules,
         scope=scope,
@@ -1489,16 +1491,22 @@ def _exploitability_inputs(ctx, scan):
 def _collect_exploitability(ctx, vdr_result):
     """Fold one project type's graded assessments into the scan's mapping.
 
-    A pair several types graded keeps the assessment whose reach was
-    assessed over one whose reach was not, mirroring how the findings
-    reader used to prefer the scope that assessed the ref.
+    A pair several types graded keeps the assessment that assessed more
+    axes (reach first, then the count of assessed axes), so a universal
+    scan that could not run dosai never overwrites the .NET scan that did;
+    on a tie the first type's assessment stays.
     """
+
+    def assessed(exploitability):
+        axes = exploitability.axes.to_dict()
+        return (
+            axes.get("reach") != "not_assessed",
+            sum(value != "not_assessed" for value in axes.values()),
+        )
+
     for key, exploitability in (vdr_result.exploitability or {}).items():
         existing = ctx.exploitability.get(key)
-        if existing is None or (
-            existing.axes.reach == "not_assessed"
-            and exploitability.axes.reach != "not_assessed"
-        ):
+        if existing is None or assessed(exploitability) > assessed(existing):
             ctx.exploitability[key] = exploitability
 
 
@@ -1553,7 +1561,7 @@ def stage_analysis_vdr(ctx, scan):
     if vdr_result.pkg_vulnerabilities:
         ctx.all_pkg_vulnerabilities += vdr_result.pkg_vulnerabilities
         _collect_exploitability(ctx, vdr_result)
-        grade_stats = exploitability_grade_stats(vdr_result.pkg_vulnerabilities)
+        grade_stats = exploitability_grade_stats(vdr_result.exploitability)
         if grade_stats:
             console.print(
                 "Exploitability grades for project type '{}': {}".format(

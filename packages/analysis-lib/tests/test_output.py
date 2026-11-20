@@ -326,3 +326,31 @@ def test_vdr_without_affects_renders_entry_level_row():
     _, table = generate_console_output([vdr_empty_refs], _multiversion_tree(), set(), _options())
     assert table.row_count == 1
     assert table.caption == "Vulnerabilities count: 1"
+
+
+def test_each_merged_component_row_shows_its_own_grade():
+    """A merged entry's properties hold only its most severe grade; the
+    console reads each row's grade from the per-pair map instead."""
+    from analysis_lib.output import exploitability_grade_stats
+
+    vdr = _merged_vdr(
+        "CVE-2026-41305",
+        [_affects_entry(POSTCSS_8431, fix_version="8.5.0"), _affects_entry(POSTCSS_8554)],
+        matched_by=POSTCSS_8431,
+    )
+    vdr["properties"] = [
+        {"name": "depscan:exploitability:grade", "value": "moderate"},
+        {"name": "depscan:exploitability:rule", "value": "reached"},
+    ]
+    graded = {
+        ("CVE-2026-41305", POSTCSS_8431): {"grade": "moderate", "rule": "reached"},
+        ("CVE-2026-41305", POSTCSS_8554): {"grade": "low", "rule": "not-observed"},
+    }
+    _, table = generate_console_output([vdr], _multiversion_tree(), set(), _options(), graded)
+    cells = list(table.columns[-1].cells)
+    assert sorted(cells) == ["low\nnot-observed", "moderate\nreached"]
+    # Without the map, both rows fall back to the entry's properties.
+    _, table = generate_console_output([vdr], _multiversion_tree(), set(), _options())
+    assert list(table.columns[-1].cells) == ["moderate\nreached", "moderate\nreached"]
+    # The summary counts pairs, as the caption does.
+    assert exploitability_grade_stats(graded) == {"moderate": 1, "low": 1}

@@ -829,3 +829,10 @@ def test_collect_exploitability_prefers_the_assessment_that_reached():
         ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): blind})
     )
     assert ctx.exploitability[("CVE-1", "pkg:npm/a@1")] is seeing
+    # With reach equal, the assessment with more assessed axes wins: the
+    # .NET type that ran dosai over a universal type that could not.
+    exposed = Exploitability(axes=ExploitabilityAxes("likely", "likely", "likely", "unlikely"))
+    pipeline._collect_exploitability(
+        ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): exposed})
+    )
+    assert ctx.exploitability[("CVE-1", "pkg:npm/a@1")] is exposed

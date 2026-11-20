@@ -189,7 +189,9 @@ class VDRAnalyzer(XBOMAnalyzer):
         # Grade the exploitability of every entry before anything renders or
         # writes it, so the console table, the VDR file and the findings
         # document all show the same assessment.
-        exploitability = annotate_exploitability(pkg_vulnerabilities, options.exploitability_inputs)
+        exploitability = annotate_exploitability(
+            pkg_vulnerabilities, options.exploitability_inputs
+        )
         # Should we print the vulnerability table
         if not options.no_vuln_table:
             pkg_group_rows, table = generate_console_output(
@@ -197,6 +199,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 bom_dependency_tree,
                 include_pkg_group_rows,
                 options,
+                exploitability,
             )
             output_priority_suggestions(
                 counts,
