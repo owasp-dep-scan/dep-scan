@@ -460,6 +460,10 @@ def _read_blintdb_location() -> Optional[str]:
         config_spec = util.spec_from_file_location(
             "blint.config", os.path.join(os.path.dirname(spec.origin), "config.py")
         )
+        if config_spec is None or config_spec.loader is None:
+            from blint.config import BLINTDB_LOC
+
+            return BLINTDB_LOC
         module = util.module_from_spec(config_spec)
         # blint.config defines dataclasses, and the dataclass machinery
         # resolves the class's module through sys.modules while the module
