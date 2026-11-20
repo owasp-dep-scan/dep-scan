@@ -49,7 +49,7 @@ jobs:
           node-version: '24.x'
           package-manager-cache: false
       - name: Set up JDK
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78  # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880  # v6.3.0
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -161,16 +161,28 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Decide whether this push may move the latest tag
+        id: release
+        # Only a final release tag (vX.Y.Z) moves latest. A pre-release tag
+        # such as v7.0.0a1, v7.0.0b2 or v7.0.0rc1, and every branch push,
+        # leaves latest where it is.
+        run: |
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "latest=auto" >> "$GITHUB_OUTPUT"
+          else
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6.2.0
         id: metadata
         with:
           images: ${{ matrix.image.images }}
+          flavor: latest=${{ steps.release.outputs.latest }}
       - name: Define Sources
         id: sources
         run: |
           FIRST_TAG=$(echo "${STEPS_METADATA_OUTPUTS_TAGS}" | head -n 1)
-          echo "amd64_source=${FIRST_TAG}-amd64" >> $GITHUB_OUTPUT
-          echo "arm64_source=${FIRST_TAG}-arm64" >> $GITHUB_OUTPUT
+          echo "amd64_source=${FIRST_TAG}-amd64" >> "$GITHUB_OUTPUT"
+          echo "arm64_source=${FIRST_TAG}-arm64" >> "$GITHUB_OUTPUT"
         env:
           STEPS_METADATA_OUTPUTS_TAGS: ${{ steps.metadata.outputs.tags }}
       - uses: int128/docker-manifest-create-action@d6ac360314337bbfb870747d9616b83118acb330  # v2.30.0
@@ -197,28 +209,47 @@ jobs:
           node-version: '24.x'
           package-manager-cache: false
       - name: Set up JDK
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78  # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880  # v6.3.0
         with:
           distribution: 'temurin'
           java-version: '21'
-      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63  # v2.0.3
+      - uses: oras-project/setup-oras@ac735097e22fe643015b0d19645f7c9a69942128  # v2.0.4
       - name: Log in to the Container registry
         uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550  # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Name the image this push published
+        id: image
+        # A tag push publishes the image under the tag; latest only moves for
+        # a final release, so a pre-release must describe its own image.
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "ref=ghcr.io/owasp-dep-scan/depscan:${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=ghcr.io/owasp-dep-scan/depscan:latest" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Generate SBOM with cdxgen
         run: |
           npm install -g @cdxgen/cdxgen@13.8.0
           cdxgen -t python -o bom.json . --profile research
-          cdxgen -t docker -o depscan-oci-image.cdx.json ghcr.io/owasp-dep-scan/depscan:latest
+          cdxgen -t docker -o depscan-oci-image.cdx.json "${IMAGE_REF}"
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
       - name: Attach sbom to the image
         if: startsWith(github.ref, 'refs/tags/')
         continue-on-error: true
         run: |
-          oras attach --artifact-type sbom/cyclonedx ghcr.io/owasp-dep-scan/depscan:latest ./depscan-oci-image.cdx.json:application/json
-          oras discover --format tree ghcr.io/owasp-dep-scan/depscan:latest
+          oras attach --artifact-type sbom/cyclonedx "${IMAGE_REF}" ./depscan-oci-image.cdx.json:application/json
+          oras discover --format tree "${IMAGE_REF}"
+        env:
+          IMAGE_REF: ${{ steps.image.outputs.ref }}
       - name: Create Release
         id: create_release
         if: startsWith(github.ref, 'refs/tags/')
@@ -227,6 +258,8 @@ jobs:
           files: |
             bom.json
             depscan-oci-image.cdx.json
+          prerelease: ${{ steps.image.outputs.prerelease }}
+          make_latest: ${{ steps.image.outputs.prerelease == 'true' && 'false' || 'legacy' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Setup nydus
