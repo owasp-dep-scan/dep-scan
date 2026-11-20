@@ -1,0 +1,21 @@
+test/test_mcp_resources.py
+  s_376e7604108c38::t_ec03dabbca2b51 131-136,140-141
+depscan/commands/translate.py
+  s_376e7604108c38::t_507e33f87fd881 526-528
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ac41320249fff2ab82ac87f7d4559445ea1f478",
+  "prompts": {},
+  "sessions": {
+    "s_376e7604108c38": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_387cb362-0e14-412a-8ae9-a7b8c308dbfc",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
