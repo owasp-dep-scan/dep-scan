@@ -157,11 +157,14 @@ def fakes(tmp_path, monkeypatch, clean_env):
     """
     record = tmp_path / "record"
 
+    def record_path(tool):
+        return record.with_name(f"record-{tool}.jsonl")
+
     def script(name, output, exit_code=0):
         path = tmp_path / f"fake-{name}.py"
         path.write_text(
             FAKE_TOOL_SOURCE.format(
-                record=str(tmp_path / f"record-{name}.jsonl"),
+                record=str(record_path(name)),
                 name=name,
                 output=output,
                 exit_code=exit_code,
@@ -192,7 +195,7 @@ def fakes(tmp_path, monkeypatch, clean_env):
         return found.get(name) or real_find(name)
 
     monkeypatch.setattr(doctor_mod, "find_executable", find)
-    return SimpleNamespace(script=script, record=record, found=found)
+    return SimpleNamespace(script=script, record=record, record_path=record_path, found=found)
 
 
 def _tool_entries(report):
@@ -482,7 +485,7 @@ def plugins_env(fakes, monkeypatch):
         elif tool in ("golem", "rusi", "dosai"):
             path.write_text(
                 FAKE_TOOL_SOURCE.format(
-                    record=str(fakes.record),
+                    record=str(fakes.record_path(tool)),
                     name=tool,
                     output=f"{tool} 9.9.9",
                     exit_code=0,
