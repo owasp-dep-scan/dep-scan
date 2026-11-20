@@ -66,8 +66,11 @@ The `reachable` filter of `list_findings` reads each finding's
 `exploitability.axes.reach`. A scan with reachability records `likely`
 for a package in an analyzer's reached set, `unknown` for one absent from
 a non-empty reached set, and `not_assessed` when no analyzer covered the
-type; `exploitability.rule` names the analyzers. `reachable=true` returns
-the `likely` findings. dep-scan writes no `unlikely` or `refuted` value,
+type; `exploitability.sources.reach` names the analyzers. `reachable=true`
+returns the `likely` findings. The `grade` filter takes an array and
+matches a finding whose `exploitability.grade` is one of the listed
+grades, so `grade=["high"]` is the fastest page of the worst-graded
+findings; a grade is never inferred from severity. dep-scan writes no `unlikely` or `refuted` value,
 so `reachable=false` returns nothing, and an empty page from either value
 is never "nothing is reachable".
 

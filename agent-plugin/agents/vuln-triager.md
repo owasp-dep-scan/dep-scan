@@ -57,7 +57,8 @@ in your context, load it with the Skill tool before using it). When you run as t
    directory and the client's roots; when it refuses the scan directory,
    use `depscan report` instead. Its `reachable=true` filter returns the
    findings an analyzer reached (`likely`); `reachable=false` returns
-   nothing, because dep-scan never records a finding as unreachable. Do not call
+   nothing, because dep-scan never records a finding as unreachable. Its
+   `grade` filter matches the exploitability grades it lists. Do not call
    `run_scan`; it is a dry run by default and a real run is the parent's
    decision.
 
@@ -70,8 +71,9 @@ Return at most about 40 lines:
   complete, each as not assessed with its reason
 - the findings grouped by severity, with the three most important named by
   purl and rule
-- for each named finding: its `coverage.state`, its reachability state if
-  the scan recorded one, and whether the database knows a fixed version
+- for each named finding: its `coverage.state`, its reachability state and
+  exploitability grade with the rule that produced it if the scan recorded
+  them, and whether the database knows a fixed version
 - what to fix first, as a short ordered list, with what each ranking
   rests on
 - what remains unknown because a stage or check did not run

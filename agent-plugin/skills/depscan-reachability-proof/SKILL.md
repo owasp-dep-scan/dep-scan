@@ -17,7 +17,7 @@ The rules in [reference/safety.md](../../reference/safety.md) apply, in
 particular: a reach claim names its analyzer and root set; "not reachable"
 is never stated unless the evidence covers the vulnerable function and the
 deployed entry points; and the summary uses the finding schema's
-exploitability axes (presence, reach, exposure, barrier, pressure), marking
+exploitability axes (presence, reach, exposure, barrier), marking
 every axis you did not measure as `not_assessed`.
 
 ## Finding the analyzers
@@ -204,6 +204,6 @@ that analyzer's call-graph approximation (rta and cha are approximations,
 not concrete traces). Sanitizers, authentication and binary hardening are
 barriers, not refutations. A summary states, per finding: presence (the
 package is in the BOM), reach (the witness, or not assessed), exposure
-(the entry point and its tier), barrier (sanitizers seen), and pressure
-(what the database knows). Every axis you did not measure is
-`not_assessed`, and an unmeasured axis caps the claim.
+(the entry point and its tier), and barrier (sanitizers or authentication
+seen). Every axis you did not measure is `not_assessed`, and an
+unmeasured axis caps the claim.
