@@ -14,6 +14,7 @@ the home directory replaced. Its manifest is hand-checked field by field in
 the compatibility tests.
 """
 
+import dataclasses
 import hashlib
 import json
 import os
@@ -1243,9 +1244,7 @@ def test_a_tool_run_without_a_report_removes_split_slices_and_its_facts(fake_too
     facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
     facts.parent.mkdir(parents=True)
     facts.write_text("{}")
-    tool = DOSAI_TOOL.__class__(
-        **{**DOSAI_TOOL.__dict__, "run_fallback": lambda *a: None}
-    )
+    tool = dataclasses.replace(DOSAI_TOOL, run_fallback=lambda *a: None)
     options = {"project_type": ["dotnet"], "doctor_report": doctor_mod.doctor()}
     assert not _run_reachability_tool(bom, str(tmp_path), options, tool)
     assert not (tmp_path / "dotnet-reachables.slices.json").exists()

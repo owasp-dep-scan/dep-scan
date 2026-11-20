@@ -347,7 +347,7 @@ def test_each_merged_component_row_shows_its_own_grade():
         ("CVE-2026-41305", POSTCSS_8554): {"grade": "low", "rule": "not-observed"},
     }
     _, table = generate_console_output([vdr], _multiversion_tree(), set(), _options(), graded)
-    cells = list(table.columns[-1].cells)
+    cells = [str(cell) for cell in table.columns[-1].cells]
     assert sorted(cells) == ["low\nnot-observed", "moderate\nreached"]
     # Without the map, both rows fall back to the entry's properties.
     _, table = generate_console_output([vdr], _multiversion_tree(), set(), _options())
