@@ -37,12 +37,11 @@ from depscan.lib import doctor as doctor_mod
 
 # The fake tool records every call, prints the version line the test chose
 # and exits with the code the test chose. The shebang marks it as a fake for
-# the patched version command. The record is an append-only JSONL file,
-# because the doctor probes run concurrently and a read-modify-write of one
-# JSON array loses entries of the probes that overlap.
+# the patched version command. Each fake records into its own file, named
+# after the tool, because the doctor probes run concurrently and a shared
+# file loses entries: appending is not atomic across processes on Windows.
 FAKE_TOOL_SOURCE = """#!/usr/bin/env python3
 import json
-import os
 import sys
 
 RECORD = {record!r}
@@ -152,15 +151,20 @@ def fakes(tmp_path, monkeypatch, clean_env):
     ``script(name, output)`` writes a fake tool and returns its path;
     ``found`` maps a tool name to the path the PATH lookup answers with, and
     a lookup nothing serves falls through to the real PATH (which the
-    stripped PATH keeps empty); ``record`` collects every fake invocation.
+    stripped PATH keeps empty); every fake invocation appends one line to
+    ``record-<tool>.jsonl`` next to ``record``, which the positive controls
+    read back.
     """
-    record = tmp_path / "record.jsonl"
+    record = tmp_path / "record"
 
     def script(name, output, exit_code=0):
         path = tmp_path / f"fake-{name}.py"
         path.write_text(
             FAKE_TOOL_SOURCE.format(
-                record=str(record), name=name, output=output, exit_code=exit_code
+                record=str(tmp_path / f"record-{name}.jsonl"),
+                name=name,
+                output=output,
+                exit_code=exit_code,
             ),
             encoding="utf-8",
         )
@@ -203,10 +207,14 @@ def _capability_signature(report):
 
 
 def _assert_probed(record, tool, argv):
-    """Positive control: the fake tool ran with exactly ``argv``."""
+    """Positive control: the fake tool ran with exactly ``argv``.
+
+    Each fake appends to its own ``record-<tool>.jsonl``, so a missing file
+    means the fake never ran at all."""
+    record_file = record.with_name(f"record-{tool}.jsonl")
     entries = [
         json.loads(line)
-        for line in record.read_text(encoding="utf-8").splitlines()
+        for line in record_file.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
     assert any(entry["tool"] == tool and entry["argv"] == argv for entry in entries), (
