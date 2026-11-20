@@ -757,6 +757,39 @@ def test_iter_unique_reachable_flows_streams_lazy(tmp_path):
     assert len(flows2) == 2
 
 
+def test_reached_by_analyzer_reuses_the_analysis_pass_purl_sets(tmp_path):
+    """The per-file purl sets the analysis pass collects while deduplicating
+    must give reached_by_analyzer exactly the result a fresh read gives,
+    duplicates across the split files included."""
+    from analysis_lib.reachability import reached_by_analyzer
+
+    dup = {
+        "flows": [{"id": "n1", "tags": "web"}],
+        "purls": ["pkg:npm/express@4.22.2"],
+    }
+    other = {
+        "flows": [{"id": "n2", "tags": "api"}],
+        "purls": ["pkg:npm/lodash@4.17.21", "pkg:npm/express@4.22.2"],
+    }
+    main_file = _write(tmp_path / "js-reachables.slices.json", [dup, other])
+    split_file = _write(tmp_path / "js-reachables.slices_1.json", [dup])
+    files = [str(main_file), str(split_file)]
+    options = _make_options(tmp_path)
+    options.slices_files = files
+    result = SemanticReachability(options).process()
+    assert result.purls_by_file is not None
+    stems = {"golem": "go-reachables", "kosi": "kosi-reachables"}
+    reused = reached_by_analyzer(files, stems, result.purls_by_file)
+    fresh = reached_by_analyzer(files, stems)
+    assert reused == fresh
+    # The dup file's purls arrive from the flow that was yielded, although
+    # the file holds only the duplicate.
+    assert reused["atom"]["purls"] == {
+        "pkg:npm/express@4.22.2",
+        "pkg:npm/lodash@4.17.21",
+    }
+
+
 def test_reached_by_analyzer_splits_tool_and_atom_slices(tmp_path):
     import json
 

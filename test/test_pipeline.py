@@ -774,6 +774,44 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
     assert captured["blint_reviews"] is expected
 
 
+def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected(
+    tmp_path, monkeypatch
+):
+    """When the reachability engine already read the slices, the
+    exploitability inputs reuse its per-file purl sets and never parse the
+    slices again."""
+    from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.findings.exploitability import load_rules
+    from analysis_lib.findings.vdr_convert import reach_axis
+    from analysis_lib import reachability as reachability_module
+
+    slice_file = tmp_path / "java-reachables.slices.json"
+    slice_file.write_text("[]")
+    options = ReachabilityAnalysisKV(
+        project_types=["java"],
+        src_dir=str(tmp_path),
+        bom_dir=str(tmp_path),
+        slices_files=[str(slice_file)],
+    )
+    scan = SimpleNamespace(
+        project_type="java",
+        reachability_options=options,
+        reachability_succeeded=True,
+        reached_purls={"pkg:maven/a/b@1": 1},
+        reach_purls_by_file={str(slice_file): {"pkg:maven/a/b@1"}},
+        pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
+        bom_dir=str(tmp_path),
+    )
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+
+    def refuse_to_read(*args, **kwargs):
+        raise AssertionError("the slices were parsed again")
+
+    monkeypatch.setattr(reachability_module, "_iter_json_list", refuse_to_read)
+    inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
+
+
 def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(tmp_path):
     from analysis_lib import ReachabilityAnalysisKV
     from analysis_lib.findings.exploitability import load_rules
@@ -792,6 +830,7 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         reachability_options=options,
         reachability_succeeded=True,
         reached_purls={"pkg:maven/a/b@1": 1},
+        reach_purls_by_file=None,
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
     )
