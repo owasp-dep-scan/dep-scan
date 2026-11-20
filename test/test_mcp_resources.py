@@ -128,10 +128,17 @@ def scan_env(tmp_path, monkeypatch):
             self.vdr_options = vdr_options
 
         def process(self):
+            # The stub replaces only the vulnerability search, so it runs the
+            # same exploitability grading step the real analyzer runs.
+            from analysis_lib.findings.exploitability import annotate_exploitability
+
+            vulns = [dict(VULN_REQUESTS)]
+            graded = annotate_exploitability(vulns, self.vdr_options.exploitability_inputs)
             return SimpleNamespace(
                 success=True,
                 prioritized_pkg_vuln_trees={},
-                pkg_vulnerabilities=[dict(VULN_REQUESTS)],
+                pkg_vulnerabilities=vulns,
+                exploitability=graded,
             )
 
     monkeypatch.setattr(pipeline, "VDRAnalyzer", StubVDRAnalyzer)
