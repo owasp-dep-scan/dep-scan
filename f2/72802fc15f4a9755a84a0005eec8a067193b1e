@@ -1,0 +1,25 @@
+packages/analysis-lib/src/analysis_lib/prioritize.py
+  s_444cf041c11ded::t_8e0ed88e32d699 809-814
+packages/analysis-lib/src/analysis_lib/merge.py
+  s_444cf041c11ded::t_d437e21f8b0a8d 155-158
+packages/analysis-lib/tests/test_utils.py
+  s_444cf041c11ded::t_d6eb5efa5557e8 3-4
+  s_444cf041c11ded::t_415e298c450b45 27,45
+  s_444cf041c11ded::t_89a177bd1b211b 726-785
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f272802fc15f4a9755a84a0005eec8a067193b1e",
+  "prompts": {},
+  "sessions": {
+    "s_444cf041c11ded": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_19609285-3f8e-426f-9a0c-bfbe09bd1c48",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
