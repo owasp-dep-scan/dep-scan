@@ -461,7 +461,16 @@ def _read_blintdb_location() -> Optional[str]:
             "blint.config", os.path.join(os.path.dirname(spec.origin), "config.py")
         )
         module = util.module_from_spec(config_spec)
-        config_spec.loader.exec_module(module)
+        # blint.config defines dataclasses, and the dataclass machinery
+        # resolves the class's module through sys.modules while the module
+        # executes, so the module must be registered first or loading fails
+        # on newer interpreters.
+        sys.modules["blint.config"] = module
+        try:
+            config_spec.loader.exec_module(module)
+        except BaseException:
+            del sys.modules["blint.config"]
+            raise
     except (ImportError, OSError, AttributeError, SyntaxError):
         from blint.config import BLINTDB_LOC
 

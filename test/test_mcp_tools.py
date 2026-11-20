@@ -745,8 +745,9 @@ class _StubReachability:
                 "reached_purls",
                 "reached_services",
                 "endpoint_reached_purls",
+                "purls_by_file",
             ],
-        )(self.success, {}, dict(self.reached), {}, {})
+        )(self.success, {}, dict(self.reached), {}, {}, None)
 
 
 @pytest.fixture
