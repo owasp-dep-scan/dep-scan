@@ -1,0 +1,55 @@
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_7318da1b9edd46::t_00c0ae743e8910 10-11,32-36
+agent-plugin/agents/vuln-triager.md
+  s_7318da1b9edd46::t_f9aa388d904499 34-36,67-68
+agent-plugin/agents/exposure-analyst.md
+  s_7318da1b9edd46::t_f9aa388d904499 29-32
+agent-plugin/README.md
+  s_7318da1b9edd46::t_689a983b693af9 23,26
+agent-plugin/skills/depscan-coverage-loop/SKILL.md
+  s_7318da1b9edd46::t_00c0ae743e8910 71-72
+test/test_agent_plugin_manifests.py
+  s_7318da1b9edd46::t_de460b802de712 93
+  s_7318da1b9edd46::t_0dd332a0ab4bc7 3
+agent-plugin/agents/binary-reviewer.md
+  s_7318da1b9edd46::t_f9aa388d904499 24-27
+agent-plugin/skills/depscan-binary/SKILL.md
+  s_7318da1b9edd46::t_f9aa388d904499 83-89
+agent-plugin/reference/commands.md
+  s_7318da1b9edd46::t_f9aa388d904499 48
+documentation/docs/agent-plugin.mdx
+  s_7318da1b9edd46::t_344cca58c9dbb5 66
+  s_7318da1b9edd46::t_689a983b693af9 47,103-111
+  s_7318da1b9edd46::t_c3b30fedac20ed 112
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_7318da1b9edd46::t_f9aa388d904499 83-90
+agent-plugin/evals/evidence-witness-path/prompt.md
+  s_7318da1b9edd46::t_f9aa388d904499 8
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_7318da1b9edd46::t_f9aa388d904499 42-45,53-56
+agent-plugin/.zcode-plugin/plugin.json
+  s_7318da1b9edd46::t_de460b802de712 1-15
+.gitattributes
+  s_7318da1b9edd46::t_0dd332a0ab4bc7 11
+agent-plugin/evals/evidence-witness-path/graders/cites-root-set.md
+  s_7318da1b9edd46::t_f9aa388d904499 6
+contrib/gen_agent_manifests.py
+  s_7318da1b9edd46::t_de460b802de712 237-253
+  s_7318da1b9edd46::t_b0067f4b0947b6 236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "426ee39631c41c3faef78e2b560ee5e3abbb1fdb",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

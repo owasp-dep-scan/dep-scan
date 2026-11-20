@@ -1,0 +1,35 @@
+.github/workflows/repotests-lifecycle-go.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 32
+.github/workflows/repotests.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 49,53,62,67
+.github/workflows/csafdemo.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 18
+.github/workflows/repotests-lifecycle-java.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 32
+.github/workflows/agent-plugin.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 95
+.github/workflows/dockertests.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 72
+.github/workflows/gobintests.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 30
+.github/workflows/pythonapp.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 69
+.github/workflows/repotests-data.yml
+  s_7318da1b9edd46::t_4cad05c21960fa 51,134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f268ff66dfb358ff6146f9b9322784dacd65ebff",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
