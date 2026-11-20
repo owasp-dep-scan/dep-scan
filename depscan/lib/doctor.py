@@ -435,6 +435,43 @@ def _blint_status() -> ToolStatus:
     return status
 
 
+def _blintdb_location() -> Optional[str]:
+    """The blintdb database path, read without importing the blint package.
+
+    Importing ``blint`` executes blint.api and with it the binary analysis
+    machinery (lief and friends) that only binary BOM generation needs, so
+    every command paid that import just to learn where the database lives.
+    blint's config module needs only the standard library and appdirs, so
+    when blint itself has not been imported yet it is loaded from its file;
+    a config that no longer loads standalone falls back to the plain
+    import, which behaves as before.
+    """
+    config = sys.modules.get("blint.config")
+    if config is not None:
+        return getattr(config, "BLINTDB_LOC", None)
+    try:
+        spec = util.find_spec("blint")
+    except (ImportError, ValueError):
+        return None
+    if spec is None:
+        return None
+    if not spec.origin:
+        from blint.config import BLINTDB_LOC
+
+        return BLINTDB_LOC
+    try:
+        config_spec = util.spec_from_file_location(
+            "blint.config", os.path.join(os.path.dirname(spec.origin), "config.py")
+        )
+        module = util.module_from_spec(config_spec)
+        config_spec.loader.exec_module(module)
+    except (ImportError, OSError, AttributeError, SyntaxError):
+        from blint.config import BLINTDB_LOC
+
+        return BLINTDB_LOC
+    return module.BLINTDB_LOC
+
+
 def _blintdb_status() -> ToolStatus:
     """The blintdb function-matching database blint downloads on demand.
 
@@ -442,17 +479,16 @@ def _blintdb_status() -> ToolStatus:
     fetching one is a download this command never performs.
     """
     status = ToolStatus(name="blintdb")
-    try:
-        from blint.config import BLINTDB_LOC
-    except ImportError:
+    blintdb_loc = _blintdb_location()
+    if blintdb_loc is None:
         status.reason = "blint is not installed, so blintdb cannot be used"
         return status
-    if os.path.exists(BLINTDB_LOC):
-        status.path = BLINTDB_LOC
+    if os.path.exists(blintdb_loc):
+        status.path = blintdb_loc
         status.source = "library"
     else:
         status.reason = (
-            f"no blintdb at {BLINTDB_LOC}; blint downloads one on first use "
+            f"no blintdb at {blintdb_loc}; blint downloads one on first use "
             "when USE_BLINTDB is set"
         )
     return status
