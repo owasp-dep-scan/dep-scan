@@ -2,6 +2,7 @@ import glob
 import os
 import re
 from collections import defaultdict
+from functools import lru_cache
 
 from custom_json_diff.lib.utils import json_load
 from rich import box
@@ -605,6 +606,7 @@ def filter_tags(tags):
     return tags
 
 
+@lru_cache(maxsize=65536)
 def is_filterable_code(project_type, code):
     if len(code) < 3:
         return True
