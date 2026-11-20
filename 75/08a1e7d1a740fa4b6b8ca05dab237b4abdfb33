@@ -1,0 +1,21 @@
+test/test_doctor.py
+  s_444cf041c11ded::t_77e86bea891bb5 207-211
+  s_444cf041c11ded::t_828ce659bf387b 40-42,57-59
+  s_444cf041c11ded::t_be913a42416a98 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7508a1e7d1a740fa4b6b8ca05dab237b4abdfb33",
+  "prompts": {},
+  "sessions": {
+    "s_444cf041c11ded": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_19609285-3f8e-426f-9a0c-bfbe09bd1c48",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
