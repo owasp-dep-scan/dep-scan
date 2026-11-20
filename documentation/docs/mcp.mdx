@@ -113,7 +113,7 @@ Ten tools are registered. Each is a thin layer over `depscan.api` or a verb's JS
 | Tool | Arguments | Result |
 | --- | --- | --- |
 | `scan_summary` | `scan_dir` | The manifest summary and the finding counts by category and severity. |
-| `list_findings` | `scan_dir`, `category?`, `severity?`, `purl?`, `cwe?`, `rule?`, `reachable?`, `cursor?`, `limit?` | One page of findings, plus `nextCursor` when more remain. |
+| `list_findings` | `scan_dir`, `category?`, `severity?`, `purl?`, `cwe?`, `rule?`, `reachable?`, `grade?`, `cursor?`, `limit?` | One page of findings, plus `nextCursor` when more remain. |
 | `get_finding` | `scan_dir`, `finding_id` | One finding, by its fingerprint id. |
 | `explain_finding` | `scan_dir`, `finding_id`, `mode?` | The finding plus the explanation text `depscan.api.explain` renders. |
 | `coverage` | `scan_dir` | The manifest's stages, the not-assessed reasons and the checks not run. |
@@ -125,7 +125,7 @@ Ten tools are registered. Each is a thin layer over `depscan.api` or a verb's JS
 
 Optional arguments carry the question mark above. `mode` defaults to `EndpointsAndReachables`, the `--explanation-mode` default; `execute` defaults to false.
 
-The findings filters match the fields the finding schema records today: `category`, `severity`, `purl`, `cwe`, `rule`, and `reachable` for the reachability a finding records. A finding must match every filter given, and a filter name the finding schema does not define is a tool error, never a silently ignored filter. `reachable` reads the finding's `exploitability.axes.reach`. A scan with reachability records `likely` for a package in an analyzer's reached set, `unknown` for one absent from a non-empty reached set, and `not_assessed` when no analyzer covered the type, and `exploitability.rule` names the analyzers. `reachable=true` matches `proven` and `likely`; `reachable=false` matches `unlikely` and `refuted`, which dep-scan does not record today, so it returns an empty page. An empty page from either value is not evidence that nothing is reachable.
+The findings filters match the fields the finding schema records today: `category`, `severity`, `purl`, `cwe`, `rule`, `reachable` for the reachability a finding records, and `grade` for the exploitability grade. A finding must match every filter given, and a filter name the finding schema does not define is a tool error, never a silently ignored filter. `reachable` reads the finding's `exploitability.axes.reach`. A scan with reachability records `likely` for a package in an analyzer's reached set, `unknown` for one absent from a non-empty reached set, and `not_assessed` when no analyzer covered the type, and `exploitability.sources.reach` names the analyzers. `reachable=true` matches `proven` and `likely`; `reachable=false` matches `unlikely` and `refuted`, which dep-scan does not record today, so it returns an empty page. `grade` takes an array and matches a finding whose `exploitability.grade` is any of the listed grades; a finding that records no grade matches no value. An empty page from either value is not evidence that nothing is reachable.
 
 `explain_finding` returns the explanation text of the scan directory as a whole: this version's explainer renders scan-wide text and cannot explain one finding in isolation, and the tool's description says so.
 

@@ -17,12 +17,12 @@
       "presence": "proven",
       "reach": "likely",
       "exposure": "not_assessed",
-      "barrier": "unlikely",
-      "pressure": "not_assessed"
+      "barrier": "unlikely"
     },
     "grade": "moderate",
     "rule": "rusi-grade-v1",
-    "unassessed": ["exposure", "pressure"]
+    "unassessed": ["exposure"],
+    "sources": {"reach": ["rusi"], "presence": ["vdb", "rusi"]}
   },
   "producer": {"name": "rusi", "version": "2.5.2"}
 }

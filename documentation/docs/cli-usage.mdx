@@ -61,11 +61,11 @@ usage: depscan scan [-h] [--target-kind {purl,git,container,bom,bom-dir,binary,a
                     [--technique {auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} [{auto,source-code-analysis,binary-analysis,manifest-analysis,hash-comparison,instrumentation,filename} ...]]
                     [--bom-engine {auto,CdxgenGenerator,CdxgenServerGenerator,CdxgenImageBasedGenerator,BlintGenerator} | --vulnerability-analyzer {auto,VDRAnalyzer,LifecycleAnalyzer}]
                     [--reachability-analyzer {off,FrameworkReachability,SemanticReachability}] [--spec-version SPEC_VERSION] [--cdxgen-args CDXGEN_ARGS] [--cdxgen-server CDXGEN_SERVER]
-                    [--rust-analyzer-backend {stable,compiler}] [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo] [--no-suggest] [--fail-on-error] [-t PROJECT_TYPE [PROJECT_TYPE ...]]
-                    [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}] [--severity {low,medium,high,critical}] [--malware-only]
-                    [--vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}] [--vdb-scope {app,app+os}] [--vdb-time {2y,default,10y}] [--vdb-extended] [--vdb-compression {xz,zst}]
-                    [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}] [--vdb-image VDB_IMAGE] [--no-universal] [--no-vuln-table]
-                    [--explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}] [--annotate]
+                    [--rust-analyzer-backend {stable,compiler}] [--go-analyzer-network {auto,offline}] [--go-analyzer-cgo] [--exploitability-rules EXPLOITABILITY_RULES] [--no-suggest]
+                    [--fail-on-error] [-t PROJECT_TYPE [PROJECT_TYPE ...]] [--private-ns PRIVATE_NS] [--deep] [--fuzzy-search] [--search-order {purl,pcu,cpe,cpu,url}]
+                    [--severity {low,medium,high,critical}] [--malware-only] [--vdb-flavor {full,app-only,app-extended,app-10y,app-10y-extended}] [--vdb-scope {app,app+os}]
+                    [--vdb-time {2y,default,10y}] [--vdb-extended] [--vdb-compression {xz,zst}] [--vdb-distro {alpine,debian,redhat,alma,rocky,ubuntu}] [--vdb-image VDB_IMAGE] [--no-universal]
+                    [--no-vuln-table] [--explanation-mode {Endpoints,EndpointsAndReachables,NonReachables,LLMPrompts}] [--annotate]
                     [target ...]
 
 positional arguments:
@@ -130,6 +130,9 @@ options:
                         a non-PATH golem binary.
   --go-analyzer-cgo     Allow cgo while golem loads Go packages. Default is cgo off: packages that need cgo are not loaded and their reachability is missing. With this flag the C compiler runs with
                         flags taken from the scanned code and its dependencies, so use it only for input you trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.
+  --exploitability-rules EXPLOITABILITY_RULES
+                        Path to a replacement exploitability rule table (YAML), validated against the depscan-exploitability-rules schema before the scan starts; an invalid file is a usage error.
+                        Default: the bundled table, analysis_lib/data/exploitability_rules.yaml.
   --no-suggest          Disable suggest mode
   --fail-on-error       Abort the scan with a non-zero exit code instead of silently degrading. Passed through to cdxgen so extractor failures fail BOM generation, and applied to blint, rusi, golem,
                         and dosai failures, unreadable reachability reports, empty slices, and empty package lists.

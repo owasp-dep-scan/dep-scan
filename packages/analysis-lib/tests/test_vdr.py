@@ -256,10 +256,12 @@ def test_merged_multiref_entries_render_in_console_output(monkeypatch):
     transient fields, so capture it there via a wrapper."""
     captured = {}
 
-    def _capture(pkg_vulnerabilities, bom_dependency_tree, include, options):
+    def _capture(pkg_vulnerabilities, bom_dependency_tree, include, options, *rest):
         captured["vdrs"] = pkg_vulnerabilities
         captured["include"] = include
-        captured["result"] = real_gco(pkg_vulnerabilities, bom_dependency_tree, include, options)
+        captured["result"] = real_gco(
+            pkg_vulnerabilities, bom_dependency_tree, include, options, *rest
+        )
         return captured["result"]
 
     monkeypatch.setattr(vdr_module, "generate_console_output", _capture)

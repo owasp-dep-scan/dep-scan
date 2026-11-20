@@ -4,6 +4,7 @@ from typing import Any, Dict, List
 
 from analysis_lib import VdrAnalysisKV
 from analysis_lib.config import max_distro_vulnerabilities, risk_help_text
+from analysis_lib.findings.exploitability import GRADE_PROPERTY, RULE_PROPERTY
 from analysis_lib.helpers import is_malware_vuln, max_version
 from custom_json_diff.lib.utils import file_write
 from rich import box
@@ -168,8 +169,39 @@ def _affects_fix_version(affects_entry):
     return ""
 
 
+def _exploitability_cell(vdr, ref, exploitability=None):
+    """The grade and rule id of one (advisory, component) row, as one cell.
+
+    ``exploitability`` is the per-pair map the grading step returned; a row
+    it does not carry falls back to the entry's ``depscan:exploitability:``
+    properties, which describe the entry's most severely graded component.
+    An ungraded row renders an empty cell rather than an invented value.
+    """
+    graded = (exploitability or {}).get((vdr.get("id") or "", ref)) if ref else None
+    if graded is not None:
+        grade, rule = str(_grade_field(graded, "grade")), str(_grade_field(graded, "rule"))
+    else:
+        grade = rule = ""
+        for prop in vdr.get("properties") or []:
+            if not isinstance(prop, dict):
+                continue
+            if prop.get("name") == GRADE_PROPERTY:
+                grade = str(prop.get("value") or "")
+            elif prop.get("name") == RULE_PROPERTY:
+                rule = str(prop.get("value") or "")
+    if not grade:
+        return ""
+    return f"{grade}\n{rule}" if rule else grade
+
+
+def _grade_field(graded, name):
+    """A field of a graded assessment, given as an Exploitability or a dict."""
+    value = graded.get(name) if isinstance(graded, dict) else getattr(graded, name, None)
+    return value or ""
+
+
 def _expanded_vuln_rows(vdr, bom_dependency_tree):
-    """One (purl_prefix, p_rich_tree, fix_version) tuple per affected component.
+    """One (purl_prefix, p_rich_tree, fix_version, ref) tuple per affected component.
 
     After dedupe_vdrs merges components sharing a CVE (#504/#527), a single
     entry can carry several affects refs while its transient purl_prefix,
@@ -181,7 +213,8 @@ def _expanded_vuln_rows(vdr, bom_dependency_tree):
     """
     affects = vdr.get("affects") or []
     if len(affects) <= 1:
-        return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None)]
+        first = affects[0].get("ref") if affects and isinstance(affects[0], dict) else None
+        return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None, first)]
     rating = (vdr.get("ratings") or [{}])[0]
     severity = rating.get("severity") or "unknown"
     vid = vdr.get("id") or ""
@@ -198,9 +231,11 @@ def _expanded_vuln_rows(vdr, bom_dependency_tree):
             as_tree=True,
             extra_text=f":left_arrow: {vid}",
         )
-        rows.append((_purl_prefix_from_ref(ref), p_rich_tree, _affects_fix_version(affects_entry)))
+        rows.append(
+            (_purl_prefix_from_ref(ref), p_rich_tree, _affects_fix_version(affects_entry), ref)
+        )
     if not rows:
-        return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None)]
+        return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None, None)]
     return rows
 
 
@@ -209,7 +244,13 @@ def generate_console_output(
     bom_dependency_tree,
     include_pkg_group_rows,
     options: VdrAnalysisKV,
+    exploitability=None,
 ):
+    """The console table of the entries and their package group rows.
+
+    ``exploitability`` maps (advisory id, affects ref) to the graded
+    assessment, so each component row of a merged entry shows its own grade.
+    """
     # Each row mixes str ids, rich Tree renderables and severity strings.
     table_rows: List[List[Any]] = []
     purl_fixed_location = {}
@@ -233,7 +274,9 @@ def generate_console_output(
         rating = (vdr.get("ratings") or [{}])[0]
         severity = f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("severity", "").upper()}"""
         score = f"""{"[bright_red]" if rating.get("severity", "").upper() == "CRITICAL" else ""}{rating.get("score", "")}"""
-        for purl_prefix, p_rich_tree, per_ref_fix in _expanded_vuln_rows(vdr, bom_dependency_tree):
+        for purl_prefix, p_rich_tree, per_ref_fix, ref in _expanded_vuln_rows(
+            vdr, bom_dependency_tree
+        ):
             fixed_location = per_ref_fix or vdr.get("fixed_location")
             if not purl_fixed_location.get(purl_prefix) and fixed_location:
                 purl_fixed_location[purl_prefix] = fixed_location
@@ -246,6 +289,7 @@ def generate_console_output(
                     fixed_location or purl_fixed_location.get(purl_prefix),
                     severity,
                     score,
+                    _exploitability_cell(vdr, ref, exploitability),
                 ]
             )
     # Caption counts (id, affects ref) pairs so merged multi-component entries
@@ -268,6 +312,7 @@ def generate_console_output(
         "Fix Version",
         "Severity",
         "Score",
+        "Grade",
     ]:
         justify = "left"
         if h == "Score":
@@ -305,10 +350,34 @@ def generate_console_output(
                 f"[bold]{group_fix}[/bold]" if i == 0 else "",
                 arow[5],
                 arow[6],
+                arow[7],
                 end_section=(i == len(row_indices) - 1),
                 style=Style(dim=True) if not arow[3] or arow[5] in dimmable_severities else None,
             )
     return pkg_group_rows, table
+
+
+def exploitability_grade_stats(exploitability):
+    """The grade distribution of the graded (advisory, component) pairs,
+    most severe grade first, so it counts what the table's caption counts.
+
+    ``exploitability`` is the per-pair map the grading step returned, or the
+    findings of a scan directory (each with its own ``exploitability``). A
+    scan that graded nothing reports {} and no line is printed for it.
+    """
+    values = exploitability.values() if isinstance(exploitability, dict) else exploitability
+    counts = {}
+    for item in values or []:
+        if isinstance(item, dict) and "exploitability" in item:
+            item = item.get("exploitability")
+        grade = str(_grade_field(item, "grade")) if item else ""
+        if grade:
+            counts[grade] = counts.get(grade, 0) + 1
+    return {
+        grade: counts[grade]
+        for grade in ("critical", "high", "moderate", "low", "shielded", "unassessed")
+        if grade in counts
+    }
 
 
 def check_malware_cve(cve_list):

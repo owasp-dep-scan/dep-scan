@@ -365,6 +365,15 @@ def _add_analyzer_options(parser: argparse.ArgumentParser) -> None:
         "the scanned code and its dependencies, so use it only for input you "
         "trust. Can also be enabled with DEPSCAN_GO_ANALYZER_CGO.",
     )
+    parser.add_argument(
+        "--exploitability-rules",
+        default=argparse.SUPPRESS,
+        dest="exploitability_rules",
+        help="Path to a replacement exploitability rule table (YAML), validated "
+        "against the depscan-exploitability-rules schema before the scan "
+        "starts; an invalid file is a usage error. Default: the bundled "
+        "table, analysis_lib/data/exploitability_rules.yaml.",
+    )
 
 
 def _add_search_options(parser: argparse.ArgumentParser) -> None:
@@ -849,6 +858,18 @@ def run(args: argparse.Namespace) -> int:
         else:
             print(message, file=sys.stderr)
         return EXIT_USAGE
+    # The rule table is validated before any target resolves or any tool is
+    # probed, so a broken override is a usage error whatever else is wrong.
+    try:
+        rules_path, rules_error = _exploitability_rules_error(args)
+    except Exception as exc:
+        return _unexpected_failure(json_output, exc)
+    if rules_error is not None:
+        if json_output:
+            print_error_document(EXIT_USAGE, "scan", rules_error, {"path": json_path(rules_path)})
+        else:
+            print(rules_error, file=sys.stderr)
+        return EXIT_USAGE
     entries, refusal = _resolve_targets(args)
     if entries is None:
         # The pair contract: a None entries always carries its refusal.
@@ -883,6 +904,28 @@ def run(args: argparse.Namespace) -> int:
         # error of the verb itself: the resolution, the namespace, or the
         # printing. The redirect above is already undone by its finally.
         return _unexpected_failure(json_output, exc)
+
+
+def _exploitability_rules_error(args) -> Tuple[Optional[str], Optional[str]]:
+    """The override rule table path and why it cannot be used, if it cannot.
+
+    The path comes from ``--exploitability-rules`` or the ``depscan.toml``
+    key, resolved the way the scan resolves it. A named override is validated
+    against the published schema, so a broken table is a usage error (exit 2)
+    naming the schema's findings, never a scan that grades on a table nobody
+    checked. The bundled table needs no check here: its own tests validate it.
+    """
+    internal, _sources = resolved_namespace(args, checks_table.resolve(args))
+    path = getattr(internal, "exploitability_rules", None)
+    if not path:
+        return None, None
+    from analysis_lib.findings.exploitability import load_rules
+
+    try:
+        load_rules(str(path))
+    except ValueError as exc:
+        return str(path), f"depscan scan: the exploitability rules file is unusable: {exc}"
+    return str(path), None
 
 
 def _unexpected_failure(json_output: bool, exc: Exception) -> int:

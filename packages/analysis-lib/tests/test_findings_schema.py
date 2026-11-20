@@ -56,6 +56,7 @@ def test_schema_names():
         "depscan-finding",
         "depscan-doctor",
         "depscan-manifest",
+        "depscan-exploitability-rules",
         "depscan-scan-output",
         "depscan-report-output",
         "depscan-vdb-download-output",
@@ -96,7 +97,7 @@ def test_schema_names():
 def test_load_schema_metadata():
     schema = load_schema("finding")
     assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-    assert schema["$id"] == "urn:owasp:depscan:schema:finding:1"
+    assert schema["$id"] == "urn:owasp:depscan:schema:finding:2"
     assert schema["additionalProperties"] is False
 
 
@@ -137,10 +138,16 @@ def test_schema_and_model_agree():
         "reference": Reference,
         "finding-property": FindingProperty,
     }
+    # exploitability-sources is a plain dict field on Exploitability, not
+    # its own dataclass; its per-axis keys still have to match the axes.
     object_defs = {
         name for name, definition in schema["$defs"].items() if "properties" in definition
     }
-    assert object_defs == set(mapping)
+    assert object_defs - {"exploitability-sources"} == set(mapping)
+    sources_def = schema["$defs"]["exploitability-sources"]
+    assert set(sources_def["properties"]) == set(
+        schema["$defs"]["exploitability-axes"]["properties"]
+    )
     for def_name, model_class in mapping.items():
         definition = schema["$defs"][def_name]
         assert definition["additionalProperties"] is False, def_name
@@ -254,10 +261,25 @@ def test_unknown_axis_value_rejected():
             "reach": "unknown",
             "exposure": "unknown",
             "barrier": "unlikely",
-            "pressure": "unknown",
         }
     }
     _rejects(document, "presence", "not one of")
+
+
+def test_pressure_axis_rejected():
+    """The schema is at version 2: a finding that still carries Pressure,
+    which version 1 shipped, must be rejected rather than read."""
+    document = _base_finding()
+    document["exploitability"] = {
+        "axes": {
+            "presence": "likely",
+            "reach": "unknown",
+            "exposure": "not_assessed",
+            "barrier": "not_assessed",
+            "pressure": "not_assessed",
+        }
+    }
+    _rejects(document, "pressure", "Additional properties")
 
 
 def test_error_lists_every_violation():

@@ -14,6 +14,7 @@ the home directory replaced. Its manifest is hand-checked field by field in
 the compatibility tests.
 """
 
+import dataclasses
 import hashlib
 import json
 import os
@@ -76,6 +77,7 @@ def _write_bom(path, name="app"):
 class _StubVdrResult:
     success = True
     prioritized_pkg_vuln_trees = {}
+    exploitability = None
 
     def __init__(self, pkg_vulnerabilities, success=True):
         self.pkg_vulnerabilities = pkg_vulnerabilities
@@ -109,9 +111,19 @@ def scan_stubs(monkeypatch):
     class StubVDRAnalyzer:
         def __init__(self, vdr_options):
             calls["matching"].append(vdr_options)
+            self.vdr_options = vdr_options
 
         def process(self):
-            return _StubVdrResult([dict(VULN_REQUESTS)])
+            # The stub replaces only the vulnerability search, so it runs the
+            # same exploitability grading step the real analyzer runs.
+            from analysis_lib.findings.exploitability import annotate_exploitability
+
+            vulns = [dict(VULN_REQUESTS)]
+            result = _StubVdrResult(vulns)
+            result.exploitability = annotate_exploitability(
+                vulns, self.vdr_options.exploitability_inputs
+            )
+            return result
 
     monkeypatch.setattr(pipeline, "VDRAnalyzer", StubVDRAnalyzer)
     monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(_FULL_VDB_DATA))
@@ -282,7 +294,7 @@ def test_findings_are_the_conversion_of_the_vdr_entries(scan_stubs, tmp_path):
     assert finding["id"].startswith("dsf1:")
     # The written file carries the same array the result holds.
     written = json.loads((Path(result.reports_dir) / "depscan.findings.json").read_text())
-    assert written["schemaVersion"] == "1"
+    assert written["schemaVersion"] == "2"
     assert written["findings"] == result.findings
 
 
@@ -296,6 +308,62 @@ def test_fingerprints_are_stable_across_runs(scan_stubs, tmp_path):
     )
     assert [f["id"] for f in first.findings] == [f["id"] for f in second.findings]
     assert first.findings == second.findings
+
+
+def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(
+    scan_stubs, tmp_path
+):
+    """The grade the scan computed reaches the findings document and the VDR
+    file as the same assessment: axes, grade, rule and sources in the
+    findings, depscan:exploitability: properties in the VDR."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(tmp_path / "reports"), no_banner=True),
+        render=False,
+    )
+    (finding,) = result.findings
+    exploitability = finding["exploitability"]
+    assert exploitability["grade"] == "moderate"
+    assert exploitability["rule"] == "assessed"
+    assert exploitability["axes"] == {
+        "presence": "likely",
+        "reach": "not_assessed",
+        "exposure": "not_assessed",
+        "barrier": "not_assessed",
+    }
+    # The BOM component was read for presence, but no analyzer reached it.
+    assert exploitability["sources"] == {"presence": ["vdb", "cdxgen"]}
+    vdr = json.loads((Path(result.reports_dir) / "given.vdr.json").read_text())
+    properties = {
+        prop["name"]: prop["value"] for prop in vdr["vulnerabilities"][0]["properties"]
+    }
+    assert properties["depscan:exploitability:grade"] == "moderate"
+    assert properties["depscan:exploitability:rule"] == "assessed"
+    assert properties["depscan:exploitability:axis:presence"] == "likely"
+    assert properties["depscan:exploitability:axis:reach"] == "not_assessed"
+
+
+def test_an_override_rule_table_reaches_the_grading(scan_stubs, tmp_path):
+    """A valid --exploitability-rules file replaces the bundled table for the
+    whole pipeline: its row's grade and id are what the findings carry."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    rules = tmp_path / "rules.yaml"
+    rules.write_text(
+        'rules:\n  - id: org-standard\n    match:\n      presence: [likely]\n    grade: low\n',
+        encoding="utf-8",
+    )
+    result = api.scan(
+        api.scan_options(
+            bom=bom,
+            reports_dir=str(tmp_path / "reports"),
+            exploitability_rules=str(rules),
+            no_banner=True,
+        ),
+        render=False,
+    )
+    (finding,) = result.findings
+    assert finding["exploitability"]["grade"] == "low"
+    assert finding["exploitability"]["rule"] == "org-standard"
 
 
 # ---------------------------------------------------------------------------
@@ -451,7 +519,7 @@ def test_fixture_is_a_valid_scan_directory():
         assert entry["sha256"] == actual, f"the digest of {path}"
 
     findings = json.loads((FIXTURE_DIR / "depscan.findings.json").read_text())
-    assert findings["schemaVersion"] == "1"
+    assert findings["schemaVersion"] == scan_directory.FINDINGS_SCHEMA_VERSION
     assert len(findings["findings"]) == 1
     validate("finding", findings["findings"][0])
     vdr = json.loads((FIXTURE_DIR / "django-app.vdr.json").read_text())
@@ -1160,6 +1228,56 @@ def test_fail_on_error_still_fails_when_the_capability_is_unavailable(fake_tools
     assert not _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
 
 
+def test_a_tool_run_without_a_report_removes_split_slices_and_its_facts(fake_tools, tmp_path):
+    """Split parts of an earlier run's slice and dosai's facts sidecar would
+    otherwise read as this run's reachability and exposure evidence."""
+    from depscan.lib.bom import DOSAI_FACTS_FILE, DOSAI_TOOL, _run_reachability_tool
+
+    fake_tools["remove"]("dosai")
+    bom = _write_bom(tmp_path / "sbom-dotnet.cdx.json")
+    for name in (
+        "dotnet-reachables.slices.json",
+        "dotnet-reachables.slices-2.json",
+        "dotnet-reachables.slices-notapart.json",
+    ):
+        (tmp_path / name).write_text("[]")
+    facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    tool = dataclasses.replace(DOSAI_TOOL, run_fallback=lambda *a: None)
+    options = {"project_type": ["dotnet"], "doctor_report": doctor_mod.doctor()}
+    assert not _run_reachability_tool(bom, str(tmp_path), options, tool)
+    assert not (tmp_path / "dotnet-reachables.slices.json").exists()
+    assert not (tmp_path / "dotnet-reachables.slices-2.json").exists()
+    assert not facts.exists()
+    # Only numbered parts are the tool's; anything else is left alone.
+    assert (tmp_path / "dotnet-reachables.slices-notapart.json").exists()
+
+
+def test_a_source_scan_clears_tool_outputs_an_earlier_run_left(tmp_path):
+    """A universal rerun into the same reports directory never runs dosai,
+    so the earlier .NET run's slices and facts must not survive into it."""
+    from depscan.lib.bom import DOSAI_FACTS_FILE, clear_tool_outputs
+
+    for name in (
+        "dotnet-reachables.slices.json",
+        "dotnet-reachables.slices-3.json",
+        "go-reachables.slices.json",
+        "rust-reachables.slices.json",
+        "java-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("[]")
+    facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    clear_tool_outputs(str(tmp_path))
+    remaining = sorted(p.name for p in tmp_path.glob("*.json"))
+    # atom's slices come from cdxgen, which rewrites them; only the language
+    # tools' own outputs are cleared.
+    assert remaining == ["java-reachables.slices.json"]
+    assert not facts.exists()
+
+
 def test_documented_manifest_fields_match_the_schema():
     """The scan directory page carries the generated tables; regenerate them
     with the command in the page when this fails."""
@@ -1207,3 +1325,17 @@ def test_a_corrupted_findings_document_is_refused_not_read_as_clean(scan_stubs, 
     message = str(excinfo.value)
     assert "depscan.findings.json" in message
     assert "not valid JSON" in message
+
+
+def test_a_rules_override_is_recorded_as_an_input_with_its_digest(tmp_path):
+    """A scan graded with a replacement rule table says which table, so two
+    scans with different grades can be told apart from their manifests."""
+    rules = tmp_path / "rules.yaml"
+    rules.write_text("rules:\n  - id: everything\n    grade: low\n", encoding="utf-8")
+    entries = scan_directory.input_entries(
+        {"bom": None, "src_dir": str(tmp_path), "exploitability_rules": str(rules)}
+    )
+    recorded = [entry for entry in entries if entry.get("path") == str(rules)]
+    assert recorded == [
+        {"type": "file", "path": str(rules), "sha256": scan_directory.sha256_file(str(rules))}
+    ]

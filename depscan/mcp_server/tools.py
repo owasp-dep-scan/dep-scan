@@ -171,6 +171,13 @@ def _check_documents(scan_dir: str, result: api.ScanResult) -> None:
                 f"the manifest of the scan at {json_path(scan_dir)} does not "
                 f"satisfy the depscan-manifest schema: {exc}"
             ) from exc
+    version = result.findings_version
+    if version is not None and str(version) != scan_directory.FINDINGS_SCHEMA_VERSION:
+        raise ToolError(
+            f"the findings of the scan at {json_path(scan_dir)} use findings "
+            f"schema version {version}, and this dep-scan reads version "
+            f"{scan_directory.FINDINGS_SCHEMA_VERSION}; scan the project again"
+        )
     for index, finding in enumerate(result.findings or []):
         try:
             validate("depscan-finding", finding)
@@ -253,6 +260,18 @@ def _matches_reachable(finding: Dict[str, Any], wanted: bool) -> bool:
     return reach in _UNREACHABLE_REACH_VALUES
 
 
+def _grade_of(finding: Dict[str, Any]) -> str:
+    """The finding's recorded exploitability grade, lowercased; empty when none."""
+    exploitability = finding.get("exploitability")
+    if not isinstance(exploitability, dict):
+        return ""
+    return str(exploitability.get("grade") or "").strip().lower()
+
+
+def _matches_grade(finding: Dict[str, Any], wanted: List[str]) -> bool:
+    return _grade_of(finding) in wanted
+
+
 def _matches_purl(finding: Dict[str, Any], wanted_purl: str) -> bool:
     """Whether one of the finding's components is the package URL.
 
@@ -287,6 +306,8 @@ def _filtered_findings(args: Dict[str, Any], findings: List[Dict[str, Any]]):
         if "rule" in args and finding.get("rule") != args["rule"]:
             continue
         if "reachable" in args and not _matches_reachable(finding, bool(args["reachable"])):
+            continue
+        if "grade" in args and not _matches_grade(finding, [str(g) for g in args["grade"]]):
             continue
         matched.append(finding)
     return matched

@@ -169,7 +169,7 @@
       "path": "depscan.findings.json",
       "role": "findings",
       "producer": "dep-scan",
-      "sha256": "0002a8708b456701d2f5ed214d18e94fa8a3cd728fcb295767c1526df58cb466"
+      "sha256": "83cf8e6d62c7e769635c9ebd54dc8ca6edd3759d618824a676b38b57505ac560"
     },
     {
       "path": "django-app.cdx.json",

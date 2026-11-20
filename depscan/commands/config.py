@@ -163,6 +163,18 @@ def _option_sources(args: argparse.Namespace, internal, set_by: dict) -> dict:
     return entries
 
 
+#: The bundled rule table's published location, as config show names it.
+BUNDLED_RULES_LOCATION = "analysis_lib/data/exploitability_rules.yaml"
+
+
+def _rules_origin(internal) -> dict:
+    """Where the exploitability rule table of the next scan comes from."""
+    path = getattr(internal, "exploitability_rules", None)
+    if path:
+        return {"source": "override", "path": str(path)}
+    return {"source": "bundled", "path": BUNDLED_RULES_LOCATION}
+
+
 def _run_show(args: argparse.Namespace) -> int:
     names = checks_table.parse_checks(getattr(args, "checks", None))
     unknown = checks_table.unknown_checks(names)
@@ -178,8 +190,9 @@ def _run_show(args: argparse.Namespace) -> int:
         return EXIT_USAGE
     internal, set_by = resolved_namespace(args, checks_table.resolve(args))
     entries = _option_sources(args, internal, set_by)
+    origin = _rules_origin(internal)
     if args.format == "json":
-        print_json_document({"options": entries})
+        print_json_document({"options": entries, "exploitabilityRules": origin})
         return 0
     name_width = max(len(dest) for dest in entries)
     source_width = max(len(entry["source"]) for entry in entries.values())
@@ -188,6 +201,7 @@ def _run_show(args: argparse.Namespace) -> int:
         value = json.dumps(entry["value"], default=str)
         source = entry["source"]
         print(f"{dest:<{name_width}}  {source:<{source_width}}  {value}")
+    print(f"Exploitability rules: {origin['path']} ({origin['source']})")
     return 0
 
 

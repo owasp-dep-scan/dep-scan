@@ -599,6 +599,7 @@ def test_stage_analysis_vdr_writes_the_vdr_and_aggregates(tmp_path):
         success=True,
         pkg_vulnerabilities=[vuln],
         prioritized_pkg_vuln_trees={"group": [vuln]},
+        exploitability={},
     )
 
     pipeline.stage_analysis_vdr(ctx, scan)
@@ -648,6 +649,7 @@ def test_stage_render_reports_writes_every_report_file(tmp_path):
         success=True,
         pkg_vulnerabilities=[vuln],
         prioritized_pkg_vuln_trees={},
+        exploitability={},
     )
     pipeline.stage_analysis_vdr(ctx, scan)
     pipeline.finalize_setup(ctx)
@@ -762,7 +764,7 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         reports_dir=str(tmp_path),
         all_pkg_vulnerabilities=[],
         src_dir=str(tmp_path),
-        reach_scopes=[],
+        exploitability={},
         depscan_options=options,
         project_types=types,
         vdb_flavor=None,
@@ -772,8 +774,9 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
     assert captured["blint_reviews"] is expected
 
 
-def test_reach_scope_grades_only_the_ecosystems_the_analyzers_covered(tmp_path):
+def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(tmp_path):
     from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.findings.exploitability import load_rules
     from analysis_lib.findings.vdr_convert import reach_axis
 
     slice_file = tmp_path / "java-reachables.slices.json"
@@ -789,11 +792,67 @@ def test_reach_scope_grades_only_the_ecosystems_the_analyzers_covered(tmp_path):
         reachability_options=options,
         reachability_succeeded=True,
         reached_purls={"pkg:maven/a/b@1": 1},
+        pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
+        bom_dir=str(tmp_path),
     )
-    ctx = SimpleNamespace(doctor_report=None)
-    vulns = [
-        {"affects": [{"ref": "pkg:maven/a/b@1"}, {"ref": "pkg:npm/left-pad@1.0.0"}]}
-    ]
-    scope = pipeline._reach_scope(ctx, scan, vulns)
-    assert reach_axis(scope, "pkg:maven/a/b@1") == "likely"
-    assert reach_axis(scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
+    assert reach_axis(inputs.scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"
+    # A dotnet facts file this scan did not produce is never read: dosai did
+    # not complete for a java scan, so exposure stays unassessed.
+    assert inputs.dosai_ran is False
+    assert inputs.dosai_facts is None
+    npm = inputs.evidence_for("pkg:npm/left-pad@1.0.0")
+    assert npm.dosai is None
+
+
+def test_collect_exploitability_prefers_the_assessment_that_reached():
+    from analysis_lib.findings.model import Exploitability, ExploitabilityAxes
+
+    ctx = SimpleNamespace(exploitability={})
+    blind = Exploitability(
+        axes=ExploitabilityAxes("likely", "not_assessed", "not_assessed", "not_assessed")
+    )
+    seeing = Exploitability(
+        axes=ExploitabilityAxes("likely", "likely", "not_assessed", "not_assessed")
+    )
+    pipeline._collect_exploitability(
+        ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): blind})
+    )
+    pipeline._collect_exploitability(
+        ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): seeing})
+    )
+    assert ctx.exploitability[("CVE-1", "pkg:npm/a@1")] is seeing
+    # An assessed reach is never replaced by an unassessed one.
+    pipeline._collect_exploitability(
+        ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): blind})
+    )
+    assert ctx.exploitability[("CVE-1", "pkg:npm/a@1")] is seeing
+    # With reach equal, the assessment with more assessed axes wins: the
+    # .NET type that ran dosai over a universal type that could not.
+    exposed = Exploitability(axes=ExploitabilityAxes("likely", "likely", "likely", "unlikely"))
+    pipeline._collect_exploitability(
+        ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): exposed})
+    )
+    assert ctx.exploitability[("CVE-1", "pkg:npm/a@1")] is exposed
+
+
+@pytest.mark.parametrize("bom_dir_scan", [False, True])
+def test_setup_clears_tool_outputs_only_for_a_source_scan(tmp_path, bom_dir_scan):
+    """A source scan's reports directory holds what dep-scan wrote, and an
+    earlier run's tool slices there would read as this run's evidence. A BOM
+    directory the user hands in is an input and keeps its files."""
+    src = tmp_path / "src"
+    src.mkdir()
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    stale = reports / "dotnet-reachables.slices.json"
+    stale.write_text("[]")
+    if bom_dir_scan:
+        argv = ["--bom-dir", str(reports), "--reports-dir", str(reports)]
+    else:
+        argv = ["--src", str(src), "--reports-dir", str(reports)]
+    ctx = pipeline.build_context(_args(argv))
+    pipeline.stage_setup(ctx)
+    assert stale.exists() is bom_dir_scan

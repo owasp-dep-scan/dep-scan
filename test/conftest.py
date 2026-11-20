@@ -23,3 +23,21 @@ def _isolate_vdb_selection(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(vdb_config, "VDB_DATABASE_URL", _VDB_DEFAULT_URL)
     monkeypatch.setattr(vdb_config, "VDB_APP_ONLY_DATABASE_URL", _VDB_DEFAULT_APP_ONLY_URL)
+
+
+@pytest.fixture(autouse=True)
+def _restore_fetch_license():
+    """Undo the FETCH_LICENSE value a scan's setup writes into os.environ.
+
+    The license stage turns itself on by setting the variable for cdxgen, and
+    ``monkeypatch.delenv(..., raising=False)`` records nothing when it was
+    unset, so without this a license test turns the license stage on for
+    every scan run after it."""
+    import os
+
+    saved = os.environ.get("FETCH_LICENSE")
+    yield
+    if saved is None:
+        os.environ.pop("FETCH_LICENSE", None)
+    else:
+        os.environ["FETCH_LICENSE"] = saved

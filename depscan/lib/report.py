@@ -13,7 +13,7 @@ import sys
 from typing import List
 
 from analysis_lib import VdrAnalysisKV
-from analysis_lib.output import generate_console_output, summary_stats
+from analysis_lib.output import exploitability_grade_stats, generate_console_output, summary_stats
 
 from depscan import api
 from depscan.commands.output import (
@@ -61,7 +61,35 @@ def parse_report_args(argv: List[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _render_results(tscan) -> None:
+def _graded_pairs(findings, vulnerabilities):
+    """The (advisory id, component) -> exploitability map of one project
+    type, read from the scan directory's findings.
+
+    The findings document records each component's own grade; the VDR only
+    holds the most severe grade of a merged entry. Only pairs this type's VDR
+    carries are kept. A pair two project types graded shows the assessment
+    the findings kept (the one that assessed more axes), which may be the
+    other type's.
+    """
+    wanted = {
+        (str(vuln.get("id") or ""), str(affect.get("ref")))
+        for vuln in vulnerabilities
+        if isinstance(vuln, dict)
+        for affect in vuln.get("affects") or []
+        if isinstance(affect, dict) and affect.get("ref")
+    }
+    pairs = {}
+    for finding in findings or []:
+        if not isinstance(finding, dict) or not isinstance(finding.get("exploitability"), dict):
+            continue
+        for component in finding.get("components") or []:
+            key = (str(finding.get("rule") or ""), str(component))
+            if key in wanted:
+                pairs[key] = finding["exploitability"]
+    return pairs
+
+
+def _render_results(tscan, findings=None) -> None:
     """Print the results table and summary stats of one project type.
 
     The table is the one the scan itself printed, rendered from the VDR the
@@ -89,7 +117,8 @@ def _render_results(tscan) -> None:
         console=console,
         logger=LOG,
     )
-    _rows, table = generate_console_output(vulnerabilities, {}, set(), options)
+    graded = _graded_pairs(findings, tscan.vulnerabilities)
+    _rows, table = generate_console_output(vulnerabilities, {}, set(), options, graded)
     if table is not None:
         console.print(table)
     stats = summary_stats(tscan.vulnerabilities)
@@ -98,6 +127,14 @@ def _render_results(tscan) -> None:
             "Summary for project type '{}': {}".format(
                 tscan.project_type,
                 ", ".join(f"{name.lower()}: {count}" for name, count in stats.items() if count),
+            )
+        )
+    grade_stats = exploitability_grade_stats(graded)
+    if grade_stats:
+        console.print(
+            "Exploitability grades for project type '{}': {}".format(
+                tscan.project_type,
+                ", ".join(f"{name}: {count}" for name, count in grade_stats.items()),
             )
         )
     if not tscan.vulnerabilities:
@@ -168,7 +205,7 @@ def run_report_args(args: argparse.Namespace) -> int:
         f"{manifest.get('layoutVersion', 'unknown')}"
     )
     for tscan in result.types:
-        _render_results(tscan)
+        _render_results(tscan, result.findings)
     if args.explain:
         try:
             text = api.explain(result, mode=args.explanation_mode)

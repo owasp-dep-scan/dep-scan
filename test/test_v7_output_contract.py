@@ -221,6 +221,7 @@ def install_scan_fakes():
     class StubVdrResult:
         success = True
         prioritized_pkg_vuln_trees = {}
+        exploitability = None
 
         def __init__(self, pkg_vulnerabilities):
             self.pkg_vulnerabilities = pkg_vulnerabilities
@@ -230,9 +231,19 @@ def install_scan_fakes():
             calls["matching"].append(
                 [pkg.get("purl") for pkg in getattr(vdr_options, "pkg_list", [])]
             )
+            self.vdr_options = vdr_options
 
         def process(self):
-            return StubVdrResult([dict(VULN_REQUESTS)])
+            # The stub replaces only the vulnerability search, so it runs the
+            # same exploitability grading step the real analyzer runs.
+            from analysis_lib.findings.exploitability import annotate_exploitability
+
+            vulns = [dict(VULN_REQUESTS)]
+            result = StubVdrResult(vulns)
+            result.exploitability = annotate_exploitability(
+                vulns, self.vdr_options.exploitability_inputs
+            )
+            return result
 
     pipeline.VDRAnalyzer = StubVDRAnalyzer
     doctor_mod._vdb_status = lambda: dict(FULL_VDB_DATA)

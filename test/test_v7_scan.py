@@ -98,6 +98,7 @@ def _manifest_of(reports_dir):
 class _StubVdrResult:
     success = True
     prioritized_pkg_vuln_trees = {}
+    exploitability = None
 
     def __init__(self, pkg_vulnerabilities):
         self.pkg_vulnerabilities = pkg_vulnerabilities

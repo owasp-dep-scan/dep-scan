@@ -523,7 +523,9 @@ _RECORDABLE_ACTIONS = {
 # v7-internal parser options with no v6 equivalent: they are internal
 # schema entries the pipeline reads, so they have no row and must not
 # appear in the option table.
-V7_INTERNAL_DESTS: frozenset[str] = frozenset({"exclude_types", "vdb_offline"})
+V7_INTERNAL_DESTS: frozenset[str] = frozenset(
+    {"exclude_types", "vdb_offline", "exploitability_rules"}
+)
 
 # Options that exist on the serve verb only; passing one of them without
 # --server is still a server invocation.

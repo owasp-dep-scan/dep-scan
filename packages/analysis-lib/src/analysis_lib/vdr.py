@@ -1,6 +1,7 @@
 from vdb.lib import VulnerabilityOccurrence
 
 from analysis_lib import Counts, VdrAnalysisKV, VDRResult, XBOMAnalyzer
+from analysis_lib.findings.exploitability import annotate_exploitability
 from analysis_lib.merge import dedupe_vdrs, remove_extra_metadata
 from analysis_lib.output import generate_console_output, output_priority_suggestions
 from analysis_lib.packages import (
@@ -185,6 +186,12 @@ class VDRAnalyzer(XBOMAnalyzer):
             pkg_vulnerabilities = [
                 v for v in pkg_vulnerabilities if vuln_meets_severity(v, options.severity)
             ]
+        # Grade the exploitability of every entry before anything renders or
+        # writes it, so the console table, the VDR file and the findings
+        # document all show the same assessment.
+        exploitability = annotate_exploitability(
+            pkg_vulnerabilities, options.exploitability_inputs
+        )
         # Should we print the vulnerability table
         if not options.no_vuln_table:
             pkg_group_rows, table = generate_console_output(
@@ -192,6 +199,7 @@ class VDRAnalyzer(XBOMAnalyzer):
                 bom_dependency_tree,
                 include_pkg_group_rows,
                 options,
+                exploitability,
             )
             output_priority_suggestions(
                 counts,
@@ -217,4 +225,5 @@ class VDRAnalyzer(XBOMAnalyzer):
             reached_services=reached_services,
             endpoint_reached_purls=endpoint_reached_purls,
             purl_identities=purl_identities,
+            exploitability=exploitability,
         )

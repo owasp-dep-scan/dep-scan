@@ -306,6 +306,7 @@ def test_config_show_json(monkeypatch, capsys, tmp_path, clean_option_env):
         "bom_engine",
         "vuln_analyzer",
         "reachability_analyzer",
+        "exploitability_rules",
         "rust_analyzer_backend",
         "go_analyzer_network",
         "go_analyzer_cgo",
@@ -769,6 +770,62 @@ def test_scan_unknown_profile_is_a_usage_error(monkeypatch, capsys):
     code = run_main(monkeypatch, ["scan", ".", "--profile", "bogus"])
     assert code == 2
     assert "invalid choice: 'bogus'" in capsys.readouterr().err
+
+
+def test_scan_with_an_invalid_exploitability_rules_file_is_a_usage_error(
+    monkeypatch, capsys, tmp_path
+):
+    """A replacement rule table is validated before the scan starts, so an
+    invalid file exits 2 carrying the schema error instead of grading on a
+    table nobody checked."""
+    bad = tmp_path / "rules.yaml"
+    bad.write_text("rules:\n  - id: nope\n    grade: catastrophic\n", encoding="utf-8")
+    code = run_main(monkeypatch, ["scan", ".", "--exploitability-rules", str(bad)])
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "exploitability rules file is unusable" in err
+    assert "schema rejected" in err
+
+
+def test_an_invalid_rules_file_is_refused_before_any_target_resolves(
+    monkeypatch, capsys, tmp_path
+):
+    """The rule table is checked first: a missing target directory would
+    otherwise exit with its own code and hide the broken table."""
+    code = run_main(
+        monkeypatch,
+        [
+            "scan",
+            str(tmp_path / "no-such-project"),
+            "--exploitability-rules",
+            str(tmp_path / "missing.yaml"),
+            "--format",
+            "json",
+        ],
+    )
+    assert code == 2
+    document = json.loads(capsys.readouterr().out)
+    assert "exploitability rules file is unusable" in document["error"]["message"]
+
+
+def test_a_relative_rules_path_in_depscan_toml_resolves_next_to_the_file(
+    monkeypatch, capsys, tmp_path, clean_option_env
+):
+    config_dir = tmp_path / "conf"
+    config_dir.mkdir()
+    (config_dir / "rules.yaml").write_text(
+        "rules:\n  - id: everything\n    grade: low\n", encoding="utf-8"
+    )
+    config = config_dir / "depscan.toml"
+    config.write_text('exploitability_rules = "rules.yaml"\n', encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    code = run_main(
+        monkeypatch, ["config", "show", "--config", str(config), "--format", "json"]
+    )
+    assert code == 0
+    origin = json.loads(capsys.readouterr().out)["exploitabilityRules"]
+    assert origin["source"] == "override"
+    assert os.path.realpath(origin["path"]) == os.path.realpath(config_dir / "rules.yaml")
 
 
 def test_config_show_reports_what_a_profile_and_checks_set(monkeypatch, capsys, clean_option_env):

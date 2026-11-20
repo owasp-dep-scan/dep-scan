@@ -33,6 +33,7 @@ const sidebars: SidebarsConfig = {
       label: 'Reachability Concepts',
       items: [
         'concepts/reachability-model',
+        'concepts/exploitability',
         'concepts/prioritization',
         'concepts/sbom-and-evidence'
       ]
