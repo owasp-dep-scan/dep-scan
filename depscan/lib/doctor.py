@@ -843,13 +843,11 @@ def capability_unavailable_reason(
     unknown name and a capability this version does not implement are
     reported as reasons too, because both mean the step cannot run.
 
-    ``skip_requirements`` names requirements the caller's scan shape cannot
-    fail. The capability gate passes the cdxgen requirement for a run whose
-    every target is a BOM file or BOM directory: those scans produce no BOM
-    and never invoke cdxgen, and where the slices it would have produced are
-    missing the scan records reachability as not assessed rather than
-    refusing to run. The requirements stay in :data:`CAPABILITIES`; this
-    argument only scopes them to the caller's inventory.
+    ``skip_requirements`` names requirements the caller's scan cannot fail
+    on. The capability gate passes :data:`BOM_PRODUCER_REQUIREMENTS` for a
+    run whose every target is a BOM file or BOM directory. The requirements
+    stay in :data:`CAPABILITIES`; this argument only scopes them to the
+    caller's targets.
     """
     spec = next((spec for spec in CAPABILITIES if spec.name == name), None)
     if spec is None:
@@ -882,6 +880,24 @@ class CapabilitySpec:
     issue: int
     requirements: Tuple[str, ...] = ()
     implemented: bool = False
+
+
+#: The requirements on the tools that run only while dep-scan produces a
+#: BOM: cdxgen, and the language plugins and runtimes it and dep-scan's
+#: BOM step drive to write reachables slices. A scan of a BOM file or BOM
+#: directory produces no BOM, so none of these runs; the scan reads any
+#: slices already next to the inventory and records reachability as not
+#: assessed where there are none. The capability gate drops these for such
+#: scans instead of refusing over a tool the scan would never call.
+BOM_PRODUCER_REQUIREMENTS: Tuple[str, ...] = (
+    "tool:cdxgen",
+    "tool:golem",
+    "tool:go",
+    "tool:rusi",
+    "tool:dosai",
+    "tool:dotnet",
+    "tool:kosi",
+)
 
 
 #: The single source for what each capability needs. Requirement names are

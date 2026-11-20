@@ -787,9 +787,22 @@ def _missing_source_message(target: str) -> str:
     return f"The source target '{target}' does not exist."
 
 
-def _capability_gate(
-    args: argparse.Namespace, names, kinds: Optional[List[str]] = None
-):
+def _inventory_skip_requirements(kinds: List[str]) -> Tuple[str, ...]:
+    """The requirements a run on targets of these kinds cannot fail on.
+
+    A run whose every scannable target is a BOM file or BOM directory
+    produces no BOM, so it never calls cdxgen or the language plugins
+    (:data:`doctor_lib.BOM_PRODUCER_REQUIREMENTS`): it reads the slices
+    already next to the inventory, and where there are none it records
+    reachability as not assessed. Every other kind keeps the full
+    requirements, since such a scan needs those tools to produce the slices.
+    """
+    if kinds and all(kind in ("bom", "bom-dir") for kind in kinds):
+        return doctor_lib.BOM_PRODUCER_REQUIREMENTS
+    return ()
+
+
+def _capability_gate(args: argparse.Namespace, names, skip_requirements: Tuple[str, ...] = ()):
     """Collect one doctor report when checks or a profile were requested.
 
     Each explicitly requested check whose doctor capability is
@@ -803,14 +816,8 @@ def _capability_gate(
     the gate stopped the verb; the report is the one the scans reuse. The
     refusal is logged by the caller, in the format the caller writes.
 
-    ``kinds`` lists the kinds of the targets the verb will actually scan. A
-    run whose every scannable target is a BOM file or BOM directory produces
-    no BOM and never invokes cdxgen, so the reachability capability cannot
-    fail on cdxgen being missing: the slices the check reads already sit
-    next to the inventory, and where they are missing the scan records
-    reachability as not assessed, exactly as when no check was named. Every
-    other kind (a source or container target) keeps the refusal, since such
-    a scan needs cdxgen to produce the slices at all.
+    ``skip_requirements`` are the requirements the verb's targets cannot
+    fail on (:func:`_inventory_skip_requirements`).
     """
     profile_name = getattr(args, "profile", None)
     named = [name for name in names if name != checks_table.ALL_CHECKS]
@@ -825,7 +832,6 @@ def _capability_gate(
         # Only the all expansion was requested.
         return report, None
     tools = report.tools_by_name()
-    inventory_only = bool(kinds) and all(kind in ("bom", "bom-dir") for kind in kinds)
     for name in requested:
         capability = checks_table.CHECKS[name].capability
         if capability is None:
@@ -834,7 +840,7 @@ def _capability_gate(
             capability,
             tools,
             report.data,
-            skip_requirements=("tool:cdxgen",) if inventory_only else (),
+            skip_requirements,
         )
         if reason:
             return None, _Refusal(
@@ -896,9 +902,10 @@ def run(args: argparse.Namespace) -> int:
         else:
             LOG.error(refusal.message)
         return refusal.exit_code
-    report, gate_refusal = _capability_gate(
-        args, names, [kind for _target, kind, _refusal in entries if kind is not None]
+    skip_requirements = _inventory_skip_requirements(
+        [kind for _target, kind, _refusal in entries if kind is not None]
     )
+    report, gate_refusal = _capability_gate(args, names, skip_requirements)
     if gate_refusal is not None:
         if json_output:
             print_error_document(
@@ -908,7 +915,9 @@ def run(args: argparse.Namespace) -> int:
             LOG.error(gate_refusal.message)
         return gate_refusal.exit_code
     try:
-        resolution = checks_table.resolve(args, doctor_report=report)
+        resolution = checks_table.resolve(
+            args, doctor_report=report, skip_requirements=skip_requirements
+        )
         internal = scan_namespace(args, resolution=resolution)
         if json_output:
             internal.no_banner = True
@@ -934,7 +943,9 @@ def _exploitability_rules_error(args) -> Tuple[Optional[str], Optional[str]]:
     naming the schema's findings, never a scan that grades on a table nobody
     checked. The bundled table needs no check here: its own tests validate it.
     """
-    internal, _sources = resolved_namespace(args, checks_table.resolve(args))
+    # Only the options matter here, so the all expansion and its tool
+    # probes are left to the resolution the scan itself makes.
+    internal, _sources = resolved_namespace(args, checks_table.resolve(args, expand=False))
     path = getattr(internal, "exploitability_rules", None)
     if not path:
         return None, None
