@@ -1,0 +1,19 @@
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_376e7604108c38::t_f1a783d5a647a6 107-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6a4fff7c1042a662cee8c9ab379b5a16085653e5",
+  "prompts": {},
+  "sessions": {
+    "s_376e7604108c38": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_387cb362-0e14-412a-8ae9-a7b8c308dbfc",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Team AppThreat <cloud@appthreat.com>"
+    }
+  }
+}
