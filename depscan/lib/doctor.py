@@ -22,6 +22,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +56,11 @@ from xbom_lib.process import (
 
 #: How long one tool's version probe may run.
 PROBE_TIMEOUT_SEC = 10
+
+#: How many tool lookups may probe at once. Each lookup waits on a
+#: subprocess for most of its time, so this caps concurrent processes, not
+#: threads doing work.
+PROBE_WORKERS = 6
 
 #: The version of the doctor report document itself.
 SCHEMA_VERSION = "1"
@@ -1023,53 +1029,83 @@ def _platform_status(target: Dict[str, str]) -> Dict[str, Any]:
 
 
 def build_tools() -> Tuple[List[ToolStatus], Dict[str, ToolStatus]]:
-    """Locate every tool; returns the entries in report order and by name."""
-    cdxgen = _cdxgen_status()
-    golem = _plugin_tool_status("golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV))
-    rusi = _plugin_tool_status("rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV))
-    dosai = _plugin_tool_status("dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV))
-    kosi = _plugin_tool_status("kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV))
-    entries = [
-        cdxgen,
-        _versioned_tool(
+    """Locate every tool; returns the entries in report order and by name.
+
+    Each version probe spends its time waiting on a subprocess and the tool
+    lookups are independent of one another, so they run on a small thread
+    pool and their results are assembled in report order afterwards. Two
+    lookups need another tool's resolved path first: the cdxgen plugins
+    directory follows cdxgen, and the .NET runtime entry follows dosai,
+    whose self-contained binary bundles a runtime of its own.
+    """
+    with ThreadPoolExecutor(max_workers=PROBE_WORKERS) as pool:
+        cdxgen = pool.submit(_cdxgen_status)
+        atom = pool.submit(
+            _versioned_tool,
             "atom",
             find_executable("atom"),
             _parse_regex(_ATOM_VERSION_RE),
             "atom was not found on PATH; cdxgen runs the atom it installs "
             "itself, and dep-scan calls atom directly only for the "
             "memory-safety check",
-        ),
-        _versioned_tool(
+        )
+        atom_tools = pool.submit(
+            _versioned_tool,
             "atom-tools",
             find_executable("atom-tools") or find_in_interpreter_scripts("atom-tools"),
             _parse_regex(_ATOM_TOOLS_VERSION_RE),
             "atom-tools was not found on PATH or next to the Python that runs "
             "dep-scan; install it with `pip install atom-tools`",
-        ),
-        _versioned_tool(
+        )
+        edga = pool.submit(
+            _versioned_tool,
             "edga",
             find_executable("edga"),
             _parse_regex(_EDGA_VERSION_RE),
             "edga was not found on PATH; it ships in atom's container images "
             "and improves the C and C++ front end",
-        ),
-        _versioned_tool(
+        )
+        node = pool.submit(
+            _versioned_tool,
             "node",
             find_executable("node"),
             _parse_node,
             "node was not found on PATH; cdxgen needs it unless it runs from a bundled binary",
-        ),
-        _python_status(),
-        *_plugins_status(cdxgen.path, get_plugins_bin_target()),
-        golem,
-        _go_status(),
-        rusi,
-        dosai,
-        _dotnet_status(dosai.path),
-        kosi,
-        _blint_status(),
-        _blintdb_status(),
-    ]
+        )
+        golem = pool.submit(
+            _plugin_tool_status, "golem", (golem_mod.GOLEM_CMD_ENV, golem_mod.GOLEM_BINARY_ENV)
+        )
+        rusi = pool.submit(
+            _plugin_tool_status, "rusi", (rusi_mod.RUSI_CMD_ENV, rusi_mod.RUSI_BINARY_ENV)
+        )
+        dosai = pool.submit(
+            _plugin_tool_status, "dosai", (dosai_mod.DOSAI_CMD_ENV, dosai_mod.DOSAI_BINARY_ENV)
+        )
+        kosi = pool.submit(
+            _plugin_tool_status, "kosi", (kosi_mod.KOSI_CMD_ENV, kosi_mod.KOSI_BINARY_ENV)
+        )
+        go = pool.submit(_go_status)
+        cdxgen_status = cdxgen.result()
+        plugins = pool.submit(_plugins_status, cdxgen_status.path, get_plugins_bin_target())
+        dosai_status = dosai.result()
+        dotnet = pool.submit(_dotnet_status, dosai_status.path)
+        entries = [
+            cdxgen_status,
+            atom.result(),
+            atom_tools.result(),
+            edga.result(),
+            node.result(),
+            _python_status(),
+            *plugins.result(),
+            golem.result(),
+            go.result(),
+            rusi.result(),
+            dosai_status,
+            dotnet.result(),
+            kosi.result(),
+            _blint_status(),
+            _blintdb_status(),
+        ]
     return entries, {entry.name: entry for entry in entries}
 
 
