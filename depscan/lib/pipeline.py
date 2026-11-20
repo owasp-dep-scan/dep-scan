@@ -67,9 +67,11 @@ from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
+    DOSAI_FACTS_FILE,
     ScanFailureError,
     annotate_vdr,
     blint_reviews_requested,
+    clear_tool_outputs,
     create_bom,
     create_empty_vdr,
     determine_spec_version,
@@ -644,6 +646,11 @@ def stage_setup(ctx):
     # indistinguishable.
     ctx.user_bom_dir = args.bom_dir
     ctx.bom_dir_mode = bool(ctx.user_bom_dir and os.path.isdir(ctx.user_bom_dir))
+    if not (args.bom_dir or getattr(args, "bom", None) or args.search_purl):
+        # A source scan generates its BOM and the language tools' slices in
+        # the reports directory; files an earlier run left there would read
+        # as this scan's reachability and exposure evidence.
+        clear_tool_outputs(reports_dir)
     # Are we running with a config file
     ctx.config_file_mode = args.config and os.path.exists(args.config)
     ctx.depscan_options = {**vars(args), "src_dir": src_dir, "reports_dir": reports_dir}
@@ -1465,7 +1472,7 @@ def _exploitability_inputs(ctx, scan):
     dosai_flows: List[Dict] = []
     if "dosai" in analyzers:
         facts_path = os.path.join(
-            scan.bom_dir or ctx.reports_dir, "analysis", "dosai", "dotnet-reachability.facts.json"
+            scan.bom_dir or ctx.reports_dir, "analysis", "dosai", DOSAI_FACTS_FILE
         )
         if os.path.isfile(facts_path):
             dosai_facts = json_load(facts_path, log=LOG)
@@ -1473,7 +1480,13 @@ def _exploitability_inputs(ctx, scan):
             if os.path.basename(slice_file).startswith("dotnet-reachables"):
                 try:
                     with open(slice_file, encoding="utf-8") as fp:
-                        dosai_flows.extend(json.load(fp))
+                        payload = json.load(fp)
+                    if isinstance(payload, list):
+                        dosai_flows.extend(payload)
+                    else:
+                        LOG.warning(
+                            "The dosai reachables slices %s hold no list of flows.", slice_file
+                        )
                 except (OSError, ValueError) as e:
                     LOG.warning(
                         "The dosai reachables slices %s could not be read: %s", slice_file, e

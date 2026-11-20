@@ -836,3 +836,23 @@ def test_collect_exploitability_prefers_the_assessment_that_reached():
         ctx, SimpleNamespace(exploitability={("CVE-1", "pkg:npm/a@1"): exposed})
     )
     assert ctx.exploitability[("CVE-1", "pkg:npm/a@1")] is exposed
+
+
+@pytest.mark.parametrize("bom_dir_scan", [False, True])
+def test_setup_clears_tool_outputs_only_for_a_source_scan(tmp_path, bom_dir_scan):
+    """A source scan's reports directory holds what dep-scan wrote, and an
+    earlier run's tool slices there would read as this run's evidence. A BOM
+    directory the user hands in is an input and keeps its files."""
+    src = tmp_path / "src"
+    src.mkdir()
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    stale = reports / "dotnet-reachables.slices.json"
+    stale.write_text("[]")
+    if bom_dir_scan:
+        argv = ["--bom-dir", str(reports), "--reports-dir", str(reports)]
+    else:
+        argv = ["--src", str(src), "--reports-dir", str(reports)]
+    ctx = pipeline.build_context(_args(argv))
+    pipeline.stage_setup(ctx)
+    assert stale.exists() is bom_dir_scan

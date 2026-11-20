@@ -1,4 +1,5 @@
 import json
+import glob
 import os
 import re
 import shutil
@@ -40,7 +41,7 @@ from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 
 class ScanFailureError(RuntimeError):
@@ -953,13 +954,15 @@ def _import_dosai_converter():
     )
 
 
+#: dosai's native reachability facts, under ``analysis/dosai/``.
+DOSAI_FACTS_FILE = "dotnet-reachability.facts.json"
+
+
 def _persist_dosai_facts(report, converter, bom_index, bom_dir, options):
     """Stash the native dosai reachability facts (the truth) as a sidecar for
     VEX/advanced analysis. The verdict itself flows through the atom
     projection below via the existing purl-keyed engine loop."""
-    facts_path = os.path.join(
-        analysis_report_dir(bom_dir, "dosai"), "dotnet-reachability.facts.json"
-    )
+    facts_path = os.path.join(analysis_report_dir(bom_dir, "dosai"), DOSAI_FACTS_FILE)
     try:
         facts = converter.extract_native(report, bom_index)
         json_dump(facts_path, facts, compact=True)
@@ -969,6 +972,9 @@ def _persist_dosai_facts(report, converter, bom_index, bom_dir, options):
                 f"Could not persist dosai native reachability facts to {facts_path}: {e}"
             ) from e
         LOG.debug("Could not persist dosai native reachability facts: %s", e)
+        # A partial file, or none at all, must not be read as this scan's
+        # exposure evidence.
+        _remove_tool_slice(facts_path)
 
 
 @dataclass(frozen=True)
@@ -998,6 +1004,9 @@ class ReachabilityTool:
     #: Optional extra persistence step after a report was found (dosai's
     #: native-reachability facts sidecar).
     persist_report: Optional[Callable] = None
+    #: Files under ``analysis/<producer>/`` that ``persist_report`` writes
+    #: and later stages read as this scan's evidence, as (producer, name).
+    sidecars: Tuple[Tuple[str, str], ...] = ()
 
 
 def _remove_tool_slice(path: str) -> None:
@@ -1009,6 +1018,40 @@ def _remove_tool_slice(path: str) -> None:
         pass
     except OSError as e:
         LOG.debug("Could not remove the reachability slice %s: %s", path, e)
+
+
+def _remove_tool_outputs(directory: str, tool: "ReachabilityTool") -> None:
+    """Delete what ``tool`` wrote into ``directory`` on an earlier run.
+
+    The reachables slice, its split parts (``<base>-<n>.json``) and the
+    tool's sidecar files all read as this scan's evidence when present, so a
+    run that does not produce them must not find them there.
+    """
+    from depscan.lib.scan_directory import ANALYSIS_DIR
+
+    primary = os.path.join(directory, tool.slice_file)
+    _remove_tool_slice(primary)
+    base, ext = os.path.splitext(primary)
+    for part in glob.glob(glob.escape(base) + "-*" + ext):
+        if part[len(base) + 1 : len(part) - len(ext)].isdigit():
+            _remove_tool_slice(part)
+    for producer, name in tool.sidecars:
+        _remove_tool_slice(os.path.join(directory, ANALYSIS_DIR, producer, name))
+
+
+def clear_tool_outputs(directory: str) -> None:
+    """Delete every language tool's slices and sidecars left in ``directory``.
+
+    A source scan writes these next to the BOM it generates, in the reports
+    directory. When that directory is reused, a later scan whose project
+    types do not run a tool would otherwise read the earlier run's files as
+    its own and report the tool as completed. A BOM directory the user
+    supplies is an input and is never cleared.
+    """
+    if not directory or not os.path.isdir(directory):
+        return
+    for tool in _REACHABILITY_TOOLS:
+        _remove_tool_outputs(directory, tool)
 
 
 def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
@@ -1033,9 +1076,7 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     if bom_file:
         # A slice left by an earlier scan must not outlive a run where this
         # tool does not produce one, or the analyzer would read as completed.
-        _remove_tool_slice(
-            os.path.join(os.path.dirname(os.path.abspath(bom_file)), tool.slice_file)
-        )
+        _remove_tool_outputs(os.path.dirname(os.path.abspath(bom_file)), tool)
     if options.get("reachability_analyzer") == "off":
         return False
     if not bom_file or not os.path.exists(bom_file):
@@ -1173,6 +1214,7 @@ DOSAI_TOOL = ReachabilityTool(
         "(issue #523)."
     ),
     persist_report=_persist_dosai_facts,
+    sidecars=(("dosai", DOSAI_FACTS_FILE),),
 )
 
 

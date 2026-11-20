@@ -1227,6 +1227,58 @@ def test_fail_on_error_still_fails_when_the_capability_is_unavailable(fake_tools
     assert not _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
 
 
+def test_a_tool_run_without_a_report_removes_split_slices_and_its_facts(fake_tools, tmp_path):
+    """Split parts of an earlier run's slice and dosai's facts sidecar would
+    otherwise read as this run's reachability and exposure evidence."""
+    from depscan.lib.bom import DOSAI_FACTS_FILE, DOSAI_TOOL, _run_reachability_tool
+
+    fake_tools["remove"]("dosai")
+    bom = _write_bom(tmp_path / "sbom-dotnet.cdx.json")
+    for name in (
+        "dotnet-reachables.slices.json",
+        "dotnet-reachables.slices-2.json",
+        "dotnet-reachables.slices-notapart.json",
+    ):
+        (tmp_path / name).write_text("[]")
+    facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    tool = DOSAI_TOOL.__class__(
+        **{**DOSAI_TOOL.__dict__, "run_fallback": lambda *a: None}
+    )
+    options = {"project_type": ["dotnet"], "doctor_report": doctor_mod.doctor()}
+    assert not _run_reachability_tool(bom, str(tmp_path), options, tool)
+    assert not (tmp_path / "dotnet-reachables.slices.json").exists()
+    assert not (tmp_path / "dotnet-reachables.slices-2.json").exists()
+    assert not facts.exists()
+    # Only numbered parts are the tool's; anything else is left alone.
+    assert (tmp_path / "dotnet-reachables.slices-notapart.json").exists()
+
+
+def test_a_source_scan_clears_tool_outputs_an_earlier_run_left(tmp_path):
+    """A universal rerun into the same reports directory never runs dosai,
+    so the earlier .NET run's slices and facts must not survive into it."""
+    from depscan.lib.bom import DOSAI_FACTS_FILE, clear_tool_outputs
+
+    for name in (
+        "dotnet-reachables.slices.json",
+        "dotnet-reachables.slices-3.json",
+        "go-reachables.slices.json",
+        "rust-reachables.slices.json",
+        "java-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("[]")
+    facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
+    facts.parent.mkdir(parents=True)
+    facts.write_text("{}")
+    clear_tool_outputs(str(tmp_path))
+    remaining = sorted(p.name for p in tmp_path.glob("*.json"))
+    # atom's slices come from cdxgen, which rewrites them; only the language
+    # tools' own outputs are cleared.
+    assert remaining == ["java-reachables.slices.json"]
+    assert not facts.exists()
+
+
 def test_documented_manifest_fields_match_the_schema():
     """The scan directory page carries the generated tables; regenerate them
     with the command in the page when this fails."""
