@@ -5,10 +5,11 @@ shape refused with the version named, a newer minor accepted with the schema
 caveat, a truncated or malformed report that yields not-assessed and raises
 nothing, and the budget and timeout markers the runner saw), plus the
 contracts the reached sets depend on: the reached-counted purl set of the
-records equals the purls the reachability engine's unique-flow walk yields
-over the same slices, service attribution equals the positional tag walk per
-flow, ids are byte-stable, a flow duplicated across split slice files is
-counted once, and every record validates against the evidence schema.
+records equals the purls a unique-flow walk over the same slices carries
+(deduplicated by the flow content hash the adapter itself uses), service
+attribution equals the positional tag walk per flow, ids are byte-stable, a
+flow duplicated across split slice files is counted once, and every record
+validates against the evidence schema.
 
 Fixtures: the recorded atom 4 slices under ``test/data/atom4`` and the
 trimmed pinned repotests recordings under ``tests/data/atom`` (see the README
@@ -23,10 +24,10 @@ import pytest
 
 from analysis_lib.evidence import MAX_PATH_NODES, EvidenceLocation, adapters
 from analysis_lib.evidence.adapters import gate_report_version
-from analysis_lib.evidence.adapters.atom import extract
+from analysis_lib.evidence.adapters.atom import _flow_identity, _flow_service_purls, extract
 from analysis_lib.evidence.store import canonical_record
 from analysis_lib.findings.schemas import validate
-from analysis_lib.reachability import _flow_service_purls, _iter_unique_reachable_flows
+from analysis_lib.reachability import _iter_json_list
 
 ATOM4_DIR = Path(__file__).resolve().parents[3] / "test" / "data" / "atom4"
 ATOM4_REACHABLES = ATOM4_DIR / "python-reachables.slices.json"
@@ -44,8 +45,20 @@ def _flows(path):
 
 
 def _unique_flows(paths):
-    """The flows the engine's unique-flow walk yields over the given files."""
-    return list(_iter_unique_reachable_flows([str(p) for p in paths]))
+    """Each distinct flow of the given files, once, deduplicated by the flow
+    content hash the adapter builds its records with."""
+    seen = set()
+    flows = []
+    for path in paths:
+        for flow in _iter_json_list(str(path)):
+            if not isinstance(flow, dict):
+                continue
+            identity = _flow_identity(flow)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            flows.append(flow)
+    return flows
 
 
 def _reached_purls(records):
