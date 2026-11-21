@@ -1,0 +1,28 @@
+packages/analysis-lib/tests/test_vdr_convert.py
+  s_e6c504b2c352c9::t_17c8f9845ad181 187-188,197
+  s_e6c504b2c352c9::t_94a4d15d3e6eb2 238,291,398-531
+packages/analysis-lib/tests/data/engine/README.md
+  s_e6c504b2c352c9::t_57e03fbeae904f 1-15
+packages/analysis-lib/tests/test_reachability.py
+  s_e6c504b2c352c9::t_8c8e0c1b644539 329-332,339,348,350,352-361
+  s_e6c504b2c352c9::t_5337f14804e4c4 600-606
+  s_e6c504b2c352c9::t_88dcefbc88e453 3-17,19-29,36-39,47-53,62-87,91-103,105,108-110,114,117-123,126-134,137-139,142,145-162,166-171,173-203,207-216,219-241,245-266,269-273,277-280,284-294,298-302,308-309,314-316,318-328,333,335-338,340-342,344-346,349,351,362,364-387,395-406,408-426,436-442,470,487-492,512,515-541,543-559,561-562,564-571,573-575,578-587,590-599
+packages/analysis-lib/tests/data/engine/sbom-java.cdx.json
+  s_e6c504b2c352c9::t_6657f6ba3d0f03 1-7969
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c672343f6287ecdecb6dd3bb4e6fe8aac8ec1342",
+  "prompts": {},
+  "sessions": {
+    "s_e6c504b2c352c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_11_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
