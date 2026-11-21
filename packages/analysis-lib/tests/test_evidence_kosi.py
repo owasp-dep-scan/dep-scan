@@ -125,7 +125,7 @@ def test_resolved_recording_record_kinds():
     assert len(slices) == 2
     for record in slices:
         assert record.confidence == "high"
-        assert record.producer.reportSchemaVersion == "kosi/1"
+        assert record.producer.report_schema_version == "kosi/1"
         assert len(record.path) >= 7
         assert record.locations[0].file == "src/main/kotlin/demo/App.kt"
     ssrf = next(r for r in slices if (r.attributes or {}).get("servicePurls") == [
@@ -136,9 +136,9 @@ def test_resolved_recording_record_kinds():
     assert "tier" not in ssrf.attributes
     other = [r for r in slices if r is not ssrf]
     assert len(other) == 1
-    assert other[0].attributes["servicePurls"] == [
-        "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"
-    ]
+    # the process-exec slice's only BOM purl is the workspace, attributed
+    # through the sink category exactly as the converter's flow carried it
+    assert other[0].attributes["servicePurls"] == ["pkg:generic/kt2@unspecified"]
     usages = [r for r in result.records if r.kind == "usage"]
     assert len(usages) == 4
     assert all(r.subject.purls == ["pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"] for r in usages)
@@ -255,7 +255,7 @@ def test_report_without_a_version_is_accepted_as_schema_unknown():
     )
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "schema-unknown" for c in result.caveats)
-    assert all(r.producer.reportSchemaVersion == "unknown" for r in result.records)
+    assert all(r.producer.report_schema_version == "unknown" for r in result.records)
 
 
 def test_not_a_kosi_report_is_refused_with_a_reason():

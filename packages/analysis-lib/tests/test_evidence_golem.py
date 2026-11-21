@@ -129,7 +129,7 @@ def test_record_kinds_on_the_recording():
     slices = [r for r in result.records if r.kind == "reached-flow" and r.path and len(r.path) == 6]
     assert len(slices) == 1
     assert slices[0].confidence == "medium"
-    assert slices[0].producer.reportSchemaVersion == (
+    assert slices[0].producer.report_schema_version == (
         "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6"
     )
     endpoints = [r for r in result.records if r.kind == "entry-point"]
@@ -275,12 +275,13 @@ def test_report_without_a_version_is_accepted_as_schema_unknown():
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "schema-unknown" for c in result.caveats)
     assert result.records
-    assert all(r.producer.reportSchemaVersion == "unknown" for r in result.records)
+    assert all(r.producer.report_schema_version == "unknown" for r in result.records)
 
 
 def test_not_a_golem_report_is_refused_with_a_reason():
     report = _report("golem-reachable-app.json")
     report.pop("callGraph")
+    report.pop("dataFlow")
     result = extract(
         report,
         source=SOURCE,

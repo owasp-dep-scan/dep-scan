@@ -140,7 +140,7 @@ def test_record_kinds_on_the_recording():
     assert time_record.path and len(time_record.path) == 2
     assert time_record.producer.name == "rusi"
     assert time_record.producer.version == "4.3.1"
-    assert time_record.producer.reportSchemaVersion == (
+    assert time_record.producer.report_schema_version == (
         "https://appthreat.github.io/rusi/schema/report-0.1"
     )
 
@@ -223,7 +223,7 @@ def test_report_without_a_version_is_accepted_as_schema_unknown():
     )
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "schema-unknown" for c in result.caveats)
-    assert all(r.producer.reportSchemaVersion == "unknown" for r in result.records)
+    assert all(r.producer.report_schema_version == "unknown" for r in result.records)
 
 
 def test_not_a_rusi_report_is_refused_with_a_reason():
