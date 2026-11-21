@@ -380,7 +380,7 @@ def test_fixture_is_a_valid_scan_directory():
     manifest = _manifest_of(FIXTURE_DIR)
     validate("depscan-manifest", manifest)
     assert manifest["layoutVersion"] == scan_directory.LAYOUT_VERSION
-    assert manifest["depscanVersion"] == "7.0.0.dev0"
+    assert manifest["depscanVersion"] == "7.0.0a1"
     assert manifest["startUtc"].endswith("Z") and "T" in manifest["startUtc"]
     assert manifest["endUtc"].endswith("Z") and "T" in manifest["endUtc"]
     assert manifest["inputs"] == [
@@ -394,7 +394,7 @@ def test_fixture_is_a_valid_scan_directory():
         {
             "name": "cdxgen",
             "path": "~/.local/bin/cdxgen",
-            "version": "13.8.0",
+            "version": "13.9.0",
             "source": "path",
             "reason": None,
         },
@@ -403,14 +403,16 @@ def test_fixture_is_a_valid_scan_directory():
             "path": None,
             "version": None,
             "source": None,
-            "reason": "rusi was not found; set RUSI_CMD or install it on PATH",
+            "reason": "rusi was not found; set one of RUSI_CMD, DEPSCAN_RUSI_BINARY, "
+            "install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory",
         },
         {
             "name": "golem",
             "path": None,
             "version": None,
             "source": None,
-            "reason": "golem was not found; set GOLEM_CMD or install it on PATH",
+            "reason": "golem was not found; set one of GOLEM_CMD, DEPSCAN_GOLEM_BINARY, "
+            "install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory",
         },
         {
             "name": "go",
@@ -424,7 +426,8 @@ def test_fixture_is_a_valid_scan_directory():
             "path": None,
             "version": None,
             "source": None,
-            "reason": "dosai was not found; set DOSAI_CMD or install it on PATH",
+            "reason": "dosai was not found; set one of DOSAI_CMD, DEPSCAN_DOSAI_BINARY, "
+            "install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory",
         },
         {
             "name": "dotnet",
@@ -434,8 +437,16 @@ def test_fixture_is_a_valid_scan_directory():
             "reason": "the .NET runtime dosai needs was not found on PATH; a "
             "self-contained dosai binary (name containing '-full') would not need it",
         },
+        {
+            "name": "kosi",
+            "path": None,
+            "version": None,
+            "source": None,
+            "reason": "kosi was not found; set one of KOSI_CMD, DEPSCAN_KOSI_BINARY, "
+            "install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory",
+        },
     ]
-    assert manifest["platform"] == {"os": "linux", "arch": "x86_64", "libc": "glibc"}
+    assert manifest["platform"] == {"os": "darwin", "arch": "arm64", "libc": None}
     names = {capability["name"]: capability for capability in manifest["capabilities"]}
     assert names["vulnerabilities"]["status"] == "available"
     assert names["reachability"]["status"] == "available"
@@ -500,6 +511,7 @@ def test_fixture_is_a_valid_scan_directory():
     digests = {entry["path"]: entry for entry in manifest["files"]}
     assert set(digests) == {
         "depscan.findings.json",
+        "depscan.toml.sample",
         "django-app.cdx.json",
         "django-app.vdr.json",
         "evidence.jsonl",
@@ -507,6 +519,8 @@ def test_fixture_is_a_valid_scan_directory():
     }
     assert digests["evidence.jsonl"]["role"] == "evidence"
     assert digests["evidence.index.json"]["role"] == "evidence"
+    assert digests["evidence.jsonl"]["producer"] == "dep-scan"
+    assert digests["depscan.toml.sample"]["role"] == "report"
     assert digests["django-app.cdx.json"]["role"] == "bom"
     assert digests["django-app.cdx.json"]["producer"] == "user"
     assert digests["django-app.vdr.json"]["role"] == "vdr"
@@ -609,7 +623,7 @@ RAW_REPORTS = {
     "golem": ("go-semantics.slices.json", ANALYZER_REPORTS / "golem" / "golem-reachable-app.json"),
     "dosai": (
         "dotnet-semantics.slices.json",
-        ANALYZER_REPORTS / "dosai" / "dosai-combined.sample.json",
+        ANALYZER_REPORTS / "dosai" / "dosai-v5.0.0-reachable-combined.json",
     ),
     "kosi": ("analysis/kosi/kosi.json", ANALYZER_REPORTS / "kosi" / "kosi-resolved-report.json"),
 }
@@ -1223,6 +1237,10 @@ class _FakeAdapter:
     """A stand-in for one language tool's evidence adapter."""
 
     @staticmethod
+    def is_golem_report(report):
+        return isinstance(report, dict) and "flows" in report
+
+    @staticmethod
     def extract(report, *, source, producer_version="", bom_components=None, extra_components=None):
         from analysis_lib.evidence import EvidenceCaveat, EvidenceProducer
         from analysis_lib.evidence.adapters import (
@@ -1232,7 +1250,7 @@ class _FakeAdapter:
             not_assessed,
         )
 
-        if not isinstance(report, dict) or "flows" not in report:
+        if not _FakeAdapter.is_golem_report(report):
             return not_assessed("the report is not a golem report")
         producer = EvidenceProducer(name="golem", version="9.9.9", report_schema_version="1")
         record = build_record(
@@ -1260,6 +1278,8 @@ def _fake_tool(run_fallback):
         import_adapter=lambda: _FakeAdapter,
         run_fallback=run_fallback,
         no_report_error="No golem report was available.",
+        report_names=lambda types: ("go-semantics.slices.json", "analysis/golem/golem.json"),
+        fallback_source="analysis/golem/golem.json",
     )
 
 
@@ -1288,7 +1308,9 @@ def test_an_unavailable_capability_does_not_stop_a_tool_that_can_run(fake_tools,
     assert not (tmp_path / "go-reachables.slices.json").is_file(), (
         "the converted slice is no longer written"
     )
-    assert result.records[0].source == "go-semantics.slices.json"
+    assert result.records[0].source == "analysis/golem/golem.json", (
+        "the records name the raw report the fallback run wrote"
+    )
 
 
 def test_fail_on_error_still_fails_when_the_capability_is_unavailable(fake_tools, tmp_path):

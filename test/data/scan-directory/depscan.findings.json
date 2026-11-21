@@ -12,7 +12,7 @@
       },
       "producer": {
         "name": "dep-scan",
-        "version": "7.0.0.dev0"
+        "version": "7.0.0a1"
       },
       "cwes": [
         400
@@ -20,6 +20,27 @@
       "components": [
         "pkg:pypi/requests@2.32.1"
       ],
+      "exploitability": {
+        "axes": {
+          "presence": "likely",
+          "reach": "not_assessed",
+          "exposure": "not_assessed",
+          "barrier": "not_assessed"
+        },
+        "grade": "moderate",
+        "rule": "assessed",
+        "unassessed": [
+          "reach",
+          "exposure",
+          "barrier"
+        ],
+        "sources": {
+          "presence": [
+            "vdb",
+            "cdxgen"
+          ]
+        }
+      },
       "fix": {
         "fixed_versions": [
           "2.32.2"
@@ -29,6 +50,32 @@
         {
           "url": "https://nvd.nist.gov/vuln/detail/CVE-2024-1111",
           "type": "advisory"
+        }
+      ],
+      "properties": [
+        {
+          "name": "depscan:exploitability:grade",
+          "value": "moderate"
+        },
+        {
+          "name": "depscan:exploitability:rule",
+          "value": "assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:presence",
+          "value": "likely"
+        },
+        {
+          "name": "depscan:exploitability:axis:reach",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:exposure",
+          "value": "not_assessed"
+        },
+        {
+          "name": "depscan:exploitability:axis:barrier",
+          "value": "not_assessed"
         }
       ]
     }

@@ -438,12 +438,18 @@ def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
 def test_lifecycle_boms_guard_each_reachability_tool_by_its_types(
     tmp_path, monkeypatch, project_type, kosi_expected, golem_expected
 ):
+    """The lifecycle run hands the build BOM to exactly the tools the scan's
+    project types select; the tools that were not selected get no adapter
+    result at all, while a selected one is recorded even when it produced no
+    report, as not assessed."""
     from depscan.lib import bom as bom_mod
 
     monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
-    ran = []
-    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: ran.append("golem"))
-    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: ran.append("kosi"))
+    for name in ("RUSI_TOOL", "GOLEM_TOOL", "KOSI_TOOL", "DOSAI_TOOL"):
+        tool = getattr(bom_mod, name)
+        monkeypatch.setattr(
+            bom_mod, name, dataclasses.replace(tool, run_fallback=lambda *a, **k: None)
+        )
     options = {
         "project_type": [project_type],
         "prebuild_bom_file": str(tmp_path / "sbom-prebuild.cdx.json"),
@@ -451,9 +457,9 @@ def test_lifecycle_boms_guard_each_reachability_tool_by_its_types(
         "postbuild_bom_file": str(tmp_path / "sbom-postbuild.cdx.json"),
         "container_bom_file": str(tmp_path / "sbom-container.cdx.json"),
     }
-    bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
-    assert ("kosi" in ran) is kosi_expected
-    assert ("golem" in ran) is golem_expected
+    result = bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
+    assert ("kosi" in result.adapter_results) is kosi_expected
+    assert ("golem" in result.adapter_results) is golem_expected
 
 
 def test_a_pure_java_gradle_project_does_not_select_kosi():

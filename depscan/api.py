@@ -463,14 +463,14 @@ def _record_checks_not_assessed(ctx, checks_not_assessed):
 
 
 def _analyzer_entries(ctx, tscan):
-    """The enrichment stage's analyzer entries, from the slices it read."""
+    """The enrichment stage's analyzer entries, from the adapters' results."""
     options = tscan.reachability_options
     if options is None:
         # Reachability was off, so the stage is recorded as skipped and no
         # analyzer had anything to contribute.
         return []
     return scan_directory.analyzer_entries(
-        ctx.doctor_report, [tscan.project_type], options.slices_files
+        ctx.doctor_report, [tscan.project_type], tscan.adapter_results
     )
 
 
@@ -497,17 +497,9 @@ def _inventory_capabilities(options, project_type: str) -> List[str]:
 def _evidence_output():
     """The enrichment stage's evidence output entry.
 
-    The evidence store does not exist in this version; the manifest says so
-    instead of leaving the file out silently. No empty evidence file is
-    written either.
+    The stage always writes the store, even empty, so the layout is uniform.
     """
-    return [
-        {
-            "file": scan_directory.EVIDENCE_FILE,
-            "status": "not-assessed",
-            "reason": scan_directory.EVIDENCE_NOT_PRODUCED_REASON,
-        }
-    ]
+    return [{"file": scan_directory.EVIDENCE_FILE, "status": "completed"}]
 
 
 def _relative_output(ctx, path):

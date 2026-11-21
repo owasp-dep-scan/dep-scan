@@ -1,8 +1,8 @@
 {
   "layoutVersion": "2.0",
-  "depscanVersion": "7.0.0.dev0",
-  "startUtc": "2026-11-17T11:05:12.773085Z",
-  "endUtc": "2026-11-17T11:05:12.777061Z",
+  "depscanVersion": "7.0.0a1",
+  "startUtc": "2026-11-21T16:21:32.356704Z",
+  "endUtc": "2026-11-21T16:21:32.362242Z",
   "inputs": [
     {
       "type": "file",
@@ -63,32 +63,37 @@
           "name": "atom",
           "capability": "reachability",
           "status": "not-assessed",
-          "reason": "no reachables slices from atom were produced or given for this scan"
+          "reason": "no atom report was given; the adapter has nothing to read"
         },
         {
           "name": "rusi",
           "capability": "reachability:rust",
           "status": "not-assessed",
-          "reason": "capability reachability:rust is unavailable: tool:rusi (rusi: rusi was not found; set RUSI_CMD or install it on PATH)"
+          "reason": "capability reachability:rust is unavailable: tool:rusi (rusi: rusi was not found; set one of RUSI_CMD, DEPSCAN_RUSI_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory)"
         },
         {
           "name": "golem",
           "capability": "reachability:go",
           "status": "not-assessed",
-          "reason": "capability reachability:go is unavailable: tool:golem (golem: golem was not found; set GOLEM_CMD or install it on PATH); tool:go (go: the Go toolchain golem needs was not found on PATH)"
+          "reason": "capability reachability:go is unavailable: tool:golem (golem: golem was not found; set one of GOLEM_CMD, DEPSCAN_GOLEM_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory); tool:go (go: the Go toolchain golem needs was not found on PATH)"
+        },
+        {
+          "name": "kosi",
+          "capability": "reachability:kotlin",
+          "status": "not-assessed",
+          "reason": "capability reachability:kotlin is unavailable: tool:kosi (kosi: kosi was not found; set one of KOSI_CMD, DEPSCAN_KOSI_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory)"
         },
         {
           "name": "dosai",
           "capability": "reachability:dotnet",
           "status": "not-assessed",
-          "reason": "capability reachability:dotnet is unavailable: tool:dosai (dosai: dosai was not found; set DOSAI_CMD or install it on PATH); tool:dotnet (dotnet: the .NET runtime dosai needs was not found on PATH; a self-contained dosai binary (name containing '-full') would not need it)"
+          "reason": "capability reachability:dotnet is unavailable: tool:dosai (dosai: dosai was not found; set one of DOSAI_CMD, DEPSCAN_DOSAI_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory); tool:dotnet (dotnet: the .NET runtime dosai needs was not found on PATH; a self-contained dosai binary (name containing '-full') would not need it)"
         }
       ],
       "outputs": [
         {
           "file": "evidence.jsonl",
-          "status": "not-assessed",
-          "reason": "this version does not produce an evidence store; reachability stays in the slices files and the VDR properties"
+          "status": "completed"
         }
       ]
     },
@@ -121,9 +126,9 @@
     "csaf": false,
     "csaf_version": "2.1",
     "deep_scan": false,
-    "dotnet_analyzer_mode": "auto",
     "enable_debug": false,
     "exclude_malware": false,
+    "exclude_types": [],
     "explain": false,
     "explanation_mode": "EndpointsAndReachables",
     "fail_on_error": false,
@@ -160,6 +165,7 @@
     "vdb_extended": null,
     "vdb_flavor": null,
     "vdb_image": null,
+    "vdb_offline": false,
     "vdb_scope": null,
     "vdb_time": null,
     "vuln_analyzer": "auto"
@@ -169,7 +175,13 @@
       "path": "depscan.findings.json",
       "role": "findings",
       "producer": "dep-scan",
-      "sha256": "83cf8e6d62c7e769635c9ebd54dc8ca6edd3759d618824a676b38b57505ac560"
+      "sha256": "2f0343c1209da548361cde1ea495c43bdf8a9586b61002f2cd53a03195fab3d0"
+    },
+    {
+      "path": "depscan.toml.sample",
+      "role": "report",
+      "producer": "dep-scan",
+      "sha256": "81e17161d9229f6547aa15a7682e2a174dd71123480ed5764e1a2c2f903f24d3"
     },
     {
       "path": "django-app.cdx.json",
@@ -181,7 +193,19 @@
       "path": "django-app.vdr.json",
       "role": "vdr",
       "producer": "dep-scan",
-      "sha256": "79a0f2fc9012e9f440ce34fca16b9433d56a0aab99f9c3d06780fd2122945117"
+      "sha256": "fe801bd7a1575c0b75bfd2a1689ffb0f2cdc490c3311f695f7ffe40a5826b631"
+    },
+    {
+      "path": "evidence.index.json",
+      "role": "evidence",
+      "producer": "dep-scan",
+      "sha256": "bd2d05ae3781ab814fbf7355a187de9e40cb99563ed66575ddd6bca582c2df89"
+    },
+    {
+      "path": "evidence.jsonl",
+      "role": "evidence",
+      "producer": "dep-scan",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
   "database": {
@@ -194,7 +218,7 @@
         "enabled": false,
         "present": []
       },
-      "createdUtc": "2026-11-01T00:00:00Z",
+      "createdUtc": "2026-11-01T00:00:00+00:00",
       "ageHours": 216.0,
       "stale": false,
       "maxAgeHours": 48,
@@ -210,7 +234,7 @@
     {
       "name": "cdxgen",
       "path": "~/.local/bin/cdxgen",
-      "version": "13.8.0",
+      "version": "13.9.0",
       "source": "path",
       "reason": null
     },
@@ -219,14 +243,14 @@
       "path": null,
       "version": null,
       "source": null,
-      "reason": "rusi was not found; set RUSI_CMD or install it on PATH"
+      "reason": "rusi was not found; set one of RUSI_CMD, DEPSCAN_RUSI_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory"
     },
     {
       "name": "golem",
       "path": null,
       "version": null,
       "source": null,
-      "reason": "golem was not found; set GOLEM_CMD or install it on PATH"
+      "reason": "golem was not found; set one of GOLEM_CMD, DEPSCAN_GOLEM_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory"
     },
     {
       "name": "go",
@@ -240,7 +264,7 @@
       "path": null,
       "version": null,
       "source": null,
-      "reason": "dosai was not found; set DOSAI_CMD or install it on PATH"
+      "reason": "dosai was not found; set one of DOSAI_CMD, DEPSCAN_DOSAI_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory"
     },
     {
       "name": "dotnet",
@@ -248,12 +272,19 @@
       "version": null,
       "source": null,
       "reason": "the .NET runtime dosai needs was not found on PATH; a self-contained dosai binary (name containing '-full') would not need it"
+    },
+    {
+      "name": "kosi",
+      "path": null,
+      "version": null,
+      "source": null,
+      "reason": "kosi was not found; set one of KOSI_CMD, DEPSCAN_KOSI_BINARY, install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen plugins directory"
     }
   ],
   "platform": {
-    "os": "linux",
-    "arch": "x86_64",
-    "libc": "glibc"
+    "os": "darwin",
+    "arch": "arm64",
+    "libc": null
   },
   "capabilities": [
     {
@@ -305,6 +336,18 @@
       "description": "Go reachability through the golem plugin and the Go toolchain."
     },
     {
+      "name": "reachability:kotlin",
+      "status": "unavailable",
+      "missing": [
+        "tool:kosi"
+      ],
+      "requirements": [
+        "tool:kosi"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/602",
+      "description": "Kotlin and JVM reachability through the kosi plugin (syntax backend, no build)."
+    },
+    {
       "name": "reachability:dotnet",
       "status": "unavailable",
       "missing": [
@@ -326,6 +369,16 @@
       "requirements": [],
       "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/592",
       "description": "License risk from the licence data vendored with dep-scan."
+    },
+    {
+      "name": "mcp",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "python:mcp"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/631",
+      "description": "The MCP server over stdio (`depscan mcp`) for agents."
     },
     {
       "name": "memory-safety",
@@ -361,19 +414,23 @@
     },
     {
       "name": "supply-chain",
-      "status": "not-implemented",
+      "status": "available",
       "missing": [],
       "requirements": [],
       "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/606",
-      "description": "Audit rule packs, package risk, provenance and CI pipeline risk."
+      "description": "Package risk audit and malware advisory reporting."
     },
     {
       "name": "binary",
-      "status": "not-implemented",
-      "missing": [],
-      "requirements": [],
+      "status": "unavailable",
+      "missing": [
+        "tool:blint"
+      ],
+      "requirements": [
+        "tool:blint"
+      ],
       "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/620",
-      "description": "Binary, installer, driver and container-image analysis with blint."
+      "description": "Binary analysis with blint."
     },
     {
       "name": "code",

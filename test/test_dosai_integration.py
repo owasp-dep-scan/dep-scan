@@ -56,9 +56,9 @@ def _write_nuget_bom(bom_file: Path):
         "components": [
             {
                 "type": "library",
-                "name": "System.Text.Json",
-                "version": "10.0.0",
-                "purl": "pkg:nuget/System.Text.Json@10.0.0",
+                "name": "Newtonsoft.Json",
+                "version": "13.0.3",
+                "purl": "pkg:nuget/Newtonsoft.Json@13.0.3",
             }
         ],
     }
@@ -129,12 +129,13 @@ def test_reachability_off_is_noop(tmp_path):
 def test_primary_path_consumes_persisted_combined_report(tmp_path):
     """cdxgen persists ``{Metadata, methods, dataflows}`` to
     ``dotnet-semantics.slices.json``; depscan MUST consume it (no dosai spawn)
-    and hand it to the dosai adapter, whose records reach the NuGet purl."""
+    and hand it to the dosai adapter, whose records reach the NuGet purl. The
+    recording is dosai 5.0.0 output, the major the adapter reads."""
     bom_file = tmp_path / "bom.cdx.json"
     _write_nuget_bom(bom_file)
     # drop the cdxgen-persisted combined report next to the BOM
     shutil.copyfile(
-        FIXTURES / "dosai-combined.sample.json",
+        FIXTURES / "dosai-v5.0.0-reachable-combined.json",
         tmp_path / "dotnet-semantics.slices.json",
     )
     result = run_dosai_reachability(
@@ -152,8 +153,8 @@ def test_primary_path_consumes_persisted_combined_report(tmp_path):
 
     _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
-    assert "pkg:nuget/System.Text.Json@10.0.0" in reached, (
-        "System.Text.Json MUST be reached via the cdxgen-persisted report"
+    assert "pkg:nuget/Newtonsoft.Json@13.0.3" in reached, (
+        "Newtonsoft.Json MUST be reached via the cdxgen-persisted report"
     )
 
 
@@ -201,7 +202,10 @@ def test_fallback_path_assembles_combined_report(tmp_path, monkeypatch):
 
     import xbom_lib.dosai as dosai_mod
 
-    df_fixture = json.loads((FIXTURES / "dosai-dataflows.sample.json").read_text())
+    recording = json.loads((FIXTURES / "dosai-v5.0.0-reachable-combined.json").read_text())
+    # The two halves the real runner persists, taken from the 5.0.0 recording.
+    df_fixture = recording["dataflows"]
+    methods_fixture = recording["methods"]
     # build a tiny methods slice carrying a Dependency-level PackageReachability
     methods_fixture = {
         "Metadata": {"Tool": "Dosai"},
@@ -211,13 +215,15 @@ def test_fallback_path_assembles_combined_report(tmp_path, monkeypatch):
     }
 
     def fake_run_dosai(src_dir, out_dir, **kwargs):
-        (tmp_path / "dotnet-dataflows.json").write_text(json.dumps(df_fixture))
-        (tmp_path / "dotnet-methods.json").write_text(json.dumps(methods_fixture))
+        out = Path(out_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "dotnet-dataflows.json").write_text(json.dumps(df_fixture))
+        (out / "dotnet-methods.json").write_text(json.dumps(methods_fixture))
         return dosai_mod.DosaiResult(
             success=True,
-            methods_path=str(tmp_path / "dotnet-methods.json"),
-            dataflows_path=str(tmp_path / "dotnet-dataflows.json"),
-            version="3.0.5",
+            methods_path=str(out / "dotnet-methods.json"),
+            dataflows_path=str(out / "dotnet-dataflows.json"),
+            version="5.0.0",
         )
 
     monkeypatch.setattr(dosai_mod, "run_dosai", fake_run_dosai)
@@ -234,7 +240,7 @@ def test_fallback_path_assembles_combined_report(tmp_path, monkeypatch):
     assert (tmp_path / "analysis" / "dosai" / "dotnet-dataflows.json").exists()
     _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
-    assert "pkg:nuget/System.Text.Json@10.0.0" in reached
+    assert "pkg:nuget/Newtonsoft.Json@13.0.3" in reached
 
 
 def test_fallback_skipped_when_dosai_unavailable(tmp_path, monkeypatch):

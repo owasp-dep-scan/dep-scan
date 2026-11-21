@@ -40,6 +40,77 @@ DEJACODE_REACHED_PURLS = {
 }
 
 
+# The tool versions the fake scripts print, exactly as the doctor tests and
+# the scan-directory tests fake them.
+FAKE_TOOLS = {
+    "cdxgen": ("CDXGEN_CMD", "CycloneDX Generator 13.8.0"),
+    "golem": ("GOLEM_CMD", "golem 9.9.9"),
+    "rusi": ("RUSI_CMD", "rusi 9.9.9"),
+    "dosai": ("DOSAI_CMD", "dosai 9.9.9+deadbeef"),
+    "kosi": ("KOSI_CMD", '{"name": "kosi", "version": "9.9.9"}'),
+    "go": (None, "go version go9.9.9 test"),
+    "dotnet": (None, "9.9.100"),
+}
+
+
+@pytest.fixture
+def fake_tools(tmp_path, monkeypatch):
+    """Install one fake per tool the reachability capabilities name, so the
+    capability table never explains a missing report: what the analyzers
+    then say is what their adapters said. The fakes live on a PATH of their
+    own; everything else stays unreachable there."""
+    empty_path = tmp_path / "stripped-path"
+    empty_path.mkdir()
+    for var in (
+        "CDXGEN_PLUGINS_DIR",
+        "CDXGEN_CMD",
+        "GOLEM_CMD",
+        "DEPSCAN_GOLEM_BINARY",
+        "RUSI_CMD",
+        "DEPSCAN_RUSI_BINARY",
+        "DOSAI_CMD",
+        "DEPSCAN_DOSAI_BINARY",
+        "KOSI_CMD",
+        "DEPSCAN_KOSI_BINARY",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+    real_version_command = doctor_mod._version_command
+
+    def version_command(path, args):
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fp:
+                is_fake = fp.readline().startswith("#!/usr/bin/env python3")
+        except OSError:
+            is_fake = False
+        if is_fake:
+            import sys
+
+            return [sys.executable, str(path), *args]
+        return real_version_command(path, args)
+
+    monkeypatch.setattr(doctor_mod, "_version_command", version_command)
+    fake_paths = {}
+    for name, (env_name, output) in FAKE_TOOLS.items():
+        script = tmp_path / f"fake-{name}.py"
+        script.write_text(
+            "#!/usr/bin/env python3\nimport sys\nprint({!r})\n".format(output),
+            encoding="utf-8",
+        )
+        script.chmod(0o755)
+        fake_paths[name] = str(script)
+        if env_name:
+            monkeypatch.setenv(env_name, str(script))
+    real_find = doctor_mod.find_executable
+
+    def find(name):
+        return fake_paths.get(name) or real_find(name)
+
+    monkeypatch.setattr(doctor_mod, "find_executable", find)
+    monkeypatch.setenv("PATH", str(empty_path))
+    monkeypatch.setenv("APPDATA", str(empty_path))
+
+
 @pytest.fixture
 def scan_stubs(monkeypatch):
     """Stub the database, the matching stage and the rendering of a scan."""
@@ -104,8 +175,9 @@ _FULL_VDB_DATA = {
 def _scan_fixture(tmp_path, name, **overrides):
     """Copy one fixture project into a temporary BOM directory and scan it.
 
-    The reports directory is left to default to the BOM directory copy, so
-    the scan directory holds the VDR and can be loaded back.
+    The BOM directory copy is also the reports directory, the way a scan
+    without an explicit reports directory treats its single BOM directory
+    target, so the scan directory holds the VDR and can be loaded back.
     """
     bom_dir = tmp_path / name
     bom_dir.mkdir()
@@ -114,6 +186,7 @@ def _scan_fixture(tmp_path, name, **overrides):
             shutil.copy2(entry, bom_dir / entry.name)
     options = {
         "bom_dir": str(bom_dir),
+        "reports_dir": str(bom_dir),
         "no_banner": True,
         "reachability_analyzer": "SemanticReachability",
     }
@@ -166,7 +239,7 @@ def test_the_engine_counts_the_fixture_purls_from_the_records(scan_stubs, tmp_pa
     assert set((res.reached_purls or {}).keys()) == DEJACODE_REACHED_PURLS
 
 
-def test_analyzer_entries_come_from_the_adapter_results(scan_stubs, tmp_path):
+def test_analyzer_entries_come_from_the_adapter_results(scan_stubs, fake_tools, tmp_path):
     result = _scan_fixture(tmp_path, "dejacode")
     analyzers = {
         entry["name"]: entry for entry in _enrichment_stage(result.manifest)["analyzers"]
@@ -176,7 +249,9 @@ def test_analyzer_entries_come_from_the_adapter_results(scan_stubs, tmp_path):
     assert analyzers["atom"]["capability"] == "reachability"
     for name in ("rusi", "golem", "kosi", "dosai"):
         assert analyzers[name]["status"] == "not-assessed", name
-        assert "no report" in analyzers[name]["reason"], name
+        assert f"no {name} report was found in the BOM directory" in analyzers[name]["reason"], (
+            f"{name}: {analyzers[name]['reason']}"
+        )
 
 
 def test_a_dosai_bom_dir_scan_completes_dosai_from_the_raw_report(scan_stubs, tmp_path):

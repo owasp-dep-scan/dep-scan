@@ -53,11 +53,6 @@ FINDINGS_FILE = "depscan.findings.json"
 EVIDENCE_FILE = "evidence.jsonl"
 EVIDENCE_INDEX_FILE = "evidence.index.json"
 
-EVIDENCE_NOT_PRODUCED_REASON = (
-    "this version does not produce an evidence store; reachability stays in "
-    "the slices files and the VDR properties"
-)
-
 #: The directory under which dep-scan's own tool runs keep their raw reports.
 ANALYSIS_DIR = "analysis"
 
@@ -386,52 +381,49 @@ def walk_files(reports_dir: str) -> List[Dict[str, Any]]:
 def analyzer_entries(
     report: Optional[DoctorReport],
     project_types: List[str],
-    slices_files: Optional[List[str]],
+    adapter_results: Optional[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """The reachability analyzer entries for the enrichment stage.
+    """The reachability analyzer entries for the enrichment stage, from the
+    adapters' results.
 
     Every analyzer this scan could have used gets an entry, and the entry
-    says what the enrichment stage actually read. ``completed`` means the
-    stage read reachables slices that analyzer produces: the language
-    tools' ``rust-``, ``go-`` and ``dotnet-reachables.slices.json``, and
-    atom's for every other reachables slices file. Without such a file the
-    analyzer is ``not-assessed``, and the reason is the doctor's, naming the
-    capability, when the capability is unavailable on this machine, or
-    otherwise that no slices were produced or given. A tool being installed
-    is never reported as an analysis that ran.
+    says what the adapters actually made of the reports. ``completed`` means
+    the analyzer's adapter found and read a report: the BOM step handed one
+    over, or a BOM-directory adapter found and read one, because the
+    analysis ran when the data was generated. Anything else is
+    ``not-assessed``: the reason is the adapter's own, and the doctor's
+    capability reason stands in when the adapter gave none, so a tool being
+    installed is never reported as an analysis that ran. The producer-level
+    caveats of a completed result are carried on the entry as ``caveats``.
 
     atom applies to every scan; a language analyzer applies when the scan's
     project types cover it, which a BOM directory or universal scan always
     does, because such a scan may hold packages of any language.
     """
-    from depscan.lib.bom import reachability_analyzers_for_types, reachability_slice_files
+    from depscan.lib.bom import reachability_analyzers_for_types
 
     tools_by_name = report.tools_by_name() if report else {}
     data = report.data if report else {}
-    # rust-reachables.slices.json and its split files rust-reachables.slices_1.json
-    stems = {
-        name: file_name.split(".slices", 1)[0]
-        for name, file_name in reachability_slice_files().items()
-    }
-    read = [os.path.basename(path) for path in slices_files or []]
-    reachables = [name for name in read if "reachables.slices" in name]
     entries = []
     for name in reachability_analyzers_for_types(project_types):
         capability = doctor_lib.ANALYZER_CAPABILITIES[name]
-        if name == "atom":
-            produced = [f for f in reachables if not f.startswith(tuple(stems.values()))]
-            missing = "no reachables slices from atom were produced or given for this scan"
-        else:
-            produced = [f for f in reachables if f.startswith(stems[name])]
-            missing = f"no {stems[name]}.slices.json was produced or given for this scan"
         entry: Dict[str, Any] = {"name": name, "capability": capability}
-        if produced:
+        result = (adapter_results or {}).get(name)
+        if result is not None and result.status == "completed":
             entry["status"] = "completed"
+            if result.caveats:
+                entry["caveats"] = [
+                    {"kind": caveat.kind, "detail": caveat.detail} for caveat in result.caveats
+                ]
         else:
             reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
+            if not reason:
+                reason = result.reason if result is not None and result.reason else None
+            if not reason:
+                reason = f"no {name} report was produced or given for this scan"
             entry.update(
                 status="not-assessed",
-                reason=reason or missing,
+                reason=reason,
             )
         entries.append(entry)
     return entries

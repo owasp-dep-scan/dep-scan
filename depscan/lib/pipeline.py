@@ -38,7 +38,10 @@ import socket
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
+
+if TYPE_CHECKING:
+    from analysis_lib.evidence.adapters import AdapterResult
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import (
@@ -48,7 +51,8 @@ from analysis_lib.output import (
     summary_stats,
 )
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
-from analysis_lib.reachability import get_reachability_impl, reached_by_analyzer
+from analysis_lib.evidence import store as evidence_store
+from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.vex.emit import export_csaf
@@ -67,7 +71,6 @@ from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
-    DOSAI_FACTS_FILE,
     ScanFailureError,
     annotate_vdr,
     blint_reviews_requested,
@@ -75,6 +78,7 @@ from depscan.lib.bom import (
     create_bom,
     create_empty_vdr,
     determine_spec_version,
+    discover_reachability_reports,
     export_bom,
     get_pkg_by_type,
     reachability_slice_files,
@@ -164,10 +168,11 @@ class TypeScan:
     #: True once the reachability engine ran and returned a result for this
     #: type; slices on disk alone do not make the analysis succeeded.
     reachability_succeeded: bool = False
-    #: The purl set of each reachables slice file the reachability engine
-    #: already read, keyed by file path. The exploitability inputs take them
-    #: from here instead of parsing the slices a second time.
-    reach_purls_by_file: Optional[Dict[str, set]] = None
+    #: The evidence adapter result of every analyzer that produced records or
+    #: read a report for this type, keyed by analyzer name: the language
+    #: tools from the BOM step, atom from this stage. The analyzer entries,
+    #: the store write and the exploitability inputs all read them.
+    adapter_results: Dict[str, "AdapterResult"] = field(default_factory=dict)
     results: List = field(default_factory=list)
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
@@ -710,12 +715,16 @@ def _start_scan_directory(ctx):
 
 
 def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
-    """Write the findings file and then the manifest, in that order.
+    """Write the findings file, the evidence index, and then the manifest, in
+    that order.
 
-    The manifest is written last, through a temporary file and a rename, so
-    it lists only files that exist. A scan that stopped partway still gets
-    one, carrying the failed stage and its reason. Returns the manifest and
-    the findings array, or None when this run writes no scan directory.
+    The index is built from the store the enrichment stage wrote and the
+    findings just written, so it lands after both exist. The manifest is
+    written last, through a temporary file and a rename, so it lists only
+    files that exist, the evidence files included. A scan that stopped
+    partway still gets one, carrying the failed stage and its reason.
+    Returns the manifest and the findings array, or None when this run
+    writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
@@ -731,6 +740,14 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
             for project_type in (ctx.project_types or [None])
         ),
     )
+    evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
+    if os.path.isfile(evidence_path):
+        index = evidence_store.build_index(
+            evidence_store.read(evidence_path), findings_document["findings"]
+        )
+        evidence_store.write_index(
+            os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_INDEX_FILE), index
+        )
     manifest = scan_dir.build(
         options=ctx.depscan_options,
         database_flavor=ctx.vdb_flavor,
@@ -1125,6 +1142,14 @@ def _produce_boms(ctx, scan):
     # Are we scanning a bom directory
     elif ctx.bom_dir_mode:
         creation_status = True
+        # No tool runs for a BOM directory: every adapter looks for its known
+        # raw report names in the directory before giving up as not assessed.
+        scan.adapter_results = discover_reachability_reports(
+            scan.bom_dir or ctx.reports_dir,
+            [scan.project_type],
+            {**ctx.depscan_options, "doctor_report": ctx.doctor_report},
+            bom_files=get_all_bom_files(scan.bom_dir) if scan.bom_dir else [],
+        )
     else:
         # Create a bom for each project type. The generator reports back the
         # documents it wrote, which is not necessarily the path we asked for:
@@ -1134,6 +1159,7 @@ def _produce_boms(ctx, scan):
         scan.bom_files = list(bom_result.bom_files)
         scan.nominated_bom_file = bom_result.primary
         scan.not_assessed = list(getattr(bom_result, "not_assessed", None) or [])
+        scan.adapter_results = dict(getattr(bom_result, "adapter_results", None) or {})
     if not creation_status:
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
@@ -1364,7 +1390,8 @@ def announce_scan_targets(ctx, scan):
 
 
 def stage_enrichment(ctx, scan):
-    """Run the reachability analyzer and keep its reachable purl maps.
+    """Run the reachability adapters, write their records into the evidence
+    store, and let the engine count the reached purl maps from it.
 
     There are many ways to perform reachability analysis.
     Most tools—including commercial ones—rely on a vulnerability database with affected modules (sinks) to detect reachable flows.
@@ -1378,9 +1405,13 @@ def stage_enrichment(ctx, scan):
     """
     reachability_analyzer = ctx.depscan_options.get("reachability_analyzer")
     reachability_options = None
+    evidence_file = os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE)
+    adapters_run = bool(reachability_analyzer) and reachability_analyzer != "off"
     if (reachability_analyzer and reachability_analyzer != "off") or ctx.depscan_options.get(
         "profile"
     ) != "generic":
+        # The store lives at the top of the scan directory, so the manifest
+        # lists it and a later read finds it where the scan wrote it.
         reachability_options = ReachabilityAnalysisKV(
             project_types=[scan.project_type],
             src_dir=ctx.src_dir,
@@ -1388,7 +1419,20 @@ def stage_enrichment(ctx, scan):
             require_multi_usage=ctx.depscan_options.get("require_multi_usage", False),
             source_tags=ctx.depscan_options.get("source_tags"),
             sink_tags=ctx.depscan_options.get("sink_tags"),
+            evidence_file=evidence_file,
         )
+    if adapters_run and reachability_options is not None:
+        # atom's slices are its own native output; its adapter runs here, over
+        # the slices and OpenAPI files the scan holds. The language tools'
+        # results are already on the type scan from the BOM step.
+        atom_result = _atom_adapter_result(ctx, scan, reachability_options)
+        if atom_result is not None:
+            scan.adapter_results["atom"] = atom_result
+        _write_evidence_store(evidence_file, scan.adapter_results)
+    elif not os.path.isfile(evidence_file):
+        # Reachability off still writes an empty store, so the layout is
+        # uniform whatever the scan asked for.
+        _write_evidence_store(evidence_file, {})
     scan.reachability_analyzer = reachability_analyzer
     scan.reachability_options = reachability_options
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
@@ -1399,8 +1443,78 @@ def stage_enrichment(ctx, scan):
         scan.reached_purls = reach_result.reached_purls
         scan.reached_services = reach_result.reached_services
         scan.endpoint_reached_purls = reach_result.endpoint_reached_purls
-        scan.reach_purls_by_file = reach_result.purls_by_file
     console.record = True
+
+
+def _atom_adapter_result(ctx, scan, options):
+    """atom's adapter result for this project type, or None when atom had
+    nothing at all to read.
+
+    atom's slices are its native output: every reachables slices file the
+    language tools do not claim is atom's, as are the usages and callsites
+    slices. The producer version comes from the doctor's atom status, and the
+    run markers the BOM step recorded (an atom run a timeout stopped) travel
+    into the records as timeout caveats.
+    """
+    from analysis_lib.evidence.adapters import atom as atom_adapter
+
+    stems = tuple(
+        file_name.split(".slices", 1)[0]
+        for file_name in reachability_slice_files().values()
+    )
+    reachables, usages, callsites = [], [], []
+    for path in options.slices_files or []:
+        name = os.path.basename(path)
+        if "reachables.slices" in name and not name.startswith(stems):
+            reachables.append(path)
+        elif "usages.slices" in name:
+            usages.append(path)
+        elif "callsites.slices" in name:
+            callsites.append(path)
+    result = atom_adapter.extract(
+        reachables,
+        producer_version=_doctor_analyzer_version("atom", ctx),
+        usages_files=usages,
+        callsites_files=callsites,
+        openapi_files=options.openapi_spec_files,
+        timeout_reasons=[reason for reason in scan.not_assessed if reason],
+    )
+    if result.status != "completed":
+        LOG.warning("atom reachability was not assessed: %s", result.reason)
+    return result
+
+
+def _doctor_analyzer_version(analyzer: str, ctx) -> str:
+    """The version the doctor report read for an analyzer, or the empty
+    string when there is no report or no status."""
+    if ctx.doctor_report is None:
+        return ""
+    status = (ctx.doctor_report.tools_by_name() or {}).get(analyzer)
+    return str(status.version or "") if status is not None else ""
+
+
+def _write_evidence_store(evidence_file: str, adapter_results: Dict) -> None:
+    """Merge every adapter result's records into the store and write it.
+
+    The store holds what came before plus this round's records, so a scan of
+    several project types re-merges and rewrites it once per type; the store
+    applies the duplicate and ordering rules at write time. A result that was
+    not assessed contributes no records: its reason is what the analyzer
+    entries carry instead.
+    """
+    incoming = []
+    for name in ("atom", "rusi", "golem", "kosi", "dosai"):
+        result = adapter_results.get(name)
+        if result is not None:
+            incoming.extend(result.records)
+    base = evidence_store.read(evidence_file) if os.path.isfile(evidence_file) else []
+    written = evidence_store.write(evidence_file, evidence_store.merge(base, incoming))
+    LOG.debug(
+        "The evidence store %s holds %d records (%d from this project type).",
+        evidence_file,
+        written,
+        len(incoming),
+    )
 
 
 def stage_matching(ctx, scan):
@@ -1439,35 +1553,27 @@ def _exploitability_inputs(ctx, scan):
     """What this scan produced for the exploitability of the findings the
     matching stage is about to grade, for one project type's scan.
 
-    The analyzers named are those the enrichment stage read slices from
-    (the manifest's ``completed`` entries); when reachability was off, failed
-    or produced no purls, the scope says so and every finding of the type
-    records ``reach`` as not assessed. The dosai facts and reachables slices
-    are read only when dosai completed for this scan, so a report left by an
-    earlier run is never graded on.
+    The analyzers named are those whose adapter completed for this type, and
+    the reached sets and purl types come from the same adapter results'
+    records. When reachability was off, failed or produced no purls, the
+    scope says so and every finding of the type records ``reach`` as not
+    assessed. The records also carry the exposure and witness evidence, so
+    nothing but the records this scan produced is graded on: a report left
+    by an earlier run is never read.
     """
     from analysis_lib.findings.exploitability import ExploitabilityInputs
-    from analysis_lib.findings.vdr_convert import ReachScope
+    from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
 
-    options = scan.reachability_options
-    analyzers: List[str] = []
-    tool_stems = {
-        name: file_name.split(".slices", 1)[0]
-        for name, file_name in reachability_slice_files().items()
-    }
-    if options is not None:
-        analyzers = [
-            entry["name"]
-            for entry in scan_directory.analyzer_entries(
-                ctx.doctor_report, [scan.project_type], options.slices_files
-            )
-            if entry.get("status") == "completed"
-        ]
-    by_analyzer = (
-        reached_by_analyzer(options.slices_files, tool_stems, scan.reach_purls_by_file)
-        if options is not None
-        else {}
-    )
+    results = scan.adapter_results or {}
+    analyzers = [
+        name for name, result in results.items() if result.status == "completed"
+    ]
+    records = []
+    for name in ("atom", "rusi", "golem", "kosi", "dosai"):
+        result = results.get(name)
+        if result is not None:
+            records.extend(result.records)
+    by_analyzer = reached_by_analyzer(records)
     scope = ReachScope(
         analyzers=analyzers,
         reached=set((scan.reached_purls or {}).keys()),
@@ -1475,36 +1581,12 @@ def _exploitability_inputs(ctx, scan):
         analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
         reached_by={name: entry["purls"] for name, entry in by_analyzer.items()},
     )
-    dosai_facts = None
-    dosai_flows: List[Dict] = []
-    if "dosai" in analyzers:
-        facts_path = os.path.join(
-            scan.bom_dir or ctx.reports_dir, "analysis", "dosai", DOSAI_FACTS_FILE
-        )
-        if os.path.isfile(facts_path):
-            dosai_facts = json_load(facts_path, log=LOG)
-        for slice_file in (options.slices_files if options is not None else []) or []:
-            if os.path.basename(slice_file).startswith("dotnet-reachables"):
-                try:
-                    with open(slice_file, encoding="utf-8") as fp:
-                        payload = json.load(fp)
-                    if isinstance(payload, list):
-                        dosai_flows.extend(payload)
-                    else:
-                        LOG.warning(
-                            "The dosai reachables slices %s hold no list of flows.", slice_file
-                        )
-                except (OSError, ValueError) as e:
-                    LOG.warning(
-                        "The dosai reachables slices %s could not be read: %s", slice_file, e
-                    )
     return ExploitabilityInputs(
         rules=ctx.grading_rules,
         scope=scope,
         bom_components=scan.pkg_list,
         dosai_ran="dosai" in analyzers,
-        dosai_facts=dosai_facts,
-        dosai_flows=dosai_flows,
+        records=records,
     )
 
 
