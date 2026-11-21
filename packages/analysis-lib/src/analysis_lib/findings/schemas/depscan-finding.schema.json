@@ -251,7 +251,7 @@
         },
         "witness": {
           "type": "string",
-          "description": "Id of the evidence record that decided the grade."
+          "description": "Id of the evidence record whose witness path the reach verdict names."
         }
       }
     },
