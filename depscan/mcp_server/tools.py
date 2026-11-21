@@ -804,7 +804,9 @@ TOOL_SPECS: Tuple[ToolSpec, ...] = (
         "list_findings",
         "List the findings of a dep-scan scan directory, one page at a time, "
         "filtered by category, severity, purl, CWE, rule id or recorded "
-        "reachability. Pass nextCursor from the previous page to read on.",
+        "reachability. Pass nextCursor from the previous page to read on. "
+        "A finding whose exploitability carries a witness names the id of "
+        "the evidence record whose witness path the reach verdict names.",
         list_findings_tool,
     ),
     _spec(

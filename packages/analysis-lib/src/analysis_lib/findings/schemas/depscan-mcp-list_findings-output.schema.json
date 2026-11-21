@@ -14,7 +14,7 @@
           "type": "array",
           "items": {
             "$ref": "depscan-finding.schema.json",
-            "description": "One finding of the scan, as the finding schema defines it."
+            "description": "One finding of the scan, as the finding schema defines it. When the finding's exploitability carries a witness, it is the id of the evidence record whose witness path the reach verdict names, in the scan's evidence store."
           },
           "description": "The findings of this page, in scan order."
         },
