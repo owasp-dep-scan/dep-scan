@@ -1,0 +1,35 @@
+test/test_v7_scan.py
+  s_17332abccfca86::t_0f020532dd4ea4 1123
+  s_17332abccfca86::t_9e742741ebf1f5 29
+  s_17332abccfca86::t_c9fe1a93d1a1ad 1199
+test/test_v7_validate_report.py
+  s_17332abccfca86::t_cd0d8b3595ad2d 25
+  s_17332abccfca86::t_49388b7f7a27a6 349
+test/test_v7_verbs.py
+  s_17332abccfca86::t_79b59bec73845e 191-196
+test/test_mcp_tools.py
+  s_17332abccfca86::t_381aaf71dc443b 1545
+  s_17332abccfca86::t_3e3ea33a300a43 40
+  s_17332abccfca86::t_a72357f4389eb2 407
+packages/analysis-lib/tests/test_evidence_schema.py
+  s_17332abccfca86::t_d83e900d590994 322-333
+test/test_v7_output_contract.py
+  s_17332abccfca86::t_cd149f4660c178 44
+  s_17332abccfca86::t_a3104eda8cefd2 1053
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aafc1fb40df8226283797b14cb92d85d18c4b321",
+  "prompts": {},
+  "sessions": {
+    "s_17332abccfca86": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_1_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
