@@ -1,0 +1,21 @@
+packages/analysis-lib/tests/data/golem/README.md
+  s_83242f37f43385::t_2052d27cf59f1f 10-11,14-17
+packages/analysis-lib/tests/data/rusi/README.md
+  s_83242f37f43385::t_2eeb9a9417b9b1 11-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7237a441f30763ed06a4eb58d228c6234c59366",
+  "prompts": {},
+  "sessions": {
+    "s_83242f37f43385": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
