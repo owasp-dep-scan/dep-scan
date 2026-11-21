@@ -1,0 +1,21 @@
+packages/analysis-lib/tests/test_exploitability.py
+  s_20fa93b43b79bb::t_544486bb7f1c34 269
+  s_20fa93b43b79bb::t_56a72182add4fa 1,3-9,11,16-18,28,43,47-48,209-268,270-282,327-328,332,335-341,343-352,354-373,377-387,389,391,393,401-402,406-410,419,421,423,433,442-456,458,465-467,470,472,474-475,483-486,488,490,492,497-500,502,504,506,512-518,520,522,524-540,554,556,558,563-588,635-638,646-751,796-800,806-807,809-853
+  s_20fa93b43b79bb::t_2886cd2213006b 808
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae9ed62cf72691a5c967cde5b49b9ea9b54705af",
+  "prompts": {},
+  "sessions": {
+    "s_20fa93b43b79bb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_12_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}
