@@ -379,7 +379,7 @@ def test_fixture_is_a_valid_scan_directory():
     """
     manifest = _manifest_of(FIXTURE_DIR)
     validate("depscan-manifest", manifest)
-    assert manifest["layoutVersion"] == "1.0"
+    assert manifest["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert manifest["depscanVersion"] == "7.0.0.dev0"
     assert manifest["startUtc"].endswith("Z") and "T" in manifest["startUtc"]
     assert manifest["endUtc"].endswith("Z") and "T" in manifest["endUtc"]
@@ -536,11 +536,11 @@ def test_fixture_loads_and_renders(capsys):
     assert loaded.vulnerabilities[0]["id"] == "CVE-2024-1111"
     assert len(loaded.findings) == 1
     assert loaded.manifest is not None
-    assert loaded.manifest["layoutVersion"] == "1.0"
+    assert loaded.manifest["layoutVersion"] == "2.0"
 
     assert report_lib.run_report_command([str(FIXTURE_DIR)]) == 0
     output = capsys.readouterr().out
-    assert "layout" in output and "1.0" in output
+    assert "layout" in output and "2.0" in output
     assert "Vulnerabilities count: 1" in output
     assert "high: 1" in output
 
@@ -555,17 +555,37 @@ def _copy_variant(tmp_path, layout_version):
 
 
 def test_load_accepts_a_higher_minor_layout_version(tmp_path):
-    variant = _copy_variant(tmp_path, "1.9")
+    variant = _copy_variant(tmp_path, "2.3")
     loaded = api.load_scan(str(variant))
     assert loaded.vulnerabilities[0]["id"] == "CVE-2024-1111"
 
 
 def test_load_refuses_a_different_major_layout_version(tmp_path):
-    variant = _copy_variant(tmp_path, "2.0")
+    variant = _copy_variant(tmp_path, "1.0")
     with pytest.raises(api.ScanError) as excinfo:
         api.load_scan(str(variant))
     message = str(excinfo.value)
-    assert "2.0" in message and "1.0" in message, "the error names both versions"
+    assert "1.0" in message and "2.0" in message, "the error names both versions"
+
+
+@pytest.mark.parametrize("old", ["1.0", "1.9"])
+def test_check_layout_version_refuses_layout_one_and_names_both_versions(old):
+    with pytest.raises(ValueError) as excinfo:
+        scan_directory.check_layout_version({"layoutVersion": old})
+    message = str(excinfo.value)
+    assert old in message
+    assert scan_directory.LAYOUT_VERSION in message
+
+
+@pytest.mark.parametrize("version", ["2.0", "2.7"])
+def test_check_layout_version_accepts_layout_two_minors(version):
+    scan_directory.check_layout_version({"layoutVersion": version})
+
+
+def test_check_layout_version_refuses_an_unreadable_version():
+    with pytest.raises(ValueError) as excinfo:
+        scan_directory.check_layout_version({"layoutVersion": "not-a-version"})
+    assert "not-a-version" in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------
@@ -1058,6 +1078,8 @@ def test_classify_file_roles():
     entries = {
         "depscan.manifest.json": None,  # never classified; callers leave it out
         "depscan.findings.json": {"role": "findings", "producer": "dep-scan"},
+        "evidence.jsonl": {"role": "evidence", "producer": "dep-scan"},
+        "evidence.index.json": {"role": "evidence", "producer": "dep-scan"},
         "analysis/rusi/rusi.json": {"role": "raw-report", "producer": "rusi"},
         "analysis/dosai/dotnet-methods.json": {"role": "raw-report", "producer": "dosai"},
         "depscan-universal.vdr.json": {"role": "vdr", "producer": "dep-scan"},
@@ -1089,6 +1111,8 @@ def test_classify_file_roles():
 
 def test_walk_files_hashes_the_scan_files_but_not_the_manifest(tmp_path):
     (tmp_path / "depscan.findings.json").write_text("{}")
+    (tmp_path / "evidence.jsonl").write_text("")
+    (tmp_path / "evidence.index.json").write_text("{}")
     (tmp_path / "analysis" / "rusi").mkdir(parents=True)
     (tmp_path / "analysis" / "rusi" / "rusi.json").write_text("{}")
     (tmp_path / "depscan.manifest.json").write_text("{}")
@@ -1102,11 +1126,15 @@ def test_walk_files_hashes_the_scan_files_but_not_the_manifest(tmp_path):
     assert [entry["path"] for entry in entries] == [
         "analysis/rusi/rusi.json",
         "depscan.findings.json",
+        "evidence.index.json",
+        "evidence.jsonl",
     ]
     for entry in entries:
         expected = hashlib.sha256((tmp_path / entry["path"]).read_bytes()).hexdigest()
         assert entry["sha256"] == expected
     assert entries[0]["role"] == "raw-report" and entries[0]["producer"] == "rusi"
+    for entry in entries[2:]:
+        assert entry["role"] == "evidence" and entry["producer"] == "dep-scan"
 
 
 def test_analyzer_entries_follow_the_slices_read_and_the_doctor(fake_tools, tmp_path):

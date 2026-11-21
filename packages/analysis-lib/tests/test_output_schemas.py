@@ -5,6 +5,7 @@ schema that carries the published $id and a title, and the sample documents
 hand-built here pin what each verb output schema accepts and refuses.
 """
 
+import copy
 import json
 from pathlib import Path
 from typing import Any, Dict
@@ -75,8 +76,11 @@ def test_every_schema_is_valid_2020_12(name):
 def test_every_schema_carries_the_published_id_and_a_title(name):
     schema = load_schema(name)
     # The finding schema moved to version 2 when its exploitability axes
-    # dropped Pressure and gained sources; every other schema is at 1.
-    version = 2 if name == "depscan-finding" else 1
+    # dropped Pressure and gained sources, and the manifest schema moved to
+    # version 2 when analyzer entries gained their caveats array; every
+    # other schema is at 1.
+    versions = {"depscan-finding": 2, "depscan-manifest": 2}
+    version = versions.get(name, 1)
     assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:{version}"
     assert isinstance(schema["title"], str) and schema["title"]
     assert isinstance(schema.get("description"), str) and schema["description"]
@@ -104,10 +108,11 @@ def test_the_listing_order_is_the_registration_order():
 
 
 def test_the_document_schemas_come_first_and_the_error_schema_last():
-    assert SCHEMA_NAMES[:4] == [
+    assert SCHEMA_NAMES[:5] == [
         "depscan-finding",
         "depscan-doctor",
         "depscan-manifest",
+        "depscan-evidence",
         "depscan-exploitability-rules",
     ]
     assert SCHEMA_NAMES[-1] == "depscan-error"
@@ -209,6 +214,37 @@ def test_report_output_validates():
         },
     )
     _invalid("depscan-report-output", {"scanDir": "/tmp/scan", "manifest": MANIFEST})
+
+
+# --- the manifest's analyzer caveats ----------------------------------------------
+
+
+def _manifest_with_analyzer_caveats() -> Dict[str, Any]:
+    manifest = copy.deepcopy(MANIFEST)
+    for stage in manifest["stages"]:
+        for analyzer in stage.get("analyzers") or []:
+            analyzer["caveats"] = [
+                {"kind": "timeout", "detail": "the atom run stopped at its timeout"}
+            ]
+            return manifest
+    raise AssertionError("the fixture manifest carries no analyzer entries")
+
+
+def test_a_manifest_analyzer_entry_may_carry_caveats():
+    _valid("depscan-manifest", _manifest_with_analyzer_caveats())
+
+
+def test_a_manifest_analyzer_caveat_names_a_known_kind_and_a_detail():
+    manifest = _manifest_with_analyzer_caveats()
+    for stage in manifest["stages"]:
+        for analyzer in stage.get("analyzers") or []:
+            analyzer["caveats"] = [{"kind": "vibes", "detail": "unknown kind"}]
+    _invalid("depscan-manifest", manifest)
+    manifest = _manifest_with_analyzer_caveats()
+    for stage in manifest["stages"]:
+        for analyzer in stage.get("analyzers") or []:
+            analyzer["caveats"] = [{"kind": "timeout"}]
+    _invalid("depscan-manifest", manifest)
 
 
 # --- the doctor output -----------------------------------------------------------
