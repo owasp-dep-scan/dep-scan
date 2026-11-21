@@ -1,0 +1,30 @@
+packages/analysis-lib/tests/test_reachability.py
+  s_e6c504b2c352c9::t_9f3b85ecc56bf7 353-354,356,360
+  s_e6c504b2c352c9::t_a500ac91395ea6 574-580
+packages/analysis-lib/src/analysis_lib/reachability.py
+  s_e6c504b2c352c9::t_323f5fb87ca557 1-13,19,24-25,32-35,38-43,149-152,310-319,322
+  s_e6c504b2c352c9::t_2f1bbe1464b978 28
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_e6c504b2c352c9::t_b105692fdc1ccc 11-12
+  s_e6c504b2c352c9::t_57731f0a35efc3 134,153-155
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  s_e6c504b2c352c9::t_f3efd6124fbbed 171-206
+  s_e6c504b2c352c9::t_af73cb76c5772b 33
+  s_e6c504b2c352c9::t_26a45b3ecb1bc7 19,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "880411f76cc015dfc0cab0b590e087f107aaea65",
+  "prompts": {},
+  "sessions": {
+    "s_e6c504b2c352c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_11_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
