@@ -1,0 +1,1883 @@
+{
+ "objectSlices": [
+  {
+   "code": "",
+   "fullName": "org.joychou.Application.configure:org.springframework.boot.builder.SpringApplicationBuilder(org.springframework.boot.builder.SpringApplicationBuilder)",
+   "signature": "org.springframework.boot.builder.SpringApplicationBuilder(org.springframework.boot.builder.SpringApplicationBuilder)",
+   "fileName": "src/main/java/org/joychou/Application.java",
+   "lineNumber": 16,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "Override",
+      "typeFullName": "java.lang.Override",
+      "resolvedMethod": "@Override",
+      "isExternal": false,
+      "lineNumber": 16,
+      "columnNumber": 5,
+      "label": "ANNOTATION"
+     },
+     "definedBy": {
+      "name": "Override",
+      "typeFullName": "java.lang.Override",
+      "resolvedMethod": "@Override",
+      "isExternal": false,
+      "lineNumber": 16,
+      "columnNumber": 5,
+      "label": "ANNOTATION"
+     },
+     "invokedCalls": [
+      {
+       "callName": "java.lang.Override",
+       "resolvedMethod": "@Override",
+       "paramTypes": [],
+       "returnType": "",
+       "isExternal": false,
+       "lineNumber": 16,
+       "columnNumber": 5
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "application",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "position": 1,
+      "lineNumber": 17,
+      "columnNumber": 50,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "application",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "position": 1,
+      "lineNumber": 17,
+      "columnNumber": 50,
+      "label": "PARAM"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "sources",
+       "resolvedMethod": "org.springframework.boot.builder.SpringApplicationBuilder.sources:org.springframework.boot.builder.SpringApplicationBuilder(java.lang.Class[])",
+       "paramTypes": [
+        "java.lang.Class[]"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 18,
+       "columnNumber": 28
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "sources",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "resolvedMethod": "org.springframework.boot.builder.SpringApplicationBuilder.sources:org.springframework.boot.builder.SpringApplicationBuilder(java.lang.Class[])",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "sources",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "resolvedMethod": "org.springframework.boot.builder.SpringApplicationBuilder.sources:org.springframework.boot.builder.SpringApplicationBuilder(java.lang.Class[])",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.Application.main:void(java.lang.String[])",
+   "signature": "void(java.lang.String[])",
+   "fileName": "src/main/java/org/joychou/Application.java",
+   "lineNumber": 21,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.Application.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 21,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.Application.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 21,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "args",
+      "typeFullName": "java.lang.String[]",
+      "position": 1,
+      "lineNumber": 21,
+      "columnNumber": 29,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "args",
+      "typeFullName": "java.lang.String[]",
+      "position": 1,
+      "lineNumber": 21,
+      "columnNumber": 29,
+      "label": "PARAM"
+     },
+     "invokedCalls": [
+      {
+       "callName": "run",
+       "resolvedMethod": "org.springframework.boot.SpringApplication.run:org.springframework.context.ConfigurableApplicationContext(java.lang.Object,java.lang.String[])",
+       "paramTypes": [
+        "java.lang.Class",
+        "java.lang.String[]"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 27
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "run",
+      "typeFullName": "org.springframework.context.ConfigurableApplicationContext",
+      "resolvedMethod": "org.springframework.boot.SpringApplication.run:org.springframework.context.ConfigurableApplicationContext(java.lang.Object,java.lang.String[])",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 27,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "run",
+      "typeFullName": "org.springframework.context.ConfigurableApplicationContext",
+      "resolvedMethod": "org.springframework.boot.SpringApplication.run:org.springframework.context.ConfigurableApplicationContext(java.lang.Object,java.lang.String[])",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 27,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+   "signature": "void(java.lang.String[])",
+   "fileName": "src/main/java/org/joychou/RMI/Server.java",
+   "lineNumber": 15,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "exportObject",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+      "isExternal": true,
+      "lineNumber": 19,
+      "columnNumber": 54,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "exportObject",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+      "isExternal": true,
+      "lineNumber": 19,
+      "columnNumber": 54,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 15,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 15,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "obj",
+      "typeFullName": "org.joychou.RMI.Server",
+      "lineNumber": 18,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "new Server",
+      "typeFullName": "org.joychou.RMI.Server",
+      "resolvedMethod": "org.joychou.RMI.Server",
+      "isExternal": null,
+      "lineNumber": 18,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "Server",
+       "resolvedMethod": "org.joychou.RMI.Server",
+       "paramTypes": [],
+       "returnType": "org.joychou.RMI.Server",
+       "isExternal": true,
+       "lineNumber": 18,
+       "columnNumber": 13
+      },
+      {
+       "callName": "exportObject",
+       "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+       "paramTypes": [
+        "org.joychou.RMI.Server",
+        "int"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 19,
+       "columnNumber": 54
+      }
+     ],
+     "argToCalls": [
+      {
+       "callName": "<init>",
+       "resolvedMethod": "org.joychou.RMI.Server.<init>:void()",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": false,
+       "lineNumber": 18,
+       "columnNumber": null
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "bind",
+      "typeFullName": "void",
+      "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "bind",
+      "typeFullName": "void",
+      "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "createRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.createRegistry:java.rmi.registry.Registry(int)",
+      "isExternal": true,
+      "lineNumber": 20,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "createRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.createRegistry:java.rmi.registry.Registry(int)",
+      "isExternal": true,
+      "lineNumber": 20,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "registry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "lineNumber": 21,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "LocateRegistry.getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": null,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "bind",
+       "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+       "paramTypes": [
+        "java.lang.String",
+        "org.joychou.RMI.Hello"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 22
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 23,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 23,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "stub",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "lineNumber": 19,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "resolvedMethod": "<operator>.cast",
+      "isExternal": null,
+      "lineNumber": 19,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "bind",
+       "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+       "paramTypes": [
+        "java.lang.String",
+        "org.joychou.RMI.Hello"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 22
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": true,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": true,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 26,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 26,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.config.CsrfTokenBean.cookieCsrfTokenRepository:org.springframework.security.web.csrf.CookieCsrfTokenRepository()",
+   "signature": "org.springframework.security.web.csrf.CookieCsrfTokenRepository()",
+   "fileName": "src/main/java/org/joychou/config/CsrfTokenBean.java",
+   "lineNumber": 14,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "Bean",
+      "typeFullName": "org.springframework.context.annotation.Bean",
+      "resolvedMethod": "@Bean",
+      "isExternal": false,
+      "lineNumber": 14,
+      "columnNumber": 5,
+      "label": "ANNOTATION"
+     },
+     "definedBy": {
+      "name": "Bean",
+      "typeFullName": "org.springframework.context.annotation.Bean",
+      "resolvedMethod": "@Bean",
+      "isExternal": false,
+      "lineNumber": 14,
+      "columnNumber": 5,
+      "label": "ANNOTATION"
+     },
+     "invokedCalls": [
+      {
+       "callName": "org.springframework.context.annotation.Bean",
+       "resolvedMethod": "@Bean",
+       "paramTypes": [],
+       "returnType": "",
+       "isExternal": false,
+       "lineNumber": 14,
+       "columnNumber": 5
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "withHttpOnlyFalse",
+      "typeFullName": "org.springframework.security.web.csrf.CookieCsrfTokenRepository",
+      "resolvedMethod": "org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse:org.springframework.security.web.csrf.CookieCsrfTokenRepository()",
+      "isExternal": true,
+      "lineNumber": 16,
+      "columnNumber": 42,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "withHttpOnlyFalse",
+      "typeFullName": "org.springframework.security.web.csrf.CookieCsrfTokenRepository",
+      "resolvedMethod": "org.springframework.security.web.csrf.CookieCsrfTokenRepository.withHttpOnlyFalse:org.springframework.security.web.csrf.CookieCsrfTokenRepository()",
+      "isExternal": true,
+      "lineNumber": 16,
+      "columnNumber": 42,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.Application.configure:org.springframework.boot.builder.SpringApplicationBuilder(org.springframework.boot.builder.SpringApplicationBuilder)",
+   "signature": "org.springframework.boot.builder.SpringApplicationBuilder(org.springframework.boot.builder.SpringApplicationBuilder)",
+   "fileName": "src/main/java/org/joychou/Application.java",
+   "lineNumber": 16,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "Override",
+      "typeFullName": "java.lang.Override",
+      "resolvedMethod": "@Override",
+      "isExternal": false,
+      "lineNumber": 16,
+      "columnNumber": 5,
+      "label": "ANNOTATION"
+     },
+     "definedBy": {
+      "name": "Override",
+      "typeFullName": "java.lang.Override",
+      "resolvedMethod": "@Override",
+      "isExternal": false,
+      "lineNumber": 16,
+      "columnNumber": 5,
+      "label": "ANNOTATION"
+     },
+     "invokedCalls": [
+      {
+       "callName": "java.lang.Override",
+       "resolvedMethod": "@Override",
+       "paramTypes": [],
+       "returnType": "",
+       "isExternal": false,
+       "lineNumber": 16,
+       "columnNumber": 5
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "application",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "position": 1,
+      "lineNumber": 17,
+      "columnNumber": 50,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "application",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "position": 1,
+      "lineNumber": 17,
+      "columnNumber": 50,
+      "label": "PARAM"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "sources",
+       "resolvedMethod": "org.springframework.boot.builder.SpringApplicationBuilder.sources:org.springframework.boot.builder.SpringApplicationBuilder(java.lang.Class[])",
+       "paramTypes": [
+        "java.lang.Class[]"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 18,
+       "columnNumber": 28
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "sources",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "resolvedMethod": "org.springframework.boot.builder.SpringApplicationBuilder.sources:org.springframework.boot.builder.SpringApplicationBuilder(java.lang.Class[])",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "sources",
+      "typeFullName": "org.springframework.boot.builder.SpringApplicationBuilder",
+      "resolvedMethod": "org.springframework.boot.builder.SpringApplicationBuilder.sources:org.springframework.boot.builder.SpringApplicationBuilder(java.lang.Class[])",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+   "signature": "void(java.lang.String[])",
+   "fileName": "src/main/java/org/joychou/RMI/Client.java",
+   "lineNumber": 10,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 15,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 15,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "registry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "lineNumber": 12,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "LocateRegistry.getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry(java.lang.String)",
+      "isExternal": null,
+      "lineNumber": 12,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "lookup",
+       "resolvedMethod": "java.rmi.registry.Registry.lookup:java.rmi.Remote(java.lang.String)",
+       "paramTypes": [
+        "java.lang.String"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 13,
+       "columnNumber": 43
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "lookup",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.registry.Registry.lookup:java.rmi.Remote(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 13,
+      "columnNumber": 43,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "lookup",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.registry.Registry.lookup:java.rmi.Remote(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 13,
+      "columnNumber": 43,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "stub",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "lineNumber": 13,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "resolvedMethod": "<operator>.cast",
+      "isExternal": null,
+      "lineNumber": 13,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "sayHello",
+       "resolvedMethod": "org.joychou.RMI.Hello.sayHello:java.lang.String()",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": false,
+       "lineNumber": 14,
+       "columnNumber": 36
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 10,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 10,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 12,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 12,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+   "signature": "void(java.lang.String[])",
+   "fileName": "src/main/java/org/joychou/RMI/Server.java",
+   "lineNumber": 15,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "exportObject",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+      "isExternal": true,
+      "lineNumber": 19,
+      "columnNumber": 54,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "exportObject",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+      "isExternal": true,
+      "lineNumber": 19,
+      "columnNumber": 54,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 15,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 15,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "obj",
+      "typeFullName": "org.joychou.RMI.Server",
+      "lineNumber": 18,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "new Server",
+      "typeFullName": "org.joychou.RMI.Server",
+      "resolvedMethod": "org.joychou.RMI.Server",
+      "isExternal": null,
+      "lineNumber": 18,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "Server",
+       "resolvedMethod": "org.joychou.RMI.Server",
+       "paramTypes": [],
+       "returnType": "org.joychou.RMI.Server",
+       "isExternal": true,
+       "lineNumber": 18,
+       "columnNumber": 13
+      },
+      {
+       "callName": "exportObject",
+       "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+       "paramTypes": [
+        "org.joychou.RMI.Server",
+        "int"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 19,
+       "columnNumber": 54
+      }
+     ],
+     "argToCalls": [
+      {
+       "callName": "<init>",
+       "resolvedMethod": "org.joychou.RMI.Server.<init>:void()",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": false,
+       "lineNumber": 18,
+       "columnNumber": null
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "bind",
+      "typeFullName": "void",
+      "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "bind",
+      "typeFullName": "void",
+      "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "createRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.createRegistry:java.rmi.registry.Registry(int)",
+      "isExternal": true,
+      "lineNumber": 20,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "createRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.createRegistry:java.rmi.registry.Registry(int)",
+      "isExternal": true,
+      "lineNumber": 20,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "registry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "lineNumber": 21,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "LocateRegistry.getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": null,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "bind",
+       "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+       "paramTypes": [
+        "java.lang.String",
+        "org.joychou.RMI.Hello"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 22
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 23,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 23,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "stub",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "lineNumber": 19,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "resolvedMethod": "<operator>.cast",
+      "isExternal": null,
+      "lineNumber": 19,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "bind",
+       "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+       "paramTypes": [
+        "java.lang.String",
+        "org.joychou.RMI.Hello"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 22
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": true,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": true,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 26,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 26,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+   "signature": "void(java.lang.String[])",
+   "fileName": "src/main/java/org/joychou/RMI/Client.java",
+   "lineNumber": 10,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 15,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 15,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "registry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "lineNumber": 12,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "LocateRegistry.getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry(java.lang.String)",
+      "isExternal": null,
+      "lineNumber": 12,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "lookup",
+       "resolvedMethod": "java.rmi.registry.Registry.lookup:java.rmi.Remote(java.lang.String)",
+       "paramTypes": [
+        "java.lang.String"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 13,
+       "columnNumber": 43
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "lookup",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.registry.Registry.lookup:java.rmi.Remote(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 13,
+      "columnNumber": 43,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "lookup",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.registry.Registry.lookup:java.rmi.Remote(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 13,
+      "columnNumber": 43,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 18,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "stub",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "lineNumber": 13,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "resolvedMethod": "<operator>.cast",
+      "isExternal": null,
+      "lineNumber": 13,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "sayHello",
+       "resolvedMethod": "org.joychou.RMI.Hello.sayHello:java.lang.String()",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": false,
+       "lineNumber": 14,
+       "columnNumber": 36
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 17,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 10,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 10,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 12,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 12,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+   "signature": "void(java.lang.String[])",
+   "fileName": "src/main/java/org/joychou/RMI/Server.java",
+   "lineNumber": 15,
+   "columnNumber": 5,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "exportObject",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+      "isExternal": true,
+      "lineNumber": 19,
+      "columnNumber": 54,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "exportObject",
+      "typeFullName": "java.rmi.Remote",
+      "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+      "isExternal": true,
+      "lineNumber": 19,
+      "columnNumber": 54,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 15,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "void",
+      "resolvedMethod": "org.joychou.RMI.Server.main:void(java.lang.String[])",
+      "isExternal": false,
+      "lineNumber": 15,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "toString",
+      "typeFullName": "java.lang.String",
+      "resolvedMethod": "java.lang.Exception.toString:java.lang.String()",
+      "isExternal": true,
+      "lineNumber": 25,
+      "columnNumber": 57,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "obj",
+      "typeFullName": "org.joychou.RMI.Server",
+      "lineNumber": 18,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "new Server",
+      "typeFullName": "org.joychou.RMI.Server",
+      "resolvedMethod": "org.joychou.RMI.Server",
+      "isExternal": null,
+      "lineNumber": 18,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "Server",
+       "resolvedMethod": "org.joychou.RMI.Server",
+       "paramTypes": [],
+       "returnType": "org.joychou.RMI.Server",
+       "isExternal": true,
+       "lineNumber": 18,
+       "columnNumber": 13
+      },
+      {
+       "callName": "exportObject",
+       "resolvedMethod": "java.rmi.server.UnicastRemoteObject.exportObject:java.rmi.Remote(java.rmi.Remote,int)",
+       "paramTypes": [
+        "org.joychou.RMI.Server",
+        "int"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 19,
+       "columnNumber": 54
+      }
+     ],
+     "argToCalls": [
+      {
+       "callName": "<init>",
+       "resolvedMethod": "org.joychou.RMI.Server.<init>:void()",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": false,
+       "lineNumber": 18,
+       "columnNumber": null
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "bind",
+      "typeFullName": "void",
+      "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "bind",
+      "typeFullName": "void",
+      "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+      "isExternal": true,
+      "lineNumber": 22,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "createRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.createRegistry:java.rmi.registry.Registry(int)",
+      "isExternal": true,
+      "lineNumber": 20,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "createRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.createRegistry:java.rmi.registry.Registry(int)",
+      "isExternal": true,
+      "lineNumber": 20,
+      "columnNumber": 28,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "registry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "lineNumber": 21,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "LocateRegistry.getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": null,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "bind",
+       "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+       "paramTypes": [
+        "java.lang.String",
+        "org.joychou.RMI.Hello"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 22
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 23,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "println",
+      "typeFullName": "void",
+      "resolvedMethod": "java.io.PrintStream.println:void(java.lang.String)",
+      "isExternal": true,
+      "lineNumber": 23,
+      "columnNumber": 24,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "stub",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "lineNumber": 19,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "",
+      "typeFullName": "org.joychou.RMI.Hello",
+      "resolvedMethod": "<operator>.cast",
+      "isExternal": null,
+      "lineNumber": 19,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "bind",
+       "resolvedMethod": "java.rmi.registry.Registry.bind:void(java.lang.String,java.rmi.Remote)",
+       "paramTypes": [
+        "java.lang.String",
+        "org.joychou.RMI.Hello"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 22,
+       "columnNumber": 22
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": true,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "getRegistry",
+      "typeFullName": "java.rmi.registry.Registry",
+      "resolvedMethod": "java.rmi.registry.LocateRegistry.getRegistry:java.rmi.registry.Registry()",
+      "isExternal": true,
+      "lineNumber": 21,
+      "columnNumber": 48,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 26,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "printStackTrace",
+      "typeFullName": "void",
+      "resolvedMethod": "java.lang.Exception.printStackTrace:void()",
+      "isExternal": true,
+      "lineNumber": 26,
+      "columnNumber": 15,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "@ServletComponentScan",
+   "fullName": "org.springframework.boot.web.servlet.ServletComponentScan",
+   "signature": "@ServletComponentScan",
+   "fileName": "src/main/java/org/joychou/Application.java",
+   "lineNumber": 11,
+   "columnNumber": 1,
+   "usages": []
+  },
+  {
+   "code": "@SpringBootApplication",
+   "fullName": "org.springframework.boot.autoconfigure.SpringBootApplication",
+   "signature": "@SpringBootApplication",
+   "fileName": "src/main/java/org/joychou/Application.java",
+   "lineNumber": 12,
+   "columnNumber": 1,
+   "usages": []
+  }
+ ],
+ "userDefinedTypes": [
+  {
+   "name": "org.joychou.Application",
+   "fields": [],
+   "procedures": [
+    {
+     "callName": "configure",
+     "resolvedMethod": "org.joychou.Application.configure:org.springframework.boot.builder.SpringApplicationBuilder(org.springframework.boot.builder.SpringApplicationBuilder)",
+     "paramTypes": [
+      "org.joychou.Application",
+      "org.springframework.boot.builder.SpringApplicationBuilder"
+     ],
+     "returnType": "org.springframework.boot.builder.SpringApplicationBuilder",
+     "isExternal": false,
+     "lineNumber": 16,
+     "columnNumber": 5
+    },
+    {
+     "callName": "main",
+     "resolvedMethod": "org.joychou.Application.main:void(java.lang.String[])",
+     "paramTypes": [
+      "java.lang.String[]"
+     ],
+     "returnType": "void",
+     "isExternal": false,
+     "lineNumber": 21,
+     "columnNumber": 5
+    },
+    {
+     "callName": "<init>",
+     "resolvedMethod": "org.joychou.Application.<init>:void()",
+     "paramTypes": [
+      "org.joychou.Application"
+     ],
+     "returnType": "void",
+     "isExternal": false,
+     "lineNumber": null,
+     "columnNumber": null
+    }
+   ],
+   "fileName": "src/main/java/org/joychou/Application.java",
+   "lineNumber": 11,
+   "columnNumber": 1
+  },
+  {
+   "name": "org.joychou.RMI.Client",
+   "fields": [],
+   "procedures": [
+    {
+     "callName": "<init>",
+     "resolvedMethod": "org.joychou.RMI.Client.<init>:void()",
+     "paramTypes": [
+      "org.joychou.RMI.Client"
+     ],
+     "returnType": "void",
+     "isExternal": false,
+     "lineNumber": 8,
+     "columnNumber": 5
+    },
+    {
+     "callName": "main",
+     "resolvedMethod": "org.joychou.RMI.Client.main:void(java.lang.String[])",
+     "paramTypes": [
+      "java.lang.String[]"
+     ],
+     "returnType": "void",
+     "isExternal": false,
+     "lineNumber": 10,
+     "columnNumber": 5
+    }
+   ],
+   "fileName": "src/main/java/org/joychou/RMI/Client.java",
+   "lineNumber": 6,
+   "columnNumber": 1
+  }
+ ]
+}

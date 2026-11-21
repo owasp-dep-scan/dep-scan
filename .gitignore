@@ -163,6 +163,7 @@ reports/
 *.slices.json
 # Recorded slices kept as test fixtures.
 !test/data/atom4/*.slices.json
+!packages/analysis-lib/tests/data/atom/*.slices.json
 .idx/
 .theia/
 
