@@ -352,6 +352,43 @@ def test_projection_reachability_flow_is_two_nodes(combined, bom_index):
         assert nodes[1]["label"] == "CALL"
 
 
+def test_projection_keeps_external_call_graph_node_purl():
+    """A PackageReachability entry of kind ExternalCallGraphNode is call-graph
+    evidence: a package dosai reported reachable through it (no explicit
+    Confidence, so the kind default applies) must land in the converted flows
+    beside the call/dataflow kinds, while a Dependency-kind entry for a second
+    package stays out of the flows and keeps its Low confidence."""
+    report = {
+        "Metadata": {"Tool": "Dosai"},
+        "dataflows": {
+            "PackageReachability": [
+                {
+                    "Purl": "pkg:nuget/External.Graph@2.1.0",
+                    "Reachable": True,
+                    "ReachabilityKind": "ExternalCallGraphNode",
+                },
+                {
+                    "Purl": "pkg:nuget/Only.Dependency@1.4.0",
+                    "Reachable": True,
+                    "ReachabilityKind": "Dependency",
+                },
+            ]
+        },
+    }
+    flows = convert_dosai_report(report, {})
+    projected = set()
+    for f in flows:
+        projected.update(f.get("purls") or [])
+    assert "pkg:nuget/External.Graph@2.1.0" in projected
+    assert "pkg:nuget/Only.Dependency@1.4.0" not in projected
+
+    facts = extract_native_reachability(report, {})
+    rec = facts["reached_purls"]["pkg:nuget/External.Graph@2.1.0"]
+    assert rec["kind"] == "ExternalCallGraphNode"
+    assert rec["confidence"] == "High"
+    assert facts["reached_purls"]["pkg:nuget/Only.Dependency@1.4.0"]["confidence"] == "Low"
+
+
 def test_projection_deterministic(combined, bom_index):
     """Two conversions of the same report produce identical output (sorted +
     deduped)."""
