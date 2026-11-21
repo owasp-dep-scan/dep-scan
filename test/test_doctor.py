@@ -848,9 +848,7 @@ def test_require_unknown_capability_is_a_usage_error(fixed_report, capsys):
 def test_require_unknown_capability_writes_the_error_document(fixed_report, capsys):
     """In json format the usage error writes the error document, with the
     unknown names in its details, next to the message on stderr."""
-    code = doctor_mod.run_doctor_command(
-        ["--format", "json", "--require", "reachability:cobol"]
-    )
+    code = doctor_mod.run_doctor_command(["--format", "json", "--require", "reachability:cobol"])
     assert code == doctor_mod.EXIT_USAGE == 2
     document, captured = _one_document(capsys)
     assert document["error"] == {
@@ -962,7 +960,10 @@ def test_documented_capability_table_matches_the_code():
     "output, expected",
     [
         ('{"compiler":{"version":"2.4.20"},"version":"4.3.1"}', "4.3.1"),
-        ('WARNING: jvm noise\n{\n  "compiler": {"version": "2.4.20"},\n  "version": "4.3.1"\n}\n', "4.3.1"),
+        (
+            'WARNING: jvm noise\n{\n  "compiler": {"version": "2.4.20"},\n  "version": "4.3.1"\n}\n',
+            "4.3.1",
+        ),
         ('{"compiler":{"version":"2.4.20"}}', None),
         ("kosi", None),
     ],
@@ -978,3 +979,89 @@ def test_kosi_report_entry_carries_the_top_level_version(fakes, monkeypatch):
     )
     monkeypatch.setenv("KOSI_CMD", str(binary))
     assert _tool_entries(doctor_mod.doctor())["kosi"].version == "4.3.1"
+
+
+# --- plugins found beside the cdxgen install -----------------------------------
+
+
+@pytest.fixture
+def install_env(plugins_env, fakes, monkeypatch):
+    """The plugins tree under a cdxgen install, with no CDXGEN_PLUGINS_DIR.
+
+    Layout: ``<root>/bin/cdxgen``, ``<root>/package.json`` and the plugins
+    package under ``<root>/node_modules/@cdxgen``. cdxgen is on PATH through
+    a symlink in a separate directory, the way ``~/.local/bin/cdxgen`` points
+    into a package manager's install.
+    """
+    target = doctor_mod.get_plugins_bin_target()
+    root = fakes.record.parent / "cdxgen-install"
+    package = (
+        root
+        / "node_modules"
+        / "@cdxgen"
+        / (f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}")
+    )
+    package.mkdir(parents=True)
+    installed = package / "plugins"
+    plugins_env.plugins_dir.rename(installed)
+    (package / "package.json").write_text("{}", encoding="utf-8")
+    (root / "package.json").write_text("{}", encoding="utf-8")
+    (root / "bin").mkdir()
+    real_cdxgen = root / "bin" / "cdxgen"
+    real_cdxgen.write_text(
+        Path(os.environ["CDXGEN_CMD"]).read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    real_cdxgen.chmod(0o755)
+    path_dir = fakes.record.parent / "on-path"
+    path_dir.mkdir()
+    try:
+        (path_dir / "cdxgen").symlink_to(real_cdxgen)
+    except OSError:
+        pytest.skip("symlinks are not available")
+    monkeypatch.delenv("CDXGEN_PLUGINS_DIR")
+    monkeypatch.delenv("CDXGEN_CMD")
+    monkeypatch.setenv("PATH", str(path_dir))
+    return SimpleNamespace(plugins_dir=installed, root=root, path_dir=path_dir)
+
+
+def test_plugins_beside_the_cdxgen_install_are_used(install_env, fakes):
+    """golem, rusi, dosai and kosi come from the install, and the reachability
+    capabilities that need them become available."""
+    report = doctor_mod.doctor()
+    entries = _tool_entries(report)
+    assert entries["cdxgen-plugins"].path == str(install_env.plugins_dir)
+    assert entries["cdxgen-plugins"].source == "cdxgen-install"
+    for tool in ("golem", "rusi", "dosai", "kosi"):
+        assert entries[tool].path is not None, tool
+        assert Path(entries[tool].path).is_relative_to(install_env.plugins_dir), tool
+        assert entries[tool].source == "plugins-dir", tool
+    for tool in ("golem", "rusi", "dosai"):
+        _assert_probed(fakes.record, tool, ["--version"])
+    signature = _capability_signature(report)
+    for name in ("reachability:go", "reachability:rust", "reachability:dotnet"):
+        assert signature[name] == ("available", ()), name
+
+
+def test_plugins_dir_env_wins_over_the_install(install_env, plugins_env, tmp_path, monkeypatch):
+    """CDXGEN_PLUGINS_DIR keeps priority over the directory beside cdxgen."""
+    target = doctor_mod.get_plugins_bin_target()
+    other = tmp_path / "other-plugins"
+    (other / "golem").mkdir(parents=True)
+    golem = other / "golem" / f"golem-{target['platform']}-{target['arch']}{target['extn']}"
+    golem.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setenv("CDXGEN_PLUGINS_DIR", str(other))
+    entries = _tool_entries(doctor_mod.doctor())
+    assert entries["cdxgen-plugins"].path == str(other)
+    assert entries["golem"].path == str(golem)
+    assert entries["golem"].source == "plugins-dir"
+
+
+def test_no_discovery_without_cdxgen(install_env, monkeypatch, tmp_path):
+    """Without cdxgen on PATH nothing leads to the install's plugins."""
+    empty = tmp_path / "no-cdxgen"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    entries = _tool_entries(doctor_mod.doctor())
+    assert entries["cdxgen-plugins"].path is None
+    for tool in ("golem", "rusi", "kosi"):
+        assert entries[tool].path is None, tool
