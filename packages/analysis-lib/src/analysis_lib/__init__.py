@@ -8,6 +8,8 @@ import fnmatch
 
 from rich.console import Console
 
+from analysis_lib.evidence.store import EVIDENCE_FILE
+
 
 def get_all_bom_files(from_dir):
     """
@@ -129,6 +131,7 @@ class ReachabilityAnalysisKV:
     bom_dir: Optional[str]
     bom_files: Optional[List[str]] = None
     slices_files: Optional[List[str]] = None
+    evidence_file: Optional[str] = None
     openapi_spec_files: Optional[List[str]] = None
     clean_up: bool = False
     export_graph_dir: Optional[str] = None
@@ -147,6 +150,9 @@ class ReachabilityAnalysisKV:
             self.slices_files = sorted(
                 str(p.resolve()) for p in Path(self.bom_dir).rglob("*slices*.json")
             )
+        # Collect the evidence store file
+        if not self.evidence_file and self.bom_dir:
+            self.evidence_file = str((Path(self.bom_dir) / EVIDENCE_FILE).resolve())
         # Collect the openapi spec files
         if not self.openapi_spec_files:
             search_dir = Path(self.bom_dir) if self.bom_dir else Path(self.src_dir)
@@ -162,11 +168,6 @@ class ReachabilityResult:
     reached_purls: Optional[Dict[str, int]] = None
     reached_services: Optional[Dict[str, int]] = None
     endpoint_reached_purls: Optional[Dict[str, int]] = None
-    #: The reached purls of each reachables slice file the analysis pass
-    #: read, keyed by file path, built from every flow in the file, those
-    #: deduplicated against an earlier file included. Callers that only need
-    #: per-file purl sets take them from here instead of parsing again.
-    purls_by_file: Optional[Dict[str, set]] = None
 
 
 class ReachabilityAnalyzer(ABC):

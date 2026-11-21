@@ -350,13 +350,14 @@ def test_binary_reachability_still_reaches_post_build_frameworks(tmp_path):
         _options(tmp_path, records, bom_files=[bom], openapi=[openapi])
     ).process()
     # The record reaches ``other``; the binary support reaches ``framework``
-    # through the post-build purl, and the unmatched ``lib`` stays out.
+    # through the post-build purl, counts ``other`` a second time through
+    # the framework component it names, and the unmatched ``lib`` stays out.
     assert (res.reached_purls or {}) == {
-        "pkg:maven/com.example/other@1.0.0": 1,
+        "pkg:maven/com.example/other@1.0.0": 2,
         "pkg:maven/com.example/framework@2.0.0": 1,
     }
     assert (res.endpoint_reached_purls or {}) == {
-        "pkg:maven/com.example/other@1.0.0": 1,
+        "pkg:maven/com.example/other@1.0.0": 2,
         "pkg:maven/com.example/framework@2.0.0": 1,
     }
 
@@ -570,9 +571,13 @@ def test_pinned_java_sec_code_keeps_the_slices_reached_sets(tmp_path):
         "pkg:maven/org.springframework/spring-context@4.3.6.RELEASE?type=jar": 1,
         "pkg:maven/org.springframework/spring-web@4.3.6.RELEASE?type=jar": 1,
     }
-    # The records are exactly what the adapter gave; nothing was dropped on
-    # the way into the store.
-    assert len(read_store(Path(tmp_path) / "evidence.jsonl")) == len(records)
+    # The store holds every distinct record the adapter gave; the exact
+    # duplicates among the usages entries collapsed.
+    from analysis_lib.evidence.store import canonical_record
+
+    assert len(read_store(Path(tmp_path) / "evidence.jsonl")) == len(
+        {canonical_record(record) for record in records}
+    )
 
 
 def test_pinned_java_sec_code_framework_reachability(tmp_path):

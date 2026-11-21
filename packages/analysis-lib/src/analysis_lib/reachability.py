@@ -1,149 +1,46 @@
+"""The reachability analyzers over the evidence store.
+
+The engine counts what the evidence records of the scan directory say:
+positive records of the counted kinds put their subject purls on an
+executed path, a record's ``servicePurls`` attribute and an entry point's
+handler purls feed the reached-services set, and a reached purl typed
+``framework`` in the BOM and not filterable is endpoint-reachable. The
+records come from the store the enrichment stage wrote; the engine reads no
+producer report itself. Occurrences in the BOMs, the ``x-atom-usages``
+usage targets of the OpenAPI documents and the post-build binary
+reachability support keep their role beside the records.
+"""
+
 from analysis_lib import (
     ReachabilityAnalysisKV,
     ReachabilityAnalyzer,
     ReachabilityResult,
 )
-from analysis_lib.config import MIN_POSTBUILD_CONFIDENCE, SERVICE_TAGS
+from analysis_lib.config import MIN_POSTBUILD_CONFIDENCE
 from analysis_lib.endpoints import (
     strip_version,
     is_endpoint_filterable,
 )
+from analysis_lib.evidence import Evidence
+from analysis_lib.evidence.store import stream as stream_evidence
 from custom_json_diff.lib.utils import json_load
 from collections import defaultdict
-from typing import Dict, Iterable, Iterator, List, Optional
-import hashlib
+from typing import Dict, Iterator, Optional
 import json
 import os
 
-
-def _flow_tags(flow: dict) -> List[str]:
-    """Collect tags for a reachables flow.
-
-    atom reachables slices put ``tags`` on each NODE inside
-    ``flow["flows"]`` as a comma-separated string (e.g.
-    ``"pkg:npm/express@4.22.2, framework, web"``); the flow object itself
-    carries only ``flows`` and ``purls``
-    (``ReachableFlows`` in atom's ``slicing/package.scala``), so no
-    flow-level ``tags`` key is read.
-    """
-    tags: List[str] = []
-    seen = set()
-
-    def _add(value) -> None:
-        if isinstance(value, str):
-            for piece in value.split(","):
-                piece = piece.strip()
-                if piece and piece not in seen:
-                    seen.add(piece)
-                    tags.append(piece)
-        elif isinstance(value, (list, tuple)):
-            for item in value:
-                _add(item)
-
-    nodes = flow.get("flows")
-    if isinstance(nodes, list):
-        for node in nodes:
-            if isinstance(node, dict):
-                _add(node.get("tags"))
-    return tags
+#: The record kinds whose positive records count as reached evidence. A
+#: record of another kind (a callsite, a dependency note, a sanitizer, a
+#: dead-code mark) is evidence about the package, never reached evidence.
+REACHED_COUNTED_KINDS = frozenset({"reached-flow", "usage", "entry-point"})
 
 
-def _split_tag_pieces(value) -> List[str]:
-    """Flatten a node ``tags`` value (comma-string or list) into stripped
-    non-empty pieces, preserving order. Atom stores a comma-string; a list is
-    accepted too."""
-    pieces: List[str] = []
-
-    def _walk(v) -> None:
-        if isinstance(v, str):
-            for piece in v.split(","):
-                piece = piece.strip()
-                if piece:
-                    pieces.append(piece)
-        elif isinstance(v, (list, tuple)):
-            for item in v:
-                _walk(item)
-
-    _walk(value)
-    return pieces
-
-
-def _node_service_purls(pieces: List[str], flow_purls) -> set:
-    """The purls a node's tag string marks as services.
-
-    A node's ``tags`` string interleaves purls and free-form tags in discovery
-    order, e.g. ``"pkg:npm/jsonwebtoken@0.4.0, token, web,
-    pkg:npm/%40codemirror/lang-json@6.0.2"``: the free-form tags describe the
-    NEAREST preceding purl in that string, so ``token``/``web`` belong to
-    ``jsonwebtoken`` and ``codemirror`` gets none. Flattening every node tag
-    across the whole flow and applying it to EVERY flow purl leaks service
-    tags onto unrelated packages, so tags are associated per node.
-
-    Atom 4 adds one order this positional walk must also cover: for a call
-    whose own tags name no purl, the callee's package URLs are appended AFTER
-    them (``withPurls`` in ``ReachableSlicing.scala``), so a service tag can
-    PRECEDE every purl in the string (``"web, pkg:npm/express@4.22.2"``). Such
-    a tag describes the call, and the purls appended right after it are the
-    callee's packages (often two versions of one library), so it applies to
-    each purl in the run that directly follows it and to nothing after the
-    next free-form tag.
-
-    A node that carries a SERVICE_TAG but names no purl at all keeps the
-    fallback to the flow-level ``purls`` so the signal is never lost.
-    """
-    node_purl_is_service: dict = {}
-    current_purl = None
-    pending_service = False
-    for piece in pieces:
-        if piece.startswith("pkg:"):
-            node_purl_is_service.setdefault(piece, False)
-            current_purl = piece
-            if pending_service:
-                node_purl_is_service[piece] = True
-            continue
-        # A free-form tag ends the run of purls a leading service tag covers.
-        pending_service = False
-        if piece in SERVICE_TAGS:
-            # Attribute to the nearest preceding purl; if none came yet, the
-            # pending flag hands the tag to the purls that directly follow.
-            if current_purl is not None:
-                node_purl_is_service[current_purl] = True
-            else:
-                pending_service = True
-    if any(node_purl_is_service.values()):
-        return {p for p, has_svc in node_purl_is_service.items() if has_svc}
-    if not node_purl_is_service and any(p in SERVICE_TAGS for p in pieces):
-        return set(flow_purls)
-    return set()
-
-
-def _flow_service_purls(flow: dict) -> set:
-    """Return the set of purls in ``flow`` that carry a SERVICE_TAG on their
-    OWN node. See :func:`_node_service_purls` for the association rules."""
-    flow_purls = flow.get("purls") or []
-    service_purls: set = set()
-    nodes = flow.get("flows")
-    if isinstance(nodes, list):
-        for node in nodes:
-            if not isinstance(node, dict):
-                continue
-            pieces = _split_tag_pieces(node.get("tags"))
-            if not pieces:
-                continue
-            service_purls.update(_node_service_purls(pieces, flow_purls))
-    return service_purls
-
-
-def _flow_identity(flow: dict) -> bytes:
-    """Stable identity hash for a reachables flow object.
-
-    Used to dedup the same flow appearing in multiple slice files. Hashes
-    the canonical JSON form so dict ordering does not matter; flows that
-    differ in any value (purls, node tags, signatures, ...) hash distinctly.
-    """
-    return hashlib.md5(
-        json.dumps(flow, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).digest()
+def _reached_records(records: Iterator[Evidence]) -> Iterator[Evidence]:
+    """The records that count as reached evidence, per the counting rule:
+    positive polarity and one of :data:`REACHED_COUNTED_KINDS`."""
+    for record in records:
+        if record.polarity == "positive" and record.kind in REACHED_COUNTED_KINDS:
+            yield record
 
 
 def _iter_json_list(file_path: str):
@@ -193,48 +90,6 @@ def _iter_json_list(file_path: str):
             idx += 1
 
 
-def _iter_unique_reachable_flows(
-    slices_files: Optional[Iterable[str]],
-    purls_by_file: Optional[Dict[str, set]] = None,
-) -> Iterator[dict]:
-    """Yield each unique reachables flow across all slice files.
-
-    atom reachables slices are bare JSON arrays, split into one
-    ``slices.json`` plus ``slices_1..N.json`` files capped at 1000 flow
-    objects each (``calculateReachableSliceAndPersist`` in atom's
-    ``ReachableSlicing.scala``). The unsplit file is NOT simply a prefix of
-    the numbered splits, so every file must be read for a complete reached
-    SET. But intra-set duplication is heavy, and counting a flow twice
-    inflates ``reached_purls[purl] += 1`` without changing which purls are
-    reached. This iterator yields each flow once (identity == canonical
-    JSON of the whole flow object), so callers can count freely.
-
-    ``purls_by_file``, when given, receives the purl set of every file read,
-    built from every flow in it, duplicates included: a flow first seen in
-    another file still belongs to this file's set, so the sets equal a full
-    read of each file and a later per-file consumer need not parse again.
-
-    Memory: slices are streamed via ``_iter_json_list`` so the full parsed
-    tree is never materialized; only the file text + one flow at a time.
-    A file that is not a bare JSON array yields nothing.
-    """
-    seen: set = set()
-    for slice_file in slices_files or []:
-        if not slice_file or "reachables" not in slice_file:
-            continue
-        file_purls = None if purls_by_file is None else purls_by_file.setdefault(slice_file, set())
-        for flow in _iter_json_list(slice_file):
-            if not isinstance(flow, dict):
-                continue
-            if file_purls is not None:
-                file_purls.update(str(p) for p in flow.get("purls") or [])
-            identity = _flow_identity(flow)
-            if identity in seen:
-                continue
-            seen.add(identity)
-            yield flow
-
-
 #: The purl type each atom slice file prefix (``<prefix>-reachables.slices``)
 #: covers, by cdxgen project type and its aliases.
 ATOM_SLICE_PURL_TYPES = {
@@ -247,57 +102,6 @@ ATOM_SLICE_PURL_TYPES = {
     **dict.fromkeys(("php", "composer"), "composer"),
     **dict.fromkeys(("ruby", "gem"), "gem"),
 }
-
-
-def _purl_type(purl: str) -> str:
-    head = str(purl).split("/", 1)[0]
-    return head[4:].lower() if head.lower().startswith("pkg:") else ""
-
-
-def reached_by_analyzer(
-    slices_files: Optional[Iterable[str]],
-    tool_stems: Dict[str, str],
-    purls_by_file: Optional[Dict[str, set]] = None,
-) -> Dict[str, Dict[str, set]]:
-    """What each analyzer's reachables slices put on an executed path.
-
-    ``tool_stems`` maps each language tool's name to the file-name stem of the
-    slice it writes (``go-reachables`` for golem); every other reachables file
-    is atom's. Returns ``{analyzer: {"purls": set, "types": set}}`` for the
-    analyzers that produced a reachables file. The purl types of a tool are
-    not read from here (a tool covers one ecosystem); atom's are those its
-    slice file prefixes map to (:data:`ATOM_SLICE_PURL_TYPES`), and a prefix
-    that is not known contributes the purl types its flows carry.
-
-    ``purls_by_file`` carries the per-file purl sets a reachability
-    analysis pass collected while reading the same slices. A file present
-    there is not parsed again; a file it does not cover is read as before.
-    """
-    result: Dict[str, Dict[str, set]] = {}
-    for slice_file in slices_files or []:
-        name = os.path.basename(str(slice_file or ""))
-        if "reachables.slices" not in name:
-            continue
-        analyzer = "atom"
-        for tool, stem in tool_stems.items():
-            if name.startswith(stem):
-                analyzer = tool
-                break
-        entry = result.setdefault(analyzer, {"purls": set(), "types": set()})
-        purls = (purls_by_file or {}).get(slice_file)
-        if purls is None:
-            purls = set()
-            for flow in _iter_json_list(slice_file):
-                if isinstance(flow, dict):
-                    purls.update(str(p) for p in flow.get("purls") or [])
-        entry["purls"] |= purls
-        if analyzer == "atom":
-            mapped = ATOM_SLICE_PURL_TYPES.get(name.split("-reachables", 1)[0].lower())
-            if mapped:
-                entry["types"].add(mapped)
-            else:
-                entry["types"] |= {t for t in map(_purl_type, purls) if t}
-    return result
 
 
 def get_reachability_impl(
@@ -342,16 +146,10 @@ class FrameworkReachability(ReachabilityAnalyzer):
                     purl = c.get("purl", "")
                     if c.get("evidence") and c["evidence"].get("occurrences"):
                         direct_purls[purl] += len(c["evidence"].get("occurrences"))
-        # Collect the reached purls from the slices
-        purls_by_file: Dict[str, set] = {}
-        if analysis_options.slices_files:
-            # Dedup flow-objects by identity across all slice files so
-            # reached_purls[purl] += 1 is not inflated by intra-set
-            # duplicates. The reached SET is unchanged; only counts drop.
-            # Each file's purl set is collected on the way, so a caller that
-            # needs per-file sets can take them instead of re-reading.
-            for flow in _iter_unique_reachable_flows(analysis_options.slices_files, purls_by_file):
-                for apurl in flow.get("purls") or []:
+        # Count the reached purls from the evidence records
+        if analysis_options.evidence_file and os.path.isfile(analysis_options.evidence_file):
+            for record in _reached_records(stream_evidence(analysis_options.evidence_file)):
+                for apurl in record.subject.purls:
                     reached_purls[apurl] += 1
         if not direct_purls and not reached_purls:
             status = False
@@ -359,7 +157,6 @@ class FrameworkReachability(ReachabilityAnalyzer):
             success=status,
             direct_purls=direct_purls,
             reached_purls=reached_purls,
-            purls_by_file=purls_by_file,
         )
 
 
@@ -510,26 +307,19 @@ class SemanticReachability(FrameworkReachability):
                                 endpoint_reached_purls[purl] += 1
                                 if postbuild_purls.get(purl):
                                     interesting_postbuild_purls[purl] = True
-        # Collect the reached purls from the slices
-        purls_by_file: Dict[str, set] = {}
-        if analysis_options.slices_files:
-            # Dedup flow-objects by identity across all slice files so
-            # reached_purls[purl] += 1 / reached_services / endpoint
-            # counts are not inflated by intra-set duplicates. The reached
-            # SETS are unchanged; only counts drop. Each file's purl set is
-            # collected on the way, so a caller that needs per-file sets can
-            # take them instead of re-reading the slices.
-            for flow in _iter_unique_reachable_flows(analysis_options.slices_files, purls_by_file):
-                # Associate SERVICE_TAGS with the purl named in the SAME node's
-                # tag string (positional), instead of flattening all node tags
-                # across the flow and applying them to every flow purl. This
-                # stops ``web`` from leaking off ``jsonwebtoken`` onto an
-                # unrelated ``codemirror`` in the same flow.
-                service_purls = _flow_service_purls(flow)
-                for apurl in flow.get("purls") or []:
+        # Count the reached purls, services and endpoint reachability from
+        # the evidence records. The adapters own service attribution: a
+        # record's ``servicePurls`` attribute holds exactly the purls the
+        # producer marked as services, so this walk never reads tags. An
+        # entry point's handler purls are its subject purls and count as
+        # services without an attribute.
+        if analysis_options.evidence_file and os.path.isfile(analysis_options.evidence_file):
+            for record in _reached_records(stream_evidence(analysis_options.evidence_file)):
+                service_purls = set((record.attributes or {}).get("servicePurls") or [])
+                for apurl in record.subject.purls:
                     reached_purls[apurl] += 1
                     # Could this be an external service
-                    if apurl in service_purls:
+                    if apurl in service_purls or record.kind == "entry-point":
                         reached_services[apurl] += 1
                         if postbuild_purls.get(apurl):
                             interesting_postbuild_purls[apurl] = True
@@ -556,5 +346,4 @@ class SemanticReachability(FrameworkReachability):
             reached_purls=reached_purls,
             reached_services=reached_services,
             endpoint_reached_purls=endpoint_reached_purls,
-            purls_by_file=purls_by_file,
         )
