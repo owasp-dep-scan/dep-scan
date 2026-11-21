@@ -22,6 +22,7 @@ from analysis_lib.findings.schemas import validate as validate_schema
 from analysis_lib.vex.csaf import build_csaf
 from depscan import api, cli
 from depscan.commands.output import json_path
+from depscan.lib import scan_directory
 from depscan.validate_cli import _build_parser
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -345,7 +346,7 @@ def test_a_loaded_scan_directory_prints_its_document_with_a_normalised_scan_dir(
     assert document["scanDir"] == json_path("scan-directory")
     assert os.path.isabs(document["scanDir"])
     assert document["scanDir"] == f"{json_path(os.getcwd())}/scan-directory"
-    assert document["manifest"]["layoutVersion"] == "1.0"
+    assert document["manifest"]["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert len(document["findings"]) == 1
     validate_schema("finding", document["findings"][0])
     assert captured.err == ""

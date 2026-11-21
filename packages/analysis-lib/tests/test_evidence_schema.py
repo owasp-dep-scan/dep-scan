@@ -319,6 +319,18 @@ def test_the_model_rejects_unknown_and_missing_properties():
         Evidence.from_dict(broken)
 
 
+def test_the_model_requires_the_fields_the_schema_requires():
+    """Locations and caveats are required in the schema, so the model does
+    not read a record that leaves either out as an empty one."""
+    for required in ("locations", "caveats"):
+        document = _example_record()
+        del document[required]
+        with pytest.raises(
+            ValueError, match=f"missing required properties for Evidence: {required}"
+        ):
+            Evidence.from_dict(document)
+
+
 def test_the_model_resolves_nested_types():
     document = _example_record()
     record = Evidence.from_dict(document)

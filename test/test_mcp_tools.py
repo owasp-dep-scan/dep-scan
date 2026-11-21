@@ -37,7 +37,7 @@ from depscan import api
 from depscan.commands.output import json_path
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
-from depscan.lib import pipeline, vdb_setup
+from depscan.lib import pipeline, scan_directory, vdb_setup
 from depscan.mcp_server import server as server_mod
 from xbom_lib import cdxgen as cdxgen_mod
 
@@ -404,7 +404,7 @@ def test_scan_summary_reports_the_manifest_summary(open_session, make_scan_dir):
     scan_dir = make_scan_dir("plain")
     document = drive(open_session, _scan_summary_target(scan_dir), (scan_dir.parent,))
     summary = document["manifestSummary"]
-    assert summary["layoutVersion"] == "1.0"
+    assert summary["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert summary["projectTypes"] == ["python"]
     assert set(summary["stagesByStatus"]) == {"completed", "skipped"}
     assert summary["stagesByStatus"] == {"completed": 7, "skipped": 3}
@@ -1542,7 +1542,7 @@ def test_run_scan_real_run_with_allow_scans_records_secure_mode(
     assert document["target"] == json_path(os.path.abspath(str(target)))
     assert document["kind"] == "source"
     assert document["scanDir"] == expected_path(reports_dir)
-    assert document["manifest"]["layoutVersion"] == "1.0"
+    assert document["manifest"]["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert len(document["findings"]) == 1
     # Positive controls: the real run executed the stubbed cdxgen once, and
     # cdxgen received CDXGEN_SECURE_MODE=true for the whole run.
