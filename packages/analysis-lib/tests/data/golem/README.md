@@ -7,16 +7,14 @@ paths and no repeated bulk. The tests in `test_evidence_golem.py` read them.
 ## How they were made
 
 golem 4.3.1, printed by the binary itself (`golem --version`) from the npm
-package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1 installed at
-`~/sandbox/depscan-perf/tools/node_modules/` (file
-`.../plugins/golem/golem-darwin-arm64`). The binaries in the
+package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1 (file
+`plugins/golem/golem-darwin-arm64` inside that package). The binaries in the
 `cdxgen-plugins-bin` checkout and on PATH are other versions and were not
 used. The repos are the ones the repository carries at
-`test/data/golem/repos`, copied into a temporary recording directory
-(`/var/tmp/p17-golem-rusi-recording/golem`) so the recording root was never
-the checkout; `reachable-app` and `unreachable-app` were copied beside
-`vuln-lib`, which their `go.mod` replace directives point at. Each run
-mirrors the flags dep-scan's fallback runner passes
+`test/data/golem/repos`, copied into a temporary recording directory so the
+recording root was never the checkout; `reachable-app` and `unreachable-app`
+were copied beside `vuln-lib`, which their `go.mod` replace directives point
+at. Each run mirrors the flags dep-scan's fallback runner passes
 (`xbom_lib.golem._build_golem_args`):
 
 ```bash

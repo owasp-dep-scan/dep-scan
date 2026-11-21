@@ -8,13 +8,11 @@ rewritten to `/src`. The tests in `test_evidence_rusi.py` read them.
 ## How they were made
 
 rusi 4.3.1, printed by the binary itself (`rusi --version`) from the npm
-package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1 installed at
-`~/sandbox/depscan-perf/tools/node_modules/` (file
-`.../plugins/rusi/rusi-darwin-arm64`). The rusi 2.5.1 on PATH was not used.
-The repos are the ones the repository carries at `test/data/rusi/repos`,
-copied into a temporary recording directory
-(`/var/tmp/p17-golem-rusi-recording/rusi`) so the recording root was never
-the checkout:
+package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1 (file
+`plugins/rusi/rusi-darwin-arm64` inside that package). The rusi 2.5.1 on
+PATH was not used. The repos are the ones the repository carries at
+`test/data/rusi/repos`, copied into a temporary recording directory so the
+recording root was never the checkout:
 
 ```bash
 rusi analyze --dir <recording-root>/<repo> --backend stable --callgraph static \
