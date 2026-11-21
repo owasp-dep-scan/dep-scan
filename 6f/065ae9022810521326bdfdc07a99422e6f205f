@@ -1,0 +1,24 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/atom.py
+  s_c9308cc8b35e5f::t_4fc21714b30bc3 1-49,51-125,134,136-139,141-164,167,169-170,174-186,188-659,675-756
+  s_c9308cc8b35e5f::t_23763cf4062d5d 50
+  s_c9308cc8b35e5f::t_0750a99ad1044a 187
+  s_c9308cc8b35e5f::t_f26c4743ff006c 660-674
+  s_c9308cc8b35e5f::t_f7fa60f017010e 126-133,135,140,165-166,168,171-173
+  s_c9308cc8b35e5f::t_68f1cd898a5d4a 757-769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f065ae9022810521326bdfdc07a99422e6f205f",
+  "prompts": {},
+  "sessions": {
+    "s_c9308cc8b35e5f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_5_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}
