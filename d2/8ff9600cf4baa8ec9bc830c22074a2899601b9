@@ -1,0 +1,23 @@
+packages/analysis-lib/src/analysis_lib/evidence/__init__.py
+  s_17332abccfca86::t_f476ffb6b06928 271-272
+  s_17332abccfca86::t_2487da3780c3e5 10-12
+packages/analysis-lib/src/analysis_lib/evidence/store.py
+  s_17332abccfca86::t_89d18d987c4622 103
+  s_17332abccfca86::t_528c47faa2245a 92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d28ff9600cf4baa8ec9bc830c22074a2899601b9",
+  "prompts": {},
+  "sessions": {
+    "s_17332abccfca86": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_1_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
