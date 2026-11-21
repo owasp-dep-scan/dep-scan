@@ -184,6 +184,8 @@ def test_every_produced_document_validates_with_the_published_validator():
 # exploitability from the scan's graded evidence
 # ---------------------------------------------------------------------------
 
+from analysis_lib.evidence import EvidenceProducer  # noqa: E402
+from analysis_lib.evidence.adapters import build_record  # noqa: E402
 from analysis_lib.findings.exploitability import (  # noqa: E402
     ExploitabilityInputs,
     exploitability_for,
@@ -192,6 +194,7 @@ from analysis_lib.findings.exploitability import (  # noqa: E402
 from analysis_lib.findings.vdr_convert import (  # noqa: E402
     ReachScope,
     reach_axis,
+    reached_by_analyzer,
 )
 
 REF = "pkg:pypi/requests@2.32.1"
@@ -232,8 +235,7 @@ def test_findings_without_a_grading_record_no_exploitability():
 
 
 def test_reached_package_is_likely_and_names_the_analyzer_in_sources():
-    scope = ReachScope( analyzers=["atom"], reached={REF}, succeeded=True, analyzer_types=ATOM_PYPI
-    )
+    scope = ReachScope(analyzers=["atom"], reached={REF}, succeeded=True, analyzer_types=ATOM_PYPI)
     (finding,) = _graded_findings(scope)
     assert _reach(finding) == "likely"
     # No BOM component was handed in, so cdxgen is not a presence producer;
@@ -286,8 +288,7 @@ def test_absent_from_a_non_empty_reached_set_is_unknown_never_refuted():
             succeeded=False,
             analyzer_types=ATOM_PYPI,
         ),
-        ReachScope( analyzers=["atom"], reached=set(), succeeded=True, analyzer_types=ATOM_PYPI
-        ),
+        ReachScope(analyzers=["atom"], reached=set(), succeeded=True, analyzer_types=ATOM_PYPI),
     ],
     ids=["no-analyzer-ran", "engine-failed", "nothing-observed"],
 )
@@ -394,3 +395,137 @@ def test_an_analyzer_that_reached_nothing_does_not_grade_its_ecosystem():
         reached_by={"atom": {NPM}, "kosi": set()},
     )
     assert _reach_sources_of(MAVEN, scope) == ("not_assessed", None)
+
+
+# ---------------------------------------------------------------------------
+# the per-analyzer reached sets, grouped from the evidence records
+# ---------------------------------------------------------------------------
+
+
+def _evidence_record(
+    purls,
+    *,
+    producer_name,
+    kind="reached-flow",
+    polarity="positive",
+    source=None,
+    discriminator="d1",
+):
+    if source is None:
+        source = f"{producer_name}-reachables.slices.json"
+    return build_record(
+        source=source,
+        producer=EvidenceProducer(
+            name=producer_name, version="1.0.0", report_schema_version="unknown"
+        ),
+        kind=kind,
+        discriminator=discriminator,
+        polarity=polarity,
+        purls=tuple(purls),
+    )
+
+
+def test_reached_by_analyzer_groups_records_by_producer_and_keeps_shared_purls():
+    """The grouping is built from every record in one pass, never
+    deduplicated across producers: a purl two producers both reached stays
+    in both of their reached sets."""
+    records = [
+        _evidence_record(["pkg:npm/shared@1"], producer_name="atom"),
+        _evidence_record(["pkg:npm/shared@1"], producer_name="golem"),
+        _evidence_record(["pkg:npm/atom-only@1"], producer_name="atom", discriminator="d2"),
+    ]
+    grouped = reached_by_analyzer(records)
+    assert set(grouped) == {"atom", "golem"}
+    assert grouped["atom"]["purls"] == {"pkg:npm/shared@1", "pkg:npm/atom-only@1"}
+    assert grouped["golem"]["purls"] == {"pkg:npm/shared@1"}
+
+
+def test_reached_by_analyzer_ignores_records_that_never_count_as_reached():
+    """Callsite records, dependency notes and negative records say things
+    about a package without putting it on an executed path; their purls
+    stay out of every reached set."""
+    records = [
+        _evidence_record(["pkg:npm/reached@1"], producer_name="atom"),
+        _evidence_record(
+            ["pkg:npm/callsite@1"], producer_name="atom", kind="callsite", discriminator="d2"
+        ),
+        _evidence_record(
+            ["pkg:npm/dependency@1"], producer_name="atom", kind="dependency", discriminator="d3"
+        ),
+        _evidence_record(
+            ["pkg:npm/dead@1"], producer_name="atom", polarity="negative", discriminator="d4"
+        ),
+    ]
+    grouped = reached_by_analyzer(records)
+    assert grouped["atom"]["purls"] == {"pkg:npm/reached@1"}
+
+
+def test_reached_by_analyzer_atom_types_come_from_the_source_prefix():
+    """atom's purl types come from the reachables file prefix of its
+    records' source; a prefix that is not known contributes the purl types
+    its records carry."""
+    records = [
+        _evidence_record(
+            ["pkg:maven/a/b@1"], producer_name="atom", source="java-reachables.slices.json"
+        ),
+        _evidence_record(
+            ["pkg:npm/c/d@1"],
+            producer_name="atom",
+            source="js-reachables.slices.json",
+            discriminator="d2",
+        ),
+        _evidence_record(
+            ["pkg:hex/e@1"],
+            producer_name="atom",
+            source="mystery-reachables.slices.json",
+            discriminator="d3",
+        ),
+    ]
+    grouped = reached_by_analyzer(records)
+    assert grouped["atom"]["types"] == {"maven", "npm", "hex"}
+
+
+def test_reached_by_analyzer_language_tools_carry_no_types():
+    """The language tools each cover one ecosystem; the scope resolves that
+    from the tool table, so their entries carry no types here."""
+    records = [
+        _evidence_record(["pkg:golang/x/y@1"], producer_name="golem"),
+        _evidence_record(["pkg:cargo/z@1"], producer_name="rusi", discriminator="d2"),
+        _evidence_record(
+            ["pkg:maven/c/d@1"], producer_name="kosi", kind="entry-point", discriminator="d3"
+        ),
+    ]
+    grouped = reached_by_analyzer(records)
+    assert grouped["golem"]["types"] == set()
+    assert grouped["rusi"]["types"] == set()
+    assert grouped["kosi"]["types"] == set()
+    # An entry-point record counts as reached, so its handler purl is in
+    # the kosi set.
+    assert grouped["kosi"]["purls"] == {"pkg:maven/c/d@1"}
+
+
+def test_reached_by_analyzer_atom_records_of_other_roles_add_no_types():
+    """atom's usage, callsite and OpenAPI sources are not reachables files
+    and their records carry no reached purls, so they leave the types and
+    the set alone."""
+    records = [
+        _evidence_record(
+            ["pkg:npm/a@1"], producer_name="atom", source="js-reachables.slices.json"
+        ),
+        _evidence_record(
+            [],
+            producer_name="atom",
+            kind="usage",
+            source="js-usages.slices.json",
+            discriminator="d2",
+        ),
+        _evidence_record(
+            [],
+            producer_name="atom",
+            kind="entry-point",
+            source="js-openapi.json",
+            discriminator="d3",
+        ),
+    ]
+    grouped = reached_by_analyzer(records)
+    assert grouped["atom"] == {"purls": {"pkg:npm/a@1"}, "types": {"npm"}}
