@@ -47,6 +47,7 @@ build-backend = "setuptools.build_meta"
 "analysis_lib.vex.data" = ["*.json", "cvss/*.json"]
 "analysis_lib.data" = ["cyclonedx/*.json", "*.yaml"]
 "analysis_lib.findings" = ["schemas/*.json"]
+"analysis_lib.evidence" = ["schemas/*.json"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"

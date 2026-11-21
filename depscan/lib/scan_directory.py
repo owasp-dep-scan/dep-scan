@@ -36,18 +36,22 @@ from depscan.lib.doctor import DoctorReport
 #: drops the Pressure axis from exploitability and adds its sources.
 FINDINGS_SCHEMA_VERSION = "2"
 
-#: The scan directory layout this version writes and reads.
-LAYOUT_VERSION = "1.0"
+#: The scan directory layout this version writes and reads. Layout 2 is
+#: the evidence store layout: a manifest whose major is 1 predates the
+#: evidence files and is refused on load.
+LAYOUT_VERSION = "2.0"
 
 #: The major version this code accepts when loading a manifest.
-LAYOUT_MAJOR = 1
+LAYOUT_MAJOR = 2
 
 MANIFEST_FILE = "depscan.manifest.json"
 FINDINGS_FILE = "depscan.findings.json"
 
-#: Named in the layout and in the enrichment stage's outputs; no evidence
-#: store exists in this version, so the file is never written.
+#: Named in the layout and in the enrichment stage's outputs. The store is
+#: written once per project type after the adapters run, and the index is
+#: written last, after the findings exist, so both carry finished content.
 EVIDENCE_FILE = "evidence.jsonl"
+EVIDENCE_INDEX_FILE = "evidence.index.json"
 
 EVIDENCE_NOT_PRODUCED_REASON = (
     "this version does not produce an evidence store; reachability stays in "
@@ -292,6 +296,9 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         return entry
     if name == FINDINGS_FILE:
         entry.update(role="findings", producer="dep-scan")
+        return entry
+    if name == EVIDENCE_FILE or name == EVIDENCE_INDEX_FILE:
+        entry.update(role="evidence", producer="dep-scan")
         return entry
     if name.endswith(".vdr.json"):
         project_type = None

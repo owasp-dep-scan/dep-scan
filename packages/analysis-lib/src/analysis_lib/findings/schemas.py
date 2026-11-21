@@ -10,13 +10,17 @@ A schema's name is its file name without ``.schema.json``:
 ``$id`` is ``urn:owasp:depscan:schema:<name without depscan->:1``; the finding,
 doctor and manifest identifiers predate the output schemas and are unchanged,
 except the finding schema, which is at ``:2`` since its exploitability axes
-dropped Pressure and gained sources.
+dropped Pressure and gained sources, and the manifest schema, which is at
+``:2`` since its analyzer entries gained their caveats array. The evidence
+schema is the one file that lives outside this package: it ships with the
+``analysis_lib.evidence`` package, whose ``schemas/`` directory it
+documents, and the loader serves it from there without moving the others.
 The fingerprint test vectors next to the schemas are data, not a schema, and
-are not listed. The legacy short name ``finding`` stays accepted as an
-alias so existing callers keep working. The published names are listed in
-registration order: the document schemas first, then the output schemas verb
-by verb, then the input and output schemas of the ``depscan mcp`` tools,
-then the error schema.
+are not listed. The legacy short name ``finding`` and the short name
+``evidence`` stay accepted as aliases so existing callers keep working. The
+published names are listed in registration order: the document schemas
+first, then the output schemas verb by verb, then the input and output
+schemas of the ``depscan mcp`` tools, then the error schema.
 """
 
 import json
@@ -30,12 +34,20 @@ from referencing import Registry, Resource
 _SCHEMA_PACKAGE = "analysis_lib.findings"
 _SCHEMA_DIR = "schemas"
 
+#: The evidence schema is served from the analysis_lib.evidence package,
+#: whose schemas directory it documents.
+_EVIDENCE_SCHEMA_FILE = "depscan-evidence.schema.json"
+_EVIDENCE_SCHEMA_PACKAGE = "analysis_lib.evidence"
+
 #: Every published schema file, in the order the CLI lists the names.
 _SCHEMA_FILES = (
     # The document schemas: the shapes a scan directory publishes.
     "depscan-finding.schema.json",
     "depscan-doctor.schema.json",
     "depscan-manifest.schema.json",
+    # The data-file schema: the shape of one line of the scan directory's
+    # evidence store.
+    "depscan-evidence.schema.json",
     # The data-file schema: the shape of the exploitability rule table a
     # scan grades with and an organisation may replace.
     "depscan-exploitability-rules.schema.json",
@@ -81,9 +93,11 @@ _SCHEMA_FILES = (
 )
 
 #: Names the published schemas keep answering to that are no longer file
-#: stems. The short name of the finding schema predates the file-stem rule.
+#: stems. The short name of the finding schema predates the file-stem rule;
+#: the evidence schema's short name reads better on the command line.
 _ALIASES = {
     "finding": "depscan-finding",
+    "evidence": "depscan-evidence",
 }
 
 # jsonschema checks format: date-time only when a checker for it is
@@ -122,9 +136,11 @@ def schema_names() -> List[str]:
 
 
 def published_files() -> List[str]:
-    """The schema files in the bundled schemas directory."""
+    """The schema files the loader serves, from every bundled directory."""
     directory = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR)
-    return sorted(item.name for item in directory.iterdir() if item.name.endswith(".schema.json"))
+    names = [item.name for item in directory.iterdir() if item.name.endswith(".schema.json")]
+    names.append(_EVIDENCE_SCHEMA_FILE)
+    return sorted(names)
 
 
 def _resolve(name: str) -> str:
@@ -153,7 +169,8 @@ def schema_summaries() -> List[Dict[str, str]]:
 
 
 def _read(filename: str) -> Dict[str, Any]:
-    schema_path = resources.files(_SCHEMA_PACKAGE).joinpath(_SCHEMA_DIR).joinpath(filename)
+    package = _EVIDENCE_SCHEMA_PACKAGE if filename == _EVIDENCE_SCHEMA_FILE else _SCHEMA_PACKAGE
+    schema_path = resources.files(package).joinpath(_SCHEMA_DIR).joinpath(filename)
     return json.loads(schema_path.read_text(encoding="utf-8"))
 
 

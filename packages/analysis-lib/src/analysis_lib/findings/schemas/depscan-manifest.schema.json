@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:owasp:depscan:schema:manifest:1",
+  "$id": "urn:owasp:depscan:schema:manifest:2",
   "title": "dep-scan scan directory manifest",
   "description": "The document depscan.manifest.json holds in a scan directory. It records the layout version, the dep-scan version, the scan's inputs with digests, the tools, platform and capabilities as the doctor report saw them, the vulnerability database the matching stage used, the stages that ran with their status, the scan options with secrets removed, and every file at the top of the directory and under analysis/ with its role and digest. Written last, after every other file of the scan, so a manifest that lists files lists files that exist.",
   "type": "object",
@@ -23,7 +23,7 @@
     "layoutVersion": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+$",
-      "description": "The scan directory layout version as major.minor, starting at 1.0. A reader accepts any minor version of a major it knows and refuses any other major."
+      "description": "The scan directory layout version as major.minor. Layout 2.0 introduced the evidence store. A reader accepts any minor version of a major it knows and refuses any other major."
     },
     "depscanVersion": {
       "type": "string",
@@ -231,6 +231,14 @@
         "reason": {
           "type": "string",
           "description": "For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given."
+        },
+        "caveats": {
+          "type": "array",
+          "items": {
+            "$ref": "depscan-evidence.schema.json#/$defs/caveat",
+            "description": "One caveat the analyzer's adapter reported."
+          },
+          "description": "The producer-level caveats the analyzer's adapter reported for this scan, the same kinds an evidence record carries. Absent when the analyzer completed with nothing to flag."
         }
       }
     },
@@ -267,8 +275,18 @@
         },
         "role": {
           "type": "string",
-          "enum": ["bom", "vdr", "findings", "slices", "raw-report", "csaf", "report", "other"],
-          "description": "What the file is in the scan directory layout."
+          "enum": [
+            "bom",
+            "vdr",
+            "findings",
+            "evidence",
+            "slices",
+            "raw-report",
+            "csaf",
+            "report",
+            "other"
+          ],
+          "description": "What the file is in the scan directory layout. evidence is the scan's evidence store and its index."
         },
         "producer": {
           "type": "string",

@@ -67,7 +67,7 @@ Regenerate them with that command when the schema changes. -->
 
 | Field | What it holds |
 | --- | --- |
-| `layoutVersion` | The scan directory layout version as major.minor, starting at 1.0. A reader accepts any minor version of a major it knows and refuses any other major. |
+| `layoutVersion` | The scan directory layout version as major.minor. Layout 2.0 introduced the evidence store. A reader accepts any minor version of a major it knows and refuses any other major. |
 | `depscanVersion` | The version of dep-scan that ran the scan. |
 | `startUtc` | When the scan started, in UTC, as an RFC 3339 date-time. |
 | `endUtc` | When the scan ended, in UTC, as an RFC 3339 date-time. A scan that stopped early still records its end. |
@@ -118,6 +118,7 @@ Regenerate them with that command when the schema changes. -->
 | `capability` | The capability the analyzer satisfies, named the way depscan doctor names it. |
 | `status` | completed when the stage read reachables slices this analyzer produces, whether this scan produced them or was given them. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the reason that no slices were produced or given. |
 | `reason` | For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given. |
+| `caveats` | The producer-level caveats the analyzer's adapter reported for this scan, the same kinds an evidence record carries. Absent when the analyzer completed with nothing to flag. |
 
 ### stageOutput fields
 
@@ -132,14 +133,14 @@ Regenerate them with that command when the schema changes. -->
 | Field | What it holds |
 | --- | --- |
 | `path` | The path relative to the scan directory, always with forward slashes. |
-| `role` | What the file is in the scan directory layout. |
+| `role` | What the file is in the scan directory layout. evidence is the scan's evidence store and its index. |
 | `producer` | The tool that wrote the file: cdxgen, blint, dep-scan, a reachability plugin, or user for a file the user placed here. |
 | `projectType` | The project type the file belongs to, when the name carries one. |
 | `sha256` | The SHA-256 digest of the file's bytes. |
 
 ## The version rule
 
-`layoutVersion` is a `major.minor` string, starting at `1.0`. A reader accepts any minor version of a major it knows: layout `1.9` loads with dep-scan that writes `1.0`, because a minor bump adds optional things. A different major is refused with an error naming both versions, the one in the manifest and the one the reader supports.
+`layoutVersion` is a `major.minor` string. Layout 2.0 introduced the evidence store. A reader accepts any minor version of a major it knows: layout `2.3` loads with dep-scan that writes `2.0`, because a minor bump adds optional things, and a manifest whose major is 1 predates the evidence store and is refused. A different major is refused with an error naming both versions, the one in the manifest and the one the reader supports.
 
 ## Loading a directory back
 
