@@ -16,9 +16,10 @@ the shared-id case for repeated copies of one package.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import unquote
 
+from analysis_lib.evidence import Evidence
 from analysis_lib.findings.fingerprint import finding_fingerprint
 from analysis_lib.findings.model import (
     Coverage,
@@ -29,6 +30,7 @@ from analysis_lib.findings.model import (
     Producer,
     Reference,
 )
+from analysis_lib.reachability import ATOM_SLICE_PURL_TYPES, REACHED_COUNTED_KINDS
 
 #: CycloneDX severity names, most severe first, with the score as the tie
 #: breaker of last resort.
@@ -164,6 +166,42 @@ TOOL_PURL_TYPES = {
 def _purl_type(ref: str) -> str:
     head = comparable_purl(ref).split("/", 1)[0]
     return head[4:].lower() if head.lower().startswith("pkg:") else ""
+
+
+def reached_by_analyzer(records: Iterable[Evidence]) -> Dict[str, Dict[str, Set[str]]]:
+    """What each producer's reached-counted records put on an executed path.
+
+    The grouping is built from every record the caller holds, in one pass,
+    and the records are never deduplicated against each other across
+    producers: a purl two producers both reached stays in both of their
+    sets, so a set that stands for a full read of the evidence store is
+    built from all of it. Records that do not count as reached evidence,
+    negative ones and the kinds outside
+    :data:`analysis_lib.reachability.REACHED_COUNTED_KINDS` first among
+    them, never enter the sets.
+
+    Each entry carries the purls under ``purls`` and the purl types the
+    scope should treat the producer as covering under ``types``. The
+    language tools cover one ecosystem each (:data:`TOOL_PURL_TYPES`) and
+    carry no types here; atom's come from the reachables file prefix of its
+    records' source (:data:`analysis_lib.reachability.ATOM_SLICE_PURL_TYPES`),
+    and a prefix that is not known contributes the purl types the records
+    with it carry.
+    """
+    result: Dict[str, Dict[str, Set[str]]] = {}
+    for record in records:
+        if record.polarity != "positive" or record.kind not in REACHED_COUNTED_KINDS:
+            continue
+        name = record.producer.name
+        entry = result.setdefault(name, {"purls": set(), "types": set()})
+        entry["purls"].update(record.subject.purls)
+        if name == "atom":
+            mapped = ATOM_SLICE_PURL_TYPES.get(record.source.split("-reachables", 1)[0].lower())
+            if mapped:
+                entry["types"].add(mapped)
+            else:
+                entry["types"] |= {t for t in map(_purl_type, record.subject.purls) if t}
+    return result
 
 
 @dataclass
