@@ -47,16 +47,15 @@ def _iter_json_list(file_path: str):
     """Stream a top-level JSON array from ``file_path``, yielding one parsed
     element at a time.
 
-    The reachables slices are JSON lists of ``{"flows": [...], "purls": [...]}``
-    objects, capped at 1000 entries per file. Materializing the full parsed
-    list costs ~3.3x the file size in RSS (each flow carries several KB of
-    node body: code, signature, fullName, line/col, ...). The analyzer only
-    consumes each flow's purls + node tags, so we stream the list with
-    ``JSONDecoder.raw_decode``: peak RSS is roughly ``file_text_size`` plus
-    ONE parsed element instead of the full tree.
+    Materializing a large parsed list costs several times the file size in
+    RSS, so this reader walks the array with ``JSONDecoder.raw_decode``:
+    peak RSS is roughly the file text plus ONE parsed element instead of
+    the full tree. The reachability engine itself counts evidence records
+    and reads no report file; the reachability evaluation tooling under
+    ``contrib/`` uses this reader over slice arrays, and the adapter tests
+    use it to walk fixture slices.
 
-    If the file is not a JSON list, the iterator yields nothing; atom
-    reachables slices are always bare JSON arrays.
+    If the file is not a JSON list, the iterator yields nothing.
     """
     decoder = json.JSONDecoder()
     try:
