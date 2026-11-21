@@ -9,10 +9,10 @@
   "rustc_version": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
   "cargo_version": "cargo 1.100.0 (3acc79c0c 2026-11-05)",
   "host": "aarch64-macos",
-  "working_directory": "/src/rusi/unreachable-app"
+  "working_directory": "/src/repos/unreachable-app"
  },
  "options": {
-  "directory": "/src/rusi/unreachable-app",
+  "directory": "/src/repos/unreachable-app",
   "backend": "stable",
   "analysis_scope": "default",
   "call_graph_mode": "static",
@@ -24,21 +24,21 @@
   {
    "name": "unreachable-app",
    "version": "0.1.0",
-   "manifest_path": "/src/rusi/unreachable-app/Cargo.toml",
+   "manifest_path": "/src/repos/unreachable-app/Cargo.toml",
    "workspace_member": true
   }
  ],
  "packages": [
   {
-   "id": "pkg-876d2c8019a2fdfc",
+   "id": "pkg-38db287a0c76017a",
    "name": "unreachable-app",
    "package_path": "unreachable_app",
    "purl": "pkg:cargo/unreachable-app@0.1.0",
-   "manifest_path": "/src/rusi/unreachable-app/Cargo.toml",
+   "manifest_path": "/src/repos/unreachable-app/Cargo.toml",
    "module": {
     "name": "unreachable-app",
     "version": "0.1.0",
-    "manifest_path": "/src/rusi/unreachable-app/Cargo.toml",
+    "manifest_path": "/src/repos/unreachable-app/Cargo.toml",
     "workspace_member": true
    },
    "files": [
@@ -109,9 +109,6 @@
  },
  "data_flow": {
   "mode": "security-deps",
-  "patterns": {
-   "trimmed": "rusi's built-in data-flow source/sink pattern pack is reference data the analysis results do not depend on; it was cut from this recording. No other section was changed."
-  },
   "nodes": [],
   "edges": [],
   "slices": [],

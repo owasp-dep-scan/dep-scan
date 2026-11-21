@@ -9,10 +9,10 @@
   "rustc_version": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
   "cargo_version": "cargo 1.100.0 (3acc79c0c 2026-11-05)",
   "host": "aarch64-macos",
-  "working_directory": "/src/rusi/rustsec-app"
+  "working_directory": "/src/repos/rustsec-app"
  },
  "options": {
-  "directory": "/src/rusi/rustsec-app",
+  "directory": "/src/repos/rustsec-app",
   "backend": "stable",
   "analysis_scope": "default",
   "call_graph_mode": "static",
@@ -24,21 +24,21 @@
   {
    "name": "rustsec-app",
    "version": "0.1.0",
-   "manifest_path": "/src/rusi/rustsec-app/Cargo.toml",
+   "manifest_path": "/src/repos/rustsec-app/Cargo.toml",
    "workspace_member": true
   }
  ],
  "packages": [
   {
-   "id": "pkg-094dde559031fe94",
+   "id": "pkg-426e068628179aa9",
    "name": "rustsec-app",
    "package_path": "rustsec_app",
    "purl": "pkg:cargo/rustsec-app@0.1.0",
-   "manifest_path": "/src/rusi/rustsec-app/Cargo.toml",
+   "manifest_path": "/src/repos/rustsec-app/Cargo.toml",
    "module": {
     "name": "rustsec-app",
     "version": "0.1.0",
-    "manifest_path": "/src/rusi/rustsec-app/Cargo.toml",
+    "manifest_path": "/src/repos/rustsec-app/Cargo.toml",
     "workspace_member": true
    },
    "files": [
@@ -440,9 +440,6 @@
  },
  "data_flow": {
   "mode": "security-deps",
-  "patterns": {
-   "trimmed": "rusi's built-in data-flow source/sink pattern pack is reference data the analysis results do not depend on; it was cut from this recording. No other section was changed."
-  },
   "nodes": [
    {
     "id": "df-node-07158d6c2dcbdbc4",

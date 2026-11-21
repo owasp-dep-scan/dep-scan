@@ -27,6 +27,9 @@ $ curl -L -o Dosai-osx-arm64-full \
 ```
 
 and it prints `--version` as `5.0.0+0c35f375fbcf81cf4d221c043373e8eadcf098b8`.
+This is the same release build `harness/tools-latest.sh` installs as
+`~/.local/bin/dosai` (`dosai --version` prints the identical string), so the
+recording is exactly what the machine's current dosai 5.0.0 produces.
 Recording commands, run from a scratch directory outside the repository
 (the app was passed by its real absolute path; the placeholder stands in
 here):

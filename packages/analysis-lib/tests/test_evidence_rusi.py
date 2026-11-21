@@ -124,10 +124,14 @@ def test_record_kinds_on_the_recording():
     slice_result = _extract("rusi-reachable-app.json")
     assert [r.kind for r in slice_result.records] == ["reached-flow"]
     slice_record = slice_result.records[0]
-    assert len(slice_record.path) == 6
-    assert slice_record.attributes["ruleId"] == "file-to-sql-query"
-    assert slice_record.attributes["backend"] == "stable"
-    assert slice_record.attributes["servicePurls"] == ["pkg:cargo/reachable-app@0.1.0"]
+    slice_path = slice_record.path
+    assert slice_path is not None
+    assert len(slice_path) == 6
+    slice_attrs = slice_record.attributes
+    assert slice_attrs is not None
+    assert slice_attrs["ruleId"] == "file-to-sql-query"
+    assert slice_attrs["backend"] == "stable"
+    assert slice_attrs["servicePurls"] == ["pkg:cargo/reachable-app@0.1.0"]
     assert slice_record.locations[0].file == "src/main.rs"
 
     edge_result = _extract("rusi-rustsec-app.json")

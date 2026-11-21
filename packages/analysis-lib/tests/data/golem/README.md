@@ -6,11 +6,13 @@ paths and no repeated bulk. The tests in `test_evidence_golem.py` read them.
 
 ## How they were made
 
-golem 4.3.1, printed by the binary itself (`golem --version`) from the npm
-package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1 (file
-`plugins/golem/golem-darwin-arm64` inside that package). The binaries in the
-`cdxgen-plugins-bin` checkout and on PATH are other versions and were not
-used. The repos are the ones the repository carries at
+golem 4.3.1, printed by the binary itself (`golem --version`), from the
+plugins directory `harness/tools-latest.sh` installs and prints:
+`~/.local/share/depscan-tools/cdxgen/node_modules/@cdxgen/
+cdxgen-plugins-bin-darwin-arm64/plugins/golem/golem-darwin-arm64`, the npm
+package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1. No other copy was
+used: golem, rusi and kosi live only in that plugins directory. The repos
+are the ones the repository carries at
 `test/data/golem/repos`, copied into a temporary recording directory so the
 recording root was never the checkout; `reachable-app` and `unreachable-app`
 were copied beside `vuln-lib`, which their `go.mod` replace directives point
