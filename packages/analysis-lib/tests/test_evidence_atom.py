@@ -36,6 +36,9 @@ DATA_DIR = Path(__file__).parent / "data" / "atom"
 PINNED_REACHABLES = DATA_DIR / "java-reachables.slices.json"
 PINNED_USAGES = DATA_DIR / "java-usages.slices.json"
 PINNED_CALLSITES = DATA_DIR / "java-callsites.slices.json"
+LATEST_REACHABLES = DATA_DIR / "python-reachables.slices.json"
+LATEST_USAGES = DATA_DIR / "python-usages.slices.json"
+LATEST_CALLSITES = DATA_DIR / "python-callsites.slices.json"
 
 
 def _flows(path):
@@ -172,6 +175,57 @@ def test_reached_purls_equal_the_engine_walk_pinned_slice():
     result = extract([str(PINNED_REACHABLES)])
     assert _reached_purls(result.records) == _walk_purls(_unique_flows([PINNED_REACHABLES]))
     assert _reached_purls(result.records)
+
+
+def test_reached_purls_equal_the_engine_walk_current_release():
+    """The same equality on the recording made with cdxgen master and atom
+    4.0.3, the current release output the adapter must read."""
+    result = extract([str(LATEST_REACHABLES)])
+    assert result.status == adapters.STATUS_COMPLETED
+    assert _reached_purls(result.records) == _walk_purls(_unique_flows([LATEST_REACHABLES]))
+    assert len(_reached_purls(result.records)) == 6
+
+
+def test_current_release_records_cover_every_role():
+    """One record per flow, per purl-attributed callsite and per usage entry
+    of the current-release recording, every record valid."""
+    result = extract(
+        [str(LATEST_REACHABLES)],
+        usages_files=[str(LATEST_USAGES)],
+        callsites_files=[str(LATEST_CALLSITES)],
+    )
+    assert result.status == adapters.STATUS_COMPLETED
+    flows = _flows(LATEST_REACHABLES)
+    with open(LATEST_CALLSITES, encoding="utf-8") as fp:
+        callsites = json.load(fp)["callsites"]
+    with open(LATEST_USAGES, encoding="utf-8") as fp:
+        object_slices = json.load(fp)["objectSlices"]
+    by_kind = Counter(record.kind for record in result.records)
+    assert by_kind["reached-flow"] == len(flows)
+    assert by_kind["callsite"] == len(callsites)
+    assert by_kind["usage"] == len(object_slices)
+    for record in result.records:
+        validate("depscan-evidence", record.to_dict())
+    callsite_records = [record for record in result.records if record.kind == "callsite"]
+    with_purl = [record for record in callsite_records if record.subject.purls]
+    assert len(with_purl) == sum(1 for entry in callsites if entry.get("purl"))
+    flow_purls = {purl for flow in flows for purl in flow.get("purls") or []}
+    callsite_purls = {purl for record in with_purl for purl in record.subject.purls}
+    assert callsite_purls <= flow_purls | {
+        str(entry.get("purl")) for entry in callsites if entry.get("purl")
+    }
+
+
+def test_current_release_producer_names_the_recorded_versions():
+    """The records name the producing slice file as their source and carry the
+    shape-implied report schema version; the versions recorded in the fixture
+    README are the ones the tools printed."""
+    result = extract([str(LATEST_REACHABLES)], producer_version="4.0.3")
+    for record in result.records:
+        assert record.producer.name == "atom"
+        assert record.producer.version == "4.0.3"
+        assert record.producer.report_schema_version == "4"
+        assert record.source == "python-reachables.slices.json"
 
 
 def test_reached_purl_counts_match_the_unique_flows():

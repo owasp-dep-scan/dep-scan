@@ -10,7 +10,7 @@
   "goarch": "arm64",
   "goVersion": "go1.27.4",
   "languageVersion": "go1.27",
-  "workingDir": "/src/golem/reachable-app",
+  "workingDir": "/src/repos/reachable-app",
   "patterns": [
    "./..."
   ],
@@ -19,7 +19,7 @@
   "targetGoarch": "arm64"
  },
  "options": {
-  "directory": "/src/golem/reachable-app",
+  "directory": "/src/repos/reachable-app",
   "noRecurse": false,
   "includeAllFlows": true,
   "patterns": [
@@ -48,8 +48,8 @@
  "rootModules": [
   {
    "path": "github.com/example/reachable-app",
-   "dir": "/src/golem/reachable-app",
-   "goMod": "/src/golem/reachable-app/go.mod",
+   "dir": "/src/repos/reachable-app",
+   "goMod": "/src/repos/reachable-app/go.mod",
    "goVersion": "1.21",
    "main": true,
    "purl": "pkg:golang/github.com/example/reachable-app"
@@ -58,8 +58,8 @@
  "modules": [
   {
    "path": "github.com/example/reachable-app",
-   "dir": "/src/golem/reachable-app",
-   "goMod": "/src/golem/reachable-app/go.mod",
+   "dir": "/src/repos/reachable-app",
+   "goMod": "/src/repos/reachable-app/go.mod",
    "goVersion": "1.21",
    "main": true,
    "purl": "pkg:golang/github.com/example/reachable-app"
@@ -67,14 +67,14 @@
   {
    "path": "github.com/example/vuln-lib",
    "version": "v0.0.0",
-   "dir": "/src/golem/vuln-lib",
-   "goMod": "/src/golem/vuln-lib/go.mod",
+   "dir": "/src/repos/vuln-lib",
+   "goMod": "/src/repos/vuln-lib/go.mod",
    "goVersion": "1.21",
    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
    "replace": {
     "path": "../vuln-lib",
-    "dir": "/src/golem/vuln-lib",
-    "goMod": "/src/golem/vuln-lib/go.mod",
+    "dir": "/src/repos/vuln-lib",
+    "goMod": "/src/repos/vuln-lib/go.mod",
     "goVersion": "1.21"
    }
   }
@@ -86,8 +86,8 @@
    "packagePath": "github.com/example/reachable-app",
    "module": {
     "path": "github.com/example/reachable-app",
-    "dir": "/src/golem/reachable-app",
-    "goMod": "/src/golem/reachable-app/go.mod",
+    "dir": "/src/repos/reachable-app",
+    "goMod": "/src/repos/reachable-app/go.mod",
     "goVersion": "1.21",
     "main": true,
     "purl": "pkg:golang/github.com/example/reachable-app"
@@ -95,10 +95,10 @@
    "standard": false,
    "local": true,
    "goFiles": [
-    "/src/golem/reachable-app/main.go"
+    "/src/repos/reachable-app/main.go"
    ],
    "compiledGoFiles": [
-    "/src/golem/reachable-app/main.go"
+    "/src/repos/reachable-app/main.go"
    ],
    "imports": [
     {
@@ -112,13 +112,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 187,
        "line": 7,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 192,
        "line": 7,
        "column": 7
@@ -137,13 +137,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 194,
        "line": 8,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 204,
        "line": 8,
        "column": 12
@@ -160,14 +160,14 @@
      "module": {
       "path": "github.com/example/vuln-lib",
       "version": "v0.0.0",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21",
       "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
       "replace": {
        "path": "../vuln-lib",
-       "dir": "/src/golem/vuln-lib",
-       "goMod": "/src/golem/vuln-lib/go.mod",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
        "goVersion": "1.21"
       }
      },
@@ -176,13 +176,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 207,
        "line": 10,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 236,
        "line": 10,
        "column": 31
@@ -202,13 +202,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 240,
        "line": 13,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 373,
        "line": 17,
        "column": 2
@@ -225,13 +225,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 375,
        "line": 19,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 612,
        "line": 24,
        "column": 2
@@ -241,7 +241,7 @@
    ],
    "usages": [
     {
-     "id": "github.com/example/reachable-app|github.com/example/vuln-lib.ProcessQuery|/src/golem/reachable-app/main.go|22|12|22|32",
+     "id": "github.com/example/reachable-app|sha256:f753d6abba7fb74c006548d103774095388400599107953a3be4c78cbcf9f970",
      "kind": "selector",
      "name": "ProcessQuery",
      "qualifiedName": "github.com/example/vuln-lib.ProcessQuery",
@@ -251,14 +251,14 @@
      "module": {
       "path": "github.com/example/vuln-lib",
       "version": "v0.0.0",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21",
       "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
       "replace": {
        "path": "../vuln-lib",
-       "dir": "/src/golem/vuln-lib",
-       "goMod": "/src/golem/vuln-lib/go.mod",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
        "goVersion": "1.21"
       }
      },
@@ -273,13 +273,13 @@
      "argumentCount": 1,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 546,
        "line": 22,
        "column": 12
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 566,
        "line": 22,
        "column": 32
@@ -298,7 +298,7 @@
    ],
    "securitySignals": [
     {
-     "id": "github.com/example/reachable-app|http-server|net/http.ListenAndServe|/src/golem/reachable-app/main.go|16|6",
+     "id": "github.com/example/reachable-app|sha256:7e501651ae9ea55fa4db6d04343efb967fb3a3f7944ab8f9d817a64ae5c63178",
      "category": "http-server",
      "severity": "medium",
      "confidence": "type-resolved",
@@ -309,13 +309,13 @@
      "recommendation": "Use TLS or document trusted network boundaries.",
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 338,
        "line": 16,
        "column": 6
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 357,
        "line": 16,
        "column": 25
@@ -327,7 +327,7 @@
  ],
  "files": [
   {
-   "path": "/src/golem/reachable-app/main.go",
+   "path": "/src/repos/reachable-app/main.go",
    "packageName": "main",
    "packagePath": "github.com/example/reachable-app",
    "role": "runtime",
@@ -345,13 +345,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 187,
        "line": 7,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 192,
        "line": 7,
        "column": 7
@@ -370,13 +370,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 194,
        "line": 8,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 204,
        "line": 8,
        "column": 12
@@ -393,14 +393,14 @@
      "module": {
       "path": "github.com/example/vuln-lib",
       "version": "v0.0.0",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21",
       "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
       "replace": {
        "path": "../vuln-lib",
-       "dir": "/src/golem/vuln-lib",
-       "goMod": "/src/golem/vuln-lib/go.mod",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
        "goVersion": "1.21"
       }
      },
@@ -409,13 +409,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 207,
        "line": 10,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 236,
        "line": 10,
        "column": 31
@@ -435,13 +435,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 240,
        "line": 13,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 373,
        "line": 17,
        "column": 2
@@ -458,13 +458,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 375,
        "line": 19,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 612,
        "line": 24,
        "column": 2
@@ -474,7 +474,7 @@
    ],
    "usages": [
     {
-     "id": "github.com/example/reachable-app|github.com/example/vuln-lib.ProcessQuery|/src/golem/reachable-app/main.go|22|12|22|32",
+     "id": "github.com/example/reachable-app|sha256:f753d6abba7fb74c006548d103774095388400599107953a3be4c78cbcf9f970",
      "kind": "selector",
      "name": "ProcessQuery",
      "qualifiedName": "github.com/example/vuln-lib.ProcessQuery",
@@ -484,14 +484,14 @@
      "module": {
       "path": "github.com/example/vuln-lib",
       "version": "v0.0.0",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21",
       "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
       "replace": {
        "path": "../vuln-lib",
-       "dir": "/src/golem/vuln-lib",
-       "goMod": "/src/golem/vuln-lib/go.mod",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
        "goVersion": "1.21"
       }
      },
@@ -506,13 +506,13 @@
      "argumentCount": 1,
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 546,
        "line": 22,
        "column": 12
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 566,
        "line": 22,
        "column": 32
@@ -531,7 +531,7 @@
    ],
    "securitySignals": [
     {
-     "id": "github.com/example/reachable-app|http-server|net/http.ListenAndServe|/src/golem/reachable-app/main.go|16|6",
+     "id": "github.com/example/reachable-app|sha256:7e501651ae9ea55fa4db6d04343efb967fb3a3f7944ab8f9d817a64ae5c63178",
      "category": "http-server",
      "severity": "medium",
      "confidence": "type-resolved",
@@ -542,13 +542,13 @@
      "recommendation": "Use TLS or document trusted network boundaries.",
      "range": {
       "start": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 338,
        "line": 16,
        "column": 6
       },
       "end": {
-       "filename": "/src/golem/reachable-app/main.go",
+       "filename": "/src/repos/reachable-app/main.go",
        "offset": 357,
        "line": 16,
        "column": 25
@@ -570,13 +570,13 @@
    "direct": true,
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 187,
      "line": 7,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 192,
      "line": 7,
      "column": 7
@@ -593,14 +593,14 @@
    "module": {
     "path": "github.com/example/vuln-lib",
     "version": "v0.0.0",
-    "dir": "/src/golem/vuln-lib",
-    "goMod": "/src/golem/vuln-lib/go.mod",
+    "dir": "/src/repos/vuln-lib",
+    "goMod": "/src/repos/vuln-lib/go.mod",
     "goVersion": "1.21",
     "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
     "replace": {
      "path": "../vuln-lib",
-     "dir": "/src/golem/vuln-lib",
-     "goMod": "/src/golem/vuln-lib/go.mod",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
      "goVersion": "1.21"
     }
    },
@@ -609,13 +609,13 @@
    "direct": true,
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 207,
      "line": 10,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 236,
      "line": 10,
      "column": 31
@@ -634,13 +634,13 @@
    "direct": true,
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 194,
      "line": 8,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 204,
      "line": 8,
      "column": 12
@@ -660,13 +660,13 @@
    "exported": false,
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 375,
      "line": 19,
      "column": 1
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 612,
      "line": 24,
      "column": 2
@@ -683,13 +683,13 @@
    "exported": false,
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 240,
      "line": 13,
      "column": 1
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 373,
      "line": 17,
      "column": 2
@@ -699,7 +699,7 @@
  ],
  "usages": [
   {
-   "id": "github.com/example/reachable-app|github.com/example/vuln-lib.ProcessQuery|/src/golem/reachable-app/main.go|22|12|22|32",
+   "id": "github.com/example/reachable-app|sha256:f753d6abba7fb74c006548d103774095388400599107953a3be4c78cbcf9f970",
    "kind": "selector",
    "name": "ProcessQuery",
    "qualifiedName": "github.com/example/vuln-lib.ProcessQuery",
@@ -709,14 +709,14 @@
    "module": {
     "path": "github.com/example/vuln-lib",
     "version": "v0.0.0",
-    "dir": "/src/golem/vuln-lib",
-    "goMod": "/src/golem/vuln-lib/go.mod",
+    "dir": "/src/repos/vuln-lib",
+    "goMod": "/src/repos/vuln-lib/go.mod",
     "goVersion": "1.21",
     "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
     "replace": {
      "path": "../vuln-lib",
-     "dir": "/src/golem/vuln-lib",
-     "goMod": "/src/golem/vuln-lib/go.mod",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
      "goVersion": "1.21"
     }
    },
@@ -731,13 +731,13 @@
    "argumentCount": 1,
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 546,
      "line": 22,
      "column": 12
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 566,
      "line": 22,
      "column": 32
@@ -756,7 +756,7 @@
  ],
  "apiEndpoints": [
   {
-   "id": "github.com/example/reachable-app|endpoint|http-listener||:8080|nil|/src/golem/reachable-app/main.go|16|6",
+   "id": "github.com/example/reachable-app|endpoint|http-listener||:8080|nil|/src/repos/reachable-app/main.go|16|6",
    "kind": "http-listener",
    "framework": "net/http",
    "path": ":8080",
@@ -767,13 +767,13 @@
    "usageScope": "runtime",
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 338,
      "line": 16,
      "column": 6
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 371,
      "line": 16,
      "column": 39
@@ -784,7 +784,7 @@
    }
   },
   {
-   "id": "github.com/example/reachable-app|endpoint|http-route||/process|handleProcess|/src/golem/reachable-app/main.go|14|2",
+   "id": "github.com/example/reachable-app|sha256:9ac9284702ced651329f0ffad09f5251cc2da4a2cc0fd68f58d52c8242ef1d59",
    "kind": "http-route",
    "framework": "net/http",
    "path": "/process",
@@ -793,13 +793,13 @@
    "usageScope": "runtime",
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 255,
      "line": 14,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 297,
      "line": 14,
      "column": 44
@@ -824,7 +824,7 @@
    "packagePath": "github.com/example/reachable-app",
    "endpoints": [
     {
-     "endpointId": "github.com/example/reachable-app|endpoint|http-listener||:8080|nil|/src/golem/reachable-app/main.go|16|6",
+     "endpointId": "github.com/example/reachable-app|endpoint|http-listener||:8080|nil|/src/repos/reachable-app/main.go|16|6",
      "path": ":8080",
      "properties": {
       "framework": "net/http",
@@ -843,7 +843,7 @@
    "packagePath": "github.com/example/reachable-app",
    "endpoints": [
     {
-     "endpointId": "github.com/example/reachable-app|endpoint|http-route||/process|handleProcess|/src/golem/reachable-app/main.go|14|2",
+     "endpointId": "github.com/example/reachable-app|sha256:9ac9284702ced651329f0ffad09f5251cc2da4a2cc0fd68f58d52c8242ef1d59",
      "path": "/process",
      "properties": {
       "framework": "net/http",
@@ -858,7 +858,7 @@
  ],
  "securitySignals": [
   {
-   "id": "github.com/example/reachable-app|http-server|net/http.ListenAndServe|/src/golem/reachable-app/main.go|16|6",
+   "id": "github.com/example/reachable-app|sha256:7e501651ae9ea55fa4db6d04343efb967fb3a3f7944ab8f9d817a64ae5c63178",
    "category": "http-server",
    "severity": "medium",
    "confidence": "type-resolved",
@@ -869,13 +869,13 @@
    "recommendation": "Use TLS or document trusted network boundaries.",
    "range": {
     "start": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 338,
      "line": 16,
      "column": 6
     },
     "end": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 357,
      "line": 16,
      "column": 25
@@ -888,85 +888,7 @@
   "mode": "all",
   "nodes": [
    {
-    "id": "seam-node|call|github.com/example/reachable-app.handleProcess|(*net/url.URL).Query|Query||/src/golem/reachable-app/main.go:21:22",
-    "kind": "call",
-    "name": "Query",
-    "symbol": "(*net/url.URL).Query",
-    "type": "net/url.Values",
-    "packagePath": "github.com/example/reachable-app",
-    "module": {
-     "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
-     "goVersion": "1.21",
-     "main": true,
-     "purl": "pkg:golang/github.com/example/reachable-app"
-    },
-    "purl": "pkg:golang/github.com/example/reachable-app",
-    "functionId": "github.com/example/reachable-app.handleProcess",
-    "function": "github.com/example/reachable-app.handleProcess",
-    "position": {
-     "filename": "/src/golem/reachable-app/main.go",
-     "offset": 520,
-     "line": 21,
-     "column": 22
-    },
-    "confidence": "medium"
-   },
-   {
-    "id": "seam-node|call|github.com/example/reachable-app.handleProcess|(net/url.Values).Get|Get||/src/golem/reachable-app/main.go:21:28",
-    "kind": "call",
-    "name": "Get",
-    "symbol": "(net/url.Values).Get",
-    "type": "string",
-    "packagePath": "github.com/example/reachable-app",
-    "module": {
-     "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
-     "goVersion": "1.21",
-     "main": true,
-     "purl": "pkg:golang/github.com/example/reachable-app"
-    },
-    "purl": "pkg:golang/github.com/example/reachable-app",
-    "functionId": "github.com/example/reachable-app.handleProcess",
-    "function": "github.com/example/reachable-app.handleProcess",
-    "position": {
-     "filename": "/src/golem/reachable-app/main.go",
-     "offset": 526,
-     "line": 21,
-     "column": 28
-    },
-    "confidence": "medium"
-   },
-   {
-    "id": "seam-node|sha256:c2e1ec6eabc368b5e373bb2d3125add28ba95299b353215a4cedb989852d3391",
-    "kind": "call",
-    "name": "ProcessQuery",
-    "symbol": "github.com/example/vuln-lib.ProcessQuery",
-    "type": "string",
-    "packagePath": "github.com/example/reachable-app",
-    "module": {
-     "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
-     "goVersion": "1.21",
-     "main": true,
-     "purl": "pkg:golang/github.com/example/reachable-app"
-    },
-    "purl": "pkg:golang/github.com/example/reachable-app",
-    "functionId": "github.com/example/reachable-app.handleProcess",
-    "function": "github.com/example/reachable-app.handleProcess",
-    "position": {
-     "filename": "/src/golem/reachable-app/main.go",
-     "offset": 566,
-     "line": 22,
-     "column": 32
-    },
-    "confidence": "medium"
-   },
-   {
-    "id": "seam-node|sink|github.com/example/reachable-app.handleProcess|fmt.Fprintf|Fprintf||/src/golem/reachable-app/main.go:23:20|formatted-output",
+    "id": "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2",
     "kind": "sink",
     "name": "Fprintf",
     "symbol": "fmt.Fprintf",
@@ -974,8 +896,8 @@
     "packagePath": "github.com/example/reachable-app",
     "module": {
      "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/reachable-app"
@@ -984,7 +906,7 @@
     "functionId": "github.com/example/reachable-app.handleProcess",
     "function": "github.com/example/reachable-app.handleProcess",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 593,
      "line": 23,
      "column": 20
@@ -1000,16 +922,16 @@
     }
    },
    {
-    "id": "seam-node|store|github.com/example/reachable-app.handleProcess|&t6[0:int]|t7|[*]|/src/golem/reachable-app/main.go:23:30",
-    "kind": "store",
-    "name": "t7",
-    "symbol": "&t6[0:int]",
-    "type": "any",
+    "id": "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+    "kind": "call",
+    "name": "ProcessQuery",
+    "symbol": "github.com/example/vuln-lib.ProcessQuery",
+    "type": "string",
     "packagePath": "github.com/example/reachable-app",
     "module": {
      "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/reachable-app"
@@ -1018,7 +940,33 @@
     "functionId": "github.com/example/reachable-app.handleProcess",
     "function": "github.com/example/reachable-app.handleProcess",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 566,
+     "line": 22,
+     "column": 32
+    },
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+    "kind": "store",
+    "name": "t7",
+    "symbol": "&t6[0:int]",
+    "type": "any",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 603,
      "line": 23,
      "column": 30
@@ -1027,15 +975,16 @@
     "confidence": "medium"
    },
    {
-    "id": "seam-source|github.com/example/reachable-app.handleProcess|go.http-url-query.source|/src/golem/reachable-app/main.go:21:22",
-    "kind": "source",
-    "name": "Query",
-    "symbol": "net/url.(*URL).Query",
+    "id": "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+    "kind": "call",
+    "name": "Get",
+    "symbol": "(net/url.Values).Get",
+    "type": "string",
     "packagePath": "github.com/example/reachable-app",
     "module": {
      "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/reachable-app"
@@ -1044,7 +993,58 @@
     "functionId": "github.com/example/reachable-app.handleProcess",
     "function": "github.com/example/reachable-app.handleProcess",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 526,
+     "line": 21,
+     "column": 28
+    },
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+    "kind": "call",
+    "name": "Query",
+    "symbol": "(*net/url.URL).Query",
+    "type": "net/url.Values",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 520,
+     "line": 21,
+     "column": 22
+    },
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+    "kind": "source",
+    "name": "Query",
+    "symbol": "net/url.(*URL).Query",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 520,
      "line": 21,
      "column": 22
@@ -1059,86 +1059,86 @@
   ],
   "edges": [
    {
-    "id": "seam-edge|sha256:085931b719e69cb69255203edb26ecc5b3ab5f65ea1af34a45bb8e46a62e859a",
-    "sourceId": "seam-node|call|github.com/example/reachable-app.handleProcess|(*net/url.URL).Query|Query||/src/golem/reachable-app/main.go:21:22",
-    "targetId": "seam-node|call|github.com/example/reachable-app.handleProcess|(net/url.Values).Get|Get||/src/golem/reachable-app/main.go:21:28",
-    "kind": "call-return",
-    "position": {
-     "filename": "/src/golem/reachable-app/main.go",
-     "offset": 526,
-     "line": 21,
-     "column": 28
-    }
-   },
-   {
-    "id": "seam-edge|sha256:5e52a4aaa77bfd62f4d7a2225c728ce8e14bcd4c9ce8085ec26df0064567d214",
-    "sourceId": "seam-node|sha256:c2e1ec6eabc368b5e373bb2d3125add28ba95299b353215a4cedb989852d3391",
-    "targetId": "seam-node|store|github.com/example/reachable-app.handleProcess|&t6[0:int]|t7|[*]|/src/golem/reachable-app/main.go:23:30",
+    "id": "seam-edge|seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|store",
+    "sourceId": "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+    "targetId": "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
     "kind": "store",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 603,
      "line": 23,
      "column": 30
     }
    },
    {
-    "id": "seam-edge|sha256:81b2dadcc77a6e01367592c1aef10b418a8b1da638b5da30148b10aae257cdeb",
-    "sourceId": "seam-node|call|github.com/example/reachable-app.handleProcess|(net/url.Values).Get|Get||/src/golem/reachable-app/main.go:21:28",
-    "targetId": "seam-node|sha256:c2e1ec6eabc368b5e373bb2d3125add28ba95299b353215a4cedb989852d3391",
-    "kind": "call-return",
+    "id": "seam-edge|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2|sink",
+    "sourceId": "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+    "targetId": "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2",
+    "kind": "sink",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
-     "offset": 566,
-     "line": 22,
-     "column": 32
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 593,
+     "line": 23,
+     "column": 20
     }
    },
    {
-    "id": "seam-edge|sha256:d7036dc26e3bc844812e648cf076167db2c17998184b2fa4f01711f8c688a899",
-    "sourceId": "seam-source|github.com/example/reachable-app.handleProcess|go.http-url-query.source|/src/golem/reachable-app/main.go:21:22",
-    "targetId": "seam-node|call|github.com/example/reachable-app.handleProcess|(*net/url.URL).Query|Query||/src/golem/reachable-app/main.go:21:22",
+    "id": "seam-edge|sha256:50dad8d8b900831fe88a11c21f600400cc1a2239dbbaae5c3f5fa376d9c68681",
+    "sourceId": "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+    "targetId": "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
     "kind": "call-return",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 520,
      "line": 21,
      "column": 22
     }
    },
    {
-    "id": "seam-edge|sha256:d711225a01e13b8547fef73c217a1b97cea4ae39d76fd1d6dc2027bf300b2c8b",
-    "sourceId": "seam-node|store|github.com/example/reachable-app.handleProcess|&t6[0:int]|t7|[*]|/src/golem/reachable-app/main.go:23:30",
-    "targetId": "seam-node|sink|github.com/example/reachable-app.handleProcess|fmt.Fprintf|Fprintf||/src/golem/reachable-app/main.go:23:20|formatted-output",
-    "kind": "sink",
+    "id": "seam-edge|sha256:a9bed72db303e55d5fcf1e6a1abd029ba378e340dd39ef4a8aa92f6c0e32555f",
+    "sourceId": "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+    "targetId": "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+    "kind": "call-return",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
-     "offset": 593,
-     "line": 23,
-     "column": 20
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 526,
+     "line": 21,
+     "column": 28
+    }
+   },
+   {
+    "id": "seam-edge|sha256:f65f050426751fd6c13c291f610ab8f05189bdd27cc74e1d3660d3b1b63bbba7",
+    "sourceId": "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+    "targetId": "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+    "kind": "call-return",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 566,
+     "line": 22,
+     "column": 32
     }
    }
   ],
   "slices": [
    {
-    "id": "seam-slice|sha256:fb13493c27604f3dc8b6e584d383474b5950e7f8bab14b16feef1e82565f3c82",
-    "sourceId": "seam-source|github.com/example/reachable-app.handleProcess|go.http-url-query.source|/src/golem/reachable-app/main.go:21:22",
-    "sinkId": "seam-node|sink|github.com/example/reachable-app.handleProcess|fmt.Fprintf|Fprintf||/src/golem/reachable-app/main.go:23:20|formatted-output",
+    "id": "seam-slice|sha256:73ca70271dc2386a60faf3f50b548f5e57443000889c384a3c8be492a0161f4b",
+    "sourceId": "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+    "sinkId": "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2",
     "flowKey": "df-flow|http-input|formatted-output|github.com/example/reachable-app.handleProcess|github.com/example/reachable-app.handleProcess|fmt.Fprintf|2|user-input|[*]",
     "nodeIds": [
-     "seam-source|github.com/example/reachable-app.handleProcess|go.http-url-query.source|/src/golem/reachable-app/main.go:21:22",
-     "seam-node|call|github.com/example/reachable-app.handleProcess|(*net/url.URL).Query|Query||/src/golem/reachable-app/main.go:21:22",
-     "seam-node|call|github.com/example/reachable-app.handleProcess|(net/url.Values).Get|Get||/src/golem/reachable-app/main.go:21:28",
-     "seam-node|sha256:c2e1ec6eabc368b5e373bb2d3125add28ba95299b353215a4cedb989852d3391",
-     "seam-node|store|github.com/example/reachable-app.handleProcess|&t6[0:int]|t7|[*]|/src/golem/reachable-app/main.go:23:30",
-     "seam-node|sink|github.com/example/reachable-app.handleProcess|fmt.Fprintf|Fprintf||/src/golem/reachable-app/main.go:23:20|formatted-output"
+     "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+     "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+     "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+     "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+     "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+     "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2"
     ],
     "edgeIds": [
-     "seam-edge|sha256:d7036dc26e3bc844812e648cf076167db2c17998184b2fa4f01711f8c688a899",
-     "seam-edge|sha256:085931b719e69cb69255203edb26ecc5b3ab5f65ea1af34a45bb8e46a62e859a",
-     "seam-edge|sha256:81b2dadcc77a6e01367592c1aef10b418a8b1da638b5da30148b10aae257cdeb",
-     "seam-edge|sha256:5e52a4aaa77bfd62f4d7a2225c728ce8e14bcd4c9ce8085ec26df0064567d214",
-     "seam-edge|sha256:d711225a01e13b8547fef73c217a1b97cea4ae39d76fd1d6dc2027bf300b2c8b"
+     "seam-edge|sha256:50dad8d8b900831fe88a11c21f600400cc1a2239dbbaae5c3f5fa376d9c68681",
+     "seam-edge|sha256:a9bed72db303e55d5fcf1e6a1abd029ba378e340dd39ef4a8aa92f6c0e32555f",
+     "seam-edge|sha256:f65f050426751fd6c13c291f610ab8f05189bdd27cc74e1d3660d3b1b63bbba7",
+     "seam-edge|seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|store",
+     "seam-edge|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2|sink"
     ],
     "edgeKinds": [
      "call-return",
@@ -1192,7 +1192,7 @@
    "summaryCount": 0,
    "functionCount": 242,
    "instructionCount": 0,
-   "elapsedMillis": 283,
+   "elapsedMillis": 289,
    "uniqueFlowCount": 1,
    "maxPathLength": 5,
    "averagePathLength": 5
@@ -1310,8 +1310,8 @@
     "packageName": "main",
     "module": {
      "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/reachable-app"
@@ -1323,7 +1323,7 @@
     "visibility": "local",
     "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 380,
      "line": 19,
      "column": 6
@@ -1338,8 +1338,8 @@
     "packageName": "main",
     "module": {
      "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/reachable-app"
@@ -1363,8 +1363,8 @@
     "packageName": "main",
     "module": {
      "path": "github.com/example/reachable-app",
-     "dir": "/src/golem/reachable-app",
-     "goMod": "/src/golem/reachable-app/go.mod",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/reachable-app"
@@ -1376,7 +1376,7 @@
     "visibility": "local",
     "signature": "func()",
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 245,
      "line": 13,
      "column": 6
@@ -1392,14 +1392,14 @@
     "module": {
      "path": "github.com/example/vuln-lib",
      "version": "v0.0.0",
-     "dir": "/src/golem/vuln-lib",
-     "goMod": "/src/golem/vuln-lib/go.mod",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
      "goVersion": "1.21",
      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
      "replace": {
       "path": "../vuln-lib",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21"
      }
     },
@@ -1410,7 +1410,7 @@
     "visibility": "dependency",
     "signature": "func(input string) string",
     "position": {
-     "filename": "/src/golem/vuln-lib/vuln.go",
+     "filename": "/src/repos/vuln-lib/vuln.go",
      "offset": 392,
      "line": 11,
      "column": 6
@@ -1426,14 +1426,14 @@
     "module": {
      "path": "github.com/example/vuln-lib",
      "version": "v0.0.0",
-     "dir": "/src/golem/vuln-lib",
-     "goMod": "/src/golem/vuln-lib/go.mod",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
      "goVersion": "1.21",
      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
      "replace": {
       "path": "../vuln-lib",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21"
      }
     },
@@ -1444,7 +1444,7 @@
     "visibility": "dependency",
     "signature": "func() string",
     "position": {
-     "filename": "/src/golem/vuln-lib/vuln.go",
+     "filename": "/src/repos/vuln-lib/vuln.go",
      "offset": 614,
      "line": 17,
      "column": 6
@@ -1460,14 +1460,14 @@
     "module": {
      "path": "github.com/example/vuln-lib",
      "version": "v0.0.0",
-     "dir": "/src/golem/vuln-lib",
-     "goMod": "/src/golem/vuln-lib/go.mod",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
      "goVersion": "1.21",
      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
      "replace": {
       "path": "../vuln-lib",
-      "dir": "/src/golem/vuln-lib",
-      "goMod": "/src/golem/vuln-lib/go.mod",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
       "goVersion": "1.21"
      }
     },
@@ -1484,7 +1484,7 @@
   ],
   "edges": [
    {
-    "id": "github.com/example/reachable-app.handleProcess|github.com/example/vuln-lib.ProcessQuery|/src/golem/reachable-app/main.go|22|32|static",
+    "id": "github.com/example/reachable-app.handleProcess|sha256:9fa23d51d7d0fda43faccacb050453152f48385c8d53d1fdfd293f417f1f99ab",
     "sourceId": "github.com/example/reachable-app.handleProcess",
     "targetId": "github.com/example/vuln-lib.ProcessQuery",
     "sourceName": "github.com/example/reachable-app.handleProcess",
@@ -1498,7 +1498,7 @@
     "callType": "static",
     "static": true,
     "position": {
-     "filename": "/src/golem/reachable-app/main.go",
+     "filename": "/src/repos/reachable-app/main.go",
      "offset": 566,
      "line": 22,
      "column": 32

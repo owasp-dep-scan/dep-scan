@@ -10,7 +10,7 @@
   "goarch": "arm64",
   "goVersion": "go1.27.4",
   "languageVersion": "go1.27",
-  "workingDir": "/src/golem/unreachable-app",
+  "workingDir": "/src/repos/unreachable-app",
   "patterns": [
    "./..."
   ],
@@ -19,7 +19,7 @@
   "targetGoarch": "arm64"
  },
  "options": {
-  "directory": "/src/golem/unreachable-app",
+  "directory": "/src/repos/unreachable-app",
   "noRecurse": false,
   "includeAllFlows": true,
   "patterns": [
@@ -48,8 +48,8 @@
  "rootModules": [
   {
    "path": "github.com/example/unreachable-app",
-   "dir": "/src/golem/unreachable-app",
-   "goMod": "/src/golem/unreachable-app/go.mod",
+   "dir": "/src/repos/unreachable-app",
+   "goMod": "/src/repos/unreachable-app/go.mod",
    "goVersion": "1.21",
    "main": true,
    "purl": "pkg:golang/github.com/example/unreachable-app"
@@ -58,8 +58,8 @@
  "modules": [
   {
    "path": "github.com/example/unreachable-app",
-   "dir": "/src/golem/unreachable-app",
-   "goMod": "/src/golem/unreachable-app/go.mod",
+   "dir": "/src/repos/unreachable-app",
+   "goMod": "/src/repos/unreachable-app/go.mod",
    "goVersion": "1.21",
    "main": true,
    "purl": "pkg:golang/github.com/example/unreachable-app"
@@ -72,8 +72,8 @@
    "packagePath": "github.com/example/unreachable-app",
    "module": {
     "path": "github.com/example/unreachable-app",
-    "dir": "/src/golem/unreachable-app",
-    "goMod": "/src/golem/unreachable-app/go.mod",
+    "dir": "/src/repos/unreachable-app",
+    "goMod": "/src/repos/unreachable-app/go.mod",
     "goVersion": "1.21",
     "main": true,
     "purl": "pkg:golang/github.com/example/unreachable-app"
@@ -81,10 +81,10 @@
    "standard": false,
    "local": true,
    "goFiles": [
-    "/src/golem/unreachable-app/main.go"
+    "/src/repos/unreachable-app/main.go"
    ],
    "compiledGoFiles": [
-    "/src/golem/unreachable-app/main.go"
+    "/src/repos/unreachable-app/main.go"
    ],
    "imports": [
     {
@@ -98,13 +98,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 161,
        "line": 6,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 166,
        "line": 6,
        "column": 7
@@ -123,13 +123,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 168,
        "line": 7,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 178,
        "line": 7,
        "column": 12
@@ -149,13 +149,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 182,
        "line": 10,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 313,
        "line": 14,
        "column": 2
@@ -172,13 +172,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 315,
        "line": 16,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 405,
        "line": 18,
        "column": 2
@@ -188,7 +188,7 @@
    ],
    "securitySignals": [
     {
-     "id": "github.com/example/unreachable-app|http-server|net/http.ListenAndServe|/src/golem/unreachable-app/main.go|13|6",
+     "id": "github.com/example/unreachable-app|sha256:8166fae94a414ce0d58bcffdaae5fa41ffc7e42d571a7f6afe331ed42ce17ea5",
      "category": "http-server",
      "severity": "medium",
      "confidence": "type-resolved",
@@ -199,13 +199,13 @@
      "recommendation": "Use TLS or document trusted network boundaries.",
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 278,
        "line": 13,
        "column": 6
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 297,
        "line": 13,
        "column": 25
@@ -217,7 +217,7 @@
  ],
  "files": [
   {
-   "path": "/src/golem/unreachable-app/main.go",
+   "path": "/src/repos/unreachable-app/main.go",
    "packageName": "main",
    "packagePath": "github.com/example/unreachable-app",
    "role": "runtime",
@@ -235,13 +235,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 161,
        "line": 6,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 166,
        "line": 6,
        "column": 7
@@ -260,13 +260,13 @@
      "direct": true,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 168,
        "line": 7,
        "column": 2
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 178,
        "line": 7,
        "column": 12
@@ -286,13 +286,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 182,
        "line": 10,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 313,
        "line": 14,
        "column": 2
@@ -309,13 +309,13 @@
      "exported": false,
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 315,
        "line": 16,
        "column": 1
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 405,
        "line": 18,
        "column": 2
@@ -325,7 +325,7 @@
    ],
    "securitySignals": [
     {
-     "id": "github.com/example/unreachable-app|http-server|net/http.ListenAndServe|/src/golem/unreachable-app/main.go|13|6",
+     "id": "github.com/example/unreachable-app|sha256:8166fae94a414ce0d58bcffdaae5fa41ffc7e42d571a7f6afe331ed42ce17ea5",
      "category": "http-server",
      "severity": "medium",
      "confidence": "type-resolved",
@@ -336,13 +336,13 @@
      "recommendation": "Use TLS or document trusted network boundaries.",
      "range": {
       "start": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 278,
        "line": 13,
        "column": 6
       },
       "end": {
-       "filename": "/src/golem/unreachable-app/main.go",
+       "filename": "/src/repos/unreachable-app/main.go",
        "offset": 297,
        "line": 13,
        "column": 25
@@ -364,13 +364,13 @@
    "direct": true,
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 161,
      "line": 6,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 166,
      "line": 6,
      "column": 7
@@ -389,13 +389,13 @@
    "direct": true,
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 168,
      "line": 7,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 178,
      "line": 7,
      "column": 12
@@ -415,13 +415,13 @@
    "exported": false,
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 315,
      "line": 16,
      "column": 1
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 405,
      "line": 18,
      "column": 2
@@ -438,13 +438,13 @@
    "exported": false,
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 182,
      "line": 10,
      "column": 1
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 313,
      "line": 14,
      "column": 2
@@ -454,7 +454,7 @@
  ],
  "apiEndpoints": [
   {
-   "id": "github.com/example/unreachable-app|endpoint|http-listener||:8080|nil|/src/golem/unreachable-app/main.go|13|6",
+   "id": "github.com/example/unreachable-app|sha256:6471dace0c4d55896133d5a5aa174c858075c09f1aa662a42a5e2b7eb8bf7d2b",
    "kind": "http-listener",
    "framework": "net/http",
    "path": ":8080",
@@ -465,13 +465,13 @@
    "usageScope": "runtime",
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 278,
      "line": 13,
      "column": 6
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 311,
      "line": 13,
      "column": 39
@@ -482,7 +482,7 @@
    }
   },
   {
-   "id": "github.com/example/unreachable-app|endpoint|http-route||/health|handleHealth|/src/golem/unreachable-app/main.go|11|2",
+   "id": "github.com/example/unreachable-app|sha256:eeb5814d3cbdcfc69f480bc7638a5fae7c431661b17466f10f477f3d21d50cbe",
    "kind": "http-route",
    "framework": "net/http",
    "path": "/health",
@@ -491,13 +491,13 @@
    "usageScope": "runtime",
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 197,
      "line": 11,
      "column": 2
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 237,
      "line": 11,
      "column": 42
@@ -515,7 +515,7 @@
    "packagePath": "github.com/example/unreachable-app",
    "endpoints": [
     {
-     "endpointId": "github.com/example/unreachable-app|endpoint|http-listener||:8080|nil|/src/golem/unreachable-app/main.go|13|6",
+     "endpointId": "github.com/example/unreachable-app|sha256:6471dace0c4d55896133d5a5aa174c858075c09f1aa662a42a5e2b7eb8bf7d2b",
      "path": ":8080",
      "properties": {
       "framework": "net/http",
@@ -534,7 +534,7 @@
    "packagePath": "github.com/example/unreachable-app",
    "endpoints": [
     {
-     "endpointId": "github.com/example/unreachable-app|endpoint|http-route||/health|handleHealth|/src/golem/unreachable-app/main.go|11|2",
+     "endpointId": "github.com/example/unreachable-app|sha256:eeb5814d3cbdcfc69f480bc7638a5fae7c431661b17466f10f477f3d21d50cbe",
      "path": "/health",
      "properties": {
       "framework": "net/http",
@@ -549,7 +549,7 @@
  ],
  "securitySignals": [
   {
-   "id": "github.com/example/unreachable-app|http-server|net/http.ListenAndServe|/src/golem/unreachable-app/main.go|13|6",
+   "id": "github.com/example/unreachable-app|sha256:8166fae94a414ce0d58bcffdaae5fa41ffc7e42d571a7f6afe331ed42ce17ea5",
    "category": "http-server",
    "severity": "medium",
    "confidence": "type-resolved",
@@ -560,13 +560,13 @@
    "recommendation": "Use TLS or document trusted network boundaries.",
    "range": {
     "start": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 278,
      "line": 13,
      "column": 6
     },
     "end": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 297,
      "line": 13,
      "column": 25
@@ -586,7 +586,7 @@
    "summaryCount": 0,
    "functionCount": 235,
    "instructionCount": 0,
-   "elapsedMillis": 290
+   "elapsedMillis": 286
   },
   "sliceReachability": {
    "status": "computed",
@@ -671,8 +671,8 @@
     "packageName": "main",
     "module": {
      "path": "github.com/example/unreachable-app",
-     "dir": "/src/golem/unreachable-app",
-     "goMod": "/src/golem/unreachable-app/go.mod",
+     "dir": "/src/repos/unreachable-app",
+     "goMod": "/src/repos/unreachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/unreachable-app"
@@ -684,7 +684,7 @@
     "visibility": "local",
     "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
     "position": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 320,
      "line": 16,
      "column": 6
@@ -699,8 +699,8 @@
     "packageName": "main",
     "module": {
      "path": "github.com/example/unreachable-app",
-     "dir": "/src/golem/unreachable-app",
-     "goMod": "/src/golem/unreachable-app/go.mod",
+     "dir": "/src/repos/unreachable-app",
+     "goMod": "/src/repos/unreachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/unreachable-app"
@@ -724,8 +724,8 @@
     "packageName": "main",
     "module": {
      "path": "github.com/example/unreachable-app",
-     "dir": "/src/golem/unreachable-app",
-     "goMod": "/src/golem/unreachable-app/go.mod",
+     "dir": "/src/repos/unreachable-app",
+     "goMod": "/src/repos/unreachable-app/go.mod",
      "goVersion": "1.21",
      "main": true,
      "purl": "pkg:golang/github.com/example/unreachable-app"
@@ -737,7 +737,7 @@
     "visibility": "local",
     "signature": "func()",
     "position": {
-     "filename": "/src/golem/unreachable-app/main.go",
+     "filename": "/src/repos/unreachable-app/main.go",
      "offset": 187,
      "line": 10,
      "column": 6

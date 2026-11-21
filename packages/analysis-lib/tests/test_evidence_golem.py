@@ -133,7 +133,9 @@ def test_record_kinds_on_the_recording():
         "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6"
     )
     endpoints = [r for r in result.records if r.kind == "entry-point"]
-    assert sorted(r.locations[0].line for r in endpoints if r.locations) == [14, 16]
+    assert sorted(
+        r.locations[0].line for r in endpoints if r.locations and r.locations[0].line is not None
+    ) == [14, 16]
     usage = next(r for r in result.records if r.kind == "usage")
     assert usage.subject.purls == ["pkg:golang/github.com/example/vuln-lib@v0.0.0"]
     assert usage.locations[0].file == "main.go"
@@ -188,6 +190,7 @@ def test_records_carry_the_reach_fields_as_given():
     assert with_reach
     for record in with_reach:
         attrs = record.attributes
+        assert attrs is not None
         assert attrs["minDepth"] == 1
         assert attrs["rootIds"] == ["github.com/example/reachable-app.handleProcess"]
 
@@ -213,8 +216,12 @@ def test_witness_symbol_is_carried_when_requested():
     )
     witnesses = [r for r in result.records if (r.attributes or {}).get("symbol")]
     assert witnesses
-    assert witnesses[0].attributes["symbol"] == "vulnlib.ProcessQuery"
-    assert len(witnesses[0].path) == 2
+    witness_attrs = witnesses[0].attributes
+    assert witness_attrs is not None
+    assert witness_attrs["symbol"] == "vulnlib.ProcessQuery"
+    witness_path = witnesses[0].path
+    assert witness_path is not None
+    assert len(witness_path) == 2
 
 
 def test_unknown_major_version_is_refused():

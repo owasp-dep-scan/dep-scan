@@ -7,10 +7,13 @@ rewritten to `/src`. The tests in `test_evidence_rusi.py` read them.
 
 ## How they were made
 
-rusi 4.3.1, printed by the binary itself (`rusi --version`) from the npm
-package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1 (file
-`plugins/rusi/rusi-darwin-arm64` inside that package). The rusi 2.5.1 on
-PATH was not used. The repos are the ones the repository carries at
+rusi 4.3.1, printed by the binary itself (`rusi --version`), from the
+plugins directory `harness/tools-latest.sh` installs and prints:
+`~/.local/share/depscan-tools/cdxgen/node_modules/@cdxgen/
+cdxgen-plugins-bin-darwin-arm64/plugins/rusi/rusi-darwin-arm64`, the npm
+package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1. No other copy was
+used: golem, rusi and kosi live only in that plugins directory. The repos
+are the ones the repository carries at
 `test/data/rusi/repos`, copied into a temporary recording directory so the
 recording root was never the checkout:
 

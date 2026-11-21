@@ -126,6 +126,7 @@ def test_resolved_recording_record_kinds():
     for record in slices:
         assert record.confidence == "high"
         assert record.producer.report_schema_version == "kosi/1"
+        assert record.path is not None
         assert len(record.path) >= 7
         assert record.locations[0].file == "src/main/kotlin/demo/App.kt"
     ssrf = next(r for r in slices if (r.attributes or {}).get("servicePurls") == [
@@ -133,12 +134,15 @@ def test_resolved_recording_record_kinds():
         "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0",
     ])
     # the producer states no tier on these slices, so none is invented
+    assert ssrf.attributes is not None
     assert "tier" not in ssrf.attributes
     other = [r for r in slices if r is not ssrf]
     assert len(other) == 1
     # the process-exec slice's only BOM purl is the workspace, attributed
     # through the sink category exactly as the converter's flow carried it
-    assert other[0].attributes["servicePurls"] == ["pkg:generic/kt2@unspecified"]
+    other_attrs = other[0].attributes
+    assert other_attrs is not None
+    assert other_attrs["servicePurls"] == ["pkg:generic/kt2@unspecified"]
     usages = [r for r in result.records if r.kind == "usage"]
     assert len(usages) == 4
     assert all(r.subject.purls == ["pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"] for r in usages)
@@ -205,6 +209,7 @@ def test_call_graph_edge_into_a_dependency_becomes_a_reached_flow():
         for r in result.records
         if r.kind == "reached-flow"
         and r.subject.purls == ["pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"]
+        and r.path is not None
         and len(r.path) == 2
     ]
     assert len(edges) == 1
@@ -410,7 +415,9 @@ def test_collapsed_edge_hops_are_a_caveat_and_an_attribute():
         and (r.attributes or {}).get("collapsed")
     ]
     assert len(edges) == 1
-    assert edges[0].attributes["collapsed"] == {
+    edge_attrs = edges[0].attributes
+    assert edge_attrs is not None
+    assert edge_attrs["collapsed"] == {
         "collapsedHops": 2,
         "collapsedPackages": ["okhttp3.internal"],
     }
