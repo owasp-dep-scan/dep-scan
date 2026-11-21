@@ -586,7 +586,7 @@ def test_pinned_java_sec_code_keeps_the_slices_reached_sets(tmp_path):
     # duplicates among the usages entries collapsed.
     from analysis_lib.evidence.store import canonical_record
 
-    assert len(read_store(Path(tmp_path) / "evidence.jsonl")) == len(
+    assert len(read_store(str(Path(tmp_path) / "evidence.jsonl"))) == len(
         {canonical_record(record) for record in records}
     )
 
