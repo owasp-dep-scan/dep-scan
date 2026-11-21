@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_evidence_atom.py
+  s_e6c504b2c352c9::t_6d73f54134b6e4 8-12,27,30,48-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c997bcc418061dfb934e343df27b282537d436be",
+  "prompts": {},
+  "sessions": {
+    "s_e6c504b2c352c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_11_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
