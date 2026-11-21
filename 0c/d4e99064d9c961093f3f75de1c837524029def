@@ -1,0 +1,43 @@
+depscan/api.py
+  s_d31d2d9b47cffa::t_f4755189a6d966 466,473,500,502
+depscan/lib/bom.py
+  s_d31d2d9b47cffa::t_792f5342a4b278 12,110-112,120,631-639,646,908-911,913,916-919,921,924-927,929,932-935,937,940-942,944-952,954-983,992-994,1003-1005,1007-1008,1011,1013-1019,1036-1039,1050-1058,1060-1061,1066-1067,1070-1121,1123-1124,1126-1136,1139,1142,1148,1150,1152,1168,1173,1182-1185,1197,1200-1217,1226,1230,1232-1233,1241,1244-1245,1247-1248,1258,1262,1264-1265,1274,1278,1280-1283,1331-1494,1519-1520,1522-1525,1534-1535,1537-1539,1549,1563-1571,1576-1587,1780-1788,1796
+depscan/lib/pipeline.py
+  s_d31d2d9b47cffa::t_15c7b7e3589041 41-44,54-55,81,171-175,718-727,743-750,1145-1152,1162,1393-1394,1408-1409,1413-1414,1422,1424-1435,1449-1519,1556-1562,1565-1576,1589
+depscan/lib/scan_directory.py
+  s_d31d2d9b47cffa::t_e5ba5078fce8af 384,386-387,390-397,403,411-412,414-417,420-423,426
+test/data/scan-directory/depscan.findings.json
+  s_d31d2d9b47cffa::t_6d1c25d5ea4013 15,23-43,54-79
+test/data/scan-directory/depscan.manifest.json
+  s_d31d2d9b47cffa::t_6cea6e52ca08d2 3-5,66,72,78-84,90,96,131,168,178-184,196-208,221,237,246,253,267,275-281,285-287,338-349,373-382,417,421,425-431,433
+test/data/scan-directory/depscan.toml.sample
+  s_d31d2d9b47cffa::t_514164ae7825dc 1-40
+test/data/scan-directory/django-app.vdr.json
+  s_d31d2d9b47cffa::t_68039bcd6a79c6 1
+test/data/scan-directory/evidence.index.json
+  s_d31d2d9b47cffa::t_b3f3b713057c26 1-7
+test/test_bom.py
+  s_d31d2d9b47cffa::t_9989876356e3ca 441-444,448-452,460-462
+test/test_dosai_integration.py
+  s_d31d2d9b47cffa::t_d124a23ce44848 59-61,132-133,138,156-157,205-208,218-221,224-226,243
+test/test_evidence_wiring.py
+  s_d31d2d9b47cffa::t_4c0709c6604436 43-113,178-180,189,242,252-254
+test/test_scan_directory.py
+  s_d31d2d9b47cffa::t_7bf8dc334cc395 383,397,406-407,414-415,429-430,440-447,449,514,522-523,626,1239-1242,1253,1281-1282,1311-1313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cd4e99064d9c961093f3f75de1c837524029def",
+  "prompts": {},
+  "sessions": {
+    "s_d31d2d9b47cffa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_15_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
