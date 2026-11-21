@@ -1,0 +1,45 @@
+packages/analysis-lib/tests/test_evidence_store.py
+  s_17332abccfca86::t_2f5012d93fdba3 127-129
+  s_17332abccfca86::t_daa0c6cafe28e5 180-183
+  s_17332abccfca86::t_d3b7614bad2169 350-353,355-356
+  s_17332abccfca86::t_cfe1183254096b 379,381
+  s_17332abccfca86::t_0fc001d1bea4dd 10
+  s_17332abccfca86::t_614491a64a6e69 1-9,11-87,98-101,107-108,110-126,130-179,184-349,354,357-378,380
+  s_17332abccfca86::t_12a2729d8a7322 88-97,102-106,109
+packages/analysis-lib/tests/test_findings_schema.py
+  s_17332abccfca86::t_56991824530f8b 59
+  s_17332abccfca86::t_53a2788a3f2a2b 107-108
+packages/analysis-lib/tests/test_output_schemas.py
+  s_17332abccfca86::t_98c895587addbf 111,115
+  s_17332abccfca86::t_7489be57627bae 219-249
+  s_17332abccfca86::t_26fee80efc7694 8
+  s_17332abccfca86::t_ad3b7fefaa9300 79-83
+test/test_scan_directory.py
+  s_17332abccfca86::t_970ebb7cab301f 1081-1082
+  s_17332abccfca86::t_969ea5b5be55d3 539,543
+  s_17332abccfca86::t_fb90adf67646eb 1114-1115,1129-1130,1136-1137
+  s_17332abccfca86::t_28b30125e87166 558,564,568-588
+  s_17332abccfca86::t_3d69bdbd9197b6 382
+packages/analysis-lib/tests/test_evidence_schema.py
+  s_17332abccfca86::t_8a599cb9ff0954 163
+  s_17332abccfca86::t_92c60913c76c7d 1-162,164-286,288,291-325
+  s_17332abccfca86::t_a8ffb52bc07c43 287,289-290
+test/data/scan-directory/depscan.manifest.json
+  s_17332abccfca86::t_3a6331cae2fdb5 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "530c6faebb63d83d3b9698fcef67eff82728d54d",
+  "prompts": {},
+  "sessions": {
+    "s_17332abccfca86": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_1_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
