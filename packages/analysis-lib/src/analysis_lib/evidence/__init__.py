@@ -7,7 +7,9 @@ is the source of truth for the shape, the dataclasses here mirror it, and a
 test walks both so a property that exists in one but not the other fails.
 ``to_dict`` omits the optional fields that were never set, so a record
 written back to JSON stays as small as the schema allows, and ``from_dict``
-rejects unknown and missing properties the way the schema does.
+rejects unknown properties and missing required properties the way the
+schema does; the fields the schema lists in ``required`` have no defaults
+here, so a record that leaves one out does not read back as an empty one.
 
 The id is stable across runs. It is ``ev-`` followed by the first 16 hex
 digits of the SHA-256 digest over the canonical JSON (``sort_keys``, compact
@@ -266,8 +268,8 @@ class Evidence(_RecordObject):
     polarity: str
     subject: EvidenceSubject
     source: str
-    locations: List[EvidenceLocation] = field(default_factory=list)
-    caveats: List[EvidenceCaveat] = field(default_factory=list)
+    locations: List[EvidenceLocation]
+    caveats: List[EvidenceCaveat]
     path: Optional[List[EvidencePathNode]] = None
     confidence: Optional[str] = None
     attributes: Optional[Dict[str, Any]] = None

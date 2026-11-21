@@ -89,8 +89,10 @@ def write(path: str, records: Iterable[Evidence]) -> int:
 
     The file is created (with its parent directories) even for an empty
     record set, so a scan with no reachability evidence still produces the
-    uniform layout. A failure part-way leaves the previous file intact and
-    removes the temporary file.
+    uniform layout. Lines end with a line feed on every platform, so the
+    bytes a store write produces do not depend on the writing system. A
+    failure part-way leaves the previous file intact and removes the
+    temporary file.
     """
     final = finalize(records)
     directory = os.path.dirname(os.path.abspath(path))
@@ -98,6 +100,7 @@ def write(path: str, records: Iterable[Evidence]) -> int:
     tmp = tempfile.NamedTemporaryFile(
         mode="w",
         encoding="utf-8",
+        newline="\n",
         dir=directory,
         prefix=os.path.basename(path) + ".",
         suffix=".tmp",
