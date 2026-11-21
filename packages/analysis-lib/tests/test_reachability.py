@@ -365,8 +365,19 @@ def test_binary_reachability_still_reaches_post_build_frameworks(tmp_path):
 def test_a_scan_without_a_store_and_without_a_bom_is_not_a_clean_result(tmp_path):
     """A scan directory whose evidence store is missing reads as no reached
     evidence, and the analyzer reports no success: an empty result never
-    pretends the analysis ran clean."""
-    res = SemanticReachability(_options(tmp_path)).process()
+    pretends the analysis ran clean. The store path is passed explicitly so
+    the test pins the engine's handling of a resolved path with no file
+    behind it."""
+    kv = ReachabilityAnalysisKV(
+        project_types=["js"],
+        src_dir=str(tmp_path),
+        bom_dir=str(tmp_path),
+        bom_files=[],
+        slices_files=[],
+        openapi_spec_files=[],
+        evidence_file=str((tmp_path / "evidence.jsonl").resolve()),
+    )
+    res = SemanticReachability(kv).process()
     assert res.success is False
     assert not res.reached_purls
 
