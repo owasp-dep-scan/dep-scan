@@ -471,11 +471,11 @@ def test_a_tool_slice_from_an_earlier_scan_is_removed(tmp_path):
     stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
     stale.write_text("{}")
     # The tool applies but reachability is off: no slice may remain.
-    bom_mod.run_kosi_reachability(
+    assert bom_mod.run_kosi_reachability(
         str(bom_file),
         str(tmp_path),
         options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
-    )
+    ) is None
     assert not stale.exists()
 
 
@@ -491,10 +491,33 @@ def test_a_tool_slice_is_removed_when_the_tool_produces_no_report(tmp_path, monk
         "KOSI_TOOL",
         dataclasses.replace(bom_mod.KOSI_TOOL, run_fallback=lambda *a, **k: None),
     )
-    assert not bom_mod.run_kosi_reachability(
+    result = bom_mod.run_kosi_reachability(
         str(bom_file), str(tmp_path), options={"project_type": ["kotlin"]}
     )
+    assert result is not None and result.status == "not-assessed"
+    assert result.reason
     assert not stale.exists()
+
+
+def test_clear_tool_outputs_removes_the_evidence_files(tmp_path):
+    """The store and its index are this scan's outputs: an earlier run's files
+    in a reused reports directory would be merged into the new store as if
+    this scan had produced those records."""
+    from depscan.lib import bom as bom_mod
+    from depscan.lib.scan_directory import EVIDENCE_FILE, EVIDENCE_INDEX_FILE
+
+    for name in (
+        EVIDENCE_FILE,
+        EVIDENCE_INDEX_FILE,
+        "dotnet-reachables.slices.json",
+        "go-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("[]")
+    bom_mod.clear_tool_outputs(str(tmp_path))
+    assert not (tmp_path / EVIDENCE_FILE).exists()
+    assert not (tmp_path / EVIDENCE_INDEX_FILE).exists()
+    assert not (tmp_path / "dotnet-reachables.slices.json").exists()
+    assert not (tmp_path / "go-reachables.slices.json").exists()
 
 
 def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_path):

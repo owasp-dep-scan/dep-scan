@@ -500,8 +500,11 @@ def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
 
 def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
     """SemanticReachability over the evinse BOM and the atom 4 reachables
-    slice: the direct purls come from the BOM's occurrences evidence and the
-    reached purls from the recorded slice file."""
+    slice: the atom adapter turns the slices into records, the enrichment
+    stage writes them into the evidence store, and the engine counts the
+    reached purls from the store."""
+    from analysis_lib.evidence import store as evidence_store
+
     ctx = _ctx(
         tmp_path,
         ["--reachability-analyzer", "SemanticReachability", "-t", "python"],
@@ -526,9 +529,23 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
         "pkg:pypi/quart@0.23.1",
         "pkg:pypi/rich@15.0.0",
     }
+    assert scan.adapter_results.get("atom") is not None
+    assert scan.adapter_results["atom"].status == "completed"
+    store = Path(ctx.reports_dir) / evidence_store.EVIDENCE_FILE
+    assert store.is_file()
+    assert scan.reachability_options.evidence_file == str(store), (
+        "the engine reads the store the enrichment stage wrote"
+    )
+    records = evidence_store.read(str(store))
+    assert {r.producer.name for r in records} == {"atom"}
+    assert evidence_store.write(str(store), records) == len(records), (
+        "a second write of the same records is the same store"
+    )
 
 
 def test_stage_enrichment_is_a_no_op_with_reachability_off(tmp_path):
+    from depscan.lib.scan_directory import EVIDENCE_FILE
+
     ctx = _ctx(tmp_path, ["-t", "npm", "--reachability-analyzer", "off"])
     ctx.depscan_options["reachability_analyzer"] = "off"
     ctx.depscan_options["profile"] = "generic"
@@ -538,6 +555,8 @@ def test_stage_enrichment_is_a_no_op_with_reachability_off(tmp_path):
     assert scan.reachability_options is None
     # Null reachability succeeds with empty maps, so nothing was reached.
     assert not scan.reached_purls
+    # The store is still written, empty, so the layout is uniform.
+    assert (Path(ctx.reports_dir) / EVIDENCE_FILE).read_text() == ""
 
 
 # ---------------------------------------------------------------------------
@@ -774,19 +793,18 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
     assert captured["blint_reviews"] is expected
 
 
-def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected(
-    tmp_path, monkeypatch
-):
-    """When the reachability engine already read the slices, the
-    exploitability inputs reuse its per-file purl sets and never parse the
-    slices again."""
+def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):
+    """The exploitability inputs are built from the adapter results the BOM
+    step and the enrichment stage collected: the reached sets and the purl
+    types come from the records, and the slices are never read again."""
     from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.evidence.adapters import atom as atom_adapter
     from analysis_lib.findings.exploitability import load_rules
     from analysis_lib.findings.vdr_convert import reach_axis
     from analysis_lib import reachability as reachability_module
 
     slice_file = tmp_path / "java-reachables.slices.json"
-    slice_file.write_text("[]")
+    slice_file.write_text(json.dumps([{"flows": [], "purls": ["pkg:maven/a/b@1"]}]))
     options = ReachabilityAnalysisKV(
         project_types=["java"],
         src_dir=str(tmp_path),
@@ -798,7 +816,7 @@ def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected
         reachability_options=options,
         reachability_succeeded=True,
         reached_purls={"pkg:maven/a/b@1": 1},
-        reach_purls_by_file={str(slice_file): {"pkg:maven/a/b@1"}},
+        adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
     )
@@ -809,11 +827,13 @@ def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected
 
     monkeypatch.setattr(reachability_module, "_iter_json_list", refuse_to_read)
     inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs.scope.analyzers == ["atom"]
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
 
 
 def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(tmp_path):
     from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.evidence.adapters import atom as atom_adapter
     from analysis_lib.findings.exploitability import load_rules
     from analysis_lib.findings.vdr_convert import reach_axis
 
@@ -830,7 +850,7 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         reachability_options=options,
         reachability_succeeded=True,
         reached_purls={"pkg:maven/a/b@1": 1},
-        reach_purls_by_file=None,
+        adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
     )
@@ -838,10 +858,8 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
     inputs = pipeline._exploitability_inputs(ctx, scan)
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
     assert reach_axis(inputs.scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"
-    # A dotnet facts file this scan did not produce is never read: dosai did
-    # not complete for a java scan, so exposure stays unassessed.
+    # dosai did not complete for a java scan, so exposure stays unassessed.
     assert inputs.dosai_ran is False
-    assert inputs.dosai_facts is None
     npm = inputs.evidence_for("pkg:npm/left-pad@1.0.0")
     assert npm.dosai is None
 

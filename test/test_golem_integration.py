@@ -1,8 +1,8 @@
 """Integration tests for golem-powered Go reachability.
 
 These tests exercise the full adapter pipeline (binary discovery -> golem run ->
-report -> atom-slice converter -> FrameworkReachability) against real, tiny
-Go repositories checked in under ``test/data/golem/repos/``:
+report -> evidence adapter -> evidence store -> FrameworkReachability) against
+real, tiny Go repositories checked in under ``test/data/golem/repos/``:
 
   - ``reachable-app``: calls ``vulnlib.ProcessQuery`` on a user-controlled
     HTTP path. The reconciled ``pkg:golang/github.com/example/vuln-lib@<v>``
@@ -24,7 +24,9 @@ from pathlib import Path
 import pytest
 
 from analysis_lib import Counts, ReachabilityAnalysisKV
-from analysis_lib.golem_slices import _slice_reachability
+from analysis_lib.evidence import store as evidence_store
+from analysis_lib.evidence.adapters import STATUS_COMPLETED
+from analysis_lib.evidence.adapters.golem import _slice_reachability
 from analysis_lib.reachability import FrameworkReachability
 from analysis_lib.prioritize import process_vuln_occ
 from depscan.lib.bom import run_golem_reachability
@@ -103,6 +105,14 @@ def _write_go_bom(bom_file: Path, app_name: str, app_version: str = "v0.1.0"):
     return str(bom_file)
 
 
+def _merge_records(bom_dir: Path, adapter_result):
+    """Merge one adapter result's records into the store, as the enrichment
+    stage merges every result of a project type."""
+    path = str(Path(bom_dir) / evidence_store.EVIDENCE_FILE)
+    base = evidence_store.read(path) if os.path.isfile(path) else []
+    evidence_store.write(path, evidence_store.merge(base, adapter_result.records))
+
+
 def _reached_purls(bom_dir: Path) -> set:
     opts = ReachabilityAnalysisKV(project_types=["go"], src_dir=str(bom_dir), bom_dir=str(bom_dir))
     res = FrameworkReachability(opts).process()
@@ -121,7 +131,7 @@ def test_reachable_app_marks_vuln_lib_reached(tmp_path, golem_env):
     _write_go_bom(bom_file, "reachable-app")
     src = GOLEM_REPOS / "reachable-app"
 
-    ok = run_golem_reachability(
+    result = run_golem_reachability(
         str(bom_file),
         str(src),
         options={
@@ -129,17 +139,14 @@ def test_reachable_app_marks_vuln_lib_reached(tmp_path, golem_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    if not ok:
+    if result is None or result.status != STATUS_COMPLETED:
         pytest.skip(
             "golem could not run on reachable-app (binary missing, Go toolchain "
             "issue, or module resolution failure)"
         )
+    assert result.records, "at least one record expected for a reachable call"
 
-    slice_file = tmp_path / "go-reachables.slices.json"
-    assert slice_file.exists(), "slice file must be emitted next to the BOM"
-    flows = json.loads(slice_file.read_text())
-    assert flows, "at least one flow expected for a reachable call"
-
+    _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
     assert "pkg:golang/github.com/example/vuln-lib@v0.0.0" in reached, (
         "vuln-lib MUST be reached when the app calls vulnlib.ProcessQuery"
@@ -158,7 +165,7 @@ def test_unreachable_app_does_not_mark_vuln_lib_reached(tmp_path, golem_env):
     _write_go_bom(bom_file, "unreachable-app")
     src = GOLEM_REPOS / "unreachable-app"
 
-    ok = run_golem_reachability(
+    result = run_golem_reachability(
         str(bom_file),
         str(src),
         options={
@@ -166,9 +173,10 @@ def test_unreachable_app_does_not_mark_vuln_lib_reached(tmp_path, golem_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    if not ok:
+    if result is None or result.status != STATUS_COMPLETED:
         pytest.skip("golem could not run on unreachable-app")
 
+    _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
     assert "pkg:golang/github.com/example/vuln-lib@v0.0.0" not in reached, (
         "vuln-lib MUST NOT be reached when the app only depends on it without calling"
@@ -180,15 +188,15 @@ def test_unreachable_app_does_not_mark_vuln_lib_reached(tmp_path, golem_env):
 # ---------------------------------------------------------------------------
 
 
-def test_golem_slice_is_deterministic(tmp_path, golem_env):
-    """Two independent golem runs on the same repo produce byte-identical
-    slices."""
+def test_golem_records_are_deterministic(tmp_path, golem_env):
+    """Two independent golem runs on the same repo produce stores with the
+    same bytes."""
     src = GOLEM_REPOS / "reachable-app"
 
-    def _run_once(work_dir: Path) -> str:
+    def _run_once(work_dir: Path) -> bytes:
         bom_file = work_dir / "sbom-go.cdx.json"
         _write_go_bom(bom_file, "reachable-app")
-        assert run_golem_reachability(
+        result = run_golem_reachability(
             str(bom_file),
             str(src),
             options={
@@ -196,7 +204,10 @@ def test_golem_slice_is_deterministic(tmp_path, golem_env):
                 "reachability_analyzer": "FrameworkReachability",
             },
         )
-        return (work_dir / "go-reachables.slices.json").read_text()
+        assert result is not None and result.status == STATUS_COMPLETED
+        store_path = str(work_dir / evidence_store.EVIDENCE_FILE)
+        evidence_store.write(store_path, result.records)
+        return Path(store_path).read_bytes()
 
     d1 = tmp_path / "d1"
     d2 = tmp_path / "d2"
@@ -204,7 +215,7 @@ def test_golem_slice_is_deterministic(tmp_path, golem_env):
     d2.mkdir()
     s1 = _run_once(d1)
     s2 = _run_once(d2)
-    assert s1 == s2, "golem slice output must be deterministic across runs"
+    assert s1 == s2, "golem record output must be deterministic across runs"
 
 
 # ---------------------------------------------------------------------------
@@ -212,9 +223,10 @@ def test_golem_slice_is_deterministic(tmp_path, golem_env):
 # ---------------------------------------------------------------------------
 
 
-def test_golem_reachability_skips_when_binary_missing(tmp_path, monkeypatch):
-    """When the golem binary cannot be found, run_golem_reachability must
-    return False (not crash) and leave no slice file behind."""
+def test_golem_reachability_not_assessed_when_binary_missing(tmp_path, monkeypatch):
+    """When the golem binary cannot be found, run_golem_reachability returns a
+    not-assessed result with a reason (never a clean empty one) and leaves no
+    converted slice behind."""
     monkeypatch.setattr(golem_mod, "find_golem_binary", lambda logger=None: None)
     bom_file = tmp_path / "sbom-go.cdx.json"
     _write_go_bom(bom_file, "reachable-app")
@@ -228,7 +240,8 @@ def test_golem_reachability_skips_when_binary_missing(tmp_path, monkeypatch):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert result is False
+    assert result is not None and result.status != STATUS_COMPLETED
+    assert result.reason
     assert not (tmp_path / "go-reachables.slices.json").exists()
 
 
@@ -253,7 +266,7 @@ def test_golem_reachability_noop_for_non_go(tmp_path, golem_env):
         str(tmp_path),
         options={"project_type": ["js"], "reachability_analyzer": "FrameworkReachability"},
     )
-    assert result is False
+    assert result is None
     assert not (tmp_path / "go-reachables.slices.json").exists()
 
 
@@ -267,7 +280,7 @@ def test_golem_reachability_noop_when_reachability_off(tmp_path, golem_env):
         str(src),
         options={"project_type": ["go"], "reachability_analyzer": "off"},
     )
-    assert result is False
+    assert result is None
 
 
 def test_golem_reachability_accepts_golang_alias(tmp_path, golem_env):
@@ -275,7 +288,7 @@ def test_golem_reachability_accepts_golang_alias(tmp_path, golem_env):
     bom_file = tmp_path / "sbom-go.cdx.json"
     _write_go_bom(bom_file, "reachable-app")
     src = GOLEM_REPOS / "reachable-app"
-    ok = run_golem_reachability(
+    result = run_golem_reachability(
         str(bom_file),
         str(src),
         options={
@@ -283,8 +296,9 @@ def test_golem_reachability_accepts_golang_alias(tmp_path, golem_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok, "golem reachability should run for the 'golang' project-type alias"
-    assert (tmp_path / "go-reachables.slices.json").exists()
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "golem reachability should run for the 'golang' project-type alias"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +332,7 @@ def test_consumes_cdxgen_semantics_report_without_spawning(tmp_path, golem_env, 
     # Now make the binary unresolvable so the fallback CANNOT run golem.
     monkeypatch.setattr(_golem_mod, "find_golem_binary", lambda logger=None: None)
 
-    ok = run_golem_reachability(
+    result = run_golem_reachability(
         str(bom_file),
         str(src),
         options={
@@ -326,8 +340,11 @@ def test_consumes_cdxgen_semantics_report_without_spawning(tmp_path, golem_env, 
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok, "must consume the cdxgen-produced semantics report without spawning golem"
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "must consume the cdxgen-produced semantics report without spawning golem"
+    )
 
+    _merge_records(bom_dir, result)
     reached = _reached_purls(bom_dir)
     assert "pkg:golang/github.com/example/vuln-lib@v0.0.0" in reached
     assert "pkg:golang/github.com/example/reachable-app@v0.1.0" in reached
@@ -388,7 +405,7 @@ def _golem_reached_on_real_cve(tmp_path: Path) -> dict:
     """Run golem reachability on real-cve-app; return the reached_purls dict."""
     bom_file = tmp_path / "sbom-go.cdx.json"
     _write_real_cve_bom(bom_file)
-    ok = run_golem_reachability(
+    result = run_golem_reachability(
         str(bom_file),
         str(REAL_CVE_REPO),
         options={
@@ -396,8 +413,9 @@ def _golem_reached_on_real_cve(tmp_path: Path) -> dict:
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    if not ok:
+    if result is None or result.status != STATUS_COMPLETED:
         pytest.skip("golem could not run on real-cve-app (binary/Go/module issue)")
+    _merge_records(tmp_path, result)
     opts = ReachabilityAnalysisKV(
         project_types=["go"], src_dir=str(tmp_path), bom_dir=str(tmp_path)
     )
@@ -414,7 +432,7 @@ def _skip_unless_slice_reachability(tmp_path: Path):
     Decided from the report itself rather than the version string, so
     development builds and future releases are handled the same way.
     """
-    report_path = tmp_path / "golem.json"
+    report_path = tmp_path / "analysis" / "golem" / "golem.json"
     report = json.loads(report_path.read_text()) if report_path.exists() else {}
     if _slice_reachability(report.get("dataFlow") or {}) is None:
         # pytestmark skips the whole module when the golem binary is missing.

@@ -478,7 +478,7 @@ def test_fixture_is_a_valid_scan_directory():
         "name": "atom",
         "capability": "reachability",
         "status": "not-assessed",
-        "reason": "no reachables slices from atom were produced or given for this scan",
+        "reason": "no atom report was given; the adapter has nothing to read",
     }
     assert analyzers["rusi"]["status"] == "not-assessed"
     assert analyzers["rusi"]["capability"] == "reachability:rust"
@@ -489,13 +489,7 @@ def test_fixture_is_a_valid_scan_directory():
     assert "tool:dotnet (dotnet: the .NET runtime" in analyzers["dosai"]["reason"]
     for entry in analyzers.values():
         assert "not a tool this version knows" not in entry.get("reason", "")
-    assert enrichment["outputs"] == [
-        {
-            "file": "evidence.jsonl",
-            "status": "not-assessed",
-            "reason": scan_directory.EVIDENCE_NOT_PRODUCED_REASON,
-        }
-    ]
+    assert enrichment["outputs"] == [{"file": "evidence.jsonl", "status": "completed"}]
     matching = manifest["stages"][6]
     assert matching["status"] == "completed"
     assert matching["capabilities"] == ["vulnerabilities"]
@@ -508,7 +502,11 @@ def test_fixture_is_a_valid_scan_directory():
         "depscan.findings.json",
         "django-app.cdx.json",
         "django-app.vdr.json",
+        "evidence.jsonl",
+        "evidence.index.json",
     }
+    assert digests["evidence.jsonl"]["role"] == "evidence"
+    assert digests["evidence.index.json"]["role"] == "evidence"
     assert digests["django-app.cdx.json"]["role"] == "bom"
     assert digests["django-app.cdx.json"]["producer"] == "user"
     assert digests["django-app.vdr.json"]["role"] == "vdr"
@@ -600,23 +598,37 @@ def _enrichment_analyzers(manifest):
     return {}
 
 
-# The reachables slices each analyzer leaves for the enrichment stage.
-ANALYZER_SLICES = {
-    "atom": "python-reachables.slices.json",
-    "rusi": "rust-reachables.slices.json",
-    "golem": "go-reachables.slices.json",
-    "dosai": "dotnet-reachables.slices.json",
-    "kosi": "kosi-reachables.slices.json",
+# The raw report each analyzer reads from a BOM directory. atom's reachables
+# slices are its own native output; the language tools' reports are recorded
+# plugin and tool output, placed under the names cdxgen and the BOM step use.
+ANALYZER_REPORTS = Path(__file__).parent.parent / "packages" / "analysis-lib" / "tests" / "data"
+
+RAW_REPORTS = {
+    "atom": ("python-reachables.slices.json", None),
+    "rusi": ("rust-semantics.slices.json", ANALYZER_REPORTS / "rusi" / "rusi-reachable-app.json"),
+    "golem": ("go-semantics.slices.json", ANALYZER_REPORTS / "golem" / "golem-reachable-app.json"),
+    "dosai": (
+        "dotnet-semantics.slices.json",
+        ANALYZER_REPORTS / "dosai" / "dosai-combined.sample.json",
+    ),
+    "kosi": ("analysis/kosi/kosi.json", ANALYZER_REPORTS / "kosi" / "kosi-resolved-report.json"),
 }
 
 
-def _bom_dir_scan(tmp_path, analyzers_with_slices):
-    """A BOM directory scan whose directory holds the given analyzers' slices."""
+def _bom_dir_scan(tmp_path, analyzers_with_reports):
+    """A BOM directory scan whose directory holds the given analyzers' raw
+    reports."""
     bom_dir = tmp_path / "boms"
     bom_dir.mkdir()
     _write_bom(bom_dir / "sbom-python.cdx.json")
-    for name in analyzers_with_slices:
-        (bom_dir / ANALYZER_SLICES[name]).write_text("[]")
+    for name in analyzers_with_reports:
+        placed, source = RAW_REPORTS[name]
+        destination = bom_dir / placed
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if source is None:
+            destination.write_text("[]")
+        else:
+            shutil.copyfile(source, destination)
     return api.scan(
         api.scan_options(
             bom_dir=str(bom_dir),
@@ -641,13 +653,13 @@ def _bom_dir_scan(tmp_path, analyzers_with_slices):
 def test_a_missing_analyzer_is_not_assessed_with_the_doctor_reason(
     scan_stubs, fake_tools, tmp_path, analyzer, tool_removed, capability, reason_fragment
 ):
-    """The analyzer whose tool is gone left no slices and is named with the
-    capability and the doctor's reason; every analyzer whose slices the
-    enrichment stage read stays completed."""
+    """The analyzer whose tool is gone found no report and is named with the
+    capability and the doctor's reason; every analyzer whose report the
+    adapters read stays completed."""
     fake_tools["remove"](tool_removed)
-    others = [name for name in ANALYZER_SLICES if name != analyzer]
+    others = [name for name in RAW_REPORTS if name != analyzer]
     analyzers = _enrichment_analyzers(_bom_dir_scan(tmp_path, others).manifest)
-    assert set(analyzers) == set(ANALYZER_SLICES)
+    assert set(analyzers) == set(RAW_REPORTS)
     assert analyzers[analyzer]["status"] == "not-assessed"
     assert analyzers[analyzer]["capability"] == capability
     assert reason_fragment in analyzers[analyzer]["reason"]
@@ -656,18 +668,19 @@ def test_a_missing_analyzer_is_not_assessed_with_the_doctor_reason(
         assert analyzers[name]["status"] == "completed", f"{name}: {analyzers[name]}"
 
 
-def test_an_installed_analyzer_without_slices_is_not_reported_as_completed(
+def test_an_installed_analyzer_without_a_report_is_not_reported_as_completed(
     scan_stubs, fake_tools, tmp_path
 ):
-    """Every tool is present, but the scan was given only Python slices:
-    the language analyzers produced nothing and say so."""
+    """Every tool is present, but the BOM directory holds only atom's slices:
+    the language analyzers found no report to read and say what they looked
+    for, instead of reading as analyses that ran."""
     analyzers = _enrichment_analyzers(_bom_dir_scan(tmp_path, ["atom"]).manifest)
     assert analyzers["atom"]["status"] == "completed"
     for name in ("rusi", "golem", "dosai", "kosi"):
         assert analyzers[name]["status"] == "not-assessed"
-        assert analyzers[name]["reason"] == (
-            f"no {ANALYZER_SLICES[name]} was produced or given for this scan"
-        )
+        assert analyzers[name]["reason"].startswith(
+            f"no {name} report was found in the BOM directory"
+        ), analyzers[name]["reason"]
 
 
 def test_analyzers_are_not_listed_when_reachability_is_off(scan_stubs, fake_tools, tmp_path):
@@ -1137,32 +1150,52 @@ def test_walk_files_hashes_the_scan_files_but_not_the_manifest(tmp_path):
         assert entry["role"] == "evidence" and entry["producer"] == "dep-scan"
 
 
-def test_analyzer_entries_follow_the_slices_read_and_the_doctor(fake_tools, tmp_path):
+def test_analyzer_entries_follow_the_adapter_results_and_the_doctor(fake_tools, tmp_path):
+    from analysis_lib.evidence.adapters import (
+        STATUS_COMPLETED,
+        AdapterResult,
+        not_assessed,
+    )
+
     fake_tools["remove"]("golem")
     fake_tools["remove"]("rusi")
     report = doctor_mod.doctor()
-    read = [
-        str(tmp_path / "python-reachables.slices.json"),
-        # Slices the user gave count even when the tool is missing here.
-        str(tmp_path / "rust-reachables.slices_1.json"),
-        str(tmp_path / "python-usages.slices.json"),
-    ]
+    # rusi read a report; golem has no result at all, so the doctor's reason
+    # stands in; dosai's adapter could not assess and gives its own reason.
+    results = {
+        "atom": AdapterResult(status=STATUS_COMPLETED),
+        "rusi": AdapterResult(status=STATUS_COMPLETED),
+        "dosai": not_assessed("the report schema version 4.0.0 is not supported"),
+    }
     by_name = {
-        entry["name"]: entry for entry in scan_directory.analyzer_entries(report, ["bom"], read)
+        entry["name"]: entry for entry in scan_directory.analyzer_entries(report, ["bom"], results)
     }
     assert by_name["atom"]["status"] == "completed"
     assert by_name["rusi"]["status"] == "completed"
     assert by_name["golem"]["status"] == "not-assessed"
     assert by_name["golem"]["capability"] == "reachability:go"
-    assert "golem was not found" in by_name["golem"]["reason"]
-    assert by_name["dosai"] == {
-        "name": "dosai",
-        "capability": "reachability:dotnet",
-        "status": "not-assessed",
-        "reason": "no dotnet-reachables.slices.json was produced or given for this scan",
-    }
-    python_only = scan_directory.analyzer_entries(report, ["python"], read)
+    assert "golem was not found" in by_name["golem"]["reason"], "the doctor reason stands in"
+    assert by_name["dosai"]["status"] == "not-assessed"
+    assert by_name["dosai"]["reason"] == (
+        "the report schema version 4.0.0 is not supported"
+    ), "the adapter's own reason is kept when it gives one"
+    python_only = scan_directory.analyzer_entries(report, ["python"], results)
     assert [entry["name"] for entry in python_only] == ["atom"]
+
+
+def test_analyzer_entries_carry_the_producer_caveats(fake_tools, tmp_path):
+    from analysis_lib.evidence import EvidenceCaveat
+    from analysis_lib.evidence.adapters import STATUS_COMPLETED, AdapterResult
+
+    report = doctor_mod.doctor()
+    results = {
+        "atom": AdapterResult(
+            status=STATUS_COMPLETED,
+            caveats=[EvidenceCaveat(kind="budget", detail="two files parsed only partly")],
+        ),
+    }
+    (entry,) = scan_directory.analyzer_entries(report, ["python"], results)
+    assert entry["caveats"] == [{"kind": "budget", "detail": "two files parsed only partly"}]
 
 
 def test_capability_reason_reads_the_doctor_table_not_a_copy():
@@ -1186,22 +1219,34 @@ def test_capability_reason_reads_the_doctor_table_not_a_copy():
 # ---------------------------------------------------------------------------
 
 
-class _FakeConverter:
-    @staticmethod
-    def is_report_ok(data):
-        return isinstance(data, dict) and "flows" in data
+class _FakeAdapter:
+    """A stand-in for one language tool's evidence adapter."""
 
     @staticmethod
-    def build_index(components, extra_components=None):
-        return {}
+    def extract(report, *, source, producer_version="", bom_components=None, extra_components=None):
+        from analysis_lib.evidence import EvidenceCaveat, EvidenceProducer
+        from analysis_lib.evidence.adapters import (
+            STATUS_COMPLETED,
+            AdapterResult,
+            build_record,
+            not_assessed,
+        )
 
-    @staticmethod
-    def convert(report, bom_index):
-        return list(report["flows"])
-
-    @staticmethod
-    def write_slices(path, flows):
-        Path(path).write_text(json.dumps(flows))
+        if not isinstance(report, dict) or "flows" not in report:
+            return not_assessed("the report is not a golem report")
+        producer = EvidenceProducer(name="golem", version="9.9.9", report_schema_version="1")
+        record = build_record(
+            source=source,
+            producer=producer,
+            kind="reached-flow",
+            discriminator="fake",
+            purls=("pkg:golang/example.com/a@v1.0.0",),
+        )
+        return AdapterResult(
+            status=STATUS_COMPLETED,
+            records=[record],
+            caveats=[EvidenceCaveat(kind="budget", detail="partial graph")],
+        )
 
 
 def _fake_tool(run_fallback):
@@ -1212,7 +1257,7 @@ def _fake_tool(run_fallback):
         project_types=("go",),
         default_prefix="go",
         slice_file="go-reachables.slices.json",
-        import_converter=lambda: _FakeConverter,
+        import_adapter=lambda: _FakeAdapter,
         run_fallback=run_fallback,
         no_report_error="No golem report was available.",
     )
@@ -1220,13 +1265,15 @@ def _fake_tool(run_fallback):
 
 def test_an_unavailable_capability_does_not_stop_a_tool_that_can_run(fake_tools, tmp_path):
     """The doctor says reachability:go is unavailable (no Go toolchain on
-    PATH), but the tool still produced a report: the slice is written, as it
-    was before the doctor table was consulted."""
+    PATH), but the tool still produced a report: the adapter reads it and the
+    result is completed, as the run was before the doctor table was consulted."""
     from depscan.lib.bom import _run_reachability_tool
+    from analysis_lib.evidence.adapters import STATUS_COMPLETED
 
     fake_tools["remove"]("go")
     report = doctor_mod.doctor()
-    assert scan_directory.analyzer_entries(report, ["go"], [])[1]["status"] == "not-assessed"
+    results = {}
+    assert scan_directory.analyzer_entries(report, ["go"], results)[1]["status"] == "not-assessed"
     bom = _write_bom(tmp_path / "sbom-go.cdx.json")
     ran = []
 
@@ -1235,13 +1282,18 @@ def test_an_unavailable_capability_does_not_stop_a_tool_that_can_run(fake_tools,
         return {"flows": [{"purls": ["pkg:golang/example.com/a@v1.0.0"]}]}
 
     options = {"project_type": ["go"], "doctor_report": report}
-    assert _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(fallback))
+    result = _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(fallback))
+    assert result is not None and result.status == STATUS_COMPLETED
     assert ran == [str(tmp_path)]
-    assert (tmp_path / "go-reachables.slices.json").is_file()
+    assert not (tmp_path / "go-reachables.slices.json").is_file(), (
+        "the converted slice is no longer written"
+    )
+    assert result.records[0].source == "go-semantics.slices.json"
 
 
 def test_fail_on_error_still_fails_when_the_capability_is_unavailable(fake_tools, tmp_path):
     from depscan.lib.bom import ScanFailureError, _run_reachability_tool
+    from analysis_lib.evidence.adapters import STATUS_NOT_ASSESSED
 
     fake_tools["remove"]("golem")
     options = {
@@ -1253,13 +1305,15 @@ def test_fail_on_error_still_fails_when_the_capability_is_unavailable(fake_tools
     with pytest.raises(ScanFailureError, match="No golem report"):
         _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
     options["fail_on_error"] = False
-    assert not _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
+    result = _run_reachability_tool(bom, str(tmp_path), options, _fake_tool(lambda *a: None))
+    assert result is not None and result.status == STATUS_NOT_ASSESSED
 
 
-def test_a_tool_run_without_a_report_removes_split_slices_and_its_facts(fake_tools, tmp_path):
-    """Split parts of an earlier run's slice and dosai's facts sidecar would
-    otherwise read as this run's reachability and exposure evidence."""
-    from depscan.lib.bom import DOSAI_FACTS_FILE, DOSAI_TOOL, _run_reachability_tool
+def test_a_tool_run_without_a_report_removes_split_slices(fake_tools, tmp_path):
+    """Split parts of an earlier run's slice would otherwise read as this
+    run's reachability evidence."""
+    from depscan.lib.bom import DOSAI_TOOL, _run_reachability_tool
+    from analysis_lib.evidence.adapters import STATUS_NOT_ASSESSED
 
     fake_tools["remove"]("dosai")
     bom = _write_bom(tmp_path / "sbom-dotnet.cdx.json")
@@ -1269,25 +1323,26 @@ def test_a_tool_run_without_a_report_removes_split_slices_and_its_facts(fake_too
         "dotnet-reachables.slices-notapart.json",
     ):
         (tmp_path / name).write_text("[]")
-    facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
-    facts.parent.mkdir(parents=True)
-    facts.write_text("{}")
     tool = dataclasses.replace(DOSAI_TOOL, run_fallback=lambda *a: None)
     options = {"project_type": ["dotnet"], "doctor_report": doctor_mod.doctor()}
-    assert not _run_reachability_tool(bom, str(tmp_path), options, tool)
+    result = _run_reachability_tool(bom, str(tmp_path), options, tool)
+    assert result is not None and result.status == STATUS_NOT_ASSESSED
     assert not (tmp_path / "dotnet-reachables.slices.json").exists()
     assert not (tmp_path / "dotnet-reachables.slices-2.json").exists()
-    assert not facts.exists()
     # Only numbered parts are the tool's; anything else is left alone.
     assert (tmp_path / "dotnet-reachables.slices-notapart.json").exists()
 
 
 def test_a_source_scan_clears_tool_outputs_an_earlier_run_left(tmp_path):
     """A universal rerun into the same reports directory never runs dosai,
-    so the earlier .NET run's slices and facts must not survive into it."""
-    from depscan.lib.bom import DOSAI_FACTS_FILE, clear_tool_outputs
+    so the earlier .NET run's slices, and the store an earlier scan wrote,
+    must not survive into it."""
+    from depscan.lib.bom import clear_tool_outputs
+    from depscan.lib.scan_directory import EVIDENCE_FILE, EVIDENCE_INDEX_FILE
 
     for name in (
+        EVIDENCE_FILE,
+        EVIDENCE_INDEX_FILE,
         "dotnet-reachables.slices.json",
         "dotnet-reachables.slices-3.json",
         "go-reachables.slices.json",
@@ -1295,15 +1350,11 @@ def test_a_source_scan_clears_tool_outputs_an_earlier_run_left(tmp_path):
         "java-reachables.slices.json",
     ):
         (tmp_path / name).write_text("[]")
-    facts = tmp_path / "analysis" / "dosai" / DOSAI_FACTS_FILE
-    facts.parent.mkdir(parents=True)
-    facts.write_text("{}")
     clear_tool_outputs(str(tmp_path))
     remaining = sorted(p.name for p in tmp_path.glob("*.json"))
     # atom's slices come from cdxgen, which rewrites them; only the language
-    # tools' own outputs are cleared.
+    # tools' own outputs and the store are cleared.
     assert remaining == ["java-reachables.slices.json"]
-    assert not facts.exists()
 
 
 def test_documented_manifest_fields_match_the_schema():
