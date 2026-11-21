@@ -1065,3 +1065,60 @@ def test_no_discovery_without_cdxgen(install_env, monkeypatch, tmp_path):
     assert entries["cdxgen-plugins"].path is None
     for tool in ("golem", "rusi", "kosi"):
         assert entries[tool].path is None, tool
+
+
+# --- dosai that cannot start ---------------------------------------------------
+
+# What the .NET apphost prints, with the exit status 150, when the runtime
+# dosai was built for is not installed. The home path is neutral.
+APPHOST_FAILURE = """You must install or update .NET to run this application.
+
+App: /home/user/.local/bin/dosai
+Architecture: arm64
+Framework: 'Microsoft.NETCore.App', version '11.0.0' (arm64)
+.NET location: /usr/local/share/dotnet
+
+The following frameworks were found:
+  9.0.6 at [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]
+  10.0.0 at [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]
+
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+
+To install missing framework, download:
+https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=11.0.0&arch=arm64&rid=osx-arm64&os=osx.27
+"""
+
+
+def test_dosai_apphost_failure_is_not_a_version(plugins_env, fakes, monkeypatch):
+    """The framework numbers in the apphost message are not dosai's version:
+    dosai is unusable, names the framework it needs and reachability:dotnet
+    is unavailable."""
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", APPHOST_FAILURE, exit_code=150)))
+    report = doctor_mod.doctor()
+    dosai = _tool_entries(report)["dosai"]
+    assert dosai.version is None
+    assert not dosai.usable
+    assert "Microsoft.NETCore.App 11.0.0" in dosai.reason
+    assert "DOTNET_ROOT" in dosai.reason
+    _assert_probed(fakes.record, "dosai", ["--version"])
+    assert _capability_signature(report)["reachability:dotnet"][0] == "unavailable"
+
+
+def test_dosai_apphost_text_with_a_zero_exit_is_still_a_failure(fakes, monkeypatch, plugins_env):
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", APPHOST_FAILURE, exit_code=0)))
+    dosai = _tool_entries(doctor_mod.doctor())["dosai"]
+    assert dosai.version is None and not dosai.usable
+
+
+def test_dosai_nonzero_exit_without_a_message_is_unusable(fakes, monkeypatch, plugins_env):
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", "5.0.0", exit_code=3)))
+    dosai = _tool_entries(doctor_mod.doctor())["dosai"]
+    assert dosai.version is None and not dosai.usable
+    assert "status 3" in dosai.reason
+
+
+def test_dosai_that_starts_keeps_its_version(fakes, monkeypatch, plugins_env):
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", "5.0.0+0c35f37", exit_code=0)))
+    dosai = _tool_entries(doctor_mod.doctor())["dosai"]
+    assert dosai.version == "5.0.0" and dosai.usable

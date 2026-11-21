@@ -193,16 +193,9 @@ def _version_command(path: str, args: List[str]) -> List[str]:
     return [path, *args]
 
 
-def _run_version_probe(path: str, args: List[str], require_success: bool = False) -> Optional[str]:
-    """Run the tool's version option and return its combined output.
-
-    Returns None when the command could not start, timed out or was refused
-    by :func:`build_command`, and with ``require_success`` also when it
-    exited non-zero. The scan's own checks for go and dotnet
-    (``go_toolchain_available``, ``dotnet_runtime_available``) treat a
-    non-zero exit as "cannot run", while its cdxgen probe reads the output
-    whatever the exit code, so each caller picks the rule its scan uses.
-    """
+def _run_version_probe_status(path: str, args: List[str]) -> Optional[Tuple[int, str]]:
+    """Run ``path`` with ``args``; ``(exit code, combined output)`` or None
+    when the command could not start, timed out or was refused."""
     path = str(path)
     try:
         cp = subprocess.run(
@@ -218,9 +211,26 @@ def _run_version_probe(path: str, args: List[str], require_success: bool = False
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    if require_success and cp.returncode != 0:
+    return cp.returncode, cp.stdout or ""
+
+
+def _run_version_probe(path: str, args: List[str], require_success: bool = False) -> Optional[str]:
+    """Run the tool's version option and return its combined output.
+
+    Returns None when the command could not start, timed out or was refused
+    by :func:`build_command`, and with ``require_success`` also when it
+    exited non-zero. The scan's own checks for go and dotnet
+    (``go_toolchain_available``, ``dotnet_runtime_available``) treat a
+    non-zero exit as "cannot run", while its cdxgen probe reads the output
+    whatever the exit code, so each caller picks the rule its scan uses.
+    """
+    result = _run_version_probe_status(path, args)
+    if result is None:
         return None
-    return cp.stdout or ""
+    returncode, output = result
+    if require_success and returncode != 0:
+        return None
+    return output
 
 
 def _versioned_tool(
@@ -356,11 +366,20 @@ def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
         status.source = "plugins-dir"
     else:
         status.source = "path"
-    output = _run_version_probe(path, ["--version"])
+    if name == "dosai":
+        probed = _run_version_probe_status(path, ["--version"])
+        if probed is not None:
+            failure = dosai_mod.dosai_launch_failure(probed[1], probed[0])
+            if failure:
+                # The output is the apphost's error, not a version.
+                status.reason = failure
+                return status
+            status.version = _parse_dosai(probed[1]) if probed[1] else None
+        output = None
+    else:
+        output = _run_version_probe(path, ["--version"])
     if output:
-        if name == "dosai":
-            status.version = _parse_dosai(output)
-        elif name == "kosi":
+        if name == "kosi":
             # kosi prints a JSON object, {"version": "4.3.1", ...}, and a
             # native image may add JVM warnings around it.
             status.version = _parse_kosi(output)
