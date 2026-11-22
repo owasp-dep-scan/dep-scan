@@ -2,18 +2,16 @@
 
 The fixtures under ``tests/data/kosi`` are real kosi 4.3.1 recordings of
 the resolved and syntax tiers (current-release output, kept from earlier
-recordings). The tests cover the version gate, malformed and truncated
-reports, kosi's stats and diagnostics markers, and the equality contract:
-the reached purls the adapter's records count must be exactly the purls
-the ``kosi_slices`` converter carried on its flows for the same report,
-and the service attribution must match the engine's positional walk over
-those flows. Those golden sets were computed from the converter and
-checked against the reports by hand; they are pinned below.
+recordings, described in the README next to them). The tests cover the
+version gate, malformed and truncated reports, kosi's stats and
+diagnostics markers, record paths and ids that do not depend on the
+directory kosi ran in, the count of report objects that make no record,
+and the reached-set contract: the reached purls and service purls the
+records count for each recording are pinned below, checked against the
+reports by hand, and must not change.
 
-The converter never read kosi's ``apiEndpoints`` and never emitted flows
-for it, so the adapter records no endpoint evidence either: emitting it
-would count purls master never counted. The equality contract below holds
-the adapter to that.
+kosi's ``apiEndpoints`` become ``entry-point`` records that name no
+package, so the pinned reached sets hold with them in place.
 """
 
 import json
@@ -37,9 +35,9 @@ REACHED_COUNTED = frozenset({"reached-flow", "usage", "entry-point"})
 OKHTTP = {"purl": "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"}
 KT2 = {"purl": "pkg:generic/kt2@unspecified"}
 
-# The reached purls and service purls the kosi_slices converter's flows
-# carry for each recording, with the BOM components (and the metadata
-# component) those flows were computed against. Verified against the
+# The reached purls and service purls the records count for each recording,
+# with the BOM components (and the metadata component) they are reconciled
+# against. Verified against the
 # reports by hand: the resolved tier's two slices cross the workspace
 # (kt2) and the okhttp dependency its first slice sinks into, while its
 # call graph holds only workspace functions so no edge flow exists; the
@@ -50,7 +48,10 @@ CASES = {
         "bom": [OKHTTP],
         "extra": [KT2],
         "reached": ["pkg:generic/kt2@unspecified", "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"],
-        "services": ["pkg:generic/kt2@unspecified", "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0"],
+        "services": [
+            "pkg:generic/kt2@unspecified",
+            "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0",
+        ],
     },
     "kosi-syntax-report.json": {
         "bom": [OKHTTP],
@@ -94,14 +95,14 @@ def _services(result):
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_reached_set_matches_the_converter_flows(name):
+def test_reached_set_on_the_recording(name):
     result = _extract(name)
     assert result.status == STATUS_COMPLETED
     assert _reached(result) == set(CASES[name]["reached"])
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_service_attribution_matches_the_converter_flows(name):
+def test_service_attribution_on_the_recording(name):
     result = _extract(name)
     assert _services(result) == set(CASES[name]["services"])
 
@@ -129,17 +130,22 @@ def test_resolved_recording_record_kinds():
         assert record.path is not None
         assert len(record.path) >= 7
         assert record.locations[0].file == "src/main/kotlin/demo/App.kt"
-    ssrf = next(r for r in slices if (r.attributes or {}).get("servicePurls") == [
-        "pkg:generic/kt2@unspecified",
-        "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0",
-    ])
+    ssrf = next(
+        r
+        for r in slices
+        if (r.attributes or {}).get("servicePurls")
+        == [
+            "pkg:generic/kt2@unspecified",
+            "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0",
+        ]
+    )
     # the producer states no tier on these slices, so none is invented
     assert ssrf.attributes is not None
     assert "tier" not in ssrf.attributes
     other = [r for r in slices if r is not ssrf]
     assert len(other) == 1
     # the process-exec slice's only BOM purl is the workspace, attributed
-    # through the sink category exactly as the converter's flow carried it
+    # through the sink category
     other_attrs = other[0].attributes
     assert other_attrs is not None
     assert other_attrs["servicePurls"] == ["pkg:generic/kt2@unspecified"]
@@ -172,7 +178,7 @@ def test_producer_version_falls_back_to_the_report_tool_version():
 def test_call_graph_edge_into_a_dependency_becomes_a_reached_flow():
     """The resolved tier keeps workspace functions only, so an external
     edge arrives with other call-graph modes; the adapter must record it
-    as reached evidence the same way the converter did."""
+    as reached evidence."""
     report = _report("kosi-resolved-report.json")
     report["callGraph"]["nodes"].append(
         {
@@ -243,9 +249,7 @@ def test_newer_minor_version_is_accepted_with_a_caveat():
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "schema-minor" for c in result.caveats)
     assert result.records
-    assert all(
-        any(c.kind == "schema-minor" for c in record.caveats) for record in result.records
-    )
+    assert all(any(c.kind == "schema-minor" for c in record.caveats) for record in result.records)
 
 
 def test_report_without_a_version_is_accepted_as_schema_unknown():
@@ -308,17 +312,14 @@ def test_unnameable_invoke_diagnostics_are_a_coverage_gap():
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "coverage-gap" for c in result.caveats)
     assert result.records
-    assert all(
-        any(c.kind == "coverage-gap" for c in record.caveats) for record in result.records
-    )
+    assert all(any(c.kind == "coverage-gap" for c in record.caveats) for record in result.records)
 
 
 def test_syntax_tier_not_run_diagnostics_are_a_coverage_gap():
     result = _extract("kosi-syntax-report.json")
     assert result.status == STATUS_COMPLETED
     assert any(
-        c.kind == "coverage-gap" and "callgraph-not-run" in c.detail
-        for c in result.caveats
+        c.kind == "coverage-gap" and "callgraph-not-run" in c.detail for c in result.caveats
     )
 
 
@@ -335,9 +336,7 @@ def test_stats_truncations_are_a_budget_caveat():
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "budget" and "dataflow-slices" in c.detail for c in result.caveats)
     assert result.records
-    assert all(
-        any(c.kind == "budget" for c in record.caveats) for record in result.records
-    )
+    assert all(any(c.kind == "budget" for c in record.caveats) for record in result.records)
 
 
 def test_stats_cap_hits_are_a_budget_caveat():
@@ -357,7 +356,11 @@ def test_stats_cap_hits_are_a_budget_caveat():
 def test_timeout_diagnostic_is_a_timeout_caveat():
     report = _report("kosi-resolved-report.json")
     report["diagnostics"] = [
-        {"code": "callgraph-timeout", "count": 1, "message": "call graph stopped at its time budget"}
+        {
+            "code": "callgraph-timeout",
+            "count": 1,
+            "message": "call graph stopped at its time budget",
+        }
     ]
     result = extract(
         report,
@@ -368,9 +371,7 @@ def test_timeout_diagnostic_is_a_timeout_caveat():
     )
     assert result.status == STATUS_COMPLETED
     assert any(c.kind == "timeout" for c in result.caveats)
-    assert all(
-        any(c.kind == "timeout" for c in record.caveats) for record in result.records
-    )
+    assert all(any(c.kind == "timeout" for c in record.caveats) for record in result.records)
 
 
 def test_collapsed_edge_hops_are_a_caveat_and_an_attribute():
@@ -435,9 +436,7 @@ def test_unexpected_object_shape_is_a_record_skipped_caveat():
         extra_components=[KT2],
     )
     assert result.status == STATUS_COMPLETED
-    skipped = [
-        c for c in result.caveats if c.kind == "record-skipped" and "usages" in c.detail
-    ]
+    skipped = [c for c in result.caveats if c.kind == "record-skipped" and "usages" in c.detail]
     assert skipped
 
 
@@ -508,3 +507,166 @@ def test_bom_index_holds_only_maven_components_and_the_root():
     # the workspace root is indexed whatever its purl type
     assert index["pkg:generic/kt2@unspecified"] == KT2["purl"]
     assert "pkg:npm/express@4.21.2" not in index
+
+
+# --- usages ------------------------------------------------------------------
+
+
+def test_every_call_site_of_a_symbol_keeps_its_own_record():
+    """Two call sites of one okhttp symbol are two usage records, each with
+    its own line; the usages that attribute to no BOM package are counted."""
+    report = _report("kosi-resolved-report.json")
+    again = json.loads(json.dumps(report["usages"][0]))
+    again["id"] = "use-000099"
+    again["position"]["line"] = 30
+    report["usages"].append(again)
+    result = extract(report, source=SOURCE, bom_components=[OKHTTP], extra_components=[KT2])
+    usages = [r for r in result.records if r.kind == "usage"]
+    assert [(r.locations[0].method, r.locations[0].line) for r in usages] == [
+        ("okhttp3.OkHttpClient", 13),
+        ("okhttp3.Request.Builder", 14),
+        ("okhttp3.Request.Builder.url", 14),
+        ("okhttp3.Request.Builder.url.build", 14),
+        ("okhttp3.OkHttpClient", 30),
+    ]
+    assert len({r.id for r in usages}) == 5
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "12 usages entries name no import that attributes to a BOM package and became no record"
+    ]
+
+
+# --- api endpoints -----------------------------------------------------------
+
+
+ENDPOINT = {
+    "id": "ep-000001",
+    "framework": "ktor",
+    "httpMethods": ["GET"],
+    "pathTemplate": "/fetch",
+    "pathParameters": [],
+    "queryParameters": [],
+    "consumes": [],
+    "produces": [],
+    "authentication": [],
+    "handlerSymbol": "fetch",
+    "handlerCanonicalName": "demo.fetch",
+    "modulePath": ".",
+    "purl": "pkg:generic/kt2@unspecified",
+    "position": {"filename": "src/main/kotlin/demo/App.kt", "line": 19, "column": 1},
+    "reachableSources": [],
+    "sliceIds": [],
+    "foundBy": "dsl",
+}
+
+
+@pytest.mark.parametrize("name", sorted(CASES))
+def test_api_endpoints_are_kept_without_changing_the_reached_sets(name):
+    """An endpoint becomes an entry-point record that names no package: the
+    workspace module that declares it is the modulePurl attribute. The
+    reached and service sets are the pinned ones."""
+    report = _report(name)
+    assert report["apiEndpoints"] == []
+    report["apiEndpoints"] = [ENDPOINT]
+    result = extract(report, source=SOURCE, bom_components=[OKHTTP], extra_components=[KT2])
+    entries = [r for r in result.records if r.kind == "entry-point"]
+    assert len(entries) == 1
+    entry = entries[0]
+    assert entry.subject.purls == []
+    assert entry.attributes == {
+        "framework": "ktor",
+        "httpMethods": ["GET"],
+        "pathTemplate": "/fetch",
+        "handlerSymbol": "fetch",
+        "handlerCanonicalName": "demo.fetch",
+        "foundBy": "dsl",
+        "modulePurl": "pkg:generic/kt2@unspecified",
+    }
+    assert entry.locations[0].file == "src/main/kotlin/demo/App.kt"
+    assert entry.locations[0].line == 19
+    assert _reached(result) == set(CASES[name]["reached"])
+    assert _services(result) == set(CASES[name]["services"])
+
+
+# --- record paths, ids, malformed values -------------------------------------
+
+
+def test_record_paths_are_relative_and_never_absolute():
+    """An absolute path under kosi's working directory becomes relative, a
+    Windows path too, a file in a Gradle cache takes its group, artifact
+    and version spelling, and any other absolute path is left out."""
+    report = _report("kosi-resolved-report.json")
+    report["runtime"]["workingDirectory"] = "C:\\src\\kt2"
+    frames = report["dataFlow"]["slices"][0]["frames"]
+    frames[0]["file"] = "C:\\src\\kt2\\src\\main\\kotlin\\demo\\App.kt"
+    frames[1]["file"] = (
+        "/home/someone/.gradle/caches/modules-2/files-2.1/com.squareup.okhttp3/okhttp/"
+        "4.12.0/0123abcd/okhttp-4.12.0-sources.jar"
+    )
+    frames[2]["file"] = "/opt/elsewhere/App.kt"
+    result = extract(report, source=SOURCE, bom_components=[OKHTTP], extra_components=[KT2])
+    record = next(r for r in result.records if r.kind == "reached-flow")
+    assert [node.file for node in (record.path or [])[:3]] == [
+        "src/main/kotlin/demo/App.kt",
+        "com.squareup.okhttp3/okhttp/4.12.0/okhttp-4.12.0-sources.jar",
+        None,
+    ]
+    assert "location-outside-root" in {c.kind for c in record.caveats}
+    for rec in result.records:
+        for location in rec.locations:
+            assert not location.file.startswith("/") and ":" not in location.file
+
+
+def test_ids_do_not_depend_on_the_directory_kosi_ran_in():
+    report = _report("kosi-resolved-report.json")
+    absolute = "/src/kt2/src/main/kotlin/demo/App.kt"
+    for entry in report["usages"] + report["imports"]:
+        entry["filePath"] = absolute
+    moved = json.loads(json.dumps(report).replace("/src/kt2", "/work/elsewhere/kt2"))
+    assert moved != report
+    kwargs = {"source": SOURCE, "bom_components": [OKHTTP], "extra_components": [KT2]}
+    first = extract(report, **kwargs)
+    second = extract(moved, **kwargs)
+    assert len(first.records) == 6
+    assert [r.to_dict() for r in first.records] == [r.to_dict() for r in second.records]
+
+
+def test_nested_values_of_the_wrong_type_are_read_without_raising():
+    """A frame line that is text and a usage position that is a list are no
+    line; the records are still built."""
+    report = _report("kosi-resolved-report.json")
+    report["dataFlow"]["slices"][0]["frames"][0]["line"] = "abc"
+    report["usages"][0]["position"] = [1, 2]
+    result = extract(report, source=SOURCE, bom_components=[OKHTTP], extra_components=[KT2])
+    assert result.status == STATUS_COMPLETED
+    record = next(r for r in result.records if r.kind == "reached-flow")
+    assert (record.path or [])[0].line is None
+    usage = next(r for r in result.records if r.kind == "usage")
+    assert usage.locations[0].line is None
+
+
+@pytest.mark.parametrize(
+    "path, value, problem",
+    [
+        (("callGraph",), [], "callGraph is a list, expected an object"),
+        (("usages",), 5, "usages is a int, expected an array"),
+        (("apiEndpoints",), {}, "apiEndpoints is a dict, expected an array"),
+    ],
+)
+def test_a_section_of_the_wrong_type_is_not_assessed(path, value, problem):
+    report = _report("kosi-resolved-report.json")
+    holder = report
+    for key in path[:-1]:
+        holder = holder[key]
+    holder[path[-1]] = value
+    result = extract(report, source=SOURCE)
+    assert result.status == STATUS_NOT_ASSESSED
+    assert result.reason == f"the kosi report is malformed and was not assessed: {problem}"
+
+
+@pytest.mark.parametrize("version", ["kosi/v2", "kosi/latest"])
+def test_a_version_without_a_numeric_major_is_refused(version):
+    report = _report("kosi-resolved-report.json")
+    report["schemaVersion"] = version
+    result = extract(report, source=SOURCE)
+    assert result.status == STATUS_NOT_ASSESSED
+    assert version in (result.reason or "")

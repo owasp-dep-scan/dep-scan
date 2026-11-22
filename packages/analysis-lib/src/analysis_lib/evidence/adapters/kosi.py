@@ -4,7 +4,7 @@ This module is the only code that knows the kosi report format: a JSON
 object whose ``schemaVersion`` is ``kosi/<major>[.<minor>]``, carrying a
 ``tool`` block and lowerCamelCase sections.
 
-Three kinds of evidence become records:
+Four kinds of evidence become records:
 
 1. Dataflow slices (``dataFlow.slices[]``, published by the resolved tier)
    become ``reached-flow`` records whose ``path`` is the slice's
@@ -17,6 +17,10 @@ Three kinds of evidence become records:
    The resolved tier at the ``static`` call-graph mode keeps only workspace
    functions as nodes, so this is empty there and appears when a mode or
    dependency view brings dependency functions into the graph.
+4. API endpoints (``apiEndpoints[]``) become ``entry-point`` records that
+   name no package: the endpoint's purl is the workspace module that
+   declares it, kept as the ``modulePurl`` attribute, so a route kosi found
+   is kept as attack surface without counting as a reached package.
 
 Attribution of a name to a BOM dependency, in order: the ``purl`` kosi
 itself resolved (resolved tier, matched to the jar whose package prefix the
@@ -28,11 +32,19 @@ is limited to what the coordinates reveal: a library whose Java package
 shares nothing with its Maven group and artifact is not attributed, which
 leaves it "not observed", never reached.
 
-A slice or usage whose purls name no BOM component is left out: the
-producer named a package this BOM does not carry, and an unmatched purl
-never incremented the reached set. An object the report itself left
-shapeless (not a JSON object where one belongs) is a ``record-skipped``
-caveat, never a silent drop.
+Every usage that attributes to a BOM package is its own record, so each
+call site keeps its location. A call into the workspace or the standard
+library is not dependency evidence and makes no record. Every other report
+object that makes no record (a slice, usage or edge that names only
+packages the BOM does not carry, a slice without frames, an entry that is
+not a JSON object) is counted in one ``record-skipped`` caveat per reason.
+
+File paths are relative to the working directory kosi names
+(``runtime.workingDirectory``) or the caller's source root; a file in a
+Maven or Gradle cache is spelled by its cache path, and any other absolute
+path is left out with a ``location-outside-root`` caveat. Record ids leave
+out kosi's own object ids and spell the roots the same way wherever the
+report was produced.
 
 Kosi's own markers travel with the records. A non-empty
 ``stats.truncations`` object and the stats cap counters (``fixpointCapHits``,
@@ -46,16 +58,11 @@ record: an absent flow through them means unexamined, not clean. A
 call-graph edge that collapsed intermediate hops carries the collapse
 information the producer stated as its ``collapsed`` attribute and a
 ``collapsed-edges`` caveat.
-
-The converter this module replaces never read kosi's ``apiEndpoints`` and
-never emitted flows for it, so no endpoint records are built here either:
-emitting them would count purls the engine never counted before.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
@@ -64,13 +71,21 @@ from analysis_lib.evidence import (
     EvidenceLocation,
     EvidencePathNode,
     EvidenceProducer,
-    content_discriminator,
 )
 from analysis_lib.evidence.adapters import (
     AdapterResult,
     STATUS_COMPLETED,
+    SkipTally,
+    SourcePaths,
+    as_dict,
+    as_hashable_str,
+    as_line,
+    as_list,
+    as_str,
     build_record,
     gate_report_version,
+    guard_extract,
+    neutral_discriminator,
     not_assessed,
 )
 
@@ -126,9 +141,7 @@ def is_kosi_report(report) -> bool:
     tool = isinstance(report.get("tool"), dict)
     if schema:
         return schema.startswith(KOSI_SCHEMA_PREFIX) and tool
-    return tool and any(
-        isinstance(report.get(k), dict) for k in ("dataFlow", "callGraph")
-    )
+    return tool and any(isinstance(report.get(k), dict) for k in ("dataFlow", "callGraph"))
 
 
 # ---------------------------------------------------------------------------
@@ -227,18 +240,18 @@ def _qualify_usage(usage: dict, file_imports: List[dict]) -> List[str]:
     owns it, so a local function would be attributed to the wildcard's
     library.
     """
-    name = usage.get("name") or ""
+    name = as_str(usage.get("name"))
     if not name:
         return []
     head, _, rest = name.partition(".")
     out: List[str] = []
     for imp in file_imports:
-        fqn = imp.get("name") or ""
+        fqn = as_str(imp.get("name"))
         if not fqn:
             continue
         if imp.get("star"):
             continue
-        bound = imp.get("alias") or fqn.rsplit(".", 1)[-1]
+        bound = as_str(imp.get("alias")) or fqn.rsplit(".", 1)[-1]
         if bound == head:
             out.append(fqn + ("." + rest if rest else ""))
     return out
@@ -254,7 +267,7 @@ def _gate_version(report: dict) -> str:
     ``schemaVersion`` after the ``kosi/`` prefix."""
     text = str(report.get("schemaVersion") or "").strip()
     if text.startswith(KOSI_SCHEMA_PREFIX):
-        return text[len(KOSI_SCHEMA_PREFIX):]
+        return text[len(KOSI_SCHEMA_PREFIX) :]
     return text
 
 
@@ -280,35 +293,47 @@ def _reach_fields(entry: Optional[dict]) -> dict:
 def _function_reach(cg: dict) -> Dict[str, dict]:
     """``canonicalName -> reachability attributes`` for every call-graph
     node."""
-    by_id = {e.get("nodeId"): e for e in cg.get("reachability", []) or [] if isinstance(e, dict)}
+    by_id = {
+        e["nodeId"]: e
+        for e in as_list(cg.get("reachability"))
+        if isinstance(e, dict) and as_hashable_str(e.get("nodeId"))
+    }
     out: Dict[str, dict] = {}
-    for node in cg.get("nodes", []) or []:
+    for node in as_list(cg.get("nodes")):
         if not isinstance(node, dict):
             continue
-        entry = by_id.get(node.get("id"))
-        name = node.get("canonicalName")
+        node_id = as_hashable_str(node.get("id"))
+        entry = by_id.get(node_id) if node_id else None
+        name = as_hashable_str(node.get("canonicalName"))
         if entry is not None and name:
             out[name] = _reach_fields(entry)
     return out
 
 
-def _relative(file: Optional[str], root: str) -> Optional[str]:
-    """The file path relative to the analysed root, with forward slashes.
+class _Locations:
+    """Builds a record's locations and witness nodes through the report's
+    :class:`SourcePaths`, counting the files left out so the record can say
+    so."""
 
-    Paths the report points outside the root are kept as given; nothing is
-    guessed beyond the root prefix the report itself names.
-    """
-    if not file:
-        return None
-    out = file
-    if root and (out == root or out.startswith(root + "/") or out.startswith(root + os.sep)):
-        out = out[len(root):].lstrip("/").lstrip(os.sep) or file
-    return out.replace(os.sep, "/")
+    def __init__(self, paths: SourcePaths) -> None:
+        self.paths = paths
+        self.left_out: set = set()
+
+    def file(self, value: Any) -> Optional[str]:
+        if not isinstance(value, str) or not value:
+            return None
+        relative = self.paths.relative(value)
+        if relative is None:
+            self.left_out.add(value)
+        return relative
+
+    def caveats(self, base: List[EvidenceCaveat]) -> List[EvidenceCaveat]:
+        if not self.left_out:
+            return list(base)
+        return list(base) + [self.paths.outside_root_caveat(len(self.left_out))]
 
 
-def _service_purls(
-    pairs: List[Tuple[Optional[str], str]], flow_purls: Set[str]
-) -> List[str]:
+def _service_purls(pairs: List[Tuple[Optional[str], str]], flow_purls: Set[str]) -> List[str]:
     """Purls a record's category pairs mark as services.
 
     Each pair is a (purl, category) the producer stated on one object, the
@@ -349,7 +374,7 @@ def _marker_caveats(report: dict) -> List[EvidenceCaveat]:
     ``coverage-gap`` caveats rather than clean silence.
     """
     caveats: List[EvidenceCaveat] = []
-    stats = report.get("stats") if isinstance(report.get("stats"), dict) else {}
+    stats = as_dict(report.get("stats"))
     truncations = stats.get("truncations")
     if isinstance(truncations, dict) and truncations:
         caveats.append(
@@ -360,31 +385,23 @@ def _marker_caveats(report: dict) -> List[EvidenceCaveat]:
         )
     for counter in ("fixpointCapHits", "sccIterationCapHits"):
         value = stats.get(counter)
-        if isinstance(value, int) and value > 0:
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
             caveats.append(
                 EvidenceCaveat(kind="budget", detail=f"kosi hit its {counter} cap {value} time(s)")
             )
-    for diag in report.get("diagnostics", []) or []:
+    for diag in as_list(report.get("diagnostics")):
         if not isinstance(diag, dict):
             continue
-        code = str(diag.get("code") or "")
-        message = str(diag.get("message") or "")
+        code = as_str(diag.get("code"))
+        message = as_str(diag.get("message"))
         haystack = f"{code} {message}".lower()
+        detail = f"kosi diagnostic {code}: {message}" if code else message
         if "timeout" in haystack:
-            caveats.append(
-                EvidenceCaveat(kind="timeout", detail=f"kosi diagnostic {code}: {message}" if code else message)
-            )
+            caveats.append(EvidenceCaveat(kind="timeout", detail=detail))
         elif any(word in haystack for word in ("truncat", "budget", "cap ")):
-            caveats.append(
-                EvidenceCaveat(kind="budget", detail=f"kosi diagnostic {code}: {message}" if code else message)
-            )
+            caveats.append(EvidenceCaveat(kind="budget", detail=detail))
         elif code or message:
-            caveats.append(
-                EvidenceCaveat(
-                    kind="coverage-gap",
-                    detail=f"kosi diagnostic {code}: {message}" if code else message,
-                )
-            )
+            caveats.append(EvidenceCaveat(kind="coverage-gap", detail=detail))
     return caveats
 
 
@@ -400,6 +417,46 @@ def _dedupe_caveats(caveats: List[EvidenceCaveat]) -> List[EvidenceCaveat]:
     return out
 
 
+#: The report sections the adapter reads, with the JSON type each must have
+#: when present. A section of another type is a malformed report.
+_SECTION_TYPES = (
+    (("runtime",), dict),
+    (("tool",), dict),
+    (("stats",), dict),
+    (("diagnostics",), list),
+    (("imports",), list),
+    (("usages",), list),
+    (("apiEndpoints",), list),
+    (("dataFlow",), dict),
+    (("dataFlow", "slices"), list),
+    (("callGraph",), dict),
+    (("callGraph", "nodes"), list),
+    (("callGraph", "edges"), list),
+    (("callGraph", "reachability"), list),
+)
+
+
+def _section_problem(report: dict) -> Optional[str]:
+    """The first consumed section of the wrong JSON type, named, or ``None``.
+
+    A ``null`` section reads as absent. Any other value of the wrong type
+    means the report is not the shape kosi writes.
+    """
+    for keys, expected in _SECTION_TYPES:
+        value: Any = report
+        for key in keys:
+            if not isinstance(value, dict):
+                value = None
+                break
+            value = value.get(key)
+        if value is not None and not isinstance(value, expected):
+            label = ".".join(keys)
+            want = "an object" if expected is dict else "an array"
+            return f"{label} is a {type(value).__name__}, expected {want}"
+    return None
+
+
+@guard_extract(PRODUCER_NAME)
 def extract(
     report,
     *,
@@ -407,6 +464,7 @@ def extract(
     producer_version: str = "",
     bom_components: Optional[Iterable[dict]] = None,
     extra_components: Optional[Iterable[dict]] = None,
+    source_root: Optional[str] = None,
 ) -> AdapterResult:
     """One kosi report as evidence records.
 
@@ -415,10 +473,13 @@ def extract(
     ``producer_version`` is the kosi tool version when the caller knows it;
     the report's own ``tool.version`` is used otherwise. ``bom_components``
     and ``extra_components`` (the metadata.component root) feed the purl
-    reconciliation index. The result is the records, or not-assessed with
-    the reason: a report that is not valid JSON, does not have the kosi
-    shape, or names a schema major this adapter does not read is never read
-    as a smaller report.
+    reconciliation index. ``source_root`` is the scanned source directory
+    as the caller knows it; record paths are relative to it or to the
+    working directory kosi names in the report, whichever holds the file.
+    The result is the records, or not-assessed with the reason: a report
+    that is not valid JSON, does not have the kosi shape, names a schema
+    major this adapter does not read, or has a section of an unexpected
+    type is never read as a smaller report.
     """
     report, parse_error = _parse_report(report)
     if parse_error or not isinstance(report, dict):
@@ -431,18 +492,21 @@ def extract(
             "the report does not have the kosi shape (a kosi/ schemaVersion "
             "with a tool block); it was not assessed"
         )
+    problem = _section_problem(report)
+    if problem:
+        return not_assessed(f"the kosi report is malformed and was not assessed: {problem}")
 
-    seen_version = str(report.get("schemaVersion") or "").strip()
+    seen_version = as_str(report.get("schemaVersion")).strip()
     gate = gate_report_version(_gate_version(report), SUPPORTED_MAJOR, KNOWN_MINOR)
     if not gate.accepted:
         return not_assessed(
-            f"the report schema version {seen_version or _gate_version(report)} is "
+            f"the report schema version {seen_version or _gate_version(report)!r} is "
             f"not supported; this adapter reads kosi schema major {SUPPORTED_MAJOR} reports"
         )
     report_caveats = list(gate.caveats)
 
-    tool = report.get("tool") if isinstance(report.get("tool"), dict) else {}
-    version = producer_version or str(tool.get("version") or "") or "unknown"
+    tool = as_dict(report.get("tool"))
+    version = producer_version or as_str(tool.get("version")) or "unknown"
     report_schema_version = seen_version or "unknown"
     producer = EvidenceProducer(
         name=PRODUCER_NAME, version=version, report_schema_version=report_schema_version
@@ -454,55 +518,56 @@ def extract(
     base_caveats = report_caveats + marker_caveats
 
     bom_index = build_bom_purl_index(bom_components, extra_components=extra_components)
-    runtime = report.get("runtime") if isinstance(report.get("runtime"), dict) else {}
-    root = str(runtime.get("workingDirectory") or "")
+    runtime = as_dict(report.get("runtime"))
+    paths = SourcePaths([runtime.get("workingDirectory"), source_root])
 
-    df = report.get("dataFlow") if isinstance(report.get("dataFlow"), dict) else {}
-    cg = report.get("callGraph") if isinstance(report.get("callGraph"), dict) else {}
+    df = as_dict(report.get("dataFlow"))
+    cg = as_dict(report.get("callGraph"))
     func_reach = _function_reach(cg)
 
-    skipped: List[EvidenceCaveat] = []
+    skipped = SkipTally()
     records = []
 
     # --- dataflow slice records -------------------------------------------
-    for sl in df.get("slices", []) or []:
+    for sl in as_list(df.get("slices")):
         if not isinstance(sl, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped",
-                    detail="dataFlow.slices carries a non-object entry; it was not turned into a record",
-                )
-            )
+            skipped.add("dataFlow.slices entries are not JSON objects and became no record")
             continue
         purls: Set[str] = set()
         for key in ("sourcePurl", "targetPurl"):
             vp = reconcile_purl(sl.get(key), bom_index)
             if vp:
                 purls.add(vp)
-        for p in sl.get("purls", []) or []:
+        for p in as_list(sl.get("purls")):
             vp = reconcile_purl(p, bom_index)
             if vp:
                 purls.add(vp)
-        source_purls = attribute_name(sl.get("sourceName") or "", bom_index)
-        sink_purls = attribute_name(sl.get("sinkName") or "", bom_index)
+        source_purls = attribute_name(as_str(sl.get("sourceName")), bom_index)
+        sink_purls = attribute_name(as_str(sl.get("sinkName")), bom_index)
         purls |= source_purls | sink_purls
         if not purls:
+            skipped.add(
+                "dataFlow.slices entries name no package this BOM carries and became no record"
+            )
             continue
-        rule_name = sl.get("ruleName") or sl.get("ruleId") or ""
-        sink_category = sl.get("sinkCategory") or ""
+        frames = [f for f in as_list(sl.get("frames")) if isinstance(f, dict)]
+        if not frames:
+            skipped.add("dataFlow.slices entries carry no usable frames and became no record")
+            continue
+        sink_category = as_str(sl.get("sinkCategory"))
         purl_by_function: Dict[str, str] = {}
         if source_purls:
-            purl_by_function[sl.get("sourceFunction") or ""] = sorted(source_purls)[0]
+            purl_by_function[as_str(sl.get("sourceFunction"))] = sorted(source_purls)[0]
 
         service_pairs: List[Tuple[Optional[str], str]] = []
         path_nodes: List[EvidencePathNode] = []
         locations: List[EvidenceLocation] = []
-        frames = [f for f in sl.get("frames", []) or [] if isinstance(f, dict)]
+        where = _Locations(paths)
         last = len(frames) - 1
         for idx, fr in enumerate(frames):
-            function = fr.get("function") or ""
-            line = int(fr.get("line") or 0) or None
-            file = _relative(fr.get("file"), root)
+            function = as_str(fr.get("function"))
+            line = as_line(fr.get("line"))
+            file = where.file(fr.get("file"))
             is_sink = idx == last
             purl = None
             if is_sink and sink_purls:
@@ -511,38 +576,18 @@ def extract(
                 purl = purl_by_function[function]
             if purl:
                 service_pairs.append((purl, sink_category if is_sink else ""))
-                represented_category = sink_category if is_sink else ""
-            else:
-                represented_category = ""
             path_nodes.append(
                 EvidencePathNode(
-                    file=file,
-                    line=line,
-                    method=function or None,
-                    symbol=function or None,
+                    file=file, line=line, method=function or None, symbol=function or None
                 )
             )
             if file:
                 locations.append(EvidenceLocation(file=file, line=line, method=function or None))
-        if not frames:
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped",
-                    detail=(
-                        "dataFlow.slices entry "
-                        f"{str(sl.get('id') or '')!r} carries no usable frames; "
-                        "it was not turned into a record"
-                    ),
-                )
-            )
-            continue
         represented = {purl for purl, _ in service_pairs}
-        missing = purls - represented
-        if missing:
-            for m in sorted(missing):
-                service_pairs.append((m, sink_category))
+        for m in sorted(purls - represented):
+            service_pairs.append((m, sink_category))
         attributes: dict = {}
-        reach = func_reach.get(frames[0].get("function") or "")
+        reach = func_reach.get(as_str(frames[0].get("function")))
         if reach:
             attributes.update(reach)
         tier = sl.get("tier")
@@ -551,40 +596,37 @@ def extract(
         if sl.get("collapsed") is not None:
             attributes["collapsed"] = sl.get("collapsed")
         attributes["servicePurls"] = _service_purls(service_pairs, purls)
+        confidence = sl.get("confidence")
         records.append(
             build_record(
                 source=source,
                 producer=producer,
                 kind="reached-flow",
-                discriminator=str(sl.get("id") or content_discriminator(sl)),
+                discriminator=neutral_discriminator(sl, paths, [p.to_dict() for p in path_nodes]),
                 purls=tuple(sorted(purls)),
                 locations=tuple(locations),
                 path=tuple(path_nodes),
-                confidence=str(sl["confidence"]) if sl.get("confidence") else None,
+                confidence=confidence if isinstance(confidence, str) and confidence else None,
                 attributes=attributes,
-                caveats=tuple(base_caveats),
+                caveats=tuple(where.caveats(base_caveats)),
             )
         )
 
     # --- usage records -------------------------------------------------------
+    # Every usage kosi lists that attributes to a BOM package is its own
+    # record, so each call site keeps its location.
     imports_by_file: Dict[str, List[dict]] = {}
-    for imp in report.get("imports", []) or []:
+    for imp in as_list(report.get("imports")):
         if isinstance(imp, dict):
-            imports_by_file.setdefault(imp.get("filePath") or "", []).append(imp)
-    seen_usage: Set[Tuple[str, str]] = set()
-    for usage in report.get("usages", []) or []:
+            imports_by_file.setdefault(as_str(imp.get("filePath")), []).append(imp)
+    for usage in as_list(report.get("usages")):
         if not isinstance(usage, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped",
-                    detail="usages carries a non-object entry; it was not turned into a record",
-                )
-            )
+            skipped.add("usages entries are not JSON objects and became no record")
             continue
-        file_path = usage.get("filePath") or ""
+        file_path = as_str(usage.get("filePath"))
         file_imports = imports_by_file.get(file_path, [])
         candidates = _qualify_usage(usage, file_imports)
-        purls: Set[str] = set()
+        purls = set()
         qualified = ""
         for cand in candidates:
             attributed = attribute_name(cand, bom_index)
@@ -593,70 +635,87 @@ def extract(
                 qualified = qualified or cand
         # a resolved import purl beats the name heuristic
         for imp in file_imports:
-            fqn = imp.get("name") or ""
+            fqn = as_str(imp.get("name"))
             if qualified and fqn and qualified.startswith(fqn):
                 vp = reconcile_purl(imp.get("purl"), bom_index)
                 if vp:
                     purls = {vp}
                 break
         if not purls:
+            skipped.add(
+                "usages entries name no import that attributes to a BOM package "
+                "and became no record"
+            )
             continue
+        where = _Locations(paths)
+        file = where.file(file_path)
+        line = as_line(as_dict(usage.get("position")).get("line"))
+        location = (
+            EvidenceLocation(file=file, line=line, method=qualified or None) if file else None
+        )
         for purl in sorted(purls):
-            ident = (purl, qualified)
-            if ident in seen_usage:
-                continue
-            seen_usage.add(ident)
-            line = int((usage.get("position") or {}).get("line") or 0) or None
-            file = _relative(file_path, root)
-            location = EvidenceLocation(file=file, line=line, method=qualified or None) if file else None
             records.append(
                 build_record(
                     source=source,
                     producer=producer,
                     kind="usage",
-                    discriminator=str(usage.get("id") or content_discriminator(usage)),
+                    discriminator=neutral_discriminator(usage, paths),
                     purls=(purl,),
                     locations=tuple(loc for loc in (location,) if loc),
                     attributes={"servicePurls": []},
-                    caveats=tuple(base_caveats),
+                    caveats=tuple(where.caveats(base_caveats)),
                 )
             )
 
     # --- call-graph edge records ---------------------------------------------
-    nodes_by_id = {n.get("id"): n for n in cg.get("nodes", []) or [] if isinstance(n, dict)}
-    by_reach = {
-        e.get("nodeId"): e for e in cg.get("reachability", []) or [] if isinstance(e, dict)
+    nodes_by_id = {
+        n["id"]: n
+        for n in as_list(cg.get("nodes"))
+        if isinstance(n, dict) and as_hashable_str(n.get("id"))
     }
-    for edge in cg.get("edges", []) or []:
+    by_reach = {
+        e["nodeId"]: e
+        for e in as_list(cg.get("reachability"))
+        if isinstance(e, dict) and as_hashable_str(e.get("nodeId"))
+    }
+
+    def node(node_id: Any) -> dict:
+        key = as_hashable_str(node_id)
+        return nodes_by_id.get(key, {}) if key else {}
+
+    for edge in as_list(cg.get("edges")):
         if not isinstance(edge, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped",
-                    detail="callGraph.edges carries a non-object entry; it was not turned into a record",
-                )
-            )
+            skipped.add("callGraph.edges entries are not JSON objects and became no record")
             continue
-        target = nodes_by_id.get(edge.get("targetId")) or {}
-        source_node = nodes_by_id.get(edge.get("sourceId")) or {}
+        target = node(edge.get("targetId"))
+        source_node = node(edge.get("sourceId"))
+        # A call into the workspace or the standard library is not dependency
+        # evidence and is not a record the report fails to give.
         if not target.get("external") or target.get("stdlib"):
             continue
-        purls = attribute_name(target.get("canonicalName") or "", bom_index)
+        purls = attribute_name(as_str(target.get("canonicalName")), bom_index)
         vp = reconcile_purl(target.get("purl"), bom_index)
         if vp:
             purls = {vp}
         if not purls:
+            skipped.add(
+                "callGraph.edges entries call a package this BOM does not carry "
+                "and became no record"
+            )
             continue
-        callee = target.get("canonicalName") or ""
-        caller = source_node.get("canonicalName") or ""
-        file = _relative(source_node.get("filePath") or "", root)
-        line = int(edge.get("line") or 0) or None
-        attributes: dict = _reach_fields(by_reach.get(source_node.get("id")))
+        callee = as_str(target.get("canonicalName"))
+        caller = as_str(source_node.get("canonicalName"))
+        where = _Locations(paths)
+        file = where.file(source_node.get("filePath"))
+        line = as_line(edge.get("line"))
+        source_id = as_hashable_str(source_node.get("id"))
+        attributes = _reach_fields(by_reach.get(source_id) if source_id else None)
         collapsed = {
             key: edge[key]
             for key in ("collapsedHops", "collapsedPackages")
             if edge.get(key) is not None
         }
-        caveats = list(base_caveats)
+        caveats = where.caveats(base_caveats)
         if collapsed:
             attributes["collapsed"] = collapsed
             caveats.append(
@@ -670,26 +729,73 @@ def extract(
             )
         attributes["servicePurls"] = []
         location = EvidenceLocation(file=file, line=line, method=callee or None) if file else None
+        path = (
+            EvidencePathNode(file=file, method=caller or None, symbol=caller or None),
+            EvidencePathNode(file=file, line=line, method=callee or None, symbol=callee or None),
+        )
         records.append(
             build_record(
                 source=source,
                 producer=producer,
                 kind="reached-flow",
-                discriminator=str(edge.get("id") or content_discriminator(edge)),
+                discriminator=neutral_discriminator(edge, paths, [p.to_dict() for p in path]),
                 purls=tuple(sorted(purls)),
                 locations=tuple(loc for loc in (location,) if loc),
-                path=(
-                    EvidencePathNode(file=file, method=caller or None, symbol=caller or None),
-                    EvidencePathNode(
-                        file=file, line=line, method=callee or None, symbol=callee or None
-                    ),
-                ),
+                path=path,
                 attributes=attributes,
                 caveats=tuple(caveats),
             )
         )
 
-    caveats = _dedupe_caveats(base_caveats + skipped)
+    # --- api endpoint records ------------------------------------------------
+    # An endpoint is attack surface kosi found in the workspace. Its record
+    # names no package: the endpoint's purl is the workspace module that
+    # declares it, kept as the modulePurl attribute, so finding a route does
+    # not by itself put a package in the reached sets.
+    for ep in as_list(report.get("apiEndpoints")):
+        if not isinstance(ep, dict):
+            skipped.add("apiEndpoints entries are not JSON objects and became no record")
+            continue
+        attributes = {}
+        for key in (
+            "framework",
+            "httpMethods",
+            "pathTemplate",
+            "handlerSymbol",
+            "handlerCanonicalName",
+            "authentication",
+            "exported",
+            "foundBy",
+        ):
+            value = ep.get(key)
+            if value is not None and value != "" and value != []:
+                attributes[key] = value
+        module_purl = reconcile_purl(ep.get("purl"), bom_index)
+        if module_purl:
+            attributes["modulePurl"] = module_purl
+        position = as_dict(ep.get("position"))
+        where = _Locations(paths)
+        file = where.file(position.get("filename"))
+        method = as_str(ep.get("handlerCanonicalName")) or as_str(ep.get("pathTemplate"))
+        location = (
+            EvidenceLocation(file=file, line=as_line(position.get("line")), method=method or None)
+            if file
+            else None
+        )
+        records.append(
+            build_record(
+                source=source,
+                producer=producer,
+                kind="entry-point",
+                discriminator=neutral_discriminator(ep, paths),
+                locations=tuple(loc for loc in (location,) if loc),
+                attributes=attributes or None,
+                caveats=tuple(where.caveats(base_caveats)),
+            )
+        )
+
+    outside = paths.producer_caveat()
+    caveats = _dedupe_caveats(base_caveats + skipped.caveats() + ([outside] if outside else []))
     return AdapterResult(status=STATUS_COMPLETED, records=records, caveats=caveats)
 
 

@@ -7,15 +7,18 @@ rewritten to `/src`. The tests in `test_evidence_rusi.py` read them.
 
 ## How they were made
 
-rusi 4.3.1, printed by the binary itself (`rusi --version`), from the
-plugins directory `harness/tools-latest.sh` installs and prints:
-`~/.local/share/depscan-tools/cdxgen/node_modules/@cdxgen/
-cdxgen-plugins-bin-darwin-arm64/plugins/rusi/rusi-darwin-arm64`, the npm
-package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1. No other copy was
-used: golem, rusi and kosi live only in that plugins directory. The repos
-are the ones the repository carries at
-`test/data/rusi/repos`, copied into a temporary recording directory so the
-recording root was never the checkout:
+rusi 4.3.1, printed by the binary itself (`rusi --version`), is the
+`plugins/rusi/rusi-darwin-arm64` binary of the npm package
+`@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1, the package this command
+installs:
+
+```bash
+npm install @cdxgen/cdxgen-plugins-bin-darwin-arm64@4.3.1
+```
+
+golem, rusi and kosi ship only in that package. The repos are the ones the
+repository carries at `test/data/rusi/repos`, copied into a temporary
+recording directory so the recording root was never the checkout:
 
 ```bash
 rusi analyze --dir <recording-root>/<repo> --backend stable --callgraph static \
@@ -49,5 +52,5 @@ The string `/var/tmp/tainted_file.txt` appears inside the
 `rusi-reachable-app.json` call-graph edge receiver and the dataflow because
 the scanned Rust source itself opens that path
 (`fs::read_to_string("/var/tmp/tainted_file.txt")`). It is the program's own
-literal, not a path on the recording machine, and rusi's evidence is kept as
-given. The reports carry no usernames or hostnames.
+literal, not a path of the recording directory, and rusi's evidence is kept
+as given. The reports carry no usernames or hostnames.
