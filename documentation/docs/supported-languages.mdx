@@ -11,7 +11,7 @@ dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) internally to build 
 
 | Language / ecosystem        | purl type            | BOM generation path            | Reachability engine                              | Default analyzer             |
 |-----------------------------|----------------------|--------------------------------|--------------------------------------------------|------------------------------|
-| Java / JVM (Groovy, Kotlin, Scala) | `pkg:maven`   | cdxgen (Maven, Gradle, jars)   | [atom](https://github.com/AppThreat/atom)        | `FrameworkReachability`      |
+| Java / JVM (Groovy, Kotlin, Scala) | `pkg:maven`   | cdxgen (Maven, Gradle, jars)   | [atom](https://github.com/AppThreat/atom); also [kosi](https://github.com/cdxgen/cdxgen-plugins-bin) for Kotlin and Android | `FrameworkReachability`      |
 | JavaScript / TypeScript     | `pkg:npm`            | cdxgen (package-lock, node_modules) | atom                                         | `FrameworkReachability`      |
 | Python                      | `pkg:pypi`           | cdxgen (requirements, Poetry, uv, Pipfile) | atom                                  | `FrameworkReachability`      |
 | PHP                         | `pkg:composer`       | cdxgen (composer.lock, requires PHP >= 7.4) | atom                                       | `FrameworkReachability`      |
@@ -19,7 +19,7 @@ dep-scan uses [cdxgen](https://github.com/CycloneDX/cdxgen) internally to build 
 | Go                          | `pkg:golang`         | cdxgen (go.mod, vendor, module cache) | [golem](https://github.com/cdxgen/cdxgen-plugins-bin) | `FrameworkReachability` |
 | .NET (C#, VB, F#, R)        | `pkg:nuget`          | cdxgen (.csproj, packages, restored tree) | [dosai](https://github.com/owasp-dep-scan/dosai) | `FrameworkReachability`  |
 
-The four atom-backed ecosystems (Java, JavaScript/TypeScript, Python, PHP) share a single slicer, so they behave consistently and accept the same workflow. Rust, Go, and .NET each have a dedicated native slicer (rusi, golem, dosai) that produces a language-specific report, which dep-scan converts into the same purl-keyed slice format the shared reachability engine consumes. From the analyzer's point of view every language is equal: a reachable finding is a versioned purl that appears on an executed data-flow or call-graph path, regardless of which slicer produced the evidence.
+The four atom-backed ecosystems (Java, JavaScript/TypeScript, Python, PHP) share a single slicer, so they behave consistently and accept the same workflow. Rust, Go, and .NET each have a dedicated native analyzer (rusi, golem, dosai), and Kotlin and Android projects get kosi alongside atom. Each produces a language-specific report, and that producer's evidence adapter reads it into the same purl-keyed evidence records the shared reachability engine counts from. From the analyzer's point of view every language is equal: a reachable finding is a versioned purl that appears on an executed data-flow or call-graph path, regardless of which slicer produced the evidence.
 
 cdxgen supports many more project types for BOM generation and vulnerability scanning (Docker, Jenkins, Dockerfile, Terraform, and more). Reachability, however, requires source-level slicing and is therefore limited to the languages listed above. See the official cdxgen [project types reference](https://github.com/CycloneDX/cdxgen/blob/master/docs/PROJECT_TYPES.md) for the full BOM-generation list.
 

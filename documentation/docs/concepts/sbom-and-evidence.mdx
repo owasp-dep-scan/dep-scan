@@ -14,7 +14,7 @@ dep-scan's reachability engine is purl-keyed and evidence-driven. It needs two t
 
 ## cdxgen and the analyzer reports
 
-cdxgen is the SBOM generator dep-scan bundles with. Under its research BOM profile (`--bom-profile research` on `depscan scan`, which dep-scan selects itself when reachability is on), cdxgen runs its evinse layer, which drives the per-language analyzers and persists their reports alongside the BOM. The files you will see in the reports directory include atom's `deps`, `usages`, `data-flow` and `reachables` slices, named per language (for example `java-reachables.slices.json`), and the `*-semantics.slices.json` files that carry the raw rusi, golem, kosi and dosai reports when those tools ran. Each producer's adapter reads its own report into the scan's evidence store (`evidence.jsonl`), and the reachability engine counts the reached purls from that store. For most project types the research BOM profile is sufficient; for some, notably Docker images and OS packages, `--deep` is what persuades cdxgen to dig into the layers that carry the real dependencies.
+cdxgen is the SBOM generator dep-scan bundles with. Under its research BOM profile (`--bom-profile research` on `depscan scan`, which dep-scan selects itself when reachability is on), cdxgen runs its evinse layer, which drives the per-language analyzers and persists their reports alongside the BOM. The files you will see in the reports directory include atom's `deps`, `usages`, `data-flow` and `reachables` slices, named per language (for example `java-reachables.slices.json`), and the `*-semantics.slices.json` files that carry the raw rusi, golem and dosai reports when cdxgen ran those tools. kosi is the exception: cdxgen does not persist a kosi report, so dep-scan runs kosi itself for Kotlin and Android projects and keeps its report as `analysis/kosi/kosi.json`, and dep-scan likewise runs rusi, golem or dosai itself, with the report under `analysis/<tool>/`, when cdxgen left no report. Each producer's adapter reads its own report into the scan's evidence store (`evidence.jsonl`), and the reachability engine counts the reached purls from that store. For most project types the research BOM profile is sufficient; for some, notably Docker images and OS packages, `--deep` is what persuades cdxgen to dig into the layers that carry the real dependencies.
 
 ```text
   cdxgen --profile research
@@ -22,6 +22,8 @@ cdxgen is the SBOM generator dep-scan bundles with. Under its research BOM profi
      └─▶ evinse analyzers                                                  │
             ├─▶ *-reachables.slices.json   (atom's own slices) ────────────┤
             └─▶ *-semantics.slices.json    (raw rusi/golem/dosai report) ──┤
+  dep-scan runs kosi (and any tool cdxgen did not run)                     │
+            └─▶ analysis/<tool>/           (raw kosi report, fallback runs) ┤
                                                                            ▼
                               producer adapters (evidence records, purls reconciled)
                                                                            ▼

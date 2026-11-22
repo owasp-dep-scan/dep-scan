@@ -12,7 +12,7 @@ After this chapter you will be able to run dep-scan reachability on Java, JavaSc
 
 [atom](https://github.com/AppThreat/atom) is the analyzer dep-scan uses for the four ecosystems that started the reachability feature: Java and the wider JVM (Groovy, Kotlin, Scala), JavaScript and TypeScript, Python, and PHP. atom builds a language-agnostic intermediate representation, performs static slicing for reachability and usages, and emits its own `*-reachables.slices.json`, `*-usages.slices.json` and `*-callsites.slices.json` files, which the atom adapter reads into the evidence store the shared engine counts from. Because one analyzer covers four languages, they behave consistently and accept the same workflow, which is why they are covered in a single chapter. The native analyzers for Rust (rusi), Go (golem), Kotlin (kosi) and .NET (dosai) are separate and have their own chapters; from the engine's point of view every producer's evidence arrives as the same purl-keyed record shape.
 
-For Kotlin and Android projects (a pure-Java Gradle project is left to atom) dep-scan also runs [kosi](https://github.com/cdxgen/cdxgen-plugins-bin) from the cdxgen plugins package when it is installed (`KOSI_CMD` or `DEPSCAN_KOSI_BINARY` name the binary; otherwise kosi is looked up on `PATH`, in `CDXGEN_PLUGINS_DIR` and in the plugins directory found beside the cdxgen install). It uses kosi's `syntax` backend, which reads source only and starts no Gradle or Maven build, and keeps the raw report as `analysis/kosi/kosi.json`; the kosi adapter reads that report into the evidence store, so its evidence joins atom's in the same engine. The syntax tier records library usages joined to explicit imports, and attributes an import to a dependency only when exactly one artifact in the BOM owns it (star imports and imports shared by several artifacts of a group attribute nothing); it has no call graph or data flow, so a dependency it does not attribute is reported as not observed, never as unreachable. `depscan doctor` reports kosi and the `reachability:kotlin` capability.
+For Kotlin and Android projects (a pure-Java Gradle project is left to atom) dep-scan also runs [kosi](https://github.com/cdxgen/cdxgen-plugins-bin) from the cdxgen plugins package when it is installed (`KOSI_CMD` or `DEPSCAN_KOSI_BINARY` name the binary; otherwise kosi is looked up on `PATH`, in `CDXGEN_PLUGINS_DIR` and in the plugins directory found beside the cdxgen install). It uses kosi's `syntax` backend, which reads source only and starts no Gradle or Maven build, and keeps the raw report as `analysis/kosi/kosi.json`; the kosi adapter reads that report into the evidence store, so its evidence joins atom's in the same engine. The API endpoints the report lists become `entry-point` records that name no package (the workspace module that declares each endpoint is kept as the `modulePurl` attribute), so a route kosi found is kept as attack surface without putting a package in the reached set. The syntax tier records library usages joined to explicit imports, and attributes an import to a dependency only when exactly one artifact in the BOM owns it (star imports and imports shared by several artifacts of a group attribute nothing); it has no call graph or data flow, so a dependency it does not attribute is reported as not observed, never as unreachable. `depscan doctor` reports kosi and the `reachability:kotlin` capability.
 
 ## Prerequisites
 
@@ -79,8 +79,8 @@ For a single container image, set `DEPSCAN_SOURCE_IMAGE` so dep-scan can generat
 When `SemanticReachability` is enabled, `--explanation-mode` selects what the `--explain` report emphasizes. The values are:
 
 - `Endpoints`: lists HTTP endpoints, their methods, and code hotspots detected through static analysis.
-- `EndpointsAndReachables`: endpoints plus up to twenty reachable data flows (the default).
-- `NonReachables`: up to twenty non-reachable data flows, useful for showing where validation and sanitization are properly implemented.
+- `EndpointsAndReachables`: endpoints plus up to twenty reachable data flows per record source (the default).
+- `NonReachables`: up to twenty non-reachable data flows per record source, useful for showing where validation and sanitization are properly implemented.
 - `LLMPrompts`: prompt text for use with an LLM when you want code-fix suggestions.
 
 ```shell
@@ -88,7 +88,7 @@ depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports direct
   --reachability-analyzer SemanticReachability --explain --explanation-mode NonReachables
 ```
 
-Use the `MAX_REACHABLE_EXPLANATIONS` environment variable to customize the number of data-flow explanations beyond the default of twenty.
+Use the `MAX_REACHABLE_EXPLANATIONS` environment variable to change the number of data-flow explanations from the default of twenty per record source; the [Semantic reachability](../analyzers/semantic-reachability) chapter lists the per-package and per-path limits that apply as well.
 
 ## Reading the artifacts
 
