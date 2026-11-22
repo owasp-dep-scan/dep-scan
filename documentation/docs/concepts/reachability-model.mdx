@@ -18,7 +18,7 @@ dep-scan inverts the dependency. It computes the reachable flows for the whole p
 
 Reachability in dep-scan is two layers that meet at a shared record format.
 
-The first layer is a per-language analyzer that inspects source code (and, for .NET, compiled assemblies) and emits its own report of interprocedural data-flow and call-graph evidence. Four analyzers cover seven ecosystems: atom for Java/JVM, JavaScript/TypeScript, Python, and PHP; rusi for Rust; golem for Go; and dosai for .NET. The native tools do not all speak the same dialect, so each has an adapter (for example `analysis_lib/evidence/adapters/rusi.py`), the only code that knows that report format, which reads the report into evidence records reconciled onto the versioned purls in the BOM. The single most important correctness detail in each adapter is the purl reconciler, because native tools frequently emit versionless or subpath purls that must be mapped back to the BOM's versioned purls by name.
+The first layer is a per-language analyzer that inspects source code (and, for .NET, compiled assemblies) and emits its own report of interprocedural data-flow and call-graph evidence. Five analyzers cover seven ecosystems: atom for Java/JVM, JavaScript/TypeScript, Python, and PHP; kosi for Kotlin and Android projects, alongside atom; rusi for Rust; golem for Go; and dosai for .NET. The native tools do not all speak the same dialect, so each has an adapter (for example `analysis_lib/evidence/adapters/rusi.py`), the only code that knows that report format, which reads the report into evidence records reconciled onto the versioned purls in the BOM. The single most important correctness detail in each adapter is the purl reconciler, because native tools frequently emit versionless or subpath purls that must be mapped back to the BOM's versioned purls by name.
 
 The second layer is a shared, purl-keyed engine in `packages/analysis-lib/src/analysis_lib/reachability.py`. It is deliberately producer-agnostic: it reads the scan's evidence store (`evidence.jsonl`, whose records follow the published `depscan-evidence` schema) and computes the reached purls from the records. Because every adapter normalizes its producer's report to that record shape, the engine treats a Java atom record and a Go golem record identically.
 
@@ -28,6 +28,7 @@ The diagram below shows how the two layers meet at the shared record format and 
 flowchart TD
     subgraph L1["Layer 1: per-language analyzers"]
         atom["atom<br/>(JVM, JS/TS, Python, PHP)"]
+        kosi["kosi (Kotlin, Android)"]
         rusi["rusi (Rust)"]
         golem["golem (Go)"]
         dosai["dosai (.NET)"]
@@ -43,6 +44,7 @@ flowchart TD
     prio["Prioritization<br/>depscan:prioritized"]
     vex["VEX exporter<br/>CSAF product_status"]
 
+    kosi --> conv
     rusi --> conv
     golem --> conv
     dosai --> conv

@@ -49,8 +49,8 @@ Semantic analysis, including computing the atom slices that feed all three tiers
 When `SemanticReachability` is enabled and `--explain` is passed, the `--explanation-mode` argument selects what the report emphasizes. The four modes serve different audiences.
 
 - `Endpoints` lists all HTTP endpoints, their methods, and code hotspots detected through static analysis. Use it when the endpoint picture is what you need to validate.
-- `EndpointsAndReachables` includes endpoints plus a selection of up to twenty reachable data flows with detailed explanations. This is the default and the starting point for most triage.
-- `NonReachables` highlights up to twenty non-reachable data flows, which is useful for showing where validation and sanitization are properly implemented, often for assurance reporting.
+- `EndpointsAndReachables` includes endpoints plus a selection of up to twenty reachable data flows per record source with detailed explanations. This is the default and the starting point for most triage.
+- `NonReachables` highlights up to twenty non-reachable data flows per record source, which is useful for showing where validation and sanitization are properly implemented, often for assurance reporting.
 - `LLMPrompts` generates prompt text for use with an LLM when you want code-fix suggestions, which lets you hand the reachability evidence to a downstream model.
 
 ```shell
@@ -58,11 +58,11 @@ depscan scan <bom directory> --target-kind bom-dir --reports-dir <reports direct
   --reachability-analyzer SemanticReachability --explain --explanation-mode LLMPrompts
 ```
 
-Use the `MAX_REACHABLE_EXPLANATIONS` environment variable to customize the number of data-flow explanations beyond the default of twenty. Use `SCAN_DEBUG_MODE=debug` when you need the full log surface to diagnose a semantic run that produced no endpoint or service insights.
+Use the `MAX_REACHABLE_EXPLANATIONS` environment variable to change the number of data-flow explanations from the default of twenty. The limit applies per record source, so a scan whose evidence store holds records from several slice files or analyzer reports explains up to that many flows for each. Three further limits keep one noisy package or entry point from filling the section: `MAX_PURLS_REACHABLE_EXPLANATIONS` (default 3) caps the explanations per set of package purls, and `MAX_SOURCE_REACHABLE_EXPLANATIONS` and `MAX_SINK_REACHABLE_EXPLANATIONS` (default 2 each) cap them per path start and per path end. A record is explained only when it names packages and carries a witness path long enough to follow, and a path already shown is not shown again; exploit chains and the negative records of `NonReachables` are exempt from the package and path checks. Use `SCAN_DEBUG_MODE=debug` when you need the full log surface to diagnose a semantic run that produced no endpoint or service insights.
 
 ## A reference walkthrough
 
-The [Java semantic analysis lesson](../Lessons/java-semantic-analysis) is the canonical end-to-end walkthrough for this analyzer. It builds dependency-track, pulls its container image, exports `DEPSCAN_SOURCE_IMAGE`, and runs dep-scan with `--reachability-analyzer SemanticReachability --explain`, then discusses the difference between the local `CdxgenGenerator` engine and the default `CdxgenImageBasedGenerator`. Read it alongside this chapter when you want a full project rather than a per-flag reference. It also demonstrates the leverage of unsetting `DEPSCAN_SOURCE_IMAGE` to analyze source only, without the container layer, which is a useful way to isolate where a finding originates.
+The [Java semantic analysis lesson](../Lessons/java-semantic-analysis) is the canonical end-to-end walkthrough for this analyzer. It builds dependency-track, pulls its container image, exports `DEPSCAN_SOURCE_IMAGE`, and runs dep-scan with `--reachability-analyzer SemanticReachability --explain`, then discusses the difference between the local `CdxgenGenerator` engine and the default `CdxgenImageBasedGenerator`. Read it alongside this chapter when you want a full project rather than a per-flag reference. It also shows the value of unsetting `DEPSCAN_SOURCE_IMAGE` to analyze source only, without the container layer, which is a useful way to isolate where a finding originates.
 
 ## Troubleshooting
 
