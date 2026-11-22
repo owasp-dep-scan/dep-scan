@@ -1299,7 +1299,13 @@ class _FakeAdapter:
 
     @staticmethod
     def extract(
-        report, *, source, producer_version="", bom_components=None, extra_components=None
+        report,
+        *,
+        source,
+        producer_version="",
+        bom_components=None,
+        extra_components=None,
+        source_root=None,
     ):
         from analysis_lib.evidence import EvidenceCaveat, EvidenceProducer
         from analysis_lib.evidence.adapters import (

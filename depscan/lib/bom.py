@@ -1090,12 +1090,15 @@ def _extract_report_records(
     bom_data: Dict,
     options: Dict,
     fail_on_error: bool,
+    source_root: Optional[str] = None,
 ) -> AdapterResult:
     """Hand one raw report to the tool's evidence adapter, the only code
     that knows the report format.
 
     The BOM components and the metadata.component root go in for the purl
-    reconciliation; dosai takes the built alias index instead. An adapter
+    reconciliation; dosai takes the built alias index instead.
+    ``source_root`` is the scanned source directory, which the adapters
+    make the report's file paths relative to. An adapter
     result that is not assessed reads as a downgrade the user asked to hear
     about: under ``--fail-on-error`` it raises, elsewhere it is returned and
     recorded.
@@ -1110,7 +1113,11 @@ def _extract_report_records(
     if tool.name == "dosai":
         bom_index = adapter.build_bom_purl_index(components, extra_components=extra)
         result = adapter.extract(
-            report, source=source, producer_version=producer_version, bom_index=bom_index
+            report,
+            source=source,
+            producer_version=producer_version,
+            bom_index=bom_index,
+            source_root=source_root,
         )
     else:
         result = adapter.extract(
@@ -1119,6 +1126,7 @@ def _extract_report_records(
             producer_version=producer_version,
             bom_components=components,
             extra_components=extra,
+            source_root=source_root,
         )
     if result.status != "completed" and fail_on_error and result.reason:
         raise ScanFailureError(f"{tool.name} reachability was not assessed: {result.reason}")
@@ -1202,7 +1210,9 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
         return not_assessed(reason or tool.no_report_error)
 
     bom_data = _json_load(bom_file, log=LOG) or {}
-    result = _extract_report_records(tool, report, source, bom_data, options, fail_on_error)
+    result = _extract_report_records(
+        tool, report, source, bom_data, options, fail_on_error, source_root=src_dir
+    )
     if result.status == "completed":
         LOG.debug(
             "%s reachability: the adapter built %d records from %s",
@@ -1449,9 +1459,14 @@ def discover_reachability_reports(
     project_types: List[str],
     options: Optional[Dict] = None,
     bom_files: Optional[List[str]] = None,
+    source_root: Optional[str] = None,
 ) -> Dict[str, AdapterResult]:
     """Run every language tool's adapter over the raw report a BOM directory
     holds, keyed by tool name.
+
+    ``source_root`` is the scanned source directory when the scan knows one;
+    the adapters make the reports' file paths relative to it, and to the
+    root a report states itself.
 
     A BOM-directory scan runs no tool: the analysis ran when the data was
     generated, and the adapters read the reports the directory carries. A
@@ -1489,7 +1504,7 @@ def discover_reachability_reports(
             continue
         bom_data = _bom_data_for_tool(bom_files, tool, fail_on_error)
         results[tool.name] = _extract_report_records(
-            tool, report, source, bom_data, options, fail_on_error
+            tool, report, source, bom_data, options, fail_on_error, source_root=source_root
         )
         LOG.debug(
             "%s reachability: the adapter built %d records from %s",

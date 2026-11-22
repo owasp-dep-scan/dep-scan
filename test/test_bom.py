@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -571,3 +572,44 @@ def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_pa
         options={"project_type": ["go"], "reachability_analyzer": "off"},
     )
     assert other.exists()
+
+
+def test_the_tool_step_hands_the_scanned_source_directory_to_the_adapter(tmp_path, monkeypatch):
+    """A language tool's raw report names files under the directory the tool
+    scanned. The tool step passes that directory to the adapter as its
+    source root, so the records' locations are made relative to it."""
+    import shutil
+
+    from analysis_lib.evidence.adapters import golem as golem_adapter
+    from depscan.lib import bom as bom_mod
+
+    seen = {}
+    real_extract = golem_adapter.extract
+
+    def spy(report, **kwargs):
+        seen.update(kwargs)
+        return real_extract(report, **kwargs)
+
+    monkeypatch.setattr(golem_adapter, "extract", spy)
+    recording = (
+        Path(__file__).resolve().parent.parent
+        / "packages"
+        / "analysis-lib"
+        / "tests"
+        / "data"
+        / "golem"
+        / "golem-reachable-app.json"
+    )
+    bom_file = tmp_path / "sbom-go.cdx.json"
+    bom_file.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}))
+    shutil.copyfile(recording, tmp_path / "go-semantics.slices.json")
+    result = bom_mod.run_golem_reachability(
+        str(bom_file),
+        "/src/repos/reachable-app",
+        options={"project_type": ["go"], "reachability_analyzer": "SemanticReachability"},
+    )
+    assert result is not None and result.status == "completed", result and result.reason
+    assert seen["source_root"] == "/src/repos/reachable-app"
+    for record in result.records:
+        for location in record.locations:
+            assert not location.file.startswith("/"), location.file

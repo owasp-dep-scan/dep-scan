@@ -1191,6 +1191,7 @@ def _produce_boms(ctx, scan):
             [scan.project_type],
             {**ctx.depscan_options, "doctor_report": ctx.doctor_report},
             bom_files=get_all_bom_files(scan.bom_dir) if scan.bom_dir else [],
+            source_root=ctx.src_dir or None,
         )
     else:
         # Create a bom for each project type. The generator reports back the
@@ -1494,7 +1495,14 @@ def _atom_adapter_result(ctx, scan, options):
     atom's slices are its native output: every reachables slices file the
     language tools do not claim is atom's, as are the usages and callsites
     slices and the OpenAPI documents. The producer version comes from the
-    doctor's atom status. When the scan holds no atom output at all the
+    doctor's atom status. Each record's ``source`` is the file's path
+    relative to the directory the slices were found in, the BOM directory
+    the other adapters' sources are relative to too, and the file names atom
+    wrote are made relative to the scanned source directory. A BOM directory
+    scan has no source tree of its own; the source directory is then the
+    one the options name (the working directory by default), and a path
+    outside it is kept as the adapter's outside-root form, never absolute.
+    When the scan holds no atom output at all the
     result is not assessed, with the doctor's reason when the capability is
     unavailable on this machine and the adapter's otherwise.
 
@@ -1536,6 +1544,8 @@ def _atom_adapter_result(ctx, scan, options):
             callsites_files=of_role("callsites"),
             openapi_files=of_role("openapi"),
             timeout_reasons=[reason for reason in scan.not_assessed if reason],
+            scan_dir=options.bom_dir,
+            source_root=ctx.src_dir or None,
         )
     groups = [result for group, result in ctx.atom_results.items() if roles.keys() & set(group)]
     if not groups:

@@ -343,6 +343,7 @@ def run_reachability(data_dir, analyzer):
             usages_files=usages,
             callsites_files=callsites,
             openapi_files=options.openapi_spec_files,
+            scan_dir=str(data_dir),
         )
         if atom_result.status == "completed":
             results["atom"] = atom_result

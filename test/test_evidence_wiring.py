@@ -581,3 +581,68 @@ def test_two_processes_with_different_hash_seeds_write_identical_stores(tmp_path
             one = (Path(first) / name).read_bytes()
             two = (Path(second) / name).read_bytes()
             assert one and one == two, f"{name} of {Path(first).name} differs between processes"
+
+
+def _is_absolute(path):
+    return bool(path) and (path.startswith("/") or (len(path) > 1 and path[1] == ":"))
+
+
+@pytest.mark.parametrize("name", ["dejacode", "dotnet-podcasts"])
+def test_a_scans_records_carry_no_absolute_path(scan_stubs, tmp_path, name):
+    """Every record of a real scan names its files relative to the scanned
+    source and its source relative to the scan directory, so the store reads
+    the same wherever the scan ran."""
+    result = _scan_fixture(tmp_path, name)
+    reports = Path(result.reports_dir)
+    records = [json.loads(line) for line in (reports / "evidence.jsonl").read_text().splitlines()]
+    assert records
+    for record in records:
+        assert not _is_absolute(record["source"]), record["source"]
+        assert (reports / record["source"]).is_file(), record["source"]
+        files = [location["file"] for location in record["locations"]]
+        files += [node.get("file") for node in record.get("path") or [] if node.get("file")]
+        for file_name in files:
+            assert not _is_absolute(file_name), (record["id"], file_name)
+
+
+def test_atom_sources_and_locations_follow_the_scan_and_source_directories(
+    scan_stubs, tmp_path
+):
+    """atom's records name their slices file relative to the BOM directory the
+    scan read it from, subdirectory included, and a file name atom wrote as
+    an absolute path under the scanned source becomes relative to it."""
+    source = tmp_path / "project"
+    bom_dir = tmp_path / "boms"
+    (bom_dir / "sub").mkdir(parents=True)
+    shutil.copy2(FIXTURES / "dejacode" / "sbom-python.cdx.json", bom_dir / "sbom-python.cdx.json")
+    nodes = [
+        {
+            "id": index,
+            "parentFileName": str(source / "app" / "views.py"),
+            "parentMethodName": "view",
+            "lineNumber": 10 + index,
+            "fullName": f"step{index}",
+        }
+        for index in range(5)
+    ]
+    (bom_dir / "sub" / "python-reachables.slices.json").write_text(
+        json.dumps([{"flows": nodes, "purls": [STUB_FINDING_PURL]}])
+    )
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            src_dir_image=str(source),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    records = [
+        json.loads(line)
+        for line in (Path(result.reports_dir) / "evidence.jsonl").read_text().splitlines()
+    ]
+    (record,) = [r for r in records if r["producer"]["name"] == "atom"]
+    assert record["source"] == "sub/python-reachables.slices.json"
+    assert record["locations"][0]["file"] == "app/views.py"
+    assert {node["file"] for node in record["path"]} == {"app/views.py"}

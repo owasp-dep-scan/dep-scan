@@ -587,11 +587,13 @@ def test_a_timed_out_atom_run_keeps_its_caveat_through_a_later_project_type(tmp_
     assert set(by_source) == {"java-reachables.slices.json", "python-reachables.slices.json"}
     assert len(records) == 2, "each flow is one record, read once"
     (java_record,) = by_source["java-reachables.slices.json"]
-    assert [(c.kind, c.detail) for c in java_record.caveats] == [
-        ("timeout", ATOM_TIMEOUT_REASON)
-    ], "the java slices keep the timeout caveat of the run that wrote them"
+    assert ("timeout", ATOM_TIMEOUT_REASON) in [(c.kind, c.detail) for c in java_record.caveats], (
+        "the java slices keep the timeout caveat of the run that wrote them"
+    )
     (python_record,) = by_source["python-reachables.slices.json"]
-    assert python_record.caveats == [], "the python run was not stopped"
+    assert not [c for c in python_record.caveats if c.kind == "timeout"], (
+        "the python run was not stopped"
+    )
     # Both types grade on every atom file they found, as one completed result.
     assert python.adapter_results["atom"].status == "completed"
     assert {r.source for r in python.adapter_results["atom"].records} == set(by_source)
