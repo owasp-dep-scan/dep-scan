@@ -1,0 +1,21 @@
+packages/analysis-lib/tests/test_mcp_schemas.py
+  s_7318da1b9edd46::t_17f82c89825a94 40,99,105,180,242-245,285-287,294-296,357-360,530-534,550-552,620-623
+test/test_mcp_tools.py
+  s_7318da1b9edd46::t_3ebced8239461f 979,994-1003,1008,1034,1279-1281,1287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4aee89c2ce92c3530302cf9757952614af585f31",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
