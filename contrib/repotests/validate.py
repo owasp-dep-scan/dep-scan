@@ -123,28 +123,71 @@ def cdxgen_tool_versions(bom):
     ]
 
 
+#: The dosai report names a published project directory may hold, in the
+#: order dep-scan's BOM directory scan looks for them (``_dosai_report_names``
+#: in depscan/lib/bom.py, for a dotnet scan; a test pins the two lists
+#: together). The two raw artifacts of a direct dosai run come first, then
+#: any other report under analysis/dosai/, then the report cdxgen persists and
+#: the cdxgen evinse name.
 DOSAI_RAW_REPORTS = (
     "analysis/dosai/dotnet-dataflows.json",
+    "analysis/dosai/dotnet-methods.json",
     "dotnet-semantics.slices.json",
     "csharp-data-flow.slices.json",
 )
 
+#: The two raw artifacts of a direct dosai run, read together when present.
+_DOSAI_RAW_HALVES = DOSAI_RAW_REPORTS[:2]
 
-def _dosai_raw_report(data_path):
-    """The parsed dosai raw report a published project directory carries, or
-    None. The names are the ones the dosai adapter looks for in a BOM
-    directory."""
-    for name in DOSAI_RAW_REPORTS:
-        candidate = data_path / name
-        if not candidate.is_file():
-            continue
-        try:
-            report = json.loads(candidate.read_text(encoding="utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-            continue
-        if isinstance(report, dict) and report.get("Metadata", {}).get("Tool") == "Dosai":
-            return report
+
+def _read_dosai_report(path):
+    try:
+        report = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(report, dict):
+        return None
+    metadata = report.get("Metadata")
+    if isinstance(metadata, dict) and metadata.get("Tool") == "Dosai":
+        return report
     return None
+
+
+def _dosai_raw_reports(data_path):
+    """The parsed dosai reports a published project directory carries, in
+    the order dep-scan reads them: both raw halves of a direct run when
+    either is there, else the first readable report of the other names.
+    Empty when the directory holds none."""
+    halves = [data_path / name for name in _DOSAI_RAW_HALVES]
+    if any(path.is_file() for path in halves):
+        return [report for path in halves if (report := _read_dosai_report(path)) is not None]
+    candidates = []
+    analysis_dir = data_path / "analysis" / "dosai"
+    if analysis_dir.is_dir():
+        raw_names = {Path(name).name for name in _DOSAI_RAW_HALVES}
+        candidates.extend(
+            path
+            for path in sorted(analysis_dir.iterdir())
+            if path.suffix == ".json" and path.name not in raw_names
+        )
+    candidates.extend(data_path / name for name in DOSAI_RAW_REPORTS if "/" not in name)
+    for path in candidates:
+        if path.is_file() and (report := _read_dosai_report(path)) is not None:
+            return [report]
+    return []
+
+
+def _dosai_package_entries(report):
+    """Every PackageReachability entry of a dosai report: a combined report
+    keeps them in its dataflows and methods halves, a single artifact at its
+    top level."""
+    entries = []
+    for part in (report, report.get("dataflows"), report.get("methods")):
+        if isinstance(part, dict):
+            entries.extend(
+                entry for entry in part.get("PackageReachability") or [] if isinstance(entry, dict)
+            )
+    return entries
 
 
 def check_staleness(data_dir, entry):
@@ -153,7 +196,9 @@ def check_staleness(data_dir, entry):
     A project whose ``minReachablePurls`` is 0 records that its slices carry
     no package identity (C and C++ code has no purls to attach, in atom 2 as
     in atom 4); for those, at least one flow must exist. Every other project
-    must have at least one flow carrying a ``pkg:`` purl.
+    must have at least one flow carrying a ``pkg:`` purl. A dosai report's
+    PackageReachability entries count as flows, so a .NET project whose
+    data holds only dosai's raw reports gets the same checks.
     """
     failures = []
     data_path = Path(data_dir)
@@ -180,16 +225,16 @@ def check_staleness(data_dir, entry):
     slice_files = sorted(data_path.glob(REACHABLES_GLOB))
     flows = 0
     flows_with_purl = 0
-    dosai_report = _dosai_raw_report(data_path)
-    if not slice_files and dosai_report is None:
+    dosai_reports = _dosai_raw_reports(data_path)
+    if not slice_files and not dosai_reports:
         failures.append(f"no reachables slice files matching {REACHABLES_GLOB} in {data_dir}")
-    if not slice_files and dosai_report is not None:
-        # A .NET project's published data carries dosai's raw reports under
-        # analysis/dosai/ instead of a converted reachables slice; the
-        # packages' purls live in the report's PackageReachability entries.
-        for entry in dosai_report.get("PackageReachability") or []:
+    # A .NET project's published data carries dosai's raw reports instead of
+    # a converted reachables slice; the packages' purls live in the reports'
+    # PackageReachability entries, and count like flows with a purl.
+    for report in dosai_reports:
+        for package in _dosai_package_entries(report):
             flows += 1
-            purl = entry.get("Purl")
+            purl = package.get("Purl")
             if isinstance(purl, str) and purl.startswith("pkg:"):
                 flows_with_purl += 1
     for slice_file in slice_files:
@@ -212,15 +257,12 @@ def check_staleness(data_dir, entry):
             failures.append(f"{slice_file.name}: unreadable slice ({exc})")
         except ValidationFailure as exc:
             failures.append(str(exc))
-    if not failures and slice_files:
+    if not failures and (slice_files or dosai_reports):
+        inputs = f"{len(slice_files)} slice files and {len(dosai_reports)} dosai reports"
         if entry.get("minReachablePurls", 0) > 0 and flows_with_purl == 0:
-            failures.append(
-                f"reachables slices carry no flow with a pkg: purl across {len(slice_files)} files"
-            )
+            failures.append(f"no flow with a pkg: purl across {inputs}")
         elif flows == 0:
-            failures.append(
-                f"reachables slices hold no flow at all across {len(slice_files)} files"
-            )
+            failures.append(f"no flow at all across {inputs}")
     if failures:
         raise ValidationFailure("\n".join(failures))
     return {

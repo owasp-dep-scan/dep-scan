@@ -181,6 +181,45 @@ def test_assert_matches_scoped_package_names(validator):
     assert "@types/node" in names
 
 
+def _write_dosai(path, purls):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "PackageReachability": [{"Purl": purl, "Reachable": True} for purl in purls],
+    }
+    path.write_text(json.dumps(report), encoding="utf-8")
+
+
+def test_the_dosai_report_names_are_the_bom_directory_scan_names(validator):
+    """The staleness check runs without dep-scan installed, so it keeps its
+    own copy of the names a BOM directory scan looks for dosai reports
+    under; the copy must be the scan's list."""
+    from depscan.lib import bom as bom_mod
+
+    assert validator.DOSAI_RAW_REPORTS == bom_mod._dosai_report_names(["dotnet"])
+
+
+def test_staleness_reads_a_methods_only_dosai_directory(validator, tmp_path):
+    """A .NET project whose data holds only dosai's methods artifact is read
+    like any other dosai report: its package entries count."""
+    write_bom(tmp_path / "sbom-dotnet.cdx.json")
+    _write_dosai(
+        tmp_path / "analysis" / "dosai" / "dotnet-methods.json",
+        ["pkg:nuget/Newtonsoft.Json@13.0.3"],
+    )
+    summary = validator.check_staleness(tmp_path, {"minReachablePurls": 1})
+    assert summary["flowsWithPurl"] == 1
+
+
+def test_staleness_applies_the_purl_check_to_dosai_only_data(validator, tmp_path):
+    """dosai package entries without a pkg: purl fail the purl check of a
+    project that requires reached purls, exactly as atom flows do."""
+    write_bom(tmp_path / "sbom-dotnet.cdx.json")
+    _write_dosai(tmp_path / "csharp-data-flow.slices.json", ["not-a-purl"])
+    with pytest.raises(validator.ValidationFailure, match="no flow with a pkg: purl"):
+        validator.check_staleness(tmp_path, {"minReachablePurls": 1})
+
+
 def test_staleness_rejects_a_truncated_slice(validator, tmp_path):
     # cdxgen killed while atom writes leaves a valid prefix. The slice reader
     # would keep the flows before the cut and drop the rest silently.
