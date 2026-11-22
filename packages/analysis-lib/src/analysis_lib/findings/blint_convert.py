@@ -172,10 +172,13 @@ def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[F
     record of another producer or kind is not blint's to say. The producer
     version is the record's own, which on a live scan is the blint that
     just ran (the version the blint-written BOM's ``metadata.tools``
-    names). The fingerprint carries the rule id and the record location's
-    path, which the adapter already made relative to the scan root, so a
-    record from a moved root gives the finding the document reader gives
-    for the same report.
+    names). The fingerprint carries the rule id and the binary's path,
+    which the adapter already made relative to the scan root, so a record
+    from a moved root gives the finding the document reader gives for the
+    same report. A record whose location the adapter left out because the
+    binary sits outside the root carries the path's basename in its
+    attributes, and the finding uses that basename, the same fallback the
+    document reader applies.
 
     A record whose attributes carry no rule id is skipped, the same way
     the document reader skips an entry with no id, and the same rule on
@@ -192,7 +195,14 @@ def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[F
         rule = str(attributes.get("id") or "").strip()
         if not rule:
             continue
-        binary = record.locations[0].file if record.locations else ""
+        if record.locations:
+            binary = record.locations[0].file
+        else:
+            # The adapter leaves the location out when the binary sits
+            # outside the scan root and keeps the path's basename in the
+            # record's attributes; the finding falls back to it exactly
+            # as the document reader falls back to the basename.
+            binary = str(attributes.get("fileName") or "")
         title = str(attributes.get("title") or "").strip() or rule
         confidence = (record.confidence or "").strip().lower()
         properties = []

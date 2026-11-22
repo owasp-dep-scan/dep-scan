@@ -39,11 +39,14 @@ nothing to report: that call is ``completed`` with zero records. A call
 with no document at all cannot claim the analysis ran and is not assessed.
 
 Binary paths are stored relative to the source root through
-``SourcePaths``; a path that cannot be made relative (a Windows drive path
-with no matching root) reaches no location, no attribute and no id, and is
-counted in a ``location-outside-root`` caveat. Record ids hash the path
-fields in their relative spelling rather than as written, so the same
-report produced in another directory gives the same ids.
+``SourcePaths``. A path that cannot be made relative (a Windows drive path
+with no matching root) reaches no location and no id, is counted in a
+``location-outside-root`` caveat, and leaves its basename behind in the
+record's attributes (``fileName``), so a finding built from the record
+still names its binary the way the document reader's basename fallback
+does. Record ids hash the path fields in their relative spelling rather
+than as written, so the same report produced in another directory gives
+the same ids.
 """
 
 from __future__ import annotations
@@ -268,12 +271,13 @@ def extract(
     if not version_text and isinstance(producer_version, (int, float)):
         if not isinstance(producer_version, bool):
             version_text = str(producer_version)
-    # The reports carry no schema version of their own; the gated tool
-    # version is the shape the records name.
+    # The reports name no schema version of their own, so the record says
+    # so: the gated tool version is the producer version's business and
+    # never reads as a report schema version.
     producer = EvidenceProducer(
         name=PRODUCER_NAME,
         version=version_text or "unknown",
-        report_schema_version=version_text or "unknown",
+        report_schema_version="unknown",
     )
 
     coverage_caveats = _coverage_caveats(coverage_document, coverage_source, skipped)
@@ -295,6 +299,17 @@ def extract(
         exe_name = paths.relative(entry.get("exe_name"))
         if exe_name is not None:
             attributes["exe_name"] = exe_name
+        filename = entry.get("filename")
+        if (
+            "fileName" not in attributes
+            and isinstance(filename, str)
+            and filename.strip()
+            and paths.relative(filename) is None
+        ):
+            # The location was left out because the path sits outside the
+            # root; the basename keeps the record usable without carrying
+            # an absolute path anywhere.
+            attributes["fileName"] = _basename(filename)
         if attributes.get("evidence") is not None:
             attributes["evidence"] = paths.neutral(attributes["evidence"])
         # The discriminator hashes the path fields relativized (or left out
