@@ -178,7 +178,7 @@ def test_scan_summary_output_counts_agree_with_the_fixture():
     assert summary["stageCount"] == len(statuses) == 8
     assert summary["stagesByStatus"] == {"completed": 6, "skipped": 2}
     assert summary["projectTypes"] == ["bom"]
-    assert summary["inputCount"] == 1 and summary["fileCount"] == 3
+    assert summary["inputCount"] == 1 and summary["fileCount"] == 6
     # The finding counts say what the fixture findings carry.
     assert document["findingCount"] == 1
     assert document["countsByCategory"] == {"vulnerability": 1}
@@ -287,9 +287,9 @@ def test_coverage_output_validates_with_a_check_not_run():
 def test_coverage_output_reasons_come_from_the_fixture_stages():
     document = _coverage_document()
     analyzers = [entry["analyzer"] for entry in document["notAssessedReasons"]]
-    # The fixture's enrichment stage recorded four analyzers, none of which
-    # read slices for this scan.
-    assert analyzers == ["atom", "rusi", "golem", "dosai"]
+    # The fixture's enrichment stage recorded five analyzers, none of whose
+    # adapters read a report for this scan.
+    assert analyzers == ["atom", "rusi", "golem", "kosi", "dosai"]
     assert all(entry["stage"] == "enrichment" for entry in document["notAssessedReasons"])
 
 

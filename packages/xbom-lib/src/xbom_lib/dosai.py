@@ -4,11 +4,9 @@ dosai is a .NET analysis engine (C#/VB/F#/R) shipped prebuilt via
 cdxgen-plugins-bin. It inspects source (Roslyn + dedicated frontends) AND
 assemblies (Reflection + IL) and emits a call graph, interprocedural
 source->sink dataflow slices, explicit per-package reachability, weakness
-candidates, dangerous-API reachability, and crypto/CBOM evidence. dep-scan
-consumes that native report directly for reachability and converts a
-projection into an atom-shaped reachables slice (see
-:mod:`analysis_lib.dosai_slices`) so the existing purl-keyed reachability
-pipeline lights up.
+candidates, dangerous-API reachability, and crypto/CBOM evidence. dep-scan's dosai adapter reads that native report into the evidence store
+(see :mod:`analysis_lib.evidence.adapters.dosai`) so the purl-keyed
+reachability pipeline lights up.
 
 This module is the **direct-spawn FALLBACK**. The primary path consumes the
 cdxgen-persisted combined native report at

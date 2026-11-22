@@ -3,8 +3,8 @@
 kosi is a Kotlin/JVM/Android analysis engine shipped prebuilt via
 cdxgen-plugins-bin. Its report (schema ``kosi/1``) carries library usages,
 imports, and, on the ``resolved`` tier, a call graph and source->sink
-dataflow slices. dep-scan converts that report into an atom-shaped reachables
-slice (see :mod:`analysis_lib.kosi_slices`) so the purl-keyed reachability
+dataflow slices. dep-scan's kosi adapter reads that report into the evidence store (see
+:mod:`analysis_lib.evidence.adapters.kosi`) so the purl-keyed reachability
 pipeline reads Kotlin evidence the same way it reads golem and rusi evidence.
 
 Binary resolution order (the same as :mod:`xbom_lib.golem`, so the fallback

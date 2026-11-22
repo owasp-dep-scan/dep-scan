@@ -3,8 +3,8 @@
 golem is a Go static-analysis engine shipped prebuilt via cdxgen-plugins-bin.
 It emits a call graph + interprocedural source->sink dataflow slices with
 PURL attribution, API endpoints, crypto evidence, and supply-chain metadata.
-dep-scan converts that report into an atom-shaped reachables slice (see
-:mod:`analysis_lib.golem_slices`) so the existing purl-keyed reachability
+dep-scan's golem adapter reads that report into the evidence store (see
+:mod:`analysis_lib.evidence.adapters.golem`) so the purl-keyed reachability
 pipeline lights up with zero analyzer changes.
 
 Binary resolution order (mirrors cdxgen's ``resolvePluginBinary`` so the
@@ -639,12 +639,12 @@ def run_golem(
     # Warn on truncation so partial results are visible.
     _check_truncation(out_path, logger=logger)
 
-    # schema/version sanity (soft): warn but keep the file so the converter
+    # schema/version sanity (soft): warn but keep the file so the adapter
     # can still try.
     report_ok, schema_msg = _peek_report(out_path)
     if logger and not report_ok:
         logger.warning(
-            "golem report at %s did not validate: %s. Conversion may be incomplete.",
+            "golem report at %s did not validate: %s. Extraction may be incomplete.",
             out_path,
             schema_msg,
         )
