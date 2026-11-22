@@ -64,9 +64,7 @@ def _extract(bom=None, **overrides):
 
 def _component(bom, name, version):
     return next(
-        c
-        for c in bom["components"]
-        if c.get("name") == name and c.get("version") == version
+        c for c in bom["components"] if c.get("name") == name and c.get("version") == version
     )
 
 
@@ -146,7 +144,9 @@ def test_records_carry_no_timestamps():
 
 def test_occurrence_records_keep_the_producer_values():
     result = _extract()
-    by_purl = [r for r in result.records if r.kind == "occurrence" and SQLPARSE_PURL in r.subject.purls]
+    by_purl = [
+        r for r in result.records if r.kind == "occurrence" and SQLPARSE_PURL in r.subject.purls
+    ]
     assert len(by_purl) == 4
     call = next(r for r in by_purl if r.locations[0].line == 18)
     assert call.locations[0].file == "app.py"
@@ -163,9 +163,15 @@ def test_occurrence_records_keep_the_producer_values():
 
 
 def test_components_without_evidence_make_no_records():
+    """The SaaSBOM annotation legitimately subjects the application purl;
+    the check is that no usage record names an evidence-free component."""
     result = _extract()
     for purl in ("pkg:pypi/pip@26.2.2", RECAPP_PURL, "pkg:pypi/werkzeug@3.1.9"):
-        assert not [r for r in result.records if purl in r.subject.purls]
+        assert not [
+            r
+            for r in result.records
+            if r.kind in ("occurrence", "callstack") and purl in r.subject.purls
+        ]
 
 
 def test_nested_and_metadata_components_are_walked():
@@ -356,7 +362,10 @@ def test_a_newer_introspection_minor_is_accepted_with_a_caveat():
     assert any(c.kind == "schema-minor" for c in result.caveats)
     # The introspection's drift does not mark the BOM's own records.
     assert not any(
-        c.kind == "schema-minor" for r in result.records if r.kind != "introspection" for c in r.caveats
+        c.kind == "schema-minor"
+        for r in result.records
+        if r.kind != "introspection"
+        for c in r.caveats
     )
 
 
@@ -595,7 +604,9 @@ def test_nested_values_of_the_wrong_type_are_read_without_raising():
     )
     assert text_line.locations[0].file == "app.py"
     flask_callstack = next(
-        r for r in result.records if r.kind == "callstack" and "pkg:pypi/flask@3.1.3" in r.subject.purls
+        r
+        for r in result.records
+        if r.kind == "callstack" and "pkg:pypi/flask@3.1.3" in r.subject.purls
     )
     assert flask_callstack.path is not None
     assert flask_callstack.path[0].file is None
@@ -648,9 +659,7 @@ def test_absolute_locations_outside_the_root_are_left_out_with_a_caveat():
     outside = [
         r
         for r in result.records
-        if r.kind == "occurrence"
-        and SQLPARSE_PURL in r.subject.purls
-        and r.locations == []
+        if r.kind == "occurrence" and SQLPARSE_PURL in r.subject.purls and r.locations == []
     ]
     assert outside
     assert any(c.kind == "location-outside-root" for c in outside[0].caveats)
@@ -672,10 +681,8 @@ def test_absolute_locations_outside_the_root_are_left_out_with_a_caveat():
         lambda bom: _component(bom, "Werkzeug", "3.1.9").update(
             {"evidence": {"occurrences": [{"location": "app.py", "line": 2}]}}
         ),
-        lambda bom: _component(bom, "flask", "3.1.3")["evidence"].pop("occurrences"),
-        lambda bom: _component(bom, "recapp", "0.1.0").update(
-            {"evidence": {"callstack": {}}}
-        ),
+        lambda bom: _component(bom, "Flask", "3.1.3")["evidence"].pop("occurrences"),
+        lambda bom: _component(bom, "recapp", "0.1.0").update({"evidence": {"callstack": {}}}),
     ],
     ids=[
         "as-recorded",
@@ -707,8 +714,6 @@ def test_records_agree_with_the_component_evidence_verdict(mutate):
         if _usage_evidence(component):
             usage_refs.add(ref)
     recorded_refs = {
-        r.subject.component_ref
-        for r in result.records
-        if r.kind in ("occurrence", "callstack")
+        r.subject.component_ref for r in result.records if r.kind in ("occurrence", "callstack")
     }
     assert recorded_refs == usage_refs
