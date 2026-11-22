@@ -197,7 +197,7 @@
           "items": {
             "$ref": "#/$defs/analyzer"
           },
-          "description": "The reachability analyzers this stage could have used, each with its capability and whether the stage read slices it produced."
+          "description": "The reachability analyzers this stage could have used, each with its capability and whether the analyzer's evidence adapter read a report."
         },
         "outputs": {
           "type": "array",
@@ -226,11 +226,11 @@
         "status": {
           "type": "string",
           "enum": ["completed", "not-assessed"],
-          "description": "completed when the stage read reachables slices this analyzer produces, whether this scan produced them or was given them. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the reason that no slices were produced or given."
+          "description": "completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the adapter's reason naming the report that was looked for."
         },
         "reason": {
           "type": "string",
-          "description": "For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given."
+          "description": "For not-assessed, the doctor's reason the capability cannot run here, or the adapter's reason naming the report that was looked for."
         },
         "caveats": {
           "type": "array",
