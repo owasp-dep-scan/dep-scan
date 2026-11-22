@@ -1,6 +1,19 @@
+"""The explanation rendering over the evidence store.
+
+Every producer's records are rendered the same way: the reached modes show
+the positive records that count as reached evidence and the exploit chains
+that put them in context, with the witness path's file and line when the
+producer walked one and the subject purls otherwise; the NonReachables mode
+shows the negative records (dead code, no observed path, sanitizers) plus the
+reached packages that carry no finding. Nothing here knows a report format:
+the adapters already reduced each producer's report to records.
+
+The section structure, the headings, the endpoint table and the LLM prompt
+mode are the ones the explanation rendering has always had.
+"""
+
 import glob
 import os
-import re
 from collections import defaultdict
 
 from custom_json_diff.lib.utils import json_load
@@ -9,14 +22,12 @@ from rich.markdown import Markdown
 from rich.table import Table
 from rich.tree import Tree
 
+from analysis_lib.evidence.store import EVIDENCE_FILE, stream as stream_evidence
+from analysis_lib.reachability import REACHED_COUNTED_KINDS
 from depscan.lib.config import (
-    COMMON_CHECK_TAGS,
     max_flows_per_prompt,
     max_purl_per_flow,
-    max_purls_reachable_explanations,
     max_reachable_explanations,
-    max_sink_reachable_explanations,
-    max_source_reachable_explanations,
 )
 from depscan.lib.logger import LOG, console
 
@@ -29,6 +40,34 @@ SEVERITY_COLORS = {
     "UNKNOWN": "white",
 }
 
+#: The negative record kinds the NonReachables mode renders.
+NON_REACHABLE_KINDS = ("dead-code", "no-path", "sanitizer")
+
+#: What a record of each kind says, when nothing more specific applies.
+_KIND_DESCRIPTIONS = {
+    "reached-flow": "reachable data-flow",
+    "usage": "identifiable usages of the package",
+    "callsite": "call sites of the package",
+    "entry-point": "an application entry point",
+    "exploit-chain": "an exploit chain",
+    "sanitizer": "a sanitization",
+    "dead-code": "code with no path from any entry point",
+    "no-path": "no path to the vulnerable function",
+}
+
+
+def _store_records(store_path: str) -> list:
+    """The store's records, or an empty list when there is no store. A store
+    that cannot be read is named on the log and reads as nothing, the way a
+    slice file that could not be parsed always did."""
+    if not os.path.isfile(store_path):
+        return []
+    try:
+        return list(stream_evidence(store_path))
+    except (OSError, ValueError) as e:
+        LOG.warning("The evidence store %s could not be read: %s", store_path, e)
+        return []
+
 
 def explain(
     project_type,
@@ -38,6 +77,7 @@ def explain(
     vdr_result,
     explanation_mode,
     prompts_file=None,
+    evidence_file=None,
 ):
     """
     Explain the analysis and findings based on the explanation mode.
@@ -49,11 +89,12 @@ def explain(
     :param vdr_result: VDR Result
     :param explanation_mode: Explanation mode
     :param prompts_file: File path to save LLM prompts
+    :param evidence_file: The evidence store to render; the store at the top
+        of the BOM directory when not given
     """
     pattern_methods = {}
     has_any_explanation = False
-    has_any_crypto_flows = False
-    slices_files = glob.glob(f"{bom_dir}/**/*reachables.slices*.json", recursive=True)
+    slices_files = []
     openapi_spec_files = None
 
     purl_vuln_map = defaultdict(list)
@@ -81,49 +122,50 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
     # Return early for endpoints only explanations
     if explanation_mode in ("Endpoints",):
         return
+    store = evidence_file or os.path.join(str(bom_dir), EVIDENCE_FILE)
+    records = _store_records(store)
+    if not records:
+        return
     section_title = (
         "Non-Reachable Flows" if explanation_mode in ("NonReachables",) else "Reachable Flows"
     )
-    for sf in slices_files:
-        if len(slices_files) > 1:
-            fn = os.path.basename(sf)
-            section_label = f"# Explanations for {fn}"
-            console.print(Markdown(section_label))
-        if reachables_data := json_load(sf, log=LOG):
-            if explanation_mode in ("NonReachables",):
-                rsection = Markdown(
-                    f"""## {section_title}
-
-Below are several data flows deemed safe and non-reachable. Use the provided tips to confirm this assessment.
-                """
-                )
-            elif pattern_methods:
-                rsection = Markdown(
-                    f"""## {section_title}
+    if pattern_methods:
+        rsection = Markdown(
+            f"""## {section_title}
 
 Below are some reachable flows, including those accessible via endpoints, identified by depscan. Use the generated OpenAPI specification to evaluate these endpoints for vulnerabilities and risk.
-                """
-                )
-            else:
-                rsection = Markdown(
-                    f"""## {section_title}
+            """
+        )
+    elif explanation_mode in ("NonReachables",):
+        rsection = Markdown(
+            f"""## {section_title}
+
+Below are several data flows deemed safe and non-reachable. Use the provided tips to confirm this assessment.
+            """
+        )
+    else:
+        rsection = Markdown(
+            f"""## {section_title}
 
 Below are several data flows identified by depscan, including reachable ones. Use the tips provided to strengthen your application’s security posture.
-                """
-                )
-            has_explanation, has_crypto_flows, tips = explain_reachables(
-                explanation_mode,
-                reachables_data,
-                project_type,
-                vdr_result,
-                purl_vuln_map,
-                prompts_file,
-                rsection if not has_any_explanation else None,
-            )
-            if not has_any_explanation and has_explanation:
-                has_any_explanation = True
-            if not has_any_crypto_flows and has_crypto_flows:
-                has_any_crypto_flows = True
+            """
+        )
+    has_explanation, tips = explain_records(
+        explanation_mode,
+        records,
+        project_type,
+        vdr_result,
+        purl_vuln_map,
+        prompts_file,
+        rsection,
+    )
+    if has_explanation:
+        # The blank line closes the last flow table. The HTML report's parser
+        # only carries a table's packages column into the report once a blank
+        # line follows the table, so the section must not end on the caption.
+        console.print()
+    if has_explanation and tips:
+        console.print(Markdown(tips))
 
 
 def _track_usage_targets(usage_targets, usages_object):
@@ -198,241 +240,6 @@ def print_endpoints(ospec, header_section=None):
     return pattern_methods
 
 
-def is_cpp_flow(flows):
-    if not flows:
-        return False
-    attempts = 0
-    for idx, aflow in enumerate(flows):
-        if aflow.get("parentFileName", "").endswith(".c") or aflow.get(
-            "parentFileName", ""
-        ).endswith(".cpp"):
-            return True
-        attempts += 1
-        if attempts > 3:
-            return False
-    return False
-
-
-def is_analyzer_slice(flows):
-    """Detect whether a flows list was produced by the rusi/golem/dosai
-    converters rather than atom.
-
-    The converters always emit an explicit ``rust`` / ``go`` / ``dotnet``
-    language token as a standalone comma-separated entry in every node's
-    ``tags`` string (see the ``_build_node_tags`` helpers in
-    ``rusi_slices``/``golem_slices``/``dosai_slices``). We match that token
-    exactly -- a raw substring test would false-positive on atom tags containing
-    purls like ``google``/``mongodb``/``django`` and wrongly relax the gates for
-    real Java/JS projects. When true, the explainer relaxes the minimum
-    rendered-node count so honest 2-node Rust/Go/.NET flows render while atom
-    flows keep the stricter bar.
-    """
-    if not flows:
-        return False
-    for node in flows:
-        if not isinstance(node, dict):
-            continue
-        tags = node.get("tags") or ""
-        if not isinstance(tags, str):
-            continue
-        tokens = {t.strip() for t in tags.split(",")}
-        if "rust" in tokens or "go" in tokens or "dotnet" in tokens:
-            return True
-    return False
-
-
-def explain_reachables(
-    explanation_mode,
-    reachables,
-    project_type,
-    vdr_result,
-    purl_vuln_map,
-    prompts_file=None,
-    header_section=None,
-):
-    """"""
-    reachable_explanations = 0
-    checked_flows = 0
-    has_crypto_flows = False
-    explained_ids = {}
-    purls_reachable_explanations = defaultdict(int)
-    source_reachable_explanations = defaultdict(int)
-    sink_reachable_explanations = defaultdict(int)
-    has_explanation = False
-    header_shown = False
-    has_cpp_flow = False
-    purl_grouped_flows = defaultdict(list)
-
-    if not isinstance(reachables, list):
-        return False, False, "## Secure Design Tips"
-    for areach in reachables:
-        if not isinstance(areach, dict):
-            continue
-        cpp_flow = is_cpp_flow(areach.get("flows"))
-        if not has_cpp_flow and cpp_flow:
-            has_cpp_flow = True
-        analyzer_slice = is_analyzer_slice(areach.get("flows"))
-        # Analyzer slices (rusi/golem) carry honest 2-node flows; relax the
-        # raw-count minimum from 2 to 1 so even single-purl endpoint flows
-        # are not dropped before the added-id gate below.
-        min_raw_nodes = 1 if analyzer_slice else 2
-        if (
-            not areach.get("flows")
-            or len(areach.get("flows")) < min_raw_nodes
-            or (not areach.get("purls") and not cpp_flow)
-        ):
-            continue
-        (
-            flow_tree,
-            added_ids,
-            comment,
-            source_sink_desc,
-            source_code_str,
-            sink_code_str,
-            has_check_tag,
-            is_endpoint_reachable,
-            is_crypto_flow,
-            max_severity,
-            vuln_ids,
-        ) = explain_flows(
-            explanation_mode,
-            areach.get("flows"),
-            areach.get("purls"),
-            project_type,
-            vdr_result,
-            purl_vuln_map,
-        )
-        # The goal is to reduce duplicate explanations by checking if a given flow is similar to one we have explained
-        # before. We do this by checking the node ids, source-sink explanations, purl tags and so on.
-        added_ids_str = "-".join(added_ids)
-        # Analyzer slices (rusi/golem) carry honest 2-node flows; lower the
-        # minimum from 4 to 2 rendered nodes so they render while noisy atom
-        # flows keep the stricter bar.
-        min_added = 2 if analyzer_slice else 4
-        # Child-count gate is independent of the added-id gate: analyzer flows
-        # need only a source->sink pair (>=1 child), while atom flows keep the
-        # original >=4 bar so Java/JS explanation quality is unchanged.
-        min_children = 1 if analyzer_slice else 4
-        # Have we seen this sequence before?
-        if explained_ids.get(added_ids_str) or len(added_ids) < min_added:
-            continue
-        if not source_sink_desc or not flow_tree or len(flow_tree.children) < min_children:
-            continue
-        # In non-reachables mode, we are not interested in reachable flows.
-        if explanation_mode and explanation_mode in ("NonReachables",) and not has_check_tag:
-            continue
-        if (
-            source_code_str
-            and source_reachable_explanations[source_code_str] + 1
-            > max_source_reachable_explanations
-        ):
-            continue
-        if (
-            sink_code_str
-            and sink_reachable_explanations[sink_code_str] + 1 > max_sink_reachable_explanations
-        ):
-            continue
-        purls_str = ",".join(sorted(areach.get("purls", [])))
-        if (
-            purls_str
-            and purls_reachable_explanations[purls_str] + 1 > max_purls_reachable_explanations
-        ):
-            continue
-        if not has_explanation:
-            has_explanation = True
-        # Did we find any crypto flows
-        if is_crypto_flow and not has_crypto_flows:
-            has_crypto_flows = True
-
-        title_style = "bold"
-        if max_severity and max_severity in SEVERITY_COLORS:
-            title_style = SEVERITY_COLORS[max_severity]
-            source_sink_desc = f"[{title_style}][{max_severity} {', '.join(vuln_ids)}][/{title_style}] {source_sink_desc}"
-
-        rtable = Table(
-            box=box.DOUBLE_EDGE,
-            show_lines=True,
-            caption=comment,
-            show_header=False,
-            title=f"[bold]#{reachable_explanations + 1}[/bold] {source_sink_desc}",
-            title_justify="left",
-            min_width=150,
-            border_style=title_style if max_severity else "white",
-        )
-        rtable.add_column(header="Flow", vertical="top")
-        rtable.add_row(flow_tree)
-
-        # Print the header first in case we haven't
-        if not header_shown and header_section:
-            console.print()
-            console.print(header_section)
-            header_shown = True
-        console.print()
-        console.print(rtable)
-
-        if is_endpoint_reachable and explanation_mode in ("LLMPrompts",):
-            for p in areach.get("purls", []):
-                purl_grouped_flows[p].append(
-                    {
-                        "flows": areach.get("flows"),
-                        "desc": source_sink_desc,
-                        "id": reachable_explanations + 1,
-                    }
-                )
-
-        explained_ids[added_ids_str] = True
-        reachable_explanations += 1
-        if purls_str:
-            purls_reachable_explanations[purls_str] += 1
-        if source_code_str:
-            source_reachable_explanations[source_code_str] += 1
-        if sink_code_str:
-            sink_reachable_explanations[sink_code_str] += 1
-        if has_check_tag:
-            checked_flows += 1
-        if reachable_explanations + 1 > max_reachable_explanations:
-            break
-
-    tips = """## Secure Design Tips"""
-    if explanation_mode in ("NonReachables",):
-        tips += """
-- Automate tests (including fuzzing) to verify validation, sanitization, encoding, and encryption.
-- Align the implementation with the original architecture and threat models to ensure security compliance.
-- Extract reusable methods into a shared library for organization-wide use.
-"""
-    elif has_explanation:
-        if has_crypto_flows:
-            tips += """
-- Generate a Cryptographic BOM with cdxgen and monitor it in Dependency-Track.
-"""
-        elif checked_flows:
-            if not has_cpp_flow:
-                tips += """
-- Review the validation and sanitization methods used in the application.
-- To enhance the security posture, implement a common validation middleware.
-"""
-            else:
-                tips += """
-- Continuously fuzz the parser and validation functions with diverse payloads.
-- Generate post-build SBOMs with OWASP blint by building this project for various architecture combinations. Re-run depscan with the `--bom-dir` argument to enhance the analysis.
-"""
-        elif purls_reachable_explanations:
-            tips += """
-- Consider implementing a common validation and sanitization library to reduce the risk of exploitability.
-"""
-        else:
-            tips += """
-- Enhance your unit and integration tests to cover the flows listed above.
-- Continuously fuzz the parser and validation functions with diverse payloads.
-"""
-    if tips and (has_explanation or has_crypto_flows):
-        rsection = Markdown(tips)
-        console.print(rsection)
-    if purl_grouped_flows:
-        save_llm_prompts(purl_grouped_flows, purl_vuln_map, project_type, prompts_file)
-    return has_explanation, has_crypto_flows, tips
-
-
 def get_vulns_for_purls(purls, purl_vuln_map):
     """
     Finds the highest severity vulnerability among the given purls.
@@ -474,296 +281,105 @@ def get_vulns_for_purls(purls, purl_vuln_map):
     return current_max_severity, found_vulns
 
 
-def flow_to_source_sink(idx, flow, purls, project_type, vdr_result, purl_vuln_map):
-    """ """
-    endpoint_reached_purls = {}
-    reached_services = {}
-    purls = purls or []
-    if vdr_result:
-        endpoint_reached_purls = vdr_result.endpoint_reached_purls
-        reached_services = vdr_result.reached_services
-    is_endpoint_reachable = False
-    possible_reachable_service = False
-    tags = flow.get("tags") or []
-    if isinstance(tags, str):
-        tags = [tag.strip() for tag in tags.split(",") if tag.strip()]
-    is_crypto_flow = "crypto" in tags or "crypto-generate" in tags
-    method_in_emoji = ":right_arrow_curving_left:"
-    for p in purls:
-        if endpoint_reached_purls and endpoint_reached_purls.get(p):
-            is_endpoint_reachable = True
-            method_in_emoji = ":heavy_large_circle: "
-        if reached_services and reached_services.get(p):
-            possible_reachable_service = True
-    max_severity, vuln_ids = get_vulns_for_purls(purls, purl_vuln_map)
-    source_sink_desc = ""
-    param_name = flow.get("name")
-    method_str = "method"
-    param_str = "Parameter"
-    if param_name == "this":
-        param_name = ""
-    parent_file = flow.get("parentFileName", "")
-    parent_method = flow.get("parentMethodName") or ""
-    # Improve the labels based on the language. Covers JS/TS, Python, C#,
-    # PHP, Rust, Go, and the .NET sibling languages (VB.NET, F#) plus R source
-    # so dosai-produced flows render with function/argument wording.
-    if re.search(
-        r"\.(js|ts|jsx|tsx|py|cs|vb|vbnet|fs|fsx|php|rs|go|r)$", parent_file, re.IGNORECASE
-    ):
-        method_str = "function"
-        param_str = "argument"
-        if parent_method in ("handleRequest",):
-            method_str = f"handler {method_str}"
-        elif parent_method in ("__construct", "__init"):
-            method_str = "constructor"
-        elif project_type in ("php",) and parent_method.startswith("__"):
-            method_str = f"magic {method_str}"
-    if flow.get("label") == "METHOD_PARAMETER_IN":
-        if param_name:
-            source_sink_desc = f"""{param_str} [red]{param_name}[/red] {method_in_emoji} to the {method_str} [bold]{parent_method}[/bold]"""
-        else:
-            source_sink_desc = (
-                f"""{method_str.capitalize()} [red]{parent_method}[/red] {method_in_emoji}"""
-            )
-    elif flow.get("label") == "CALL" and flow.get("isExternal"):
-        method_full_name = flow.get("fullName", "")
-        if not method_full_name.startswith("<"):
-            source_sink_desc = f"Invocation: {method_full_name}"
-    elif flow.get("label") == "RETURN" and flow.get("code"):
-        source_sink_desc = flow.get("code").split("\n")[0]
-    elif project_type not in ("java",) and flow.get("label") == "IDENTIFIER":
-        source_sink_desc = flow.get("code").split("\n")[0]
-        if source_sink_desc.endswith("("):
-            source_sink_desc = f":diamond_suit: {source_sink_desc})"
-    # Try to understand the source a bit more
-    if source_sink_desc.startswith("require("):
-        source_sink_desc = "The flow originates from a module import."
-    elif (
-        ".use(" in source_sink_desc
-        or ".subscribe(" in source_sink_desc
-        or ".on(" in source_sink_desc
-        or ".emit(" in source_sink_desc
-        or " => {" in source_sink_desc
-    ):
-        source_sink_desc = "The flow originates from a callback function."
-    elif "middleware" in source_sink_desc.lower() or "route" in source_sink_desc.lower():
-        source_sink_desc = "The flow originates from middleware."
-    elif "node_modules" in parent_file:
-        source_sink_desc = "The flow originates from an npm package."
-    elif "vendor" in parent_file:
-        source_sink_desc = "The flow originates from a vendored dependency."
-    elif "/go/pkg/mod" in parent_file:
-        source_sink_desc = "The flow originates from a vendored/module-cache dependency."
-    elif len(purls) == 0:
-        if tags:
-            source_sink_desc = (
-                f"{source_sink_desc} can be used to reach packages with tags `{tags}`"
-            )
-    elif len(purls) == 1:
-        if is_endpoint_reachable:
-            source_sink_desc = (
-                f"{source_sink_desc} can be used to reach this package from certain endpoints."
-            )
-        elif source_sink_desc:
-            if is_crypto_flow:
-                source_sink_desc = "Reachable crypto-flow."
-            else:
-                source_sink_desc = "Reachable data-flow."
-    else:
-        if is_endpoint_reachable:
-            source_sink_desc = f"{source_sink_desc} can be used to reach {len(purls)} packages from certain endpoints."
-        else:
-            if source_sink_desc:
-                source_sink_desc = (
-                    f"{source_sink_desc} can be used to reach {len(purls)} packages."
-                )
-            elif is_crypto_flow:
-                source_sink_desc = f"{len(purls)} packages reachable from this crypto-flow."
-            else:
-                source_sink_desc = f"{len(purls)} packages reachable from this data-flow."
-    return (
-        source_sink_desc,
-        is_endpoint_reachable,
-        is_crypto_flow,
-        max_severity,
-        vuln_ids,
-    )
-
-
-def filter_tags(tags):
-    if tags:
-        if isinstance(tags, list):
-            tags = ", ".join(str(atag) for atag in tags if atag)
-        elif not isinstance(tags, str):
-            return ""
-        tags = [
-            atag
-            for atag in tags.split(", ")
-            if atag not in ("RESOLVED_MEMBER", "UNKNOWN_METHOD", "UNKNOWN_TYPE_DECL")
-        ]
-        return ", ".join(tags)
-    return tags
-
-
-#: Code that says nothing about a flow: logging, temporaries, returns and
-#: negations. Kept as one tuple so a single ``startswith`` call tests them all.
-_FILTERED_CODE_PREFIXES = (
-    "console.log",
-    "thoughtLog(",
-    "_tmp_",
-    "LOG.debug(",
-    "options.get(",
-    "RET",
-    "this.",
-    "NULL",
-    "!",
-)
-
-
-def is_filterable_code(project_type, code):
-    """True for code too short or too generic to show in a flow."""
-    return len(code) < 3 or code.startswith(_FILTERED_CODE_PREFIXES)
-
-
-def flow_to_str(explanation_mode, flow, project_type):
-    """"""
-    has_check_tag = False
-    file_loc = ""
-    parent_method_name = flow.get("parentMethodName") or ""
-    if (
-        flow.get("parentFileName")
-        and flow.get("lineNumber")
-        and not flow.get("parentFileName").startswith("unknown")
-    ):
-        # strip common prefixes
-        name = flow.get("parentFileName", "")
-        for p in ("src/main/java/", "src/main/scala/"):
-            name = name.removeprefix(p)
-        file_loc = f"{name}#{flow.get('lineNumber')}    "
-    code = flow.get("code") or ""
-    if not isinstance(code, str):
-        code = str(code)
-    node_desc = code.split("\n")[0]
-    if (len(node_desc) < 3 or node_desc.endswith("{")) and len(code) > 3:
-        node_desc = " ".join(code.split())
-        if "(" in node_desc:
-            node_desc = node_desc.split("(")[0] + "() ..."
-    if node_desc.endswith("("):
-        node_desc = f":diamond_suit: {node_desc})"
-    elif node_desc.startswith("return "):
-        node_desc = f":arrow_backward: [italic]{node_desc}[/italic]"
-    tags = filter_tags(flow.get("tags"))
-    if flow.get("label") in ("METHOD_PARAMETER_IN",):
-        param_name = flow.get("name")
-        if param_name == "this":
-            param_name = ""
-        node_desc = f"{parent_method_name}([red]{param_name}[/red]) :right_arrow_curving_left:"
-        if tags:
-            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-    elif flow.get("label") in ("IDENTIFIER", "CALL"):
-        if node_desc.startswith("<"):
-            node_desc = flow.get("name")
-        if flow.get("isExternal"):
-            node_desc = f"{node_desc} :right_arrow_curving_up:"
-        if tags:
-            node_desc = f"{node_desc}\n[bold]Tags:[/bold] [italic]{tags}[/italic]\n"
-    if tags and not is_filterable_code(project_type, node_desc):
-        for ctag in COMMON_CHECK_TAGS:
-            if ctag in tags:
-                has_check_tag = True
-                break
-    if has_check_tag:
-        if explanation_mode in ("NonReachables",):
-            node_desc = f"[bold][green]{node_desc}[/green][/bold]"
-        else:
-            node_desc = f"[green]{node_desc}[/green]"
-    flow_str = (
-        f"""[gray37]{file_loc}[/gray37]{node_desc}"""
-        if not is_filterable_code(project_type, node_desc)
-        else ""
-    )
-    return (
-        file_loc,
-        flow_str,
-        node_desc,
-        has_check_tag,
-    )
-
-
-def get_comment_symbol(filename):
-    """
-    Returns the appropriate comment symbol based on the file extension.
-    """
-    if filename.endswith((".py", ".rb", ".sh", ".pl", ".yaml", ".yml", ".dockerfile")):
-        return "#"
-    return "//"
-
-
-def generate_grouped_llm_prompt(purl, flows_data, purl_vuln_map, project_type):
-    """
-    Generates a consolidated prompt for a specific PURL and its reachable flows.
-    """
-    max_sev, vulns = get_vulns_for_purls([purl], purl_vuln_map)
-    vuln_text = f", associated with {', '.join(vulns)}" if vulns else ""
-
-    prompt = f"## LLM Prompt for `{purl}`\n\n"
-    prompt += f"Analyze the security risks for the package `{purl}`{vuln_text}. "
-    prompt += f"depscan identified {len(flows_data)} endpoint reachable data flows leading to this package.\n\n"
-
-    count = 0
-    for item in flows_data:
-        if count >= max_flows_per_prompt:
-            prompt += f"... (and {len(flows_data) - max_flows_per_prompt} more flows)\n"
-            break
-
-        desc = item.get("desc", "Unknown flow")
-        desc = re.sub(r"\[.*?]", "", desc)
-
-        prompt += f"### Flow #{item.get('id')}: {desc}\n\n"
-        last_code = ""
-        for flow in item.get("flows", []):
-            code = flow.get("code", "").strip()
-            if last_code and last_code == code:
-                continue
-            if len(code) < 8:
-                continue
-            last_code = code
-            filename = flow.get("parentFileName", "")
-            lineno = flow.get("lineNumber", "")
-            tags = flow.get("tags")
-            if tags:
-                comment_symbol = get_comment_symbol(filename)
-                code = f"{comment_symbol} {tags}\n{code}"
-            prompt += f"- Source: `{filename}:{lineno}`\n```\n{code}\n```\n"
-        prompt += "\n"
-        count += 1
-
-    prompt += "Based on these data flows, explain how an attacker might exploit the vulnerabilities in this package and suggest secure code fixes or mitigations."
-    return prompt
-
-
-def save_llm_prompts(purl_grouped_flows, purl_vuln_map, project_type, prompts_file):
-    """
-    Iterates through grouped flows and saves consolidated LLM prompts to a file.
-    """
-    if not prompts_file:
-        return
-    with open(prompts_file, "w", encoding="utf-8") as f:
-        f.write("# LLM Prompts generated by OWASP dep-scan\n\n")
-        for purl, flows_data in purl_grouped_flows.items():
-            prompt_text = generate_grouped_llm_prompt(
-                purl, flows_data, purl_vuln_map, project_type
-            )
-            f.write(prompt_text)
-            f.write("\n---\n\n")
-
-
-def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl_vuln_map):
-    """"""
-    flows = flows or []
-    purls = purls or []
+def _record_locations_tree(record) -> Tree:
+    """The witness path as a tree of ``file#line    method (symbol)`` rows,
+    or the subject purls as one row when the producer walked no path."""
     tree = None
+    last_row = None
+    for node in record.path or []:
+        file_name = getattr(node, "file", None)
+        line = getattr(node, "line", None)
+        method = getattr(node, "method", None)
+        symbol = getattr(node, "symbol", None)
+        location = ""
+        if file_name and not str(file_name).startswith("unknown"):
+            location = f"{file_name}#{line if line else ''}    "
+        label = method or symbol or ""
+        row = f"[gray37]{location}[/gray37]{label}".strip()
+        if not row or row == last_row:
+            continue
+        last_row = row
+        if tree is None:
+            tree = Tree(row)
+        else:
+            tree.add(row)
+    if tree is None:
+        purls = record.subject.purls or []
+        label = _KIND_DESCRIPTIONS.get(record.kind, record.kind)
+        if record.locations:
+            location = record.locations[0]
+            place = f"{location.file}#{location.line if location.line else ''}"
+            label = f"{label} at {place.strip()}"
+        tree = Tree(label if not purls else f"{label}: {len(purls)} package(s)")
+    return tree
+
+
+def _record_description(record, vdr_result, purl_vuln_map):
+    """What the record says, in the wording the flow rendering used: where it
+    can reach the package from, and how exposed that way in."""
+    endpoint_reached_purls = getattr(vdr_result, "endpoint_reached_purls", None) or {}
+    reached_services = getattr(vdr_result, "reached_services", None) or {}
+    purls = record.subject.purls or []
+    attributes = record.attributes if isinstance(record.attributes, dict) else {}
+    is_endpoint_reachable = any(p in endpoint_reached_purls for p in purls)
+    is_reachable_service = any(p in reached_services for p in purls)
+    kind = record.kind
+    if kind == "exploit-chain":
+        hops = attributes.get("hopCount")
+        exposure = attributes.get("exposure") or "unknown"
+        desc = f"An exploit chain of {hops} hop(s) from {exposure} entry points"
+        entry_id = attributes.get("entryPointId")
+        if entry_id:
+            desc += f" (entry point {entry_id})"
+        if is_endpoint_reachable:
+            desc += ", reachable from certain endpoints"
+        return desc + "."
+    if kind == "sanitizer":
+        sanitizer_kind = attributes.get("kind") or "sanitization"
+        return f"A {sanitizer_kind} sanitization was identified along the flows to this package."
+    if kind == "dead-code":
+        fan_in = attributes.get("fanIn")
+        fan_out = attributes.get("fanOut")
+        desc = "This code has no path from any entry point"
+        if fan_in is not None or fan_out is not None:
+            desc += f" (fanIn={fan_in}, fanOut={fan_out})"
+        return desc + "."
+    if kind == "no-path":
+        return "No path to the vulnerable function was observed in the traced execution."
+    label = _KIND_DESCRIPTIONS.get(kind, kind)
+    if attributes.get("route"):
+        desc = f"Requests to {attributes['route']} reach this entry point"
+    elif kind == "entry-point":
+        desc = f"An entry point ({attributes.get('exposure') or attributes.get('kind') or 'unknown exposure'})"
+    else:
+        desc = label.capitalize() if label[:1].islower() else label
+    if not purls:
+        if is_endpoint_reachable:
+            desc += ", reachable from certain endpoints"
+        return desc + "."
+    if len(purls) == 1:
+        if is_endpoint_reachable:
+            desc += ", reachable from certain endpoints"
+        elif is_reachable_service:
+            desc += ", reachable as an external service"
+        return desc + "."
+    if is_endpoint_reachable:
+        desc = f"{desc} can be used to reach {len(purls)} packages from certain endpoints"
+    else:
+        desc = f"{desc} can be used to reach {len(purls)} packages"
+    return desc + "."
+
+
+def _record_comment(record, purl_vuln_map):
+    """The caption under the table: the packages the record is about, each
+    with the id of the finding it appears in.
+
+    The label is the one the HTML report's parser looks for when it splits a
+    flow table into its summary, flow and package columns.
+    """
     comments = []
+    purls = record.subject.purls or []
+    negative = record.polarity == "negative"
     if len(purls) > max_purl_per_flow:
         comments.append(
             ":exclamation_mark: Refactor this flow to minimize the use of external libraries."
@@ -777,83 +393,195 @@ def explain_flows(explanation_mode, flows, purls, project_type, vdr_result, purl
                 purls_display.append(f"[{style}]{p} ({', '.join(vulns)})[/{style}]")
             else:
                 purls_display.append(p)
+        label = "Non-Reachable Packages:" if negative else "Reachable Packages:"
+        comments.append(f"[info]{label}[/info]\n" + "\n".join(purls_display))
+    return "\n".join(comments)
 
-        purls_str = "\n".join(purls_display)
-        comments.append(f"[info]Reachable Packages:[/info]\n{purls_str}")
 
-    added_ids = []
-    added_flows = []
-    added_node_desc = []
-    has_check_tag = False
-    last_file_loc = None
-    source_sink_desc = ""
-    last_code = ""
-    source_code_str = ""
-    sink_code_str = ""
-    is_endpoint_reachable = False
-    is_crypto_flow = False
-    max_severity = None
-    vuln_ids = []
+def explain_records(
+    explanation_mode,
+    records,
+    project_type,
+    vdr_result,
+    purl_vuln_map,
+    prompts_file=None,
+    header_section=None,
+):
+    """Render the records the mode asks for, and return whether anything was
+    rendered together with the design tips that follow it.
 
-    for idx, aflow in enumerate(flows):
-        # For java, we are only interested in identifiers with tags to keep the flows simple to understand
-        if (
-            project_type in ("java", "jar", "android", "apk")
-            and aflow.get("label") == "IDENTIFIER"
-            and not aflow.get("tags")
-        ):
-            continue
-        curr_code = aflow.get("code") or ""
-        if not isinstance(curr_code, str):
-            curr_code = str(curr_code)
-        curr_code = curr_code.split("\n")[0]
-        if idx == 0:
-            source_code_str = curr_code
-        if idx == len(flows) - 1:
-            sink_code_str = curr_code
-        if last_code and last_code == curr_code:
-            continue
-        last_code = curr_code
-        if not source_sink_desc:
-            (
-                source_sink_desc,
-                is_endpoint_reachable,
-                is_crypto_flow,
-                max_severity,
-                vuln_ids,
-            ) = flow_to_source_sink(idx, aflow, purls, project_type, vdr_result, purl_vuln_map)
-        file_loc, flow_str, node_desc, has_check_tag_flow = flow_to_str(
-            explanation_mode, aflow, project_type
-        )
-        if not flow_str or (last_file_loc and last_file_loc == file_loc):
-            continue
-        last_file_loc = file_loc
-        if flow_str in added_flows or node_desc in added_node_desc:
-            continue
-        added_flows.append(flow_str)
-        added_ids.append(str(aflow.get("id", "")))
-        added_node_desc.append(node_desc)
-        if not tree:
-            tree = Tree(flow_str)
+    The reached modes render the positive records that count as reached
+    evidence and the exploit chains beside them. The NonReachables mode
+    renders the negative records and the reached packages that carry no
+    finding, the packages whose reach is not the reason to worry.
+    """
+    reachable_explanations = 0
+    purls_reachable_explanations = defaultdict(int)
+    has_explanation = False
+    header_shown = False
+    has_sanitizer = False
+    explained_ids = {}
+    purl_grouped_records = defaultdict(list)
+    negative_only = explanation_mode in ("NonReachables",)
+
+    for record in records:
+        if reachable_explanations + 1 > max_reachable_explanations:
+            break
+        if record.polarity == "negative":
+            wanted = negative_only and record.kind in NON_REACHABLE_KINDS
         else:
-            tree.add(flow_str)
-        if has_check_tag_flow:
-            has_check_tag = True
-    if has_check_tag and explanation_mode not in ("NonReachables",):
-        comments.insert(
-            0,
-            ":white_medium_small_square: Verify that the mitigation(s) used in this flow are valid and appropriate for your security requirements.",
+            counted = record.kind in REACHED_COUNTED_KINDS
+            if negative_only:
+                wanted = (
+                    counted
+                    and bool(record.subject.purls)
+                    and not any(p in purl_vuln_map for p in record.subject.purls)
+                )
+            else:
+                wanted = counted or record.kind == "exploit-chain"
+        if not wanted:
+            continue
+        if record.kind == "sanitizer":
+            has_sanitizer = True
+        # Have we rendered this record already? The store is deduped by id,
+        # so this only guards a caller-held list that was not.
+        if explained_ids.get(record.id):
+            continue
+        explained_ids[record.id] = True
+        max_severity, vuln_ids = get_vulns_for_purls(record.subject.purls, purl_vuln_map)
+        desc = _record_description(record, vdr_result, purl_vuln_map)
+        title_style = "bold"
+        if max_severity and max_severity in SEVERITY_COLORS:
+            title_style = SEVERITY_COLORS[max_severity]
+            desc = (
+                f"[{title_style}][{max_severity} {', '.join(vuln_ids)}][/{title_style}] {desc}"
+            )
+        rtable = Table(
+            box=box.DOUBLE_EDGE,
+            show_lines=True,
+            caption=_record_comment(record, purl_vuln_map),
+            show_header=False,
+            title=(
+                f"[bold]#{reachable_explanations + 1}[/bold] "
+                f"{record.producer.name} {record.kind}: {desc}"
+            ),
+            title_justify="left",
+            min_width=150,
+            border_style=title_style if max_severity else "white",
         )
-    return (
-        tree,
-        added_ids,
-        "\n".join(comments),
-        source_sink_desc,
-        source_code_str,
-        sink_code_str,
-        has_check_tag,
-        is_endpoint_reachable,
-        is_crypto_flow,
-        max_severity,
-        vuln_ids,
-    )
+        rtable.add_column(header="Flow", vertical="top")
+        rtable.add_row(_record_locations_tree(record))
+        if not header_shown and header_section:
+            console.print()
+            console.print(header_section)
+            header_shown = True
+        console.print()
+        console.print(rtable)
+        has_explanation = True
+        reachable_explanations += 1
+        purls_str = ",".join(sorted(record.subject.purls))
+        if purls_str:
+            purls_reachable_explanations[purls_str] += 1
+        if (
+            explanation_mode in ("LLMPrompts",)
+            and record.kind in REACHED_COUNTED_KINDS
+            and record.path
+        ):
+            endpoint_reached_purls = getattr(vdr_result, "endpoint_reached_purls", None) or {}
+            if any(p in endpoint_reached_purls for p in record.subject.purls):
+                for p in record.subject.purls:
+                    purl_grouped_records[p].append(record)
+
+    tips = """## Secure Design Tips"""
+    if negative_only:
+        tips += """
+- Automate tests (including fuzzing) to verify validation, sanitization, encoding, and encryption.
+- Align the implementation with the original architecture and threat models to ensure security compliance.
+- Extract reusable methods into a shared library for organization-wide use.
+"""
+    elif has_explanation:
+        if has_sanitizer:
+            tips += """
+- Review the validation and sanitization methods used in the application.
+- To enhance the security posture, implement a common validation middleware.
+"""
+        elif purls_reachable_explanations:
+            tips += """
+- Consider implementing a common validation and sanitization library to reduce the risk of exploitability.
+"""
+        else:
+            tips += """
+- Enhance your unit and integration tests to cover the flows listed above.
+- Continuously fuzz the parser and validation functions with diverse payloads.
+"""
+    if purl_grouped_records:
+        save_llm_prompts(purl_grouped_records, purl_vuln_map, project_type, prompts_file)
+    return has_explanation, tips
+
+
+def get_comment_symbol(filename):
+    """
+    Returns the appropriate comment symbol based on the file extension.
+    """
+    if filename.endswith((".py", ".rb", ".sh", ".pl", ".yaml", ".yml", ".dockerfile")):
+        return "#"
+    return "//"
+
+
+def generate_grouped_llm_prompt(purl, records, purl_vuln_map, project_type):
+    """
+    Generates a consolidated prompt for a specific PURL and its reachable records.
+    """
+    max_sev, vulns = get_vulns_for_purls([purl], purl_vuln_map)
+    vuln_text = f", associated with {', '.join(vulns)}" if vulns else ""
+
+    prompt = f"## LLM Prompt for `{purl}`\n\n"
+    prompt += f"Analyze the security risks for the package `{purl}`{vuln_text}. "
+    prompt += f"depscan identified {len(records)} endpoint reachable data flows leading to this package.\n\n"
+
+    count = 0
+    for record in records:
+        if count >= max_flows_per_prompt:
+            prompt += f"... (and {len(records) - max_flows_per_prompt} more flows)\n"
+            break
+
+        attributes = record.attributes if isinstance(record.attributes, dict) else {}
+        desc = attributes.get("route") or _record_description(record, None, purl_vuln_map)
+        desc = desc.replace("[", "").replace("]", "")
+
+        prompt += f"### Flow #{count + 1}: {desc}\n\n"
+        last_symbol = ""
+        for node in record.path or []:
+            symbol = getattr(node, "symbol", None) or getattr(node, "method", None) or ""
+            if last_symbol and last_symbol == symbol:
+                continue
+            last_symbol = symbol
+            filename = getattr(node, "file", None) or ""
+            lineno = getattr(node, "line", None) or ""
+            if filename and len(symbol) < 8:
+                continue
+            if filename:
+                comment_symbol = get_comment_symbol(filename)
+                symbol = f"{comment_symbol} {symbol}"
+            prompt += f"- Source: `{filename}:{lineno}`\n```\n{symbol}\n```\n"
+        prompt += "\n"
+        count += 1
+
+    prompt += "Based on these data flows, explain how an attacker might exploit the vulnerabilities in this package and suggest secure code fixes or mitigations."
+    return prompt
+
+
+def save_llm_prompts(purl_grouped_records, purl_vuln_map, project_type, prompts_file):
+    """
+    Iterates through grouped records and saves consolidated LLM prompts to a file.
+    """
+    if not prompts_file:
+        return
+    with open(prompts_file, "w", encoding="utf-8") as f:
+        f.write("# LLM Prompts generated by OWASP dep-scan\n\n")
+        for purl, records in purl_grouped_records.items():
+            prompt_text = generate_grouped_llm_prompt(
+                purl, records, purl_vuln_map, project_type
+            )
+            f.write(prompt_text)
+            f.write("\n---\n\n")
