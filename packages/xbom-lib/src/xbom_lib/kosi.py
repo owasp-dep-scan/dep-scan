@@ -13,6 +13,8 @@ finds the binary cdxgen uses):
   2. ``DEPSCAN_KOSI_BINARY`` env var (dep-scan override).
   3. ``find_executable("kosi")`` (PATH lookup).
   4. ``CDXGEN_PLUGINS_DIR`` bundled layout
+     (or the plugins directory found beside the cdxgen install, see
+     :func:`xbom_lib.plugins.discover_plugins_dir`)
      ``<pluginsDir>/kosi/kosi-<platform>-<arch><extn>``.
   5. Not found: graceful skip with a diagnostic, never a crash.
 
@@ -33,7 +35,7 @@ from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
-from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.plugins import bundled_plugin_path, find_bundled_plugin, get_plugins_bin_target
 from xbom_lib.process import build_command, find_executable, tool_env
 
 # env override for the binary path (dep-scan convenience)
@@ -76,20 +78,13 @@ def bundled_kosi_path(plugins_dir: Optional[str], target: Optional[dict] = None)
     Layout: ``<pluginsDir>/kosi/kosi-<platform>-<arch><extn>``. The path is
     returned only when the file exists.
     """
-    if not plugins_dir:
-        return None
-    target = target or get_plugins_bin_target()
-    candidate = os.path.join(
-        plugins_dir,
-        "kosi",
-        f"kosi-{target['platform']}-{target['arch']}{target['extn']}",
-    )
-    return candidate if os.path.isfile(candidate) else None
+    return bundled_plugin_path(plugins_dir, "kosi", target or get_plugins_bin_target())
 
 
 def find_kosi_binary(logger: Optional[Logger] = None) -> Optional[str]:
     """Locate the kosi binary: ``KOSI_CMD``, ``DEPSCAN_KOSI_BINARY``, PATH,
-    then the ``CDXGEN_PLUGINS_DIR`` layout. Returns ``None`` when absent."""
+    then the ``CDXGEN_PLUGINS_DIR`` layout and the plugins directory found
+    beside the cdxgen install. Returns ``None`` when absent."""
     for env_name in (KOSI_CMD_ENV, KOSI_BINARY_ENV):
         env_path = os.environ.get(env_name, "").strip()
         if env_path:
@@ -102,10 +97,7 @@ def find_kosi_binary(logger: Optional[Logger] = None) -> Optional[str]:
     found = find_executable("kosi")
     if found:
         return found
-    plugins_dir = os.environ.get("CDXGEN_PLUGINS_DIR", "").strip()
-    if plugins_dir:
-        return bundled_kosi_path(plugins_dir)
-    return None
+    return find_bundled_plugin("kosi", get_plugins_bin_target())
 
 
 def get_kosi_version(binary: str, logger: Optional[Logger] = None) -> Optional[str]:

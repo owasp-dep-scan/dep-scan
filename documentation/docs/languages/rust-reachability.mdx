@@ -35,7 +35,7 @@ The normal data path routes through cdxgen, which is the same pattern .NET uses 
        (fallback only: dep-scan spawns rusi directly if cdxgen/plugins absent)
 ```
 
-dep-scan resolves the rusi binary the same way cdxgen does. It checks the `RUSI_CMD` environment variable, then `DEPSCAN_RUSI_BINARY`, then `rusi` on `PATH`, then the bundled `cdxgen-plugins-bin` layout at `<pluginsDir>/rusi/rusi-<platform>-<arch>`. When cdxgen spawns, dep-scan propagates `RUSI_CMD` and `CDXGEN_PLUGINS_DIR` to the subprocess so both sides use the same binary. If rusi cannot be found, Rust reachability is skipped with a warning and never a crash, and other languages are unaffected.
+dep-scan resolves the rusi binary the same way cdxgen does. It checks the `RUSI_CMD` environment variable, then `DEPSCAN_RUSI_BINARY`, then `rusi` on `PATH`, then the bundled `cdxgen-plugins-bin` layout at `<pluginsDir>/rusi/rusi-<platform>-<arch>` (a `binaryPath` in `plugins-manifest.json` takes precedence). `<pluginsDir>` is `CDXGEN_PLUGINS_DIR` when set, otherwise the plugins directory found beside the cdxgen install, that is a `plugins` directory or `node_modules/@cdxgen/cdxgen-plugins-bin-<platform>-<arch>/plugins` in the install of the `cdxgen` command that `CDXGEN_CMD` or `PATH` resolves to (symlinks are followed). `depscan doctor` reports the same binary with the source `plugins-dir`. When cdxgen spawns, dep-scan propagates `RUSI_CMD` and `CDXGEN_PLUGINS_DIR` to the subprocess so both sides use the same binary. If rusi cannot be found, Rust reachability is skipped with a warning and never a crash, and other languages are unaffected.
 
 ## Example invocations
 

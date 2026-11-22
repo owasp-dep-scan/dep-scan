@@ -13,6 +13,8 @@ fallback finds the SAME binary cdxgen uses):
   2. ``DEPSCAN_GOLEM_BINARY`` env var (depscan convenience override).
   3. ``find_executable("golem")`` (PATH lookup -- local installs / plugins-bin PATH).
   4. ``CDXGEN_PLUGINS_DIR`` bundled layout
+     (or the plugins directory found beside the cdxgen install, see
+     :func:`xbom_lib.plugins.discover_plugins_dir`)
      ``<pluginsDir>/golem/golem-<platform>-<arch><extn>`` using cdxgen's
      platform/arch/musl tokens (reused from :mod:`xbom_lib.rusi`).
   5. Not found -> graceful skip with a diagnostic (never crash).
@@ -55,7 +57,7 @@ from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
-from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.plugins import bundled_plugin_path, find_bundled_plugin, get_plugins_bin_target
 from xbom_lib.process import build_command, find_executable, tool_env
 
 
@@ -156,15 +158,7 @@ def bundled_golem_path(plugins_dir: Optional[str], target: Optional[dict] = None
 
     Returns the path only when it exists on disk; otherwise ``None``.
     """
-    if not plugins_dir:
-        return None
-    target = target or get_plugins_bin_target()
-    candidate = os.path.join(
-        plugins_dir,
-        "golem",
-        f"golem-{target['platform']}-{target['arch']}{target['extn']}",
-    )
-    return candidate if os.path.isfile(candidate) else None
+    return bundled_plugin_path(plugins_dir, "golem", target or get_plugins_bin_target())
 
 
 def find_golem_binary(logger: Optional[Logger] = None) -> Optional[str]:
@@ -174,7 +168,9 @@ def find_golem_binary(logger: Optional[Logger] = None) -> Optional[str]:
       1. ``GOLEM_CMD`` env (cdxgen's primary plugin override).
       2. ``DEPSCAN_GOLEM_BINARY`` env (depscan convenience override).
       3. ``find_executable("golem")`` (PATH).
-      4. ``CDXGEN_PLUGINS_DIR`` bundled layout (see :func:`bundled_golem_path`).
+      4. ``CDXGEN_PLUGINS_DIR`` bundled layout, then the plugins directory
+         discovered from the cdxgen install (see :func:`bundled_golem_path`
+         and :func:`xbom_lib.plugins.discover_plugins_dir`).
 
     Returns an absolute path string or ``None`` (graceful skip).
     """
@@ -194,13 +190,7 @@ def find_golem_binary(logger: Optional[Logger] = None) -> Optional[str]:
     if found:
         return found
 
-    plugins_dir = os.environ.get("CDXGEN_PLUGINS_DIR", "").strip()
-    if plugins_dir:
-        candidate = bundled_golem_path(plugins_dir)
-        if candidate:
-            return candidate
-
-    return None
+    return find_bundled_plugin("golem", get_plugins_bin_target())
 
 
 def get_golem_version(binary: str, logger: Optional[Logger] = None) -> Optional[str]:
@@ -341,7 +331,9 @@ def go_toolchain_has_cgo_fixes(release: Optional[str]) -> bool:
         return (major, minor, patch) >= threshold
     # A release candidate of a line newer than the fixed ones carries the
     # fixes from the start.
-    return (major, minor) > max(tuple(int(p) for p in key.split(".")) for key in GO_CGO_PATCHED_RELEASES)
+    return (major, minor) > max(
+        tuple(int(p) for p in key.split(".")) for key in GO_CGO_PATCHED_RELEASES
+    )
 
 
 # ---------------------------------------------------------------------------
