@@ -1,0 +1,19 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/tracebom.py
+  s_23234c20518dda::t_0ce9f505cfc507 1-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fbdc774df42ed83f41be1182ce02747a14225a37",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
