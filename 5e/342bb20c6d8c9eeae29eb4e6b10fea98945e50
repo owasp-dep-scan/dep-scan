@@ -1,0 +1,34 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/dosai.py
+  s_7318da1b9edd46::t_5aab76c56b3b57 29-30,50-55,222-223,1015-1017,1212-1285,1573-1581
+packages/analysis-lib/tests/test_evidence_dosai.py
+  s_7318da1b9edd46::t_76fa1341f7d0d5 1522-1537,1571-1575
+  s_7318da1b9edd46::t_1866636f5fb3f6 148-149,1467-1497,1503-1521,1538-1570,1576-1578
+  s_7318da1b9edd46::t_cce5e7e481b4ad 1498-1502
+packages/analysis-lib/src/analysis_lib/evidence/schemas/depscan-evidence.schema.json
+  s_7318da1b9edd46::t_4abd5f14b6634e 51-53,55
+packages/analysis-lib/src/analysis_lib/evidence/__init__.py
+  s_7318da1b9edd46::t_4abd5f14b6634e 64-69,86-87
+packages/analysis-lib/tests/data/dosai/dosai-v5.0.0-reachable-combined.json
+  s_7318da1b9edd46::t_a76a447cdc7591 1734-2072
+packages/analysis-lib/tests/test_evidence_schema.py
+  s_7318da1b9edd46::t_1866636f5fb3f6 358-365
+packages/analysis-lib/tests/data/dosai/README.md
+  s_7318da1b9edd46::t_10668f73d7e621 67-69
+  s_7318da1b9edd46::t_17a8a90fda7e08 46-47,58-59,66,70-73,99-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e342bb20c6d8c9eeae29eb4e6b10fea98945e50",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
