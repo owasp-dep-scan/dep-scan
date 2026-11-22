@@ -25,8 +25,11 @@ Four kinds of evidence become records:
    purls are the ``subjects`` entries that are purls; a bom-audit
    annotation subjects the BOM serial number, which is not a purl, so
    its record keeps empty purls while the attributes keep the subjects,
-   the annotator, the ``cdx:audit:*`` properties and the text exactly as
-   given. The annotation timestamp is dropped: no record carries one.
+   the annotator and the text exactly as given (cdxgen renders its
+   ``cdx:audit:*`` facts into the text; a BOM that carries a properties
+   array has it kept as name/value pairs too). The annotation timestamp
+   is dropped from the record and left out of the id, so a regenerated
+   BOM that rewrites only the timestamp keeps the same record id.
 4. One ``introspection`` record per introspection report: the ``overall``
    block and the ``ledger`` block as given, gated on the report's own
    ``schemaVersion`` and versioned from its own ``cdxgen`` block. The
@@ -152,18 +155,37 @@ def _section_problem(bom: dict) -> Optional[str]:
     return None
 
 
-def _population(bom: dict) -> List[Any]:
+def _population(bom: dict, skipped: SkipTally) -> List[Any]:
     """The components the package loader walks: the root component's
     nested components, the top-level components, and one level of nesting
-    below each of them."""
-    metadata = as_dict(bom.get("metadata"))
-    root_component = as_dict(metadata.get("component"))
-    population = list(as_list(root_component.get("components")))
+    below each of them.
+
+    A component or components section of the wrong JSON type hides what it
+    would have carried; each such section is counted in ``skipped`` so the
+    loss is never silent.
+    """
+    population: List[Any] = []
+    metadata = bom.get("metadata")
+    root_component = metadata.get("component") if isinstance(metadata, dict) else None
+    if root_component is not None and not isinstance(root_component, dict):
+        skipped.add(
+            "metadata.component values are not JSON objects, "
+            "so their nested components became no record"
+        )
+    else:
+        population.extend(as_list(as_dict(root_component).get("components")))
     components = as_list(bom.get("components"))
     population.extend(components)
     for comp in components:
-        if isinstance(comp, dict):
-            population.extend(as_list(comp.get("components")))
+        if not isinstance(comp, dict):
+            continue
+        nested = comp.get("components")
+        if nested is None:
+            continue
+        if isinstance(nested, list):
+            population.extend(nested)
+        else:
+            skipped.add("nested components values are not arrays and became no record")
     return population
 
 
@@ -299,7 +321,7 @@ def extract(
     skipped = SkipTally()
     records: List = []
 
-    for component in _population(bom):
+    for component in _population(bom, skipped):
         if not isinstance(component, dict):
             skipped.add("components entries are not JSON objects and became no record")
             continue
@@ -366,7 +388,13 @@ def extract(
             # no usage on the BOM reader either; it is counted, not dropped.
             skipped.add("evidence.callstack objects are empty and became no record")
             continue
-        frames = as_list(raw_callstack.get("frames"))
+        raw_frames = raw_callstack.get("frames")
+        if raw_frames is not None and not isinstance(raw_frames, list):
+            # The callstack object itself is still truthy usage evidence, so
+            # its record stands with no witness path and the loss counted.
+            skipped.add("evidence.callstack frames values are not arrays and name no witness node")
+            raw_frames = None
+        frames = as_list(raw_frames)
         nodes: List[EvidencePathNode] = []
         left_out = 0
         for frame in frames:
@@ -407,25 +435,34 @@ def extract(
         if not isinstance(annotation, dict):
             skipped.add("annotations entries are not JSON objects and became no record")
             continue
-        subjects = [s for s in as_list(annotation.get("subjects")) if isinstance(s, str)]
+        raw_subjects = annotation.get("subjects")
+        if raw_subjects is not None and not isinstance(raw_subjects, list):
+            skipped.add("annotation subjects values are not arrays and name no subject")
+        subjects = [s for s in as_list(raw_subjects) if isinstance(s, str)]
         attributes = {}
         annotator = annotation.get("annotator")
         if annotator is not None:
             attributes["annotator"] = annotator
         if "subjects" in annotation:
-            attributes["subjects"] = as_list(annotation.get("subjects"))
+            attributes["subjects"] = raw_subjects
         properties = annotation.get("properties")
-        if isinstance(properties, list):
+        if properties is not None and not isinstance(properties, list):
+            skipped.add("annotation properties values are not arrays and name no property")
+        elif isinstance(properties, list):
             attributes["properties"] = properties
         text = annotation.get("text")
         if isinstance(text, str) and text:
             attributes["text"] = text
+        # The timestamp changes on every regenerated BOM while the annotation
+        # stays the same, so the id hashes the object without it, the way the
+        # introspection id leaves the report's run ids out.
+        annotation_for_id = {k: v for k, v in annotation.items() if k != "timestamp"}
         records.append(
             build_record(
                 source=source,
                 producer=producer,
                 kind="annotation",
-                discriminator=neutral_discriminator(annotation, paths),
+                discriminator=neutral_discriminator(annotation_for_id, paths),
                 purls=tuple(s for s in subjects if s.startswith("pkg:")),
                 attributes=attributes or None,
                 caveats=tuple(base_caveats),
