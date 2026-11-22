@@ -332,6 +332,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           repository: 'aboutcode-org/dejacode'
+          # 6.1.0 requires Python 3.15; 6.0.1 is the release this job's
+          # Python (3.14) can install.
+          ref: 'v6.0.1'
           path: 'repotests/dejacode'
           persist-credentials: false
       - name: semantic analysis dejacode
