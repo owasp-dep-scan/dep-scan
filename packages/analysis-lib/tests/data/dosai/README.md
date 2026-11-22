@@ -26,10 +26,8 @@ $ curl -L -o Dosai-osx-arm64-full \
     https://github.com/owasp-dep-scan/dosai/releases/download/v5.0.0/Dosai-osx-arm64-full
 ```
 
-and it prints `--version` as `5.0.0+0c35f375fbcf81cf4d221c043373e8eadcf098b8`.
-This is the same release build `harness/tools-latest.sh` installs as
-`~/.local/bin/dosai` (`dosai --version` prints the identical string), so the
-recording is exactly what the machine's current dosai 5.0.0 produces.
+and it prints `--version` as `5.0.0+0c35f375fbcf81cf4d221c043373e8eadcf098b8`,
+the build string of the published dosai 5.0.0 release.
 Recording commands, run from a scratch directory outside the repository
 (the app was passed by its real absolute path; the placeholder stands in
 here):
@@ -81,7 +79,8 @@ $ dotnet publish ./Dosai/ -c Release -r osx-arm64 \
     --no-self-contained /p:UseAppHost=true /p:AssemblyName=dosai-main
 ```
 
-with the .NET SDK 11.0.100 at `~/.dotnet/dotnet` (`DOTNET_ROOT` exported).
+with the .NET SDK 11.0.100 (`DOTNET_ROOT` pointing at its install
+directory).
 The built binary prints `--version` as
 `5.0.0+0d4c3317aa54df99e532ac2bdfa46becbb92c8b0` and records this fixture
 only. Recording commands as above, with `unreachable-app` in place of

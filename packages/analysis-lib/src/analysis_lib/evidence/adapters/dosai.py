@@ -11,27 +11,28 @@ dep-scan assembles (``{"Metadata", "methods", "dataflows"}``) or as one
 standalone half (flat ``Nodes``/``Slices`` marks dataflows; ``CallGraph``/
 ``ApiEndpoints`` marks methods).
 
-Every record kind the report supports has a home:
+The sections this adapter reads become these records:
 
 - ``Slices[]`` become ``reached-flow`` records carrying the witness node
-  path and the slice annotation (the exploit chains that cover the slice,
-  its exposure tier, the sanitized flows recorded beside it).
-- ``PackageReachability`` entries split by kind and confidence:
-  ``DataFlowNode`` and ``CallGraphEdge`` count at Medium or High
-  confidence, ``ExternalCallGraphNode`` counts at High confidence, and a
-  ``Dependency``-kind entry or any Low-confidence entry becomes a
-  ``dependency`` record, which is evidence a later reader can weigh but
-  never counts as reached. When an entry states no ``Confidence``, the
-  kind's default applies, and ``ExternalCallGraphNode`` defaults to High.
-  An entry whose ``Reachable`` is false produces no record, matching the
-  flow projection this adapter replaces, which emitted flows only for
-  entries dosai called reachable.
+  path (nodes from the dataflows ``Nodes`` and the methods
+  ``CallGraph.Nodes``) and the slice annotation (the exploit chains that
+  cover the slice, its exposure tier, the sanitized flows recorded beside
+  it). A slice that names no package purl of its own attributes nothing.
+- ``PackageReachability`` entries dosai calls reachable split by kind and
+  confidence: ``DataFlowNode``, ``DataFlowEdge``, ``DataFlowSlice`` and
+  ``CallGraphEdge`` count at Medium or High confidence,
+  ``ExternalCallGraphNode`` counts at High confidence, and every other kind
+  (``Dependency``, ``InternalCallGraphNode``) or any Low-confidence entry
+  becomes a ``dependency`` record, which is evidence a later reader can
+  weigh but never counts as reached. The record's ``confidence`` is the
+  entry's own; when an entry states none, the kind's default decides the
+  counting and is named in the ``confidenceDefault`` attribute, and
+  ``ExternalCallGraphNode`` and the data-flow kinds default to High. An
+  entry dosai calls not reachable becomes a negative ``no-path`` record.
 - ``ApiEndpoints`` and ``AttackSurface`` entry points become
   ``entry-point`` records with the exposure tier, the route and the trust
-  zone of the owning service in their attributes. A route-bearing entry
-  dosai tied to the ``cli`` or ``mcp`` tier carries the ``minimal-api``
-  caveat, because that pairing is the minimal-API attribution dosai can
-  get wrong.
+  zone of the owning service in their attributes. An API endpoint's
+  subject is the first purl it lists that reconciles.
 - ``ExploitChains`` become ``exploit-chain`` records whose subject purls
   are the covered slice's purls and whose attributes carry the entry
   point, exposure tier, hop count, route and slice id.
@@ -51,29 +52,41 @@ uses or the settled evidence vocabulary uses: ``exposure``,
 ``exploitChainIds``, ``exploitChains``, ``trustZone``, ``route``,
 ``sanitizersNearby``, ``hopCount``, ``entryPointId``, ``kind``,
 ``servicePurls``, plus ``sliceId`` on slice and chain records and the
-service identity fields on service records, so the transparency facts the
-old facts sidecar carried stay recoverable from the records. Nothing is
-inferred: a confidence the report does not state comes only from the
-kind-default table above, and a purl dosai did not give is never invented.
+service identity fields on service records, so every transparency fact
+the report states stays recoverable from the records. Nothing is
+inferred, and a purl dosai did not give is never invented.
 
-The purl reconciler keeps the behaviour of the converter this adapter
-replaces: NuGet purls match the BOM exactly or by case-folded name, and an
-unmatched NuGet purl (a versionless framework assembly) is kept as given.
-Purls of other ecosystems cannot be attributed and the entry saying them
-becomes a ``record-skipped`` caveat.
+Two ``minimal-api`` caveats mark attribution dosai can get wrong. A
+route-bearing entry point dosai tied to the ``cli`` or ``mcp`` tier carries
+one. And in a report that has minimal-API routes (entry point ids of the
+form ``ep:op:svc:minimal-api:...``), every exploit chain, slice and
+reachable package entry tied to no entry point, or only to entry points
+that are not routes, carries one: dosai 5.x ties minimal-API flows to the
+program's command-line entry point or to none (dosai issue 140).
 
-The report schema version gate accepts major 5 (5.0 and 5.1) and refuses
-everything below it as not assessed with the reason naming the version it
-saw; a newer minor is accepted with a ``schema-minor`` caveat and a report
-that names no version with a ``schema-unknown`` one. A report that does
-not parse, that is not a dosai report, or that holds a consumed section of
-the wrong shape is not assessed with the reason, never an exception, and
-never a clean result with zero findings. The budget, timeout and
-truncation markers dosai reports through its ``Diagnostics`` lists and its
-``EntryPointsTruncated`` flags become ``budget`` and ``timeout`` caveats
-on the affected records and in the producer caveats; a report object that
-cannot become a record becomes a ``record-skipped`` caveat, never a silent
-drop.
+The purl reconciler matches NuGet purls to the BOM exactly or by
+case-folded name, and keeps an unmatched NuGet purl (a versionless
+framework assembly) as given. Purls of other ecosystems cannot be
+attributed and the entry naming one is counted as skipped.
+
+File paths are relative to the ``Metadata.InputPath`` dosai states, when
+it is absolute, or to the caller's source root; a file in the NuGet cache
+is spelled by its cache path, and any other absolute path is left out with
+a ``location-outside-root`` caveat.
+
+The report schema version gate reads major 5 (5.0 and 5.1) and checks
+every version the report states, the top-level ``Metadata`` and each
+half's own; one that names another major refuses the report as not
+assessed, with the reason naming the version seen. A newer minor is
+accepted with a ``schema-minor`` caveat and a report that names no version
+with a ``schema-unknown`` one. A report that does not parse, that is not a
+dosai report, or that holds a consumed section of the wrong shape is not
+assessed with the reason, and never a clean result with zero findings. The
+budget, timeout and truncation markers dosai reports through its
+``Diagnostics`` lists and its ``EntryPointsTruncated`` flags become
+``budget`` and ``timeout`` caveats on the affected records and in the
+producer caveats; report objects that cannot become records are counted in
+one ``record-skipped`` caveat per reason.
 """
 
 import json
@@ -93,9 +106,16 @@ from analysis_lib.evidence import (
 )
 from analysis_lib.evidence.adapters import (
     AdapterResult,
-    VersionGate,
+    SkipTally,
+    SourcePaths,
+    as_dict,
+    as_hashable_str,
+    as_line,
+    as_list,
+    as_str,
     build_record,
     gate_report_version,
+    guard_extract,
     not_assessed,
 )
 
@@ -103,7 +123,7 @@ from analysis_lib.evidence.adapters import (
 PRODUCER_NAME = "dosai"
 
 #: The report schema major this adapter reads, and the newest minor of it
-#: it knows. dosai 5.0 and main both write 5.1.
+#: it knows. The dosai 5.0.0 release and dosai main both write 5.1.
 SUPPORTED_MAJOR = 5
 KNOWN_MINOR = 1
 
@@ -122,20 +142,23 @@ REPORT_CANDIDATES = (
 )
 
 #: ReachabilityKind -> default Confidence when an entry states none. The
-#: external call graph kind defaults to High: a call-graph fact is call
-#: evidence, and dropping it to Low hid reachable packages from the flow
-#: projection this adapter replaces.
+#: external call graph kind defaults to High: a node the call graph reaches
+#: is call evidence. A kind not listed defaults to Low.
 _KIND_TO_CONFIDENCE = {
     "DataFlowNode": "High",
+    "DataFlowEdge": "High",
+    "DataFlowSlice": "High",
     "CallGraphEdge": "High",
     "ExternalCallGraphNode": "High",
     "Dependency": "Low",
 }
-_CONF_RANK = {"Low": 1, "Medium": 2, "High": 3}
+
+#: The confidence names the matrix knows, by their case-folded spelling.
+_CONF_NAMES = {"low": "Low", "medium": "Medium", "high": "High"}
 
 #: The kinds whose entries count at Medium or High confidence. The external
 #: call graph kind counts only at High.
-_MEDIUM_HIGH_KINDS = ("DataFlowNode", "CallGraphEdge")
+_MEDIUM_HIGH_KINDS = ("DataFlowNode", "DataFlowEdge", "DataFlowSlice", "CallGraphEdge")
 
 #: Entry-point exposure classes dosai derives, most exposed first. A class
 #: that is not listed ranks after every listed one.
@@ -204,7 +227,7 @@ _METHODS_LISTS = (
 
 
 # ---------------------------------------------------------------------------
-# Purl reconciliation (unchanged from the converter this adapter replaces)
+# Purl reconciliation
 # ---------------------------------------------------------------------------
 
 
@@ -293,9 +316,7 @@ def is_dosai_report(report: Any) -> bool:
         return False
     if "dataflows" in report or "methods" in report:
         return True
-    return any(
-        k in report for k in ("Slices", "PackageReachability", "CallGraph", "ApiEndpoints")
-    )
+    return any(k in report for k in ("Slices", "PackageReachability", "CallGraph", "ApiEndpoints"))
 
 
 def _looks_like_dataflows(obj: Any) -> bool:
@@ -353,97 +374,144 @@ def combine_reports(dataflows: Optional[dict], methods: Optional[dict]) -> Optio
 # ---------------------------------------------------------------------------
 
 
-def _forward_slashes(value: Any) -> str:
-    return str(value or "").replace("\\", "/").replace(os.sep, "/")
-
-
-def _line_number(value: Any) -> Optional[int]:
-    try:
-        line = int(value or 0)
-    except (TypeError, ValueError):
-        return None
-    return line or None
-
-
-def _most_exposed(exposures: Iterable[Optional[str]]) -> Optional[str]:
+def _most_exposed(exposures: Iterable[Any]) -> Optional[str]:
     """The most exposed class among ``exposures``, or ``None`` when none."""
     found = [e for e in exposures if isinstance(e, str) and e]
     if not found:
         return None
-    return min(found, key=lambda e: EXPOSURE_ORDER.index(e) if e in EXPOSURE_ORDER else len(EXPOSURE_ORDER))
+    return min(
+        found,
+        key=lambda e: EXPOSURE_ORDER.index(e) if e in EXPOSURE_ORDER else len(EXPOSURE_ORDER),
+    )
 
 
 def _route_key(method: Any, route: Any) -> Tuple[str, str]:
     """The key a route is matched on. ``ApiEndpoints[].Route`` omits the
     leading slash that ``Path`` and the attack surface rows carry."""
-    path = str(route or "").strip()
+    path = as_str(route).strip()
     if path and not path.startswith("/"):
         path = "/" + path
-    return (str(method or "").upper(), path)
+    return (as_str(method).upper(), path)
 
 
 def _line_key(file_name: Any, line: Any) -> Tuple[str, int]:
     """Case-insensitive base name plus line, the way a sanitizer location is
     compared with a data-flow node location."""
-    base = os.path.basename(_forward_slashes(file_name)).lower()
-    try:
-        return (base, int(line or 0))
-    except (TypeError, ValueError):
-        return (base, 0)
+    base = as_str(file_name).replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return (base, as_line(line) or 0)
 
 
 def _parent_method(entry: Dict[str, Any]) -> str:
     """A ``ClassName.MethodName`` parent-method string."""
-    cls = entry.get("ClassName") or entry.get("Namespace") or ""
-    method = entry.get("MethodName") or entry.get("Name") or ""
+    cls = as_str(entry.get("ClassName")) or as_str(entry.get("Namespace"))
+    method = as_str(entry.get("MethodName")) or as_str(entry.get("Name"))
     if cls and method:
         return f"{cls}.{method}"
     return method or cls
 
 
 def _is_source_file(path: Any) -> bool:
-    return bool(path) and bool(_SOURCE_EXT_RE.search(str(path)))
+    return isinstance(path, str) and bool(path) and bool(_SOURCE_EXT_RE.search(path))
 
 
-def _location_of(file_name: Any, line: Any, method: Any = None) -> Optional[EvidenceLocation]:
-    """A location for a producer file name and line, or ``None`` when the
-    entry names no file."""
-    file_value = _forward_slashes(file_name)
-    if not file_value:
-        return None
-    return EvidenceLocation(file=file_value, line=_line_number(line), method=method or None)
+def _ids(value: Any) -> List[str]:
+    """The string ids of a producer id list; anything else in it is no id."""
+    return [item for item in as_list(value) if isinstance(item, str) and item]
 
 
-def _source_locations(entry: Dict[str, Any]) -> List[EvidenceLocation]:
+def _is_minimal_api_entry(entry_id: Any, kind: Any) -> bool:
+    """Whether an entry point is a minimal-API route: dosai spells their ids
+    ``ep:op:svc:minimal-api:...``, and a kind naming minimal APIs says the
+    same."""
+    if isinstance(entry_id, str) and "minimal-api" in entry_id.lower():
+        return True
+    folded = as_str(kind).lower().replace("-", "").replace("_", "").replace(" ", "")
+    return "minimalapi" in folded
+
+
+class _Where:
+    """Builds one record's locations and witness nodes through the report's
+    :class:`SourcePaths`, counting the files left out so the record can say
+    so."""
+
+    def __init__(self, paths: SourcePaths) -> None:
+        self.paths = paths
+        self.left_out: set = set()
+
+    def file(self, value: Any) -> Optional[str]:
+        if not isinstance(value, str) or not value:
+            return None
+        relative = self.paths.relative(value)
+        if relative is None:
+            self.left_out.add(value)
+        return relative
+
+    def location(
+        self, file_name: Any, line: Any, method: Any = None
+    ) -> Optional[EvidenceLocation]:
+        """A location for a producer file name and line, or ``None`` when the
+        entry names no file the record can carry."""
+        file_value = self.file(file_name)
+        if not file_value:
+            return None
+        return EvidenceLocation(file=file_value, line=as_line(line), method=as_str(method) or None)
+
+    def caveats(self, *groups: Iterable[EvidenceCaveat]) -> Tuple[EvidenceCaveat, ...]:
+        out: List[EvidenceCaveat] = []
+        for group in groups:
+            for caveat in group:
+                if caveat not in out:
+                    out.append(caveat)
+        if self.left_out:
+            out.append(self.paths.outside_root_caveat(len(self.left_out)))
+        return tuple(out)
+
+
+def _source_locations(entry: Dict[str, Any], where: _Where) -> List[EvidenceLocation]:
     """The source-file locations of a ``PackageReachability`` entry, in the
-    order dosai lists them."""
+    order dosai lists them. dosai names the file ``Path`` or ``FileName``
+    and the line ``LineNumber``; ``File`` and ``Line`` are read as well."""
     out: List[EvidenceLocation] = []
-    for location in entry.get("SourceLocations") or []:
+    for location in as_list(entry.get("SourceLocations")):
         if not isinstance(location, dict):
             continue
-        path = location.get("Path") or location.get("FileName")
+        path = location.get("Path") or location.get("FileName") or location.get("File")
         if not _is_source_file(path):
             continue
-        location_obj = _location_of(path, location.get("LineNumber"))
+        line = location.get("LineNumber")
+        if line is None:
+            line = location.get("Line")
+        location_obj = where.location(path, line)
         if location_obj:
             out.append(location_obj)
     return out
 
 
-def _confidence_of(entry: Dict[str, Any]) -> Tuple[str, str]:
-    """The entry's reachability kind and its effective confidence: the
-    confidence the entry states, else the kind's default."""
-    kind = entry.get("ReachabilityKind") or "Dependency"
-    confidence = str(entry.get("Confidence") or _KIND_TO_CONFIDENCE.get(kind, "Low")).capitalize()
-    return kind, confidence
+def _confidence_of(entry: Dict[str, Any]) -> Tuple[str, Any, Optional[str]]:
+    """The entry's reachability kind, the confidence it states as given, and
+    the confidence the counting decision uses.
+
+    A stated ``Low``, ``Medium`` or ``High`` (in any letter case) is used as
+    stated. An entry that states none falls back to its kind's default. A
+    stated value that is none of those three is no confidence the matrix
+    knows, and the entry does not count.
+    """
+    kind = as_str(entry.get("ReachabilityKind")) or "Dependency"
+    given = entry.get("Confidence")
+    if given is None or given == "":
+        return kind, None, _KIND_TO_CONFIDENCE.get(kind, "Low")
+    if isinstance(given, str) and given.strip().lower() in _CONF_NAMES:
+        return kind, given, _CONF_NAMES[given.strip().lower()]
+    return kind, given, None
 
 
-def _counts_as_reached(kind: str, confidence: str) -> bool:
-    """The reachability matrix: dataflow and call-graph entries count at
-    Medium or High, external call graph entries count only at High, and
-    everything else (the Dependency kind and every Low entry) is recorded
-    without counting."""
-    if confidence == "Low":
+def _counts_as_reached(kind: str, confidence: Optional[str]) -> bool:
+    """The reachability matrix: data-flow and call-graph edge entries count
+    at Medium or High, external call graph entries count only at High, and
+    everything else (the Dependency kind, the internal call graph kind, an
+    unknown kind, every Low entry and every entry whose confidence is not a
+    known one) is recorded without counting."""
+    if confidence is None or confidence == "Low":
         return False
     if kind in _MEDIUM_HIGH_KINDS:
         return True
@@ -462,86 +530,148 @@ class _Transparency:
 
     ``ExploitChains``, ``AttackSurface`` and ``SanitizedFlows`` come from
     the dataflows half, ``Services`` with their trust zones from the
-    methods half. Any section may be absent; every table is then empty and
-    the records carry no annotation from it.
+    methods half, and the node index from both halves' nodes. Any section
+    may be absent; every table is then empty and the records carry no
+    annotation from it.
     """
 
-    def __init__(self, dataflows: Optional[dict], methods: Optional[dict], bom_index: Dict[str, str]):
-        dataflows = dataflows or {}
-        methods = methods or {}
-        self.chains: List[dict] = [c for c in (dataflows.get("ExploitChains") or []) if isinstance(c, dict)]
-        self.sanitized_flows: List[dict] = [
-            f for f in (dataflows.get("SanitizedFlows") or []) if isinstance(f, dict)
-        ]
-        self.attack_surface: List[dict] = [
-            g for g in (dataflows.get("AttackSurface") or []) if isinstance(g, dict)
-        ]
-        self.services: List[dict] = [s for s in (methods.get("Services") or []) if isinstance(s, dict)]
-        self.nodes: Dict[str, dict] = {
-            n["Id"]: n for n in (dataflows.get("Nodes") or []) if isinstance(n, dict) and n.get("Id")
-        }
+    def __init__(
+        self,
+        dataflows: dict,
+        methods: dict,
+        bom_index: Dict[str, str],
+        skipped: SkipTally,
+    ):
         self.bom_index = bom_index
+        self.chains: List[dict] = []
+        for chain in as_list(dataflows.get("ExploitChains")):
+            if isinstance(chain, dict):
+                self.chains.append(chain)
+            else:
+                skipped.add("ExploitChains entries are not JSON objects and became no record")
+        self.sanitized_flows: List[dict] = []
+        for flow in as_list(dataflows.get("SanitizedFlows")):
+            if isinstance(flow, dict):
+                self.sanitized_flows.append(flow)
+            else:
+                skipped.add("SanitizedFlows entries are not JSON objects and became no record")
+        self.attack_surface: List[dict] = []
+        for group in as_list(dataflows.get("AttackSurface")):
+            if isinstance(group, dict):
+                self.attack_surface.append(group)
+            else:
+                skipped.add("AttackSurface entries are not JSON objects and became no record")
+        self.services: List[dict] = []
+        for service in as_list(methods.get("Services")):
+            if isinstance(service, dict):
+                self.services.append(service)
+            else:
+                skipped.add("Services entries are not JSON objects and became no record")
+        # The node index: the methods call graph's nodes and the dataflows
+        # nodes, the dataflows node winning where both name one id.
+        self.nodes: Dict[str, dict] = {}
+        for node in as_list(as_dict(methods.get("CallGraph")).get("Nodes")) + as_list(
+            dataflows.get("Nodes")
+        ):
+            if isinstance(node, dict) and as_hashable_str(node.get("Id")):
+                self.nodes[node["Id"]] = node
         self.entry_exposure: Dict[str, str] = {}
         self.route_exposure: Dict[Tuple[str, str], str] = {}
-        self._route_by_entry: Dict[str, str] = {}
+        self.route_by_entry: Dict[str, str] = {}
+        # Entry points that are routes (a route-bearing entry, a minimal-API
+        # id), and whether the report has minimal-API routes at all.
+        self.route_entries: set = set()
+        self.has_minimal_api = False
         for group in self.attack_surface:
             group_exposure = group.get("Exposure")
-            for entry in group.get("EntryPoints") or []:
+            for entry in as_list(group.get("EntryPoints")):
                 if not isinstance(entry, dict):
                     continue
-                exposure = entry.get("Exposure") or group_exposure
+                entry_id = as_hashable_str(entry.get("EntryPointId"))
+                self._note_entry(entry_id, entry.get("Kind"), entry.get("Route"))
+                exposure = as_hashable_str(entry.get("Exposure")) or as_hashable_str(
+                    group_exposure
+                )
                 if not exposure:
                     continue
-                if entry.get("EntryPointId"):
-                    self.entry_exposure[entry["EntryPointId"]] = exposure
-                if entry.get("Route"):
-                    key = _route_key(entry.get("HttpMethod"), entry.get("Route"))
+                if entry_id:
+                    self.entry_exposure[entry_id] = exposure
+                route = as_hashable_str(entry.get("Route"))
+                if route:
+                    key = _route_key(entry.get("HttpMethod"), route)
                     self.route_exposure[key] = (
                         _most_exposed([exposure, self.route_exposure.get(key)]) or exposure
                     )
-                    self._route_by_entry.setdefault(entry["EntryPointId"], entry["Route"])
-        for entry in dataflows.get("EntryPoints") or []:
-            if isinstance(entry, dict) and entry.get("Id") and entry.get("Route"):
-                self._route_by_entry.setdefault(entry["Id"], entry["Route"])
+                    if entry_id:
+                        self.route_by_entry.setdefault(entry_id, route)
+        for half in (dataflows, methods):
+            for entry in as_list(half.get("EntryPoints")):
+                if not isinstance(entry, dict):
+                    continue
+                entry_id = as_hashable_str(entry.get("Id"))
+                route = as_hashable_str(entry.get("Route"))
+                self._note_entry(entry_id, entry.get("Kind"), route)
+                if entry_id and route:
+                    self.route_by_entry.setdefault(entry_id, route)
         self.chains_by_slice: Dict[str, List[dict]] = {}
         for chain in self.chains:
-            exposure = chain.get("Exposure")
-            if exposure and chain.get("EntryPointId"):
-                self.entry_exposure.setdefault(chain["EntryPointId"], exposure)
-            if chain.get("SliceId"):
-                self.chains_by_slice.setdefault(chain["SliceId"], []).append(chain)
+            exposure = as_hashable_str(chain.get("Exposure"))
+            entry_id = as_hashable_str(chain.get("EntryPointId"))
+            if exposure and entry_id:
+                self.entry_exposure.setdefault(entry_id, exposure)
+            slice_id = as_hashable_str(chain.get("SliceId"))
+            if slice_id:
+                self.chains_by_slice.setdefault(slice_id, []).append(chain)
         self.trust_zone_by_route: Dict[Tuple[str, str], dict] = {}
         for service in self.services:
             zone = service.get("TrustZone")
             if not zone:
                 continue
-            for operation in service.get("Operations") or []:
+            for operation in as_list(service.get("Operations")):
                 if not isinstance(operation, dict):
                     continue
-                path = operation.get("Path") or operation.get("RouteTemplate") or operation.get("Name")
+                path = (
+                    as_str(operation.get("Path"))
+                    or as_str(operation.get("RouteTemplate"))
+                    or as_str(operation.get("Name"))
+                )
                 if path:
                     self.trust_zone_by_route[_route_key(operation.get("HttpMethod"), path)] = {
                         "trustZone": zone,
                         "serviceId": service.get("Id"),
                     }
         self.slice_purls: Dict[str, List[str]] = {}
-        for sl in dataflows.get("Slices") or []:
-            if isinstance(sl, dict) and sl.get("Id"):
-                self.slice_purls[sl["Id"]] = reconcile_purls(
-                    list(sl.get("Purls") or []) + [sl.get("SinkPurl"), sl.get("SourcePurl")]
-                    + self._node_purls(sl),
-                    bom_index,
+        for sl in as_list(dataflows.get("Slices")):
+            slice_id = as_hashable_str(sl.get("Id")) if isinstance(sl, dict) else None
+            if slice_id:
+                own = self.own_slice_purls(sl)
+                self.slice_purls[slice_id] = (
+                    reconcile_purls(own + self.node_purls(sl), bom_index) if own else []
                 )
         self.sanitizers_nearby: Dict[str, List[dict]] = self._match_sanitizers(dataflows)
 
-    def _node_purls(self, sl: dict) -> List[Optional[str]]:
+    def _note_entry(self, entry_id: Optional[str], kind: Any, route: Any) -> None:
+        minimal = _is_minimal_api_entry(entry_id, kind)
+        if minimal:
+            self.has_minimal_api = True
+        if entry_id and (minimal or as_hashable_str(route)):
+            self.route_entries.add(entry_id)
+
+    def own_slice_purls(self, sl: dict) -> List[Optional[str]]:
+        """The purls a slice names itself: ``Purls``, ``SinkPurl`` and
+        ``SourcePurl``, reconciled. A slice that names none attributes
+        nothing, whatever its nodes carry."""
+        raw = list(as_list(sl.get("Purls"))) + [sl.get("SinkPurl"), sl.get("SourcePurl")]
+        return [p for p in raw if reconcile_purl(p, self.bom_index)]
+
+    def node_purls(self, sl: dict) -> List[Optional[str]]:
         return [
             self.nodes[nid].get("Purl")
-            for nid in sl.get("NodeIds") or []
+            for nid in _ids(sl.get("NodeIds"))
             if isinstance(self.nodes.get(nid), dict)
         ]
 
-    def _match_sanitizers(self, dataflows: Optional[dict]) -> Dict[str, List[dict]]:
+    def _match_sanitizers(self, dataflows: dict) -> Dict[str, List[dict]]:
         """Map a slice id to the sanitized flows recorded beside it: a flow
         is near a slice when the two share a source node and the sanitizer
         sits on the slice's path (same file and line as one of its nodes).
@@ -550,27 +680,31 @@ class _Transparency:
         if not self.sanitized_flows:
             return {}
         matched: Dict[str, List[dict]] = {}
-        for sl in (dataflows or {}).get("Slices") or []:
-            if not isinstance(sl, dict) or not sl.get("Id"):
+        for sl in as_list(dataflows.get("Slices")):
+            slice_id = as_hashable_str(sl.get("Id")) if isinstance(sl, dict) else None
+            if not slice_id:
                 continue
-            node_ids = [nid for nid in (sl.get("NodeIds") or []) if isinstance(nid, str)]
+            node_ids = _ids(sl.get("NodeIds"))
             node_set = set(node_ids)
             node_locations = {
-                _line_key(self.nodes[nid].get("Path") or self.nodes[nid].get("FileName"),
-                          self.nodes[nid].get("LineNumber"))
+                _line_key(
+                    self.nodes[nid].get("Path") or self.nodes[nid].get("FileName"),
+                    self.nodes[nid].get("LineNumber"),
+                )
                 for nid in node_ids
                 if nid in self.nodes
             }
             for flow in self.sanitized_flows:
-                if not flow.get("Id"):
+                flow_id = as_hashable_str(flow.get("Id"))
+                if not flow_id:
                     continue
-                if not node_set.intersection(flow.get("SourceIds") or []):
+                if not node_set.intersection(_ids(flow.get("SourceIds"))):
                     continue
                 if _line_key(flow.get("FileName"), flow.get("LineNumber")) not in node_locations:
                     continue
-                matched.setdefault(sl["Id"], []).append(
+                matched.setdefault(slice_id, []).append(
                     {
-                        "id": flow["Id"],
+                        "id": flow_id,
                         "category": flow.get("SanitizerCategory") or flow.get("SanitizerSymbol"),
                     }
                 )
@@ -579,7 +713,7 @@ class _Transparency:
     def slice_annotation(self, sl: dict) -> Optional[dict]:
         """The transparency attributes of one slice, or ``None`` when the
         report carries none for it."""
-        slice_id = sl.get("Id")
+        slice_id = as_hashable_str(sl.get("Id"))
         chains = self.chains_by_slice.get(slice_id, []) if slice_id else []
         nearby = self.sanitizers_nearby.get(slice_id, []) if slice_id else []
         if not chains and not nearby:
@@ -603,7 +737,8 @@ class _Transparency:
             "hopCount": chain.get("HopCount", 0),
             "confidence": chain.get("Confidence"),
         }
-        route = self._route_by_entry.get(chain.get("EntryPointId") or "")
+        entry_id = as_hashable_str(chain.get("EntryPointId"))
+        route = self.route_by_entry.get(entry_id) if entry_id else None
         if route:
             compact["route"] = route
         return compact
@@ -611,14 +746,14 @@ class _Transparency:
     def package_annotation(self, pr: dict) -> Optional[dict]:
         """The exposure and chain ids of the entry points and exploit chains
         that reach a package, or ``None`` when the report names none."""
-        slice_ids = [s for s in (pr.get("SliceIds") or []) if isinstance(s, str)]
-        exposures = [self.entry_exposure.get(e) for e in (pr.get("EntryPointIds") or [])]
+        exposures: List[Any] = [self.entry_exposure.get(e) for e in _ids(pr.get("EntryPointIds"))]
         chain_ids: List[str] = []
-        for slice_id in slice_ids:
+        for slice_id in _ids(pr.get("SliceIds")):
             for chain in self.chains_by_slice.get(slice_id, []):
                 exposures.append(chain.get("Exposure"))
-                if chain.get("Id") and chain["Id"] not in chain_ids:
-                    chain_ids.append(chain["Id"])
+                chain_id = as_hashable_str(chain.get("Id"))
+                if chain_id and chain_id not in chain_ids:
+                    chain_ids.append(chain_id)
         exposure = _most_exposed(exposures)
         if not exposure and not chain_ids:
             return None
@@ -635,6 +770,42 @@ class _Transparency:
         if zone:
             annotation.update(zone)
         return annotation
+
+    # --- the minimal-API attribution caveat --------------------------------
+
+    def minimal_api_caveat(self, what: str, entry_ids: List[str]) -> Optional[EvidenceCaveat]:
+        """The ``minimal-api`` caveat for a record tied to ``entry_ids``, or
+        ``None``. It applies only in a report that has minimal-API routes,
+        to a record tied to no entry point or to entry points none of which
+        is a route: that is the attribution dosai gets wrong for minimal-API
+        flows, which it ties to the program's command-line entry point or
+        to no entry point at all."""
+        if not self.has_minimal_api:
+            return None
+        if any(entry_id in self.route_entries for entry_id in entry_ids):
+            return None
+        tied = (
+            "to the entry point(s) " + ", ".join(entry_ids) + ", none of which is a route"
+            if entry_ids
+            else "to no entry point"
+        )
+        return EvidenceCaveat(
+            kind="minimal-api",
+            detail=(
+                f"the report has minimal-API routes and dosai tied {what} {tied}; dosai can "
+                "attribute minimal-API flows to the wrong entry point (dosai issue 140)"
+            ),
+        )
+
+    def slice_entry_ids(self, slice_id: Optional[str]) -> List[str]:
+        if not slice_id:
+            return []
+        out: List[str] = []
+        for chain in self.chains_by_slice.get(slice_id, []):
+            entry_id = as_hashable_str(chain.get("EntryPointId"))
+            if entry_id and entry_id not in out:
+                out.append(entry_id)
+        return out
 
 
 # ---------------------------------------------------------------------------
@@ -659,15 +830,68 @@ def _diagnostic_caveats(lines: Iterable[Any]) -> List[EvidenceCaveat]:
     return caveats
 
 
-def _section_lists(section: Optional[dict], names: Tuple[str, ...], half: str) -> Optional[str]:
+def _section_lists(section: dict, names: Tuple[str, ...], half: str) -> Optional[str]:
     """The name of the first consumed section of the wrong shape, or
-    ``None`` when every present section is a list."""
-    if not isinstance(section, dict):
-        return None
+    ``None`` when every present section has the shape dosai writes. A
+    ``null`` section reads as absent."""
     for name in names:
-        if name in section and not isinstance(section[name], list):
-            return f"the {half} section's {name} is {type(section[name]).__name__}, expected a list"
+        value = section.get(name)
+        if value is not None and not isinstance(value, list):
+            return f"the {half} section's {name} is {type(value).__name__}, expected a list"
+    call_graph = section.get("CallGraph")
+    if call_graph is not None:
+        if not isinstance(call_graph, dict):
+            return (
+                f"the {half} section's CallGraph is {type(call_graph).__name__}, "
+                "expected an object"
+            )
+        nodes = call_graph.get("Nodes")
+        if nodes is not None and not isinstance(nodes, list):
+            return (
+                f"the {half} section's CallGraph.Nodes is {type(nodes).__name__}, expected a list"
+            )
     return None
+
+
+def _gate_versions(
+    parsed: dict, dataflows: dict, methods: dict
+) -> Tuple[Optional[str], List[EvidenceCaveat], str]:
+    """Gate every schema version the report states: the top-level
+    ``Metadata`` and each half's own. Returns the refusal reason (``None``
+    when every version is readable), the gate caveats, and the version the
+    producer block names (the first one stated, else ``unknown``)."""
+    stated: List[Tuple[str, Any]] = []
+    for label, holder in (("report", parsed), ("dataflows", dataflows), ("methods", methods)):
+        meta = holder.get("Metadata")
+        if isinstance(meta, dict) and meta.get("SchemaVersion") not in (None, ""):
+            stated.append((label, meta["SchemaVersion"]))
+    caveats: List[EvidenceCaveat] = []
+    if not stated:
+        gate = gate_report_version(None, SUPPORTED_MAJOR, KNOWN_MINOR)
+        return None, list(gate.caveats), "unknown"
+    for label, version in stated:
+        gate = gate_report_version(version, SUPPORTED_MAJOR, KNOWN_MINOR)
+        if not gate.accepted:
+            where = "the report metadata" if label == "report" else f"the {label} metadata"
+            return f"{where}: {gate.reason}", [], "unknown"
+        for caveat in gate.caveats:
+            if caveat not in caveats:
+                caveats.append(caveat)
+    return None, caveats, str(stated[0][1])
+
+
+def _source_paths(
+    parsed: dict, dataflows: dict, methods: dict, source_root: Optional[str]
+) -> SourcePaths:
+    """The path mapping of one dosai report: the ``InputPath`` each
+    ``Metadata`` block states, when it is absolute, and the caller's source
+    root. dosai already writes most locations relative to the input."""
+    roots: List[Any] = [source_root]
+    for holder in (parsed, dataflows, methods):
+        meta = as_dict(holder.get("Metadata"))
+        roots.append(meta.get("InputPath"))
+        roots.append(meta.get("InputFullPath"))
+    return SourcePaths(roots)
 
 
 # ---------------------------------------------------------------------------
@@ -675,49 +899,68 @@ def _section_lists(section: Optional[dict], names: Tuple[str, ...], half: str) -
 # ---------------------------------------------------------------------------
 
 
-def _slice_record(
-    sl: dict,
-    transparency: _Transparency,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-    skipped: List[EvidenceCaveat],
-) -> Optional[Evidence]:
+class _Context:
+    """What every record builder of one report shares."""
+
+    def __init__(
+        self,
+        source: str,
+        producer: EvidenceProducer,
+        transparency: _Transparency,
+        paths: SourcePaths,
+        side_caveats: Dict[str, List[EvidenceCaveat]],
+        skipped: SkipTally,
+    ) -> None:
+        self.source = source
+        self.producer = producer
+        self.transparency = transparency
+        self.paths = paths
+        self.side_caveats = side_caveats
+        self.skipped = skipped
+
+    def discriminator(self, obj: Any, own_id: Any = None, *extra: Any) -> str:
+        """The producer's own id when the object has one (dosai numbers its
+        objects per report, independent of any path), else the content hash
+        of the object with the roots spelled the same wherever the report
+        was produced."""
+        key = as_hashable_str(own_id)
+        if key:
+            return ":".join([key, *(str(e) for e in extra)]) if extra else key
+        return content_discriminator([self.paths.neutral(obj), *extra])
+
+
+def _slice_record(sl: dict, ctx: _Context) -> Optional[Evidence]:
     """The reached-flow record of one data-flow slice, with the witness
     node path and the slice annotation. A slice that names no package purl
-    attributes nothing and becomes a record-skipped caveat."""
-    nodes = transparency.nodes
-    node_ids = [nid for nid in (sl.get("NodeIds") or []) if isinstance(nid, str)]
-    purls = transparency.slice_purls.get(sl.get("Id") or "") or reconcile_purls(
-        list(sl.get("Purls") or []) + [sl.get("SinkPurl"), sl.get("SourcePurl")]
-        + transparency._node_purls(sl),
-        transparency.bom_index,
-    )
-    if not purls:
-        label = sl.get("Id") or "without an id"
-        skipped.append(
-            EvidenceCaveat(
-                kind="record-skipped",
-                detail=f"the data-flow slice {label} names no package purls; nothing to attribute",
-            )
-        )
+    of its own, or walks no node, attributes nothing and is counted as
+    skipped."""
+    transparency = ctx.transparency
+    own = transparency.own_slice_purls(sl)
+    if not own:
+        ctx.skipped.add("data-flow slices name no package purl of their own and became no record")
         return None
+    node_ids = _ids(sl.get("NodeIds"))
+    if not node_ids:
+        ctx.skipped.add("data-flow slices walk no node and became no record")
+        return None
+    purls = reconcile_purls(own + transparency.node_purls(sl), transparency.bom_index)
+    where = _Where(ctx.paths)
     path: List[EvidencePathNode] = []
     locations: List[EvidenceLocation] = []
     for nid in node_ids:
-        node = nodes.get(nid)
+        node = transparency.nodes.get(nid)
         if not isinstance(node, dict):
             continue
+        file_value = node.get("Path") or node.get("FileName")
+        method = _parent_method(node) or None
+        location = where.location(file_value, node.get("LineNumber"), method)
         path.append(
             EvidencePathNode(
-                file=_forward_slashes(node.get("Path") or node.get("FileName")) or None,
-                line=_line_number(node.get("LineNumber")),
-                method=_parent_method(node) or None,
-                symbol=str(node.get("Symbol") or node.get("Name") or "") or None,
+                file=location.file if location else None,
+                line=as_line(node.get("LineNumber")),
+                method=method,
+                symbol=as_str(node.get("Symbol")) or as_str(node.get("Name")) or None,
             )
-        )
-        location = _location_of(
-            node.get("Path") or node.get("FileName"), node.get("LineNumber"), _parent_method(node)
         )
         if location:
             locations.append(location)
@@ -725,74 +968,102 @@ def _slice_record(
     annotation = transparency.slice_annotation(sl)
     if annotation:
         attributes.update(annotation)
-    category = str(sl.get("SinkCategory") or "")
+    category = as_str(sl.get("SinkCategory"))
     if category in _CATEGORY_TO_SERVICE_TAG:
         service_purls = reconcile_purls(
-            list(sl.get("Purls") or []) + [sl.get("SinkPurl")], transparency.bom_index
+            list(as_list(sl.get("Purls"))) + [sl.get("SinkPurl")], transparency.bom_index
         )
         if service_purls:
             attributes["servicePurls"] = service_purls
+    slice_id = as_hashable_str(sl.get("Id"))
+    minimal = transparency.minimal_api_caveat(
+        f"the data-flow slice {slice_id or 'without an id'}",
+        transparency.slice_entry_ids(slice_id),
+    )
+    confidence = sl.get("Confidence")
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="reached-flow",
-        discriminator=str(sl.get("Id") or content_discriminator(sl)),
+        discriminator=ctx.discriminator(sl, slice_id),
         purls=tuple(purls),
         locations=tuple(locations),
         path=tuple(path),
+        confidence=confidence if isinstance(confidence, str) and confidence else None,
         attributes=attributes or None,
-        caveats=caveats,
+        caveats=where.caveats(ctx.side_caveats["dataflows"], [minimal] if minimal else []),
     )
 
 
-def _package_reachability_record(
-    pr: dict,
-    transparency: _Transparency,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-    skipped: List[EvidenceCaveat],
-) -> Optional[Evidence]:
-    """The reached-flow or dependency record of one ``PackageReachability``
-    entry, per the reachability matrix. An entry dosai marked not reachable
-    produces no record, and an entry whose purl cannot be attributed
-    becomes a record-skipped caveat."""
-    if not pr.get("Reachable"):
+def _package_reachability_record(pr: dict, half: str, ctx: _Context) -> Optional[Evidence]:
+    """The record of one ``PackageReachability`` entry.
+
+    An entry dosai calls reachable becomes a reached-flow or a dependency
+    record per the reachability matrix; an entry dosai calls not reachable
+    becomes a negative ``no-path`` record; an entry with neither verdict,
+    or whose purl cannot be attributed, is counted as skipped. The record's
+    confidence is the one the entry states, exactly as stated; when the
+    entry states none, the kind's default only decides the counting and is
+    named in the ``confidenceDefault`` attribute.
+    """
+    transparency = ctx.transparency
+    verdict = pr.get("Reachable")
+    if verdict is not True and verdict is not False:
+        ctx.skipped.add(
+            "PackageReachability entries state no Reachable verdict and became no record"
+        )
         return None
     raw_purl = pr.get("Purl")
     purl = reconcile_purl(raw_purl, transparency.bom_index)
     if not purl:
-        skipped.append(
-            EvidenceCaveat(
-                kind="record-skipped",
-                detail=(
-                    "the PackageReachability entry names no NuGet purl this adapter can"
-                    f" attribute: {raw_purl!r}"
-                )
-                if raw_purl
-                else "the PackageReachability entry names no package purl",
+        if isinstance(raw_purl, str) and raw_purl:
+            ctx.skipped.add(
+                "PackageReachability entries name a purl outside NuGet, which this adapter "
+                "cannot attribute, and became no record"
             )
-        )
+        else:
+            ctx.skipped.add(
+                "PackageReachability entries name no package purl and became no record"
+            )
         return None
-    kind, confidence = _confidence_of(pr)
-    counted = _counts_as_reached(kind, confidence)
+    kind, given, effective = _confidence_of(pr)
+    counted = verdict is True and _counts_as_reached(kind, effective)
     attributes: dict = {"kind": kind}
+    if given is None:
+        attributes["confidenceSource"] = "kind-default"
+        attributes["confidenceDefault"] = effective
+    elif not isinstance(given, str):
+        attributes["confidenceGiven"] = given
     annotation = transparency.package_annotation(pr)
     if annotation:
         attributes.update(annotation)
-    category = next((c for c in (pr.get("Categories") or []) if isinstance(c, str)), "")
+    category = next((c for c in as_list(pr.get("Categories")) if isinstance(c, str)), "")
     if counted and category in _CATEGORY_TO_SERVICE_TAG:
         attributes["servicePurls"] = [purl]
+    where = _Where(ctx.paths)
+    locations = _source_locations(pr, where)
+    if verdict is False:
+        record_kind, polarity, extra = "no-path", "negative", []
+    else:
+        record_kind = "reached-flow" if counted else "dependency"
+        polarity = "positive"
+        minimal = transparency.minimal_api_caveat(
+            f"the package reachability of {purl}", _ids(pr.get("EntryPointIds"))
+        )
+        extra = [minimal] if minimal else []
     return build_record(
-        source=source,
-        producer=producer,
-        kind="reached-flow" if counted else "dependency",
-        discriminator=content_discriminator(pr),
+        source=ctx.source,
+        producer=ctx.producer,
+        kind=record_kind,
+        polarity=polarity,
+        # The same entry can appear in both halves; the half keeps them apart
+        # so the caveats each half carries stay on its own record.
+        discriminator=ctx.discriminator(pr, None, half),
         purls=(purl,),
-        locations=tuple(_source_locations(pr)),
-        confidence=confidence,
+        locations=tuple(locations),
+        confidence=given if isinstance(given, str) else None,
         attributes=attributes,
-        caveats=caveats,
+        caveats=where.caveats(ctx.side_caveats[half], extra),
     )
 
 
@@ -813,8 +1084,7 @@ def _endpoint_attributes(
     route = entry.get("Route") or entry.get("Path")
     if route:
         attributes["route"] = route
-    zone = transparency.endpoint_zone(entry.get("HttpMethod"), route)
-    attributes.update(zone)
+    attributes.update(transparency.endpoint_zone(entry.get("HttpMethod"), route))
     exposure = entry.get("Exposure") or attributes.get("exposure")
     if exposure:
         attributes["exposure"] = exposure
@@ -832,81 +1102,67 @@ def _endpoint_attributes(
     return attributes, caveats
 
 
-def _api_endpoint_record(
-    entry: dict,
-    transparency: _Transparency,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-    skipped: List[EvidenceCaveat],
-) -> Optional[Evidence]:
-    """The entry-point record of one ``ApiEndpoints`` entry. An entry that
-    names no route cannot be an entry point and becomes a caveat."""
+def _api_endpoint_record(entry: dict, ctx: _Context) -> Optional[Evidence]:
+    """The entry-point record of one ``ApiEndpoints`` entry. Its subject is
+    the first purl the entry lists that reconciles, the package serving the
+    route; every purl the entry lists is kept as given in the ``purls``
+    attribute. An entry that names no route cannot be an entry point and is
+    counted as skipped."""
     route = entry.get("Route") or entry.get("Path")
     if not route:
-        skipped.append(
-            EvidenceCaveat(
-                kind="record-skipped",
-                detail="the API endpoint entry names no route; no entry point to record",
-            )
-        )
+        ctx.skipped.add("ApiEndpoints entries name no route and became no record")
         return None
-    attributes, extra_caveats = _endpoint_attributes(entry, transparency)
-    handler_purls = reconcile_purls(list(entry.get("Purls") or []), transparency.bom_index)
-    method_name = _parent_method(entry) or None
-    location = _location_of(
-        entry.get("FilePath") or entry.get("FileName"), entry.get("LineNumber"), method_name
+    attributes, extra_caveats = _endpoint_attributes(entry, ctx.transparency)
+    listed = as_list(entry.get("Purls"))
+    handler_purl = next(
+        (p for p in (reconcile_purl(raw, ctx.transparency.bom_index) for raw in listed) if p),
+        None,
     )
-    discriminator = str(entry.get("OperationId") or content_discriminator(entry))
+    if len(listed) > 1:
+        attributes["purls"] = listed
+    where = _Where(ctx.paths)
+    location = where.location(
+        entry.get("FilePath") or entry.get("FileName"),
+        entry.get("LineNumber"),
+        _parent_method(entry),
+    )
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="entry-point",
-        discriminator=discriminator,
-        purls=tuple(handler_purls),
+        discriminator=ctx.discriminator(entry, entry.get("OperationId")),
+        purls=(handler_purl,) if handler_purl else (),
         locations=tuple([location] if location else []),
         attributes=attributes or None,
-        caveats=tuple(list(caveats) + list(extra_caveats)),
+        caveats=where.caveats(ctx.side_caveats["methods"], extra_caveats),
     )
 
 
-def _attack_surface_record(
-    group: dict,
-    entry: dict,
-    transparency: _Transparency,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-) -> Optional[Evidence]:
+def _attack_surface_record(entry: dict, caveats: List[EvidenceCaveat], ctx: _Context) -> Evidence:
     """The entry-point record of one ``AttackSurface`` entry, carrying the
     exposure tier of the group or the entry and the trust zone of the
     service that owns the route."""
-    attributes, extra_caveats = _endpoint_attributes(entry, transparency)
-    location = _location_of(entry.get("FileName"), entry.get("LineNumber"))
-    discriminator = str(entry.get("EntryPointId") or content_discriminator(entry))
+    attributes, extra_caveats = _endpoint_attributes(entry, ctx.transparency)
+    where = _Where(ctx.paths)
+    location = where.location(entry.get("FileName"), entry.get("LineNumber"))
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="entry-point",
-        discriminator=discriminator,
+        discriminator=ctx.discriminator(entry, entry.get("EntryPointId")),
         locations=tuple([location] if location else []),
         attributes=attributes or None,
-        caveats=tuple(list(caveats) + list(extra_caveats)),
+        caveats=where.caveats(caveats, extra_caveats),
     )
 
 
-def _exploit_chain_record(
-    chain: dict,
-    transparency: _Transparency,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-) -> Evidence:
+def _exploit_chain_record(chain: dict, ctx: _Context) -> Evidence:
     """The exploit-chain record of one ``ExploitChains`` entry: the covered
     slice's purls as the subject, the chain's own id, entry point, exposure
     tier, hop count, route and slice id as attributes. The chain id is what
     the reachability entries' ``exploitChainIds`` reference, so it stays a
     readable value and not only the record id's hash input."""
+    transparency = ctx.transparency
     attributes: dict = {}
     for key, field in (
         ("id", "Id"),
@@ -918,28 +1174,32 @@ def _exploit_chain_record(
         value = chain.get(field)
         if value is not None:
             attributes[key] = value
-    route = transparency._route_by_entry.get(chain.get("EntryPointId") or "")
+    entry_id = as_hashable_str(chain.get("EntryPointId"))
+    route = transparency.route_by_entry.get(entry_id) if entry_id else None
     if route:
         attributes["route"] = route
-    purls = transparency.slice_purls.get(chain.get("SliceId") or "", [])
+    slice_id = as_hashable_str(chain.get("SliceId"))
+    purls = transparency.slice_purls.get(slice_id, []) if slice_id else []
+    chain_id = as_hashable_str(chain.get("Id"))
+    minimal = transparency.minimal_api_caveat(
+        f"the exploit chain {chain_id or 'without an id'}", [entry_id] if entry_id else []
+    )
+    confidence = chain.get("Confidence")
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="exploit-chain",
-        discriminator=str(chain.get("Id") or content_discriminator(chain)),
+        discriminator=ctx.discriminator(chain, chain_id),
         purls=tuple(purls),
-        confidence=str(chain.get("Confidence") or "") or None,
+        confidence=confidence if isinstance(confidence, str) and confidence else None,
         attributes=attributes or None,
-        caveats=caveats,
+        caveats=_Where(ctx.paths).caveats(
+            ctx.side_caveats["dataflows"], [minimal] if minimal else []
+        ),
     )
 
 
-def _sanitizer_record(
-    flow: dict,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-) -> Evidence:
+def _sanitizer_record(flow: dict, ctx: _Context) -> Evidence:
     """The sanitizer record of one ``SanitizedFlows`` entry: negative
     polarity, the sanitized trace's own fields kept as attributes."""
     attributes = {
@@ -947,25 +1207,21 @@ def _sanitizer_record(
         for key, value in flow.items()
         if key not in ("Id", "FileName", "LineNumber") and value is not None
     }
-    location = _location_of(flow.get("FileName"), flow.get("LineNumber"))
+    where = _Where(ctx.paths)
+    location = where.location(flow.get("FileName"), flow.get("LineNumber"))
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="sanitizer",
         polarity="negative",
-        discriminator=str(flow.get("Id") or content_discriminator(flow)),
+        discriminator=ctx.discriminator(flow, flow.get("Id")),
         locations=tuple([location] if location else []),
         attributes=attributes or None,
-        caveats=caveats,
+        caveats=where.caveats(ctx.side_caveats["dataflows"]),
     )
 
 
-def _dead_code_record(
-    entry: dict,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-) -> Evidence:
+def _dead_code_record(entry: dict, ctx: _Context) -> Evidence:
     """The dead-code record of one ``DeadCode`` entry: negative polarity,
     the dead method's location and identity."""
     attributes: dict = {}
@@ -973,27 +1229,21 @@ def _dead_code_record(
         value = entry.get(field)
         if value:
             attributes[key] = value
-    location = _location_of(
-        entry.get("FileName"), entry.get("LineNumber"), entry.get("Name") or None
-    )
+    where = _Where(ctx.paths)
+    location = where.location(entry.get("FileName"), entry.get("LineNumber"), entry.get("Name"))
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="dead-code",
         polarity="negative",
-        discriminator=str(entry.get("NodeId") or content_discriminator(entry)),
+        discriminator=ctx.discriminator(entry, entry.get("NodeId")),
         locations=tuple([location] if location else []),
         attributes=attributes or None,
-        caveats=caveats,
+        caveats=where.caveats(ctx.side_caveats["methods"]),
     )
 
 
-def _unreachable_node_record(
-    entry: dict,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-) -> Evidence:
+def _unreachable_node_record(entry: dict, ctx: _Context) -> Evidence:
     """The dead-code record of one unreachable node of the methods
     ``Reachability`` list: negative polarity, the node identity and depth
     as attributes."""
@@ -1007,26 +1257,21 @@ def _unreachable_node_record(
         if value is not None:
             attributes[key] = value
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind="dead-code",
         polarity="negative",
-        discriminator=str(entry.get("NodeId") or content_discriminator(entry)),
+        discriminator=ctx.discriminator(entry, entry.get("NodeId")),
         attributes=attributes,
-        caveats=caveats,
+        caveats=_Where(ctx.paths).caveats(ctx.side_caveats["methods"]),
     )
 
 
-def _service_record(
-    service: dict,
-    source: str,
-    producer: EvidenceProducer,
-    caveats: Tuple[EvidenceCaveat, ...],
-) -> Evidence:
+def _service_record(service: dict, ctx: _Context) -> Evidence:
     """The record of one ``Services`` entry: an inbound or bidirectional
     service is attack surface and becomes an entry-point record, an
     outbound one becomes a presence record. Services attribute no package."""
-    direction = str(service.get("Direction") or "")
+    direction = as_str(service.get("Direction"))
     kind = "presence" if direction == "outbound" else "entry-point"
     attributes: dict = {}
     for key, field in (
@@ -1040,20 +1285,21 @@ def _service_record(
         value = service.get(field)
         if value is not None and value != "":
             attributes[key] = value
-    location_obj = service.get("Location") if isinstance(service.get("Location"), dict) else {}
-    evidence_obj = service.get("Evidence") if isinstance(service.get("Evidence"), dict) else {}
-    location = _location_of(
+    location_obj = as_dict(service.get("Location"))
+    evidence_obj = as_dict(service.get("Evidence"))
+    where = _Where(ctx.paths)
+    location = where.location(
         location_obj.get("FileName") or evidence_obj.get("FileName"),
         location_obj.get("LineNumber") or evidence_obj.get("LineNumber"),
     )
     return build_record(
-        source=source,
-        producer=producer,
+        source=ctx.source,
+        producer=ctx.producer,
         kind=kind,
-        discriminator=str(service.get("Id") or content_discriminator(service)),
+        discriminator=ctx.discriminator(service, service.get("Id")),
         locations=tuple([location] if location else []),
         attributes=attributes or None,
-        caveats=caveats,
+        caveats=where.caveats(ctx.side_caveats["methods"]),
     )
 
 
@@ -1079,18 +1325,18 @@ def _materialize(report: Any) -> Tuple[Optional[Any], Optional[str]]:
             try:
                 with open(report, encoding="utf-8") as fp:
                     text = fp.read()
-            except OSError as e:
+            except (OSError, UnicodeDecodeError) as e:
                 return None, f"the report file could not be read: {e}"
         else:
             text = report
     elif hasattr(report, "__fspath__"):
         path = os.fspath(report)
         if not os.path.isfile(path):
-            return None, f"the report file {path} does not exist"
+            return None, f"the report file {os.path.basename(path)} does not exist"
         try:
             with open(path, encoding="utf-8") as fp:
                 text = fp.read()
-        except OSError as e:
+        except (OSError, UnicodeDecodeError) as e:
             return None, f"the report file could not be read: {e}"
     else:
         return None, (
@@ -1108,12 +1354,14 @@ def _materialize(report: Any) -> Tuple[Optional[Any], Optional[str]]:
         )
 
 
+@guard_extract(PRODUCER_NAME)
 def extract(
     report: Any,
     *,
     source: str = "",
     producer_version: str = "",
     bom_index: Optional[Dict[str, str]] = None,
+    source_root: Optional[str] = None,
 ) -> AdapterResult:
     """The evidence records of one dosai report.
 
@@ -1126,13 +1374,15 @@ def extract(
     tool status; the ``AnalyzerVersion`` the report states wins when it has
     one. ``bom_index`` is the alias index :func:`build_bom_purl_index`
     builds from the BOM components; without it every NuGet purl is kept as
-    the report spells it.
+    the report spells it. ``source_root`` is the scanned source directory
+    as the caller knows it; an absolute file path dosai writes is made
+    relative to it or to the ``Metadata.InputPath`` the report states.
 
     A report that cannot be read, parsed, recognized, or gated returns a
     not-assessed result whose reason says what stood in the way. A
     completed result carries every record the report supports, the
-    producer-level caveats, and a ``record-skipped`` caveat for every
-    report object that could not become a record.
+    producer-level caveats, and a ``record-skipped`` caveat per reason
+    some report objects could not become records, with their count.
     """
     parsed, reason = _materialize(report)
     if reason:
@@ -1157,90 +1407,65 @@ def extract(
         if problem:
             return not_assessed(f"the report is malformed and was not assessed: {problem}")
 
-    # The combined envelope carries the report metadata the scan chose at
-    # the top level; a standalone half carries its own. The halves' own
-    # blocks only matter for a hand-assembled envelope without one.
-    meta = (
-        parsed.get("Metadata")
-        if isinstance(parsed.get("Metadata"), dict)
-        else None
-    ) or (
-        dataflows.get("Metadata") if isinstance(dataflows.get("Metadata"), dict) else None
-    ) or (methods.get("Metadata") if isinstance(methods.get("Metadata"), dict) else None) or {}
-    gate: VersionGate = gate_report_version(meta.get("SchemaVersion"), SUPPORTED_MAJOR, KNOWN_MINOR)
-    if not gate.accepted:
-        return not_assessed(gate.reason or "the report schema version is not supported")
+    refusal, gate_caveats, schema_version = _gate_versions(parsed, dataflows, methods)
+    if refusal:
+        return not_assessed(refusal)
 
+    meta = next(
+        (
+            holder["Metadata"]
+            for holder in (parsed, dataflows, methods)
+            if isinstance(holder.get("Metadata"), dict)
+        ),
+        {},
+    )
     source_name = source or (
-        os.path.basename(str(report)) if isinstance(report, str) and os.path.isfile(str(report)) else "unknown"
+        os.path.basename(report)
+        if isinstance(report, str) and os.path.isfile(report)
+        else "unknown"
     )
     producer = EvidenceProducer(
         name=PRODUCER_NAME,
-        version=str(meta.get("AnalyzerVersion") or producer_version or "unknown"),
-        report_schema_version=str(meta.get("SchemaVersion") or "unknown"),
+        version=as_str(meta.get("AnalyzerVersion")) or producer_version or "unknown",
+        report_schema_version=schema_version,
     )
     bom_index = bom_index or {}
-
-    transparency = _Transparency(dataflows, methods, bom_index)
+    skipped = SkipTally()
+    paths = _source_paths(parsed, dataflows, methods, source_root)
+    transparency = _Transparency(dataflows, methods, bom_index, skipped)
     side_caveats: Dict[str, List[EvidenceCaveat]] = {
-        "dataflows": list(gate.caveats) + _diagnostic_caveats(dataflows.get("Diagnostics") or []),
-        "methods": list(gate.caveats) + _diagnostic_caveats(methods.get("Diagnostics") or []),
+        "dataflows": list(gate_caveats)
+        + _diagnostic_caveats(as_list(dataflows.get("Diagnostics"))),
+        "methods": list(gate_caveats) + _diagnostic_caveats(as_list(methods.get("Diagnostics"))),
     }
-    truncated_groups = [
-        group
-        for group in transparency.attack_surface
-        if isinstance(group, dict) and group.get("EntryPointsTruncated")
-    ]
-    skipped: List[EvidenceCaveat] = []
+    ctx = _Context(source_name, producer, transparency, paths, side_caveats, skipped)
     records: List[Evidence] = []
 
-    for sl in dataflows.get("Slices") or []:
+    for sl in as_list(dataflows.get("Slices")):
         if not isinstance(sl, dict):
-            skipped.append(
-                EvidenceCaveat(kind="record-skipped", detail="the Slices entry is not an object")
-            )
+            skipped.add("Slices entries are not JSON objects and became no record")
             continue
-        record = _slice_record(
-            sl, transparency, source_name, producer, tuple(side_caveats["dataflows"]), skipped
-        )
+        record = _slice_record(sl, ctx)
         if record:
             records.append(record)
     for section, side in ((dataflows, "dataflows"), (methods, "methods")):
-        for pr in section.get("PackageReachability") or []:
+        for pr in as_list(section.get("PackageReachability")):
             if not isinstance(pr, dict):
-                skipped.append(
-                    EvidenceCaveat(
-                        kind="record-skipped",
-                        detail=f"the {side} PackageReachability entry is not an object",
-                    )
+                skipped.add(
+                    f"{side} PackageReachability entries are not JSON objects and became no record"
                 )
                 continue
-            record = _package_reachability_record(
-                pr, transparency, source_name, producer, tuple(side_caveats[side]), skipped
-            )
+            record = _package_reachability_record(pr, side, ctx)
             if record:
                 records.append(record)
-    for endpoint in methods.get("ApiEndpoints") or []:
+    for endpoint in as_list(methods.get("ApiEndpoints")):
         if not isinstance(endpoint, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped", detail="the ApiEndpoints entry is not an object"
-                )
-            )
+            skipped.add("ApiEndpoints entries are not JSON objects and became no record")
             continue
-        record = _api_endpoint_record(
-            endpoint, transparency, source_name, producer, tuple(side_caveats["methods"]), skipped
-        )
+        record = _api_endpoint_record(endpoint, ctx)
         if record:
             records.append(record)
     for group in transparency.attack_surface:
-        if not isinstance(group, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped", detail="the AttackSurface entry is not an object"
-                )
-            )
-            continue
         group_caveats = list(side_caveats["dataflows"])
         if group.get("EntryPointsTruncated"):
             group_caveats.append(
@@ -1252,61 +1477,39 @@ def extract(
                     ),
                 )
             )
-        for entry in group.get("EntryPoints") or []:
+        for entry in as_list(group.get("EntryPoints")):
             if not isinstance(entry, dict):
-                skipped.append(
-                    EvidenceCaveat(
-                        kind="record-skipped",
-                        detail="the AttackSurface entry point is not an object",
-                    )
-                )
+                skipped.add("AttackSurface entry points are not JSON objects and became no record")
                 continue
-            record = _attack_surface_record(
-                group, entry, transparency, source_name, producer, tuple(group_caveats)
-            )
-            if record:
-                records.append(record)
+            records.append(_attack_surface_record(entry, group_caveats, ctx))
     for chain in transparency.chains:
-        records.append(
-            _exploit_chain_record(
-                chain, transparency, source_name, producer, tuple(side_caveats["dataflows"])
-            )
-        )
+        records.append(_exploit_chain_record(chain, ctx))
     for flow in transparency.sanitized_flows:
-        records.append(
-            _sanitizer_record(flow, source_name, producer, tuple(side_caveats["dataflows"]))
-        )
-    for entry in methods.get("DeadCode") or []:
+        records.append(_sanitizer_record(flow, ctx))
+    for entry in as_list(methods.get("DeadCode")):
         if not isinstance(entry, dict):
-            skipped.append(
-                EvidenceCaveat(kind="record-skipped", detail="the DeadCode entry is not an object")
-            )
+            skipped.add("DeadCode entries are not JSON objects and became no record")
             continue
-        records.append(
-            _dead_code_record(entry, source_name, producer, tuple(side_caveats["methods"]))
-        )
-    for entry in methods.get("Reachability") or []:
+        records.append(_dead_code_record(entry, ctx))
+    for entry in as_list(methods.get("Reachability")):
         if not isinstance(entry, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped", detail="the Reachability entry is not an object"
-                )
-            )
+            skipped.add("Reachability entries are not JSON objects and became no record")
             continue
+        # A reachable node is the call graph working as expected and says
+        # nothing about a package; only the unreachable ones are evidence.
         if entry.get("Reachable"):
             continue
-        records.append(
-            _unreachable_node_record(entry, source_name, producer, tuple(side_caveats["methods"]))
-        )
+        records.append(_unreachable_node_record(entry, ctx))
     for service in transparency.services:
-        records.append(
-            _service_record(service, source_name, producer, tuple(side_caveats["methods"]))
-        )
+        records.append(_service_record(service, ctx))
 
     caveats = side_caveats["dataflows"] + [
         c for c in side_caveats["methods"] if c not in side_caveats["dataflows"]
     ]
-    caveats.extend(skipped)
+    caveats.extend(skipped.caveats())
+    outside = paths.producer_caveat()
+    if outside:
+        caveats.append(outside)
     return AdapterResult(status="completed", records=records, caveats=caveats)
 
 

@@ -6,20 +6,20 @@ both writing report schema 5.1.0); ``README.md`` beside them says how each
 was made. The adapter's four fixture cases run on those recordings: an
 unknown major version, a newer minor version, a truncated or malformed
 report, and the budget, timeout and truncation markers dosai reports
-through its diagnostics. The reached-set equality tests pin the literal
-purl sets the native reachability extractor yields on the same recordings,
-checked by hand: the extractor's reached purls, minus its Dependency-kind
-and Low-confidence entries, plus the ExternalCallGraphNode entries at High
-confidence that the old flow projection dropped.
+through its diagnostics. The reached-set tests pin the literal purl sets
+of the same recordings, checked by hand: every package dosai calls
+reachable, minus its Dependency-kind and Low-confidence entries, with the
+ExternalCallGraphNode entries at High confidence counted.
 
-One reproducer follows the report the reporter of the external call graph
-problem quoted in the upstream issue: an ``ExternalCallGraphNode`` entry
-with ``Reachable`` true and no explicit ``Confidence`` whose purl must land
-in a reached-flow record, beside a ``Dependency`` entry whose purl must
-land only in a dependency record. Current releases state an explicit
-confidence on every entry, so the reproducer and the sanitizer, endpoint,
-service and dead-code section shapes the two apps do not produce are built
-from the report shapes of the checked-in samples of earlier dosai releases.
+The external call graph regression test runs the reproducer of dep-scan
+issue 561 verbatim: its report with an ``ExternalCallGraphNode`` entry at
+High confidence must count the package as reached, exactly as the
+``CallGraphEdge`` control does. Current releases state an explicit
+confidence on every entry, so the entries without one, and the sanitizer,
+endpoint, service and dead-code section shapes the two apps do not
+produce, are built from the report shapes of the checked-in samples of
+earlier dosai releases. The minimal-API case follows the report shape
+dosai issue 140 describes.
 """
 
 import copy
@@ -104,6 +104,7 @@ def _attrs(record) -> Dict[str, Any]:
     assert record.attributes is not None
     return record.attributes
 
+
 def _caveat_kinds(result) -> Set[str]:
     return {caveat.kind for caveat in result.caveats}
 
@@ -118,14 +119,15 @@ def _record_caveat_kinds(result) -> Set[str]:
 # --- the recordings pass through whole ------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "name", [V5_REACHABLE, MAIN_UNREACHABLE], ids=["v5.0.0", "main"]
-)
+@pytest.mark.parametrize("name", [V5_REACHABLE, MAIN_UNREACHABLE], ids=["v5.0.0", "main"])
 def test_recording_completes_with_the_producer_as_reported(name):
     result = _extract(_load(name))
     assert result.status == "completed"
     assert result.reason is None
-    producers = {(r.producer.name, r.producer.version, r.producer.report_schema_version) for r in result.records}
+    producers = {
+        (r.producer.name, r.producer.version, r.producer.report_schema_version)
+        for r in result.records
+    }
     assert producers == {("dosai", "5.0.0.0", "5.1.0")}
     assert all(r.source == SOURCE for r in result.records)
 
@@ -159,9 +161,10 @@ def test_main_recording_record_kinds():
         "entry-point": 1,
     }
     assert _reached_purls(result) == MAIN_REACHED
-    # The purl-less slice dfs2 is a caveat, never a silent drop.
-    skipped = [c for c in result.caveats if c.kind == "record-skipped"]
-    assert any("dfs2" in c.detail for c in skipped)
+    # The purl-less slice dfs2 is counted, never dropped silently.
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "1 data-flow slices name no package purl of their own and became no record"
+    ]
 
 
 def test_records_validate_against_the_evidence_schema():
@@ -248,15 +251,14 @@ def test_newer_minor_is_accepted_with_a_schema_minor_caveat():
     assert result.records
     assert "schema-minor" in _caveat_kinds(result)
     assert "schema-minor" in _record_caveat_kinds(result)
-    assert all(
-        any(c.kind == "schema-minor" for c in r.caveats) for r in result.records
-    )
+    assert all(any(c.kind == "schema-minor" for c in r.caveats) for r in result.records)
     assert result.records[0].producer.report_schema_version == "5.2.0"
 
 
 def test_report_without_a_version_is_accepted_as_schema_unknown():
     report = copy.deepcopy(_load(V5_REACHABLE))
     del report["Metadata"]["SchemaVersion"]
+    del report["methods"]["Metadata"]["SchemaVersion"]
     result = _extract(report)
     assert result.status == "completed"
     assert result.records
@@ -296,8 +298,7 @@ def test_a_dict_that_is_not_a_dosai_report_is_not_assessed():
 
 def test_an_empty_but_well_formed_analysis_completes_with_no_records():
     report = {
-        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0",
-                     "AnalyzerVersion": "5.0.0.0"},
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0", "AnalyzerVersion": "5.0.0.0"},
         "methods": {},
         "dataflows": {},
     }
@@ -335,8 +336,7 @@ def test_budget_timeout_and_truncation_markers_become_caveats():
     assert "timeout" in _record_caveat_kinds(result)
     # The dataflows markers land on the records built from the dataflows
     # sections, the methods marker on the methods records.
-    slice_records = [r for r in result.records
-                     if r.attributes and _attrs(r).get("sliceId")]
+    slice_records = [r for r in result.records if r.attributes and _attrs(r).get("sliceId")]
     assert slice_records
     assert all(any(c.kind == "budget" for c in r.caveats) for r in slice_records)
     dead = [r for r in result.records if r.kind == "dead-code"]
@@ -362,11 +362,54 @@ def _pr_report(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def _issue_561_report(kind):
+    """The report of dep-scan issue 561's reproducer, verbatim."""
+    return {
+        "Metadata": {"Tool": "Dosai"},
+        "methods": {
+            "Metadata": {"Tool": "Dosai"},
+            "CallGraph": {"Nodes": [], "Edges": []},
+            "PackageReachability": [
+                {
+                    "Purl": "pkg:nuget/Serilog.Sinks.Console@6.1.1",
+                    "Reachable": True,
+                    "ReachabilityKind": kind,
+                    "Confidence": "High",
+                    "EvidenceKinds": ["AssemblyIlDirect"],
+                    "SourceLocations": [{"File": "Program.cs", "Line": 3}],
+                }
+            ],
+        },
+        "dataflows": {
+            "Metadata": {"Tool": "Dosai"},
+            "Nodes": [],
+            "Slices": [],
+            "PackageReachability": [],
+        },
+    }
+
+
+@pytest.mark.parametrize("kind", ["ExternalCallGraphNode", "CallGraphEdge"])
+def test_issue_561_external_call_graph_node_is_reached_like_the_control(kind):
+    """The reproducer of dep-scan issue 561, run for the issue's kind and
+    for its CallGraphEdge control: both count the package as reached, keep
+    the stated confidence, and carry the File and Line source location."""
+    result = dosai.extract(_issue_561_report(kind))
+    assert result.status == "completed"
+    assert _reached_purls(result) == {"pkg:nuget/Serilog.Sinks.Console@6.1.1"}
+    (record,) = result.records
+    assert record.kind == "reached-flow"
+    assert record.confidence == "High"
+    assert record.attributes == {"kind": kind}
+    assert [(loc.file, loc.line) for loc in record.locations] == [("Program.cs", 3)]
+    # The report names no schema version anywhere.
+    assert [c.kind for c in result.caveats] == ["schema-unknown"]
+
+
 def test_external_call_graph_node_without_confidence_is_reached():
-    # The reproducer: an ExternalCallGraphNode entry, Reachable true, no
-    # explicit Confidence, whose purl lands in a reached-flow record; the
-    # old flow projection dropped exactly this entry because the kind was
-    # missing from its confidence table.
+    # An ExternalCallGraphNode entry, Reachable true, no explicit
+    # Confidence: the kind's default (High) decides the counting, and the
+    # record's confidence stays absent because the entry states none.
     report = _pr_report(
         [
             {
@@ -389,22 +432,39 @@ def test_external_call_graph_node_without_confidence_is_reached():
     assert _reached_purls(result) == {"pkg:nuget/Lib.A@1.0.0"}
     reached = [r for r in result.records if r.subject.purls == ["pkg:nuget/Lib.A@1.0.0"]]
     assert reached[0].kind == "reached-flow"
-    assert reached[0].confidence == "High"
+    assert reached[0].confidence is None
+    assert reached[0].attributes == {
+        "kind": "ExternalCallGraphNode",
+        "confidenceSource": "kind-default",
+        "confidenceDefault": "High",
+    }
     assert reached[0].locations[0].file == "Program.cs"
     assert reached[0].locations[0].line == 12
     dependency = [r for r in result.records if r.subject.purls == ["pkg:nuget/Lib.B@2.0.0"]]
     assert dependency[0].kind == "dependency"
-    assert dependency[0].confidence == "Low"
-    assert dependency[0].attributes == {"kind": "Dependency"}
+    assert dependency[0].confidence is None
+    assert dependency[0].attributes == {
+        "kind": "Dependency",
+        "confidenceSource": "kind-default",
+        "confidenceDefault": "Low",
+    }
 
 
 def test_dataflow_and_callgraph_entries_count_at_medium_or_high():
     report = _pr_report(
         [
-            {"Purl": "pkg:nuget/Lib.A@1.0.0", "Reachable": True,
-             "ReachabilityKind": "DataFlowNode", "Confidence": "High"},
-            {"Purl": "pkg:nuget/Lib.B@2.0.0", "Reachable": True,
-             "ReachabilityKind": "CallGraphEdge", "Confidence": "Medium"},
+            {
+                "Purl": "pkg:nuget/Lib.A@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "High",
+            },
+            {
+                "Purl": "pkg:nuget/Lib.B@2.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "CallGraphEdge",
+                "Confidence": "Medium",
+            },
         ]
     )
     result = _extract(report)
@@ -416,12 +476,24 @@ def test_dataflow_and_callgraph_entries_count_at_medium_or_high():
 def test_low_confidence_and_dependency_entries_never_count():
     report = _pr_report(
         [
-            {"Purl": "pkg:nuget/Lib.A@1.0.0", "Reachable": True,
-             "ReachabilityKind": "DataFlowNode", "Confidence": "Low"},
-            {"Purl": "pkg:nuget/Lib.B@2.0.0", "Reachable": True,
-             "ReachabilityKind": "Dependency", "Confidence": "High"},
-            {"Purl": "pkg:nuget/Lib.C@3.0.0", "Reachable": False,
-             "ReachabilityKind": "DataFlowNode", "Confidence": "High"},
+            {
+                "Purl": "pkg:nuget/Lib.A@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "Low",
+            },
+            {
+                "Purl": "pkg:nuget/Lib.B@2.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "Dependency",
+                "Confidence": "High",
+            },
+            {
+                "Purl": "pkg:nuget/Lib.C@3.0.0",
+                "Reachable": False,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "High",
+            },
         ]
     )
     result = _extract(report)
@@ -430,21 +502,27 @@ def test_low_confidence_and_dependency_entries_never_count():
         "pkg:nuget/Lib.A@1.0.0",
         "pkg:nuget/Lib.B@2.0.0",
     }
-    # An entry dosai marked not reachable leaves no record at all: dosai
-    # states the verdict on the entry, and the Dependency-kind entries above
-    # are the recorded weak evidence.
-    assert all(
-        r.subject.purls != ["pkg:nuget/Lib.C@3.0.0"] for r in result.records
-    )
+    # An entry dosai marked not reachable is the negative verdict dosai
+    # states, kept as a no-path record.
+    (no_path,) = [r for r in result.records if r.subject.purls == ["pkg:nuget/Lib.C@3.0.0"]]
+    assert (no_path.kind, no_path.polarity, no_path.confidence) == ("no-path", "negative", "High")
 
 
 def test_external_call_graph_node_at_medium_or_low_is_not_counted():
     report = _pr_report(
         [
-            {"Purl": "pkg:nuget/Lib.A@1.0.0", "Reachable": True,
-             "ReachabilityKind": "ExternalCallGraphNode", "Confidence": "Medium"},
-            {"Purl": "pkg:nuget/Lib.B@2.0.0", "Reachable": True,
-             "ReachabilityKind": "ExternalCallGraphNode", "Confidence": "Low"},
+            {
+                "Purl": "pkg:nuget/Lib.A@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "ExternalCallGraphNode",
+                "Confidence": "Medium",
+            },
+            {
+                "Purl": "pkg:nuget/Lib.B@2.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "ExternalCallGraphNode",
+                "Confidence": "Low",
+            },
         ]
     )
     result = _extract(report)
@@ -463,18 +541,28 @@ def test_external_call_graph_node_at_medium_or_low_is_not_counted():
 def test_unreconciled_nuget_purl_is_kept_and_non_nuget_dropped():
     report = _pr_report(
         [
-            {"Purl": "pkg:nuget/Unknown.Framework", "Reachable": True,
-             "ReachabilityKind": "DataFlowNode", "Confidence": "High"},
-            {"Purl": "pkg:npm/left-pad@1.3.0", "Reachable": True,
-             "ReachabilityKind": "DataFlowNode", "Confidence": "High"},
+            {
+                "Purl": "pkg:nuget/Unknown.Framework",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "High",
+            },
+            {
+                "Purl": "pkg:npm/left-pad@1.3.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "High",
+            },
         ]
     )
     result = _extract(report)
     assert _reached_purls(result) == {"pkg:nuget/Unknown.Framework"}
-    # The entry whose purl this adapter cannot attribute is a caveat, not a
-    # silent drop.
-    skipped = [c for c in result.caveats if c.kind == "record-skipped"]
-    assert any("left-pad" in c.detail for c in skipped)
+    # The entry whose purl this adapter cannot attribute is counted, not
+    # dropped silently.
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "1 PackageReachability entries name a purl outside NuGet, which this adapter "
+        "cannot attribute, and became no record"
+    ]
 
 
 def test_entry_without_a_purl_is_record_skipped():
@@ -491,8 +579,11 @@ def test_entry_without_a_purl_is_record_skipped():
 
 def test_slice_records_carry_witness_path_and_annotation():
     result = _extract(_load(V5_REACHABLE))
-    slices = [r for r in result.records if r.kind == "reached-flow" and r.attributes
-              and r.attributes.get("sliceId")]
+    slices = [
+        r
+        for r in result.records
+        if r.kind == "reached-flow" and r.attributes and r.attributes.get("sliceId")
+    ]
     assert slices
     dfs1 = next(r for r in slices if _attrs(r)["sliceId"] == "dfs1")
     assert [p.method for p in dfs1.path or []] == [
@@ -503,9 +594,7 @@ def test_slice_records_carry_witness_path_and_annotation():
     ]
     assert [p.line for p in dfs1.path or []] == [10, 11, 11, 12]
     assert all(p.file == "Program.cs" for p in dfs1.path or [])
-    assert (dfs1.path or [])[3].symbol == (
-        "Newtonsoft.Json.JsonConvert.DeserializeObject(string)"
-    )
+    assert (dfs1.path or [])[3].symbol == ("Newtonsoft.Json.JsonConvert.DeserializeObject(string)")
     assert dfs1.subject.purls == [
         "pkg:nuget/Newtonsoft.Json@13.0.3",
         "pkg:nuget/System.Runtime",
@@ -551,8 +640,7 @@ def test_attack_surface_entry_becomes_an_entry_point_record():
 
 def test_api_endpoints_become_entry_point_records_with_exposure_and_zone():
     report = {
-        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0",
-                     "AnalyzerVersion": "5.0.0.0"},
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0", "AnalyzerVersion": "5.0.0.0"},
         "dataflows": {
             "AttackSurface": [
                 {
@@ -594,9 +682,7 @@ def test_api_endpoints_become_entry_point_records_with_exposure_and_zone():
                     "Direction": "inbound",
                     "TrustZone": "internet",
                     "CrossesTrustBoundary": True,
-                    "Operations": [
-                        {"Id": "op1", "HttpMethod": "GET", "Path": "/api/run"}
-                    ],
+                    "Operations": [{"Id": "op1", "HttpMethod": "GET", "Path": "/api/run"}],
                 }
             ],
         },
@@ -624,8 +710,7 @@ def test_api_endpoints_become_entry_point_records_with_exposure_and_zone():
 
 def test_route_bearing_cli_tier_entry_carries_the_minimal_api_caveat():
     report = {
-        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0",
-                     "AnalyzerVersion": "5.0.0.0"},
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0", "AnalyzerVersion": "5.0.0.0"},
         "dataflows": {
             "AttackSurface": [
                 {
@@ -653,22 +738,32 @@ def test_route_bearing_cli_tier_entry_carries_the_minimal_api_caveat():
         "methods": {},
     }
     result = _extract(report)
-    entry_points = {_attrs(r)["entryPointId"]: r for r in result.records
-                    if r.kind == "entry-point"}
+    entry_points = {
+        _attrs(r)["entryPointId"]: r for r in result.records if r.kind == "entry-point"
+    }
     assert any(c.kind == "minimal-api" for c in entry_points["ep-route"].caveats)
     assert not any(c.kind == "minimal-api" for c in entry_points["ep-plain"].caveats)
 
 
 def test_sanitized_flows_become_negative_sanitizer_records():
     report = {
-        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0",
-                     "AnalyzerVersion": "5.0.0.0"},
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0", "AnalyzerVersion": "5.0.0.0"},
         "dataflows": {
             "Nodes": [
-                {"Id": "dfn3", "Path": "Controllers.cs", "LineNumber": 20,
-                 "ClassName": "Tools", "MethodName": "Page"},
-                {"Id": "dfn4", "Path": "Controllers.cs", "LineNumber": 26,
-                 "ClassName": "Tools", "MethodName": "Page"},
+                {
+                    "Id": "dfn3",
+                    "Path": "Controllers.cs",
+                    "LineNumber": 20,
+                    "ClassName": "Tools",
+                    "MethodName": "Page",
+                },
+                {
+                    "Id": "dfn4",
+                    "Path": "Controllers.cs",
+                    "LineNumber": 26,
+                    "ClassName": "Tools",
+                    "MethodName": "Page",
+                },
             ],
             "Slices": [
                 {
@@ -705,15 +800,12 @@ def test_sanitized_flows_become_negative_sanitizer_records():
     # The sanitized flow sits on the slice's path: the slice record lists it
     # as a nearby sanitizer, so the sidecar's map stays recoverable.
     slices = [r for r in result.records if r.attributes and _attrs(r).get("sliceId")]
-    assert _attrs(slices[0])["sanitizersNearby"] == [
-        {"id": "sf1", "category": "html-encoding"}
-    ]
+    assert _attrs(slices[0])["sanitizersNearby"] == [{"id": "sf1", "category": "html-encoding"}]
 
 
 def test_services_become_entry_point_and_presence_records():
     report = {
-        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0",
-                     "AnalyzerVersion": "5.0.0.0"},
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0", "AnalyzerVersion": "5.0.0.0"},
         "dataflows": {},
         "methods": {
             "Services": [
@@ -737,8 +829,11 @@ def test_services_become_entry_point_and_presence_records():
         },
     }
     result = _extract(report)
-    by_id = {_attrs(r)["serviceId"]: r for r in result.records
-             if r.attributes and _attrs(r).get("serviceId")}
+    by_id = {
+        _attrs(r)["serviceId"]: r
+        for r in result.records
+        if r.attributes and _attrs(r).get("serviceId")
+    }
     assert by_id["svc-in"].kind == "entry-point"
     assert by_id["svc-in"].polarity == "positive"
     assert _attrs(by_id["svc-in"])["trustZone"] == "internet"
@@ -752,8 +847,7 @@ def test_services_become_entry_point_and_presence_records():
 
 def test_dead_code_entries_and_reachability_negatives_become_dead_code_records():
     report = {
-        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0",
-                     "AnalyzerVersion": "5.0.0.0"},
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0", "AnalyzerVersion": "5.0.0.0"},
         "dataflows": {},
         "methods": {
             "DeadCode": [
@@ -850,14 +944,521 @@ def test_transparency_facts_of_the_v5_recording_are_recoverable():
     [(V5_REACHABLE, V5_REACHED), (MAIN_UNREACHABLE, MAIN_REACHED)],
     ids=["v5.0.0", "main"],
 )
-def test_reached_purls_equal_the_native_extractor_set(name, expected):
-    # Pinned literal sets, worked out by hand from the recording: the native
-    # extractor's reached purls (all High confidence here, none of the
-    # Dependency kind), with the ExternalCallGraphNode entries at High
-    # confidence that the old projection dropped counted back in.
+def test_reached_purls_equal_the_pinned_set(name, expected):
+    # Pinned literal sets, worked out by hand from the recording: every
+    # package dosai calls reachable (all High confidence here, none of the
+    # Dependency kind), the ExternalCallGraphNode entries at High confidence
+    # included.
     result = _extract(_load(name))
     assert result.status == "completed"
     assert _reached_purls(result) == expected
     # The recorded dependency evidence on these recordings is empty: every
     # PackageReachability entry is reached evidence at High confidence.
     assert _purls_of(result, "dependency") == set()
+
+
+# --- confidence as given ------------------------------------------------------------
+
+
+def test_the_record_keeps_the_confidence_exactly_as_stated():
+    """A stated confidence is kept with its own spelling; a stated value the
+    matrix does not know is no confidence and never counts."""
+    report = _pr_report(
+        [
+            {
+                "Purl": "pkg:nuget/Lower@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "high",
+            },
+            {
+                "Purl": "pkg:nuget/Number@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": 3,
+            },
+            {
+                "Purl": "pkg:nuget/Odd@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "Confidence": "Certain",
+            },
+        ]
+    )
+    result = _extract(report)
+    by_purl = {r.subject.purls[0]: r for r in result.records}
+    assert (
+        by_purl["pkg:nuget/Lower@1.0.0"].kind,
+        by_purl["pkg:nuget/Lower@1.0.0"].confidence,
+    ) == (
+        "reached-flow",
+        "high",
+    )
+    number = by_purl["pkg:nuget/Number@1.0.0"]
+    assert (number.kind, number.confidence) == ("dependency", None)
+    assert number.attributes == {"kind": "DataFlowNode", "confidenceGiven": 3}
+    odd = by_purl["pkg:nuget/Odd@1.0.0"]
+    assert (odd.kind, odd.confidence) == ("dependency", "Certain")
+    assert _reached_purls(result) == {"pkg:nuget/Lower@1.0.0"}
+
+
+@pytest.mark.parametrize("kind", ["DataFlowEdge", "DataFlowSlice"])
+def test_data_flow_edge_and_slice_kinds_count_like_data_flow_nodes(kind):
+    report = _pr_report(
+        [
+            {
+                "Purl": "pkg:nuget/High@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": kind,
+                "Confidence": "High",
+            },
+            {
+                "Purl": "pkg:nuget/Medium@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": kind,
+                "Confidence": "Medium",
+            },
+            {"Purl": "pkg:nuget/Absent@1.0.0", "Reachable": True, "ReachabilityKind": kind},
+            {
+                "Purl": "pkg:nuget/Low@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": kind,
+                "Confidence": "Low",
+            },
+        ]
+    )
+    result = _extract(report)
+    assert _reached_purls(result) == {
+        "pkg:nuget/High@1.0.0",
+        "pkg:nuget/Medium@1.0.0",
+        "pkg:nuget/Absent@1.0.0",
+    }
+    assert _purls_of(result, "dependency") == {"pkg:nuget/Low@1.0.0"}
+
+
+def test_internal_call_graph_nodes_never_count():
+    report = _pr_report(
+        [
+            {
+                "Purl": "pkg:nuget/Internal@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "InternalCallGraphNode",
+                "Confidence": "High",
+            },
+        ]
+    )
+    result = _extract(report)
+    assert _reached_purls(result) == set()
+    assert _purls_of(result, "dependency") == {"pkg:nuget/Internal@1.0.0"}
+
+
+# --- the version gate over every Metadata block -----------------------------------
+
+
+def test_a_half_that_names_another_major_refuses_the_report():
+    """The top-level Metadata names no version and the methods half names
+    6.0.0: the report is refused, not read as schema-unknown."""
+    report = copy.deepcopy(_load(V5_REACHABLE))
+    del report["Metadata"]["SchemaVersion"]
+    report["methods"]["Metadata"]["SchemaVersion"] = "6.0.0"
+    result = _extract(report)
+    assert result.status == "not-assessed"
+    assert result.records == []
+    assert result.reason is not None and "6.0.0" in result.reason
+    assert "methods metadata" in result.reason
+
+
+def test_a_5_0_report_is_read_without_a_caveat():
+    report = copy.deepcopy(_load(V5_REACHABLE))
+    report["Metadata"]["SchemaVersion"] = "5.0.0"
+    report["methods"]["Metadata"]["SchemaVersion"] = "5.0.0"
+    result = _extract(report)
+    assert result.status == "completed"
+    assert {r.producer.report_schema_version for r in result.records} == {"5.0.0"}
+    assert not {"schema-minor", "schema-unknown"} & _caveat_kinds(result)
+    assert _reached_purls(result) == V5_REACHED
+
+
+@pytest.mark.parametrize("version", [5.1, 5])
+def test_a_numeric_schema_version_is_read_as_its_text(version):
+    report = copy.deepcopy(_load(V5_REACHABLE))
+    report["Metadata"]["SchemaVersion"] = version
+    result = _extract(report)
+    assert result.status == "completed"
+    assert {r.producer.report_schema_version for r in result.records} == {str(version)}
+
+
+@pytest.mark.parametrize("version", ["v5", "five"])
+def test_a_schema_version_without_a_numeric_major_is_refused(version):
+    report = copy.deepcopy(_load(V5_REACHABLE))
+    report["Metadata"]["SchemaVersion"] = version
+    result = _extract(report)
+    assert result.status == "not-assessed"
+    assert version in (result.reason or "")
+
+
+# --- the two halves ---------------------------------------------------------------
+
+
+def test_one_entry_in_both_halves_keeps_each_half_and_its_caveats():
+    """The same PackageReachability entry in both halves is two records,
+    each carrying its own half's budget caveat; neither absorbs the other."""
+    entry = {
+        "Purl": "pkg:nuget/A@1.0.0",
+        "Reachable": True,
+        "ReachabilityKind": "DataFlowNode",
+        "Confidence": "High",
+    }
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {"PackageReachability": [dict(entry)], "Diagnostics": []},
+        "dataflows": {
+            "PackageReachability": [dict(entry)],
+            "Diagnostics": ["the data-flow budget was exhausted after 100 slices"],
+        },
+    }
+    result = _extract(report)
+    assert len(result.records) == 2
+    assert len({r.id for r in result.records}) == 2
+    budgets = sorted([c.kind for c in r.caveats if c.kind == "budget"] for r in result.records)
+    assert budgets == [[], ["budget"]]
+
+
+def test_slice_purls_include_the_methods_call_graph_nodes():
+    """A slice node that lives only in the methods call graph still gives
+    the slice its purl."""
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {
+            "CallGraph": {
+                "Nodes": [
+                    {
+                        "Id": "m1",
+                        "Purl": "pkg:nuget/Dep@1.0.0",
+                        "FileName": "P.cs",
+                        "LineNumber": 3,
+                    }
+                ]
+            }
+        },
+        "dataflows": {
+            "Nodes": [],
+            "Slices": [{"Id": "s1", "NodeIds": ["m1"], "SinkPurl": "pkg:nuget/Sink@1.0.0"}],
+        },
+    }
+    result = _extract(report)
+    (record,) = result.records
+    assert record.subject.purls == ["pkg:nuget/Dep@1.0.0", "pkg:nuget/Sink@1.0.0"]
+    assert [(node.file, node.line) for node in record.path or []] == [("P.cs", 3)]
+
+
+def test_an_api_endpoint_subject_is_its_first_reconciled_purl():
+    """dosai lists the serving package first; the rest are kept as given in
+    the purls attribute and are neither reached nor services."""
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {
+            "ApiEndpoints": [
+                {
+                    "Route": "api/x",
+                    "HttpMethod": "GET",
+                    "OperationId": "op1",
+                    "Purls": ["pkg:npm/ignored@1.0", "pkg:nuget/Mvc@2.0", "pkg:nuget/Other@1.0"],
+                }
+            ]
+        },
+        "dataflows": {},
+    }
+    result = _extract(report)
+    (record,) = result.records
+    assert record.kind == "entry-point"
+    assert record.subject.purls == ["pkg:nuget/Mvc@2.0"]
+    assert _attrs(record)["purls"] == [
+        "pkg:npm/ignored@1.0",
+        "pkg:nuget/Mvc@2.0",
+        "pkg:nuget/Other@1.0",
+    ]
+    assert _reached_purls(result) == {"pkg:nuget/Mvc@2.0"}
+
+
+# --- negative verdicts and skipped objects ----------------------------------------
+
+
+def test_objects_that_make_no_record_are_counted_per_reason():
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {
+            "Services": ["svc"],
+            "PackageReachability": [
+                {"Purl": "pkg:nuget/A@1.0.0", "ReachabilityKind": "DataFlowNode"},
+                {"Purl": "pkg:nuget/B@1.0.0", "Reachable": "yes"},
+            ],
+        },
+        "dataflows": {"ExploitChains": ["x", 3], "SanitizedFlows": [None]},
+    }
+    result = _extract(report)
+    assert result.status == "completed"
+    assert result.records == []
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "2 ExploitChains entries are not JSON objects and became no record",
+        "1 SanitizedFlows entries are not JSON objects and became no record",
+        "1 Services entries are not JSON objects and became no record",
+        "2 PackageReachability entries state no Reachable verdict and became no record",
+    ]
+
+
+# --- malformed nested values --------------------------------------------------------
+
+
+def test_nested_values_of_the_wrong_type_are_read_without_raising():
+    """An attack surface entry with a route but no EntryPointId, an id that
+    is a list, a slice whose Purls is a number and NodeIds a string, and
+    source locations that are a number: none of them raises."""
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {
+            "PackageReachability": [
+                {
+                    "Purl": "pkg:nuget/A@1.0.0",
+                    "Reachable": True,
+                    "ReachabilityKind": "DataFlowNode",
+                    "SourceLocations": 3,
+                    "EntryPointIds": [["ep1"]],
+                    "SliceIds": "s1",
+                },
+            ]
+        },
+        "dataflows": {
+            "AttackSurface": [
+                {
+                    "Exposure": "anonymous-http",
+                    "EntryPoints": [
+                        {"Route": "/x", "Exposure": "anonymous-http"},
+                        {"EntryPointId": ["ep1"], "Exposure": "cli"},
+                    ],
+                }
+            ],
+            "Slices": [
+                {"Id": "s1", "Purls": 5, "NodeIds": "abc", "SinkPurl": "pkg:nuget/B@1.0.0"}
+            ],
+            "ExploitChains": [{"Id": ["ec1"], "EntryPointId": ["ep1"], "SliceId": {"a": 1}}],
+        },
+    }
+    result = _extract(report)
+    assert result.status == "completed"
+    kinds = sorted(r.kind for r in result.records)
+    assert kinds == ["entry-point", "entry-point", "exploit-chain", "reached-flow"]
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "1 data-flow slices walk no node and became no record"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("half", "section", "value"),
+    [("dataflows", "Slices", 5), ("methods", "CallGraph", [1]), ("methods", "Services", "x")],
+)
+def test_a_section_of_the_wrong_type_is_not_assessed(half, section, value):
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {},
+        "dataflows": {},
+    }
+    report[half][section] = value
+    result = _extract(report)
+    assert result.status == "not-assessed"
+    assert section in (result.reason or "")
+
+
+# --- record paths -------------------------------------------------------------------
+
+
+def test_absolute_paths_are_made_relative_to_the_input_path():
+    """dosai's InputPath is the root: an absolute POSIX or Windows path under
+    it becomes relative, a NuGet cache file takes the cache spelling, and any
+    other absolute path is left out with a caveat."""
+    entries = [
+        {
+            "Purl": "pkg:nuget/A@1.0.0",
+            "Reachable": True,
+            "ReachabilityKind": "DataFlowNode",
+            "SourceLocations": [{"Path": "/home/u/app/src/Program.cs", "LineNumber": 3}],
+        },
+        {
+            "Purl": "pkg:nuget/B@1.0.0",
+            "Reachable": True,
+            "ReachabilityKind": "DataFlowNode",
+            "SourceLocations": [{"Path": "C:\\Users\\u\\app\\src\\Program.cs", "LineNumber": 4}],
+        },
+        {
+            "Purl": "pkg:nuget/C@1.0.0",
+            "Reachable": True,
+            "ReachabilityKind": "DataFlowNode",
+            "SourceLocations": [
+                {
+                    "Path": "/home/u/.nuget/packages/newtonsoft.json/13.0.3/src/JsonConvert.cs",
+                    "LineNumber": 5,
+                }
+            ],
+        },
+        {
+            "Purl": "pkg:nuget/D@1.0.0",
+            "Reachable": True,
+            "ReachabilityKind": "DataFlowNode",
+            "SourceLocations": [{"Path": "/opt/elsewhere/Other.cs", "LineNumber": 6}],
+        },
+    ]
+    files = {}
+    for root in ("/home/u/app", "C:\\Users\\u\\app"):
+        report = _pr_report(entries)
+        report["Metadata"]["InputPath"] = root
+        result = _extract(report)
+        for record in result.records:
+            files.setdefault(record.subject.purls[0], set()).update(
+                loc.file for loc in record.locations
+            )
+    assert files["pkg:nuget/A@1.0.0"] == {"src/Program.cs"}
+    assert files["pkg:nuget/B@1.0.0"] == {"src/Program.cs"}
+    assert files["pkg:nuget/C@1.0.0"] == {"newtonsoft.json/13.0.3/src/JsonConvert.cs"}
+    assert files["pkg:nuget/D@1.0.0"] == set()
+    outside = next(r for r in result.records if r.subject.purls == ["pkg:nuget/D@1.0.0"])
+    assert [c.kind for c in outside.caveats] == ["location-outside-root"]
+
+
+def test_the_caller_source_root_makes_paths_relative_too():
+    report = _pr_report(
+        [
+            {
+                "Purl": "pkg:nuget/A@1.0.0",
+                "Reachable": True,
+                "ReachabilityKind": "DataFlowNode",
+                "SourceLocations": [{"Path": "/ci/work/app/Program.cs", "LineNumber": 3}],
+            }
+        ]
+    )
+    without = _extract(report)
+    assert without.records[0].locations == []
+    with_root = _extract(report, source_root="/ci/work/app")
+    assert [loc.file for loc in with_root.records[0].locations] == ["Program.cs"]
+
+
+# --- minimal-API attribution --------------------------------------------------------
+
+
+def _minimal_api_report(chain_entry: str, entry_point_ids: List[str]) -> Dict[str, Any]:
+    """The report shape dosai issue 140 describes: two minimal-API routes,
+    the program's Cli entry point ep3, and the deserialization slice."""
+    return {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "dataflows": {
+            "EntryPoints": [
+                {
+                    "Id": "ep:op:svc:minimal-api:_/Program.cs#GET:/health",
+                    "Route": "/health",
+                    "HttpMethod": "GET",
+                },
+                {
+                    "Id": "ep:op:svc:minimal-api:_/Program.cs#POST:/import",
+                    "Route": "/import",
+                    "HttpMethod": "POST",
+                    "LineNumber": 10,
+                },
+                {"Id": "ep3", "Kind": "Cli", "MethodName": "<Main>$"},
+            ],
+            "Nodes": [
+                {
+                    "Id": "n1",
+                    "Purl": "pkg:nuget/Newtonsoft.Json@12.0.3",
+                    "FileName": "Program.cs",
+                    "LineNumber": 14,
+                }
+            ],
+            "Slices": [
+                {
+                    "Id": "dfs1",
+                    "NodeIds": ["n1"],
+                    "SinkPurl": "pkg:nuget/Newtonsoft.Json@12.0.3",
+                    "SinkCategory": "deserialization",
+                }
+            ],
+            "ExploitChains": [
+                {
+                    "Id": "ec1",
+                    "EntryPointId": chain_entry,
+                    "Exposure": "cli",
+                    "SliceId": "dfs1",
+                    "HopCount": 0,
+                    "Confidence": "High",
+                }
+            ],
+            "PackageReachability": [
+                {
+                    "Purl": "pkg:nuget/Newtonsoft.Json@12.0.3",
+                    "Reachable": True,
+                    "ReachabilityKind": "DataFlowNode",
+                    "Confidence": "High",
+                    "EntryPointIds": entry_point_ids,
+                    "SliceIds": ["dfs1"],
+                }
+            ],
+        },
+        "methods": {},
+    }
+
+
+def test_minimal_api_flows_tied_to_the_cli_entry_point_carry_the_caveat():
+    """dosai 5.0.0 ties the minimal-API chain to ep3 and gives the package no
+    entry point: the chain, the slice and the reachability record carry the
+    minimal-API caveat, and the reached set is unchanged."""
+    result = _extract(_minimal_api_report("ep3", []), bom_index={})
+    flagged = sorted(
+        (r.kind, r.subject.purls[0] if r.subject.purls else "")
+        for r in result.records
+        if any(c.kind == "minimal-api" for c in r.caveats)
+    )
+    assert flagged == [
+        ("exploit-chain", "pkg:nuget/Newtonsoft.Json@12.0.3"),
+        ("reached-flow", "pkg:nuget/Newtonsoft.Json@12.0.3"),
+        ("reached-flow", "pkg:nuget/Newtonsoft.Json@12.0.3"),
+    ]
+    chain = next(r for r in result.records if r.kind == "exploit-chain")
+    (caveat,) = [c for c in chain.caveats if c.kind == "minimal-api"]
+    assert caveat.detail == (
+        "the report has minimal-API routes and dosai tied the exploit chain ec1 to the entry "
+        "point(s) ep3, none of which is a route; dosai can attribute minimal-API flows to "
+        "the wrong entry point (dosai issue 140)"
+    )
+    assert _reached_purls(result) == {"pkg:nuget/Newtonsoft.Json@12.0.3"}
+
+
+def test_flows_tied_to_a_minimal_api_route_carry_no_caveat():
+    """The attribution dosai issue 140 expects: the chain and the package
+    name the POST /import route, and nothing is flagged."""
+    route = "ep:op:svc:minimal-api:_/Program.cs#POST:/import"
+    result = _extract(_minimal_api_report(route, [route]), bom_index={})
+    assert not any(c.kind == "minimal-api" for r in result.records for c in r.caveats)
+
+
+def test_a_report_without_minimal_api_routes_carries_no_caveat():
+    """A console app's flows tied to its Cli entry point are dosai's honest
+    attribution: the v5 recording carries no minimal-API caveat."""
+    result = _extract(_load(V5_REACHABLE))
+    assert "minimal-api" not in _record_caveat_kinds(result)
+
+
+def test_ids_do_not_depend_on_the_input_path():
+    ids = []
+    for root in ("/home/u/app", "/srv/build/app"):
+        report = _pr_report(
+            [
+                {
+                    "Purl": "pkg:nuget/A@1.0.0",
+                    "Reachable": True,
+                    "ReachabilityKind": "DataFlowNode",
+                    "SourceLocations": [{"Path": f"{root}/Program.cs", "LineNumber": 3}],
+                }
+            ]
+        )
+        report["Metadata"]["InputPath"] = root
+        ids.append([r.id for r in _extract(report).records])
+    assert len(ids[0]) == 1
+    assert ids[0] == ids[1]
