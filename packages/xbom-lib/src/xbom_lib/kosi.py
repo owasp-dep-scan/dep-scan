@@ -51,7 +51,8 @@ RESOLVED_BACKEND = "resolved"
 RESOLVED_CALLGRAPH_MODE = "static"
 RESOLVED_DATAFLOW_MODE = "security"
 
-# The report schema family this runner and converter target.
+# The report schema family this runner and dep-scan's kosi evidence adapter
+# target.
 KOSI_SCHEMA_PREFIX = "kosi/"
 
 # Wall-clock cap so a stuck kosi process can never block a scan. Override with

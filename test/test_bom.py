@@ -526,6 +526,30 @@ def test_clear_tool_outputs_removes_the_evidence_files(tmp_path):
     assert not (tmp_path / "go-reachables.slices.json").exists()
 
 
+def test_clear_tool_outputs_removes_the_semantics_reports_cdxgen_persisted(tmp_path):
+    """cdxgen persists a language tool's raw report as
+    ``<prefix>-semantics.slices.json``, and the tool step reads that file
+    before it runs the tool. A source scan of a reused reports directory must
+    not find an earlier run's report there, so the setup cleanup removes it
+    with the other tool outputs, and leaves atom's own slices alone."""
+    from depscan.lib import bom as bom_mod
+
+    for name in (
+        "dotnet-semantics.slices.json",
+        "rust-semantics.slices.json",
+        "python-semantics.slices.json",
+        "python-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("{}")
+    bom_mod.clear_tool_outputs(str(tmp_path))
+    assert not (tmp_path / "dotnet-semantics.slices.json").exists()
+    assert not (tmp_path / "rust-semantics.slices.json").exists()
+    assert not (tmp_path / "python-semantics.slices.json").exists()
+    assert (tmp_path / "python-reachables.slices.json").exists(), (
+        "atom's slices of the scanned type are cleared by their own step"
+    )
+
+
 def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_path):
     from depscan.lib import bom as bom_mod
 
