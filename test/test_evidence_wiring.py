@@ -605,9 +605,7 @@ def test_a_scans_records_carry_no_absolute_path(scan_stubs, tmp_path, name):
             assert not _is_absolute(file_name), (record["id"], file_name)
 
 
-def test_atom_sources_and_locations_follow_the_scan_and_source_directories(
-    scan_stubs, tmp_path
-):
+def test_atom_sources_and_locations_follow_the_scan_and_source_directories(scan_stubs, tmp_path):
     """atom's records name their slices file relative to the BOM directory the
     scan read it from, subdirectory included, and a file name atom wrote as
     an absolute path under the scanned source becomes relative to it."""

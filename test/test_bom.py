@@ -601,7 +601,9 @@ def test_the_tool_step_hands_the_scanned_source_directory_to_the_adapter(tmp_pat
         / "golem-reachable-app.json"
     )
     bom_file = tmp_path / "sbom-go.cdx.json"
-    bom_file.write_text(json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []}))
+    bom_file.write_text(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []})
+    )
     shutil.copyfile(recording, tmp_path / "go-semantics.slices.json")
     result = bom_mod.run_golem_reachability(
         str(bom_file),
