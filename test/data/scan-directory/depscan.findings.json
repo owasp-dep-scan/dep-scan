@@ -22,24 +22,28 @@
       ],
       "exploitability": {
         "axes": {
-          "presence": "likely",
-          "reach": "not_assessed",
+          "presence": "proven",
+          "reach": "likely",
           "exposure": "not_assessed",
           "barrier": "not_assessed"
         },
         "grade": "moderate",
-        "rule": "assessed",
+        "rule": "reached",
         "unassessed": [
-          "reach",
           "exposure",
           "barrier"
         ],
         "sources": {
+          "reach": [
+            "atom"
+          ],
           "presence": [
             "vdb",
-            "cdxgen"
+            "cdxgen",
+            "atom"
           ]
-        }
+        },
+        "witness": "ev-ea7af205d38c79c1"
       },
       "fix": {
         "fixed_versions": [
@@ -59,15 +63,15 @@
         },
         {
           "name": "depscan:exploitability:rule",
-          "value": "assessed"
+          "value": "reached"
         },
         {
           "name": "depscan:exploitability:axis:presence",
-          "value": "likely"
+          "value": "proven"
         },
         {
           "name": "depscan:exploitability:axis:reach",
-          "value": "not_assessed"
+          "value": "likely"
         },
         {
           "name": "depscan:exploitability:axis:exposure",

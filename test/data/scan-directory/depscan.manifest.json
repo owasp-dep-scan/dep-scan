@@ -62,8 +62,7 @@
         {
           "name": "atom",
           "capability": "reachability",
-          "status": "not-assessed",
-          "reason": "no atom report was given; the adapter has nothing to read"
+          "status": "completed"
         },
         {
           "name": "rusi",
@@ -175,7 +174,7 @@
       "path": "depscan.findings.json",
       "role": "findings",
       "producer": "dep-scan",
-      "sha256": "2f0343c1209da548361cde1ea495c43bdf8a9586b61002f2cd53a03195fab3d0"
+      "sha256": "f2e7279ca86a792c88066955038f7e93a5e61565a87381f1d72c5ec6146241ae"
     },
     {
       "path": "depscan.toml.sample",
@@ -193,19 +192,26 @@
       "path": "django-app.vdr.json",
       "role": "vdr",
       "producer": "dep-scan",
-      "sha256": "fe801bd7a1575c0b75bfd2a1689ffb0f2cdc490c3311f695f7ffe40a5826b631"
+      "sha256": "ba0b745bb1d075652528b988cbf81bc667056123cc79a171d2c79a7790bd1b98"
     },
     {
       "path": "evidence.index.json",
       "role": "evidence",
       "producer": "dep-scan",
-      "sha256": "bd2d05ae3781ab814fbf7355a187de9e40cb99563ed66575ddd6bca582c2df89"
+      "sha256": "d2e07d0c2a5035d58b95b457a6facecb31d1400bfa8bd05352d489b51fb5411d"
     },
     {
       "path": "evidence.jsonl",
       "role": "evidence",
       "producer": "dep-scan",
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      "sha256": "5d27d0193fbb83e6283ce89cfcc64e1d2ba10c6e74f87b592f5e406c993c0b23"
+    },
+    {
+      "path": "python-reachables.slices.json",
+      "role": "slices",
+      "producer": "cdxgen",
+      "projectType": "python",
+      "sha256": "644b6788d1454debe6973a254b98d1e7a57ecf5edd860a3fb9351a6e688e7218"
     }
   ],
   "database": {

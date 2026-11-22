@@ -9,9 +9,11 @@ with (or without) those tools would say.
 
 The checked-in fixture under ``test/data/scan-directory`` was written by
 api.scan with a stubbed doctor report (cdxgen present, the language tools
-and their toolchains missing); the input path was then made relative and
-the home directory replaced. Its manifest is hand-checked field by field in
-the compatibility tests.
+and their toolchains missing), over the BOM and a one-flow atom reachables
+slice beside it, so its evidence store, index and finding carry a reached
+record; the input path was then made relative and the sample config keeps
+generic paths in place of the generating machine's. Its manifest is
+hand-checked field by field in the compatibility tests.
 """
 
 import dataclasses
@@ -484,12 +486,11 @@ def test_fixture_is_a_valid_scan_directory():
     assert enrichment["status"] == "completed"
     assert enrichment["capabilities"] == ["reachability"]
     analyzers = {entry["name"]: entry for entry in enrichment["analyzers"]}
-    # A BOM-only scan reads no slices, so no analyzer contributed.
+    # atom's reachables slice beside the BOM is the one report the scan read.
     assert analyzers["atom"] == {
         "name": "atom",
         "capability": "reachability",
-        "status": "not-assessed",
-        "reason": "no atom report was given; the adapter has nothing to read",
+        "status": "completed",
     }
     assert analyzers["rusi"]["status"] == "not-assessed"
     assert analyzers["rusi"]["capability"] == "reachability:rust"
@@ -516,7 +517,10 @@ def test_fixture_is_a_valid_scan_directory():
         "django-app.vdr.json",
         "evidence.jsonl",
         "evidence.index.json",
+        "python-reachables.slices.json",
     }
+    assert digests["python-reachables.slices.json"]["role"] == "slices"
+    assert digests["python-reachables.slices.json"]["producer"] == "cdxgen"
     assert digests["evidence.jsonl"]["role"] == "evidence"
     assert digests["evidence.index.json"]["role"] == "evidence"
     assert digests["evidence.jsonl"]["producer"] == "dep-scan"
@@ -533,7 +537,28 @@ def test_fixture_is_a_valid_scan_directory():
     findings = json.loads((FIXTURE_DIR / "depscan.findings.json").read_text())
     assert findings["schemaVersion"] == scan_directory.FINDINGS_SCHEMA_VERSION
     assert len(findings["findings"]) == 1
-    validate("finding", findings["findings"][0])
+    finding = findings["findings"][0]
+    validate("finding", finding)
+    # The store holds atom's record of the flow to requests, the index joins
+    # the finding to it, and the finding names it as the witness of its reach.
+    records = [
+        json.loads(line)
+        for line in (FIXTURE_DIR / "evidence.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(records) == 1
+    (record,) = records
+    validate("evidence", record)
+    assert record["producer"]["name"] == "atom"
+    assert record["kind"] == "reached-flow"
+    assert record["subject"]["purls"] == ["pkg:pypi/requests@2.32.1"]
+    assert record["source"] == "python-reachables.slices.json"
+    assert len(record["path"]) == 5
+    index = json.loads((FIXTURE_DIR / "evidence.index.json").read_text())
+    assert index["byComponent"] == {"pkg:pypi/requests@2.32.1": [record["id"]]}
+    assert index["byFinding"] == {finding["id"]: [record["id"]]}
+    assert finding["exploitability"]["axes"]["reach"] == "likely"
+    assert finding["exploitability"]["sources"]["reach"] == ["atom"]
+    assert finding["exploitability"]["witness"] == record["id"]
     vdr = json.loads((FIXTURE_DIR / "django-app.vdr.json").read_text())
     assert vdr["bomFormat"] == "CycloneDX"
     assert len(vdr["vulnerabilities"]) == 1
