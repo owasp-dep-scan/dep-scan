@@ -1,0 +1,30 @@
+depscan/lib/config.py
+  s_176e793652cadb::t_2ee74378808c64 494-498
+  s_176e793652cadb::t_701934c04cd950 436-437,444-446,454-455,458-459,466-469,471-474
+packages/analysis-lib/tests/test_mcp_schemas.py
+  s_176e793652cadb::t_ff10c5811ed161 181,290-292
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_176e793652cadb::t_99e4c5cd8f86dd 7-9
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_176e793652cadb::t_1a734663a62ed7 6-7,642,647
+packages/xbom-lib/src/xbom_lib/kosi.py
+  s_176e793652cadb::t_4a366314755fee 6-7
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_176e793652cadb::t_a3d8cb63a653da 5-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "be192663b55f44f65d5f1a0e34e7f5e5d291dd77",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
