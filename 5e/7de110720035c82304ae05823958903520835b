@@ -1,0 +1,36 @@
+documentation/docs/concepts/reachability-model.mdx
+  s_176e793652cadb::t_c9d7cda6bedf45 19,21,23,25,29,35-36,49
+  s_176e793652cadb::t_39eb1a8867057b 65,85
+documentation/docs/analyzers/framework-reachability.mdx
+  s_176e793652cadb::t_0a87026e40c6a5 15,37,39
+documentation/docs/analyzers/semantic-reachability.mdx
+  s_176e793652cadb::t_f660720103a200 45
+documentation/docs/concepts/sbom-and-evidence.mdx
+  s_176e793652cadb::t_67c06d3bd346ed 15,17,22-23,26-29,36,44,50
+documentation/docs/languages/go-reachability.mdx
+  s_176e793652cadb::t_5544338cf118de 13,31,33,35,67,69,73-81,83-84,88,90,100,108
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  s_176e793652cadb::t_98add59f15f638 15
+documentation/docs/languages/rust-reachability.mdx
+  s_176e793652cadb::t_5b7358f83977c6 13,32,34,63,65,69-77,79-82,86,88,92,106
+documentation/docs/python-api.mdx
+  s_176e793652cadb::t_b7cc150512d558 87
+documentation/docs/reachability-analysis.mdx
+  s_176e793652cadb::t_ad94dd45b0dce5 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e7de110720035c82304ae05823958903520835b",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
