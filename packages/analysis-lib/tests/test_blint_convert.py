@@ -1,9 +1,18 @@
 """Tests for ``analysis_lib.findings.blint_convert``, the mapping of blint
 security check findings onto the ``binary-hardening`` finding category."""
 
+import dataclasses
+import json
 import os
+from pathlib import Path
 
-from analysis_lib.findings.blint_convert import finding_from_blint, findings_from_blint
+from analysis_lib.evidence.adapters import STATUS_COMPLETED
+from analysis_lib.evidence.adapters.blint import extract
+from analysis_lib.findings.blint_convert import (
+    finding_from_blint,
+    findings_from_blint,
+    findings_from_blint_records,
+)
 from analysis_lib.findings.schemas import validate
 
 NX = {
@@ -108,3 +117,111 @@ def test_windows_style_paths_match_the_posix_result():
     assert windows_id == posix_id
     assert _binary("C:\\src\\app\\server.exe", "C:\\src\\app\\server.exe")[0] == "server.exe"
     assert _binary("C:\\src\\app\\bin\\a.exe", "c:/src/app")[0] == "bin/a.exe"
+
+
+# ---------------------------------------------------------------------------
+# findings_from_blint_records: the same findings from the adapter's records
+# ---------------------------------------------------------------------------
+
+BLINT_DATA = Path(__file__).parent / "data" / "blint"
+
+
+def _recording(name):
+    return json.loads((BLINT_DATA / name).read_text(encoding="utf-8"))
+
+
+def _records(document, **overrides):
+    kwargs = {
+        "source": "analysis/blint/findings.json",
+        "producer_version": "4.0.1",
+        "reviews_document": _recording("reviews.json"),
+        "coverage_document": _recording("analysis-coverage.json"),
+    }
+    kwargs.update(overrides)
+    result = extract(document, **kwargs)
+    assert result.status == STATUS_COMPLETED
+    return result.records
+
+
+def test_findings_from_blint_records_agrees_field_for_field_with_findings_from_blint():
+    document = _recording("findings.json")
+    from_records = findings_from_blint_records(_records(document))
+    from_document = findings_from_blint(document, producer_version="4.0.1")
+    assert [f.to_dict() for f in from_records] == [f.to_dict() for f in from_document]
+    assert len(from_records) == 3
+    assert {f.rule for f in from_records} == {"CHECK_CANARY", "CHECK_ABI_FLOOR"}
+    for finding in from_records:
+        validate("finding", finding.to_dict())
+
+
+def test_agreement_holds_under_a_scan_root_with_absolute_paths():
+    document = _recording("findings.json")
+    for entry in document["findings"]:
+        entry["filename"] = entry["exe_name"] = "/scans/demo/" + entry["filename"]
+    from_records = findings_from_blint_records(_records(document, source_root="/scans/demo"))
+    from_document = findings_from_blint(document, producer_version="4.0.1", scan_root="/scans/demo")
+    assert [f.id for f in from_records] == [f.id for f in from_document]
+    assert [f.rule for f in from_records] == [f.rule for f in from_document]
+    assert [f.title for f in from_records] == [f.title for f in from_document]
+    assert [f.severity for f in from_records] == [f.severity for f in from_document]
+    assert [(f.locations or [])[0].binary for f in from_records] == [
+        (f.locations or [])[0].binary for f in from_document
+    ]
+
+    def props(findings, name):
+        return [p.value for f in findings for p in f.properties or [] if p.name == name]
+
+    assert props(from_records, "blint:exeType") == props(from_document, "blint:exeType")
+    assert props(from_records, "blint:findingId") == props(from_document, "blint:findingId")
+    # the record stores exe_name relative to the root, so the property
+    # spells the relative path where the document reader keeps the report's
+    # absolute text; everything else about the two finding lists agrees
+    assert props(from_records, "blint:exeName") == [
+        "corpus/fortified-libc-demo.elf",
+        "corpus/fortified-libc-demo.elf",
+        "corpus/plain-libc-demo.elf",
+    ]
+    assert props(from_document, "blint:exeName") == [
+        "/scans/demo/corpus/fortified-libc-demo.elf",
+        "/scans/demo/corpus/fortified-libc-demo.elf",
+        "/scans/demo/corpus/plain-libc-demo.elf",
+    ]
+
+
+def test_findings_from_blint_records_reads_only_blint_negative_presence_records():
+    records = _records(_recording("findings.json"))
+    # the recording's review record is positive presence and no finding
+    assert len(records) == 4
+    assert len(findings_from_blint_records(records)) == 3
+    review = next(r for r in records if r.polarity == "positive")
+    assert findings_from_blint_records([review]) == []
+    # a negative presence record whose attributes carry no rule id is skipped,
+    # as the document reader skips an entry with no id
+    check = next(r for r in records if r.polarity == "negative")
+    no_rule = dataclasses.replace(check, attributes={"title": "no rule id"})
+    assert findings_from_blint_records([no_rule]) == []
+
+
+def test_outside_root_binaries_stay_separate_findings_by_basename():
+    """Two same-rule findings on binaries outside the scan root must not
+    merge onto one location-less finding: the record keeps the basename and
+    the finding uses it, the same fallback the document reader applies."""
+    document = _recording("findings.json")
+    under = document["findings"][0]
+    under["filename"] = under["exe_name"] = "/scans/demo/" + under["filename"]
+    outside = document["findings"][1:]
+    outside[0]["filename"] = outside[0]["exe_name"] = "/elsewhere/agent.elf"
+    outside[1]["filename"] = outside[1]["exe_name"] = "/other/root/scanner.elf"
+    records = _records(document, source_root="/scans/demo")
+    location_less = [r for r in records if r.polarity == "negative" and not r.locations]
+    assert {r.attributes.get("fileName") for r in location_less} == {"agent.elf", "scanner.elf"}
+    assert "/elsewhere" not in json.dumps([r.to_dict() for r in records])
+    assert "/other/root" not in json.dumps([r.to_dict() for r in records])
+    from_records = findings_from_blint_records(records)
+    from_document = findings_from_blint(document, producer_version="4.0.1", scan_root="/scans/demo")
+    assert len(from_records) == 3
+    assert len({f.id for f in from_records}) == 3
+    assert [f.id for f in from_records] == [f.id for f in from_document]
+    assert [(f.locations or [])[0].binary for f in from_records] == [
+        (f.locations or [])[0].binary for f in from_document
+    ] == ["corpus/fortified-libc-demo.elf", "agent.elf", "scanner.elf"]

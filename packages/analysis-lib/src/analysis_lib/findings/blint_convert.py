@@ -13,14 +13,23 @@ the binary's path relative to the scan root, so moving the scan root or
 rebuilding the binary under the same path keeps the id, and the same rule
 firing on two different binaries gives two findings that can be suppressed
 separately.
+
+The checks reach the findings file through two readers that agree field for
+field on the same report: this module's document reader for a blint
+``findings.json``, and the records reader for the presence records the
+evidence adapter built from that document. The records reader takes the
+binary path from the record's location, which the adapter made relative to
+the scan root, so the ``blint:exeName`` property spells the path the way the
+record carries it.
 """
 
 import json
 import ntpath
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
+from analysis_lib.evidence import Evidence
 from analysis_lib.findings.fingerprint import finding_fingerprint
 from analysis_lib.findings.model import (
     Coverage,
@@ -149,6 +158,75 @@ def findings_from_blint(
         if not isinstance(entry, dict) or not str(entry.get("id") or "").strip():
             continue
         finding = finding_from_blint(entry, producer_version=producer_version, scan_root=scan_root)
+        if finding.id not in seen:
+            seen.add(finding.id)
+            findings.append(finding)
+    return findings
+
+
+def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[Finding]:
+    """The findings of the blint check records the evidence adapter made.
+
+    Only the adapter's negative presence records are checks: a capability
+    review's positive record describes behaviour, not a defect, and a
+    record of another producer or kind is not blint's to say. The producer
+    version is the record's own, which on a live scan is the blint that
+    just ran (the version the blint-written BOM's ``metadata.tools``
+    names). The fingerprint carries the rule id and the binary's path,
+    which the adapter already made relative to the scan root, so a record
+    from a moved root gives the finding the document reader gives for the
+    same report. A record whose location the adapter left out because the
+    binary sits outside the root carries the path's basename in its
+    attributes, and the finding uses that basename, the same fallback the
+    document reader applies.
+
+    A record whose attributes carry no rule id is skipped, the same way
+    the document reader skips an entry with no id, and the same rule on
+    the same binary collapses onto one finding.
+    """
+    findings: List[Finding] = []
+    seen = set()
+    for record in records or []:
+        if record.kind != "presence" or record.polarity != "negative":
+            continue
+        if record.producer.name != "blint":
+            continue
+        attributes = record.attributes if isinstance(record.attributes, dict) else {}
+        rule = str(attributes.get("id") or "").strip()
+        if not rule:
+            continue
+        if record.locations:
+            binary = record.locations[0].file
+        else:
+            # The adapter leaves the location out when the binary sits
+            # outside the scan root and keeps the path's basename in the
+            # record's attributes; the finding falls back to it exactly
+            # as the document reader falls back to the basename.
+            binary = str(attributes.get("fileName") or "")
+        title = str(attributes.get("title") or "").strip() or rule
+        confidence = (record.confidence or "").strip().lower()
+        properties = []
+        for name, key in (
+            ("blint:exeType", "exe_type"),
+            ("blint:findingId", "finding_id"),
+            ("blint:exeName", "exe_name"),
+        ):
+            value = attributes.get(key)
+            if value:
+                properties.append(FindingProperty(name=name, value=str(value)))
+        finding = Finding(
+            id=finding_fingerprint("binary-hardening", rule, [], file=binary),
+            category="binary-hardening",
+            rule=rule,
+            title=title,
+            severity=_severity(attributes.get("severity")),
+            coverage=Coverage(state="assessed"),
+            producer=Producer(name="blint", version=record.producer.version),
+            confidence=confidence if confidence in _CONFIDENCES else None,
+            locations=[Location(binary=binary)] if binary else None,
+            evidence=_evidence(attributes.get("evidence")),
+            properties=properties or None,
+        )
         if finding.id not in seen:
             seen.add(finding.id)
             findings.append(finding)
