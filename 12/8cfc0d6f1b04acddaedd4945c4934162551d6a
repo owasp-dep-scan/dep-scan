@@ -1,0 +1,18 @@
+packages/analysis-lib/tests/data/cdxgen/README.md
+  h_0926447d100ad2 25-61
+packages/analysis-lib/tests/data/cdxgen/sbom-python.cdx.json
+  h_0926447d100ad2 1175-1197
+packages/analysis-lib/tests/test_evidence_cdxgen.py
+  h_0926447d100ad2 34-36,38,268-270,272,279,285-308,313,317,320,325-329,333,335,339-360,600,606-671
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "128cfc0d6f1b04acddaedd4945c4934162551d6a",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
