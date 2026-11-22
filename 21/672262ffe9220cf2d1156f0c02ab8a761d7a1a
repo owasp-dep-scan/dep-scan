@@ -1,0 +1,41 @@
+contrib/repotests/native_reachability.py
+  s_176e793652cadb::t_4fcb1d488b7c35 1,5-7,27-30,32-39,41
+depscan/lib/pipeline.py
+  s_176e793652cadb::t_ae0a903c4376f8 1693-1697
+agent-plugin/skills/depscan-attack-surface/SKILL.md
+  s_176e793652cadb::t_8ac0a36a14f7f2 10-13
+agent-plugin/skills/depscan-reachability-proof/SKILL.md
+  s_176e793652cadb::t_63b6cd7bf8e746 11-12,40-42,97-98,146-150
+contrib/repotests/README.md
+  s_176e793652cadb::t_dd7f15b19ee9c1 24-27
+contrib/repotests/generate.sh
+  s_176e793652cadb::t_6b886f6aff81ca 106,118-119
+contrib/repotests/projects.json
+  s_176e793652cadb::t_46e17592273ad0 171
+contrib/repotests/validate.py
+  s_176e793652cadb::t_90e3983527e80e 126-149,183-194
+depscan/lib/scan_directory.py
+  s_176e793652cadb::t_c2f8c70abffa93 88-90
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  s_176e793652cadb::t_ee0d7c58b3a6ce 13
+documentation/docs/output/scan-directory.mdx
+  s_176e793652cadb::t_15db1e93e58c73 21-24,49
+test/test_evidence_wiring.py
+  s_176e793652cadb::t_f777cfa5811444 232-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "21672262ffe9220cf2d1156f0c02ab8a761d7a1a",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
