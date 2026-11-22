@@ -1,0 +1,39 @@
+packages/analysis-lib/src/analysis_lib/reachability.py
+  s_444cf041c11ded::t_c092bb238ad64f 265-267,278-281,294-299
+  s_444cf041c11ded::t_a027e019486f85 524,529-534
+  s_444cf041c11ded::t_767c31782e04df 358-359,371-372
+  s_444cf041c11ded::t_f734ec8e3093a7 535-537
+  s_444cf041c11ded::t_c39b906b6d6c5b 353
+  s_444cf041c11ded::t_1ce1257a9455a7 196,198-200,210-213,230-242
+  s_444cf041c11ded::t_570f0e5ed01533 574
+  s_444cf041c11ded::t_96f49c30203189 360-362
+  s_444cf041c11ded::t_7e6bc2c619cf0e 363-365
+depscan/lib/pipeline.py
+  s_444cf041c11ded::t_5153bebddf6e4c 167-170
+  s_444cf041c11ded::t_3be594b6a0ecc2 1467-1469
+  s_444cf041c11ded::t_f9323fba4eeed2 1402
+packages/analysis-lib/tests/test_reachability.py
+  s_444cf041c11ded::t_d672c3d839781d 760-792
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_444cf041c11ded::t_d56e415bcc0409 165-169
+test/test_pipeline.py
+  s_444cf041c11ded::t_73865b2b0367b3 833
+  s_444cf041c11ded::t_4572bd8e5c78d9 777-779,785-786,810,812
+  s_444cf041c11ded::t_99d23a4a649e88 780-784,787-809,811,813-814
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a7c3be1d6e3be3e30fa0a5dca3403d680b4a592",
+  "prompts": {},
+  "sessions": {
+    "s_444cf041c11ded": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_19609285-3f8e-426f-9a0c-bfbe09bd1c48",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

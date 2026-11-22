@@ -1,0 +1,25 @@
+packages/analysis-lib/src/analysis_lib/reachability.py
+  s_7318da1b9edd46::t_7eb9ede234da13 196,198-200,210-215,229-230,235
+  s_7318da1b9edd46::t_1931e26eee8c72 225,353,359-361,522
+packages/analysis-lib/tests/test_reachability.py
+  s_7318da1b9edd46::t_2378bf2b89458b 829-830,835-836
+  s_7318da1b9edd46::t_6d2c32eb1a2b4e 819-828,831-834,837-838
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_7318da1b9edd46::t_d35552a81806b7 166-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "152552623ce5a644de00c2f6d477b74b29ce7214",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

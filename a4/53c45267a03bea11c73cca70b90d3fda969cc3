@@ -1,0 +1,20 @@
+depscan/lib/explainer.py
+  s_444cf041c11ded::t_c4a48adfbc59bc 609
+  s_444cf041c11ded::t_5c97fb88bd5593 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a453c45267a03bea11c73cca70b90d3fda969cc3",
+  "prompts": {},
+  "sessions": {
+    "s_444cf041c11ded": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_19609285-3f8e-426f-9a0c-bfbe09bd1c48",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

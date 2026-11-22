@@ -1,0 +1,19 @@
+uv.lock
+  s_7318da1b9edd46::t_e8c349a90f5287 2,8,956-957,2046,2049-2057,2073-2081,2525-2526
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "642e56ef088a45efed0a44ed7aa6a9ef8c76bfea",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

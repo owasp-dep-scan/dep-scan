@@ -1,0 +1,21 @@
+depscan/lib/doctor.py
+  s_444cf041c11ded::t_5b88cd26202393 25
+  s_444cf041c11ded::t_9d99f41ac4d9de 60-64
+  s_444cf041c11ded::t_47baa986d55fac 1032-1044,1051-1053,1059-1061,1067-1069,1074-1108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "66a69590b22ec1f7c3ddf5a725f22c9ecbaf1f93",
+  "prompts": {},
+  "sessions": {
+    "s_444cf041c11ded": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_19609285-3f8e-426f-9a0c-bfbe09bd1c48",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
