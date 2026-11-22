@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_vdr_convert.py
+  s_896e432144b9f7::t_a71362df025a87 264-270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0cd5da38d0a8d18d858690e262dfffe482b3a057",
+  "prompts": {},
+  "sessions": {
+    "s_896e432144b9f7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_624e55f3-23a9-4d67-994e-ab49963740e1",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
