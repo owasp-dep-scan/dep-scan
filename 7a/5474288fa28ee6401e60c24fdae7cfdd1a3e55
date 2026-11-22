@@ -1,0 +1,40 @@
+documentation/docs/languages/dotnet-reachability.mdx
+  s_176e793652cadb::t_14882378b3eaf0 57
+  s_176e793652cadb::t_81174c2961a696 9
+  s_176e793652cadb::t_ac8d0a7d38c59c 94
+  s_176e793652cadb::t_80a656ee49cb14 63,65,69-77,79-84,88
+  s_176e793652cadb::t_a90ebe918cb242 13
+  s_176e793652cadb::t_0caf81b0a19a3e 92,99-100,103-105,110
+documentation/docs/migrate-v6-to-v7.mdx
+  s_176e793652cadb::t_b3147ed3dfc6b3 127
+  s_176e793652cadb::t_8ff49768538fa4 138-139
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_176e793652cadb::t_f8cd87c8baef20 200
+  s_176e793652cadb::t_4c58c897b97f51 229,233
+documentation/docs/output/scan-directory.mdx
+  s_176e793652cadb::t_a8decc0ac10979 61
+  s_176e793652cadb::t_51eba84182898e 45-46
+  s_176e793652cadb::t_b0c5056b983eaf 158,160,162-164
+  s_176e793652cadb::t_84282adad1b9b9 8
+  s_176e793652cadb::t_7f967d00f752df 121-122
+  s_176e793652cadb::t_74e27f1801a8df 112
+  s_176e793652cadb::t_8f25449583aaf7 16-17,20-21,25
+documentation/docs/reachability-analysis.mdx
+  s_176e793652cadb::t_32546ddd5bad28 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a5474288fa28ee6401e60c24fdae7cfdd1a3e55",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
