@@ -111,14 +111,23 @@ def fake_tools(tmp_path, monkeypatch):
     monkeypatch.setenv("APPDATA", str(empty_path))
 
 
-@pytest.fixture
-def scan_stubs(monkeypatch):
-    """Stub the database, the matching stage and the rendering of a scan."""
-    monkeypatch.setattr(vdb_setup, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False, "app-only"))
-    monkeypatch.setattr(vdb_setup, "vdb_download_needed", lambda url, d: (False, ""))
-    monkeypatch.setattr(vdb_setup, "configure_vdb_readonly", lambda: None)
-    monkeypatch.setattr(vdb_setup, "ensure_vdb_usable", lambda: None)
-    monkeypatch.setattr(pipeline, "get_pkgs_by_scope", lambda pkg_list: {})
+#: The package the stubbed matching stage reports a finding for: one of the
+#: purls the dejacode fixture reaches, so the finding joins its evidence.
+STUB_FINDING_PURL = "pkg:pypi/requests@2.34.2"
+
+
+def install_scan_stubs(patch):
+    """Stub the database, the matching stage and the rendering of a scan.
+
+    ``patch(target, name, value)`` installs each stub: ``monkeypatch.setattr``
+    inside a test, plain ``setattr`` in the subprocess scans of the
+    determinism test.
+    """
+    patch(vdb_setup, "resolve_scan_vdb_image", lambda args: ("oras://vdb", False, "app-only"))
+    patch(vdb_setup, "vdb_download_needed", lambda url, d: (False, ""))
+    patch(vdb_setup, "configure_vdb_readonly", lambda: None)
+    patch(vdb_setup, "ensure_vdb_usable", lambda: None)
+    patch(pipeline, "get_pkgs_by_scope", lambda pkg_list: {})
 
     class StubResult:
         success = True
@@ -138,8 +147,8 @@ def scan_stubs(monkeypatch):
             vulns = [
                 {
                     "id": "CVE-2024-1111",
-                    "bom-ref": "CVE-2024-1111/pkg:pypi/requests@2.32.1",
-                    "affects": [{"ref": "pkg:pypi/requests@2.32.1"}],
+                    "bom-ref": f"CVE-2024-1111/{STUB_FINDING_PURL}",
+                    "affects": [{"ref": STUB_FINDING_PURL}],
                     "ratings": [{"severity": "high", "score": 8.1, "method": "CVSSv31"}],
                 }
             ]
@@ -149,11 +158,17 @@ def scan_stubs(monkeypatch):
             )
             return result
 
-    monkeypatch.setattr(pipeline, "VDRAnalyzer", StubVDRAnalyzer)
-    monkeypatch.setattr(pipeline.ReportGenerator, "parse_and_generate_report", lambda self: None)
-    monkeypatch.setattr(pipeline.console, "save_html", lambda *a, **k: None)
-    monkeypatch.setattr(pipeline.console, "save_text", lambda *a, **k: None)
-    monkeypatch.setattr(doctor_mod, "_vdb_status", lambda: dict(_FULL_VDB_DATA))
+    patch(pipeline, "VDRAnalyzer", StubVDRAnalyzer)
+    patch(pipeline.ReportGenerator, "parse_and_generate_report", lambda self: None)
+    patch(pipeline.console, "save_html", lambda *a, **k: None)
+    patch(pipeline.console, "save_text", lambda *a, **k: None)
+    patch(doctor_mod, "_vdb_status", lambda: dict(_FULL_VDB_DATA))
+
+
+@pytest.fixture
+def scan_stubs(monkeypatch):
+    """Stub the database, the matching stage and the rendering of a scan."""
+    install_scan_stubs(monkeypatch.setattr)
 
 
 _FULL_VDB_DATA = {
@@ -464,3 +479,89 @@ def test_a_scan_that_never_reaches_enrichment_lists_no_earlier_evidence(
     assert "evidence.jsonl" not in listed and "evidence.index.json" not in listed
     assert not (bom_dir / "evidence.jsonl").exists()
     assert not (bom_dir / "evidence.index.json").exists()
+
+
+def test_the_finding_joins_its_evidence_and_names_a_witness(scan_stubs, tmp_path):
+    """The stubbed matching stage reports one finding for a package the
+    fixture reaches. The finding must be graded on that package's records:
+    the index maps the finding to them, and its exploitability names one of
+    them, a reached-counted atom record with a path, as the witness."""
+    result = _scan_fixture(tmp_path, "dejacode")
+    assert len(result.findings) == 1, "the stubbed matching stage ran"
+    finding = result.findings[0]
+    assert finding["components"] == [STUB_FINDING_PURL]
+    reports = Path(result.reports_dir)
+    index = json.loads((reports / "evidence.index.json").read_text())
+    joined = index["byFinding"][finding["id"]]
+    assert joined, "the index joins the finding to the records of its package"
+    records = {
+        record["id"]: record
+        for record in map(json.loads, (reports / "evidence.jsonl").read_text().splitlines())
+    }
+    assert set(joined) <= set(records)
+    exploitability = finding["exploitability"]
+    assert exploitability["axes"]["reach"] == "likely"
+    witness = exploitability.get("witness")
+    assert witness in joined, "the witness is one of the finding's own records"
+    record = records[witness]
+    assert record["producer"]["name"] == "atom"
+    assert record["kind"] in ("reached-flow", "usage", "entry-point")
+    assert record.get("path"), "a witness carries a path"
+    assert STUB_FINDING_PURL in record["subject"]["purls"]
+
+
+_SUBPROCESS_SCAN = """
+import sys
+sys.path.insert(0, sys.argv[1])
+from test.test_evidence_wiring import install_scan_stubs
+from depscan import api
+install_scan_stubs(setattr)
+for target in sys.argv[2:]:
+    api.scan(
+        api.scan_options(
+            bom_dir=target,
+            reports_dir=target,
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+"""
+
+
+def test_two_processes_with_different_hash_seeds_write_identical_stores(tmp_path):
+    """Two scans of the same inputs in two interpreter processes, each with
+    its own string hash seed, write byte-identical stores and indexes, so
+    nothing in the record ids or the file order depends on set or dict
+    iteration that hashing could reorder."""
+    import os
+    import subprocess
+    import sys
+
+    repo_root = Path(__file__).resolve().parent.parent
+    runs = {}
+    for seed in ("1", "2"):
+        targets = []
+        for name in ("dejacode", "dotnet-podcasts"):
+            target = tmp_path / seed / name
+            target.mkdir(parents=True)
+            for entry in (FIXTURES / name).iterdir():
+                if entry.is_file():
+                    shutil.copy2(entry, target / entry.name)
+            targets.append(str(target))
+        env = {**os.environ, "PYTHONHASHSEED": seed}
+        completed = subprocess.run(
+            [sys.executable, "-c", _SUBPROCESS_SCAN, str(repo_root), *targets],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=600,
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stderr[-4000:]
+        runs[seed] = targets
+    for first, second in zip(runs["1"], runs["2"]):
+        for name in ("evidence.jsonl", "evidence.index.json"):
+            one = (Path(first) / name).read_bytes()
+            two = (Path(second) / name).read_bytes()
+            assert one and one == two, f"{name} of {Path(first).name} differs between processes"
