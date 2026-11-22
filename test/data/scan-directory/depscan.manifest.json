@@ -62,7 +62,13 @@
         {
           "name": "atom",
           "capability": "reachability",
-          "status": "completed"
+          "status": "completed",
+          "caveats": [
+            {
+              "kind": "schema-unknown",
+              "detail": "atom reports name no schema version, and atom 3 and atom 4 write the same bare array shape; no atom version was given to tell them apart"
+            }
+          ]
         },
         {
           "name": "rusi",
@@ -204,7 +210,7 @@
       "path": "evidence.jsonl",
       "role": "evidence",
       "producer": "dep-scan",
-      "sha256": "5d27d0193fbb83e6283ce89cfcc64e1d2ba10c6e74f87b592f5e406c993c0b23"
+      "sha256": "b0a6e9846bec186cae38d37e8953139cb20d6b72975b9ae0fe9c97650a4e6bd1"
     },
     {
       "path": "python-reachables.slices.json",

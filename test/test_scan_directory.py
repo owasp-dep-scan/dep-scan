@@ -483,10 +483,19 @@ def test_fixture_is_a_valid_scan_directory():
     assert enrichment["capabilities"] == ["reachability"]
     analyzers = {entry["name"]: entry for entry in enrichment["analyzers"]}
     # atom's reachables slice beside the BOM is the one report the scan read.
+    # The stubbed doctor report names no atom version, so the adapter could
+    # not confirm the major its bare-array slice was written by.
     assert analyzers["atom"] == {
         "name": "atom",
         "capability": "reachability",
         "status": "completed",
+        "caveats": [
+            {
+                "kind": "schema-unknown",
+                "detail": "atom reports name no schema version, and atom 3 and atom 4 write "
+                "the same bare array shape; no atom version was given to tell them apart",
+            }
+        ],
     }
     assert analyzers["rusi"]["status"] == "not-assessed"
     assert analyzers["rusi"]["capability"] == "reachability:rust"
