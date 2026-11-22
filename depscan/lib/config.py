@@ -504,5 +504,3 @@ DOSAI_REACHABLES_SLICE_FILE = "dotnet-reachables.slices.json"
 # Default analyzer mode. ``auto`` selects source when a source tree is present
 # and assembly for bin/.nupkg-only inputs.
 DOSAI_DEFAULT_ANALYZER_MODE = "auto"
-# How many reachable explanations to render for dotnet (parallel to rust/go).
-max_dotnet_reachable_explanations = get_int_from_env("max_dotnet_reachable_explanations", 20)
