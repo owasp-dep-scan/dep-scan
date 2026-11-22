@@ -442,10 +442,12 @@ def test_dosai_launch_failure_names_the_framework():
     from xbom_lib.dosai import dosai_launch_failure
 
     reason = dosai_launch_failure(_APPHOST_FAILURE, 150)
+    assert reason is not None
     assert "Microsoft.NETCore.App 11.0.0" in reason
     assert "DOTNET_ROOT" in reason
     assert dosai_launch_failure("5.0.0+abc", 0) is None
-    assert "status 2" in dosai_launch_failure("boom", 2)
+    failed = dosai_launch_failure("boom", 2)
+    assert failed is not None and "status 2" in failed
 
 
 def test_get_dosai_version_ignores_apphost_failure(monkeypatch):

@@ -359,10 +359,19 @@ def test_the_version_gate_accepts_the_known_version_without_caveats():
 
 
 def test_the_version_gate_accepts_a_report_that_names_no_version():
-    for unnamed in (None, "", "not-a-version"):
+    for unnamed in (None, "", "  "):
         gate = adapters.gate_report_version(unnamed, supported_major=5, known_minor=1)
         assert gate.accepted, unnamed
         assert [caveat.kind for caveat in gate.caveats] == ["schema-unknown"]
+
+
+def test_the_version_gate_refuses_a_version_without_a_numeric_major():
+    """A version is named but its major cannot be read, so nothing says the
+    report is one the adapter can read: it is refused, naming what was seen."""
+    for unreadable in ("not-a-version", "v6", "latest"):
+        gate = adapters.gate_report_version(unreadable, supported_major=5, known_minor=1)
+        assert not gate.accepted, unreadable
+        assert gate.reason and unreadable in gate.reason
 
 
 def test_not_assessed_carries_a_reason_and_no_records():
