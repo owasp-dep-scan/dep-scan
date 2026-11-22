@@ -682,6 +682,38 @@ def test_a_missing_analyzer_is_not_assessed_with_the_doctor_reason(
         assert analyzers[name]["status"] == "completed", f"{name}: {analyzers[name]}"
 
 
+def test_a_damaged_report_is_named_even_without_the_tool(scan_stubs, fake_tools, tmp_path):
+    """A BOM directory scan reads the reports the directory holds whether or
+    not the tool is installed. When dosai is missing on this machine but the
+    directory holds a dosai report of a schema major the adapter refuses, the
+    entry carries the adapter's reason for that report, not the doctor's
+    reason that dosai is missing."""
+    fake_tools["remove"]("dosai")
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "sbom-python.cdx.json")
+    _placed, source = RAW_REPORTS["dosai"]
+    report = json.loads(source.read_text(encoding="utf-8"))
+    report.setdefault("Metadata", {})["SchemaVersion"] = "99.0.0"
+    for half in ("methods", "dataflows"):
+        if isinstance(report.get(half), dict) and isinstance(report[half].get("Metadata"), dict):
+            report[half]["Metadata"]["SchemaVersion"] = "99.0.0"
+    (bom_dir / "dotnet-semantics.slices.json").write_text(json.dumps(report))
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(tmp_path / "reports"),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    dosai = _enrichment_analyzers(result.manifest)["dosai"]
+    assert dosai["status"] == "not-assessed"
+    assert "99" in dosai["reason"], dosai["reason"]
+    assert "dosai was not found" not in dosai["reason"]
+
+
 def test_an_installed_analyzer_without_a_report_is_not_reported_as_completed(
     scan_stubs, fake_tools, tmp_path
 ):
@@ -1116,6 +1148,12 @@ def test_classify_file_roles():
         "bom.json": {"role": "bom", "producer": "user"},
         "python-reachables.slices.json": {"role": "slices", "producer": "cdxgen"},
         "go-reachables.slices.json": {"role": "slices", "producer": "dep-scan"},
+        "dotnet-reachables.slices_1.json": {"role": "slices", "producer": "dep-scan"},
+        "kosi-reachables.slices.json": {"role": "slices", "producer": "dep-scan"},
+        "rust-semantics.slices.json": {"role": "slices", "producer": "cdxgen"},
+        "dotnet-semantics.slices.json": {"role": "slices", "producer": "cdxgen"},
+        "dotnet-usages.slices.json": {"role": "slices", "producer": "cdxgen"},
+        "go-callsites.slices.json": {"role": "slices", "producer": "cdxgen"},
         "python-openapi.json": {"projectType": "python"},
         "report.csaf.json": {"role": "csaf"},
         "license-npm.json": {"role": "report"},

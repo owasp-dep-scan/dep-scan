@@ -226,11 +226,11 @@
         "status": {
           "type": "string",
           "enum": ["completed", "not-assessed"],
-          "description": "completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the adapter's reason naming the report that was looked for."
+          "description": "completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the reason the adapter gave: what was wrong with the report it found, or, when it found none, the doctor's reason when the capability is unavailable on this machine and otherwise the report names it looked for. The doctor's reason stands in only when no adapter ran."
         },
         "reason": {
           "type": "string",
-          "description": "For not-assessed, the doctor's reason the capability cannot run here, or the adapter's reason naming the report that was looked for."
+          "description": "For not-assessed, the adapter's reason (a report it could not read, or the report names it looked for), or the doctor's reason the capability cannot run here when the adapter gave none or no adapter ran."
         },
         "caveats": {
           "type": "array",
