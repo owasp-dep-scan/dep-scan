@@ -107,7 +107,9 @@ def finalize(records: Iterable[Evidence]) -> List[Evidence]:
         group.setdefault(_canonical_without_caveats(record), []).append(record)
     final: List[Evidence] = []
     for record_id, group in seen.items():
-        members = sorted((_fold_caveats(copies) for copies in group.values()), key=canonical_record)
+        members = sorted(
+            (_fold_caveats(copies) for copies in group.values()), key=canonical_record
+        )
         final.append(members[0])
         for suffix, record in enumerate(members[1:], start=2):
             final.append(replace(record, id=f"{record_id}-{suffix}"))

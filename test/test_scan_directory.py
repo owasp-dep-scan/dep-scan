@@ -312,9 +312,7 @@ def test_fingerprints_are_stable_across_runs(scan_stubs, tmp_path):
     assert first.findings == second.findings
 
 
-def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(
-    scan_stubs, tmp_path
-):
+def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(scan_stubs, tmp_path):
     """The grade the scan computed reaches the findings document and the VDR
     file as the same assessment: axes, grade, rule and sources in the
     findings, depscan:exploitability: properties in the VDR."""
@@ -336,9 +334,7 @@ def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(
     # The BOM component was read for presence, but no analyzer reached it.
     assert exploitability["sources"] == {"presence": ["vdb", "cdxgen"]}
     vdr = json.loads((Path(result.reports_dir) / "given.vdr.json").read_text())
-    properties = {
-        prop["name"]: prop["value"] for prop in vdr["vulnerabilities"][0]["properties"]
-    }
+    properties = {prop["name"]: prop["value"] for prop in vdr["vulnerabilities"][0]["properties"]}
     assert properties["depscan:exploitability:grade"] == "moderate"
     assert properties["depscan:exploitability:rule"] == "assessed"
     assert properties["depscan:exploitability:axis:presence"] == "likely"
@@ -351,7 +347,7 @@ def test_an_override_rule_table_reaches_the_grading(scan_stubs, tmp_path):
     bom = _write_bom(tmp_path / "given.cdx.json")
     rules = tmp_path / "rules.yaml"
     rules.write_text(
-        'rules:\n  - id: org-standard\n    match:\n      presence: [likely]\n    grade: low\n',
+        "rules:\n  - id: org-standard\n    match:\n      presence: [likely]\n    grade: low\n",
         encoding="utf-8",
     )
     result = api.scan(
@@ -825,9 +821,7 @@ def test_a_requested_risk_audit_records_what_it_could_audit(
     The requested audit that had nothing to read is recorded as not
     assessed with its reason, never as "not requested".
     """
-    monkeypatch.setattr(
-        pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], [])
-    )
+    monkeypatch.setattr(pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], []))
     monkeypatch.setattr(pipeline, "risk_audit", lambda *a: {})
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
@@ -1253,9 +1247,9 @@ def test_analyzer_entries_follow_the_adapter_results_and_the_doctor(fake_tools, 
     assert by_name["golem"]["capability"] == "reachability:go"
     assert "golem was not found" in by_name["golem"]["reason"], "the doctor reason stands in"
     assert by_name["dosai"]["status"] == "not-assessed"
-    assert by_name["dosai"]["reason"] == (
-        "the report schema version 4.0.0 is not supported"
-    ), "the adapter's own reason is kept when it gives one"
+    assert by_name["dosai"]["reason"] == ("the report schema version 4.0.0 is not supported"), (
+        "the adapter's own reason is kept when it gives one"
+    )
     python_only = scan_directory.analyzer_entries(report, ["python"], results)
     assert [entry["name"] for entry in python_only] == ["atom"]
 
@@ -1304,7 +1298,9 @@ class _FakeAdapter:
         return isinstance(report, dict) and "flows" in report
 
     @staticmethod
-    def extract(report, *, source, producer_version="", bom_components=None, extra_components=None):
+    def extract(
+        report, *, source, producer_version="", bom_components=None, extra_components=None
+    ):
         from analysis_lib.evidence import EvidenceCaveat, EvidenceProducer
         from analysis_lib.evidence.adapters import (
             STATUS_COMPLETED,

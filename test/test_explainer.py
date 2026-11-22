@@ -18,7 +18,9 @@ from depscan.lib import explainer
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 ATOM4_DIR = DATA_DIR / "atom4"
-ADAPTER_DATA = Path(__file__).resolve().parent.parent / "packages" / "analysis-lib" / "tests" / "data"
+ADAPTER_DATA = (
+    Path(__file__).resolve().parent.parent / "packages" / "analysis-lib" / "tests" / "data"
+)
 
 
 def _write_store(bom_dir, records):
@@ -218,14 +220,10 @@ def test_explain_non_reachables_renders_negative_records_and_unfound_reaches(
     assert "pkg:pypi/quart@0.22.0" not in text, (
         "a reached record that also names a package with a finding stays out"
     )
-    assert "pkg:pypi/rich@15.0.0" in text, (
-        "a reached package with no finding of its own renders"
-    )
+    assert "pkg:pypi/rich@15.0.0" in text, "a reached package with no finding of its own renders"
 
 
-def test_explain_llm_prompts_mode_writes_prompts_for_endpoint_reaches(
-    tmp_path, monkeypatch
-):
+def test_explain_llm_prompts_mode_writes_prompts_for_endpoint_reaches(tmp_path, monkeypatch):
     """In the LLM prompts mode the endpoint-reachable records are grouped per
     package and written to the prompts file."""
     records = _atom_records(tmp_path)
@@ -337,7 +335,10 @@ def test_short_and_repeated_paths_are_not_explained(tmp_path, monkeypatch):
     same_line = _flow_record(
         "same-line",
         ["pkg:pypi/same-line@1"],
-        [EvidencePathNode(file="app/line.py", line=1, method="m", symbol=f"s{i}") for i in range(6)],
+        [
+            EvidencePathNode(file="app/line.py", line=1, method="m", symbol=f"s{i}")
+            for i in range(6)
+        ],
     )
     two_rows = _flow_record("rusi", ["pkg:cargo/sqlx@0.6.2"], _path("src/main.rs", 2), "rusi")
     first = _flow_record("first", ["pkg:pypi/first@1"], _path("app/dup.py", 5))

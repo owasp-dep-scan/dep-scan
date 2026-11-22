@@ -251,8 +251,13 @@ def test_export_bom_writes_dates_the_validator_accepts(tmp_path):
         "version": 1,
         "metadata": {"tools": {"components": []}},
         "components": [
-            {"type": "library", "name": "lodash", "version": "4.17.20",
-             "purl": "pkg:npm/lodash@4.17.20", "bom-ref": "pkg:npm/lodash@4.17.20"}
+            {
+                "type": "library",
+                "name": "lodash",
+                "version": "4.17.20",
+                "purl": "pkg:npm/lodash@4.17.20",
+                "bom-ref": "pkg:npm/lodash@4.17.20",
+            }
         ],
     }
     vulnerabilities = [
@@ -477,11 +482,14 @@ def test_a_tool_slice_from_an_earlier_scan_is_removed(tmp_path):
     stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
     stale.write_text("{}")
     # The tool applies but reachability is off: no slice may remain.
-    assert bom_mod.run_kosi_reachability(
-        str(bom_file),
-        str(tmp_path),
-        options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
-    ) is None
+    assert (
+        bom_mod.run_kosi_reachability(
+            str(bom_file),
+            str(tmp_path),
+            options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
+        )
+        is None
+    )
     assert not stale.exists()
 
 
@@ -558,6 +566,8 @@ def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_pa
     other = tmp_path / bom_mod.KOSI_TOOL.slice_file
     other.write_text("{}")
     bom_mod.run_golem_reachability(
-        str(bom_file), str(tmp_path), options={"project_type": ["go"], "reachability_analyzer": "off"}
+        str(bom_file),
+        str(tmp_path),
+        options={"project_type": ["go"], "reachability_analyzer": "off"},
     )
     assert other.exists()

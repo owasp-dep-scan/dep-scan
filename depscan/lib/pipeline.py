@@ -1660,9 +1660,7 @@ def _exploitability_inputs(ctx, scan):
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
 
     results = scan.adapter_results or {}
-    analyzers = [
-        name for name, result in results.items() if result.status == "completed"
-    ]
+    analyzers = [name for name, result in results.items() if result.status == "completed"]
     records = []
     for name in ("atom", "rusi", "golem", "kosi", "dosai"):
         result = results.get(name)

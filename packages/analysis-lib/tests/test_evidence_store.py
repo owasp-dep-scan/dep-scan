@@ -203,7 +203,7 @@ def test_a_caveat_merge_keeps_the_collision_rule_for_other_differences(tmp_path)
     second = _record("flow-1", attributes={"order": "second"})
     path = tmp_path / "evidence.jsonl"
     assert store.write(str(path), [first, second, first_timed_out]) == 2
-    by_order = {record.attributes["order"]: record for record in store.read(str(path))}
+    by_order = {(record.attributes or {})["order"]: record for record in store.read(str(path))}
     assert by_order["first"].caveats == [timeout]
     assert by_order["second"].caveats == []
     assert {by_order["first"].id, by_order["second"].id} == {first.id, first.id + "-2"}

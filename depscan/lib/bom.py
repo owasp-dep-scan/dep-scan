@@ -1231,8 +1231,7 @@ RUSI_TOOL = ReachabilityTool(
     import_adapter=_import_rusi_adapter,
     run_fallback=_run_rusi_fallback,
     no_report_error=(
-        "No rusi report was available for this Rust project; reachability "
-        "was not assessed."
+        "No rusi report was available for this Rust project; reachability was not assessed."
     ),
     report_names=_language_report_names("rust", "analysis/rusi/rusi.json"),
     fallback_source=os.path.join(ANALYSIS_DIR_STR, "rusi", "rusi.json").replace(os.sep, "/"),
@@ -1246,8 +1245,7 @@ GOLEM_TOOL = ReachabilityTool(
     import_adapter=_import_golem_adapter,
     run_fallback=_run_golem_fallback,
     no_report_error=(
-        "No golem report was available for this Go project; reachability was "
-        "not assessed."
+        "No golem report was available for this Go project; reachability was not assessed."
     ),
     report_names=_language_report_names("go", "analysis/golem/golem.json"),
     fallback_source=os.path.join(ANALYSIS_DIR_STR, "golem", "golem.json").replace(os.sep, "/"),
@@ -1263,8 +1261,7 @@ KOSI_TOOL = ReachabilityTool(
     import_adapter=_import_kosi_adapter,
     run_fallback=_run_kosi_fallback,
     no_report_error=(
-        "No kosi report was available for this Kotlin project; reachability "
-        "was not assessed."
+        "No kosi report was available for this Kotlin project; reachability was not assessed."
     ),
     report_names=_language_report_names("kotlin", "analysis/kosi/kosi.json"),
     fallback_source=os.path.join(ANALYSIS_DIR_STR, "kosi", "kosi.json").replace(os.sep, "/"),
@@ -1283,9 +1280,9 @@ DOSAI_TOOL = ReachabilityTool(
         "was not assessed and the VDR would silently downgrade (issue #523)."
     ),
     report_names=_dosai_report_names,
-    fallback_source=os.path.join(
-        ANALYSIS_DIR_STR, "dosai", "dotnet-dataflows.json"
-    ).replace(os.sep, "/"),
+    fallback_source=os.path.join(ANALYSIS_DIR_STR, "dosai", "dotnet-dataflows.json").replace(
+        os.sep, "/"
+    ),
 )
 
 
@@ -1596,6 +1593,7 @@ def _reachability_runners() -> Dict[str, Callable]:
         "kosi": run_kosi_reachability,
         "dosai": run_dosai_reachability,
     }
+
 
 def blint_reviews_requested(options: Optional[Dict]) -> bool:
     """Whether the scan asked for blint's security review of the binaries.

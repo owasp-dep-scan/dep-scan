@@ -257,7 +257,12 @@ def test_a_stale_converted_slice_in_a_bom_dir_is_never_atom_evidence(scan_stubs,
             shutil.copy2(entry, bom_dir / entry.name)
     (bom_dir / "rust-reachables.slices.json").write_text(
         json.dumps(
-            [{"flows": [{"tags": "pkg:cargo/stale@9.9.9, rust"}], "purls": ["pkg:cargo/stale@9.9.9"]}]
+            [
+                {
+                    "flows": [{"tags": "pkg:cargo/stale@9.9.9, rust"}],
+                    "purls": ["pkg:cargo/stale@9.9.9"],
+                }
+            ]
         ),
         encoding="utf-8",
     )
@@ -271,7 +276,9 @@ def test_a_stale_converted_slice_in_a_bom_dir_is_never_atom_evidence(scan_stubs,
     )
     records = [
         json.loads(line)
-        for line in (Path(result.reports_dir) / "evidence.jsonl").read_text(encoding="utf-8").splitlines()
+        for line in (Path(result.reports_dir) / "evidence.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
     ]
     assert records, "the atom adapter produced records for the atom-only project"
     assert not any(r["source"] == "rust-reachables.slices.json" for r in records), (
@@ -298,12 +305,20 @@ def test_a_rescan_of_a_reused_bom_dir_drops_deleted_reports_records(scan_stubs, 
         "no_banner": True,
     }
     api.scan(api.scan_options(**options))
-    store = json.loads("[" + ",".join(l for l in (bom_dir / "evidence.jsonl").read_text().splitlines() if l) + "]")
+    store = json.loads(
+        "["
+        + ",".join(line for line in (bom_dir / "evidence.jsonl").read_text().splitlines() if line)
+        + "]"
+    )
     assert any(r["source"] == "python-usages.slices.json" for r in store)
     usages = bom_dir / "python-usages.slices.json"
     usages.unlink()
     api.scan(api.scan_options(**options))
-    store = json.loads("[" + ",".join(l for l in (bom_dir / "evidence.jsonl").read_text().splitlines() if l) + "]")
+    store = json.loads(
+        "["
+        + ",".join(line for line in (bom_dir / "evidence.jsonl").read_text().splitlines() if line)
+        + "]"
+    )
     assert not any(r["source"] == "python-usages.slices.json" for r in store), (
         "a deleted report's records must not survive the rescan"
     )
@@ -311,7 +326,11 @@ def test_a_rescan_of_a_reused_bom_dir_drops_deleted_reports_records(scan_stubs, 
     # must not survive either, so the engine cannot count stale evidence.
     (bom_dir / "python-reachables.slices.json").write_text("{ truncated")
     api.scan(api.scan_options(**options))
-    store = json.loads("[" + ",".join(l for l in (bom_dir / "evidence.jsonl").read_text().splitlines() if l) + "]")
+    store = json.loads(
+        "["
+        + ",".join(line for line in (bom_dir / "evidence.jsonl").read_text().splitlines() if line)
+        + "]"
+    )
     assert not any(r["source"] == "python-reachables.slices.json" for r in store), (
         "a report the adapter refused must leave no records behind"
     )
@@ -357,9 +376,7 @@ def test_the_engine_counts_the_fixture_purls_from_the_records(scan_stubs, tmp_pa
 
 def test_analyzer_entries_come_from_the_adapter_results(scan_stubs, fake_tools, tmp_path):
     result = _scan_fixture(tmp_path, "dejacode")
-    analyzers = {
-        entry["name"]: entry for entry in _enrichment_stage(result.manifest)["analyzers"]
-    }
+    analyzers = {entry["name"]: entry for entry in _enrichment_stage(result.manifest)["analyzers"]}
     assert set(analyzers) == {"atom", "rusi", "golem", "kosi", "dosai"}
     assert analyzers["atom"]["status"] == "completed", "the adapter read the atom slices"
     assert analyzers["atom"]["capability"] == "reachability"
@@ -372,15 +389,11 @@ def test_analyzer_entries_come_from_the_adapter_results(scan_stubs, fake_tools, 
 
 def test_a_dosai_bom_dir_scan_completes_dosai_from_the_raw_report(scan_stubs, tmp_path):
     result = _scan_fixture(tmp_path, "dotnet-podcasts")
-    analyzers = {
-        entry["name"]: entry for entry in _enrichment_stage(result.manifest)["analyzers"]
-    }
+    analyzers = {entry["name"]: entry for entry in _enrichment_stage(result.manifest)["analyzers"]}
     assert analyzers["dosai"]["status"] == "completed", (
         "the adapter found and read the dosai report in the BOM directory"
     )
-    assert analyzers["atom"]["status"] == "not-assessed", (
-        "the .NET project carries no atom slices"
-    )
+    assert analyzers["atom"]["status"] == "not-assessed", "the .NET project carries no atom slices"
     # dosai's raw report and the record kinds it supports.
     store = Path(result.reports_dir) / "evidence.jsonl"
     kinds = {}
@@ -433,7 +446,9 @@ def test_reachability_off_still_writes_an_empty_store(scan_stubs, tmp_path):
     assert enrichment["analyzers"] == []
 
 
-@pytest.mark.parametrize("left_behind", [("evidence.jsonl", "evidence.index.json"), ("evidence.index.json",)])
+@pytest.mark.parametrize(
+    "left_behind", [("evidence.jsonl", "evidence.index.json"), ("evidence.index.json",)]
+)
 def test_a_scan_that_never_reaches_enrichment_lists_no_earlier_evidence(
     scan_stubs, tmp_path, left_behind
 ):
@@ -472,6 +487,7 @@ def test_a_scan_that_never_reaches_enrichment_lists_no_earlier_evidence(
         ),
         render=False,
     )
+    assert result.manifest is not None
     stages = {stage["name"]: stage["status"] for stage in result.manifest["stages"]}
     assert stages["inventory"] == "skipped"
     assert "enrichment" not in stages

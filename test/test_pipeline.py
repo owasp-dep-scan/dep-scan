@@ -440,7 +440,12 @@ def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path,
     def fake_risk_audit(project_type, scoped_pkgs, private_ns, pkg_list):
         calls.append((project_type, [pkg["purl"] for pkg in pkg_list]))
         name = pkg_list[0]["name"]
-        return {name: {"scope": "required", "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True}}}
+        return {
+            name: {
+                "scope": "required",
+                "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True},
+            }
+        }
 
     monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
     ctx = _ctx(tmp_path, ["-t", "universal"])
@@ -460,10 +465,7 @@ def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path,
         ("pypi", ["pkg:pypi/requests@2.0.0"]),
     ]
     assert scan.risk_not_assessed is None
-    rows = [
-        json.loads(line)
-        for line in Path(scan.risk_report_file).read_text().splitlines()
-    ]
+    rows = [json.loads(line) for line in Path(scan.risk_report_file).read_text().splitlines()]
     assert [row["Package"] for row in rows] == ["left-pad", "requests"]
 
 
@@ -480,9 +482,7 @@ def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
     )
     ctx = _ctx(tmp_path, ["-t", "universal"])
     scan = pipeline.TypeScan(project_type="universal")
-    scan.pkg_list = [
-        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}
-    ]
+    scan.pkg_list = [{"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}]
     ctx.perform_risk_audit = False
     assert pipeline.stage_analysis_risk(ctx, scan) is False
     assert scan.risk_not_assessed is None
@@ -617,6 +617,7 @@ def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
     inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs.scope is not None
     assert inputs.scope.reached_by == {"atom": set()}
     assert reach_axis(inputs.scope, "pkg:pypi/requests@2.32.1") == "not_assessed"
 
@@ -807,7 +808,6 @@ def test_set_slices_args_and_stale_removal_use_the_same_paths(tmp_path):
     assert not any(os.path.exists(path) for path in paths)
 
 
-
 def test_generate_boms_removes_every_old_tool_slice_before_generation(tmp_path, monkeypatch):
     from depscan.lib.bom import reachability_slice_files
 
@@ -820,9 +820,7 @@ def test_generate_boms_removes_every_old_tool_slice_before_generation(tmp_path, 
     monkeypatch.setattr(
         pipeline, "create_bom", lambda *a, **k: seen.append([p.exists() for p in old]) or "bom"
     )
-    ctx = SimpleNamespace(
-        src_dir=str(tmp_path), depscan_options={}, doctor_report=None
-    )
+    ctx = SimpleNamespace(src_dir=str(tmp_path), depscan_options={}, doctor_report=None)
     scan = SimpleNamespace(
         project_type="python",
         target_bom_file=str(tmp_path / "sbom-python.cdx.json"),
