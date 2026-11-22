@@ -1,0 +1,21 @@
+packages/analysis-lib/tests/data/tracebom/README.md
+  s_23234c20518dda::t_5ee36de5c0b8fa 1-64
+packages/analysis-lib/tests/data/tracebom/tracebom.json
+  s_23234c20518dda::t_d3e9d03032d793 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5690f74efa2f66e37f6667aec465d1d4163c3f69",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
