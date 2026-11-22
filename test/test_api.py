@@ -323,10 +323,25 @@ def test_query_combines_filters():
 # ---------------------------------------------------------------------------
 
 
-def _result_with_rust_slices(tmp_path, vulns):
+def _result_with_rust_evidence(tmp_path, vulns):
     reports = tmp_path / "reports"
     reports.mkdir(exist_ok=True)
-    shutil.copy2(DATA_DIR / "rust-reachables.slices.json", reports / "rust-reachables.slices.json")
+    from analysis_lib.evidence import EvidencePathNode, EvidenceProducer
+    from analysis_lib.evidence.adapters import build_record
+    from analysis_lib.evidence import store as evidence_store
+
+    record = build_record(
+        source="evidence.jsonl",
+        producer=EvidenceProducer(name="rusi", version="9.9.9", report_schema_version="1"),
+        kind="reached-flow",
+        discriminator="rusi-sqlx",
+        purls=("pkg:cargo/sqlx@0.6.2",),
+        path=(
+            EvidencePathNode(file="src/main.rs", line=11, method="main"),
+            EvidencePathNode(file="src/main.rs", line=14, method="main", symbol="sqlx::query"),
+        ),
+    )
+    evidence_store.write(str(reports / evidence_store.EVIDENCE_FILE), [record])
     return _result_with_vulns(reports, vulns, project_type="rust")
 
 
@@ -336,7 +351,7 @@ def test_explain_returns_the_rendered_text(tmp_path):
         "affects": [{"ref": "pkg:cargo/sqlx@0.6.2"}],
         "ratings": [{"severity": "high", "score": 8.0}],
     }
-    result = _result_with_rust_slices(tmp_path, [vuln])
+    result = _result_with_rust_evidence(tmp_path, [vuln])
     text = api.explain(result)
     assert text.strip()
     assert "src/main.rs" in text
@@ -349,7 +364,7 @@ def test_explain_raises_when_nothing_can_be_explained(tmp_path):
     result = _result_with_vulns(tmp_path, [VULN_REQUESTS])
     with pytest.raises(api.ScanError) as excinfo:
         api.explain(result)
-    assert "reachables slices" in str(excinfo.value)
+    assert "evidence store" in str(excinfo.value)
 
 
 def test_explain_on_a_loaded_scan_names_what_is_missing(scan_calls, tmp_path):
@@ -359,7 +374,9 @@ def test_explain_on_a_loaded_scan_names_what_is_missing(scan_calls, tmp_path):
     loaded = api.load_scan(str(reports))
     with pytest.raises(api.ScanError) as excinfo:
         api.explain(loaded)
-    assert "reachables slices" in str(excinfo.value)
+    # The scan wrote the (empty) store, so the message names the gates the
+    # records did not meet, not a missing file.
+    assert "no evidence record met the rendering gates" in str(excinfo.value)
 
 
 def test_explain_endpoints_mode_names_the_missing_specification(tmp_path):

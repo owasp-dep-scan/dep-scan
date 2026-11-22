@@ -194,9 +194,8 @@ def test_dosai_corrupt_report_degrades_by_default(tmp_path, monkeypatch, caplog)
     but the user is warned that reachability is incomplete (issue #523)."""
     bom, options = _corrupt_report_case(tmp_path, monkeypatch)
     with caplog.at_level("WARNING"):
-        ok = run_dosai_reachability(bom, str(tmp_path), options=options)
-    assert ok is True
-    assert (tmp_path / "dotnet-reachables.slices.json").exists()
+        result = run_dosai_reachability(bom, str(tmp_path), options=options)
+    assert result.status == "completed"
     assert any(
         "methods" in r.getMessage() and "incomplete" in r.getMessage() for r in caplog.records
     )
@@ -222,7 +221,8 @@ def test_dosai_missing_dataflows_warns(tmp_path, monkeypatch, caplog):
         "fail_on_error": True,
     }
     with caplog.at_level("WARNING"):
-        assert run_dosai_reachability(bom, str(tmp_path), options=options) is True
+        result = run_dosai_reachability(bom, str(tmp_path), options=options)
+    assert result.status == "completed"
     assert any(
         "dataflows" in r.getMessage() and "incomplete" in r.getMessage() for r in caplog.records
     )

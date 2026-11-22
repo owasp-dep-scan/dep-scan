@@ -993,9 +993,7 @@ _ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 def _explain_missing_message(result: ScanResult, mode: str) -> str:
     """Name what an empty explanation is missing, based on its mode."""
     reports_dir = result.reports_dir
-    slices = glob.glob(
-        os.path.join(str(reports_dir), "**", "*reachables.slices*.json"), recursive=True
-    )
+    store = os.path.join(str(reports_dir), scan_directory.EVIDENCE_FILE)
     specs = glob.glob(os.path.join(str(reports_dir), "*openapi*.json"))
     if mode == "Endpoints":
         if not specs:
@@ -1004,17 +1002,17 @@ def _explain_missing_message(result: ScanResult, mode: str) -> str:
                 f"OpenAPI specification (*openapi*.json) was found under "
                 f"'{reports_dir}'. Generate one with cdxgen --spec and re-run."
             )
-    elif not slices:
+    elif not os.path.isfile(store):
         return (
             f"The explanation for mode '{mode}' produced no output: no "
-            f"reachables slices file (*reachables.slices*.json) was found "
-            f"under '{reports_dir}'. Run a reachability analysis or copy the "
-            "slices file into the reports directory."
+            f"evidence store ({scan_directory.EVIDENCE_FILE}) was found "
+            f"under '{reports_dir}'. Run a reachability analysis with this "
+            "version, which writes the store, and re-run."
         )
     return (
         f"The explanation for mode '{mode}' produced no output: the inputs "
-        f"under '{reports_dir}' were read but no flow met the rendering "
-        "gates, so there is nothing to explain at this fidelity."
+        f"under '{reports_dir}' were read but no evidence record met the "
+        "rendering gates, so there is nothing to explain at this fidelity."
     )
 
 

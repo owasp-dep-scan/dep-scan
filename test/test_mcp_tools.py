@@ -410,7 +410,7 @@ def test_scan_summary_reports_the_manifest_summary(open_session, make_scan_dir):
     assert summary["stagesByStatus"] == {"completed": 7, "skipped": 3}
     assert summary["stageCount"] == 10
     assert summary["inputCount"] == 1
-    assert summary["fileCount"] == 4
+    assert summary["fileCount"] == 6
     assert summary["startUtc"]
     assert summary["endUtc"]
 
@@ -976,6 +976,26 @@ def test_an_oversized_finding_spills_to_a_file(open_session, make_scan_dir):
     spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
     assert spilled == published
 
+def _plant_reached_evidence(scan_dir):
+    """Overwrite the scan's (empty) evidence store with one reached-flow
+    record the explanation can render, the way a scan that ran a reachability
+    analyzer would have written it."""
+    from analysis_lib.evidence import EvidencePathNode, EvidenceProducer
+    from analysis_lib.evidence import store as evidence_store
+    from analysis_lib.evidence.adapters import build_record
+
+    record = build_record(
+        source="python-reachables.slices.json",
+        producer=EvidenceProducer(name="atom", version="9.9.9", report_schema_version="4"),
+        kind="reached-flow",
+        discriminator="atom-src-main",
+        purls=("pkg:pypi/requests@2.31.0",),
+        path=(
+            EvidencePathNode(file="src/main.rs", line=11, method="main"),
+            EvidencePathNode(file="src/main.rs", line=14, method="main", symbol="query"),
+        ),
+    )
+    evidence_store.write(str(scan_dir / evidence_store.EVIDENCE_FILE), [record])
 
 # --- explain_finding ----------------------------------------------------------------
 
@@ -987,11 +1007,9 @@ def _first_published(scan_dir):
 def test_explain_finding_returns_the_finding_and_the_scan_text(open_session, make_scan_dir):
     scan_dir = make_scan_dir("plain")
     published = _first_published(scan_dir)
-    # The reachables slices file is what the explanation reads; a scan that
-    # ran no reachability analyzer records none, so the fixture plants one.
-    (scan_dir / "python-reachables.slices.json").write_bytes(
-        (DATA_DIR / "rust-reachables.slices.json").read_bytes()
-    )
+    # The evidence store is what the explanation reads; a scan that ran no
+    # reachability analyzer wrote an empty one, so the fixture plants a record.
+    _plant_reached_evidence(scan_dir)
 
     async def scenario(session):
         return await call_document(
@@ -1020,7 +1038,9 @@ def test_explain_finding_names_what_is_missing(open_session, make_scan_dir):
         )
 
     message = drive(open_session, scenario, (scan_dir.parent,))
-    assert "reachables slices" in message
+    # The scan wrote the (empty) store, so the message names the gates the
+    # records did not meet, not a missing file.
+    assert "no evidence record met the rendering gates" in message
 
 
 def test_an_oversized_explanation_spills_to_a_file(open_session, make_scan_dir):
@@ -1031,9 +1051,7 @@ def test_an_oversized_explanation_spills_to_a_file(open_session, make_scan_dir):
     fat["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
     scan_dir = make_scan_dir("fat-explain", vulns=[fat])
     published = published_findings(scan_dir)[0]
-    (scan_dir / "python-reachables.slices.json").write_bytes(
-        (DATA_DIR / "rust-reachables.slices.json").read_bytes()
-    )
+    _plant_reached_evidence(scan_dir)
     arguments = {"scan_dir": str(scan_dir), "finding_id": published["id"]}
 
     async def scenario(session):

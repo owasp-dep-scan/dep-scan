@@ -220,15 +220,64 @@ def purl_package_names(purl):
 
 def run_reachability(data_dir, analyzer):
     """Run the analyzers exactly as the repo tests' depscan invocation does
-    for a scan of a BOM directory: same options construction, same
-    implementation lookup."""
-    from analysis_lib import ReachabilityAnalysisKV
-    from analysis_lib.reachability import get_reachability_impl
+    for a scan of a BOM directory: the adapters read the reports the
+    directory holds, their records go into an evidence store, and the
+    engine counts the reached purls from that store. The store is written
+    to a scratch directory so the pinned data is never modified."""
+    import os
+    import tempfile
 
-    options = ReachabilityAnalysisKV(
-        project_types=["bom"], src_dir=str(data_dir), bom_dir=str(data_dir)
-    )
-    result = get_reachability_impl(analyzer, options).process()
+    from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.evidence import store as evidence_store
+    from analysis_lib.evidence.adapters import atom as atom_adapter
+    from analysis_lib.reachability import get_reachability_impl
+    from depscan.lib import bom as bom_mod
+
+    with tempfile.TemporaryDirectory() as scratch:
+        options = ReachabilityAnalysisKV(
+            project_types=["bom"],
+            src_dir=str(data_dir),
+            bom_dir=str(data_dir),
+            evidence_file=os.path.join(scratch, evidence_store.EVIDENCE_FILE),
+        )
+        results = bom_mod.discover_reachability_reports(
+            str(data_dir),
+            ["bom"],
+            {"reachability_analyzer": analyzer},
+            options.bom_files,
+        )
+        # atom's slices are its own native output, so its adapter reads them
+        # here, exactly as the enrichment stage of a scan does.
+        stems = tuple(
+            file_name.split(".slices", 1)[0]
+            for file_name in bom_mod.reachability_slice_files().values()
+        )
+        reachables, usages, callsites = [], [], []
+        for path in options.slices_files or []:
+            name = os.path.basename(path)
+            if "reachables.slices" in name and not name.startswith(stems):
+                reachables.append(path)
+            elif "usages.slices" in name:
+                usages.append(path)
+            elif "callsites.slices" in name:
+                callsites.append(path)
+        atom_result = atom_adapter.extract(
+            reachables,
+            producer_version="",
+            usages_files=usages,
+            callsites_files=callsites,
+            openapi_files=options.openapi_spec_files,
+        )
+        if atom_result.status == "completed":
+            results["atom"] = atom_result
+        records = [
+            record
+            for result in results.values()
+            if result.status == "completed"
+            for record in result.records
+        ]
+        evidence_store.write(options.evidence_file, records)
+        result = get_reachability_impl(analyzer, options).process()
     if not result or not result.success:
         raise ValidationFailure(f"{analyzer} reported failure over {data_dir}")
     return result
