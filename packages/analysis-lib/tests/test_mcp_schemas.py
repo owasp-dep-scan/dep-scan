@@ -37,9 +37,7 @@ MCP_SCHEMA_NAMES = tuple(
     for direction in ("input", "output")
 )
 
-_FIXTURE_DIR = (
-    Path(__file__).parent.parent.parent.parent / "test" / "data" / "scan-directory"
-)
+_FIXTURE_DIR = Path(__file__).parent.parent.parent.parent / "test" / "data" / "scan-directory"
 
 #: The committed manifest of a real scan directory, the source of the
 #: summary, stage and component examples below.
@@ -98,12 +96,13 @@ def test_every_mcp_schema_is_valid_2020_12(name):
 @pytest.mark.parametrize("name", MCP_SCHEMA_NAMES)
 def test_every_mcp_schema_carries_the_urn_id(name):
     schema = load_schema(name)
-    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-'):]}:1"
+    assert schema["$id"] == f"urn:owasp:depscan:schema:{name[len('depscan-') :]}:1"
 
 
 @pytest.mark.parametrize("name", MCP_SCHEMA_NAMES)
 def test_every_mcp_property_has_a_description(name):
     """Walk the whole schema: every named property carries a description."""
+
     def _walk(node: Any) -> None:
         if isinstance(node, dict):
             for prop_name, prop in (node.get("properties") or {}).items():
@@ -178,7 +177,7 @@ def test_scan_summary_output_counts_agree_with_the_fixture():
     assert summary["stageCount"] == len(statuses) == 8
     assert summary["stagesByStatus"] == {"completed": 6, "skipped": 2}
     assert summary["projectTypes"] == ["bom"]
-    assert summary["inputCount"] == 1 and summary["fileCount"] == 6
+    assert summary["inputCount"] == 1 and summary["fileCount"] == 7
     # The finding counts say what the fixture findings carry.
     assert document["findingCount"] == 1
     assert document["countsByCategory"] == {"vulnerability": 1}
@@ -240,7 +239,10 @@ def test_get_finding_output_rejects_anything_that_is_not_a_finding():
 def test_explain_finding_output_validates():
     _valid(
         "depscan-mcp-explain_finding-output",
-        {"finding": FINDING, "explanation": "Reachable Flows\n\nThe function handle() is reachable."},
+        {
+            "finding": FINDING,
+            "explanation": "Reachable Flows\n\nThe function handle() is reachable.",
+        },
     )
 
 
@@ -280,16 +282,18 @@ def test_coverage_output_validates():
 
 def test_coverage_output_validates_with_a_check_not_run():
     document = _coverage_document()
-    document["checksNotRun"] = [{"name": "license", "reason": "license analysis was not requested"}]
+    document["checksNotRun"] = [
+        {"name": "license", "reason": "license analysis was not requested"}
+    ]
     _valid("depscan-mcp-coverage-output", document)
 
 
 def test_coverage_output_reasons_come_from_the_fixture_stages():
     document = _coverage_document()
     analyzers = [entry["analyzer"] for entry in document["notAssessedReasons"]]
-    # The fixture's enrichment stage recorded five analyzers, none of whose
-    # adapters read a report for this scan.
-    assert analyzers == ["atom", "rusi", "golem", "kosi", "dosai"]
+    # The fixture's enrichment stage recorded five analyzers; only atom's
+    # adapter read a report, its reachables slice beside the BOM.
+    assert analyzers == ["rusi", "golem", "kosi", "dosai"]
     assert all(entry["stage"] == "enrichment" for entry in document["notAssessedReasons"])
 
 
@@ -350,7 +354,10 @@ def test_list_components_output_carries_the_identity_fields():
 
 def test_list_components_output_rejects():
     _invalid("depscan-mcp-list_components-output", {"components": [{"name": "requests"}]})
-    _invalid("depscan-mcp-list_components-output", {"components": [{"name": "r", "type": "library"}], "file": "x"})
+    _invalid(
+        "depscan-mcp-list_components-output",
+        {"components": [{"name": "r", "type": "library"}], "file": "x"},
+    )
     _invalid(
         "depscan-mcp-list_components-output",
         {"components": [_component_projection(BOM["components"][0]) | {"hashes": []}]},
@@ -520,7 +527,11 @@ def test_run_scan_output_validates_as_a_scanned_entry():
 def test_run_scan_output_validates_as_a_refused_entry():
     _valid(
         "depscan-mcp-run_scan-output",
-        {"target": "/tmp/project/missing", "kind": None, "error": "The source target does not exist."},
+        {
+            "target": "/tmp/project/missing",
+            "kind": None,
+            "error": "The source target does not exist.",
+        },
     )
 
 
@@ -536,7 +547,9 @@ def test_run_scan_output_rejects_a_bare_dry_run_or_a_neither_shape():
 def test_scan_summary_input_validates():
     _valid("depscan-mcp-scan_summary-input", {"scan_dir": _SCAN_DIR})
     _invalid("depscan-mcp-scan_summary-input", {})
-    _invalid("depscan-mcp-scan_summary-input", {"scan_dir": _SCAN_DIR, "category": "vulnerability"})
+    _invalid(
+        "depscan-mcp-scan_summary-input", {"scan_dir": _SCAN_DIR, "category": "vulnerability"}
+    )
 
 
 def test_list_findings_input_validates_with_every_filter():
@@ -604,7 +617,10 @@ def test_list_components_input_validates():
 
 
 def test_diff_scans_input_validates():
-    _valid("depscan-mcp-diff_scans-input", {"old_scan_dir": _SCAN_DIR, "new_scan_dir": "/tmp/scan/new"})
+    _valid(
+        "depscan-mcp-diff_scans-input",
+        {"old_scan_dir": _SCAN_DIR, "new_scan_dir": "/tmp/scan/new"},
+    )
     _invalid("depscan-mcp-diff_scans-input", {"old_scan_dir": _SCAN_DIR})
     _invalid(
         "depscan-mcp-diff_scans-input",
