@@ -616,6 +616,16 @@ def extract(
         handler_vpurl = bom_index.get(_normalize_crate_name(pkg_path))
         ep_purls = {p for p in (fw_vpurl, handler_vpurl) if p}
         if not ep_purls:
+            skipped.append(
+                EvidenceCaveat(
+                    kind="record-skipped",
+                    detail=(
+                        "api_endpoints entry "
+                        f"{str(ep.get('path') or '')!r} resolves to no BOM crate purl; "
+                        "it was not turned into a record"
+                    ),
+                )
+            )
             continue
         method = ep.get("method") or ""
         path_ = ep.get("path") or ""

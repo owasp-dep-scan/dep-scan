@@ -179,6 +179,7 @@ def write_index(path: str, index: Dict[str, Any]) -> None:
     tmp = tempfile.NamedTemporaryFile(
         mode="w",
         encoding="utf-8",
+        newline="\n",
         dir=directory,
         prefix=os.path.basename(path) + ".",
         suffix=".tmp",

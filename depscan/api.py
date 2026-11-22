@@ -935,10 +935,9 @@ def explain(result: ScanResult, *, mode: str = "EndpointsAndReachables", prompts
     """Run the explanation of the ``--explain`` rendering and return its text.
 
     The explanation runs for every project type of the result, reading the
-    reachables slices and OpenAPI specifications from ``result.reports_dir``
-    (the ``--explain`` rendering reads them from the BOM directory, which for
-    a ``--bom`` or ``--bom-dir`` scan is where those files live; a scan result
-    records only the reports directory). The endpoint reachability maps the
+    evidence store and the OpenAPI specifications from
+    ``result.reports_dir`` (the in-scan ``--explain`` rendering reads the
+    same store; a scan result records only the reports directory). The endpoint reachability maps the
     in-scan explanation uses are not persisted, so flows render without the
     endpoint markers. ``prompts_file`` receives the LLM prompts in the
     ``LLMPrompts`` mode, exactly as the ``--explain`` rendering writes them.

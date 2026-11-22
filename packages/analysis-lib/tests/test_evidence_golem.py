@@ -251,6 +251,26 @@ def test_older_major_version_is_refused():
     assert "0.1" in (result.reason or "")
 
 
+def test_an_endpoint_that_resolves_to_no_module_is_a_caveat_not_a_drop():
+    report = _report("golem-reachable-app.json")
+    report["apiEndpoints"] = [
+        {"path": "/health", "method": "GET", "handler": "handleHealth", "packagePath": "ghost/pkg"}
+    ]
+    result = extract(
+        report,
+        source=SOURCE,
+        producer_version="4.3.1",
+        bom_components=CASES["golem-reachable-app.json"]["bom"],
+        extra_components=CASES["golem-reachable-app.json"]["extra"],
+    )
+    assert result.status == STATUS_COMPLETED
+    assert not any(r.kind == "entry-point" for r in result.records)
+    assert any(
+        c.kind == "record-skipped" and "'/health'" in c.detail and "no BOM module purl" in c.detail
+        for c in result.caveats
+    ), "the unmatched endpoint must be named, not dropped silently"
+
+
 def test_newer_minor_version_is_accepted_with_a_caveat():
     report = _report("golem-reachable-app.json")
     report["schemaVersion"] = "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6.1"

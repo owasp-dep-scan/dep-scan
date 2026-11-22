@@ -181,7 +181,7 @@
       "path": "depscan.toml.sample",
       "role": "report",
       "producer": "dep-scan",
-      "sha256": "81e17161d9229f6547aa15a7682e2a174dd71123480ed5764e1a2c2f903f24d3"
+      "sha256": "6a338a917042818a96925900c09c20279ef51bd7237d0dce0d9f7c727585a4cf"
     },
     {
       "path": "django-app.cdx.json",

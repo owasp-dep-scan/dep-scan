@@ -265,6 +265,43 @@ def test_a_stale_converted_slice_in_a_bom_dir_is_never_atom_evidence(scan_stubs,
     assert not any("pkg:cargo/stale@9.9.9" in r["subject"]["purls"] for r in records)
 
 
+def test_a_rescan_of_a_reused_bom_dir_drops_deleted_reports_records(scan_stubs, tmp_path):
+    """A reused BOM directory must not keep a previous scan's records for a
+    report this scan no longer finds: the store is written from this scan's
+    adapters alone, so deleting a slice file (or truncating it, which the
+    atom adapter refuses) removes its records and its purls stop counting,
+    exactly as the stale converted slices are cleared, never read."""
+    bom_dir = tmp_path / "dejacode"
+    bom_dir.mkdir()
+    for entry in (FIXTURES / "dejacode").iterdir():
+        if entry.is_file():
+            shutil.copy2(entry, bom_dir / entry.name)
+    options = {
+        "bom_dir": str(bom_dir),
+        "reports_dir": str(bom_dir),
+        "reachability_analyzer": "SemanticReachability",
+        "no_banner": True,
+    }
+    api.scan(api.scan_options(**options))
+    store = json.loads("[" + ",".join(l for l in (bom_dir / "evidence.jsonl").read_text().splitlines() if l) + "]")
+    assert any(r["source"] == "python-usages.slices.json" for r in store)
+    usages = bom_dir / "python-usages.slices.json"
+    usages.unlink()
+    api.scan(api.scan_options(**options))
+    store = json.loads("[" + ",".join(l for l in (bom_dir / "evidence.jsonl").read_text().splitlines() if l) + "]")
+    assert not any(r["source"] == "python-usages.slices.json" for r in store), (
+        "a deleted report's records must not survive the rescan"
+    )
+    # A report this scan cannot read is refused by the adapter; its records
+    # must not survive either, so the engine cannot count stale evidence.
+    (bom_dir / "python-reachables.slices.json").write_text("{ truncated")
+    api.scan(api.scan_options(**options))
+    store = json.loads("[" + ",".join(l for l in (bom_dir / "evidence.jsonl").read_text().splitlines() if l) + "]")
+    assert not any(r["source"] == "python-reachables.slices.json" for r in store), (
+        "a report the adapter refused must leave no records behind"
+    )
+
+
 def test_the_same_scan_twice_writes_byte_identical_stores(scan_stubs, tmp_path):
     """Two scans of the same BOM directory produce the same evidence.jsonl
     and evidence.index.json byte for byte: the record ids are hashes of what

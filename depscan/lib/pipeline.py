@@ -227,6 +227,10 @@ class ScanContext:
     #: scans graded, for the findings document; a pair whose reach was
     #: assessed keeps the assessment over a later unassessed one.
     exploitability: Dict = field(default_factory=dict)
+    #: The evidence records this scan's adapters built, keyed by record id,
+    #: so a scan of several project types rewrites the store once per type
+    #: holding every type's records without reading the previous file back.
+    evidence_records: Dict = field(default_factory=dict)
     #: The rule table this scan grades with, loaded once before matching.
     grading_rules: Optional[Any] = None
     all_pkg_group_rows: Dict = field(default_factory=dict)
@@ -1428,11 +1432,13 @@ def stage_enrichment(ctx, scan):
         atom_result = _atom_adapter_result(ctx, scan, reachability_options)
         if atom_result is not None:
             scan.adapter_results["atom"] = atom_result
-        _write_evidence_store(evidence_file, scan.adapter_results)
-    elif not os.path.isfile(evidence_file):
-        # Reachability off still writes an empty store, so the layout is
-        # uniform whatever the scan asked for.
-        _write_evidence_store(evidence_file, {})
+        _write_evidence_store(ctx, evidence_file, scan.adapter_results)
+    else:
+        # Reachability off still writes an (empty) store, so the layout is
+        # uniform whatever the scan asked for and a reused directory never
+        # carries an earlier scan's records into a scan that assessed
+        # nothing.
+        _write_evidence_store(ctx, evidence_file, {})
     scan.reachability_analyzer = reachability_analyzer
     scan.reachability_options = reachability_options
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
@@ -1493,22 +1499,26 @@ def _doctor_analyzer_version(analyzer: str, ctx) -> str:
     return str(status.version or "") if status is not None else ""
 
 
-def _write_evidence_store(evidence_file: str, adapter_results: Dict) -> None:
-    """Merge every adapter result's records into the store and write it.
+def _write_evidence_store(ctx, evidence_file: str, adapter_results: Dict) -> None:
+    """Add every adapter result's records to this scan's store and write it.
 
-    The store holds what came before plus this round's records, so a scan of
-    several project types re-merges and rewrites it once per type; the store
-    applies the duplicate and ordering rules at write time. A result that was
-    not assessed contributes no records: its reason is what the analyzer
-    entries carry instead.
+    The records accumulate on the scan context, so a scan of several project
+    types rewrites the file once per type holding every type's records, and
+    the store applies the duplicate and ordering rules at write time. The
+    previous file is never read back: a scan of a reused directory replaces
+    what an earlier scan left, so a report this scan did not read (because it
+    was deleted, damaged, or moved) stops counting instead of surviving in
+    the store. A result that was not assessed contributes no records: its
+    reason is what the analyzer entries carry instead.
     """
     incoming = []
     for name in ("atom", "rusi", "golem", "kosi", "dosai"):
         result = adapter_results.get(name)
         if result is not None:
             incoming.extend(result.records)
-    base = evidence_store.read(evidence_file) if os.path.isfile(evidence_file) else []
-    written = evidence_store.write(evidence_file, evidence_store.merge(base, incoming))
+    for record in incoming:
+        ctx.evidence_records[record.id] = record
+    written = evidence_store.write(evidence_file, ctx.evidence_records.values())
     LOG.debug(
         "The evidence store %s holds %d records (%d from this project type).",
         evidence_file,

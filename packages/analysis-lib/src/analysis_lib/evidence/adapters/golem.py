@@ -784,6 +784,16 @@ def extract(
         pp = ep.get("packagePath") or ""
         handler_vpurl = _resolve_package_path(pp, module_index)
         if not handler_vpurl:
+            skipped.append(
+                EvidenceCaveat(
+                    kind="record-skipped",
+                    detail=(
+                        "apiEndpoints entry "
+                        f"{str(ep.get('path') or '')!r} resolves to no BOM module purl; "
+                        "it was not turned into a record"
+                    ),
+                )
+            )
             continue
         method = ep.get("method") or ""
         path_ = ep.get("path") or ""

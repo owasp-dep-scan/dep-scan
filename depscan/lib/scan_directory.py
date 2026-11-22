@@ -87,8 +87,8 @@ _SLICE_KINDS = ("deps", "usages", "callsites", "data-flow", "reachables", "seman
 
 #: The reachables slices dep-scan's earlier versions wrote from a plugin's
 #: raw report. Nothing writes them any more; the names stay so a stale file
-#: keeps its true producer.
-_LANGUAGE_REACHABLES = ("rust", "go", "dotnet")
+#: keeps its true producer, kosi's included.
+_LANGUAGE_REACHABLES = ("rust", "go", "dotnet", "kosi")
 
 #: Files the rendering stages write, named for their role.
 _REPORT_FILES = {
