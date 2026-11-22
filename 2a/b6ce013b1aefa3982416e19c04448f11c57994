@@ -1,0 +1,23 @@
+depscan/lib/config.py
+  s_7318da1b9edd46::t_bf3a753858887d 406-407,410-412
+depscan/lib/explainer.py
+  s_7318da1b9edd46::t_315b440406d3bb 4-21,30,35,44,46-47,63-69,175-209,325-335,343-353,355-381,383-390,477-513,519-521,523-532,534-535,537-542,549-559,561-575,598-603,616-617,619-620,622,628-629,633-634,637-638,642
+test/test_explainer.py
+  s_7318da1b9edd46::t_c002557fe5d799 44-74,134-137,155-156,191,301-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2ab6ce013b1aefa3982416e19c04448f11c57994",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
