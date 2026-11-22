@@ -196,6 +196,11 @@ class ScanContext:
 
     args: Any
     src_dir: str = ""
+    #: The directory the reachability reports' file paths are relative to,
+    #: or None when the scan does not know it. A scan that ran the tools
+    #: knows: it is the source directory they scanned. A scan of stored BOMs
+    #: and slices knows only when the user named the source directory.
+    source_root: Optional[str] = None
     reports_dir: str = ""
     depscan_options: Dict = field(default_factory=dict)
     perform_risk_audit: bool = False
@@ -670,6 +675,7 @@ def stage_setup(ctx):
     # indistinguishable.
     ctx.user_bom_dir = args.bom_dir
     ctx.bom_dir_mode = bool(ctx.user_bom_dir and os.path.isdir(ctx.user_bom_dir))
+    ctx.source_root = _source_root(args, src_dir)
     if not (args.bom_dir or getattr(args, "bom", None) or args.search_purl):
         # A source scan generates its BOM and the language tools' slices in
         # the reports directory; files an earlier run left there would read
@@ -706,6 +712,34 @@ def stage_setup(ctx):
     except ValueError as e:
         raise ScanStageError(str(e)) from e
     _start_scan_directory(ctx)
+
+
+def _reads_stored_analysis(args) -> bool:
+    """Whether the scan reads BOMs and slices an earlier run wrote (a BOM
+    directory or a BOM file) instead of running cdxgen and the tools."""
+    return bool(getattr(args, "bom_dir", None) or getattr(args, "bom", None))
+
+
+def _source_root(args, src_dir) -> Optional[str]:
+    """The source directory the reports' file paths are relative to.
+
+    A scan that runs cdxgen scans ``src_dir``, so that is the root. A scan
+    of stored BOMs and slices was not run here: the source directory option
+    defaults to the working directory, which says nothing about where the
+    data was generated, so the root is known only when the user named it,
+    on the command line or through ``DEPSCAN_SOURCE_DIR_IMAGE``. Without a
+    root the adapters keep each path in their outside-root form, and dosai
+    uses the input path its report states. A ``--src`` that names the
+    working directory itself reads the same as no ``--src``.
+    """
+    if not _reads_stored_analysis(args):
+        return src_dir or None
+    given = args.src_dir_image
+    if os.getenv("DEPSCAN_SOURCE_DIR_IMAGE") or given == ".":
+        return src_dir or None
+    if given and os.path.abspath(given) != os.getcwd():
+        return src_dir or None
+    return None
 
 
 def _clear_evidence_store(reports_dir) -> None:
@@ -1191,7 +1225,7 @@ def _produce_boms(ctx, scan):
             [scan.project_type],
             {**ctx.depscan_options, "doctor_report": ctx.doctor_report},
             bom_files=get_all_bom_files(scan.bom_dir) if scan.bom_dir else [],
-            source_root=ctx.src_dir or None,
+            source_root=ctx.source_root,
         )
     else:
         # Create a bom for each project type. The generator reports back the
@@ -1495,13 +1529,13 @@ def _atom_adapter_result(ctx, scan, options):
     atom's slices are its native output: every reachables slices file the
     language tools do not claim is atom's, as are the usages and callsites
     slices and the OpenAPI documents. The producer version comes from the
-    doctor's atom status. Each record's ``source`` is the file's path
+    atom that wrote the slices (:func:`_atom_producer_version`). Each
+    record's ``source`` is the file's path
     relative to the directory the slices were found in, the BOM directory
     the other adapters' sources are relative to too, and the file names atom
-    wrote are made relative to the scanned source directory. A BOM directory
-    scan has no source tree of its own; the source directory is then the
-    one the options name (the working directory by default), and a path
-    outside it is kept as the adapter's outside-root form, never absolute.
+    wrote are made relative to the scan's source root
+    (:func:`_source_root`); without one, and for a path outside it, the
+    adapter keeps its outside-root form, never an absolute path.
     When the scan holds no atom output at all the
     result is not assessed, with the doctor's reason when the capability is
     unavailable on this machine and the adapter's otherwise.
@@ -1539,13 +1573,13 @@ def _atom_adapter_result(ctx, scan, options):
 
         ctx.atom_results[fresh] = atom_adapter.extract(
             of_role("reachables"),
-            producer_version=_doctor_analyzer_version("atom", ctx),
+            producer_version=_atom_producer_version(ctx, options),
             usages_files=of_role("usages"),
             callsites_files=of_role("callsites"),
             openapi_files=of_role("openapi"),
             timeout_reasons=[reason for reason in scan.not_assessed if reason],
             scan_dir=options.bom_dir,
-            source_root=ctx.src_dir or None,
+            source_root=ctx.source_root,
         )
     groups = [result for group, result in ctx.atom_results.items() if roles.keys() & set(group)]
     if not groups:
@@ -1575,6 +1609,41 @@ def _atom_adapter_result(ctx, scan, options):
     if result.status != "completed":
         LOG.warning("atom reachability was not assessed: %s", result.reason)
     return result
+
+
+def _atom_producer_version(ctx, options) -> str:
+    """The version of the atom that wrote this scan's slices.
+
+    A scan that ran cdxgen had the atom the doctor found write them. Slices
+    stored by an earlier run were written by whatever atom that run had: the
+    BOM names it in ``metadata.tools`` when cdxgen recorded its version, and
+    otherwise nothing names it, so no version is given and the records carry
+    a ``schema-unknown`` caveat rather than being gated on the local atom.
+    """
+    if not _reads_stored_analysis(ctx.args):
+        return _doctor_analyzer_version("atom", ctx)
+    for bom_file in options.bom_files or []:
+        version = _bom_tool_version(bom_file, "atom")
+        if version:
+            return version
+    return ""
+
+
+def _bom_tool_version(bom_file: str, tool_name: str) -> str:
+    """The version a BOM's ``metadata.tools`` gives the named tool, in the
+    CycloneDX 1.5 list form or the 1.6 ``components`` form, or the empty
+    string."""
+    data = json_load(bom_file, log=LOG)
+    if not isinstance(data, dict):
+        return ""
+    tools = (data.get("metadata") or {}).get("tools")
+    entries = tools if isinstance(tools, list) else []
+    if isinstance(tools, dict):
+        entries = list(tools.get("components") or [])
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("name") == tool_name and entry.get("version"):
+            return str(entry["version"])
+    return ""
 
 
 def _doctor_analyzer_version(analyzer: str, ctx) -> str:

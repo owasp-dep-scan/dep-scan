@@ -294,12 +294,33 @@ def purl_package_names(purl):
     return names
 
 
-def run_reachability(data_dir, analyzer):
+#: The lock file the published data is pinned in, next to this script.
+DEFAULT_LOCK = Path(__file__).resolve().parent / "testdata.lock.json"
+
+
+def lock_atom_version(lock_path, name):
+    """The atom version testdata.lock.json records for a project's data, or
+    None when the lock names no such project or no atom version."""
+    try:
+        lock = json.loads(Path(lock_path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    project = (lock.get("projects") or {}).get(name) if isinstance(lock, dict) else None
+    generators = (project or {}).get("generators") if isinstance(project, dict) else None
+    version = (generators or {}).get("atom") if isinstance(generators, dict) else None
+    return str(version) if version else None
+
+
+def run_reachability(data_dir, analyzer, atom_version=None):
     """Run the analyzers exactly as the repo tests' depscan invocation does
     for a scan of a BOM directory: the adapters read the reports the
     directory holds, their records go into an evidence store, and the
     engine counts the reached purls from that store. The store is written
-    to a scratch directory so the pinned data is never modified."""
+    to a scratch directory so the pinned data is never modified.
+
+    ``atom_version`` is the atom that generated the data, as the lock file
+    records it; without one atom's records carry a ``schema-unknown``
+    caveat instead of being gated on a version nobody recorded."""
     import os
     import tempfile
 
@@ -339,7 +360,7 @@ def run_reachability(data_dir, analyzer):
                 callsites.append(path)
         atom_result = atom_adapter.extract(
             reachables,
-            producer_version="",
+            producer_version=atom_version or "",
             usages_files=usages,
             callsites_files=callsites,
             openapi_files=options.openapi_spec_files,
@@ -360,9 +381,9 @@ def run_reachability(data_dir, analyzer):
     return result
 
 
-def check_assert(data_dir, entry, analyzer):
+def check_assert(data_dir, entry, analyzer, atom_version=None):
     summary = check_staleness(data_dir, entry)
-    result = run_reachability(data_dir, analyzer)
+    result = run_reachability(data_dir, analyzer, atom_version)
     reached = result.reached_purls or {}
     failures = []
     min_reachable = entry.get("minReachablePurls", 0)
@@ -490,6 +511,11 @@ def main(argv=None):
     p_assert.add_argument("--projects", required=True)
     p_assert.add_argument("--name", required=True)
     p_assert.add_argument("--analyzer", default="SemanticReachability")
+    p_assert.add_argument(
+        "--lock",
+        default=str(DEFAULT_LOCK),
+        help="testdata.lock.json, read for the atom version that generated the data",
+    )
 
     p_dig = sub.add_parser("digests", help="verify pulled files against a manifest")
     p_dig.add_argument("data_dir")
@@ -510,7 +536,9 @@ def main(argv=None):
             summary = check_staleness(args.data_dir, entry)
         elif args.command == "assert":
             entry = load_projects(args.projects, args.name)
-            summary = check_assert(args.data_dir, entry, args.analyzer)
+            summary = check_assert(
+                args.data_dir, entry, args.analyzer, lock_atom_version(args.lock, args.name)
+            )
         elif args.command == "digests":
             summary = check_digests(args.data_dir, args.manifest, args.digest)
         else:

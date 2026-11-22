@@ -992,3 +992,41 @@ def test_setup_clears_tool_outputs_only_for_a_source_scan(tmp_path, bom_dir_scan
     ctx = pipeline.build_context(_args(argv))
     pipeline.stage_setup(ctx)
     assert stale.exists() is bom_dir_scan
+
+
+def test_a_source_scan_takes_the_atom_version_from_the_doctor(tmp_path, monkeypatch):
+    """A scan that ran cdxgen had the local atom write its slices, so the
+    doctor's atom version is the producer; a BOM scan reads the BOM's."""
+    monkeypatch.setattr(pipeline, "_doctor_analyzer_version", lambda analyzer, ctx: "4.0.3")
+    bom = tmp_path / "sbom-python.cdx.json"
+    bom.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "metadata": {"tools": {"components": [{"name": "atom", "version": "4.0.1"}]}},
+            }
+        )
+    )
+    options = SimpleNamespace(bom_files=[str(bom)])
+    source_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=None))
+    assert pipeline._atom_producer_version(source_scan, options) == "4.0.3"
+    bom_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=str(tmp_path)))
+    assert pipeline._atom_producer_version(bom_scan, options) == "4.0.1"
+    assert pipeline._atom_producer_version(bom_scan, SimpleNamespace(bom_files=[])) == ""
+
+
+def test_the_source_root_of_a_stored_scan_is_only_an_explicit_src(tmp_path, monkeypatch):
+    monkeypatch.delenv("DEPSCAN_SOURCE_DIR_IMAGE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    source = str(tmp_path / "project")
+    assert (
+        pipeline._source_root(
+            SimpleNamespace(bom=None, bom_dir=None, src_dir_image=source), source
+        )
+        == source
+    )
+    stored = SimpleNamespace(bom=None, bom_dir="boms", src_dir_image=str(tmp_path))
+    assert pipeline._source_root(stored, str(tmp_path)) is None, "the working directory default"
+    stored.src_dir_image = source
+    assert pipeline._source_root(stored, source) == source, "an explicit --src"

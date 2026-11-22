@@ -644,3 +644,94 @@ def test_atom_sources_and_locations_follow_the_scan_and_source_directories(scan_
     assert record["source"] == "sub/python-reachables.slices.json"
     assert record["locations"][0]["file"] == "app/views.py"
     assert {node["file"] for node in record["path"]} == {"app/views.py"}
+
+
+def _absolute_slice_dir(tmp_path, name):
+    """A BOM directory whose one atom flow names files by absolute paths
+    under ``tmp_path/project``, the way a slice of an earlier run on another
+    machine might."""
+    source = tmp_path / "project"
+    bom_dir = tmp_path / name
+    bom_dir.mkdir(parents=True)
+    shutil.copy2(FIXTURES / "dejacode" / "sbom-python.cdx.json", bom_dir / "sbom-python.cdx.json")
+    nodes = [
+        {
+            "id": index,
+            "parentFileName": str(source / "app" / "views.py"),
+            "parentMethodName": "view",
+            "lineNumber": 10 + index,
+            "fullName": f"step{index}",
+        }
+        for index in range(5)
+    ]
+    (bom_dir / "python-reachables.slices.json").write_text(
+        json.dumps([{"flows": nodes, "purls": [STUB_FINDING_PURL]}])
+    )
+    return source, bom_dir
+
+
+def test_a_bom_dir_scan_without_src_does_not_depend_on_the_working_directory(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """The source option defaults to the working directory, which says
+    nothing about where stored slices were generated. Two scans of the same
+    BOM directory, one run from inside the tree the slices name and one
+    from elsewhere, must write the same store."""
+    source, bom_dir = _absolute_slice_dir(tmp_path, "boms")
+    source.mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    stores = []
+    for cwd in (source, elsewhere):
+        monkeypatch.chdir(cwd)
+        api.scan(
+            api.scan_options(
+                bom_dir=str(bom_dir),
+                reports_dir=str(bom_dir),
+                no_banner=True,
+                reachability_analyzer="SemanticReachability",
+            ),
+            render=False,
+        )
+        stores.append((bom_dir / "evidence.jsonl").read_bytes())
+    assert stores[0] and stores[0] == stores[1]
+    for line in stores[0].decode("utf-8").splitlines():
+        record = json.loads(line)
+        for location in record["locations"]:
+            assert not _is_absolute(location["file"]), location["file"]
+
+
+def test_stored_slices_are_not_gated_on_the_local_atom(scan_stubs, tmp_path, monkeypatch):
+    """A BOM directory's slices were written by the atom of the run that
+    produced them, not the one installed here. A local atom of another major
+    must not refuse them: without a version in the BOM the records carry a
+    schema-unknown caveat, and with one the BOM's version is the producer."""
+    monkeypatch.setattr(pipeline, "_doctor_analyzer_version", lambda analyzer, ctx: "9.9.9")
+    _source, bom_dir = _absolute_slice_dir(tmp_path, "unversioned")
+    options = dict(no_banner=True, reachability_analyzer="SemanticReachability")
+    api.scan(
+        api.scan_options(bom_dir=str(bom_dir), reports_dir=str(bom_dir), **options), render=False
+    )
+    (record,) = [
+        json.loads(line) for line in (bom_dir / "evidence.jsonl").read_text().splitlines()
+    ]
+    assert record["producer"]["version"] == "unknown"
+    assert "schema-unknown" in {caveat["kind"] for caveat in record["caveats"]}
+
+    _source, versioned = _absolute_slice_dir(tmp_path / "second", "versioned")
+    bom_path = versioned / "sbom-python.cdx.json"
+    bom = json.loads(bom_path.read_text())
+    for tool in bom["metadata"]["tools"]["components"]:
+        if tool.get("name") == "atom":
+            tool["version"] = "4.0.2"
+    bom_path.write_text(json.dumps(bom))
+    api.scan(
+        api.scan_options(bom_dir=str(versioned), reports_dir=str(versioned), **options),
+        render=False,
+    )
+    (record,) = [
+        json.loads(line) for line in (versioned / "evidence.jsonl").read_text().splitlines()
+    ]
+    assert record["producer"]["version"] == "4.0.2"
+    assert record["producer"]["reportSchemaVersion"] == "4"
+    assert "schema-unknown" not in {caveat["kind"] for caveat in record["caveats"]}
