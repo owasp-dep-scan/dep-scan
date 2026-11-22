@@ -327,7 +327,7 @@ def test_reachable_app_marks_newtonsoft_reached(tmp_path, monkeypatch):
     facts = json.loads((tmp_path / "dotnet-reachability.facts.json").read_text())
     nf = facts["reached_purls"]["pkg:nuget/Newtonsoft.Json@13.0.3"]
     assert nf["confidence"] == "High"
-    assert nf["kind"] in ("DataFlowNode", "CallGraphEdge")
+    assert nf["kind"] in ("DataFlowNode", "DataFlowEdge", "DataFlowSlice", "CallGraphEdge")
 
 
 @pytestmark_real

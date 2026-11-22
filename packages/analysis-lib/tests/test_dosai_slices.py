@@ -352,6 +352,109 @@ def test_projection_reachability_flow_is_two_nodes(combined, bom_index):
         assert nodes[1]["label"] == "CALL"
 
 
+def test_projection_keeps_external_call_graph_node_purl():
+    """A PackageReachability entry of kind ExternalCallGraphNode is call-graph
+    evidence: a package dosai reported reachable through it (no explicit
+    Confidence, so the kind default applies) must land in the converted flows
+    beside the call/dataflow kinds, while a Dependency-kind entry for a second
+    package stays out of the flows and keeps its Low confidence."""
+    report = {
+        "Metadata": {"Tool": "Dosai"},
+        "dataflows": {
+            "PackageReachability": [
+                {
+                    "Purl": "pkg:nuget/External.Graph@2.1.0",
+                    "Reachable": True,
+                    "ReachabilityKind": "ExternalCallGraphNode",
+                },
+                {
+                    "Purl": "pkg:nuget/Only.Dependency@1.4.0",
+                    "Reachable": True,
+                    "ReachabilityKind": "Dependency",
+                },
+            ]
+        },
+    }
+    flows = convert_dosai_report(report, {})
+    projected = set()
+    for f in flows:
+        projected.update(f.get("purls") or [])
+    assert "pkg:nuget/External.Graph@2.1.0" in projected
+    assert "pkg:nuget/Only.Dependency@1.4.0" not in projected
+
+    facts = extract_native_reachability(report, {})
+    rec = facts["reached_purls"]["pkg:nuget/External.Graph@2.1.0"]
+    assert rec["kind"] == "ExternalCallGraphNode"
+    assert rec["confidence"] == "High"
+    assert facts["reached_purls"]["pkg:nuget/Only.Dependency@1.4.0"]["confidence"] == "Low"
+
+
+def _issue_561_report(kind, confidence="High"):
+    """The reproducer from the issue: one methods PackageReachability entry."""
+    entry = {
+        "Purl": "pkg:nuget/Serilog.Sinks.Console@6.1.1",
+        "Reachable": True,
+        "ReachabilityKind": kind,
+        "EvidenceKinds": ["AssemblyIlDirect"],
+        "SourceLocations": [{"File": "Program.cs", "Line": 3}],
+    }
+    if confidence is not None:
+        entry["Confidence"] = confidence
+    return {
+        "Metadata": {"Tool": "Dosai"},
+        "methods": {
+            "Metadata": {"Tool": "Dosai"},
+            "CallGraph": {"Nodes": [], "Edges": []},
+            "PackageReachability": [entry],
+        },
+        "dataflows": {
+            "Metadata": {"Tool": "Dosai"},
+            "Nodes": [],
+            "Slices": [],
+            "PackageReachability": [],
+        },
+    }
+
+
+def _projected(report):
+    return sorted(
+        {purl for flow in convert_dosai_report(report) for purl in flow.get("purls", [])}
+    )
+
+
+@pytest.mark.parametrize("kind", ["ExternalCallGraphNode", "CallGraphEdge"])
+def test_issue_561_reproducer_projects_the_reached_package(kind):
+    """The issue's own script: both kinds at High land in the projected flows,
+    matching what extract_native_reachability reports."""
+    report = _issue_561_report(kind)
+    facts = extract_native_reachability(report)
+    assert sorted(facts["reached_purls"]) == ["pkg:nuget/Serilog.Sinks.Console@6.1.1"]
+    assert _projected(report) == ["pkg:nuget/Serilog.Sinks.Console@6.1.1"]
+
+
+@pytest.mark.parametrize(
+    "kind, confidence, projected",
+    [
+        ("ExternalCallGraphNode", "Low", False),
+        ("ExternalCallGraphNode", "Medium", False),
+        ("CallGraphEdge", "Low", False),
+        ("DataFlowNode", "Low", False),
+        ("CallGraphEdge", "Medium", True),
+        ("DataFlowEdge", "High", True),
+        ("DataFlowSlice", "High", True),
+        ("DataFlowEdge", None, True),
+        ("DataFlowSlice", "Low", False),
+        ("InternalCallGraphNode", "High", False),
+        ("Dependency", "High", False),
+    ],
+)
+def test_projection_follows_kind_and_confidence(kind, confidence, projected):
+    """Low entries never render a verdict flow; an external call graph node
+    needs High; data flow edges and slices count like data flow nodes."""
+    expected = ["pkg:nuget/Serilog.Sinks.Console@6.1.1"] if projected else []
+    assert _projected(_issue_561_report(kind, confidence)) == expected
+
+
 def test_projection_deterministic(combined, bom_index):
     """Two conversions of the same report produce identical output (sorted +
     deduped)."""
