@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import platform as _platform_module
+import re
 import subprocess
 import sys
 from typing import Any, Dict, List, NamedTuple, Optional
@@ -127,6 +128,83 @@ def resolve_cdxgen_path() -> Optional[str]:
     return find_executable(command)
 
 
+#: The npm package names cdxgen has been published under; a global install
+#: puts one of them under ``<prefix>/node_modules`` (``%APPDATA%\\npm`` on
+#: Windows).
+_CDXGEN_PACKAGE_DIRS = (("@cdxgen", "cdxgen"), ("@cyclonedx", "cdxgen"))
+
+#: The script a package-manager shim starts, as the shim writes it: npm and
+#: pnpm use ``%dp0%``/``%~dp0`` in ``.cmd`` files and ``$basedir`` in the
+#: ``.ps1`` and shell shims, followed by a path relative to the shim.
+_SHIM_TARGET_RE = re.compile(
+    r"""(?:%~?dp0%?|\$basedir|\$PSScriptRoot)[\\/]+([^"'\s%$]*?cdxgen[\\/]bin[\\/]cdxgen\.js)"""
+)
+_SHIM_MAX_BYTES = 65536
+
+
+def _shim_script_dirs(shim_path: str) -> List[str]:
+    """The ``bin`` directory of the cdxgen script a shim starts, or ``[]``.
+
+    On Windows npm and pnpm do not link ``cdxgen`` into the package; they
+    write ``cdxgen.cmd`` (plus ``.ps1`` and shell variants) beside the
+    package, and the shim names the script relative to its own directory.
+    pnpm's global shims can point several directories away, so the target
+    is read from the shim instead of guessed. Anything unreadable gives
+    nothing.
+    """
+    directory = os.path.dirname(shim_path)
+    names = [os.path.basename(shim_path)]
+    stem = os.path.splitext(names[0])[0]
+    names += [stem + ext for ext in (".cmd", ".ps1", "")]
+    dirs: List[str] = []
+    for name in names:
+        candidate = os.path.join(directory, name)
+        try:
+            if not os.path.isfile(candidate) or os.path.getsize(candidate) > _SHIM_MAX_BYTES:
+                continue
+            with open(candidate, encoding="utf-8", errors="replace") as fp:
+                text = fp.read()
+        except OSError:
+            continue
+        for match in _SHIM_TARGET_RE.finditer(text):
+            relative = re.split(r"[\\/]+", match.group(1))
+            script = os.path.realpath(os.path.join(directory, *relative))
+            if os.path.isfile(script):
+                package_root = os.path.dirname(os.path.dirname(script))
+                if package_root not in dirs:
+                    dirs.append(package_root)
+    return dirs
+
+
+def _walk_candidates(start: str, target: Dict[str, str]) -> List[str]:
+    """Plugins directories at and above ``start``, nearest first."""
+    found: List[str] = []
+    ancestor = start
+    for _ in range(_PLUGINS_DIR_WALK_DEPTH):
+        found.append(os.path.join(ancestor, "plugins"))
+        packages = [os.path.join(ancestor, "node_modules", *name) for name in _CDXGEN_PACKAGE_DIRS]
+        # The plugins package hoisted next to cdxgen, then nested inside a
+        # cdxgen package that sits beside a shim.
+        for node_modules in [os.path.join(ancestor, "node_modules")] + [
+            os.path.join(package, "node_modules") for package in packages
+        ]:
+            found.append(
+                os.path.join(
+                    node_modules,
+                    "@cdxgen",
+                    f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}",
+                    "plugins",
+                )
+            )
+        for package in packages:
+            found.append(os.path.join(package, "plugins"))
+        parent = os.path.dirname(ancestor)
+        if parent == ancestor:
+            break
+        ancestor = parent
+    return found
+
+
 def candidate_plugins_dirs(
     cdxgen_path: Optional[str] = None, target: Optional[Dict[str, str]] = None
 ) -> List[str]:
@@ -138,6 +216,12 @@ def candidate_plugins_dirs(
     The last two are probed by walking up from the real location of the
     cdxgen command, so a symlink such as ``~/.local/bin/cdxgen`` leads to
     the install it points at.
+
+    A Windows package-manager shim (``%APPDATA%\\npm\\cdxgen.cmd``) is not a
+    link. For a shim the walk also starts in the script it starts, and
+    probes the cdxgen package beside it (``node_modules/@cdxgen/cdxgen`` or
+    ``node_modules/@cyclonedx/cdxgen``) with the plugins package nested in
+    it or hoisted next to it.
     """
     target = target or get_plugins_bin_target()
     candidates = []
@@ -145,22 +229,10 @@ def candidate_plugins_dirs(
     if env_dir and os.path.isdir(env_dir):
         candidates.append(env_dir)
     if cdxgen_path:
-        ancestor = os.path.dirname(os.path.realpath(cdxgen_path))
-        for _ in range(_PLUGINS_DIR_WALK_DEPTH):
-            candidates.append(os.path.join(ancestor, "plugins"))
-            candidates.append(
-                os.path.join(
-                    ancestor,
-                    "node_modules",
-                    "@cdxgen",
-                    f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}",
-                    "plugins",
-                )
-            )
-            parent = os.path.dirname(ancestor)
-            if parent == ancestor:
-                break
-            ancestor = parent
+        starts = [os.path.dirname(os.path.realpath(cdxgen_path))]
+        starts.extend(_shim_script_dirs(cdxgen_path))
+        for start in starts:
+            candidates.extend(_walk_candidates(start, target))
     unique: List[str] = []
     seen = set()
     for candidate in candidates:

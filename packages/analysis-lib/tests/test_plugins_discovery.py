@@ -7,6 +7,7 @@ override nor ``CDXGEN_PLUGINS_DIR`` names a binary, as cdxgen does.
 
 import json
 import os
+import sys
 
 import pytest
 from xbom_lib import dosai as dosai_mod
@@ -38,8 +39,85 @@ def _make_plugins(plugins_dir, tools=tuple(TOOLS)):
     return paths
 
 
-@pytest.fixture
-def install(tmp_path, monkeypatch):
+IS_WINDOWS = sys.platform == "win32"
+
+#: ``link``: cdxgen on PATH is a symlink into the install, as for a pnpm or
+#: npm install reached through ``~/.local/bin``. The ``shim-*`` layouts are
+#: what a global npm or pnpm install writes on Windows: ``cdxgen.cmd`` (with
+#: ``.ps1`` and shell variants) beside a package directory, no link at all.
+#: The shell shim is also what npm writes on POSIX hosts that cannot link.
+LAYOUTS = ("link", "shim-nested", "shim-hoisted", "shim-cyclonedx", "shim-pnpm")
+
+_CMD_SHIM = '@ECHO off\r\nSETLOCAL\r\nSET dp0=%~dp0\r\n"%_prog%"  "%dp0%\\{target}" %*\r\n'
+_SH_SHIM = '#!/bin/sh\nbasedir=$(dirname "$0")\nexec node "$basedir/{target}" "$@"\n'
+_PS1_SHIM = '$basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent\n& node "$basedir/{target}" $args\n'
+
+
+def _write_shims(directory, target):
+    """The files npm writes for a global ``cdxgen``, named for this platform."""
+    directory.mkdir(parents=True, exist_ok=True)
+    files = {"cdxgen": _SH_SHIM}
+    if IS_WINDOWS:
+        files["cdxgen.cmd"] = _CMD_SHIM
+        files["cdxgen.ps1"] = _PS1_SHIM
+    for name, template in files.items():
+        shim = directory / name
+        shim.write_text(template.format(target=target), encoding="utf-8", newline="")
+        shim.chmod(0o755)
+
+
+def _build_install(tmp_path, layout):
+    """Create the install for ``layout``; returns (directory on PATH, cdxgen
+    entry, plugins directory)."""
+    target = get_plugins_bin_target()
+    plugins_pkg = f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}"
+    if layout == "link":
+        root = tmp_path / "depscan-tools" / "cdxgen"
+        plugins = root / "node_modules" / "@cdxgen" / plugins_pkg / "plugins"
+        (root / "bin").mkdir(parents=True)
+        (root / "package.json").write_text("{}", encoding="utf-8")
+        name = "cdxgen.exe" if IS_WINDOWS else "cdxgen"
+        entry = root / "bin" / name
+        entry.write_text("#!/bin/sh\n", encoding="utf-8")
+        entry.chmod(0o755)
+        path_dir = tmp_path / "path"
+        path_dir.mkdir()
+        try:
+            (path_dir / name).symlink_to(entry)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks are not available")
+        shim = path_dir / name
+    elif layout == "shim-pnpm":
+        path_dir = tmp_path / "pnpm"
+        package = (
+            path_dir / "global" / "5" / "node_modules" / ".pnpm" / "@cdxgen+cdxgen@1"
+            / "node_modules" / "@cdxgen" / "cdxgen"
+        )  # fmt: skip
+        plugins = package.parent / plugins_pkg / "plugins"
+        _write_shims(
+            path_dir,
+            "global/5/node_modules/.pnpm/@cdxgen+cdxgen@1/node_modules/@cdxgen/cdxgen/bin/cdxgen.js",
+        )
+        shim = path_dir / ("cdxgen.cmd" if IS_WINDOWS else "cdxgen")
+    else:
+        path_dir = tmp_path / "AppData" / "npm"
+        scope = "@cyclonedx" if layout == "shim-cyclonedx" else "@cdxgen"
+        package = path_dir / "node_modules" / scope / "cdxgen"
+        if layout == "shim-hoisted":
+            plugins = path_dir / "node_modules" / "@cdxgen" / plugins_pkg / "plugins"
+        else:
+            plugins = package / "node_modules" / "@cdxgen" / plugins_pkg / "plugins"
+        _write_shims(path_dir, f"node_modules/{scope}/cdxgen/bin/cdxgen.js")
+        shim = path_dir / ("cdxgen.cmd" if IS_WINDOWS else "cdxgen")
+    if layout != "link":
+        (package / "bin").mkdir(parents=True)
+        (package / "bin" / "cdxgen.js").write_text("// cdxgen\n", encoding="utf-8")
+        (package / "package.json").write_text("{}", encoding="utf-8")
+    return path_dir, shim, plugins
+
+
+@pytest.fixture(params=LAYOUTS)
+def install(request, tmp_path, monkeypatch):
     """A cdxgen install with its plugins package; cdxgen is only on PATH."""
     monkeypatch.setattr(plugins_mod, "resolve_cdxgen_path", _REAL_RESOLVE_CDXGEN_PATH)
     for var in (
@@ -49,30 +127,16 @@ def install(tmp_path, monkeypatch):
         *[f"DEPSCAN_{t.upper()}_BINARY" for t in TOOLS],
     ):
         monkeypatch.delenv(var, raising=False)
-    target = get_plugins_bin_target()
-    root = tmp_path / "depscan-tools" / "cdxgen"
-    plugins = (
-        root
-        / "node_modules"
-        / "@cdxgen"
-        / f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}"
-        / "plugins"
-    )
+    path_dir, shim, plugins = _build_install(tmp_path, request.param)
     binaries = _make_plugins(plugins)
     (plugins.parent / "package.json").write_text("{}", encoding="utf-8")
-    (root / "bin").mkdir(parents=True)
-    (root / "package.json").write_text("{}", encoding="utf-8")
-    entry = root / "bin" / "cdxgen"
-    entry.write_text("#!/bin/sh\n", encoding="utf-8")
-    entry.chmod(0o755)
-    path_dir = tmp_path / "path"
-    path_dir.mkdir()
-    try:
-        (path_dir / "cdxgen").symlink_to(entry)
-    except OSError:
-        pytest.skip("symlinks are not available")
     monkeypatch.setenv("PATH", str(path_dir))
-    return type("Install", (), {"plugins": plugins, "binaries": binaries, "path_dir": path_dir})
+    monkeypatch.setenv("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+    return type(
+        "Install",
+        (),
+        {"plugins": plugins, "binaries": binaries, "path_dir": path_dir, "cdxgen": shim},
+    )
 
 
 @pytest.mark.parametrize("tool", TOOLS)
@@ -89,12 +153,11 @@ def test_discovery_reports_the_source(install):
 
 def test_cdxgen_cmd_selects_the_install(install, tmp_path, monkeypatch):
     """CDXGEN_CMD is honoured when it names the cdxgen to start from."""
-    link = tmp_path / "elsewhere" / "my-cdxgen"
-    link.parent.mkdir()
-    link.symlink_to((install.path_dir / "cdxgen").resolve())
-    (install.path_dir / "cdxgen").unlink()
+    empty = tmp_path / "elsewhere"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
     assert TOOLS["golem"]() is None
-    monkeypatch.setenv("CDXGEN_CMD", str(link))
+    monkeypatch.setenv("CDXGEN_CMD", str(install.cdxgen))
     assert TOOLS["golem"]() == str(install.binaries["golem"])
 
 

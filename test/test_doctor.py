@@ -984,44 +984,74 @@ def test_kosi_report_entry_carries_the_top_level_version(fakes, monkeypatch):
 # --- plugins found beside the cdxgen install -----------------------------------
 
 
-@pytest.fixture
-def install_env(plugins_env, fakes, monkeypatch):
+@pytest.fixture(params=["link", "shim"])
+def install_env(request, plugins_env, fakes, monkeypatch):
     """The plugins tree under a cdxgen install, with no CDXGEN_PLUGINS_DIR.
 
-    Layout: ``<root>/bin/cdxgen``, ``<root>/package.json`` and the plugins
-    package under ``<root>/node_modules/@cdxgen``. cdxgen is on PATH through
-    a symlink in a separate directory, the way ``~/.local/bin/cdxgen`` points
-    into a package manager's install.
+    ``link``: ``<root>/bin/cdxgen`` and ``<root>/package.json``, with the
+    plugins package under ``<root>/node_modules/@cdxgen``; cdxgen is on PATH
+    through a symlink, the way ``~/.local/bin/cdxgen`` points into a package
+    manager's install.
+
+    ``shim``: what a global npm install writes on Windows, a ``cdxgen.cmd``
+    shim (a shell shim elsewhere) in ``<prefix>`` beside
+    ``<prefix>/node_modules/@cdxgen/cdxgen``, which carries the plugins.
     """
     target = doctor_mod.get_plugins_bin_target()
-    root = fakes.record.parent / "cdxgen-install"
-    package = (
-        root
-        / "node_modules"
-        / "@cdxgen"
-        / (f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}")
-    )
-    package.mkdir(parents=True)
+    plugins_pkg = f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}"
+    windows = sys.platform == "win32"
+    base = fakes.record.parent
+    path_dir = base / "on-path"
+    path_dir.mkdir()
+    if request.param == "link":
+        root = base / "cdxgen-install"
+        package = root / "node_modules" / "@cdxgen" / plugins_pkg
+        (root / "bin").mkdir(parents=True)
+        (root / "package.json").write_text("{}", encoding="utf-8")
+        name = "cdxgen.exe" if windows else "cdxgen"
+        real_cdxgen = root / "bin" / name
+        real_cdxgen.write_text(
+            Path(os.environ["CDXGEN_CMD"]).read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        real_cdxgen.chmod(0o755)
+        try:
+            (path_dir / name).symlink_to(real_cdxgen)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks are not available")
+    else:
+        # A shim is not runnable here (no node), so its version probe runs the
+        # fake cdxgen the plugins_env fixture installed.
+        fake_cdxgen = os.environ["CDXGEN_CMD"]
+        probe = doctor_mod._version_command
+        shim_dir = os.path.normcase(str(path_dir))
+
+        def shim_aware_command(path, args):
+            if os.path.normcase(os.path.dirname(str(path))) == shim_dir:
+                return [sys.executable, fake_cdxgen, *args]
+            return probe(path, args)
+
+        monkeypatch.setattr(doctor_mod, "_version_command", shim_aware_command)
+        cdxgen_pkg = path_dir / "node_modules" / "@cdxgen" / "cdxgen"
+        package = cdxgen_pkg / "node_modules" / "@cdxgen" / plugins_pkg
+        (cdxgen_pkg / "bin").mkdir(parents=True)
+        (cdxgen_pkg / "package.json").write_text("{}", encoding="utf-8")
+        (cdxgen_pkg / "bin" / "cdxgen.js").write_text("// cdxgen\n", encoding="utf-8")
+        target_js = "node_modules/@cdxgen/cdxgen/bin/cdxgen.js"
+        shims = {"cdxgen": f'#!/bin/sh\nexec node "$basedir/{target_js}" "$@"\n'}
+        if windows:
+            shims["cdxgen.cmd"] = f'@ECHO off\r\n"%_prog%"  "%dp0%\\{target_js}" %*\r\n'
+        for shim_name, text in shims.items():
+            (path_dir / shim_name).write_text(text, encoding="utf-8", newline="")
+            (path_dir / shim_name).chmod(0o755)
+    package.mkdir(parents=True, exist_ok=True)
     installed = package / "plugins"
     plugins_env.plugins_dir.rename(installed)
     (package / "package.json").write_text("{}", encoding="utf-8")
-    (root / "package.json").write_text("{}", encoding="utf-8")
-    (root / "bin").mkdir()
-    real_cdxgen = root / "bin" / "cdxgen"
-    real_cdxgen.write_text(
-        Path(os.environ["CDXGEN_CMD"]).read_text(encoding="utf-8"), encoding="utf-8"
-    )
-    real_cdxgen.chmod(0o755)
-    path_dir = fakes.record.parent / "on-path"
-    path_dir.mkdir()
-    try:
-        (path_dir / "cdxgen").symlink_to(real_cdxgen)
-    except OSError:
-        pytest.skip("symlinks are not available")
     monkeypatch.delenv("CDXGEN_PLUGINS_DIR")
     monkeypatch.delenv("CDXGEN_CMD")
     monkeypatch.setenv("PATH", str(path_dir))
-    return SimpleNamespace(plugins_dir=installed, root=root, path_dir=path_dir)
+    monkeypatch.setenv("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+    return SimpleNamespace(plugins_dir=installed, path_dir=path_dir)
 
 
 def test_plugins_beside_the_cdxgen_install_are_used(install_env, fakes):
