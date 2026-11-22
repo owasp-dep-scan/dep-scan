@@ -84,7 +84,7 @@ A `purl` without a version matches every version, and the purl comparison follow
 text = api.explain(result)
 ```
 
-The explanation reads the reachables slices (`*reachables.slices*.json`) and the OpenAPI specifications (`*openapi*.json`) from `result.reports_dir`. When they are missing, or when nothing can be explained, `explain` raises `ScanError` naming what is missing instead of returning empty text. The `mode` values are those of `--explanation-mode`; in the `LLMPrompts` mode the prompts are written to `prompts_file`.
+The explanation reads the evidence store (`evidence.jsonl`) and the OpenAPI specifications (`*openapi*.json`) from `result.reports_dir`. When they are missing, or when nothing can be explained, `explain` raises `ScanError` naming what is missing instead of returning empty text. The `mode` values are those of `--explanation-mode`; in the `LLMPrompts` mode the prompts are written to `prompts_file`.
 
 ## Comparing two scans
 

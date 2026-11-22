@@ -1,0 +1,160 @@
+{
+ "schema_version": "https://appthreat.github.io/rusi/schema/report-0.1",
+ "tool": {
+  "name": "rusi",
+  "version": "4.3.1",
+  "description": "Rust source analysis inspector"
+ },
+ "runtime": {
+  "rustc_version": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+  "cargo_version": "cargo 1.100.0 (3acc79c0c 2026-11-05)",
+  "host": "aarch64-macos",
+  "working_directory": "/src/repos/unreachable-app"
+ },
+ "options": {
+  "directory": "/src/repos/unreachable-app",
+  "backend": "stable",
+  "analysis_scope": "default",
+  "call_graph_mode": "static",
+  "data_flow_mode": "security-deps",
+  "include_tests": false,
+  "max_call_candidates": 8
+ },
+ "modules": [
+  {
+   "name": "unreachable-app",
+   "version": "0.1.0",
+   "manifest_path": "/src/repos/unreachable-app/Cargo.toml",
+   "workspace_member": true
+  }
+ ],
+ "packages": [
+  {
+   "id": "pkg-38db287a0c76017a",
+   "name": "unreachable-app",
+   "package_path": "unreachable_app",
+   "purl": "pkg:cargo/unreachable-app@0.1.0",
+   "manifest_path": "/src/repos/unreachable-app/Cargo.toml",
+   "module": {
+    "name": "unreachable-app",
+    "version": "0.1.0",
+    "manifest_path": "/src/repos/unreachable-app/Cargo.toml",
+    "workspace_member": true
+   },
+   "files": [
+    "src/main.rs"
+   ]
+  }
+ ],
+ "files": [
+  {
+   "path": "src/main.rs",
+   "package_name": "unreachable-app",
+   "package_path": "unreachable_app",
+   "purl": "pkg:cargo/unreachable-app@0.1.0",
+   "crypto": null
+  }
+ ],
+ "imports": [],
+ "declarations": [
+  {
+   "id": "decl-d1861ddd4fa90d91",
+   "name": "main",
+   "qualified_name": "unreachable_app::main",
+   "canonical_name": "unreachable_app::main",
+   "kind": "function",
+   "package_path": "unreachable_app",
+   "purl": "pkg:cargo/unreachable-app@0.1.0",
+   "file_path": "src/main.rs",
+   "signature": "fn main ()",
+   "receiver": null,
+   "position": {
+    "filename": "src/main.rs",
+    "line": 5,
+    "column": 4
+   }
+  }
+ ],
+ "usages": [],
+ "security_signals": [],
+ "crypto": null,
+ "call_graph": {
+  "mode": "static",
+  "nodes": [
+   {
+    "id": "decl-d1861ddd4fa90d91",
+    "name": "main",
+    "qualified_name": "unreachable_app::main",
+    "canonical_name": "unreachable_app::main",
+    "kind": "function",
+    "package_path": "unreachable_app",
+    "purl": "pkg:cargo/unreachable-app@0.1.0",
+    "file_path": "src/main.rs",
+    "local": true,
+    "external": false,
+    "receiver": null,
+    "position": {
+     "filename": "src/main.rs",
+     "line": 5,
+     "column": 4
+    }
+   }
+  ],
+  "edges": [],
+  "diagnostics": [],
+  "stats": {
+   "node_count": 1,
+   "edge_count": 0
+  }
+ },
+ "data_flow": {
+  "mode": "security-deps",
+  "nodes": [],
+  "edges": [],
+  "slices": [],
+  "summaries": [
+   {
+    "function_id": "decl-d1861ddd4fa90d91",
+    "function": "unreachable_app::main",
+    "package_path": "unreachable_app",
+    "purl": "pkg:cargo/unreachable-app@0.1.0",
+    "parameter_names": [],
+    "parameter_types": [],
+    "return_type": "()",
+    "param_to_return": [],
+    "param_to_sink": {},
+    "source_returns": [],
+    "properties": {}
+   }
+  ],
+  "diagnostics": [],
+  "stats": {
+   "source_count": 0,
+   "sink_count": 0,
+   "slice_count": 0,
+   "node_count": 0,
+   "edge_count": 0,
+   "summary_count": 1
+  }
+ },
+ "api_endpoints": [],
+ "diagnostics": [],
+ "stats": {
+  "package_count": 1,
+  "file_count": 1,
+  "import_count": 0,
+  "declaration_count": 1,
+  "usage_count": 0,
+  "security_signal_count": 0,
+  "crypto_library_count": 0,
+  "crypto_component_count": 0,
+  "crypto_material_count": 0,
+  "crypto_finding_count": 0,
+  "call_graph_node_count": 1,
+  "call_graph_edge_count": 0,
+  "data_flow_node_count": 0,
+  "data_flow_edge_count": 0,
+  "data_flow_slice_count": 0,
+  "api_endpoint_count": 0
+ }
+}

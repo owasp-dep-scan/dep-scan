@@ -7,10 +7,15 @@ description: 'Maps what an application exposes: it groups the entry points, auth
 
 Use this skill to answer "what is exposed". It needs a source project and,
 for the vulnerable-package join, a dep-scan scan of the same project. The
-tools are run directly because dep-scan reports exposure tiers and trust
-zones only for .NET (in `analysis/dosai/dotnet-reachability.facts.json`
-and the `dosai` entries of `dotnet-reachables.slices.json`); for other
-languages each step says what it adds.
+tools are run directly because dep-scan's evidence records report
+exposure tiers and trust zones only for .NET: dosai's entry-point and
+exploit-chain records in `evidence.jsonl`, read from the raw dosai report,
+which is the `*-semantics.slices.json` cdxgen persisted (for example
+`dotnet-semantics.slices.json`) or, when dep-scan ran dosai itself,
+`analysis/dosai/dotnet-dataflows.json` and `dotnet-methods.json`. The
+golem, rusi and kosi adapters also record API endpoints as `entry-point`
+records, without a tier; for other languages each step says what it
+adds.
 
 The rules in [reference/safety.md](../../reference/safety.md) apply. Steps
 that run project code (dosai's `--restore`/`--build`, golem with cgo on,

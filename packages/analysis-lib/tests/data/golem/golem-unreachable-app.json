@@ -1,0 +1,790 @@
+{
+ "schemaVersion": "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6",
+ "tool": {
+  "name": "golem",
+  "version": "4.3.1",
+  "description": "Go Library Evidence Mapper: semantic Go source evidence and call graph analyzer"
+ },
+ "runtime": {
+  "goos": "darwin",
+  "goarch": "arm64",
+  "goVersion": "go1.27.4",
+  "languageVersion": "go1.27",
+  "workingDir": "/src/repos/unreachable-app",
+  "patterns": [
+   "./..."
+  ],
+  "tests": false,
+  "targetGoos": "darwin",
+  "targetGoarch": "arm64"
+ },
+ "options": {
+  "directory": "/src/repos/unreachable-app",
+  "noRecurse": false,
+  "includeAllFlows": true,
+  "patterns": [
+   "./..."
+  ],
+  "tests": false,
+  "includeStdlib": false,
+  "includeLocal": true,
+  "callGraphMode": "static",
+  "dataFlowMode": "all",
+  "dataFlowCallGraphMode": "static",
+  "dataFlowPacks": [
+   "all"
+  ],
+  "dataFlowWorkers": 4,
+  "dataFlowLargeRepoFunctions": 1000,
+  "dataFlowMaxFunctionInstructions": 200,
+  "dataFlowMaxTraceNodes": 64,
+  "dataFlowMaxTraceEdges": 128,
+  "dataFlowSkipGenerated": true,
+  "dataFlowSkipTests": true,
+  "maxProcs": 4,
+  "includeSsa": false,
+  "includeSources": false
+ },
+ "rootModules": [
+  {
+   "path": "github.com/example/unreachable-app",
+   "dir": "/src/repos/unreachable-app",
+   "goMod": "/src/repos/unreachable-app/go.mod",
+   "goVersion": "1.21",
+   "main": true,
+   "purl": "pkg:golang/github.com/example/unreachable-app"
+  }
+ ],
+ "modules": [
+  {
+   "path": "github.com/example/unreachable-app",
+   "dir": "/src/repos/unreachable-app",
+   "goMod": "/src/repos/unreachable-app/go.mod",
+   "goVersion": "1.21",
+   "main": true,
+   "purl": "pkg:golang/github.com/example/unreachable-app"
+  }
+ ],
+ "packages": [
+  {
+   "id": "github.com/example/unreachable-app",
+   "name": "main",
+   "packagePath": "github.com/example/unreachable-app",
+   "module": {
+    "path": "github.com/example/unreachable-app",
+    "dir": "/src/repos/unreachable-app",
+    "goMod": "/src/repos/unreachable-app/go.mod",
+    "goVersion": "1.21",
+    "main": true,
+    "purl": "pkg:golang/github.com/example/unreachable-app"
+   },
+   "standard": false,
+   "local": true,
+   "goFiles": [
+    "/src/repos/unreachable-app/main.go"
+   ],
+   "compiledGoFiles": [
+    "/src/repos/unreachable-app/main.go"
+   ],
+   "imports": [
+    {
+     "path": "fmt",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "fmt",
+     "packageName": "fmt",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 161,
+       "line": 6,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 166,
+       "line": 6,
+       "column": 7
+      }
+     },
+     "resolved": true
+    },
+    {
+     "path": "net/http",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "net/http",
+     "packageName": "http",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 168,
+       "line": 7,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 178,
+       "line": 7,
+       "column": 12
+      }
+     },
+     "resolved": true
+    }
+   ],
+   "declarations": [
+    {
+     "id": "github.com/example/unreachable-app||main|func()",
+     "name": "main",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/unreachable-app",
+     "signature": "func()",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 182,
+       "line": 10,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 313,
+       "line": 14,
+       "column": 2
+      }
+     }
+    },
+    {
+     "id": "github.com/example/unreachable-app||handleHealth|func(w net/http.ResponseWriter, r *net/http.Request)",
+     "name": "handleHealth",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/unreachable-app",
+     "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 315,
+       "line": 16,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 405,
+       "line": 18,
+       "column": 2
+      }
+     }
+    }
+   ],
+   "securitySignals": [
+    {
+     "id": "github.com/example/unreachable-app|sha256:8166fae94a414ce0d58bcffdaae5fa41ffc7e42d571a7f6afe331ed42ce17ea5",
+     "category": "http-server",
+     "severity": "medium",
+     "confidence": "type-resolved",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/unreachable-app",
+     "symbol": "net/http.ListenAndServe",
+     "description": "Starts an HTTP server without TLS at this call site.",
+     "recommendation": "Use TLS or document trusted network boundaries.",
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 278,
+       "line": 13,
+       "column": 6
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 297,
+       "line": 13,
+       "column": 25
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "files": [
+  {
+   "path": "/src/repos/unreachable-app/main.go",
+   "packageName": "main",
+   "packagePath": "github.com/example/unreachable-app",
+   "role": "runtime",
+   "compiled": true,
+   "generated": false,
+   "imports": [
+    {
+     "path": "fmt",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "fmt",
+     "packageName": "fmt",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 161,
+       "line": 6,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 166,
+       "line": 6,
+       "column": 7
+      }
+     },
+     "resolved": true
+    },
+    {
+     "path": "net/http",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "net/http",
+     "packageName": "http",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 168,
+       "line": 7,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 178,
+       "line": 7,
+       "column": 12
+      }
+     },
+     "resolved": true
+    }
+   ],
+   "declarations": [
+    {
+     "id": "github.com/example/unreachable-app||main|func()",
+     "name": "main",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/unreachable-app",
+     "signature": "func()",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 182,
+       "line": 10,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 313,
+       "line": 14,
+       "column": 2
+      }
+     }
+    },
+    {
+     "id": "github.com/example/unreachable-app||handleHealth|func(w net/http.ResponseWriter, r *net/http.Request)",
+     "name": "handleHealth",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/unreachable-app",
+     "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 315,
+       "line": 16,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 405,
+       "line": 18,
+       "column": 2
+      }
+     }
+    }
+   ],
+   "securitySignals": [
+    {
+     "id": "github.com/example/unreachable-app|sha256:8166fae94a414ce0d58bcffdaae5fa41ffc7e42d571a7f6afe331ed42ce17ea5",
+     "category": "http-server",
+     "severity": "medium",
+     "confidence": "type-resolved",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/unreachable-app",
+     "symbol": "net/http.ListenAndServe",
+     "description": "Starts an HTTP server without TLS at this call site.",
+     "recommendation": "Use TLS or document trusted network boundaries.",
+     "range": {
+      "start": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 278,
+       "line": 13,
+       "column": 6
+      },
+      "end": {
+       "filename": "/src/repos/unreachable-app/main.go",
+       "offset": 297,
+       "line": 13,
+       "column": 25
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "imports": [
+  {
+   "path": "fmt",
+   "aliasKind": "default",
+   "usageScope": "runtime",
+   "packageId": "fmt",
+   "packageName": "fmt",
+   "standard": true,
+   "local": false,
+   "direct": true,
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 161,
+     "line": 6,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 166,
+     "line": 6,
+     "column": 7
+    }
+   },
+   "resolved": true
+  },
+  {
+   "path": "net/http",
+   "aliasKind": "default",
+   "usageScope": "runtime",
+   "packageId": "net/http",
+   "packageName": "http",
+   "standard": true,
+   "local": false,
+   "direct": true,
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 168,
+     "line": 7,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 178,
+     "line": 7,
+     "column": 12
+    }
+   },
+   "resolved": true
+  }
+ ],
+ "declarations": [
+  {
+   "id": "github.com/example/unreachable-app||handleHealth|func(w net/http.ResponseWriter, r *net/http.Request)",
+   "name": "handleHealth",
+   "kind": "function",
+   "usageScope": "runtime",
+   "packagePath": "github.com/example/unreachable-app",
+   "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+   "exported": false,
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 315,
+     "line": 16,
+     "column": 1
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 405,
+     "line": 18,
+     "column": 2
+    }
+   }
+  },
+  {
+   "id": "github.com/example/unreachable-app||main|func()",
+   "name": "main",
+   "kind": "function",
+   "usageScope": "runtime",
+   "packagePath": "github.com/example/unreachable-app",
+   "signature": "func()",
+   "exported": false,
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 182,
+     "line": 10,
+     "column": 1
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 313,
+     "line": 14,
+     "column": 2
+    }
+   }
+  }
+ ],
+ "apiEndpoints": [
+  {
+   "id": "github.com/example/unreachable-app|sha256:6471dace0c4d55896133d5a5aa174c858075c09f1aa662a42a5e2b7eb8bf7d2b",
+   "kind": "http-listener",
+   "framework": "net/http",
+   "path": ":8080",
+   "host": ":8080",
+   "scheme": "http",
+   "handler": "nil",
+   "packagePath": "github.com/example/unreachable-app",
+   "usageScope": "runtime",
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 278,
+     "line": 13,
+     "column": 6
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 311,
+     "line": 13,
+     "column": 39
+    }
+   },
+   "properties": {
+    "listener": "true"
+   }
+  },
+  {
+   "id": "github.com/example/unreachable-app|sha256:eeb5814d3cbdcfc69f480bc7638a5fae7c431661b17466f10f477f3d21d50cbe",
+   "kind": "http-route",
+   "framework": "net/http",
+   "path": "/health",
+   "handler": "handleHealth",
+   "packagePath": "github.com/example/unreachable-app",
+   "usageScope": "runtime",
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 197,
+     "line": 11,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 237,
+     "line": 11,
+     "column": 42
+    }
+   }
+  }
+ ],
+ "services": [
+  {
+   "id": "service|server|github.com/example/unreachable-app|:8080",
+   "name": ":8080",
+   "kind": "server",
+   "host": ":8080",
+   "scheme": "http",
+   "packagePath": "github.com/example/unreachable-app",
+   "endpoints": [
+    {
+     "endpointId": "github.com/example/unreachable-app|sha256:6471dace0c4d55896133d5a5aa174c858075c09f1aa662a42a5e2b7eb8bf7d2b",
+     "path": ":8080",
+     "properties": {
+      "framework": "net/http",
+      "handler": "nil"
+     }
+    }
+   ],
+   "properties": {
+    "evidence": "api-endpoint"
+   }
+  },
+  {
+   "id": "service|server|github.com/example/unreachable-app|net/http",
+   "name": "net/http",
+   "kind": "server",
+   "packagePath": "github.com/example/unreachable-app",
+   "endpoints": [
+    {
+     "endpointId": "github.com/example/unreachable-app|sha256:eeb5814d3cbdcfc69f480bc7638a5fae7c431661b17466f10f477f3d21d50cbe",
+     "path": "/health",
+     "properties": {
+      "framework": "net/http",
+      "handler": "handleHealth"
+     }
+    }
+   ],
+   "properties": {
+    "evidence": "api-endpoint"
+   }
+  }
+ ],
+ "securitySignals": [
+  {
+   "id": "github.com/example/unreachable-app|sha256:8166fae94a414ce0d58bcffdaae5fa41ffc7e42d571a7f6afe331ed42ce17ea5",
+   "category": "http-server",
+   "severity": "medium",
+   "confidence": "type-resolved",
+   "usageScope": "runtime",
+   "packagePath": "github.com/example/unreachable-app",
+   "symbol": "net/http.ListenAndServe",
+   "description": "Starts an HTTP server without TLS at this call site.",
+   "recommendation": "Use TLS or document trusted network boundaries.",
+   "range": {
+    "start": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 278,
+     "line": 13,
+     "column": 6
+    },
+    "end": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 297,
+     "line": 13,
+     "column": 25
+    }
+   }
+  }
+ ],
+ "dataFlow": {
+  "engine": "seam",
+  "mode": "all",
+  "stats": {
+   "sourceCount": 0,
+   "sinkCount": 0,
+   "sliceCount": 0,
+   "nodeCount": 0,
+   "edgeCount": 0,
+   "summaryCount": 0,
+   "functionCount": 235,
+   "instructionCount": 0,
+   "elapsedMillis": 286
+  },
+  "sliceReachability": {
+   "status": "computed",
+   "algorithm": "rta",
+   "rootKinds": [
+    "exported",
+    "init",
+    "main",
+    "synthetic-registration"
+   ],
+   "reachablePackages": [
+    "github.com/example/unreachable-app"
+   ],
+   "rootCount": 44,
+   "rootedSliceCount": 0,
+   "unrootedSliceCount": 0
+  }
+ },
+ "supplyChain": {
+  "goDirectiveVersion": "1.21",
+  "replaces": [
+   {
+    "kind": "replace",
+    "modulePath": "github.com/example/vuln-lib",
+    "targetModulePath": "../vuln-lib",
+    "localReplacement": true,
+    "targetPathKind": "relative",
+    "source": "go.mod"
+   }
+  ],
+  "modules": [
+   {
+    "path": "github.com/example/unreachable-app",
+    "purl": "pkg:golang/github.com/example/unreachable-app",
+    "main": true
+   }
+  ]
+ },
+ "callGraph": {
+  "mode": "static",
+  "algorithm": "static",
+  "roots": [
+   {
+    "id": "github.com/example/unreachable-app.handleHealth",
+    "function": "github.com/example/unreachable-app.handleHealth",
+    "rootReason": "synthetic-registration"
+   },
+   {
+    "id": "github.com/example/unreachable-app.init",
+    "function": "github.com/example/unreachable-app.init",
+    "rootReason": "init"
+   },
+   {
+    "id": "github.com/example/unreachable-app.main",
+    "function": "github.com/example/unreachable-app.main",
+    "rootReason": "main"
+   }
+  ],
+  "reachability": {
+   "nodes": [
+    {
+     "nodeId": "github.com/example/unreachable-app.handleHealth",
+     "reachableFromRoots": true
+    },
+    {
+     "nodeId": "github.com/example/unreachable-app.init",
+     "reachableFromRoots": true
+    },
+    {
+     "nodeId": "github.com/example/unreachable-app.main",
+     "reachableFromRoots": true
+    }
+   ]
+  },
+  "nodes": [
+   {
+    "id": "github.com/example/unreachable-app.handleHealth",
+    "name": "handleHealth",
+    "label": "github.com/example/unreachable-app.handleHealth",
+    "kind": "function",
+    "packagePath": "github.com/example/unreachable-app",
+    "packageName": "main",
+    "module": {
+     "path": "github.com/example/unreachable-app",
+     "dir": "/src/repos/unreachable-app",
+     "goMod": "/src/repos/unreachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/unreachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/unreachable-app",
+    "standard": false,
+    "local": true,
+    "external": false,
+    "visibility": "local",
+    "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+    "position": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 320,
+     "line": 16,
+     "column": 6
+    }
+   },
+   {
+    "id": "github.com/example/unreachable-app.init",
+    "name": "init",
+    "label": "github.com/example/unreachable-app.init",
+    "kind": "function",
+    "packagePath": "github.com/example/unreachable-app",
+    "packageName": "main",
+    "module": {
+     "path": "github.com/example/unreachable-app",
+     "dir": "/src/repos/unreachable-app",
+     "goMod": "/src/repos/unreachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/unreachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/unreachable-app",
+    "standard": false,
+    "local": true,
+    "external": false,
+    "synthetic": true,
+    "syntheticKind": "package initializer",
+    "visibility": "local",
+    "signature": "func()",
+    "position": {}
+   },
+   {
+    "id": "github.com/example/unreachable-app.main",
+    "name": "main",
+    "label": "github.com/example/unreachable-app.main",
+    "kind": "function",
+    "packagePath": "github.com/example/unreachable-app",
+    "packageName": "main",
+    "module": {
+     "path": "github.com/example/unreachable-app",
+     "dir": "/src/repos/unreachable-app",
+     "goMod": "/src/repos/unreachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/unreachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/unreachable-app",
+    "standard": false,
+    "local": true,
+    "external": false,
+    "visibility": "local",
+    "signature": "func()",
+    "position": {
+     "filename": "/src/repos/unreachable-app/main.go",
+     "offset": 187,
+     "line": 10,
+     "column": 6
+    }
+   }
+  ],
+  "stats": {
+   "nodeCount": 3,
+   "edgeCount": 0
+  }
+ },
+ "stats": {
+  "packageCount": 1,
+  "moduleCount": 1,
+  "fileCount": 1,
+  "generatedFileCount": 0,
+  "importCount": 2,
+  "declarationCount": 2,
+  "usageCount": 0,
+  "runtimeUsageCount": 0,
+  "testUsageCount": 0,
+  "benchmarkUsageCount": 0,
+  "fuzzUsageCount": 0,
+  "exampleUsageCount": 0,
+  "buildDirectiveCount": 0,
+  "nativeArtifactCount": 0,
+  "nativeBoundaryCount": 0,
+  "buildShapeDeltaCount": 0,
+  "apiEndpointCount": 2,
+  "externalUrlCount": 0,
+  "serviceCount": 2,
+  "securitySignalCount": 1,
+  "goModReplaceCount": 1,
+  "goModExcludeCount": 0,
+  "vendorModuleCount": 0,
+  "workspaceModuleCount": 0,
+  "privateModuleHintCount": 0,
+  "licenseFileModuleCount": 0,
+  "cryptoLibraryCount": 0,
+  "cryptoAssetCount": 0,
+  "cryptoOperationCount": 0,
+  "cryptoMaterialCount": 0,
+  "cryptoProtocolCount": 0,
+  "cryptoFindingCount": 0,
+  "dataFlowSourceCount": 0,
+  "dataFlowSinkCount": 0,
+  "dataFlowSliceCount": 0,
+  "diagnosticCount": 0
+ }
+}

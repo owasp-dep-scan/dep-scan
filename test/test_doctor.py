@@ -848,9 +848,7 @@ def test_require_unknown_capability_is_a_usage_error(fixed_report, capsys):
 def test_require_unknown_capability_writes_the_error_document(fixed_report, capsys):
     """In json format the usage error writes the error document, with the
     unknown names in its details, next to the message on stderr."""
-    code = doctor_mod.run_doctor_command(
-        ["--format", "json", "--require", "reachability:cobol"]
-    )
+    code = doctor_mod.run_doctor_command(["--format", "json", "--require", "reachability:cobol"])
     assert code == doctor_mod.EXIT_USAGE == 2
     document, captured = _one_document(capsys)
     assert document["error"] == {
@@ -962,7 +960,10 @@ def test_documented_capability_table_matches_the_code():
     "output, expected",
     [
         ('{"compiler":{"version":"2.4.20"},"version":"4.3.1"}', "4.3.1"),
-        ('WARNING: jvm noise\n{\n  "compiler": {"version": "2.4.20"},\n  "version": "4.3.1"\n}\n', "4.3.1"),
+        (
+            'WARNING: jvm noise\n{\n  "compiler": {"version": "2.4.20"},\n  "version": "4.3.1"\n}\n',
+            "4.3.1",
+        ),
         ('{"compiler":{"version":"2.4.20"}}', None),
         ("kosi", None),
     ],
@@ -978,3 +979,176 @@ def test_kosi_report_entry_carries_the_top_level_version(fakes, monkeypatch):
     )
     monkeypatch.setenv("KOSI_CMD", str(binary))
     assert _tool_entries(doctor_mod.doctor())["kosi"].version == "4.3.1"
+
+
+# --- plugins found beside the cdxgen install -----------------------------------
+
+
+@pytest.fixture(params=["link", "shim"])
+def install_env(request, plugins_env, fakes, monkeypatch):
+    """The plugins tree under a cdxgen install, with no CDXGEN_PLUGINS_DIR.
+
+    ``link``: ``<root>/bin/cdxgen`` and ``<root>/package.json``, with the
+    plugins package under ``<root>/node_modules/@cdxgen``; cdxgen is on PATH
+    through a symlink, the way ``~/.local/bin/cdxgen`` points into a package
+    manager's install.
+
+    ``shim``: what a global npm install writes on Windows, a ``cdxgen.cmd``
+    shim (a shell shim elsewhere) in ``<prefix>`` beside
+    ``<prefix>/node_modules/@cdxgen/cdxgen``, which carries the plugins.
+    """
+    target = doctor_mod.get_plugins_bin_target()
+    plugins_pkg = f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}"
+    windows = sys.platform == "win32"
+    base = fakes.record.parent
+    path_dir = base / "on-path"
+    path_dir.mkdir()
+    if request.param == "link":
+        root = base / "cdxgen-install"
+        package = root / "node_modules" / "@cdxgen" / plugins_pkg
+        (root / "bin").mkdir(parents=True)
+        (root / "package.json").write_text("{}", encoding="utf-8")
+        name = "cdxgen.exe" if windows else "cdxgen"
+        real_cdxgen = root / "bin" / name
+        real_cdxgen.write_text(
+            Path(os.environ["CDXGEN_CMD"]).read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        real_cdxgen.chmod(0o755)
+        try:
+            (path_dir / name).symlink_to(real_cdxgen)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks are not available")
+    else:
+        # A shim is not runnable here (no node), so its version probe runs the
+        # fake cdxgen the plugins_env fixture installed.
+        fake_cdxgen = os.environ["CDXGEN_CMD"]
+        probe = doctor_mod._version_command
+        shim_dir = os.path.normcase(str(path_dir))
+
+        def shim_aware_command(path, args):
+            if os.path.normcase(os.path.dirname(str(path))) == shim_dir:
+                return [sys.executable, fake_cdxgen, *args]
+            return probe(path, args)
+
+        monkeypatch.setattr(doctor_mod, "_version_command", shim_aware_command)
+        cdxgen_pkg = path_dir / "node_modules" / "@cdxgen" / "cdxgen"
+        package = cdxgen_pkg / "node_modules" / "@cdxgen" / plugins_pkg
+        (cdxgen_pkg / "bin").mkdir(parents=True)
+        (cdxgen_pkg / "package.json").write_text("{}", encoding="utf-8")
+        (cdxgen_pkg / "bin" / "cdxgen.js").write_text("// cdxgen\n", encoding="utf-8")
+        target_js = "node_modules/@cdxgen/cdxgen/bin/cdxgen.js"
+        shims = {"cdxgen": f'#!/bin/sh\nexec node "$basedir/{target_js}" "$@"\n'}
+        if windows:
+            shims["cdxgen.cmd"] = f'@ECHO off\r\n"%_prog%"  "%dp0%\\{target_js}" %*\r\n'
+        for shim_name, text in shims.items():
+            (path_dir / shim_name).write_text(text, encoding="utf-8", newline="")
+            (path_dir / shim_name).chmod(0o755)
+    package.mkdir(parents=True, exist_ok=True)
+    installed = package / "plugins"
+    plugins_env.plugins_dir.rename(installed)
+    (package / "package.json").write_text("{}", encoding="utf-8")
+    monkeypatch.delenv("CDXGEN_PLUGINS_DIR")
+    monkeypatch.delenv("CDXGEN_CMD")
+    monkeypatch.setenv("PATH", str(path_dir))
+    monkeypatch.setenv("PATHEXT", ".COM;.EXE;.BAT;.CMD")
+    return SimpleNamespace(plugins_dir=installed, path_dir=path_dir)
+
+
+def test_plugins_beside_the_cdxgen_install_are_used(install_env, fakes):
+    """golem, rusi, dosai and kosi come from the install, and the reachability
+    capabilities that need them become available."""
+    report = doctor_mod.doctor()
+    entries = _tool_entries(report)
+    assert entries["cdxgen-plugins"].path == str(install_env.plugins_dir)
+    assert entries["cdxgen-plugins"].source == "cdxgen-install"
+    for tool in ("golem", "rusi", "dosai", "kosi"):
+        assert entries[tool].path is not None, tool
+        assert Path(entries[tool].path).is_relative_to(install_env.plugins_dir), tool
+        assert entries[tool].source == "plugins-dir", tool
+    for tool in ("golem", "rusi", "dosai"):
+        _assert_probed(fakes.record, tool, ["--version"])
+    signature = _capability_signature(report)
+    for name in ("reachability:go", "reachability:rust", "reachability:dotnet"):
+        assert signature[name] == ("available", ()), name
+
+
+def test_plugins_dir_env_wins_over_the_install(install_env, plugins_env, tmp_path, monkeypatch):
+    """CDXGEN_PLUGINS_DIR keeps priority over the directory beside cdxgen."""
+    target = doctor_mod.get_plugins_bin_target()
+    other = tmp_path / "other-plugins"
+    (other / "golem").mkdir(parents=True)
+    golem = other / "golem" / f"golem-{target['platform']}-{target['arch']}{target['extn']}"
+    golem.write_text("#!/bin/sh\n", encoding="utf-8")
+    monkeypatch.setenv("CDXGEN_PLUGINS_DIR", str(other))
+    entries = _tool_entries(doctor_mod.doctor())
+    assert entries["cdxgen-plugins"].path == str(other)
+    assert entries["golem"].path == str(golem)
+    assert entries["golem"].source == "plugins-dir"
+
+
+def test_no_discovery_without_cdxgen(install_env, monkeypatch, tmp_path):
+    """Without cdxgen on PATH nothing leads to the install's plugins."""
+    empty = tmp_path / "no-cdxgen"
+    empty.mkdir()
+    monkeypatch.setenv("PATH", str(empty))
+    entries = _tool_entries(doctor_mod.doctor())
+    assert entries["cdxgen-plugins"].path is None
+    for tool in ("golem", "rusi", "kosi"):
+        assert entries[tool].path is None, tool
+
+
+# --- dosai that cannot start ---------------------------------------------------
+
+# What the .NET apphost prints, with the exit status 150, when the runtime
+# dosai was built for is not installed. The home path is neutral.
+APPHOST_FAILURE = """You must install or update .NET to run this application.
+
+App: /home/user/.local/bin/dosai
+Architecture: arm64
+Framework: 'Microsoft.NETCore.App', version '11.0.0' (arm64)
+.NET location: /usr/local/share/dotnet
+
+The following frameworks were found:
+  9.0.6 at [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]
+  10.0.0 at [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]
+
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+
+To install missing framework, download:
+https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=11.0.0&arch=arm64&rid=osx-arm64&os=osx.27
+"""
+
+
+def test_dosai_apphost_failure_is_not_a_version(plugins_env, fakes, monkeypatch):
+    """The framework numbers in the apphost message are not dosai's version:
+    dosai is unusable, names the framework it needs and reachability:dotnet
+    is unavailable."""
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", APPHOST_FAILURE, exit_code=150)))
+    report = doctor_mod.doctor()
+    dosai = _tool_entries(report)["dosai"]
+    assert dosai.version is None
+    assert not dosai.usable
+    assert "Microsoft.NETCore.App 11.0.0" in dosai.reason
+    assert "DOTNET_ROOT" in dosai.reason
+    _assert_probed(fakes.record, "dosai", ["--version"])
+    assert _capability_signature(report)["reachability:dotnet"][0] == "unavailable"
+
+
+def test_dosai_apphost_text_with_a_zero_exit_is_still_a_failure(fakes, monkeypatch, plugins_env):
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", APPHOST_FAILURE, exit_code=0)))
+    dosai = _tool_entries(doctor_mod.doctor())["dosai"]
+    assert dosai.version is None and not dosai.usable
+
+
+def test_dosai_nonzero_exit_without_a_message_is_unusable(fakes, monkeypatch, plugins_env):
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", "5.0.0", exit_code=3)))
+    dosai = _tool_entries(doctor_mod.doctor())["dosai"]
+    assert dosai.version is None and not dosai.usable
+    assert "status 3" in dosai.reason
+
+
+def test_dosai_that_starts_keeps_its_version(fakes, monkeypatch, plugins_env):
+    monkeypatch.setenv("DOSAI_CMD", str(fakes.script("dosai", "5.0.0+0c35f37", exit_code=0)))
+    dosai = _tool_entries(doctor_mod.doctor())["dosai"]
+    assert dosai.version == "5.0.0" and dosai.usable

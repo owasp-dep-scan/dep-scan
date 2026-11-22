@@ -31,6 +31,8 @@ from pathlib import Path
 import pytest
 
 from analysis_lib import ReachabilityAnalysisKV
+from analysis_lib.evidence import store as evidence_store
+from analysis_lib.evidence.adapters import STATUS_COMPLETED
 from analysis_lib.reachability import FrameworkReachability
 from depscan.lib.bom import run_rusi_reachability
 from xbom_lib import rusi as rusi_mod
@@ -135,6 +137,14 @@ def _reached_purls(bom_dir: Path) -> set:
     return set((res.reached_purls or {}).keys())
 
 
+def _merge_records(bom_dir: Path, adapter_result):
+    """Merge one adapter result's records into the store, as the enrichment
+    stage merges every result of a project type."""
+    path = str(Path(bom_dir) / evidence_store.EVIDENCE_FILE)
+    base = evidence_store.read(path) if os.path.isfile(path) else []
+    evidence_store.write(path, evidence_store.merge(base, adapter_result.records))
+
+
 # ---------------------------------------------------------------------------
 # primary path: consume the report cdxgen persists, WITHOUT spawning rusi
 # ---------------------------------------------------------------------------
@@ -165,7 +175,7 @@ def test_consumes_cdxgen_semantics_report_without_spawning(tmp_path, rusi_env, m
     # Now make the binary unresolvable so the fallback CANNOT run rusi.
     monkeypatch.setattr(_rusi_mod, "find_rusi_binary", lambda logger=None: None)
 
-    ok = run_rusi_reachability(
+    result = run_rusi_reachability(
         str(bom_file),
         str(src),
         options={
@@ -173,8 +183,11 @@ def test_consumes_cdxgen_semantics_report_without_spawning(tmp_path, rusi_env, m
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok, "must consume the cdxgen-produced semantics report without spawning rusi"
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "must consume the cdxgen-produced semantics report without spawning rusi"
+    )
 
+    _merge_records(bom_dir, result)
     reached = _reached_purls(bom_dir)
     assert "pkg:cargo/sqlx@0.6.2" in reached
     assert "pkg:cargo/reachable-app@0.1.0" in reached
@@ -192,7 +205,7 @@ def test_reachable_app_marks_sqlx_reached(tmp_path, rusi_env):
     _write_cargo_bom(bom_file, "reachable-app")
     src = RUSI_REPOS / "reachable-app"
 
-    ok = run_rusi_reachability(
+    result = run_rusi_reachability(
         str(bom_file),
         str(src),
         options={
@@ -200,13 +213,12 @@ def test_reachable_app_marks_sqlx_reached(tmp_path, rusi_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok, "rusi reachability should have run"
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "rusi reachability should have run"
+    )
+    assert result.records, "at least one record expected for a tainted call"
 
-    slice_file = tmp_path / "rust-reachables.slices.json"
-    assert slice_file.exists(), "slice file must be emitted next to the BOM"
-    flows = json.loads(slice_file.read_text())
-    assert flows, "at least one flow expected for a tainted call"
-
+    _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
     assert "pkg:cargo/sqlx@0.6.2" in reached, (
         "sqlx MUST be reached when the app calls sqlx::query on a tainted path"
@@ -226,7 +238,7 @@ def test_unreachable_app_does_not_mark_sqlx_reached(tmp_path, rusi_env):
     _write_cargo_bom(bom_file, "unreachable-app")
     src = RUSI_REPOS / "unreachable-app"
 
-    ok = run_rusi_reachability(
+    result = run_rusi_reachability(
         str(bom_file),
         str(src),
         options={
@@ -234,10 +246,13 @@ def test_unreachable_app_does_not_mark_sqlx_reached(tmp_path, rusi_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    # rusi will still run + emit a slice for the app's own code; we just assert
-    # sqlx is NOT among the reached purls.
-    assert ok, "rusi reachability should still run (the project is rust)"
+    # rusi will still run and produce records for the app's own code; we just
+    # assert sqlx is NOT among the reached purls.
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "rusi reachability should still run (the project is rust)"
+    )
 
+    _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
     assert "pkg:cargo/sqlx@0.6.2" not in reached, (
         "sqlx MUST NOT be reached when the app only depends on it without calling"
@@ -249,18 +264,19 @@ def test_unreachable_app_does_not_mark_sqlx_reached(tmp_path, rusi_env):
 # ---------------------------------------------------------------------------
 
 
-def test_rusi_slice_is_deterministic(tmp_path, rusi_env):
-    """Two independent rusi runs on the same repo produce byte-identical slices.
+def test_rusi_records_are_deterministic(tmp_path, rusi_env):
+    """Two independent rusi runs on the same repo produce stores with the same
+    bytes.
 
-    rusi is documented as byte-reproducible (sorted collections); the converter
-    sorts purls + flows, so the emitted slice file must be stable.
+    rusi is documented as byte-reproducible (sorted collections), so the
+    records, and the store written from them, must be stable.
     """
     src = RUSI_REPOS / "reachable-app"
 
-    def _run_once(work_dir: Path) -> str:
+    def _run_once(work_dir: Path) -> bytes:
         bom_file = work_dir / "sbom-rust.cdx.json"
         _write_cargo_bom(bom_file, "reachable-app")
-        assert run_rusi_reachability(
+        result = run_rusi_reachability(
             str(bom_file),
             str(src),
             options={
@@ -268,7 +284,10 @@ def test_rusi_slice_is_deterministic(tmp_path, rusi_env):
                 "reachability_analyzer": "FrameworkReachability",
             },
         )
-        return (work_dir / "rust-reachables.slices.json").read_text()
+        assert result is not None and result.status == STATUS_COMPLETED
+        store_path = str(work_dir / evidence_store.EVIDENCE_FILE)
+        evidence_store.write(store_path, result.records)
+        return Path(store_path).read_bytes()
 
     d1 = tmp_path / "d1"
     d2 = tmp_path / "d2"
@@ -276,7 +295,7 @@ def test_rusi_slice_is_deterministic(tmp_path, rusi_env):
     d2.mkdir()
     s1 = _run_once(d1)
     s2 = _run_once(d2)
-    assert s1 == s2, "rusi slice output must be deterministic across runs"
+    assert s1 == s2, "rusi record output must be deterministic across runs"
 
 
 # ---------------------------------------------------------------------------
@@ -284,9 +303,10 @@ def test_rusi_slice_is_deterministic(tmp_path, rusi_env):
 # ---------------------------------------------------------------------------
 
 
-def test_rusi_reachability_skips_when_binary_missing(tmp_path, monkeypatch):
-    """When the rusi binary cannot be found, run_rusi_reachability must return
-    False (not crash) and leave no slice file behind."""
+def test_rusi_reachability_not_assessed_when_binary_missing(tmp_path, monkeypatch):
+    """When the rusi binary cannot be found, run_rusi_reachability returns a
+    not-assessed result with a reason (never a clean empty one) and leaves no
+    converted slice behind."""
     # force resolution to fail on all paths
     monkeypatch.setattr(rusi_mod, "find_rusi_binary", lambda logger=None: None)
     bom_file = tmp_path / "sbom-rust.cdx.json"
@@ -301,7 +321,8 @@ def test_rusi_reachability_skips_when_binary_missing(tmp_path, monkeypatch):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert result is False
+    assert result is not None and result.status != STATUS_COMPLETED
+    assert result.reason
     assert not (tmp_path / "rust-reachables.slices.json").exists()
 
 
@@ -326,7 +347,7 @@ def test_rusi_reachability_noop_for_non_rust(tmp_path, rusi_env):
         str(tmp_path),
         options={"project_type": ["js"], "reachability_analyzer": "FrameworkReachability"},
     )
-    assert result is False
+    assert result is None
     assert not (tmp_path / "rust-reachables.slices.json").exists()
 
 
@@ -340,7 +361,7 @@ def test_rusi_reachability_noop_when_reachability_off(tmp_path, rusi_env):
         str(src),
         options={"project_type": ["rust"], "reachability_analyzer": "off"},
     )
-    assert result is False
+    assert result is None
 
 
 def test_rusi_reachability_accepts_cargo_alias(tmp_path, rusi_env):
@@ -350,7 +371,7 @@ def test_rusi_reachability_accepts_cargo_alias(tmp_path, rusi_env):
     bom_file = tmp_path / "sbom-rust.cdx.json"
     _write_cargo_bom(bom_file, "reachable-app")
     src = RUSI_REPOS / "reachable-app"
-    ok = run_rusi_reachability(
+    result = run_rusi_reachability(
         str(bom_file),
         str(src),
         options={
@@ -358,8 +379,9 @@ def test_rusi_reachability_accepts_cargo_alias(tmp_path, rusi_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok, "rusi reachability should run for the 'cargo' project-type alias"
-    assert (tmp_path / "rust-reachables.slices.json").exists()
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "rusi reachability should run for the 'cargo' project-type alias"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -408,7 +430,7 @@ def test_smoke_rusi_vulnerable_web_app_fixture(tmp_path, rusi_env):
         encoding="utf-8",
     )
 
-    ok = run_rusi_reachability(
+    result = run_rusi_reachability(
         str(bom_file),
         str(RUSI_FIXTURE),
         options={
@@ -416,8 +438,9 @@ def test_smoke_rusi_vulnerable_web_app_fixture(tmp_path, rusi_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok
+    assert result is not None and result.status == STATUS_COMPLETED
 
+    _merge_records(tmp_path, result)
     reached = _reached_purls(tmp_path)
     # all three external crates must reconcile + light up
     assert "pkg:cargo/sqlx@0.6.2" in reached
@@ -501,7 +524,7 @@ def test_rustsec_time_reachable_in_vdr(tmp_path, rusi_env):
 
     bom_file = tmp_path / "sbom-rust.cdx.json"
     _write_rustsec_bom(bom_file)
-    ok = run_rusi_reachability(
+    result = run_rusi_reachability(
         str(bom_file),
         str(RUSTSEC_APP),
         options={
@@ -509,11 +532,12 @@ def test_rustsec_time_reachable_in_vdr(tmp_path, rusi_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    if not ok:
+    if result is None or result.status != STATUS_COMPLETED:
         pytest.skip(
             "rusi could not run on rustsec-app (binary missing or cargo cannot "
             "resolve 'time' offline)"
         )
+    _merge_records(tmp_path, result)
 
     # --- slice -> reached_purls ---
     opts = ReachabilityAnalysisKV(
@@ -697,8 +721,8 @@ def test_cdxgen_to_depscan_rustsec_app_end_to_end(tmp_path, rusi_env):
     ``--semantics-slices-file`` -- exactly what depscan's ``set_slices_args``
     passes -- so cdxgen runs rusi via evinse and PERSISTS the full raw report.
     depscan's ``run_rusi_reachability`` then consumes that persisted report
-    (the primary path; no direct rusi spawn) and emits
-    ``rust-reachables.slices.json``. We assert:
+    (the primary path; no direct rusi spawn) and hands it to the evidence
+    adapter. We assert:
 
       - the persisted file has the rusi report SHAPE (so depscan can consume it),
       - ``pkg:cargo/time@0.1.45`` (RUSTSEC-2020-0071, called via time::now())
@@ -755,7 +779,7 @@ def test_cdxgen_to_depscan_rustsec_app_end_to_end(tmp_path, rusi_env):
         "--semantics-slices-file"
     )
     # ... and it must carry the rusi report SHAPE (the primary-path contract).
-    from analysis_lib.rusi_slices import is_rusi_report
+    from analysis_lib.evidence.adapters.rusi import is_rusi_report
 
     persisted = json.loads(semantics_file.read_text())
     assert is_rusi_report(persisted), (
@@ -763,8 +787,9 @@ def test_cdxgen_to_depscan_rustsec_app_end_to_end(tmp_path, rusi_env):
         "tool/runtime), not an atom semantics slice"
     )
 
-    # depscan consumes the persisted report (primary path; no direct rusi spawn).
-    ok = run_rusi_reachability(
+    # depscan consumes the persisted report (primary path; no direct rusi
+    # spawn) and hands it to the adapter.
+    result = run_rusi_reachability(
         str(bom_file),
         src,
         options={
@@ -772,8 +797,10 @@ def test_cdxgen_to_depscan_rustsec_app_end_to_end(tmp_path, rusi_env):
             "reachability_analyzer": "FrameworkReachability",
         },
     )
-    assert ok, "depscan must consume the cdxgen-persisted rusi report"
-    assert (tmp_path / "rust-reachables.slices.json").exists()
+    assert result is not None and result.status == STATUS_COMPLETED, (
+        "depscan must consume the cdxgen-persisted rusi report"
+    )
+    _merge_records(tmp_path, result)
 
     # the real Cargo BOM must carry versioned purls for time and libc.
     bom_data = json.loads(bom_file.read_text())

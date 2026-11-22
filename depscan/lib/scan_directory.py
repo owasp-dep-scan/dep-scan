@@ -21,6 +21,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -36,23 +37,22 @@ from depscan.lib.doctor import DoctorReport
 #: drops the Pressure axis from exploitability and adds its sources.
 FINDINGS_SCHEMA_VERSION = "2"
 
-#: The scan directory layout this version writes and reads.
-LAYOUT_VERSION = "1.0"
+#: The scan directory layout this version writes and reads. Layout 2 is
+#: the evidence store layout: a manifest whose major is 1 predates the
+#: evidence files and is refused on load.
+LAYOUT_VERSION = "2.0"
 
 #: The major version this code accepts when loading a manifest.
-LAYOUT_MAJOR = 1
+LAYOUT_MAJOR = 2
 
 MANIFEST_FILE = "depscan.manifest.json"
 FINDINGS_FILE = "depscan.findings.json"
 
-#: Named in the layout and in the enrichment stage's outputs; no evidence
-#: store exists in this version, so the file is never written.
+#: Named in the layout and in the enrichment stage's outputs. The store is
+#: written once per project type after the adapters run, and the index is
+#: written last, after the findings exist, so both carry finished content.
 EVIDENCE_FILE = "evidence.jsonl"
-
-EVIDENCE_NOT_PRODUCED_REASON = (
-    "this version does not produce an evidence store; reachability stays in "
-    "the slices files and the VDR properties"
-)
+EVIDENCE_INDEX_FILE = "evidence.index.json"
 
 #: The directory under which dep-scan's own tool runs keep their raw reports.
 ANALYSIS_DIR = "analysis"
@@ -86,8 +86,18 @@ _PATH_OPTIONS = (
 #: The suffixes of the cdxgen slice files, for role and project type parsing.
 _SLICE_KINDS = ("deps", "usages", "callsites", "data-flow", "reachables", "semantics")
 
-#: The reachables slices dep-scan itself writes from a plugin's raw report.
-_LANGUAGE_REACHABLES = ("rust", "go", "dotnet")
+#: The reachables slices dep-scan's earlier versions wrote from a plugin's
+#: raw report. Nothing writes them any more; the names stay so a stale file
+#: keeps its true producer, kosi's included.
+_LANGUAGE_REACHABLES = ("rust", "go", "dotnet", "kosi")
+
+#: A converted reachables slice of an earlier dep-scan version, split parts
+#: (``.slices_1.json``, ``.slices-1.json``) included. The other slices of
+#: those prefixes, such as ``dotnet-usages.slices.json`` or the
+#: ``rust-semantics.slices.json`` raw report, are cdxgen's.
+_LANGUAGE_REACHABLES_RE = re.compile(
+    r"^(?:%s)-reachables\.slices(?:[_-]\d+)?\.json$" % "|".join(_LANGUAGE_REACHABLES)
+)
 
 #: Files the rendering stages write, named for their role.
 _REPORT_FILES = {
@@ -293,6 +303,9 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
     if name == FINDINGS_FILE:
         entry.update(role="findings", producer="dep-scan")
         return entry
+    if name == EVIDENCE_FILE or name == EVIDENCE_INDEX_FILE:
+        entry.update(role="evidence", producer="dep-scan")
+        return entry
     if name.endswith(".vdr.json"):
         project_type = None
         vdr_stem = name[: -len(".vdr.json")]
@@ -308,7 +321,7 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         return entry
     if ".slices" in name and name.endswith(".json"):
         prefix = _parse_slice_project_type(name[: -len(".json")])
-        producer = "dep-scan" if prefix in _LANGUAGE_REACHABLES else "cdxgen"
+        producer = "dep-scan" if _LANGUAGE_REACHABLES_RE.match(name) else "cdxgen"
         if prefix:
             entry.update(role="slices", producer=producer, projectType=prefix)
         else:
@@ -379,52 +392,52 @@ def walk_files(reports_dir: str) -> List[Dict[str, Any]]:
 def analyzer_entries(
     report: Optional[DoctorReport],
     project_types: List[str],
-    slices_files: Optional[List[str]],
+    adapter_results: Optional[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """The reachability analyzer entries for the enrichment stage.
+    """The reachability analyzer entries for the enrichment stage, from the
+    adapters' results.
 
     Every analyzer this scan could have used gets an entry, and the entry
-    says what the enrichment stage actually read. ``completed`` means the
-    stage read reachables slices that analyzer produces: the language
-    tools' ``rust-``, ``go-`` and ``dotnet-reachables.slices.json``, and
-    atom's for every other reachables slices file. Without such a file the
-    analyzer is ``not-assessed``, and the reason is the doctor's, naming the
-    capability, when the capability is unavailable on this machine, or
-    otherwise that no slices were produced or given. A tool being installed
-    is never reported as an analysis that ran.
+    says what the adapters actually made of the reports. ``completed`` means
+    the analyzer's adapter found and read a report: the BOM step handed one
+    over, or a BOM-directory adapter found and read one, because the
+    analysis ran when the data was generated. Anything else is
+    ``not-assessed``: the reason is the adapter's own whenever an adapter
+    result exists (a BOM-directory scan reads the reports the directory
+    holds, so a damaged report is named as damaged even on a machine without
+    the tool), and the doctor's capability reason stands in only when there
+    is no result or it gave no reason, so a tool being installed is never
+    reported as an analysis that ran. The producer-level
+    caveats of a completed result are carried on the entry as ``caveats``.
 
     atom applies to every scan; a language analyzer applies when the scan's
     project types cover it, which a BOM directory or universal scan always
     does, because such a scan may hold packages of any language.
     """
-    from depscan.lib.bom import reachability_analyzers_for_types, reachability_slice_files
+    from depscan.lib.bom import reachability_analyzers_for_types
 
     tools_by_name = report.tools_by_name() if report else {}
     data = report.data if report else {}
-    # rust-reachables.slices.json and its split files rust-reachables.slices_1.json
-    stems = {
-        name: file_name.split(".slices", 1)[0]
-        for name, file_name in reachability_slice_files().items()
-    }
-    read = [os.path.basename(path) for path in slices_files or []]
-    reachables = [name for name in read if "reachables.slices" in name]
     entries = []
     for name in reachability_analyzers_for_types(project_types):
         capability = doctor_lib.ANALYZER_CAPABILITIES[name]
-        if name == "atom":
-            produced = [f for f in reachables if not f.startswith(tuple(stems.values()))]
-            missing = "no reachables slices from atom were produced or given for this scan"
-        else:
-            produced = [f for f in reachables if f.startswith(stems[name])]
-            missing = f"no {stems[name]}.slices.json was produced or given for this scan"
         entry: Dict[str, Any] = {"name": name, "capability": capability}
-        if produced:
+        result = (adapter_results or {}).get(name)
+        if result is not None and result.status == "completed":
             entry["status"] = "completed"
+            if result.caveats:
+                entry["caveats"] = [
+                    {"kind": caveat.kind, "detail": caveat.detail} for caveat in result.caveats
+                ]
         else:
-            reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
+            reason = result.reason if result is not None and result.reason else None
+            if not reason:
+                reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
+            if not reason:
+                reason = f"no {name} report was produced or given for this scan"
             entry.update(
                 status="not-assessed",
-                reason=reason or missing,
+                reason=reason,
             )
         entries.append(entry)
     return entries

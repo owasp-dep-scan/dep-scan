@@ -152,15 +152,36 @@ def test_parse_and_generate_report_accepts_unique_count_caption(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _render_explainer_html(slices_data, project_type, purl_vuln_map, tmp_path):
-    """Run the explainer on a recording console, save HTML, and return the path."""
+def _render_explainer_html(records, project_type, purl_vuln_map, tmp_path):
+    """Run the explainer over a small store on a recording console, save HTML,
+    and return the path. The findings travel in the VDR result, as they do in
+    a scan."""
+    from analysis_lib.evidence import store as evidence_store
+    from types import SimpleNamespace
+
+    vulns = [
+        {"id": vuln["id"], "severity": vuln["severity"], "bom-ref": purl}
+        for purl, found in purl_vuln_map.items()
+        for vuln in found
+    ]
+    vdr_result = SimpleNamespace(
+        pkg_vulnerabilities=vulns, endpoint_reached_purls={}, reached_services={}
+    )
     rec_console = Console(record=True, color_system="256", width=140, theme=None)
     original_console = explainer.console
     explainer.console = rec_console
     try:
-        header = Markdown("## Reachable Flows\n\nBelow are several data flows.")
-        explainer.explain_reachables(
-            "auto", slices_data, project_type, None, purl_vuln_map, None, header
+        bom_dir = tmp_path / "boms"
+        bom_dir.mkdir(parents=True, exist_ok=True)
+        evidence_store.write(str(bom_dir / evidence_store.EVIDENCE_FILE), records)
+        explainer.explain(
+            project_type,
+            str(tmp_path),
+            str(bom_dir),
+            None,
+            vdr_result,
+            "EndpointsAndReachables",
+            None,
         )
     finally:
         explainer.console = original_console
@@ -170,17 +191,36 @@ def _render_explainer_html(slices_data, project_type, purl_vuln_map, tmp_path):
     return rich_html
 
 
+def _reached_flow_record(producer_name, purl, method, file_name):
+    """One reached-flow record whose witness path names the called symbol."""
+    from analysis_lib.evidence import EvidencePathNode, EvidenceProducer
+    from analysis_lib.evidence.adapters import build_record
+
+    producer = EvidenceProducer(name=producer_name, version="9.9.9", report_schema_version="1")
+    return build_record(
+        source="report.json",
+        producer=producer,
+        kind="reached-flow",
+        discriminator=f"{producer_name}-{purl}",
+        purls=(purl,),
+        path=(
+            EvidencePathNode(file=f"{file_name}", line=10, method=method),
+            EvidencePathNode(file=f"{file_name}", line=20, method=method, symbol="::query"),
+        ),
+    )
+
+
 def test_parse_and_generate_report_rust_reachable_flows(tmp_path):
     """The HTML report must contain the Rust reachable flow after
     console.save_html + ReportGenerator prettification."""
-    data_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
-    with open(os.path.join(data_dir, "rust-reachables.slices.json"), encoding="utf-8") as fp:
-        rust_slices = json.load(fp)
+    records = [
+        _reached_flow_record("rusi", "pkg:cargo/sqlx@0.6.2", "sqlx::query", "src/main.rs")
+    ]
 
     purl_vuln_map = defaultdict(list)
     purl_vuln_map["pkg:cargo/sqlx@0.6.2"].append({"id": "CVE-2024-SQLX", "severity": "HIGH"})
 
-    rich_html = _render_explainer_html(rust_slices, "rust", purl_vuln_map, tmp_path)
+    rich_html = _render_explainer_html(records, "rust", purl_vuln_map, tmp_path)
     output_html = tmp_path / "depscan-rust.html"
 
     generator = ReportGenerator(
@@ -202,16 +242,18 @@ def test_parse_and_generate_report_rust_reachable_flows(tmp_path):
 def test_parse_and_generate_report_go_reachable_flows(tmp_path):
     """The HTML report must contain the Go reachable flow after
     console.save_html + ReportGenerator prettification."""
-    data_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
-    with open(os.path.join(data_dir, "go-reachables.slices.json"), encoding="utf-8") as fp:
-        go_slices = json.load(fp)
+    records = [
+        _reached_flow_record(
+            "golem", "pkg:golang/github.com/jackc/pgx/v4@v4.18.1", "pgx.Connect", "main.go"
+        )
+    ]
 
     purl_vuln_map = defaultdict(list)
     purl_vuln_map["pkg:golang/github.com/jackc/pgx/v4@v4.18.1"].append(
         {"id": "CVE-2024-PGX", "severity": "CRITICAL"}
     )
 
-    rich_html = _render_explainer_html(go_slices, "go", purl_vuln_map, tmp_path)
+    rich_html = _render_explainer_html(records, "go", purl_vuln_map, tmp_path)
     output_html = tmp_path / "depscan-go.html"
 
     generator = ReportGenerator(

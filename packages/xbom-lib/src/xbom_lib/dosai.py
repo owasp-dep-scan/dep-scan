@@ -4,11 +4,9 @@ dosai is a .NET analysis engine (C#/VB/F#/R) shipped prebuilt via
 cdxgen-plugins-bin. It inspects source (Roslyn + dedicated frontends) AND
 assemblies (Reflection + IL) and emits a call graph, interprocedural
 source->sink dataflow slices, explicit per-package reachability, weakness
-candidates, dangerous-API reachability, and crypto/CBOM evidence. dep-scan
-consumes that native report directly for reachability and converts a
-projection into an atom-shaped reachables slice (see
-:mod:`analysis_lib.dosai_slices`) so the existing purl-keyed reachability
-pipeline lights up.
+candidates, dangerous-API reachability, and crypto/CBOM evidence. dep-scan's dosai adapter reads that native report into the evidence store
+(see :mod:`analysis_lib.evidence.adapters.dosai`) so the purl-keyed
+reachability pipeline lights up.
 
 This module is the **direct-spawn FALLBACK**. The primary path consumes the
 cdxgen-persisted combined native report at
@@ -26,6 +24,8 @@ fallback finds the SAME binary cdxgen uses):
   3. ``find_executable("dosai")`` / ``find_executable("Dosai")`` (PATH lookup --
      local installs / plugins-bin PATH entry).
   4. ``CDXGEN_PLUGINS_DIR`` bundled layout
+     (or the plugins directory found beside the cdxgen install, see
+     :func:`xbom_lib.plugins.discover_plugins_dir`)
      ``<pluginsDir>/dosai/dosai-<platform>-<arch><extn>`` using cdxgen's
      platform/arch/musl tokens (reused from :mod:`xbom_lib.plugins`).
   5. Not found -> graceful skip with a diagnostic (never crash).
@@ -56,12 +56,13 @@ reconciled where the SBOM carries them.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
-from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.plugins import bundled_plugin_path, find_bundled_plugin, get_plugins_bin_target
 from xbom_lib.process import build_command, find_executable, tool_env
 
 
@@ -151,15 +152,7 @@ def bundled_dosai_path(plugins_dir: Optional[str], target: Optional[dict] = None
     Upstream release assets are ``Dosai-<platform>`` but cdxgen-plugins-bin
     renames them to this lowercase layout on install (see module docstring).
     """
-    if not plugins_dir:
-        return None
-    target = target or get_plugins_bin_target()
-    candidate = os.path.join(
-        plugins_dir,
-        "dosai",
-        f"dosai-{target['platform']}-{target['arch']}{target['extn']}",
-    )
-    return candidate if os.path.isfile(candidate) else None
+    return bundled_plugin_path(plugins_dir, "dosai", target or get_plugins_bin_target())
 
 
 def find_dosai_binary(logger: Optional[Logger] = None) -> Optional[str]:
@@ -169,7 +162,9 @@ def find_dosai_binary(logger: Optional[Logger] = None) -> Optional[str]:
       1. ``DOSAI_CMD`` env (cdxgen's primary plugin override).
       2. ``DEPSCAN_DOSAI_BINARY`` env (depscan convenience override).
       3. ``find_executable("dosai")`` / ``find_executable("Dosai")`` (PATH).
-      4. ``CDXGEN_PLUGINS_DIR`` bundled layout (see :func:`bundled_dosai_path`).
+      4. ``CDXGEN_PLUGINS_DIR`` bundled layout, then the plugins directory
+         discovered from the cdxgen install (see :func:`bundled_dosai_path`
+         and :func:`xbom_lib.plugins.discover_plugins_dir`).
 
     Returns an absolute path string or ``None`` (graceful skip).
     """
@@ -196,13 +191,42 @@ def find_dosai_binary(logger: Optional[Logger] = None) -> Optional[str]:
             return found
 
     # 4. cdxgen-plugins-bin bundled layout.
-    plugins_dir = os.environ.get("CDXGEN_PLUGINS_DIR", "").strip()
-    if plugins_dir:
-        candidate = bundled_dosai_path(plugins_dir)
-        if candidate:
-            return candidate
+    return find_bundled_plugin("dosai", get_plugins_bin_target())
 
-    return None
+
+#: What the .NET apphost prints when the runtime dosai was built for is not
+#: installed. It exits non-zero, and its text starts with numbers (the
+#: frameworks it did find) that must never be read as dosai's version.
+_APPHOST_FAILURE_MARKERS = (
+    "You must install or update .NET to run this application",
+    "aka.ms/dotnet/app-launch-failed",
+)
+_REQUIRED_FRAMEWORK_RE = re.compile(r"Framework:\s*'([^']+)',\s*version\s*'([^']+)'")
+
+
+def dosai_launch_failure(output: str, returncode: Optional[int] = 0) -> Optional[str]:
+    """Why dosai could not start, or ``None`` when it ran.
+
+    A non-zero exit of ``--version`` or the apphost's missing-framework text
+    means dosai did not start. The reason names the framework version the
+    message asks for and points at ``DOTNET_ROOT``.
+    """
+    text = output or ""
+    marked = any(marker in text for marker in _APPHOST_FAILURE_MARKERS)
+    if not marked and not returncode:
+        return None
+    found = _REQUIRED_FRAMEWORK_RE.search(text)
+    if found:
+        return (
+            f"dosai could not start: it needs {found.group(1)} {found.group(2)}; set "
+            f"DOTNET_ROOT to a .NET install that has it"
+        )
+    if marked:
+        return (
+            "dosai could not start: the .NET runtime it needs is missing; set "
+            "DOTNET_ROOT to a .NET install that has it"
+        )
+    return f"dosai could not start: `dosai --version` exited with status {returncode}"
 
 
 def get_dosai_version(binary: str, logger: Optional[Logger] = None) -> Optional[str]:
@@ -228,6 +252,11 @@ def get_dosai_version(binary: str, logger: Optional[Logger] = None) -> Optional[
         return None
     out = (cp.stdout or "").strip()
     if not out:
+        return None
+    failure = dosai_launch_failure(out, cp.returncode)
+    if failure:
+        if logger:
+            logger.debug(failure)
         return None
     tok = out.split()[0]
     # drop the ``+<sha>`` build metadata if present -> ``3.0.5``

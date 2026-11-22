@@ -125,7 +125,9 @@ def test_find_dosai_binary_uses_path_lookup_lowercase(monkeypatch, tmp_path):
     path_bin.write_text("")
     _clear_binary_env(monkeypatch)
     # only 'dosai' resolves on PATH
-    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: str(path_bin) if name == "dosai" else None)
+    monkeypatch.setattr(
+        "xbom_lib.dosai.find_executable", lambda name: str(path_bin) if name == "dosai" else None
+    )
     assert find_dosai_binary() == str(path_bin)
 
 
@@ -135,7 +137,9 @@ def test_find_dosai_binary_uses_path_lookup_pascalcase(monkeypatch, tmp_path):
     path_bin = tmp_path / "Dosai-on-path"
     path_bin.write_text("")
     _clear_binary_env(monkeypatch)
-    monkeypatch.setattr("xbom_lib.dosai.find_executable", lambda name: str(path_bin) if name == "Dosai" else None)
+    monkeypatch.setattr(
+        "xbom_lib.dosai.find_executable", lambda name: str(path_bin) if name == "Dosai" else None
+    )
     assert find_dosai_binary() == str(path_bin)
 
 
@@ -419,3 +423,42 @@ def test_constants_align_with_cdxgen():
     fallback resolves the SAME binary cdxgen uses."""
     assert DOSAI_CMD_ENV == "DOSAI_CMD"
     assert DOSAI_BINARY_ENV == "DEPSCAN_DOSAI_BINARY"
+
+
+_APPHOST_FAILURE = """You must install or update .NET to run this application.
+
+App: /home/user/.local/bin/dosai
+Framework: 'Microsoft.NETCore.App', version '11.0.0' (arm64)
+
+The following frameworks were found:
+  9.0.6 at [/usr/local/share/dotnet/shared/Microsoft.NETCore.App]
+
+Learn more:
+https://aka.ms/dotnet/app-launch-failed
+"""
+
+
+def test_dosai_launch_failure_names_the_framework():
+    from xbom_lib.dosai import dosai_launch_failure
+
+    reason = dosai_launch_failure(_APPHOST_FAILURE, 150)
+    assert reason is not None
+    assert "Microsoft.NETCore.App 11.0.0" in reason
+    assert "DOTNET_ROOT" in reason
+    assert dosai_launch_failure("5.0.0+abc", 0) is None
+    failed = dosai_launch_failure("boom", 2)
+    assert failed is not None and "status 2" in failed
+
+
+def test_get_dosai_version_ignores_apphost_failure(monkeypatch):
+    from subprocess import CompletedProcess
+
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda cmd, **kw: CompletedProcess(cmd, 150, stdout=_APPHOST_FAILURE),
+    )
+    assert dosai_mod.get_dosai_version("/x/dosai") is None
+    monkeypatch.setattr(
+        "subprocess.run", lambda cmd, **kw: CompletedProcess(cmd, 0, stdout="5.0.0+0c35f37\n")
+    )
+    assert dosai_mod.get_dosai_version("/x/dosai") == "5.0.0"

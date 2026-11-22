@@ -1,0 +1,69 @@
+[
+  {
+    "flows": [
+      {
+        "id": 1,
+        "label": "CALL",
+        "name": "GET",
+        "fullName": "request.GET",
+        "code": "request.GET",
+        "parentFileName": "app/views.py",
+        "parentMethodName": "search",
+        "lineNumber": 12,
+        "isExternal": false,
+        "tags": ""
+      },
+      {
+        "id": 2,
+        "label": "IDENTIFIER",
+        "name": "query",
+        "fullName": "query",
+        "code": "query",
+        "parentFileName": "app/views.py",
+        "parentMethodName": "search",
+        "lineNumber": 13,
+        "isExternal": false,
+        "tags": ""
+      },
+      {
+        "id": 3,
+        "label": "CALL",
+        "name": "fetch",
+        "fullName": "app.client.fetch",
+        "code": "app.client.fetch",
+        "parentFileName": "app/views.py",
+        "parentMethodName": "search",
+        "lineNumber": 15,
+        "isExternal": false,
+        "tags": ""
+      },
+      {
+        "id": 4,
+        "label": "IDENTIFIER",
+        "name": "url",
+        "fullName": "url",
+        "code": "url",
+        "parentFileName": "app/client.py",
+        "parentMethodName": "fetch",
+        "lineNumber": 7,
+        "isExternal": false,
+        "tags": ""
+      },
+      {
+        "id": 5,
+        "label": "CALL",
+        "name": "get",
+        "fullName": "requests.get",
+        "code": "requests.get",
+        "parentFileName": "app/client.py",
+        "parentMethodName": "fetch",
+        "lineNumber": 9,
+        "isExternal": true,
+        "tags": "pkg:pypi/requests@2.32.1"
+      }
+    ],
+    "purls": [
+      "pkg:pypi/requests@2.32.1"
+    ]
+  }
+]

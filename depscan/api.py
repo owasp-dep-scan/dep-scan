@@ -463,14 +463,14 @@ def _record_checks_not_assessed(ctx, checks_not_assessed):
 
 
 def _analyzer_entries(ctx, tscan):
-    """The enrichment stage's analyzer entries, from the slices it read."""
+    """The enrichment stage's analyzer entries, from the adapters' results."""
     options = tscan.reachability_options
     if options is None:
         # Reachability was off, so the stage is recorded as skipped and no
         # analyzer had anything to contribute.
         return []
     return scan_directory.analyzer_entries(
-        ctx.doctor_report, [tscan.project_type], options.slices_files
+        ctx.doctor_report, [tscan.project_type], tscan.adapter_results
     )
 
 
@@ -497,17 +497,9 @@ def _inventory_capabilities(options, project_type: str) -> List[str]:
 def _evidence_output():
     """The enrichment stage's evidence output entry.
 
-    The evidence store does not exist in this version; the manifest says so
-    instead of leaving the file out silently. No empty evidence file is
-    written either.
+    The stage always writes the store, even empty, so the layout is uniform.
     """
-    return [
-        {
-            "file": scan_directory.EVIDENCE_FILE,
-            "status": "not-assessed",
-            "reason": scan_directory.EVIDENCE_NOT_PRODUCED_REASON,
-        }
-    ]
+    return [{"file": scan_directory.EVIDENCE_FILE, "status": "completed"}]
 
 
 def _relative_output(ctx, path):
@@ -943,10 +935,9 @@ def explain(result: ScanResult, *, mode: str = "EndpointsAndReachables", prompts
     """Run the explanation of the ``--explain`` rendering and return its text.
 
     The explanation runs for every project type of the result, reading the
-    reachables slices and OpenAPI specifications from ``result.reports_dir``
-    (the ``--explain`` rendering reads them from the BOM directory, which for
-    a ``--bom`` or ``--bom-dir`` scan is where those files live; a scan result
-    records only the reports directory). The endpoint reachability maps the
+    evidence store and the OpenAPI specifications from
+    ``result.reports_dir`` (the in-scan ``--explain`` rendering reads the
+    same store; a scan result records only the reports directory). The endpoint reachability maps the
     in-scan explanation uses are not persisted, so flows render without the
     endpoint markers. ``prompts_file`` receives the LLM prompts in the
     ``LLMPrompts`` mode, exactly as the ``--explain`` rendering writes them.
@@ -1001,9 +992,7 @@ _ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 def _explain_missing_message(result: ScanResult, mode: str) -> str:
     """Name what an empty explanation is missing, based on its mode."""
     reports_dir = result.reports_dir
-    slices = glob.glob(
-        os.path.join(str(reports_dir), "**", "*reachables.slices*.json"), recursive=True
-    )
+    store = os.path.join(str(reports_dir), scan_directory.EVIDENCE_FILE)
     specs = glob.glob(os.path.join(str(reports_dir), "*openapi*.json"))
     if mode == "Endpoints":
         if not specs:
@@ -1012,17 +1001,17 @@ def _explain_missing_message(result: ScanResult, mode: str) -> str:
                 f"OpenAPI specification (*openapi*.json) was found under "
                 f"'{reports_dir}'. Generate one with cdxgen --spec and re-run."
             )
-    elif not slices:
+    elif not os.path.isfile(store):
         return (
             f"The explanation for mode '{mode}' produced no output: no "
-            f"reachables slices file (*reachables.slices*.json) was found "
-            f"under '{reports_dir}'. Run a reachability analysis or copy the "
-            "slices file into the reports directory."
+            f"evidence store ({scan_directory.EVIDENCE_FILE}) was found "
+            f"under '{reports_dir}'. Run a reachability analysis with this "
+            "version, which writes the store, and re-run."
         )
     return (
         f"The explanation for mode '{mode}' produced no output: the inputs "
-        f"under '{reports_dir}' were read but no flow met the rendering "
-        "gates, so there is nothing to explain at this fidelity."
+        f"under '{reports_dir}' were read but no evidence record met the "
+        "rendering gates, so there is nothing to explain at this fidelity."
     )
 
 

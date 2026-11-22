@@ -41,6 +41,7 @@ from analysis_lib.findings.schemas import (
     schema_names,
     validate as validate_schema,
 )
+from depscan.lib import scan_directory
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_PAGE = REPO_ROOT / "documentation" / "docs" / "agents.mdx"
@@ -1049,7 +1050,7 @@ def _assert_case_document(case, document, scratch):
         assert entry["target"] == "pkg:pypi/requests@2.32.1"
         assert entry["kind"] == "purl"
         assert entry["scanDir"] == str(reports_dir_of(scratch)).replace(os.sep, "/")
-        assert entry["manifest"]["layoutVersion"] == "1.0"
+        assert entry["manifest"]["layoutVersion"] == scan_directory.LAYOUT_VERSION
         assert len(entry["findings"]) == 1
     elif case.case_id == "validate-deeply-nested-file":
         (result,) = document["results"]

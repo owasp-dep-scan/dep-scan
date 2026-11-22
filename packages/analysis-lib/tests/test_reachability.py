@@ -1,30 +1,56 @@
 """Tests for the reachability analyzers.
 
+The engine counts the evidence records of the scan directory's evidence
+store: positive records of the counted kinds (reached-flow, usage,
+entry-point) put their subject purls on an executed path, a record's
+``servicePurls`` attribute and an entry point's handler purls feed the
+reached-services set, and a reached purl typed ``framework`` in the BOM
+and not filterable lands in the endpoint-reached set. Everything that does
+not come from records keeps its behaviour: the occurrences in the BOMs feed
+the direct purls and the endpoint set through the ``x-atom-usages`` usage
+targets, and a post-build BOM feeds the binary reachability support.
+
+Records reach the engine through the atom evidence adapter and the store:
+the tests extract records from recorded slices, write them to an evidence
+store in a temporary scan directory, and point a ``ReachabilityAnalysisKV``
+at that directory.
+
 Covers:
-  - the atom 4 slice shapes (recorded from atom 4.0.2 through cdxgen 13.8.0,
-    see ``test/data/atom4/README.md``): node-level ``tags`` strings that
-    interleave purls and free-form tags, including callee purls appended
-    AFTER a call's own tags; ``x-atom-usages`` values that are per-file lists
-    of line numbers; bare JSON array slice files.
-  - flows are duplicated across the split slice files. Counts (but not the
-    reached SET) must reflect deduplication.
+  - the counting rule over records, the records that never count as reached
+    (callsites, dependency notes, negative polarity), and the duplicate
+    collapse the store applies before the engine reads it
+  - the perf-review rule on records: two producers whose records carry one
+    purl each keep it in their own reached set
+  - the recorded atom 4 slices under ``test/data/atom4`` (see the README
+    next to them)
+  - the pinned repotests data of the java-sec-code project, trimmed under
+    ``tests/data/atom`` (slices) and ``tests/data/engine`` (BOM), whose
+    reached sets the engine reproduces exactly
+  - the streaming JSON array parser
 """
 
 import json
 from pathlib import Path
 
 from analysis_lib import ReachabilityAnalysisKV
+from analysis_lib.evidence import EvidenceProducer
+from analysis_lib.evidence.adapters import build_record
+from analysis_lib.evidence.adapters.atom import extract as atom_extract
+from analysis_lib.evidence.store import merge, read as read_store, write as write_store
 from analysis_lib.reachability import (
     FrameworkReachability,
     SemanticReachability,
-    _flow_identity,
-    _flow_service_purls,
-    _flow_tags,
     _iter_json_list,
-    _iter_unique_reachable_flows,
 )
 
 ATOM4_DIR = Path(__file__).resolve().parents[3] / "test" / "data" / "atom4"
+ATOM4_REACHABLES = ATOM4_DIR / "python-reachables.slices.json"
+ATOM4_OPENAPI = ATOM4_DIR / "python-openapi.json"
+DATA_DIR = Path(__file__).resolve().parent / "data" / "atom"
+PINNED_REACHABLES = DATA_DIR / "java-reachables.slices.json"
+PINNED_USAGES = DATA_DIR / "java-usages.slices.json"
+PINNED_CALLSITES = DATA_DIR / "java-callsites.slices.json"
+PINNED_BOM = Path(__file__).resolve().parent / "data" / "engine" / "sbom-java.cdx.json"
 
 
 def _write(path, obj):
@@ -33,12 +59,364 @@ def _write(path, obj):
     return path
 
 
-def _make_options(bom_dir):
+def _producer(name):
+    return EvidenceProducer(name=name, version="1.0.0", report_schema_version="4")
+
+
+def _record(
+    purls,
+    *,
+    producer_name="atom",
+    kind="reached-flow",
+    discriminator="d1",
+    polarity="positive",
+    source=None,
+    attributes=None,
+    confidence=None,
+):
+    """One evidence record of the given shape, built the way the adapters
+    build theirs."""
+    if source is None:
+        source = "js-reachables.slices.json" if producer_name == "atom" else "other.slices.json"
+    return build_record(
+        source=source,
+        producer=_producer(producer_name),
+        kind=kind,
+        discriminator=discriminator,
+        polarity=polarity,
+        purls=tuple(purls),
+        attributes=attributes,
+        confidence=confidence,
+    )
+
+
+def _fill_store(bom_dir, records):
+    """Write the records to the evidence store of ``bom_dir`` and return the
+    store path."""
+    store = Path(bom_dir) / "evidence.jsonl"
+    write_store(str(store), records)
+    return str(store)
+
+
+def _options(bom_dir, records=None, bom_files=None, openapi=None):
+    """Options whose scan directory holds the given records as its evidence
+    store."""
+    if records is not None:
+        _fill_store(bom_dir, records)
     return ReachabilityAnalysisKV(
         project_types=["js"],
-        src_dir=bom_dir,
-        bom_dir=bom_dir,
+        src_dir=str(bom_dir),
+        bom_dir=str(bom_dir),
+        bom_files=[str(p) for p in bom_files or []],
+        slices_files=[],
+        openapi_spec_files=[str(p) for p in openapi or []],
     )
+
+
+# --- the KV resolves the evidence store path ---------------------------
+
+
+def test_the_kv_resolves_the_evidence_file_from_bom_dir(tmp_path):
+    """The evidence store sits at the top of the scan directory, resolved
+    like the slices files are."""
+    kv = ReachabilityAnalysisKV(
+        project_types=["java"], src_dir=str(tmp_path), bom_dir=str(tmp_path)
+    )
+    assert kv.evidence_file == str((tmp_path / "evidence.jsonl").resolve())
+
+
+def test_the_kv_keeps_an_explicit_evidence_file(tmp_path):
+    other = tmp_path / "elsewhere" / "evidence.jsonl"
+    kv = ReachabilityAnalysisKV(
+        project_types=["java"],
+        src_dir=str(tmp_path),
+        bom_dir=str(tmp_path),
+        evidence_file=str(other),
+    )
+    assert kv.evidence_file == str(other)
+
+
+def test_the_kv_names_no_evidence_file_without_a_bom_dir(tmp_path):
+    kv = ReachabilityAnalysisKV(project_types=["java"], src_dir=str(tmp_path), bom_dir=None)
+    assert kv.evidence_file is None
+
+
+# --- the counting rule over records -------------------------------------
+
+
+def test_reached_purls_count_the_positive_records_of_the_counted_kinds(tmp_path):
+    """Only positive records of the counted kinds put purls on an executed
+    path. A callsite, a dependency note or a negative record is evidence
+    about the package, never reached evidence."""
+    records = [
+        _record(["pkg:npm/reached-flow@1"], discriminator="r1"),
+        _record(["pkg:npm/usage@1"], kind="usage", discriminator="r2"),
+        _record(["pkg:npm/entry-point@1"], kind="entry-point", discriminator="r3"),
+        _record(["pkg:npm/callsite@1"], kind="callsite", discriminator="r4"),
+        _record(["pkg:npm/dependency@1"], kind="dependency", discriminator="r5"),
+        _record(["pkg:npm/dead-code@1"], polarity="negative", discriminator="r6"),
+        _record(["pkg:npm/negative-flow@1"], polarity="negative", discriminator="r7"),
+    ]
+    res = SemanticReachability(_options(tmp_path, records)).process()
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:npm/reached-flow@1",
+        "pkg:npm/usage@1",
+        "pkg:npm/entry-point@1",
+    }
+
+
+def test_two_producers_sharing_a_purl_each_keep_it(tmp_path):
+    """The perf-review rule on records: a purl two producers both reached
+    stays in both of their reached sets. The records are not deduplicated
+    against each other across producers, so the engine counts one record
+    per producer and the grouping keeps the purl under each producer."""
+    from analysis_lib.findings.vdr_convert import reached_by_analyzer
+
+    records = [
+        _record(["pkg:npm/shared@1"], producer_name="atom", source="js-reachables.slices.json"),
+        _record(["pkg:npm/shared@1"], producer_name="golem", source="go-reachables.slices.json"),
+    ]
+    store = _fill_store(tmp_path, records)
+    res = SemanticReachability(_options(tmp_path)).process()
+    # The reached SET carries the purl once; the COUNT carries one entry per
+    # producer record.
+    assert (res.reached_purls or {})["pkg:npm/shared@1"] == 2
+    grouped = reached_by_analyzer(read_store(store))
+    assert grouped["atom"]["purls"] == {"pkg:npm/shared@1"}
+    assert grouped["golem"]["purls"] == {"pkg:npm/shared@1"}
+    # atom's purl types come from its records' source file prefix; the
+    # language tools cover one ecosystem each and carry no types here.
+    assert grouped["atom"]["types"] == {"npm"}
+    assert grouped["golem"]["types"] == set()
+
+
+def test_a_store_with_duplicate_records_does_not_double_count(tmp_path):
+    """The enrichment stage can merge the same records twice; the store
+    collapses exact duplicates, so the engine counts each record once."""
+    records = [
+        _record(["pkg:npm/dup@1"], discriminator="d1"),
+        _record(["pkg:npm/other@1"], discriminator="d2"),
+    ]
+    store = _fill_store(tmp_path, merge(records, records))
+    assert len(read_store(store)) == 2
+    res = SemanticReachability(_options(tmp_path)).process()
+    assert (res.reached_purls or {}) == {
+        "pkg:npm/dup@1": 1,
+        "pkg:npm/other@1": 1,
+    }
+
+
+def test_distinct_records_of_one_purl_each_count(tmp_path):
+    """Counting is per record: two records that agree on the purl but differ
+    otherwise are two pieces of reached evidence and count twice."""
+    records = [
+        _record(["pkg:npm/express@4.22.2"], discriminator="d1"),
+        _record(["pkg:npm/express@4.22.2"], discriminator="d2"),
+    ]
+    res = SemanticReachability(_options(tmp_path, records)).process()
+    assert set((res.reached_purls or {}).keys()) == {"pkg:npm/express@4.22.2"}
+    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 2
+
+
+def test_reached_services_come_from_the_record_service_purls(tmp_path):
+    """A record's ``servicePurls`` attribute marks the subject purls the
+    producer attributed to a service; a service purl that no subject purl
+    carries is not counted, exactly as a tag naming a purl outside its flow
+    was not."""
+    records = [
+        _record(
+            ["pkg:npm/service-purl@1", "pkg:npm/plain@1"],
+            discriminator="d1",
+            attributes={"servicePurls": ["pkg:npm/service-purl@1"]},
+        ),
+        _record(
+            ["pkg:npm/other@1"],
+            discriminator="d2",
+            attributes={"servicePurls": ["pkg:npm/not-a-subject@9"]},
+        ),
+    ]
+    res = SemanticReachability(_options(tmp_path, records)).process()
+    assert (res.reached_services or {}) == {"pkg:npm/service-purl@1": 1}
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:npm/service-purl@1",
+        "pkg:npm/plain@1",
+        "pkg:npm/other@1",
+    }
+
+
+def test_entry_point_handler_purls_count_as_reached_services(tmp_path):
+    """An entry point's handler purls are subject purls of an entry-point
+    record; they count as reached services without a ``servicePurls``
+    attribute, and a record that names its handler purl in the attribute
+    as well still counts once."""
+    records = [
+        _record(
+            ["pkg:npm/handler-a@1", "pkg:npm/handler-b@1"], kind="entry-point", discriminator="d1"
+        ),
+        _record(
+            ["pkg:npm/handler-c@1"],
+            kind="entry-point",
+            discriminator="d2",
+            attributes={"servicePurls": ["pkg:npm/handler-c@1"]},
+        ),
+    ]
+    res = SemanticReachability(_options(tmp_path, records)).process()
+    assert (res.reached_services or {}) == {
+        "pkg:npm/handler-a@1": 1,
+        "pkg:npm/handler-b@1": 1,
+        "pkg:npm/handler-c@1": 1,
+    }
+
+
+def test_endpoint_reached_purls_follow_the_bom_types_and_the_filter_list(tmp_path):
+    """A reached purl is endpoint-reachable when the BOM types it
+    ``framework`` (by component type or by tag) and it is not on the filter
+    list of safe build tools."""
+    bom = _write(
+        tmp_path / "bom.cdx.json",
+        {
+            "components": [
+                {"type": "framework", "purl": "pkg:npm/framework-typed@1"},
+                {"type": "library", "purl": "pkg:npm/tagged-framework@1", "tags": ["framework"]},
+                {"type": "framework", "purl": "pkg:npm/bootstrap@5"},
+                {"type": "library", "purl": "pkg:npm/plain@1"},
+            ]
+        },
+    )
+    records = [
+        _record(
+            ["pkg:npm/framework-typed@1", "pkg:npm/tagged-framework@1", "pkg:npm/bootstrap@5"],
+            discriminator="d1",
+        ),
+        _record(["pkg:npm/plain@1"], discriminator="d2"),
+    ]
+    res = SemanticReachability(_options(tmp_path, records, bom_files=[bom])).process()
+    assert set((res.endpoint_reached_purls or {}).keys()) == {
+        "pkg:npm/framework-typed@1",
+        "pkg:npm/tagged-framework@1",
+    }
+
+
+def test_usage_targets_still_reach_endpoints_through_bom_occurrences(tmp_path):
+    """The OpenAPI usage targets and the BOM occurrences keep their role: a
+    component whose own occurrence location is an ``x-atom-usages`` target
+    is endpoint-reachable even when no record types it framework."""
+    bom = _write(
+        tmp_path / "bom.cdx.json",
+        {
+            "components": [
+                {
+                    "type": "library",
+                    "purl": "pkg:npm/used@1",
+                    "evidence": {"occurrences": [{"location": "src/app.js"}]},
+                }
+            ]
+        },
+    )
+    openapi = _write(
+        tmp_path / "openapi.json",
+        {"paths": {"/x": {"x-atom-usages": {"call": {"src/app.js": [10]}}}}},
+    )
+    records = [_record(["pkg:npm/used@1"], discriminator="d1")]
+    res = SemanticReachability(
+        _options(tmp_path, records, bom_files=[bom], openapi=[openapi])
+    ).process()
+    assert (res.reached_purls or {}) == {"pkg:npm/used@1": 1}
+    assert (res.endpoint_reached_purls or {}) == {"pkg:npm/used@1": 1}
+
+
+def test_binary_reachability_still_reaches_post_build_frameworks(tmp_path):
+    """A post-build BOM keeps its binary reachability: a post-build purl
+    that matches a framework-typed component counts as reached through the
+    component it names, with no record behind it. The endpoint extension of
+    that support only extends an endpoint set the records already started,
+    so a scan whose records reached nothing endpoint-wise keeps the empty
+    endpoint set."""
+    bom = _write(
+        tmp_path / "bom.cdx.json",
+        {
+            "metadata": {"lifecycles": [{"phase": "post-build"}]},
+            "components": [
+                {"type": "framework", "purl": "pkg:maven/com.example/framework@2.0.0"},
+                {"type": "framework", "purl": "pkg:maven/com.example/other@1.0.0"},
+                {"type": "library", "purl": "pkg:maven/com.example/lib@1.0.0"},
+            ],
+        },
+    )
+    openapi = _write(
+        tmp_path / "openapi.json",
+        {"paths": {"/x": {"x-atom-usages": {"call": {"App.kt": [3]}}}}},
+    )
+    records = [_record(["pkg:maven/com.example/other@1.0.0"], discriminator="d1")]
+    res = SemanticReachability(
+        _options(tmp_path, records, bom_files=[bom], openapi=[openapi])
+    ).process()
+    # The record reaches ``other``; the binary support reaches ``framework``
+    # through the post-build purl, counts ``other`` a second time through
+    # the framework component it names, and the unmatched ``lib`` stays out.
+    assert (res.reached_purls or {}) == {
+        "pkg:maven/com.example/other@1.0.0": 2,
+        "pkg:maven/com.example/framework@2.0.0": 1,
+    }
+    assert (res.endpoint_reached_purls or {}) == {
+        "pkg:maven/com.example/other@1.0.0": 2,
+        "pkg:maven/com.example/framework@2.0.0": 1,
+    }
+
+
+def test_a_scan_without_a_store_and_without_a_bom_is_not_a_clean_result(tmp_path):
+    """A scan directory whose evidence store is missing reads as no reached
+    evidence, and the analyzer reports no success: an empty result never
+    pretends the analysis ran clean. The store path is passed explicitly so
+    the test pins the engine's handling of a resolved path with no file
+    behind it."""
+    kv = ReachabilityAnalysisKV(
+        project_types=["js"],
+        src_dir=str(tmp_path),
+        bom_dir=str(tmp_path),
+        bom_files=[],
+        slices_files=[],
+        openapi_spec_files=[],
+        evidence_file=str((tmp_path / "evidence.jsonl").resolve()),
+    )
+    res = SemanticReachability(kv).process()
+    assert res.success is False
+    assert not res.reached_purls
+
+
+# --- FrameworkReachability counts the same records -----------------------
+
+
+def test_framework_reachability_counts_the_records_without_services(tmp_path):
+    """FrameworkReachability keeps its shape: reached purls from the same
+    records, no services dict of its own."""
+    records = [
+        _record(["pkg:npm/express@4.22.2"], discriminator="d1"),
+        _record(
+            ["pkg:npm/lodash@4.17.21"],
+            kind="callsite",
+            discriminator="d2",
+        ),
+    ]
+    res = FrameworkReachability(_options(tmp_path, records)).process()
+    assert set((res.reached_purls or {}).keys()) == {"pkg:npm/express@4.22.2"}
+    assert res.reached_services is None or res.reached_services == {}
+
+
+# --- the recorded atom 4 slices (test/data/atom4) ----------------------
+
+
+def _atom4_records(tmp_path):
+    """The records of the recorded atom 4 slices, written to the temporary
+    scan directory's evidence store."""
+    result = atom_extract(
+        [ATOM4_REACHABLES],
+        producer_version="4.0.2",
+        openapi_files=[ATOM4_OPENAPI],
+    )
+    assert result.status == "completed"
+    _fill_store(tmp_path, result.records)
+    return result.records
 
 
 def _atom4_options(bom_dir):
@@ -47,411 +425,19 @@ def _atom4_options(bom_dir):
         project_types=["python"],
         src_dir=str(bom_dir),
         bom_dir=str(bom_dir),
-        bom_files=[str(Path(bom_dir) / "sbom-python.cdx.json")],
-        slices_files=[str(Path(bom_dir) / "python-reachables.slices.json")],
-        openapi_spec_files=[str(Path(bom_dir) / "python-openapi.json")],
+        bom_files=[str(ATOM4_DIR / "sbom-python.cdx.json")],
+        slices_files=[],
+        openapi_spec_files=[str(ATOM4_OPENAPI)],
     )
 
 
-# --- _flow_tags unit tests ---------------------------------------------
-
-
-def test_flow_tags_splits_node_level_comma_string():
-    """Atom puts tags on each node as a comma string."""
-    flow = {
-        "flows": [
-            {"id": "n1", "tags": "pkg:npm/express@4.22.2, framework, web"},
-            {"id": "n2", "tags": "framework-output"},
-            {"id": "n3"},  # missing tags key is fine
-        ],
-        "purls": ["pkg:npm/express@4.22.2"],
-    }
-    # Order preserved, whitespace stripped, no duplicates, no empty strings.
-    assert _flow_tags(flow) == [
-        "pkg:npm/express@4.22.2",
-        "framework",
-        "web",
-        "framework-output",
-    ]
-
-
-def test_flow_tags_strips_whitespace_and_skips_blank_entries():
-    flow = {"flows": [{"tags": "  web , , api  "}]}
-    assert _flow_tags(flow) == ["web", "api"]
-
-
-def test_flow_tags_handles_empty_string_node_tags():
-    flow = {"flows": [{"tags": ""}, {"tags": None}]}
-    assert _flow_tags(flow) == []
-
-
-def test_flow_tags_accepts_list_form():
-    flow = {"flows": [{"tags": ["web", "api"]}, {"tags": "framework"}]}
-    assert _flow_tags(flow) == ["web", "api", "framework"]
-
-
-def test_flow_tags_ignores_flow_level_tags():
-    """A flow object carries only ``flows`` and ``purls``; a stray top-level
-    ``tags`` key is not a flow signal and is not read."""
-    flow = {"tags": "web, api", "flows": []}
-    assert _flow_tags(flow) == []
-
-
-def test_flow_tags_deduplicates_across_nodes():
-    flow = {
-        "flows": [
-            {"tags": "web"},
-            {"tags": "web, api"},
-            {"tags": "api"},
-        ]
-    }
-    assert _flow_tags(flow) == ["web", "api"]
-
-
-def test_flow_tags_safe_on_non_dict_nodes():
-    flow = {"flows": [{"tags": "web"}, "junk", None, 42]}
-    assert _flow_tags(flow) == ["web"]
-
-
-# --- _flow_service_purls (positional purl<->tag association) -----
-
-
-def test_flow_service_purls_single_purl_with_service_tag():
-    """A node whose only purl carries a SERVICE_TAG attributes correctly."""
-    flow = {
-        "flows": [{"id": "n1", "tags": "pkg:npm/express@4.22.2, framework, web"}],
-        "purls": ["pkg:npm/express@4.22.2"],
-    }
-    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
-
-
-def test_flow_service_purls_does_not_leak_across_purls_in_same_node():
-    """The interleaved node string
-    ``pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2``
-    must NOT attribute ``web`` to codemirror — the service tags belong to the
-    NEAREST preceding purl (jsonwebtoken)."""
-    flow = {
-        "flows": [
-            {
-                "id": "n1",
-                "tags": "pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2",
-            }
-        ],
-        "purls": [
-            "pkg:npm/jsonwebtoken@0.4.0",
-            "pkg:npm/%40codemirror/lang-json@6.0.2",
-        ],
-    }
-    assert _flow_service_purls(flow) == {"pkg:npm/jsonwebtoken@0.4.0"}
-
-
-def test_flow_service_purls_express_ipfilter_pattern():
-    """The interleaved pattern
-    ``pkg:npm/express-ipfilter@1.4.0, framework, pkg:npm/express@4.22.2, web``
-    attributes ``web`` only to express, NOT to express-ipfilter (which only has
-    ``framework``)."""
-    flow = {
-        "flows": [
-            {
-                "id": "n1",
-                "tags": "pkg:npm/express-ipfilter@1.4.0, framework, pkg:npm/express@4.22.2, web",
-            }
-        ],
-        "purls": [
-            "pkg:npm/express-ipfilter@1.4.0",
-            "pkg:npm/express@4.22.2",
-        ],
-    }
-    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
-
-
-def test_flow_service_purls_service_tag_before_callee_purl():
-    """Atom 4 appends the callee's package URLs AFTER a tagged call's own
-    tags when the call site itself names no purl (withPurls in atom's
-    ReachableSlicing.scala), so the order ``web, pkg:npm/express@4.22.2``
-    occurs. The service tag belongs to the call's library and must reach the
-    purl that follows it, not vanish between the two orders."""
-    flow = {
-        "flows": [{"id": "n1", "tags": "web, pkg:npm/express@4.22.2"}],
-        "purls": ["pkg:npm/express@4.22.2"],
-    }
-    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
-
-
-def test_flow_service_purls_leading_tag_covers_the_purl_run_that_follows():
-    """withPurls appends every missing callee purl, sorted, so a call into a
-    library present at two versions reads ``web, pkg:pypi/quart@0.22.0,
-    pkg:pypi/quart@0.23.1``. Both are the callee's packages and both get the
-    tag."""
-    flow = {
-        "flows": [{"id": "n1", "tags": "web, pkg:pypi/quart@0.22.0, pkg:pypi/quart@0.23.1"}],
-        "purls": ["pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"],
-    }
-    assert _flow_service_purls(flow) == {"pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"}
-
-
-def test_flow_service_purls_leading_tag_stops_at_the_next_free_form_tag():
-    """In ``web, pkg:x, crypto, pkg:y`` the leading tag covers ``x`` only:
-    ``y`` follows another free-form tag, so ``web`` does not describe it."""
-    flow = {
-        "flows": [
-            {
-                "id": "n1",
-                "tags": "web, pkg:npm/express@4.22.2, crypto, pkg:npm/lodash@4.17.21",
-            }
-        ],
-        "purls": ["pkg:npm/express@4.22.2", "pkg:npm/lodash@4.17.21"],
-    }
-    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
-
-
-def test_flow_service_purls_node_with_purl_but_no_service_tag():
-    """A purl whose own positional tags contain NO SERVICE_TAG is not marked
-    service, even if another node in the same flow has one."""
-    flow = {
-        "flows": [
-            {"id": "n1", "tags": "pkg:npm/%40tufjs/models@4.1.0"},
-            {"id": "n2", "tags": "pkg:npm/jsonwebtoken@0.4.0, token, web"},
-        ],
-        "purls": ["pkg:npm/%40tufjs/models@4.1.0", "pkg:npm/jsonwebtoken@0.4.0"],
-    }
-    # tufjs has NO tags after it -> not service. jsonwebtoken has web -> service.
-    assert _flow_service_purls(flow) == {"pkg:npm/jsonwebtoken@0.4.0"}
-
-
-def test_flow_service_purls_falls_back_to_flow_purls_for_purlless_service_node():
-    """A node that carries a SERVICE_TAG but names NO purl falls back to the
-    flow-level purls (scoped to that one node)."""
-    flow = {
-        "flows": [
-            {"id": "n1", "tags": "web"},
-        ],
-        "purls": ["pkg:npm/express@4.22.2", "pkg:npm/lodash@4.17.21"],
-    }
-    assert _flow_service_purls(flow) == {
-        "pkg:npm/express@4.22.2",
-        "pkg:npm/lodash@4.17.21",
-    }
-
-
-def test_flow_service_purls_empty_when_no_service_tags():
-    """No SERVICE_TAG anywhere -> empty set (mirrors the recorded python
-    slices, whose tags are framework-input/flow-summary/path-traversal)."""
-    flow = {
-        "flows": [
-            {"id": "n1", "tags": "pkg:npm/semver@7.8.5, framework-input, flow-summary"},
-        ],
-        "purls": ["pkg:npm/semver@7.8.5"],
-    }
-    assert _flow_service_purls(flow) == set()
-
-
-def test_flow_service_purls_ignores_flow_level_tags():
-    """Atom flow objects carry no top-level ``tags``; one that appears is not
-    applied to the flow purls."""
-    flow = {"tags": "web, api", "flows": [], "purls": ["pkg:npm/x@1", "pkg:npm/y@2"]}
-    assert _flow_service_purls(flow) == set()
-
-
-def test_flow_service_purls_accepts_list_form():
-    flow = {
-        "flows": [{"id": "n1", "tags": ["pkg:npm/express@4.22.2", "web"]}],
-        "purls": ["pkg:npm/express@4.22.2"],
-    }
-    assert _flow_service_purls(flow) == {"pkg:npm/express@4.22.2"}
-
-
-def test_flow_service_purls_safe_on_garbage():
-    assert _flow_service_purls({"flows": [{"tags": "web"}, "junk", None, 42]}) == set()
-    assert _flow_service_purls({}) == set()
-
-
-# --- SemanticReachability.process end-to-end --------------------------
-
-
-def test_semantic_reachability_populates_reached_services_from_node_tags(tmp_path):
-    """Node-level service tags must drive reached_services."""
-    # reachables slice: express has a service tag ("web"), lodash does not.
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [
-            {
-                "flows": [
-                    {"id": "n1", "tags": "pkg:npm/express@4.22.2, framework, web"},
-                    {"id": "n2", "tags": "framework-output"},
-                ],
-                "purls": ["pkg:npm/express@4.22.2"],
-            },
-            {
-                "flows": [
-                    {"id": "n3", "tags": "pkg:npm/lodash@4.17.21"},
-                ],
-                "purls": ["pkg:npm/lodash@4.17.21"],
-            },
-        ],
-    )
-    # Minimal BOM so the SemanticReachability setup loop has something to walk.
-    _write(
-        tmp_path / "bom.cdx.json",
-        {
-            "components": [
-                {
-                    "type": "library",
-                    "purl": "pkg:npm/express@4.22.2",
-                    "evidence": {"occurrences": [{"location": "app.js"}]},
-                },
-                {
-                    "type": "library",
-                    "purl": "pkg:npm/lodash@4.17.21",
-                    "evidence": {"occurrences": [{"location": "util.js"}]},
-                },
-            ]
-        },
-    )
-
-    res = SemanticReachability(_make_options(str(tmp_path))).process()
-
-    assert res.success
-    # reached_purls: both packages were observed in the reachables slices.
-    assert set((res.reached_purls or {}).keys()) == {
-        "pkg:npm/express@4.22.2",
-        "pkg:npm/lodash@4.17.21",
-    }
-    # reached_services: ONLY the flow whose node tags include a SERVICE_TAG.
-    assert set((res.reached_services or {}).keys()) == {"pkg:npm/express@4.22.2"}
-    assert (res.reached_services or {})["pkg:npm/express@4.22.2"] >= 1
-
-
-def test_semantic_reachability_no_service_tags_keeps_reached_services_empty(tmp_path):
-    """If no node carries a SERVICE_TAG, reached_services stays empty.
-
-    This mirrors the recorded python slices, whose tags are
-    framework-input/flow-summary/path-traversal.
-    """
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [
-            {
-                "flows": [
-                    {"id": "n1", "tags": "framework-input, flow-summary"},
-                ],
-                "purls": ["pkg:npm/semver@7.8.5"],
-            }
-        ],
-    )
-    _write(
-        tmp_path / "bom.cdx.json",
-        {
-            "components": [
-                {
-                    "type": "library",
-                    "purl": "pkg:npm/semver@7.8.5",
-                    "evidence": {"occurrences": [{"location": "package.json"}]},
-                }
-            ]
-        },
-    )
-
-    res = SemanticReachability(_make_options(str(tmp_path))).process()
-    assert set((res.reached_purls or {}).keys()) == {"pkg:npm/semver@7.8.5"}
-    assert res.reached_services == {}
-
-
-def test_semantic_reachability_no_cross_purl_service_leak(tmp_path):
-    """The interleaved node string
-    ``pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2``
-    must not leak ``web`` onto codemirror. Both purls are reached, but only
-    jsonwebtoken is a service.
-    """
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [
-            {
-                "flows": [
-                    {
-                        "id": "n1",
-                        "tags": "pkg:npm/jsonwebtoken@0.4.0, token, web, pkg:npm/%40codemirror/lang-json@6.0.2",
-                    }
-                ],
-                "purls": [
-                    "pkg:npm/jsonwebtoken@0.4.0",
-                    "pkg:npm/%40codemirror/lang-json@6.0.2",
-                ],
-            }
-        ],
-    )
-    _write(
-        tmp_path / "bom.cdx.json",
-        {"components": []},
-    )
-    res = SemanticReachability(_make_options(str(tmp_path))).process()
-    # reached_purls: both purls are in the flow.
-    assert set((res.reached_purls or {}).keys()) == {
-        "pkg:npm/jsonwebtoken@0.4.0",
-        "pkg:npm/%40codemirror/lang-json@6.0.2",
-    }
-    # reached_services: ONLY jsonwebtoken carries a positional SERVICE_TAG.
-    assert set((res.reached_services or {}).keys()) == {"pkg:npm/jsonwebtoken@0.4.0"}
-
-
-def test_semantic_reachability_service_tag_before_callee_purl(tmp_path):
-    """The atom 4 order for a tagged call whose purls come from the callee:
-    the call's own tag string first, the callee's package URLs appended
-    after it. The service tag must still mark the package as a reached
-    service. At the base commit this slice produced NO reached service,
-    because a tag with no preceding purl was dropped."""
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [
-            {
-                "flows": [
-                    {"id": "n1", "tags": "web, pkg:npm/express@4.22.2"},
-                ],
-                "purls": ["pkg:npm/express@4.22.2"],
-            }
-        ],
-    )
-    _write(
-        tmp_path / "bom.cdx.json",
-        {"components": []},
-    )
-    res = SemanticReachability(_make_options(str(tmp_path))).process()
-    assert set((res.reached_services or {}).keys()) == {"pkg:npm/express@4.22.2"}
-
-
-def test_framework_reachability_ignores_tags(tmp_path):
-    """FrameworkReachability must keep its existing (tag-agnostic) behavior."""
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [
-            {
-                "flows": [{"id": "n1", "tags": "pkg:npm/express@4.22.2, web"}],
-                "purls": ["pkg:npm/express@4.22.2"],
-            }
-        ],
-    )
-    _write(
-        tmp_path / "bom.cdx.json",
-        {"components": []},
-    )
-
-    res = FrameworkReachability(_make_options(str(tmp_path))).process()
-    assert set((res.reached_purls or {}).keys()) == {"pkg:npm/express@4.22.2"}
-    # FrameworkReachability does not return a services dict at all.
-    assert res.reached_services is None or res.reached_services == {}
-
-
-# --- the recorded atom 4 slices (test/data/atom4) ----------------------
-
-
-def test_recorded_atom4_reachables_reach_their_purls():
-    """FrameworkReachability on the recorded atom 4.0.2 slices.
-
-    The reached set is the four purls the five recorded flows carry; the
-    counts follow the deduplication of identical flows. The two quart flows
-    contribute one count each because their flow objects differ.
-    """
-    res = FrameworkReachability(_atom4_options(ATOM4_DIR)).process()
+def test_recorded_atom4_reachables_reach_their_purls(tmp_path):
+    """FrameworkReachability on the records of the recorded atom 4.0.2
+    slices. The reached set is the four purls the five recorded flows
+    carry; the counts follow the flows: the two quart flows contribute one
+    count each because their flow objects differ."""
+    _atom4_records(tmp_path)
+    res = FrameworkReachability(_atom4_options(tmp_path)).process()
     assert res.success
     assert (res.reached_purls or {}) == {
         "pkg:pypi/custom-json-diff@2.1.6": 2,
@@ -461,16 +447,13 @@ def test_recorded_atom4_reachables_reach_their_purls():
     }
 
 
-def test_recorded_atom4_semantic_reachability():
-    """SemanticReachability on the recorded atom 4 fixture set.
-
-    The recorded BOM types both quart versions as framework, so they are
-    endpoint-reachable; the recorded tags carry no SERVICE_TAG, so no
-    package is a reached service. At the base commit this fixture produced
-    the same reached set, so this test pins the shape rather than a
-    behaviour change.
-    """
-    res = SemanticReachability(_atom4_options(ATOM4_DIR)).process()
+def test_recorded_atom4_semantic_reachability(tmp_path):
+    """SemanticReachability on the records of the recorded atom 4 fixture
+    set. The recorded BOM types both quart versions as framework, so they
+    are endpoint-reachable; the recorded tags carry no service tag, so no
+    package is a reached service."""
+    _atom4_records(tmp_path)
+    res = SemanticReachability(_atom4_options(tmp_path)).process()
     assert res.success
     assert set((res.reached_purls or {}).keys()) == {
         "pkg:pypi/custom-json-diff@2.1.6",
@@ -498,9 +481,7 @@ def test_recorded_atom4_openapi_usage_targets():
         spec_data = json.loads(Path(ospec).read_text())
         for path_obj in (spec_data.get("paths") or {}).values():
             if isinstance(path_obj, dict) and "x-atom-usages" in path_obj:
-                SemanticReachability._track_usage_targets(
-                    usage_targets, path_obj["x-atom-usages"]
-                )
+                SemanticReachability._track_usage_targets(usage_targets, path_obj["x-atom-usages"])
     assert "packages/server-lib/src/server_lib/simple.py" in usage_targets
     assert usage_targets["packages/server-lib/src/server_lib/simple.py#433"]
     # The target entries are lists; their lines are tracked the same way.
@@ -517,7 +498,12 @@ def test_track_usage_targets_list_lines():
     SemanticReachability._track_usage_targets(
         usage_targets, {"call": {"Foo.java": [10, 20]}, "target": {"Foo.java": [15]}}
     )
-    assert usage_targets == {"Foo.java": True, "Foo.java#10": True, "Foo.java#20": True, "Foo.java#15": True}
+    assert usage_targets == {
+        "Foo.java": True,
+        "Foo.java#10": True,
+        "Foo.java#20": True,
+        "Foo.java#15": True,
+    }
 
 
 def test_track_usage_targets_ignores_non_list_values():
@@ -537,112 +523,105 @@ def test_track_usage_targets_ignores_non_dict_values():
     assert usage_targets == {}
 
 
-# --- cross-file dedup --------------------------------------------------
+# --- the pinned repotests data (java-sec-code) -------------------------
 
 
-def test_flow_identity_is_stable_across_dict_order():
-    """Two flows with identical content hash equal regardless of key order."""
-    a = {"purls": ["pkg:npm/x@1"], "flows": [{"id": "n1", "tags": "web"}]}
-    # Same content, different insertion order of top-level keys.
-    b = {"flows": [{"id": "n1", "tags": "web"}], "purls": ["pkg:npm/x@1"]}
-    assert _flow_identity(a) == _flow_identity(b)
+def _pinned_records(tmp_path):
+    """The records of the pinned java-sec-code slices, written to the
+    temporary scan directory's evidence store."""
+    result = atom_extract(
+        [PINNED_REACHABLES],
+        producer_version="4.0.2",
+        usages_files=[PINNED_USAGES],
+        callsites_files=[PINNED_CALLSITES],
+    )
+    assert result.status == "completed"
+    _fill_store(tmp_path, result.records)
+    return result.records
 
 
-def test_flow_identity_differs_when_content_differs():
-    a = {"purls": ["pkg:npm/x@1"], "flows": [{"id": "n1", "tags": "web"}]}
-    b = {"purls": ["pkg:npm/x@1"], "flows": [{"id": "n1", "tags": "api"}]}
-    assert _flow_identity(a) != _flow_identity(b)
+def test_pinned_java_sec_code_keeps_the_slices_reached_sets(tmp_path):
+    """The engine reproduces the reached sets the slices counting gives on
+    the pinned java-sec-code data, services and endpoint reachability
+    included, records driving every part of it.
 
-
-def test_reachability_dedups_flows_across_split_slice_files(tmp_path):
-    """A flow that appears in both the unsplit slices.json and
-    a numbered split must count ONCE per purl, not twice.
-
-    The unsplit slices.json is NOT simply a prefix of the splits (14-33%
-    disjoint), so we must keep reading every file. But identical flows must
-    not inflate reached_purls[purl] += 1.
+    The pinned slices carry thirteen reachables flows over thirteen maven
+    purls. slf4j-api is the purl of two of the flows, so it counts twice;
+    one flow's tags name the service ``sql`` ahead of slf4j-api's purl
+    (atom's callee-purl order), so slf4j-api is the only reached service.
+    The BOM types seven of the purls framework and none is on the filter
+    list, so the endpoint set is those seven. The usages and callsites
+    slices the adapter also reads must not move any set: their records are
+    usage records without purls and callsite records, which never count.
     """
-    # A flow that will appear in BOTH files (verbatim duplicate).
-    dup_flow = {
-        "flows": [{"id": "n1", "tags": "pkg:npm/express@4.22.2, web"}],
-        "purls": ["pkg:npm/express@4.22.2"],
+    records = _pinned_records(tmp_path)
+    res = SemanticReachability(_options(tmp_path, bom_files=[PINNED_BOM])).process()
+    assert res.success
+    assert (res.reached_purls or {}) == {
+        "pkg:maven/com.alibaba/fastjson@1.2.24?type=jar": 1,
+        "pkg:maven/com.auth0/java-jwt@4.0.0?type=jar": 1,
+        "pkg:maven/com.squareup.okhttp/okhttp@2.5.0?type=jar": 1,
+        "pkg:maven/commons-collections/commons-collections@3.1?type=jar": 1,
+        "pkg:maven/org.apache.httpcomponents/httpclient@4.5.12?type=jar": 1,
+        "pkg:maven/org.apache.logging.log4j/log4j-core@2.9.1?type=jar": 1,
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@8.5.85?type=jar": 1,
+        "pkg:maven/org.codehaus.groovy/groovy@2.4.7?type=jar": 1,
+        "pkg:maven/org.jsoup/jsoup@1.10.2?type=jar": 1,
+        "pkg:maven/org.slf4j/slf4j-api@1.7.22?type=jar": 2,
+        "pkg:maven/org.springframework/spring-context@4.3.6.RELEASE?type=jar": 1,
+        "pkg:maven/org.springframework/spring-web@4.3.6.RELEASE?type=jar": 1,
+        "pkg:maven/org.yaml/snakeyaml@1.21?type=jar": 1,
     }
-    # A flow that only appears in the unsplit file.
-    only_main = {
-        "flows": [{"id": "n2", "tags": "pkg:npm/lodash@4.17.21"}],
-        "purls": ["pkg:npm/lodash@4.17.21"],
+    assert (res.reached_services or {}) == {
+        "pkg:maven/org.slf4j/slf4j-api@1.7.22?type=jar": 1,
     }
-    # A flow that only appears in the numbered split.
-    only_split = {
-        "flows": [{"id": "n3", "tags": "pkg:npm/semver@7.8.5"}],
-        "purls": ["pkg:npm/semver@7.8.5"],
+    assert (res.endpoint_reached_purls or {}) == {
+        "pkg:maven/commons-collections/commons-collections@3.1?type=jar": 1,
+        "pkg:maven/org.apache.httpcomponents/httpclient@4.5.12?type=jar": 1,
+        "pkg:maven/org.apache.logging.log4j/log4j-core@2.9.1?type=jar": 1,
+        "pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@8.5.85?type=jar": 1,
+        "pkg:maven/org.slf4j/slf4j-api@1.7.22?type=jar": 2,
+        "pkg:maven/org.springframework/spring-context@4.3.6.RELEASE?type=jar": 1,
+        "pkg:maven/org.springframework/spring-web@4.3.6.RELEASE?type=jar": 1,
     }
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [dup_flow, only_main],
+    # The store holds every distinct record the adapter gave; the exact
+    # duplicates among the usages entries collapsed.
+    from analysis_lib.evidence.store import canonical_record
+
+    assert len(read_store(str(Path(tmp_path) / "evidence.jsonl"))) == len(
+        {canonical_record(record) for record in records}
     )
-    _write(
-        tmp_path / "js-reachables.slices_1.json",
-        [dup_flow, only_split],
-    )
-    _write(
-        tmp_path / "bom.cdx.json",
-        {"components": []},
-    )
 
-    res = FrameworkReachability(_make_options(str(tmp_path))).process()
-    # Set is preserved: all three purls reached.
-    assert set((res.reached_purls or {}).keys()) == {
-        "pkg:npm/express@4.22.2",
-        "pkg:npm/lodash@4.17.21",
-        "pkg:npm/semver@7.8.5",
+
+def test_pinned_java_sec_code_framework_reachability(tmp_path):
+    """FrameworkReachability reaches the same purls on the pinned data,
+    without services of its own."""
+    _pinned_records(tmp_path)
+    res = FrameworkReachability(_options(tmp_path, bom_files=[PINNED_BOM])).process()
+    assert res.success
+    assert set((res.reached_purls or {}).keys()) >= {
+        "pkg:maven/org.slf4j/slf4j-api@1.7.22?type=jar",
     }
-    # Counts reflect dedup: each purl counted exactly once, even though
-    # `express` appeared in two files.
-    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 1
-    assert (res.reached_purls or {})["pkg:npm/lodash@4.17.21"] == 1
-    assert (res.reached_purls or {})["pkg:npm/semver@7.8.5"] == 1
+    assert res.reached_services is None or res.reached_services == {}
 
 
-def test_semantic_reachability_dedups_service_counts(tmp_path):
-    """SemanticReachability: reached_services[apurl] must
-    not be double-counted when a service-tagged flow is duplicated across
-    files."""
-    dup_flow = {
-        "flows": [{"id": "n1", "tags": "pkg:npm/express@4.22.2, web"}],
-        "purls": ["pkg:npm/express@4.22.2"],
+def test_pinned_java_sec_code_analyzer_grouping(tmp_path):
+    """The grouping the grading stage reads from the pinned store: every
+    reached-counted record lands under its producer, and atom's purl types
+    come from the reachables file prefix."""
+    from analysis_lib.findings.vdr_convert import reached_by_analyzer
+
+    records = _pinned_records(tmp_path)
+    grouped = reached_by_analyzer(records)
+    assert set(grouped) == {"atom"}
+    assert grouped["atom"]["types"] == {"maven"}
+    flow_purls = {
+        purl
+        for record in records
+        if record.kind == "reached-flow" and record.polarity == "positive"
+        for purl in record.subject.purls
     }
-    _write(tmp_path / "js-reachables.slices.json", [dup_flow])
-    _write(tmp_path / "js-reachables.slices_1.json", [dup_flow])
-    _write(tmp_path / "bom.cdx.json", {"components": []})
-
-    res = SemanticReachability(_make_options(str(tmp_path))).process()
-    assert set((res.reached_services or {}).keys()) == {"pkg:npm/express@4.22.2"}
-    # Counted exactly once despite the cross-file duplicate.
-    assert (res.reached_services or {})["pkg:npm/express@4.22.2"] == 1
-    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 1
-
-
-def test_reachability_dedup_treats_distinct_flows_separately(tmp_path):
-    """Two flows with the same purls but different node
-    tags are distinct evidence trails and must each count once.
-    """
-    _write(
-        tmp_path / "js-reachables.slices.json",
-        [
-            {
-                "flows": [{"id": "n1", "tags": "web"}],
-                "purls": ["pkg:npm/express@4.22.2"],
-            },
-            {
-                "flows": [{"id": "n2", "tags": "api"}],
-                "purls": ["pkg:npm/express@4.22.2"],
-            },
-        ],
-    )
-    _write(tmp_path / "bom.cdx.json", {"components": []})
-    res = FrameworkReachability(_make_options(str(tmp_path))).process()
-    assert (res.reached_purls or {})["pkg:npm/express@4.22.2"] == 2
+    assert grouped["atom"]["purls"] == flow_purls
 
 
 # --- streaming JSON parser ---------------------------------------------
@@ -733,106 +712,73 @@ def test_iter_json_list_matches_json_load_on_real_slices(tmp_path):
     assert streamed == loaded
 
 
-def test_iter_unique_reachable_flows_streams_lazy(tmp_path):
-    """The unique-flow iterator must work when the file is a bare JSON list
-    (streaming path) and produce the same dedup behavior as the legacy
-    json_load path."""
-    dup = {
-        "flows": [{"id": "n1", "tags": "web"}],
-        "purls": ["pkg:npm/express@4.22.2"],
-    }
-    other = {
-        "flows": [{"id": "n2", "tags": "api"}],
-        "purls": ["pkg:npm/lodash@4.17.21"],
-    }
-    main_file = tmp_path / "js-reachables.slices.json"
-    split_file = tmp_path / "js-reachables.slices_1.json"
-    _write(main_file, [dup, other])
-    _write(split_file, [dup])
-    # Single file: two unique flows.
-    flows = list(_iter_unique_reachable_flows([str(main_file)]))
-    assert len(flows) == 2
-    # Cross-file dedup: the dup is only yielded once.
-    flows2 = list(_iter_unique_reachable_flows([str(main_file), str(split_file)]))
-    assert len(flows2) == 2
+# --- a stated Low confidence never counts -----------------------------------
 
 
-def test_reached_by_analyzer_reuses_the_analysis_pass_purl_sets(tmp_path):
-    """The per-file purl sets the analysis pass collects while deduplicating
-    must give reached_by_analyzer exactly the result a fresh read gives,
-    duplicates across the split files included."""
-    from analysis_lib.reachability import reached_by_analyzer
-
-    dup = {
-        "flows": [{"id": "n1", "tags": "web"}],
-        "purls": ["pkg:npm/express@4.22.2"],
-    }
-    other = {
-        "flows": [{"id": "n2", "tags": "api"}],
-        "purls": ["pkg:npm/lodash@4.17.21", "pkg:npm/express@4.22.2"],
-    }
-    main_file = _write(tmp_path / "js-reachables.slices.json", [dup, other])
-    split_file = _write(tmp_path / "js-reachables.slices_1.json", [dup])
-    files = [str(main_file), str(split_file)]
-    options = _make_options(tmp_path)
-    options.slices_files = files
-    result = SemanticReachability(options).process()
-    assert result.purls_by_file is not None
-    stems = {"golem": "go-reachables", "kosi": "kosi-reachables"}
-    reused = reached_by_analyzer(files, stems, result.purls_by_file)
-    fresh = reached_by_analyzer(files, stems)
-    assert reused == fresh
-    # The dup file's purls arrive from the flow that was yielded, although
-    # the file holds only the duplicate.
-    assert reused["atom"]["purls"] == {
-        "pkg:npm/express@4.22.2",
-        "pkg:npm/lodash@4.17.21",
-    }
-
-
-def test_reached_by_analyzer_splits_tool_and_atom_slices(tmp_path):
-    import json
-
-    from analysis_lib.reachability import reached_by_analyzer
-
-    def write(name, purls):
-        path = tmp_path / name
-        path.write_text(json.dumps([{"flows": [], "purls": purls}]))
-        return str(path)
-
-    files = [
-        write("java-reachables.slices.json", ["pkg:maven/a/b@1"]),
-        write("go-reachables.slices.json", ["pkg:golang/x/y@1"]),
-        write("kosi-reachables.slices.json", ["pkg:maven/c/d@1"]),
-        write("mystery-reachables.slices.json", ["pkg:hex/e@1"]),
-        write("java-usages.slices.json", ["pkg:npm/ignored@1"]),
-    ]
-    result = reached_by_analyzer(
-        files, {"golem": "go-reachables", "kosi": "kosi-reachables"}
+def _confidence_records():
+    """One reached record per stated confidence, for every counted kind, and
+    a Low record that names a service and a framework."""
+    records = []
+    for index, (confidence, kind) in enumerate(
+        [
+            ("Low", "reached-flow"),
+            ("low", "usage"),
+            (" LOW ", "entry-point"),
+            ("Medium", "reached-flow"),
+            ("high", "reached-flow"),
+            (None, "reached-flow"),
+        ]
+    ):
+        records.append(
+            _record(
+                [f"pkg:npm/{kind}-{(confidence or 'none').strip().lower()}@1"],
+                kind=kind,
+                producer_name="golem",
+                discriminator=f"c{index}",
+                confidence=confidence,
+            )
+        )
+    records.append(
+        _record(
+            ["pkg:npm/express@4.0.0"],
+            producer_name="golem",
+            discriminator="svc",
+            confidence="Low",
+            attributes={"servicePurls": ["pkg:npm/express@4.0.0"]},
+        )
     )
-    assert set(result) == {"atom", "golem", "kosi"}
-    # an unmapped prefix contributes the purl types its flows carry
-    assert result["atom"]["types"] == {"maven", "hex"}
-    assert result["atom"]["purls"] == {"pkg:maven/a/b@1", "pkg:hex/e@1"}
-    assert result["golem"]["purls"] == {"pkg:golang/x/y@1"}
-    assert result["kosi"]["purls"] == {"pkg:maven/c/d@1"}
+    return records
 
 
-def test_per_file_purl_sets_include_flows_first_seen_in_another_file(tmp_path):
-    """The dedup is across every file, so a golem flow that atom's file
-    already held is not yielded again. Its purls must still land in the
-    golem file's set, or the golem analyzer would lose them."""
-    from analysis_lib.reachability import _iter_unique_reachable_flows, reached_by_analyzer
+def test_a_record_stating_low_confidence_never_counts_as_reached(tmp_path):
+    """The rule holds for every producer and every counted kind: a record
+    whose stated confidence is Low, in any letter case, puts no purl in the
+    reached set and no service in the reached services; Medium, High and an
+    absent confidence count."""
+    res = SemanticReachability(_options(tmp_path, _confidence_records())).process()
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:npm/reached-flow-medium@1",
+        "pkg:npm/reached-flow-high@1",
+        "pkg:npm/reached-flow-none@1",
+    }
+    assert set((res.reached_services or {}).keys()) == set()
 
-    shared = {"flows": [{"id": "n1", "tags": "web"}], "purls": ["pkg:golang/a/b@v1.0.0"]}
-    atom_file = _write(tmp_path / "java-reachables.slices.json", [shared])
-    own = {"flows": [{"id": "n2", "tags": "api"}], "purls": ["pkg:golang/c/d@v2.0.0"]}
-    golem_file = _write(tmp_path / "go-reachables.slices.json", [shared, own])
-    files = [str(atom_file), str(golem_file)]
-    purls_by_file = {}
-    flows = list(_iter_unique_reachable_flows(files, purls_by_file))
-    # Positive control: the second copy really was deduplicated away.
-    assert len(flows) == 2
-    assert purls_by_file[str(golem_file)] == {"pkg:golang/a/b@v1.0.0", "pkg:golang/c/d@v2.0.0"}
-    stems = {"golem": "go-reachables"}
-    assert reached_by_analyzer(files, stems, purls_by_file) == reached_by_analyzer(files, stems)
+
+def test_framework_reachability_skips_low_confidence_records_too(tmp_path):
+    res = FrameworkReachability(_options(tmp_path, _confidence_records())).process()
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:npm/reached-flow-medium@1",
+        "pkg:npm/reached-flow-high@1",
+        "pkg:npm/reached-flow-none@1",
+    }
+
+
+def test_reached_by_analyzer_skips_low_confidence_records():
+    from analysis_lib.findings.vdr_convert import reached_by_analyzer
+
+    grouped = reached_by_analyzer(_confidence_records())
+    assert grouped["golem"]["purls"] == {
+        "pkg:npm/reached-flow-medium@1",
+        "pkg:npm/reached-flow-high@1",
+        "pkg:npm/reached-flow-none@1",
+    }

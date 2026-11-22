@@ -38,7 +38,10 @@ import socket
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
+
+if TYPE_CHECKING:
+    from analysis_lib.evidence.adapters import AdapterResult
 
 from analysis_lib import ReachabilityAnalysisKV, VdrAnalysisKV, get_all_bom_files
 from analysis_lib.output import (
@@ -48,7 +51,8 @@ from analysis_lib.output import (
     summary_stats,
 )
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
-from analysis_lib.reachability import get_reachability_impl, reached_by_analyzer
+from analysis_lib.evidence import store as evidence_store
+from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
 from analysis_lib.vex.emit import export_csaf
@@ -67,7 +71,6 @@ from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
 from depscan.lib.audit import risk_audit, risk_audit_map
 from depscan.lib.bom import (
-    DOSAI_FACTS_FILE,
     ScanFailureError,
     annotate_vdr,
     blint_reviews_requested,
@@ -75,6 +78,7 @@ from depscan.lib.bom import (
     create_bom,
     create_empty_vdr,
     determine_spec_version,
+    discover_reachability_reports,
     export_bom,
     get_pkg_by_type,
     reachability_slice_files,
@@ -164,10 +168,11 @@ class TypeScan:
     #: True once the reachability engine ran and returned a result for this
     #: type; slices on disk alone do not make the analysis succeeded.
     reachability_succeeded: bool = False
-    #: The purl set of each reachables slice file the reachability engine
-    #: already read, keyed by file path. The exploitability inputs take them
-    #: from here instead of parsing the slices a second time.
-    reach_purls_by_file: Optional[Dict[str, set]] = None
+    #: The evidence adapter result of every analyzer that produced records or
+    #: read a report for this type, keyed by analyzer name: the language
+    #: tools from the BOM step, atom from this stage. The analyzer entries,
+    #: the store write and the exploitability inputs all read them.
+    adapter_results: Dict[str, "AdapterResult"] = field(default_factory=dict)
     results: List = field(default_factory=list)
     vdr_result: Optional[object] = None
     vdr_file: Optional[str] = None
@@ -191,6 +196,11 @@ class ScanContext:
 
     args: Any
     src_dir: str = ""
+    #: The directory the reachability reports' file paths are relative to,
+    #: or None when the scan does not know it. A scan that ran the tools
+    #: knows: it is the source directory they scanned. A scan of stored BOMs
+    #: and slices knows only when the user named the source directory.
+    source_root: Optional[str] = None
     reports_dir: str = ""
     depscan_options: Dict = field(default_factory=dict)
     perform_risk_audit: bool = False
@@ -222,6 +232,21 @@ class ScanContext:
     #: scans graded, for the findings document; a pair whose reach was
     #: assessed keeps the assessment over a later unassessed one.
     exploitability: Dict = field(default_factory=dict)
+    #: The evidence records this scan's adapters built, in arrival order, so
+    #: a scan of several project types rewrites the store once per type
+    #: holding every type's records without reading the previous file back.
+    #: A record that arrives again is kept again; the store's write rules
+    #: fold the copies (and merge their caveats) at write time.
+    evidence_records: List = field(default_factory=list)
+    #: The Python object ids of the records already in ``evidence_records``,
+    #: so a result shared by several types is added once.
+    evidence_record_objects: Set[int] = field(default_factory=set)
+    #: atom's adapter results, one per group of atom output files read
+    #: together, keyed by the group's sorted resolved paths. A file is read
+    #: once per scan, by the first project type whose enrichment finds it,
+    #: with that type's run markers (an atom timeout) as caveats; later types
+    #: reuse the group's records instead of reading the file again.
+    atom_results: Dict[Tuple[str, ...], "AdapterResult"] = field(default_factory=dict)
     #: The rule table this scan grades with, loaded once before matching.
     grading_rules: Optional[Any] = None
     all_pkg_group_rows: Dict = field(default_factory=dict)
@@ -650,11 +675,13 @@ def stage_setup(ctx):
     # indistinguishable.
     ctx.user_bom_dir = args.bom_dir
     ctx.bom_dir_mode = bool(ctx.user_bom_dir and os.path.isdir(ctx.user_bom_dir))
+    ctx.source_root = _source_root(args, src_dir)
     if not (args.bom_dir or getattr(args, "bom", None) or args.search_purl):
         # A source scan generates its BOM and the language tools' slices in
         # the reports directory; files an earlier run left there would read
         # as this scan's reachability and exposure evidence.
         clear_tool_outputs(reports_dir)
+    _clear_evidence_store(reports_dir)
     # Are we running with a config file
     ctx.config_file_mode = args.config and os.path.exists(args.config)
     ctx.depscan_options = {**vars(args), "src_dir": src_dir, "reports_dir": reports_dir}
@@ -687,6 +714,60 @@ def stage_setup(ctx):
     _start_scan_directory(ctx)
 
 
+def _reads_stored_analysis(args) -> bool:
+    """Whether the scan reads BOMs and slices an earlier run wrote (a BOM
+    directory or a BOM file) instead of running cdxgen and the tools."""
+    return bool(getattr(args, "bom_dir", None) or getattr(args, "bom", None))
+
+
+def _source_root(args, src_dir) -> Optional[str]:
+    """The source directory the reports' file paths are relative to.
+
+    A scan that runs cdxgen scans ``src_dir``, so that is the root. A scan
+    of stored BOMs and slices was not run here: the source directory option
+    defaults to the working directory, which says nothing about where the
+    data was generated, so the root is known only when the user named it,
+    on the command line or through ``DEPSCAN_SOURCE_DIR_IMAGE``. Without a
+    root the adapters keep each path in their outside-root form, and dosai
+    uses the input path its report states. A ``--src`` that names the
+    working directory itself reads the same as no ``--src``.
+    """
+    if not _reads_stored_analysis(args):
+        return src_dir or None
+    given = args.src_dir_image
+    if os.getenv("DEPSCAN_SOURCE_DIR_IMAGE") or given == ".":
+        return src_dir or None
+    if given and os.path.abspath(given) != os.getcwd():
+        return src_dir or None
+    return None
+
+
+def _clear_evidence_store(reports_dir) -> None:
+    """Remove the evidence store and its index an earlier scan left in the
+    reports directory.
+
+    The store is written from this scan's adapter results alone, by the
+    enrichment stage of each project type. A scan where no type reaches that
+    stage (every type skipped inventory, say) writes no store, and the
+    files of an earlier scan must not then be indexed and listed in the
+    manifest as this scan's evidence. Every scan mode clears them, the BOM
+    directory modes included, because the reports directory of those is
+    often the BOM directory an earlier scan wrote into.
+    """
+    if not reports_dir:
+        return
+    for name in (scan_directory.EVIDENCE_FILE, scan_directory.EVIDENCE_INDEX_FILE):
+        path = os.path.join(str(reports_dir), name)
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            continue
+        except OSError as e:
+            raise ScanStageError(
+                f"The evidence file {path} an earlier scan left could not be removed: {e}"
+            ) from e
+
+
 def _start_scan_directory(ctx):
     """Collect the doctor report once and open the scan directory's manifest.
 
@@ -710,12 +791,16 @@ def _start_scan_directory(ctx):
 
 
 def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
-    """Write the findings file and then the manifest, in that order.
+    """Write the findings file, the evidence index, and then the manifest, in
+    that order.
 
-    The manifest is written last, through a temporary file and a rename, so
-    it lists only files that exist. A scan that stopped partway still gets
-    one, carrying the failed stage and its reason. Returns the manifest and
-    the findings array, or None when this run writes no scan directory.
+    The index is built from the store the enrichment stage wrote and the
+    findings just written, so it lands after both exist. The manifest is
+    written last, through a temporary file and a rename, so it lists only
+    files that exist, the evidence files included. A scan that stopped
+    partway still gets one, carrying the failed stage and its reason.
+    Returns the manifest and the findings array, or None when this run
+    writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
@@ -731,6 +816,14 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
             for project_type in (ctx.project_types or [None])
         ),
     )
+    evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
+    if os.path.isfile(evidence_path):
+        index = evidence_store.build_index(
+            evidence_store.read(evidence_path), findings_document["findings"]
+        )
+        evidence_store.write_index(
+            os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_INDEX_FILE), index
+        )
     manifest = scan_dir.build(
         options=ctx.depscan_options,
         database_flavor=ctx.vdb_flavor,
@@ -1125,6 +1218,15 @@ def _produce_boms(ctx, scan):
     # Are we scanning a bom directory
     elif ctx.bom_dir_mode:
         creation_status = True
+        # No tool runs for a BOM directory: every adapter looks for its known
+        # raw report names in the directory before giving up as not assessed.
+        scan.adapter_results = discover_reachability_reports(
+            scan.bom_dir or ctx.reports_dir,
+            [scan.project_type],
+            {**ctx.depscan_options, "doctor_report": ctx.doctor_report},
+            bom_files=get_all_bom_files(scan.bom_dir) if scan.bom_dir else [],
+            source_root=ctx.source_root,
+        )
     else:
         # Create a bom for each project type. The generator reports back the
         # documents it wrote, which is not necessarily the path we asked for:
@@ -1134,6 +1236,7 @@ def _produce_boms(ctx, scan):
         scan.bom_files = list(bom_result.bom_files)
         scan.nominated_bom_file = bom_result.primary
         scan.not_assessed = list(getattr(bom_result, "not_assessed", None) or [])
+        scan.adapter_results = dict(getattr(bom_result, "adapter_results", None) or {})
     if not creation_status:
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
@@ -1364,7 +1467,8 @@ def announce_scan_targets(ctx, scan):
 
 
 def stage_enrichment(ctx, scan):
-    """Run the reachability analyzer and keep its reachable purl maps.
+    """Run the reachability adapters, write their records into the evidence
+    store, and let the engine count the reached purl maps from it.
 
     There are many ways to perform reachability analysis.
     Most tools—including commercial ones—rely on a vulnerability database with affected modules (sinks) to detect reachable flows.
@@ -1378,9 +1482,13 @@ def stage_enrichment(ctx, scan):
     """
     reachability_analyzer = ctx.depscan_options.get("reachability_analyzer")
     reachability_options = None
+    evidence_file = os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE)
+    adapters_run = bool(reachability_analyzer) and reachability_analyzer != "off"
     if (reachability_analyzer and reachability_analyzer != "off") or ctx.depscan_options.get(
         "profile"
     ) != "generic":
+        # The store lives at the top of the scan directory, so the manifest
+        # lists it and a later read finds it where the scan wrote it.
         reachability_options = ReachabilityAnalysisKV(
             project_types=[scan.project_type],
             src_dir=ctx.src_dir,
@@ -1388,7 +1496,20 @@ def stage_enrichment(ctx, scan):
             require_multi_usage=ctx.depscan_options.get("require_multi_usage", False),
             source_tags=ctx.depscan_options.get("source_tags"),
             sink_tags=ctx.depscan_options.get("sink_tags"),
+            evidence_file=evidence_file,
         )
+    if adapters_run and reachability_options is not None:
+        # atom's slices are its own native output; its adapter runs here, over
+        # the slices and OpenAPI files the scan holds. The language tools'
+        # results are already on the type scan from the BOM step.
+        scan.adapter_results["atom"] = _atom_adapter_result(ctx, scan, reachability_options)
+        _write_evidence_store(ctx, evidence_file, scan.adapter_results)
+    else:
+        # Reachability off still writes an (empty) store, so the layout is
+        # uniform whatever the scan asked for and a reused directory never
+        # carries an earlier scan's records into a scan that assessed
+        # nothing.
+        _write_evidence_store(ctx, evidence_file, {})
     scan.reachability_analyzer = reachability_analyzer
     scan.reachability_options = reachability_options
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
@@ -1399,8 +1520,172 @@ def stage_enrichment(ctx, scan):
         scan.reached_purls = reach_result.reached_purls
         scan.reached_services = reach_result.reached_services
         scan.endpoint_reached_purls = reach_result.endpoint_reached_purls
-        scan.reach_purls_by_file = reach_result.purls_by_file
     console.record = True
+
+
+def _atom_adapter_result(ctx, scan, options):
+    """atom's adapter result for this project type.
+
+    atom's slices are its native output: every reachables slices file the
+    language tools do not claim is atom's, as are the usages and callsites
+    slices and the OpenAPI documents. The producer version comes from the
+    atom that wrote the slices (:func:`_atom_producer_version`). Each
+    record's ``source`` is the file's path
+    relative to the directory the slices were found in, the BOM directory
+    the other adapters' sources are relative to too, and the file names atom
+    wrote are made relative to the scan's source root
+    (:func:`_source_root`); without one, and for a path outside it, the
+    adapter keeps its outside-root form, never an absolute path.
+    When the scan holds no atom output at all the
+    result is not assessed, with the doctor's reason when the capability is
+    unavailable on this machine and the adapter's otherwise.
+
+    Each file is read once per scan. The files no earlier project type read
+    are read together, with this type's run markers (an atom run a timeout
+    stopped) as timeout caveats, so the caveats stay on the records of the
+    files the timed-out run wrote. The result for this type combines every
+    group of files it covers: completed when every group completed, else the
+    first group's not-assessed reason.
+    """
+    from analysis_lib.evidence.adapters import AdapterResult, not_assessed
+    from analysis_lib.evidence.adapters import atom as atom_adapter
+
+    stems = tuple(
+        file_name.split(".slices", 1)[0] for file_name in reachability_slice_files().values()
+    )
+    roles: Dict[str, str] = {}
+    for path in options.slices_files or []:
+        name = os.path.basename(path)
+        if "reachables.slices" in name and not name.startswith(stems):
+            roles[os.path.realpath(path)] = "reachables"
+        elif "usages.slices" in name:
+            roles[os.path.realpath(path)] = "usages"
+        elif "callsites.slices" in name:
+            roles[os.path.realpath(path)] = "callsites"
+    for path in options.openapi_spec_files or []:
+        roles.setdefault(os.path.realpath(path), "openapi")
+    read_before = {path for group in ctx.atom_results for path in group}
+    fresh = tuple(sorted(path for path in roles if path not in read_before))
+    if fresh:
+
+        def of_role(role):
+            return [path for path in fresh if roles[path] == role]
+
+        ctx.atom_results[fresh] = atom_adapter.extract(
+            of_role("reachables"),
+            producer_version=_atom_producer_version(ctx, options),
+            usages_files=of_role("usages"),
+            callsites_files=of_role("callsites"),
+            openapi_files=of_role("openapi"),
+            timeout_reasons=[reason for reason in scan.not_assessed if reason],
+            scan_dir=options.bom_dir,
+            source_root=ctx.source_root,
+        )
+    groups = [result for group, result in ctx.atom_results.items() if roles.keys() & set(group)]
+    if not groups:
+        # No atom output at all: the doctor's reason, when it explains why
+        # (cdxgen missing on this machine), says more than the adapter's.
+        reason = None
+        if ctx.doctor_report is not None:
+            reason = doctor_lib.capability_unavailable_reason(
+                doctor_lib.ANALYZER_CAPABILITIES["atom"],
+                ctx.doctor_report.tools_by_name(),
+                ctx.doctor_report.data,
+            )
+        result = not_assessed(reason) if reason else atom_adapter.extract([])
+    else:
+        refused = next((result for result in groups if result.status != "completed"), None)
+        if refused is not None:
+            result = refused
+        else:
+            caveats = []
+            for group in groups:
+                caveats.extend(c for c in group.caveats if c not in caveats)
+            result = AdapterResult(
+                status=groups[0].status,
+                records=[record for group in groups for record in group.records],
+                caveats=caveats,
+            )
+    if result.status != "completed":
+        LOG.warning("atom reachability was not assessed: %s", result.reason)
+    return result
+
+
+def _atom_producer_version(ctx, options) -> str:
+    """The version of the atom that wrote this scan's slices.
+
+    A scan that ran cdxgen had the atom the doctor found write them. Slices
+    stored by an earlier run were written by whatever atom that run had: the
+    BOM names it in ``metadata.tools`` when cdxgen recorded its version, and
+    otherwise nothing names it, so no version is given and the records carry
+    a ``schema-unknown`` caveat rather than being gated on the local atom.
+    """
+    if not _reads_stored_analysis(ctx.args):
+        return _doctor_analyzer_version("atom", ctx)
+    for bom_file in options.bom_files or []:
+        version = _bom_tool_version(bom_file, "atom")
+        if version:
+            return version
+    return ""
+
+
+def _bom_tool_version(bom_file: str, tool_name: str) -> str:
+    """The version a BOM's ``metadata.tools`` gives the named tool, in the
+    CycloneDX 1.5 list form or the 1.6 ``components`` form, or the empty
+    string."""
+    data = json_load(bom_file, log=LOG)
+    if not isinstance(data, dict):
+        return ""
+    tools = (data.get("metadata") or {}).get("tools")
+    entries = tools if isinstance(tools, list) else []
+    if isinstance(tools, dict):
+        entries = list(tools.get("components") or [])
+    for entry in entries:
+        if isinstance(entry, dict) and entry.get("name") == tool_name and entry.get("version"):
+            return str(entry["version"])
+    return ""
+
+
+def _doctor_analyzer_version(analyzer: str, ctx) -> str:
+    """The version the doctor report read for an analyzer, or the empty
+    string when there is no report or no status."""
+    if ctx.doctor_report is None:
+        return ""
+    status = (ctx.doctor_report.tools_by_name() or {}).get(analyzer)
+    return str(status.version or "") if status is not None else ""
+
+
+def _write_evidence_store(ctx, evidence_file: str, adapter_results: Dict) -> None:
+    """Add every adapter result's records to this scan's store and write it.
+
+    The records accumulate on the scan context, so a scan of several project
+    types rewrites the file once per type holding every type's records, and
+    the store applies its write rules: an exact copy collapses, copies that
+    differ only in caveats become one record carrying every caveat, and
+    records that share an id but differ otherwise each keep a suffixed id.
+    The previous file is never read back: a scan of a reused directory
+    replaces what an earlier scan left, so a report this scan did not read
+    (because it was deleted, damaged, or moved) stops counting instead of
+    surviving in the store. A result that was not assessed contributes no
+    records: its reason is what the analyzer entries carry instead.
+    """
+    incoming = []
+    for name in ("atom", "rusi", "golem", "kosi", "dosai"):
+        result = adapter_results.get(name)
+        if result is not None:
+            incoming.extend(result.records)
+    for record in incoming:
+        if id(record) in ctx.evidence_record_objects:
+            continue
+        ctx.evidence_record_objects.add(id(record))
+        ctx.evidence_records.append(record)
+    written = evidence_store.write(evidence_file, ctx.evidence_records)
+    LOG.debug(
+        "The evidence store %s holds %d records (%d from this project type).",
+        evidence_file,
+        written,
+        len(incoming),
+    )
 
 
 def stage_matching(ctx, scan):
@@ -1439,72 +1724,43 @@ def _exploitability_inputs(ctx, scan):
     """What this scan produced for the exploitability of the findings the
     matching stage is about to grade, for one project type's scan.
 
-    The analyzers named are those the enrichment stage read slices from
-    (the manifest's ``completed`` entries); when reachability was off, failed
-    or produced no purls, the scope says so and every finding of the type
-    records ``reach`` as not assessed. The dosai facts and reachables slices
-    are read only when dosai completed for this scan, so a report left by an
-    earlier run is never graded on.
+    The analyzers named are those whose adapter completed for this type, and
+    the reached sets and purl types come from the same adapter results'
+    records. An analyzer that completed without a reached-counted record
+    gets an empty reached set, so it observed nothing; the engine's reached
+    map, which counts the whole store, never stands in for it. When
+    reachability was off, failed or produced no purls, the scope says so and
+    every finding of the type records ``reach`` as not assessed. The
+    records also carry the exposure and witness evidence, so
+    nothing but the records this scan produced is graded on: a report left
+    by an earlier run is never read.
     """
     from analysis_lib.findings.exploitability import ExploitabilityInputs
-    from analysis_lib.findings.vdr_convert import ReachScope
+    from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
 
-    options = scan.reachability_options
-    analyzers: List[str] = []
-    tool_stems = {
-        name: file_name.split(".slices", 1)[0]
-        for name, file_name in reachability_slice_files().items()
-    }
-    if options is not None:
-        analyzers = [
-            entry["name"]
-            for entry in scan_directory.analyzer_entries(
-                ctx.doctor_report, [scan.project_type], options.slices_files
-            )
-            if entry.get("status") == "completed"
-        ]
-    by_analyzer = (
-        reached_by_analyzer(options.slices_files, tool_stems, scan.reach_purls_by_file)
-        if options is not None
-        else {}
-    )
+    results = scan.adapter_results or {}
+    analyzers = [name for name, result in results.items() if result.status == "completed"]
+    records = []
+    for name in ("atom", "rusi", "golem", "kosi", "dosai"):
+        result = results.get(name)
+        if result is not None:
+            records.extend(result.records)
+    by_analyzer = reached_by_analyzer(records)
     scope = ReachScope(
         analyzers=analyzers,
         reached=set((scan.reached_purls or {}).keys()),
         succeeded=scan.reachability_succeeded,
         analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
-        reached_by={name: entry["purls"] for name, entry in by_analyzer.items()},
+        reached_by={
+            name: set(by_analyzer.get(name, {}).get("purls", set())) for name in analyzers
+        },
     )
-    dosai_facts = None
-    dosai_flows: List[Dict] = []
-    if "dosai" in analyzers:
-        facts_path = os.path.join(
-            scan.bom_dir or ctx.reports_dir, "analysis", "dosai", DOSAI_FACTS_FILE
-        )
-        if os.path.isfile(facts_path):
-            dosai_facts = json_load(facts_path, log=LOG)
-        for slice_file in (options.slices_files if options is not None else []) or []:
-            if os.path.basename(slice_file).startswith("dotnet-reachables"):
-                try:
-                    with open(slice_file, encoding="utf-8") as fp:
-                        payload = json.load(fp)
-                    if isinstance(payload, list):
-                        dosai_flows.extend(payload)
-                    else:
-                        LOG.warning(
-                            "The dosai reachables slices %s hold no list of flows.", slice_file
-                        )
-                except (OSError, ValueError) as e:
-                    LOG.warning(
-                        "The dosai reachables slices %s could not be read: %s", slice_file, e
-                    )
     return ExploitabilityInputs(
         rules=ctx.grading_rules,
         scope=scope,
         bom_components=scan.pkg_list,
         dosai_ran="dosai" in analyzers,
-        dosai_facts=dosai_facts,
-        dosai_flows=dosai_flows,
+        records=records,
     )
 
 
@@ -1608,6 +1864,11 @@ def stage_render_explain(ctx, scan):
             scan.vdr_result,
             args.explanation_mode,
             ctx.depscan_options["llm_prompt_file"],
+            # The enrichment stage writes the store at the top of the reports
+            # directory, which is not the BOM directory a --bom-dir scan was
+            # given; name it so the explanation reads the store this scan
+            # wrote.
+            evidence_file=os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE),
         )
     else:
         LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")

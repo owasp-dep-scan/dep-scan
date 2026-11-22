@@ -10,7 +10,7 @@ After this chapter you will be able to run dep-scan reachability on a Rust proje
 
 ## What rusi is and when to use it
 
-[Rusi (Rust Source Inspector)](https://github.com/cdxgen/cdxgen-plugins-bin) is the native slicer dep-scan uses for Rust. It emits a call graph and interprocedural source-to-sink data-flow slices with purl attribution, which dep-scan converts into its shared, purl-keyed reachability pipeline. The result is that a vulnerable crate whose functions are actually called (for example `time::now()` in the RUSTSEC-2020-0071 segfault advisory) is marked Reachable, while a crate that is merely listed in the BOM but never called is not. Reachability is on by default for Rust once the slices are present, so for most projects you simply scan with the research profile and read the Reachable insights.
+[Rusi (Rust Source Inspector)](https://github.com/cdxgen/cdxgen-plugins-bin) is the native analyzer dep-scan uses for Rust. It emits a call graph and interprocedural source-to-sink data-flow slices with purl attribution, which dep-scan's rusi adapter reads into the evidence store so the shared, purl-keyed reachability engine counts from records. The result is that a vulnerable crate whose functions are actually called (for example `time::now()` in the RUSTSEC-2020-0071 segfault advisory) is marked Reachable, while a crate that is merely listed in the BOM but never called is not. Reachability is on by default for Rust once the analyzer reports are present, so for most projects you simply scan with the research profile and read the Reachable insights.
 
 ## Prerequisites
 
@@ -29,13 +29,13 @@ The normal data path routes through cdxgen, which is the same pattern .NET uses 
 ```text
   cdxgen (evinse) ──runs──▶ rusi ──writes──▶ *-semantics.slices.json
                                                     │
-                                             consumed by
+                                             read by
                                                     ▼
-                                  dep-scan converter ──▶ reached_purls
+                        rusi adapter ──▶ evidence.jsonl ──▶ reached_purls
        (fallback only: dep-scan spawns rusi directly if cdxgen/plugins absent)
 ```
 
-dep-scan resolves the rusi binary the same way cdxgen does. It checks the `RUSI_CMD` environment variable, then `DEPSCAN_RUSI_BINARY`, then `rusi` on `PATH`, then the bundled `cdxgen-plugins-bin` layout at `<pluginsDir>/rusi/rusi-<platform>-<arch>`. When cdxgen spawns, dep-scan propagates `RUSI_CMD` and `CDXGEN_PLUGINS_DIR` to the subprocess so both sides use the same binary. If rusi cannot be found, Rust reachability is skipped with a warning and never a crash, and other languages are unaffected.
+dep-scan resolves the rusi binary the same way cdxgen does. It checks the `RUSI_CMD` environment variable, then `DEPSCAN_RUSI_BINARY`, then `rusi` on `PATH`, then the bundled `cdxgen-plugins-bin` layout at `<pluginsDir>/rusi/rusi-<platform>-<arch>` (a `binaryPath` in `plugins-manifest.json` takes precedence). `<pluginsDir>` is looked up in two steps. `CDXGEN_PLUGINS_DIR` is tried first when it is set. When it does not hold the binary, dep-scan uses the first plugins directory cdxgen would accept: `CDXGEN_PLUGINS_DIR` itself when it holds a `plugins-manifest.json` or a tool directory, and otherwise a `plugins` directory or `node_modules/@cdxgen/cdxgen-plugins-bin-<platform>-<arch>/plugins` in the install of the `cdxgen` command that `CDXGEN_CMD` or `PATH` resolves to. Symlinks are followed, and for the npm and pnpm shims on Windows (`cdxgen.cmd` and its `.ps1` and shell variants) the package the shim starts is searched too, including `node_modules/@cdxgen/cdxgen` and `node_modules/@cyclonedx/cdxgen` beside the shim. `depscan doctor` reports the same binary with the source `plugins-dir`. When cdxgen spawns, dep-scan propagates `RUSI_CMD` and `CDXGEN_PLUGINS_DIR` to the subprocess so both sides use the same binary. If rusi cannot be found, Rust reachability is skipped with a warning and never a crash, and other languages are unaffected.
 
 ## Example invocations
 
@@ -60,37 +60,44 @@ Reachability is on by default (`--reachability-analyzer FrameworkReachability`).
 
 ## Analysis walkthrough
 
-Consider the `rustsec-app` source. Its `main` reads `env::var("TZ")` and then calls `time::now()`, so the vulnerable `time` API is reached with tainted influence. rusi emits a call-graph edge from `vulnerable_web_app::main` to `time::now`, and the converter reconciles that onto the BOM's versioned `pkg:cargo/time@0.1.45` purl. That purl lands in `reached_purls`, and because RUSTSEC-2020-0071 affects exactly that version, `analyze_cve_vuln` tags the finding Reachable and sets `depscan:prioritized`. The `--explain` output shows the flow from source to sink, which is how an analyst confirms the call is real rather than a heuristic guess.
+Consider the `rustsec-app` source. Its `main` reads `env::var("TZ")` and then calls `time::now()`, so the vulnerable `time` API is reached with tainted influence. rusi emits a call-graph edge from `rustsec_app::main` to `time::now`, and the adapter's reconciler maps that onto the BOM's versioned `pkg:cargo/time@0.1.45` purl. That purl lands in `reached_purls`, and because RUSTSEC-2020-0071 affects exactly that version, the finding is tagged Reachable and carries `depscan:prioritized`. The `--explain` output shows the record's witness path from source to sink, which is how an analyst confirms the call is real rather than a heuristic guess.
 
-A representative slice (drawn from the committed `test/data/rust-reachables.slices.json` fixture, trimmed for readability) shows the shape dep-scan consumes:
+The record below is that call-graph edge, as the current rusi adapter builds it from the committed rusi 4.3.1 recording of the fixture (`packages/analysis-lib/tests/data/rusi/rusi-rustsec-app.json`), read with the fixture directory as the source root and with the `source` of a scan where cdxgen persisted the report. It is the complete record, spread over several lines for reading; in `evidence.jsonl` it is one compact line.
 
 ```json
 {
-  "flows": [
-    {
-      "code": "vulnerable_web_app::main",
-      "parentFileName": "src/main.rs",
-      "tags": "call-graph, rust, call-graph"
-    },
-    {
-      "code": "sqlx::query",
-      "parentFileName": "src/main.rs",
-      "lineNumber": 11,
-      "isExternal": true,
-      "tags": "pkg:cargo/sqlx@0.6.2, sql, sql-query, rust, file-to-sql-query"
-    }
+  "schemaVersion": "1",
+  "id": "ev-b0629b903217f201",
+  "producer": {
+    "name": "rusi",
+    "version": "4.3.1",
+    "reportSchemaVersion": "https://appthreat.github.io/rusi/schema/report-0.1"
+  },
+  "kind": "reached-flow",
+  "polarity": "positive",
+  "subject": { "purls": ["pkg:cargo/time@0.1.45"] },
+  "source": "rust-semantics.slices.json",
+  "locations": [{ "file": "src/main.rs", "line": 12, "method": "time::now" }],
+  "caveats": [
+    { "kind": "unresolved-call-sites", "detail": "rusi could not resolve calls to time::now" }
   ],
-  "purls": ["pkg:cargo/sqlx@0.6.2"]
+  "path": [
+    { "method": "rustsec_app::main", "symbol": "rustsec_app::main" },
+    { "file": "src/main.rs", "line": 12, "method": "time::now", "symbol": "time::now" }
+  ],
+  "attributes": { "servicePurls": [] }
 }
 ```
 
-Notice the versioned purl in the `tags` string and in the `purls` array. That versioned purl is what the reconciler matches against the BOM component, and it is what makes the flow count as evidence of reachability rather than a loose mention of the crate name.
+Notice the versioned purl in the subject and the `unresolved-call-sites` caveat. rusi reported that it could not resolve the calls to `as_str`, `std::env::var`, `time::now`, `to_string` and `unwrap_or_else`; the adapter keeps that whole statement as a caveat on its result and puts on each record only the part that names the record's own callee, here `time::now`. The versioned purl is what the reconciler matched against the BOM component, and it is what makes the record count as evidence of reachability rather than a loose mention of the crate name.
 
-The contrast with `unreachable-app` is precise. That fixture's `main` does not call any external crate, so rusi produces no call-graph edge and no data-flow slice touching a dependency. The converter therefore emits no flow carrying a `pkg:cargo/...` purl, `reached_purls` stays empty, and `time` (had it been declared) would never earn the Reachable insight. The package is present in the BOM and would still appear in the full Vulnerability Disclosure Report, but it carries `depscan:prioritized=false` and no reachable insight, which is the triage signal to move on.
+The same report also yields a `reached-flow` record for the closure `main` passes to `unwrap_or_else`, which names the workspace crate `pkg:cargo/rustsec-app@0.1.0`, and one `callsite` record for each entry of rusi's `usages[]` list. A `callsite` record keeps the call site and the calling crate (the `callerPurl` attribute), and names the called crate as its subject only when the call graph names that exact symbol, as it does for `time::now`. The reachability engine never counts `callsite` records, so they add evidence to the store without changing the reached set.
+
+The contrast with `unreachable-app` is precise. That fixture's `main` does not call any external crate, so rusi produces no call-graph edge and no data-flow slice touching a dependency. The adapter therefore builds no record carrying a `pkg:cargo/...` purl, `reached_purls` stays empty, and `time` (had it been declared) would never earn the Reachable insight. The package is present in the BOM and would still appear in the full Vulnerability Disclosure Report, but it carries `depscan:prioritized=false` and no reachable insight, which is the triage signal to move on.
 
 ## Reading the artifacts
 
-Three files in the reports directory tell the story. The `*-reachables.slices.json` (and the `*-semantics.slices.json` carrying the raw rusi report) hold the slices; check here first if no finding is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, the reached `pkg:cargo/time@0.1.45` becomes `known_affected` while a crate that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
+Three files in the reports directory tell the story. The `evidence.jsonl` at the top holds the records the adapter built, and the `*-semantics.slices.json` (or `analysis/rusi/rusi.json` when dep-scan ran rusi itself) carries the raw rusi report they came from; check here first if no finding is Reachable, because records without purls explain the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, the reached `pkg:cargo/time@0.1.45` becomes `known_affected` while a crate that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
 
 ## Backend selection and safety
 
@@ -100,8 +107,8 @@ The `compiler` backend embeds a nightly rustc and builds the target, which means
 
 ## Troubleshooting
 
-If `*-semantics.slices.json` is absent or empty, rusi was not invoked, which usually means the binary was not found. Confirm resolution by setting `SCAN_DEBUG_MODE=debug` and checking the diagnostic, then point `RUSI_CMD` or `DEPSCAN_RUSI_BINARY` at a known-good binary. If the file exists but no crate is Reachable, ensure `Cargo.lock` is populated so the BOM carries versioned purls; a versionless purl cannot be reconciled onto a flow. If the compiler backend fails on an untrusted repo, that is expected behavior for build-script execution; fall back to the `stable` backend.
+If neither `*-semantics.slices.json` nor `analysis/rusi/rusi.json` holds a rusi report, rusi did not run, which usually means the binary was not found; the manifest's analyzer entry for rusi then says not assessed, with the reason. Confirm resolution by setting `SCAN_DEBUG_MODE=debug` and checking the diagnostic, then point `RUSI_CMD` or `DEPSCAN_RUSI_BINARY` at a known-good binary. If the file exists but no crate is Reachable, ensure `Cargo.lock` is populated so the BOM carries versioned purls; a versionless purl cannot be reconciled onto a flow. If the compiler backend fails on an untrusted repo, that is expected behavior for build-script execution; fall back to the `stable` backend.
 
 ## Summary
 
-rusi gives Rust the same reachable-versus-present semantics every other language enjoys in dep-scan, through a converter that reconciles native call-graph and data-flow slices onto the BOM's versioned purls. The `rustsec-app` fixture shows a real advisory (RUSTSEC-2020-0071 on `time@0.1.45`) marked Reachable because `time::now()` is called, while `unreachable-app` shows a crate that is merely declared and therefore never reached. Keep the default `stable` backend for untrusted repos, reserve the `compiler` backend for trusted code where the extra precision is worth the build execution, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters [Go reachability](go-reachability) and [.NET reachability](dotnet-reachability) cover the other native slicers, and the [Framework reachability](../analyzers/framework-reachability) chapter explains the engine these slicers feed.
+rusi gives Rust the same reachable-versus-present semantics every other language enjoys in dep-scan, through an adapter that reconciles native call-graph and data-flow slices onto the BOM's versioned purls. The `rustsec-app` fixture shows a real advisory (RUSTSEC-2020-0071 on `time@0.1.45`) marked Reachable because `time::now()` is called, while `unreachable-app` shows a crate that is merely declared and therefore never reached. Keep the default `stable` backend for untrusted repos, reserve the `compiler` backend for trusted code where the extra precision is worth the build execution, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters [Go reachability](go-reachability) and [.NET reachability](dotnet-reachability) cover the other native slicers, and the [Framework reachability](../analyzers/framework-reachability) chapter explains the engine these slicers feed.

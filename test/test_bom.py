@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import os
+from pathlib import Path
 
 import pytest
 
@@ -251,8 +252,13 @@ def test_export_bom_writes_dates_the_validator_accepts(tmp_path):
         "version": 1,
         "metadata": {"tools": {"components": []}},
         "components": [
-            {"type": "library", "name": "lodash", "version": "4.17.20",
-             "purl": "pkg:npm/lodash@4.17.20", "bom-ref": "pkg:npm/lodash@4.17.20"}
+            {
+                "type": "library",
+                "name": "lodash",
+                "version": "4.17.20",
+                "purl": "pkg:npm/lodash@4.17.20",
+                "bom-ref": "pkg:npm/lodash@4.17.20",
+            }
         ],
     }
     vulnerabilities = [
@@ -438,12 +444,18 @@ def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
 def test_lifecycle_boms_guard_each_reachability_tool_by_its_types(
     tmp_path, monkeypatch, project_type, kosi_expected, golem_expected
 ):
+    """The lifecycle run hands the build BOM to exactly the tools the scan's
+    project types select; the tools that were not selected get no adapter
+    result at all, while a selected one is recorded even when it produced no
+    report, as not assessed."""
     from depscan.lib import bom as bom_mod
 
     monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
-    ran = []
-    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: ran.append("golem"))
-    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: ran.append("kosi"))
+    for name in ("RUSI_TOOL", "GOLEM_TOOL", "KOSI_TOOL", "DOSAI_TOOL"):
+        tool = getattr(bom_mod, name)
+        monkeypatch.setattr(
+            bom_mod, name, dataclasses.replace(tool, run_fallback=lambda *a, **k: None)
+        )
     options = {
         "project_type": [project_type],
         "prebuild_bom_file": str(tmp_path / "sbom-prebuild.cdx.json"),
@@ -451,9 +463,9 @@ def test_lifecycle_boms_guard_each_reachability_tool_by_its_types(
         "postbuild_bom_file": str(tmp_path / "sbom-postbuild.cdx.json"),
         "container_bom_file": str(tmp_path / "sbom-container.cdx.json"),
     }
-    bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
-    assert ("kosi" in ran) is kosi_expected
-    assert ("golem" in ran) is golem_expected
+    result = bom_mod.create_lifecycle_boms(_fake_generator(), str(tmp_path), options)
+    assert ("kosi" in result.adapter_results) is kosi_expected
+    assert ("golem" in result.adapter_results) is golem_expected
 
 
 def test_a_pure_java_gradle_project_does_not_select_kosi():
@@ -471,10 +483,13 @@ def test_a_tool_slice_from_an_earlier_scan_is_removed(tmp_path):
     stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
     stale.write_text("{}")
     # The tool applies but reachability is off: no slice may remain.
-    bom_mod.run_kosi_reachability(
-        str(bom_file),
-        str(tmp_path),
-        options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
+    assert (
+        bom_mod.run_kosi_reachability(
+            str(bom_file),
+            str(tmp_path),
+            options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
+        )
+        is None
     )
     assert not stale.exists()
 
@@ -491,10 +506,57 @@ def test_a_tool_slice_is_removed_when_the_tool_produces_no_report(tmp_path, monk
         "KOSI_TOOL",
         dataclasses.replace(bom_mod.KOSI_TOOL, run_fallback=lambda *a, **k: None),
     )
-    assert not bom_mod.run_kosi_reachability(
+    result = bom_mod.run_kosi_reachability(
         str(bom_file), str(tmp_path), options={"project_type": ["kotlin"]}
     )
+    assert result is not None and result.status == "not-assessed"
+    assert result.reason
     assert not stale.exists()
+
+
+def test_clear_tool_outputs_removes_the_evidence_files(tmp_path):
+    """The store and its index are this scan's outputs: an earlier run's files
+    in a reused reports directory would be merged into the new store as if
+    this scan had produced those records."""
+    from depscan.lib import bom as bom_mod
+    from depscan.lib.scan_directory import EVIDENCE_FILE, EVIDENCE_INDEX_FILE
+
+    for name in (
+        EVIDENCE_FILE,
+        EVIDENCE_INDEX_FILE,
+        "dotnet-reachables.slices.json",
+        "go-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("[]")
+    bom_mod.clear_tool_outputs(str(tmp_path))
+    assert not (tmp_path / EVIDENCE_FILE).exists()
+    assert not (tmp_path / EVIDENCE_INDEX_FILE).exists()
+    assert not (tmp_path / "dotnet-reachables.slices.json").exists()
+    assert not (tmp_path / "go-reachables.slices.json").exists()
+
+
+def test_clear_tool_outputs_removes_the_semantics_reports_cdxgen_persisted(tmp_path):
+    """cdxgen persists a language tool's raw report as
+    ``<prefix>-semantics.slices.json``, and the tool step reads that file
+    before it runs the tool. A source scan of a reused reports directory must
+    not find an earlier run's report there, so the setup cleanup removes it
+    with the other tool outputs, and leaves atom's own slices alone."""
+    from depscan.lib import bom as bom_mod
+
+    for name in (
+        "dotnet-semantics.slices.json",
+        "rust-semantics.slices.json",
+        "python-semantics.slices.json",
+        "python-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("{}")
+    bom_mod.clear_tool_outputs(str(tmp_path))
+    assert not (tmp_path / "dotnet-semantics.slices.json").exists()
+    assert not (tmp_path / "rust-semantics.slices.json").exists()
+    assert not (tmp_path / "python-semantics.slices.json").exists()
+    assert (tmp_path / "python-reachables.slices.json").exists(), (
+        "atom's slices of the scanned type are cleared by their own step"
+    )
 
 
 def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_path):
@@ -505,6 +567,51 @@ def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_pa
     other = tmp_path / bom_mod.KOSI_TOOL.slice_file
     other.write_text("{}")
     bom_mod.run_golem_reachability(
-        str(bom_file), str(tmp_path), options={"project_type": ["go"], "reachability_analyzer": "off"}
+        str(bom_file),
+        str(tmp_path),
+        options={"project_type": ["go"], "reachability_analyzer": "off"},
     )
     assert other.exists()
+
+
+def test_the_tool_step_hands_the_scanned_source_directory_to_the_adapter(tmp_path, monkeypatch):
+    """A language tool's raw report names files under the directory the tool
+    scanned. The tool step passes that directory to the adapter as its
+    source root, so the records' locations are made relative to it."""
+    import shutil
+
+    from analysis_lib.evidence.adapters import golem as golem_adapter
+    from depscan.lib import bom as bom_mod
+
+    seen = {}
+    real_extract = golem_adapter.extract
+
+    def spy(report, **kwargs):
+        seen.update(kwargs)
+        return real_extract(report, **kwargs)
+
+    monkeypatch.setattr(golem_adapter, "extract", spy)
+    recording = (
+        Path(__file__).resolve().parent.parent
+        / "packages"
+        / "analysis-lib"
+        / "tests"
+        / "data"
+        / "golem"
+        / "golem-reachable-app.json"
+    )
+    bom_file = tmp_path / "sbom-go.cdx.json"
+    bom_file.write_text(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []})
+    )
+    shutil.copyfile(recording, tmp_path / "go-semantics.slices.json")
+    result = bom_mod.run_golem_reachability(
+        str(bom_file),
+        "/src/repos/reachable-app",
+        options={"project_type": ["go"], "reachability_analyzer": "SemanticReachability"},
+    )
+    assert result is not None and result.status == "completed", result and result.reason
+    assert seen["source_root"] == "/src/repos/reachable-app"
+    for record in result.records:
+        for location in record.locations:
+            assert not location.file.startswith("/"), location.file

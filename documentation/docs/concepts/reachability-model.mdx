@@ -16,24 +16,25 @@ dep-scan inverts the dependency. It computes the reachable flows for the whole p
 
 ## The two layers
 
-Reachability in dep-scan is two layers that meet at a shared slice format.
+Reachability in dep-scan is two layers that meet at a shared record format.
 
-The first layer is a per-language *slicer* that inspects source code (and, for .NET, compiled assemblies) and emits interprocedural data-flow and call-graph slices. Each slice is a list of flow objects, and each flow object carries a `purls` array of the versioned package URLs touched by that flow. Four slicers cover seven ecosystems: atom for Java/JVM, JavaScript/TypeScript, Python, and PHP; rusi for Rust; golem for Go; and dosai for .NET. The native tools do not all speak the same dialect, so a thin converter (for example `analysis_lib/rusi_slices.py`) reconciles each native report onto the versioned purls in the BOM. The single most important correctness detail in each converter is the purl reconciler, because native tools frequently emit versionless or subpath purls that must be mapped back to the BOM's versioned purls by name.
+The first layer is a per-language analyzer that inspects source code (and, for .NET, compiled assemblies) and emits its own report of interprocedural data-flow and call-graph evidence. Five analyzers cover seven ecosystems: atom for Java/JVM, JavaScript/TypeScript, Python, and PHP; kosi for Kotlin and Android projects, alongside atom; rusi for Rust; golem for Go; and dosai for .NET. The native tools do not all speak the same dialect, so each has an adapter (for example `analysis_lib/evidence/adapters/rusi.py`), the only code that knows that report format, which reads the report into evidence records reconciled onto the versioned purls in the BOM. The single most important correctness detail in each adapter is the purl reconciler, because native tools frequently emit versionless or subpath purls that must be mapped back to the BOM's versioned purls by name.
 
-The second layer is a shared, purl-keyed engine in `packages/analysis-lib/src/analysis_lib/reachability.py`. It is deliberately slicer-agnostic: it consumes atom-shaped `*-reachables.slices.json` files and computes the reached purls. Because every converter normalizes its output to that shape, the engine treats a Java atom slice and a Go golem-derived slice identically.
+The second layer is a shared, purl-keyed engine in `packages/analysis-lib/src/analysis_lib/reachability.py`. It is deliberately producer-agnostic: it reads the scan's evidence store (`evidence.jsonl`, whose records follow the published `depscan-evidence` schema) and computes the reached purls from the records. Because every adapter normalizes its producer's report to that record shape, the engine treats a Java atom record and a Go golem record identically.
 
-The diagram below shows how the two layers meet at the shared slice format and where the engine's two maps come from.
+The diagram below shows how the two layers meet at the shared record format and where the engine's two maps come from.
 
 ```mermaid
 flowchart TD
-    subgraph L1["Layer 1: per-language slicers"]
+    subgraph L1["Layer 1: per-language analyzers"]
         atom["atom<br/>(JVM, JS/TS, Python, PHP)"]
+        kosi["kosi (Kotlin, Android)"]
         rusi["rusi (Rust)"]
         golem["golem (Go)"]
         dosai["dosai (.NET)"]
     end
-    conv["Converters reconcile native purls<br/>onto the BOM's versioned purls"]
-    slices["*-reachables.slices.json<br/>(shared, purl-keyed shape)"]
+    conv["Adapters reconcile native purls<br/>onto the BOM's versioned purls"]
+    slices["evidence.jsonl<br/>(shared, purl-keyed records)"]
     bom["CycloneDX BOM<br/>component.evidence.occurrences"]
     subgraph L2["Layer 2: shared reachability engine"]
         engine["reachability.py"]
@@ -43,10 +44,11 @@ flowchart TD
     prio["Prioritization<br/>depscan:prioritized"]
     vex["VEX exporter<br/>CSAF product_status"]
 
+    kosi --> conv
     rusi --> conv
     golem --> conv
     dosai --> conv
-    atom --> slices
+    atom --> conv
     conv --> slices
     slices --> engine
     bom --> engine
@@ -62,7 +64,7 @@ flowchart TD
 
 The engine maintains two maps that drive everything downstream, and keeping them straight is the key to reading dep-scan output.
 
-`direct_purls` is built from the CycloneDX `component.evidence.occurrences` on the BOM, which is where cdxgen records that a dependency actually appears in code (an import, a require, a using directive). A purl in `direct_purls` means the package is referenced in source, not merely declared in a manifest. `reached_purls` is built from the `purls` array on each slice flow object, so a purl lands in `reached_purls` only when it sits on a flow that the slicer traced from a real entry point. The distinction maps directly to the contrast every language chapter draws: `direct_purls` is "present and imported," `reached_purls` is "on an executed path."
+`direct_purls` is built from the CycloneDX `component.evidence.occurrences` on the BOM, which is where cdxgen records that a dependency actually appears in code (an import, a require, a using directive). A purl in `direct_purls` means the package is referenced in source, not merely declared in a manifest. `reached_purls` is built from the subject purls on each reached-flow, usage and entry-point record in the evidence store, so a purl lands in `reached_purls` only when it sits on evidence a producer traced from a real entry point. The distinction maps directly to the contrast every language chapter draws: `direct_purls` is "present and imported," `reached_purls` is "on an executed path."
 
 This is also why an accurate, evidence-bearing BOM is a prerequisite for good reachability. If cdxgen does not persist occurrences, `direct_purls` is empty and the engine loses the ability to separate imported from merely declared. The [SBOM and evidence](sbom-and-evidence) chapter develops this point.
 
@@ -82,4 +84,4 @@ The two maps flow into two places. The prioritization engine in `VDRAnalyzer.pro
 
 ## Summary
 
-dep-scan computes reachable flows first, using per-language slicers that are normalized to a shared, purl-keyed slice format, and only then intersects them with vulnerability data. The engine separates `direct_purls` (imported in source) from `reached_purls` (on an executed path), and the `FrameworkReachability` default is the fast, sufficient choice for most triage while `SemanticReachability` adds endpoint, service, and post-build tiers for compliance work. The next chapter, [How dep-scan prioritizes](prioritization), shows how these maps become the Top Priority table you see in the console.
+dep-scan computes reachable flows first, using per-language analyzers whose reports are normalized to shared, purl-keyed evidence records, and only then intersects them with vulnerability data. The engine separates `direct_purls` (imported in source) from `reached_purls` (on an executed path), and the `FrameworkReachability` default is the fast, sufficient choice for most triage while `SemanticReachability` adds endpoint, service, and post-build tiers for compliance work. The next chapter, [How dep-scan prioritizes](prioritization), shows how these maps become the Top Priority table you see in the console.

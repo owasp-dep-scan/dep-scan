@@ -403,9 +403,13 @@ max_request_failures = get_int_from_env("max_request_failures", 5)
 # Universal scan
 UNIVERSAL_SCAN_TYPE = "universal"
 
+# How many records the explanation renders per record source (each slices
+# file or raw report the evidence store's records came from).
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
-# How many explanations for a given combination of purls
+# How many explanations one combination of package purls, one path start and
+# one path end (the symbol the first and the last witness node name) may each
+# get, so one noisy package or entry point cannot fill the section.
 max_purls_reachable_explanations = get_int_from_env("max_purls_reachable_explanations", 3)
 max_source_reachable_explanations = get_int_from_env("max_source_reachable_explanations", 2)
 max_sink_reachable_explanations = get_int_from_env("max_sink_reachable_explanations", 2)
@@ -433,16 +437,17 @@ COMMON_CHECK_TAGS = (
 # xbom_lib/rusi.py; duplicated here so the CLI/config layer is standalone.
 RUSI_BINARY_ENV = "DEPSCAN_RUSI_BINARY"
 # rusi reports are detected by structural SHAPE (call_graph/data_flow +
-# tool/runtime), not a schema_version prefix -- see analysis_lib.rusi_slices.
+# tool/runtime), not a schema_version prefix -- see the rusi evidence
+# adapter, analysis_lib.evidence.adapters.rusi.
 # Default rusi backend. ``stable`` = syn-based parsing, no cargo/rustc build
 # (safe on untrusted repos). ``compiler`` embeds nightly rustc and builds the
 # target -- only enabled via ``--deep`` or ``--rust-analyzer-backend compiler``.
 RUSI_DEFAULT_BACKEND = "stable"
 RUSI_DEFAULT_DATAFLOW_MODE = "security-deps"
 RUSI_DEFAULT_CALLGRAPH_MODE = "static"
-# Slice file dep-scan writes for rust projects. Matches the name cdxgen uses
-# for atom reachables slices (set_slices_args in xbom_lib/cdxgen.py) so the
-# glob-based discovery in ReachabilityAnalysisKV picks it up unchanged.
+# The converted reachables slice an earlier dep-scan wrote for rust projects.
+# Nothing writes it any more; the name stays so the stale-output cleanup
+# removes a file an earlier run left behind instead of reading it.
 RUSI_REACHABLES_SLICE_FILE = "rust-reachables.slices.json"
 
 # --- golem (Go Source Inspector) reachability ----------------------------
@@ -450,26 +455,27 @@ RUSI_REACHABLES_SLICE_FILE = "rust-reachables.slices.json"
 # xbom_lib/golem.py; duplicated here so the CLI/config layer is standalone.
 GOLEM_BINARY_ENV = "DEPSCAN_GOLEM_BINARY"
 # golem reports are detected by structural SHAPE (callGraph/dataFlow +
-# tool/runtime), not a schemaVersion prefix -- see analysis_lib.golem_slices.
+# tool/runtime), not a schemaVersion prefix -- see the golem evidence
+# adapter, analysis_lib.evidence.adapters.golem.
 GOLEM_DEFAULT_CALLGRAPH_MODE = "static"
 GOLEM_DEFAULT_DATAFLOW_MODE = "all"
-# Slice file dep-scan writes for go projects. Matches the name cdxgen uses
-# for atom reachables slices (set_slices_args in xbom_lib/cdxgen.py) so the
-# glob-based discovery in ReachabilityAnalysisKV picks it up unchanged.
+# The converted reachables slice an earlier dep-scan wrote for go projects;
+# kept for the stale-output cleanup, like RUSI_REACHABLES_SLICE_FILE.
 GOLEM_REACHABLES_SLICE_FILE = "go-reachables.slices.json"
 
 # --- kosi (Kotlin Source Inspector) reachability -------------------------
 # env override for the kosi binary path. Mirrors KOSI_BINARY_ENV in
 # xbom_lib/kosi.py; duplicated here so the CLI/config layer is standalone.
 KOSI_BINARY_ENV = "DEPSCAN_KOSI_BINARY"
-# kosi reports carry schemaVersion "kosi/1" and are detected by that prefix,
-# see analysis_lib.kosi_slices. The default ``syntax`` backend parses source
-# only and never runs Gradle or Maven.
+# kosi reports carry schemaVersion "kosi/1" and are detected by that prefix;
+# see the kosi evidence adapter, analysis_lib.evidence.adapters.kosi. The
+# default ``syntax`` backend parses source only and never runs Gradle or
+# Maven.
 KOSI_DEFAULT_BACKEND = "syntax"
-# Slice file dep-scan writes from a kosi report. The name ends in
-# ``reachables.slices.json`` so the glob-based discovery in
-# ReachabilityAnalysisKV picks it up unchanged, and it is not
-# ``kotlin-reachables``, which is the file atom writes for a kotlin scan.
+# The converted reachables slice an earlier dep-scan wrote from a kosi
+# report; kept for the stale-output cleanup, like
+# RUSI_REACHABLES_SLICE_FILE. It is not ``kotlin-reachables``, which is the
+# file atom writes for a kotlin scan.
 KOSI_REACHABLES_SLICE_FILE = "kosi-reachables.slices.json"
 
 # --- dosai (Dotnet Source and Assembly Inspector) reachability -----------
@@ -489,13 +495,12 @@ DOSAI_DATAFLOWS_FILE = "dotnet-dataflows.json"
 DOSAI_METHODS_FILE = "dotnet-methods.json"
 # dosai reports are detected by structural SHAPE (Metadata.Tool == "Dosai" +
 # methods/dataflows OR Slices/PackageReachability/CallGraph), not a schema
-# prefix -- see analysis_lib.dosai_slices.
-# Atom projection dep-scan writes for dotnet projects. Matches the name cdxgen
-# uses for atom reachables slices (set_slices_args in xbom_lib/cdxgen.py) so the
-# glob-based discovery in ReachabilityAnalysisKV picks it up unchanged.
+# prefix -- see the dosai evidence adapter,
+# analysis_lib.evidence.adapters.dosai.
+# The converted reachables slice an earlier dep-scan wrote for dotnet
+# projects; kept for the stale-output cleanup, like
+# RUSI_REACHABLES_SLICE_FILE.
 DOSAI_REACHABLES_SLICE_FILE = "dotnet-reachables.slices.json"
 # Default analyzer mode. ``auto`` selects source when a source tree is present
 # and assembly for bin/.nupkg-only inputs.
 DOSAI_DEFAULT_ANALYZER_MODE = "auto"
-# How many reachable explanations to render for dotnet (parallel to rust/go).
-max_dotnet_reachable_explanations = get_int_from_env("max_dotnet_reachable_explanations", 20)

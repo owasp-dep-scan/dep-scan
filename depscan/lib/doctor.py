@@ -46,7 +46,12 @@ from xbom_lib.cdxgen import (
     find_cdxgen_cmd,
     resource_path,
 )
-from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.plugins import (
+    discover_plugins_dir,
+    get_plugins_bin_target,
+    is_in_plugins_dir,
+    read_plugins_manifest,
+)
 from xbom_lib.process import (
     build_command,
     find_executable,
@@ -188,16 +193,9 @@ def _version_command(path: str, args: List[str]) -> List[str]:
     return [path, *args]
 
 
-def _run_version_probe(path: str, args: List[str], require_success: bool = False) -> Optional[str]:
-    """Run the tool's version option and return its combined output.
-
-    Returns None when the command could not start, timed out or was refused
-    by :func:`build_command`, and with ``require_success`` also when it
-    exited non-zero. The scan's own checks for go and dotnet
-    (``go_toolchain_available``, ``dotnet_runtime_available``) treat a
-    non-zero exit as "cannot run", while its cdxgen probe reads the output
-    whatever the exit code, so each caller picks the rule its scan uses.
-    """
+def _run_version_probe_status(path: str, args: List[str]) -> Optional[Tuple[int, str]]:
+    """Run ``path`` with ``args``; ``(exit code, combined output)`` or None
+    when the command could not start, timed out or was refused."""
     path = str(path)
     try:
         cp = subprocess.run(
@@ -213,9 +211,26 @@ def _run_version_probe(path: str, args: List[str], require_success: bool = False
         )
     except (OSError, subprocess.SubprocessError):
         return None
-    if require_success and cp.returncode != 0:
+    return cp.returncode, cp.stdout or ""
+
+
+def _run_version_probe(path: str, args: List[str], require_success: bool = False) -> Optional[str]:
+    """Run the tool's version option and return its combined output.
+
+    Returns None when the command could not start, timed out or was refused
+    by :func:`build_command`, and with ``require_success`` also when it
+    exited non-zero. The scan's own checks for go and dotnet
+    (``go_toolchain_available``, ``dotnet_runtime_available``) treat a
+    non-zero exit as "cannot run", while its cdxgen probe reads the output
+    whatever the exit code, so each caller picks the rule its scan uses.
+    """
+    result = _run_version_probe_status(path, args)
+    if result is None:
         return None
-    return cp.stdout or ""
+    returncode, output = result
+    if require_success and returncode != 0:
+        return None
+    return output
 
 
 def _versioned_tool(
@@ -326,7 +341,8 @@ def _parse_kosi(output: str) -> Optional[str]:
 
 
 def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
-    """golem, rusi, dosai or kosi: env override, PATH, then the plugins directory."""
+    """golem, rusi, dosai or kosi: env override, PATH, then the plugins directory
+    (``CDXGEN_PLUGINS_DIR`` or the one found beside the cdxgen install)."""
     status = ToolStatus(name=name)
     env_match = None
     for env_name in env_names:
@@ -338,26 +354,32 @@ def _plugin_tool_status(name: str, env_names: Tuple[str, ...]) -> ToolStatus:
     if not path:
         status.reason = (
             f"{name} was not found; set one of {', '.join(env_names)}, "
-            "install it on PATH or point CDXGEN_PLUGINS_DIR at a cdxgen "
-            "plugins directory"
+            "install it on PATH, point CDXGEN_PLUGINS_DIR at a cdxgen "
+            "plugins directory or install @cdxgen/cdxgen-plugins-bin next to cdxgen"
         )
         return status
     status.path = path
-    plugins_dir = os.environ.get("CDXGEN_PLUGINS_DIR", "").strip()
     if env_match and path == env_match[1]:
         status.source = "env"
         status.source_env = env_match[0]
-    elif plugins_dir and os.path.normpath(path).startswith(
-        os.path.join(os.path.normpath(plugins_dir), "")
-    ):
+    elif is_in_plugins_dir(path):
         status.source = "plugins-dir"
     else:
         status.source = "path"
-    output = _run_version_probe(path, ["--version"])
+    if name == "dosai":
+        probed = _run_version_probe_status(path, ["--version"])
+        if probed is not None:
+            failure = dosai_mod.dosai_launch_failure(probed[1], probed[0])
+            if failure:
+                # The output is the apphost's error, not a version.
+                status.reason = failure
+                return status
+            status.version = _parse_dosai(probed[1]) if probed[1] else None
+        output = None
+    else:
+        output = _run_version_probe(path, ["--version"])
     if output:
-        if name == "dosai":
-            status.version = _parse_dosai(output)
-        elif name == "kosi":
+        if name == "kosi":
             # kosi prints a JSON object, {"version": "4.3.1", ...}, and a
             # native image may add JVM warnings around it.
             status.version = _parse_kosi(output)
@@ -534,73 +556,6 @@ _PLUGIN_BINARY_NAMES = {
     "osquery": "osqueryi-{platform}-{arch}.app",
 }
 
-#: cdxgen's own usability rule for a plugins directory: a manifest, or at
-#: least one of the plugin subdirectories it knows.
-_PLUGINS_DIR_TOOLS = (
-    "cargo-auditable",
-    "cdxrs",
-    "cdxui",
-    "dosai",
-    "golem",
-    "kosi",
-    "osquery",
-    "rusi",
-    "sourcekitten",
-    "trivy",
-    "trustinspector",
-)
-
-
-def _candidate_plugins_dirs(cdxgen_path: Optional[str], target: Dict[str, str]) -> List[str]:
-    """Every plugins directory a scan could use, best candidate first.
-
-    cdxgen honours ``CDXGEN_PLUGINS_DIR``, then a ``plugins`` directory next
-    to its own install (the bundled caxa binary), then the npm package
-    ``@cdxgen/cdxgen-plugins-bin-<platform>-<arch>`` installed beside it.
-    The last two are probed by walking up from the resolved cdxgen command.
-    """
-    candidates = []
-    env_dir = os.environ.get("CDXGEN_PLUGINS_DIR", "").strip()
-    if env_dir and os.path.isdir(env_dir):
-        candidates.append(env_dir)
-    if cdxgen_path:
-        ancestor = os.path.dirname(os.path.realpath(cdxgen_path))
-        for _ in range(6):
-            candidates.append(os.path.join(ancestor, "plugins"))
-            candidates.append(
-                os.path.join(
-                    ancestor,
-                    "node_modules",
-                    "@cdxgen",
-                    f"cdxgen-plugins-bin-{target['platform']}-{target['arch']}",
-                    "plugins",
-                )
-            )
-            ancestor = os.path.dirname(ancestor)
-    unique = []
-    for candidate in candidates:
-        key = os.path.normpath(candidate)
-        if key not in [os.path.normpath(seen) for seen in unique]:
-            unique.append(candidate)
-    return unique
-
-
-def _usable_plugins_dir(path: str) -> bool:
-    if not os.path.isdir(path):
-        return False
-    if os.path.isfile(os.path.join(path, "plugins-manifest.json")):
-        return True
-    return any(os.path.isdir(os.path.join(path, tool)) for tool in _PLUGINS_DIR_TOOLS)
-
-
-def _read_plugins_manifest(plugins_dir: str) -> Dict[str, Any]:
-    try:
-        with open(os.path.join(plugins_dir, "plugins-manifest.json"), encoding="utf-8") as fp:
-            manifest = json.load(fp)
-    except (OSError, ValueError):
-        return {}
-    return manifest if isinstance(manifest, dict) else {}
-
 
 def _plugins_status(cdxgen_path: Optional[str], target: Dict[str, str]) -> List[ToolStatus]:
     """The plugins directory entry plus one entry per binary it ships.
@@ -609,20 +564,10 @@ def _plugins_status(cdxgen_path: Optional[str], target: Dict[str, str]) -> List[
     package writes when it builds; these binaries are cdxgen's to run, so
     this report never starts them.
     """
-    plugins_dir = None
-    source = None
-    source_env = None
-    for candidate in _candidate_plugins_dirs(cdxgen_path, target):
-        if _usable_plugins_dir(candidate):
-            plugins_dir = candidate
-            if candidate == os.environ.get("CDXGEN_PLUGINS_DIR", "").strip():
-                source = "env"
-                source_env = "CDXGEN_PLUGINS_DIR"
-            elif os.path.isfile(os.path.join(candidate, os.pardir, "package.json")):
-                source = "cdxgen-install"
-            else:
-                source = "bundled-sea"
-            break
+    discovered = discover_plugins_dir(cdxgen_path, target)
+    plugins_dir = discovered.path if discovered else None
+    source = discovered.source if discovered else None
+    source_env = "CDXGEN_PLUGINS_DIR" if source == "env" else None
     entries = [
         ToolStatus(
             name="cdxgen-plugins",
@@ -669,7 +614,7 @@ def _plugins_status(cdxgen_path: Optional[str], target: Dict[str, str]) -> List[
 
 
 def _manifest_package_version(plugins_dir: str) -> Optional[str]:
-    package = _read_plugins_manifest(plugins_dir).get("package") or {}
+    package = read_plugins_manifest(plugins_dir).get("package") or {}
     version = str(package.get("version") or "")
     return version or None
 
@@ -677,7 +622,7 @@ def _manifest_package_version(plugins_dir: str) -> Optional[str]:
 def _manifest_plugins(plugins_dir: str) -> Dict[str, Dict[str, Any]]:
     return {
         str(plugin.get("name")): plugin
-        for plugin in _read_plugins_manifest(plugins_dir).get("plugins") or []
+        for plugin in read_plugins_manifest(plugins_dir).get("plugins") or []
         if isinstance(plugin, dict) and plugin.get("name")
     }
 

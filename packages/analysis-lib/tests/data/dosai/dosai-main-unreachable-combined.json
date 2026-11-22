@@ -1,0 +1,1314 @@
+{
+ "Metadata": {
+  "AnalyzerBuild": "5.0.0+0d4c3317aa54df99e532ac2bdfa46becbb92c8b0",
+  "AnalyzerVersion": "5.0.0.0",
+  "InputPath": "./unreachable-app",
+  "SchemaVersion": "5.1.0",
+  "Tool": "Dosai"
+ },
+ "dataflows": {
+  "AttackSurface": [
+   {
+    "EntryPointCount": 1,
+    "EntryPoints": [
+     {
+      "AllowAnonymous": false,
+      "Cwes": [
+       "CWE-117"
+      ],
+      "EntryPointId": "ep1",
+      "ExploitChainCount": 3,
+      "Exposure": "cli",
+      "FileName": "Program.cs",
+      "HighSeverityWeaknessCount": 0,
+      "Kind": "Cli",
+      "LineNumber": 15,
+      "SinkCategories": [
+       "log"
+      ],
+      "WeaknessCount": 3,
+      "WeaknessKinds": [
+       "LogInjectionCandidate"
+      ]
+     }
+    ],
+    "EntryPointsTruncated": false,
+    "ExploitChainCount": 3,
+    "Exposure": "cli",
+    "HighSeverityWeaknessCount": 0,
+    "WeaknessCount": 3
+   }
+  ],
+  "Diagnostics": [
+   "Resolved 1 package purl(s) from project references in unreachable-app.csproj.",
+   "Base framework references for target 'net10.0' come from the Microsoft.NETCore.App 10.0.15 reference pack (exact major).",
+   "Resolved 1 package assemblies from NuGet restore output (1 project.assets.json)."
+  ],
+  "EntryPoints": [
+   {
+    "AllowAnonymous": false,
+    "AuthenticationSchemes": [],
+    "AuthorizationPolicies": [],
+    "ClassName": "Program",
+    "ColumnNumber": 31,
+    "CorsPolicies": [],
+    "FileName": "Program.cs",
+    "Id": "ep1",
+    "InputNames": [
+     "In"
+    ],
+    "Kind": "Cli",
+    "LineNumber": 15,
+    "MethodId": "unreachable_app.Program.Main():void",
+    "MethodName": "Main",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "RawUrls": [],
+    "RequiredClaims": [],
+    "RequiredScopes": [],
+    "Roles": []
+   }
+  ],
+  "ExploitChains": [
+   {
+    "CallPath": [
+     "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "unreachable_app.Program.Main():void"
+    ],
+    "Confidence": "High",
+    "EntryPointId": "ep1",
+    "Exposure": "cli",
+    "HopCount": 1,
+    "Id": "ec1",
+    "SinkNodeId": "dfn4",
+    "SliceId": "dfs1",
+    "SourceNodeId": "dfn1",
+    "Summary": "input data reaches log sink from cli entry point ep1 in 1 call(s).",
+    "WeaknessId": "wc1"
+   },
+   {
+    "CallPath": [
+     "unreachable_app.Program.Main():void",
+     "unreachable_app.Program.Run(System.IO.TextReader):int"
+    ],
+    "Confidence": "High",
+    "EntryPointId": "ep1",
+    "Exposure": "cli",
+    "HopCount": 1,
+    "Id": "ec2",
+    "SinkNodeId": "dfn7",
+    "SliceId": "dfs2",
+    "SourceNodeId": "dfn6",
+    "Summary": "cli data reaches log sink from cli entry point ep1 in 1 call(s).",
+    "WeaknessId": "wc2"
+   },
+   {
+    "CallPath": [
+     "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "unreachable_app.Program.Main():void"
+    ],
+    "Confidence": "High",
+    "EntryPointId": "ep1",
+    "Exposure": "cli",
+    "HopCount": 1,
+    "Id": "ec3",
+    "SinkNodeId": "dfn12",
+    "SliceId": "dfs3",
+    "SourceNodeId": "dfn8",
+    "Summary": "input data reaches log sink from cli entry point ep1 in 1 call(s).",
+    "WeaknessId": "wc3"
+   }
+  ],
+  "Nodes": [
+   {
+    "Category": "input",
+    "ClassName": "Program",
+    "Code": "input",
+    "ColumnNumber": 5,
+    "Evidence": [
+     {
+      "ColumnNumber": 5,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 10,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn1",
+    "IsSink": false,
+    "IsSource": true,
+    "Kind": "Source",
+    "LineNumber": 10,
+    "MatchedPatterns": [
+     "input"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Run",
+     "MetadataToken": 0,
+     "MethodName": "Run",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Run",
+     "Symbol": "Run"
+    },
+    "MethodName": "Run",
+    "Name": "input",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Run",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Runtime",
+    "Symbol": "System.IO.TextReader input",
+    "Type": "System.IO.TextReader"
+   },
+   {
+    "ClassName": "Program",
+    "Code": "line",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from assembly IL analysis.",
+      "FileName": "Program.cs",
+      "Kind": "AssemblyIlDirect",
+      "LineNumber": 11,
+      "Source": "assembly-il"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn10",
+    "IsSink": false,
+    "IsSource": false,
+    "Kind": "Assignment",
+    "LineNumber": 11,
+    "MatchedPatterns": [],
+    "MethodIdentity": {
+     "AssemblyName": "unreachable-app",
+     "AssemblySignature": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "ClassName": "Program",
+     "Evidence": [
+      "AssemblyIlDirect"
+     ],
+     "Id": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "MetadataToken": 100663297,
+     "MethodName": "Run",
+     "ModuleName": "unreachable-app.dll",
+     "Namespace": "unreachable_app",
+     "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "MethodName": "Run",
+    "Name": "line",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "analysis": "assembly-il",
+     "assembly": "unreachable-app.dll",
+     "ilOffset": "7",
+     "metadataToken": "0x06000001",
+     "method": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int.line"
+   },
+   {
+    "Category": "input",
+    "ClassName": "Program",
+    "Code": "input",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from assembly IL analysis.",
+      "FileName": "Program.cs",
+      "Kind": "AssemblyIlDirect",
+      "LineNumber": 11,
+      "Source": "assembly-il"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn8",
+    "IsSink": false,
+    "IsSource": true,
+    "Kind": "Source",
+    "LineNumber": 11,
+    "MatchedPatterns": [
+     "input"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "unreachable-app",
+     "AssemblySignature": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "ClassName": "Program",
+     "Evidence": [
+      "AssemblyIlDirect"
+     ],
+     "Id": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "MetadataToken": 100663297,
+     "MethodName": "Run",
+     "ModuleName": "unreachable-app.dll",
+     "Namespace": "unreachable_app",
+     "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "MethodName": "Run",
+    "Name": "input",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "analysis": "assembly-il",
+     "assembly": "unreachable-app.dll",
+     "ilOffset": "1",
+     "metadataToken": "0x06000001",
+     "method": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int.input"
+   },
+   {
+    "ClassName": "Program",
+    "Code": "System.IO.TextReader.ReadLine():string",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from assembly IL analysis.",
+      "FileName": "Program.cs",
+      "Kind": "AssemblyIlDirect",
+      "LineNumber": 11,
+      "Source": "assembly-il"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn9",
+    "IsSink": false,
+    "IsSource": false,
+    "Kind": "Call",
+    "LineNumber": 11,
+    "MatchedPatterns": [],
+    "MethodIdentity": {
+     "AssemblyName": "unreachable-app",
+     "AssemblySignature": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "ClassName": "Program",
+     "Evidence": [
+      "AssemblyIlDirect"
+     ],
+     "Id": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "MetadataToken": 100663297,
+     "MethodName": "Run",
+     "ModuleName": "unreachable-app.dll",
+     "Namespace": "unreachable_app",
+     "Purl": "pkg:nuget/System.Runtime",
+     "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "MethodName": "Run",
+    "Name": "ReadLine",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "analysis": "assembly-il",
+     "assembly": "unreachable-app.dll",
+     "ilOffset": "2",
+     "metadataToken": "0x06000001",
+     "method": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Runtime",
+    "Symbol": "System.IO.TextReader.ReadLine():string",
+    "Type": "System.IO.TextReader"
+   },
+   {
+    "ClassName": "Program",
+    "Code": "line = input.ReadLine()",
+    "ColumnNumber": 13,
+    "Evidence": [
+     {
+      "ColumnNumber": 13,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 11,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn3",
+    "IsSink": false,
+    "IsSource": false,
+    "Kind": "Assignment",
+    "LineNumber": 11,
+    "MatchedPatterns": [],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Run",
+     "MetadataToken": 0,
+     "MethodName": "Run",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Run",
+     "Symbol": "Run"
+    },
+    "MethodName": "Run",
+    "Name": "line",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Run",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Symbol": "line",
+    "Type": "string"
+   },
+   {
+    "ClassName": "Program",
+    "Code": "input.ReadLine()",
+    "ColumnNumber": 20,
+    "Evidence": [
+     {
+      "ColumnNumber": 20,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 11,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn2",
+    "IsSink": false,
+    "IsSource": false,
+    "Kind": "Call",
+    "LineNumber": 11,
+    "MatchedPatterns": [],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Run",
+     "MetadataToken": 0,
+     "MethodName": "Run",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Run",
+     "Symbol": "Run"
+    },
+    "MethodName": "Run",
+    "Name": "ReadLine",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Run",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Runtime",
+    "Symbol": "System.IO.TextReader.ReadLine()",
+    "Type": "string"
+   },
+   {
+    "ClassName": "Program",
+    "Code": "System.String.ToUpper():string",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from assembly IL analysis.",
+      "FileName": "Program.cs",
+      "Kind": "AssemblyIlDirect",
+      "LineNumber": 12,
+      "Source": "assembly-il"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn11",
+    "IsSink": false,
+    "IsSource": false,
+    "Kind": "Call",
+    "LineNumber": 12,
+    "MatchedPatterns": [],
+    "MethodIdentity": {
+     "AssemblyName": "unreachable-app",
+     "AssemblySignature": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "ClassName": "Program",
+     "Evidence": [
+      "AssemblyIlDirect"
+     ],
+     "Id": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "MetadataToken": 100663297,
+     "MethodName": "Run",
+     "ModuleName": "unreachable-app.dll",
+     "Namespace": "unreachable_app",
+     "Purl": "pkg:nuget/System.Runtime",
+     "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "MethodName": "Run",
+    "Name": "ToUpper",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "analysis": "assembly-il",
+     "assembly": "unreachable-app.dll",
+     "ilOffset": "15",
+     "metadataToken": "0x06000001",
+     "method": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Runtime",
+    "Symbol": "System.String.ToUpper():string",
+    "Type": "System.String"
+   },
+   {
+    "Category": "log",
+    "ClassName": "Program",
+    "Code": "System.Console.WriteLine(string)",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from assembly IL analysis.",
+      "FileName": "Program.cs",
+      "Kind": "AssemblyIlDirect",
+      "LineNumber": 12,
+      "Source": "assembly-il"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn12",
+    "IsSink": true,
+    "IsSource": false,
+    "Kind": "Sink",
+    "LineNumber": 12,
+    "MatchedPatterns": [
+     "System.Console.WriteLine",
+     "System.Console.Write"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "unreachable-app",
+     "AssemblySignature": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "ClassName": "Program",
+     "Evidence": [
+      "AssemblyIlDirect"
+     ],
+     "Id": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "MetadataToken": 100663297,
+     "MethodName": "Run",
+     "ModuleName": "unreachable-app.dll",
+     "Namespace": "unreachable_app",
+     "Purl": "pkg:nuget/System.Console",
+     "Symbol": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "MethodName": "Run",
+    "Name": "WriteLine",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "analysis": "assembly-il",
+     "assembly": "unreachable-app.dll",
+     "ilOffset": "20",
+     "metadataToken": "0x06000001",
+     "method": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Console",
+    "Symbol": "System.Console.WriteLine(string)",
+    "Type": "System.Console"
+   },
+   {
+    "Category": "log",
+    "ClassName": "Program",
+    "Code": "System.Console.WriteLine(line?.ToUpper())",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 12,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn4",
+    "IsSink": true,
+    "IsSource": false,
+    "Kind": "Sink",
+    "LineNumber": 12,
+    "MatchedPatterns": [
+     "System.Console.WriteLine",
+     "System.Console.Write"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Run",
+     "MetadataToken": 0,
+     "MethodName": "Run",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Run",
+     "Symbol": "Run"
+    },
+    "MethodName": "Run",
+    "Name": "WriteLine",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Run",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Console",
+    "Symbol": "System.Console.WriteLine(string)",
+    "Type": "void"
+   },
+   {
+    "Category": "log",
+    "ClassName": "Program",
+    "Code": "System.Console.WriteLine(line?.ToUpper())",
+    "ColumnNumber": 9,
+    "Evidence": [
+     {
+      "ColumnNumber": 9,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 12,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn5",
+    "IsSink": true,
+    "IsSource": false,
+    "Kind": "Sink",
+    "LineNumber": 12,
+    "MatchedPatterns": [
+     "System.Console.WriteLine",
+     "System.Console.Write"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Run",
+     "MetadataToken": 0,
+     "MethodName": "Run",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Run",
+     "Symbol": "Run"
+    },
+    "MethodName": "Run",
+    "Name": "WriteLine",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Run",
+     "methodId": "unreachable_app.Program.Run(System.IO.TextReader):int"
+    },
+    "Purl": "pkg:nuget/System.Console",
+    "Symbol": "System.Console.WriteLine(string)",
+    "Type": "void"
+   },
+   {
+    "Category": "log",
+    "ClassName": "Program",
+    "Code": "Run(System.Console.In)",
+    "ColumnNumber": 27,
+    "Evidence": [
+     {
+      "ColumnNumber": 27,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 15,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn7",
+    "IsSink": true,
+    "IsSource": false,
+    "Kind": "Sink",
+    "LineNumber": 15,
+    "MatchedPatterns": [
+     "unreachable_app.Program.Run(System.IO.TextReader)"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Main",
+     "MetadataToken": 0,
+     "MethodName": "Main",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Main",
+     "Symbol": "Main"
+    },
+    "MethodName": "Main",
+    "Name": "Run",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Main",
+     "methodId": "unreachable_app.Program.Main():void",
+     "sinkMethodId": "unreachable_app.Program.Run(System.IO.TextReader):int",
+     "summaryMethod": "unreachable_app.Program.Run(System.IO.TextReader)"
+    },
+    "Symbol": "unreachable_app.Program.Run(System.IO.TextReader)",
+    "Type": "int"
+   },
+   {
+    "Category": "cli",
+    "ClassName": "Program",
+    "Code": "System.Console.In",
+    "ColumnNumber": 31,
+    "Evidence": [
+     {
+      "ColumnNumber": 31,
+      "Confidence": "Medium",
+      "Description": "Data-flow node discovered from Roslyn operation analysis.",
+      "FileName": "Program.cs",
+      "Kind": "SourceRoslynDirect",
+      "LineNumber": 15,
+      "Source": "roslyn-source"
+     }
+    ],
+    "FileName": "Program.cs",
+    "Id": "dfn6",
+    "IsSink": false,
+    "IsSource": true,
+    "Kind": "Source",
+    "LineNumber": 15,
+    "MatchedPatterns": [
+     "^System\\.Console\\.(In|OpenStandardInput)\\b"
+    ],
+    "MethodIdentity": {
+     "AssemblyName": "Dosai.DataFlow.CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null",
+     "ClassName": "Program",
+     "Evidence": [
+      "SourceRoslynDirect"
+     ],
+     "Id": "Main",
+     "MetadataToken": 0,
+     "MethodName": "Main",
+     "ModuleName": "Dosai.DataFlow.CSharp.dll",
+     "Namespace": "unreachable_app",
+     "SourceSignature": "Main",
+     "Symbol": "Main"
+    },
+    "MethodName": "Main",
+    "Name": "In",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "Properties": {
+     "method": "Main",
+     "methodId": "unreachable_app.Program.Main():void"
+    },
+    "Symbol": "In",
+    "Type": "System.IO.TextReader"
+   }
+  ],
+  "PackageReachability": [
+   {
+    "Categories": [
+     "log"
+    ],
+    "Confidence": "High",
+    "ConfidenceReasons": [
+     "Data-flow slice confidence is Low.",
+     "Reachability is supported by direct source or IL call evidence."
+    ],
+    "EdgeIds": [
+     "dfe17",
+     "dfe18",
+     "dfe19",
+     "dfe20",
+     "dfe4",
+     "dfe5",
+     "dfe6",
+     "dfe7",
+     "dfe8",
+     "dfe9"
+    ],
+    "EntryPointIds": [],
+    "EvidenceKinds": [
+     "AssemblyIlDirect",
+     "SourceRoslynDirect"
+    ],
+    "NodeIds": [
+     "dfn12",
+     "dfn4",
+     "dfn5"
+    ],
+    "Purl": "pkg:nuget/System.Console",
+    "ReachabilityKind": "DataFlowNode",
+    "Reachable": true,
+    "SliceIds": [
+     "dfs1",
+     "dfs3"
+    ],
+    "SourceLocations": [
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowNode",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 34,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 34,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     }
+    ]
+   },
+   {
+    "Categories": [
+     "input",
+     "log"
+    ],
+    "Confidence": "High",
+    "ConfidenceReasons": [
+     "Data-flow slice confidence is Low.",
+     "Reachability is supported by direct source or IL call evidence."
+    ],
+    "EdgeIds": [
+     "dfe11",
+     "dfe13",
+     "dfe2",
+     "dfe3",
+     "dfe1",
+     "dfe14",
+     "dfe15",
+     "dfe16",
+     "dfe18",
+     "dfe20",
+     "dfe4",
+     "dfe5",
+     "dfe7",
+     "dfe8"
+    ],
+    "EntryPointIds": [],
+    "EvidenceKinds": [
+     "AssemblyIlDirect",
+     "SourceRoslynDirect"
+    ],
+    "NodeIds": [
+     "dfn1",
+     "dfn9",
+     "dfn2",
+     "dfn11"
+    ],
+    "Purl": "pkg:nuget/System.Runtime",
+    "ReachabilityKind": "DataFlowNode",
+    "Reachable": true,
+    "SliceIds": [
+     "dfs1",
+     "dfs3"
+    ],
+    "SourceLocations": [
+     {
+      "ColumnNumber": 5,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowNode",
+      "LineNumber": 10,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 5,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 10,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowNode",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 13,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 13,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 20,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 20,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowNode",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 20,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowNode",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 34,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowEdge",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 34,
+      "FileName": "Program.cs",
+      "Kind": "DataFlowSlice",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     }
+    ]
+   }
+  ],
+  "SanitizedFlows": [],
+  "Slices": [
+   {
+    "Confidence": "Low",
+    "EdgeIds": [
+     "dfe1",
+     "dfe2",
+     "dfe4",
+     "dfe3",
+     "dfe5",
+     "dfe6"
+    ],
+    "FieldPaths": [],
+    "Id": "dfs1",
+    "NodeIds": [
+     "dfn1",
+     "dfn2",
+     "dfn3",
+     "dfn4"
+    ],
+    "Packs": [
+     "log"
+    ],
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/System.Console"
+    ],
+    "Severity": "info",
+    "SinkArgument": "line?.ToUpper()",
+    "SinkArgumentIndex": 0,
+    "SinkCategory": "log",
+    "SinkId": "dfn4",
+    "SinkPurl": "pkg:nuget/System.Console",
+    "SourceCategory": "input",
+    "SourceId": "dfn1",
+    "SourcePurl": "pkg:nuget/System.Runtime",
+    "Summary": "Data flows from dfn1 to WriteLine argument 0.",
+    "TaintKinds": [
+     "input"
+    ]
+   },
+   {
+    "Confidence": "Medium",
+    "EdgeIds": [
+     "dfe10"
+    ],
+    "FieldPaths": [],
+    "Id": "dfs2",
+    "NodeIds": [
+     "dfn6",
+     "dfn7"
+    ],
+    "Purls": [],
+    "Severity": "low",
+    "SinkArgument": "System.Console.In",
+    "SinkArgumentIndex": 0,
+    "SinkCategory": "log",
+    "SinkId": "dfn7",
+    "SourceCategory": "cli",
+    "SourceId": "dfn6",
+    "Summary": "Data flows from dfn6 to Run argument 0.",
+    "TaintKinds": [
+     "cli"
+    ]
+   },
+   {
+    "Confidence": "Low",
+    "EdgeIds": [
+     "dfe11",
+     "dfe12",
+     "dfe14",
+     "dfe17",
+     "dfe13",
+     "dfe15",
+     "dfe18",
+     "dfe16",
+     "dfe19",
+     "dfe20"
+    ],
+    "FieldPaths": [],
+    "Id": "dfs3",
+    "NodeIds": [
+     "dfn8",
+     "dfn9",
+     "dfn10",
+     "dfn11",
+     "dfn12"
+    ],
+    "Packs": [
+     "log"
+    ],
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/System.Console"
+    ],
+    "Severity": "info",
+    "SinkArgument": "arg0",
+    "SinkArgumentIndex": 0,
+    "SinkCategory": "log",
+    "SinkId": "dfn12",
+    "SinkPurl": "pkg:nuget/System.Console",
+    "SourceCategory": "input",
+    "SourceId": "dfn8",
+    "Summary": "Assembly IL data flows from dfn8 to WriteLine argument 0.",
+    "TaintKinds": [
+     "input"
+    ]
+   }
+  ],
+  "Statistics": {
+   "DependencySliceCount": 0,
+   "EdgeCount": 20,
+   "FilesAnalyzed": 2,
+   "NodeCount": 12,
+   "SinkCount": 4,
+   "SliceCount": 3,
+   "SourceCount": 3
+  }
+ },
+ "methods": {
+  "ApiEndpoints": [],
+  "DeadCode": [],
+  "Diagnostics": [
+   "Resolved 1 package assemblies from NuGet restore output (1 project.assets.json).",
+   "1 assembly reference(s) were left out of the source compilation because the tree builds an assembly of the same name from source; calls into those assemblies bind to the source.",
+   "Base framework references for target 'net10.0' come from the Microsoft.NETCore.App 10.0.15 reference pack (exact major)."
+  ],
+  "EntryPoints": [
+   {
+    "AllowAnonymous": false,
+    "AuthenticationSchemes": [],
+    "AuthorizationPolicies": [],
+    "ClassName": "Program",
+    "ColumnNumber": 5,
+    "CorsPolicies": [],
+    "FileName": "Program.cs",
+    "Id": "ep:Cli#::unreachable_app.Program.Main():void",
+    "InputNames": [],
+    "Kind": "Cli",
+    "LineNumber": 15,
+    "MethodId": "unreachable_app.Program.Main():void",
+    "MethodName": "Main",
+    "Namespace": "unreachable_app",
+    "Path": "Program.cs",
+    "RawUrls": [],
+    "RequiredClaims": [],
+    "RequiredScopes": [],
+    "Roles": []
+   }
+  ],
+  "Metadata": {
+   "AnalyzerBuild": "5.0.0+0d4c3317aa54df99e532ac2bdfa46becbb92c8b0",
+   "AnalyzerVersion": "5.0.0.0",
+   "GuardTargetFramework": "net10.0",
+   "InputPath": "./unreachable-app",
+   "SchemaVersion": "5.1.0",
+   "TargetFrameworks": [
+    "net10.0"
+   ],
+   "Tool": "Dosai"
+  },
+  "PackageReachability": [
+   {
+    "Categories": [
+     "PropertyGet",
+     "MethodCall"
+    ],
+    "Confidence": "High",
+    "ConfidenceReasons": [
+     "Reachability is supported by direct source or IL call evidence."
+    ],
+    "EdgeIds": [
+     "e1",
+     "e3"
+    ],
+    "EntryPointIds": [],
+    "EvidenceKinds": [
+     "ExternalSummary",
+     "SourceRoslynDirect"
+    ],
+    "NodeIds": [
+     "System.Console.WriteLine(string):void",
+     "System.Console.get_In():System.IO.TextReader"
+    ],
+    "Purl": "pkg:nuget/System.Console",
+    "ReachabilityKind": "ExternalCallGraphNode",
+    "Reachable": true,
+    "SliceIds": [],
+    "SourceLocations": [
+     {
+      "ColumnNumber": 9,
+      "FileName": "Program.cs",
+      "Kind": "CallGraphEdge",
+      "LineNumber": 12,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 31,
+      "FileName": "Program.cs",
+      "Kind": "CallGraphEdge",
+      "LineNumber": 15,
+      "Path": "Program.cs"
+     }
+    ]
+   },
+   {
+    "Categories": [
+     "MethodCall",
+     "System.IO"
+    ],
+    "Confidence": "High",
+    "ConfidenceReasons": [
+     "Package URL is supported by dependency/import metadata.",
+     "Reachability is supported by direct source or IL call evidence."
+    ],
+    "EdgeIds": [
+     "e4"
+    ],
+    "EntryPointIds": [],
+    "EvidenceKinds": [
+     "ExternalSummary",
+     "SourceRoslynDirect"
+    ],
+    "NodeIds": [
+     "System.IO.TextReader.ReadLine():string"
+    ],
+    "Purl": "pkg:nuget/System.Runtime",
+    "ReachabilityKind": "ExternalCallGraphNode",
+    "Reachable": true,
+    "SliceIds": [],
+    "SourceLocations": [
+     {
+      "ColumnNumber": 1,
+      "FileName": "Program.cs",
+      "Kind": "Dependency",
+      "LineNumber": 1,
+      "Path": "Program.cs"
+     },
+     {
+      "ColumnNumber": 20,
+      "FileName": "Program.cs",
+      "Kind": "CallGraphEdge",
+      "LineNumber": 11,
+      "Path": "Program.cs"
+     }
+    ]
+   }
+  ],
+  "Reachability": [
+   {
+    "DepthFromEntryPoint": 2,
+    "FanIn": 1,
+    "FanOut": 0,
+    "InRecursiveCycle": false,
+    "KeepAlive": false,
+    "KeepAliveReasons": [],
+    "NodeId": "System.Console.WriteLine(string):void",
+    "Reachable": true,
+    "ReachableEntryPoints": [
+     "ep:Cli#::unreachable_app.Program.Main():void"
+    ],
+    "ReachableNodeBucket": 1,
+    "SccId": -1
+   },
+   {
+    "DepthFromEntryPoint": 1,
+    "FanIn": 1,
+    "FanOut": 0,
+    "InRecursiveCycle": false,
+    "KeepAlive": false,
+    "KeepAliveReasons": [],
+    "NodeId": "System.Console.get_In():System.IO.TextReader",
+    "Reachable": true,
+    "ReachableEntryPoints": [
+     "ep:Cli#::unreachable_app.Program.Main():void"
+    ],
+    "ReachableNodeBucket": 1,
+    "SccId": -1
+   },
+   {
+    "DepthFromEntryPoint": 2,
+    "FanIn": 1,
+    "FanOut": 0,
+    "InRecursiveCycle": false,
+    "KeepAlive": false,
+    "KeepAliveReasons": [],
+    "NodeId": "System.IO.TextReader.ReadLine():string",
+    "Reachable": true,
+    "ReachableEntryPoints": [
+     "ep:Cli#::unreachable_app.Program.Main():void"
+    ],
+    "ReachableNodeBucket": 1,
+    "SccId": -1
+   },
+   {
+    "DepthFromEntryPoint": 2,
+    "FanIn": 1,
+    "FanOut": 0,
+    "InRecursiveCycle": false,
+    "KeepAlive": false,
+    "KeepAliveReasons": [],
+    "NodeId": "string.ToUpper():string",
+    "Reachable": true,
+    "ReachableEntryPoints": [
+     "ep:Cli#::unreachable_app.Program.Main():void"
+    ],
+    "ReachableNodeBucket": 1,
+    "SccId": -1
+   },
+   {
+    "DepthFromEntryPoint": 0,
+    "FanIn": 0,
+    "FanOut": 2,
+    "InRecursiveCycle": false,
+    "KeepAlive": false,
+    "KeepAliveReasons": [],
+    "NodeId": "unreachable_app.Program.Main():void",
+    "Reachable": true,
+    "ReachableEntryPoints": [
+     "ep:Cli#::unreachable_app.Program.Main():void"
+    ],
+    "ReachableNodeBucket": 10,
+    "SccId": -1
+   },
+   {
+    "DepthFromEntryPoint": 1,
+    "FanIn": 1,
+    "FanOut": 3,
+    "InRecursiveCycle": false,
+    "KeepAlive": false,
+    "KeepAliveReasons": [],
+    "NodeId": "unreachable_app.Program.Run(System.IO.TextReader):int",
+    "Reachable": true,
+    "ReachableEntryPoints": [
+     "ep:Cli#::unreachable_app.Program.Main():void"
+    ],
+    "ReachableNodeBucket": 10,
+    "SccId": -1
+   }
+  ],
+  "Services": []
+ }
+}

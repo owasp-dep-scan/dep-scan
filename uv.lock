@@ -2532,11 +2532,11 @@ wheels = [
 
 [[package]]
 name = "wasm-tools"
-version = "2.1.0"
+version = "2.2.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/da/f9/3a6260818f6b7b7aa23b204a06e8a8ea6cb1f7d64cd2ab47eb1afaefe332/wasm_tools-2.1.0.tar.gz", hash = "sha256:fbfd4a962462e6128eb37446957d9ccac4e18b34d2cb894821697139d12f26d4", size = 53708, upload-time = "2026-09-01T22:05:23.711Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/dc/cab147acaa95ce52570eddfb8a3bd5d2cbe984ef16ef75f33dfd4679e5f2/wasm_tools-2.2.0.tar.gz", hash = "sha256:2453fbae76a802b4b7198991e862cdd5b87d34dc565d7e84b84bf4a143a513d3", size = 118179, upload-time = "2026-11-21T02:16:13.185Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/6f/4d9a1e23bc9b50fc65b7afa73992cac27f263fc10668c5fe963250299e1a/wasm_tools-2.1.0-py3-none-any.whl", hash = "sha256:237d68dd5767c639a3a76633ebfc628062ec3d5da48be902ffa62b351f8d61f9", size = 55545, upload-time = "2026-09-01T22:05:22.19Z" },
+    { url = "https://files.pythonhosted.org/packages/21/4e/2628e87f81301846724f5fea98ebb84626a3b1dec69fba25fd7374929537/wasm_tools-2.2.0-py3-none-any.whl", hash = "sha256:962704991bf7b2346d498f3b12d509cd55ad922c6dabc47658d3c295cf2869c9", size = 125254, upload-time = "2026-11-21T02:16:11.525Z" },
 ]
 
 [[package]]

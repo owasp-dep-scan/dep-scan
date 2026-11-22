@@ -2,9 +2,9 @@
 
 rusi is a Rust analysis engine shipped prebuilt via cdxgen-plugins-bin. It
 emits a call graph + interprocedural source->sink dataflow slices with PURL
-attribution. dep-scan converts that report into an atom-shaped reachables
-slice (see :mod:`analysis_lib.rusi_slices`) so the existing purl-keyed
-reachability pipeline lights up with zero analyzer changes.
+attribution. dep-scan's rusi adapter reads that report into the evidence store (see
+:mod:`analysis_lib.evidence.adapters.rusi`) so the purl-keyed reachability
+pipeline lights up with zero analyzer changes.
 
 Binary resolution order (mirrors cdxgen's ``resolvePluginBinary`` so the
 fallback finds the SAME binary cdxgen uses):
@@ -12,6 +12,8 @@ fallback finds the SAME binary cdxgen uses):
   2. ``DEPSCAN_RUSI_BINARY`` env var (depscan convenience override).
   3. ``find_executable("rusi")`` (PATH lookup -- local installs / plugins-bin PATH).
   4. ``CDXGEN_PLUGINS_DIR`` bundled layout
+     (or the plugins directory found beside the cdxgen install, see
+     :func:`xbom_lib.plugins.discover_plugins_dir`)
      ``<pluginsDir>/rusi/rusi-<platform>-<arch><extn>`` using cdxgen's
      platform/arch/musl tokens.
   5. Not found -> graceful skip with a diagnostic (never crash).
@@ -35,7 +37,7 @@ from dataclasses import dataclass
 from logging import Logger
 from typing import Optional
 
-from xbom_lib.plugins import get_plugins_bin_target
+from xbom_lib.plugins import bundled_plugin_path, find_bundled_plugin, get_plugins_bin_target
 from xbom_lib.process import build_command, find_executable, tool_env
 
 
@@ -43,8 +45,9 @@ from xbom_lib.process import build_command, find_executable, tool_env
 # Constants -- mirrored in depscan/lib/config.py for the CLI layer.
 # ---------------------------------------------------------------------------
 
-# Minimum rusi version known to produce the schema this converter targets.
-# The converter is defensive, so this is a soft gate (warn, don't crash).
+# Minimum rusi version known to produce the report schema dep-scan's rusi
+# evidence adapter reads. The adapter gates the report's own schema version,
+# so this is a soft gate (warn, don't crash).
 RUSI_MIN_VERSION = "2.5.2"
 
 # env override for the binary path
@@ -95,15 +98,7 @@ def bundled_rusi_path(plugins_dir: Optional[str], target: Optional[dict] = None)
     Returns the path only when it exists on disk; otherwise ``None``. ``None``
     is also returned when ``plugins_dir`` is empty so callers can chain.
     """
-    if not plugins_dir:
-        return None
-    target = target or get_plugins_bin_target()
-    candidate = os.path.join(
-        plugins_dir,
-        "rusi",
-        f"rusi-{target['platform']}-{target['arch']}{target['extn']}",
-    )
-    return candidate if os.path.isfile(candidate) else None
+    return bundled_plugin_path(plugins_dir, "rusi", target or get_plugins_bin_target())
 
 
 def find_rusi_binary(logger: Optional[Logger] = None) -> Optional[str]:
@@ -113,7 +108,9 @@ def find_rusi_binary(logger: Optional[Logger] = None) -> Optional[str]:
       1. ``RUSI_CMD`` env (cdxgen's primary plugin override).
       2. ``DEPSCAN_RUSI_BINARY`` env (depscan convenience override).
       3. ``find_executable("rusi")`` (PATH).
-      4. ``CDXGEN_PLUGINS_DIR`` bundled layout (see :func:`bundled_rusi_path`).
+      4. ``CDXGEN_PLUGINS_DIR`` bundled layout, then the plugins directory
+         discovered from the cdxgen install (see :func:`bundled_rusi_path`
+         and :func:`xbom_lib.plugins.discover_plugins_dir`).
 
     Returns an absolute path string or ``None`` (graceful skip).
     """
@@ -137,13 +134,7 @@ def find_rusi_binary(logger: Optional[Logger] = None) -> Optional[str]:
         return found
 
     # 3. cdxgen-plugins-bin bundled layout: <pluginsDir>/rusi/rusi-<platform>-<arch><extn>
-    plugins_dir = os.environ.get("CDXGEN_PLUGINS_DIR", "").strip()
-    if plugins_dir:
-        candidate = bundled_rusi_path(plugins_dir)
-        if candidate:
-            return candidate
-
-    return None
+    return find_bundled_plugin("rusi", get_plugins_bin_target())
 
 
 def get_rusi_version(binary: str, logger: Optional[Logger] = None) -> Optional[str]:
@@ -260,12 +251,13 @@ def run_rusi(
     if not result.success or not result.report_path:
         return result
 
-    # schema/version sanity (soft): warn but keep the file so the converter
-    # can still try.
+    # schema/version sanity (soft): warn but keep the file, so the evidence
+    # adapter can still read what it understands and record the rest as
+    # caveats.
     report_ok, schema_msg = _peek_report(result.report_path)
     if logger and not report_ok:
         logger.warning(
-            "rusi report at %s did not validate: %s. Conversion may be incomplete.",
+            "rusi report at %s did not validate: %s. The evidence it yields may be incomplete.",
             result.report_path,
             schema_msg,
         )

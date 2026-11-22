@@ -9,6 +9,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from urllib.parse import unquote_plus
 
+from analysis_lib.evidence.adapters import AdapterResult, not_assessed
 from custom_json_diff.lib.utils import json_load, json_dump
 from defusedxml.ElementTree import parse
 from xbom_lib.cdxgen import (
@@ -39,7 +40,6 @@ from depscan.lib.config import (
 from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
-from types import SimpleNamespace
 from typing import Callable, Dict, List, Optional, Tuple
 
 
@@ -107,6 +107,9 @@ class BomResult:
         an atom run that ATOM_TIMEOUT stopped. Reachability over an incomplete
         slice set is not a clean result, so these are kept for the scan
         instead of being logged and forgotten.
+    :param adapter_results: the evidence adapter result of every language tool
+        this run produced or read a report for, keyed by tool name. The
+        enrichment stage merges their records into the evidence store.
     """
 
     success: bool
@@ -114,6 +117,7 @@ class BomResult:
     primary: Optional[str] = None
     extractor_failures: List[str] = field(default_factory=list)
     not_assessed: List[str] = field(default_factory=list)
+    adapter_results: Dict[str, AdapterResult] = field(default_factory=dict)
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
@@ -624,28 +628,22 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         if not os.path.exists(bom_file):
             LOG.debug("cdxgen reported success but `%s` was not written.", bom_file)
             return BomResult(success=False)
-        # Rust reachability via rusi: emits rust-reachables.slices.json next to
-        # the BOM so the existing purl-keyed pipeline picks it up. No-op for
-        # non-rust projects or when reachability is off / rusi is absent.
-        run_rusi_reachability(bom_file, src_dir, options=options)
-        # Go reachability via golem: emits go-reachables.slices.json next to
-        # the BOM. No-op for non-go projects or when reachability is off /
-        # golem is absent.
-        run_golem_reachability(bom_file, src_dir, options=options)
-        # Kotlin and JVM reachability via kosi: emits
-        # kosi-reachables.slices.json next to the BOM.
-        run_kosi_reachability(bom_file, src_dir, options=options)
-        # .NET reachability via dosai: emits dotnet-reachables.slices.json next
-        # to the BOM. No-op for non-dotnet projects or when reachability is off
-        # / dosai is absent. PRIMARY path consumes the cdxgen-persisted
-        # combined native report; direct-spawn is only a fallback.
-        run_dosai_reachability(bom_file, src_dir, options=options)
+        # Each language tool whose project types select it runs (or reads the
+        # report cdxgen persisted) and hands its raw report to its evidence
+        # adapter. No converted reachables slice is written: the enrichment
+        # stage merges the adapter results into the evidence store.
+        adapter_results: Dict[str, AdapterResult] = {}
+        for name, runner in _reachability_runners().items():
+            result = runner(bom_file, src_dir, options=options)
+            if result is not None:
+                adapter_results[name] = result
         return BomResult(
             success=True,
             bom_files=[bom_file],
             primary=bom_file,
             extractor_failures=extractor_failures,
             not_assessed=not_assessed,
+            adapter_results=adapter_results,
         )
 
 
@@ -907,97 +905,82 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
     return _load_dosai_report_value(combined, is_report_ok)
 
 
-def _import_rusi_converter():
-    """Lazily import the rusi slice converter behind the shared interface."""
-    from analysis_lib.rusi_slices import (
-        build_bom_purl_index,
-        convert_rusi_report,
-        is_rusi_report,
-        write_slices_file,
-    )
+def _import_rusi_adapter():
+    """Lazily import the rusi evidence adapter, the only code that knows the
+    rusi report format."""
+    from analysis_lib.evidence.adapters import rusi
 
-    return SimpleNamespace(
-        is_report_ok=is_rusi_report,
-        build_index=build_bom_purl_index,
-        convert=convert_rusi_report,
-        write_slices=write_slices_file,
-    )
+    return rusi
 
 
-def _import_golem_converter():
-    """Lazily import the golem slice converter behind the shared interface."""
-    from analysis_lib.golem_slices import (
-        build_bom_purl_index,
-        convert_golem_report,
-        is_golem_report,
-        write_slices_file,
-    )
+def _import_golem_adapter():
+    """Lazily import the golem evidence adapter, the only code that knows the
+    golem report format."""
+    from analysis_lib.evidence.adapters import golem
 
-    return SimpleNamespace(
-        is_report_ok=is_golem_report,
-        build_index=build_bom_purl_index,
-        convert=convert_golem_report,
-        write_slices=write_slices_file,
-    )
+    return golem
 
 
-def _import_kosi_converter():
-    """Lazily import the kosi slice converter behind the shared interface."""
-    from analysis_lib.kosi_slices import (
-        build_bom_purl_index,
-        convert_kosi_report,
-        is_kosi_report,
-        write_slices_file,
-    )
+def _import_kosi_adapter():
+    """Lazily import the kosi evidence adapter, the only code that knows the
+    kosi report format."""
+    from analysis_lib.evidence.adapters import kosi
 
-    return SimpleNamespace(
-        is_report_ok=is_kosi_report,
-        build_index=build_bom_purl_index,
-        convert=convert_kosi_report,
-        write_slices=write_slices_file,
-    )
+    return kosi
 
 
-def _import_dosai_converter():
-    """Lazily import the dosai slice converter behind the shared interface."""
-    from analysis_lib.dosai_slices import (
-        build_bom_purl_index,
-        convert_dosai_report,
-        extract_native_reachability,
-        is_dosai_report,
-        write_slices_file,
-    )
+def _import_dosai_adapter():
+    """Lazily import the dosai evidence adapter, the only code that knows the
+    dosai report format."""
+    from analysis_lib.evidence.adapters import dosai
 
-    return SimpleNamespace(
-        is_report_ok=is_dosai_report,
-        build_index=build_bom_purl_index,
-        convert=convert_dosai_report,
-        write_slices=write_slices_file,
-        extract_native=extract_native_reachability,
-    )
+    return dosai
 
 
-#: dosai's native reachability facts, under ``analysis/dosai/``.
-DOSAI_FACTS_FILE = "dotnet-reachability.facts.json"
+def _semantics_report_names(project_types: List[str], default_prefix: str) -> Tuple[str, ...]:
+    """The ``<prefix>-semantics.slices.json`` names cdxgen persists a tool's
+    raw report to, for the scan's project types and the tool's default.
+
+    Names keep their first-seen order, so the prefix cdxgen was actually
+    given is looked for first.
+    """
+    names: List[str] = []
+    for prefix in [*project_types, default_prefix]:
+        name = f"{prefix}-semantics.slices.json"
+        if name not in names:
+            names.append(name)
+    return tuple(names)
 
 
-def _persist_dosai_facts(report, converter, bom_index, bom_dir, options):
-    """Stash the native dosai reachability facts (the truth) as a sidecar for
-    VEX/advanced analysis. The verdict itself flows through the atom
-    projection below via the existing purl-keyed engine loop."""
-    facts_path = os.path.join(analysis_report_dir(bom_dir, "dosai"), DOSAI_FACTS_FILE)
-    try:
-        facts = converter.extract_native(report, bom_index)
-        json_dump(facts_path, facts, compact=True)
-    except Exception as e:
-        if options.get("fail_on_error"):
-            raise ScanFailureError(
-                f"Could not persist dosai native reachability facts to {facts_path}: {e}"
-            ) from e
-        LOG.debug("Could not persist dosai native reachability facts: %s", e)
-        # A partial file, or none at all, must not be read as this scan's
-        # exposure evidence.
-        _remove_tool_slice(facts_path)
+def _language_report_names(default_prefix: str, analysis_relative: str):
+    """The report names ``tool`` reads from a BOM directory: the names cdxgen
+    uses for its persisted report, then the raw report dep-scan's own direct
+    run writes under ``analysis/<producer>/``."""
+    analysis_relative = analysis_relative.replace(os.sep, "/")
+
+    def report_names(project_types: List[str]) -> Tuple[str, ...]:
+        return (*_semantics_report_names(project_types, default_prefix), analysis_relative)
+
+    return report_names
+
+
+#: The scan-directory directory of the raw reports, spelled with forward
+#: slashes for the report names the adapters search by.
+ANALYSIS_DIR_STR = "analysis"
+
+
+def _dosai_report_names(project_types: List[str]) -> Tuple[str, ...]:
+    """The dosai report names a BOM directory may hold, in the order they are
+    looked at: the two raw artifacts of dep-scan's own direct run, a combined
+    report under ``analysis/dosai/``, the report cdxgen persists under the
+    research BOM profile, and the cdxgen evinse name."""
+    names = [
+        os.path.join(ANALYSIS_DIR_STR, "dosai", "dotnet-dataflows.json"),
+        os.path.join(ANALYSIS_DIR_STR, "dosai", "dotnet-methods.json"),
+        *_semantics_report_names(project_types, "dotnet"),
+        "csharp-data-flow.slices.json",
+    ]
+    return tuple(name.replace(os.sep, "/") for name in names)
 
 
 @dataclass(frozen=True)
@@ -1006,9 +989,9 @@ class ReachabilityTool:
 
     :func:`_run_reachability_tool` walks the same steps for every tool: find
     the tool's report (the one cdxgen persisted, else a direct run through
-    the fallback), reconcile it against the BOM's purls and write the
-    atom-shaped reachables slice next to the BOM. Everything specific to one
-    tool is described here and nowhere else.
+    the fallback) and hand it to the tool's evidence adapter, which returns
+    the records. Everything specific to one tool is described here and
+    nowhere else.
     """
 
     name: str
@@ -1017,19 +1000,23 @@ class ReachabilityTool:
     #: reachability.
     project_types: tuple
     default_prefix: str
+    #: The converted reachables slice this tool's earlier runs wrote. Nothing
+    #: writes it any more; the name stays so a stale file of an earlier run
+    #: is cleared instead of read.
     slice_file: str
-    #: Lazy import of the slice converter behind the shared interface.
-    import_converter: Callable
+    #: Lazy import of the evidence adapter behind the shared interface.
+    import_adapter: Callable
     #: Direct run when cdxgen produced no report.
     run_fallback: Callable
-    #: Raised (under ``--fail-on-error``) or logged when no report was found.
+    #: Raised (under ``--fail-on-error``) or recorded when no report was found.
     no_report_error: str
-    #: Optional extra persistence step after a report was found (dosai's
-    #: native-reachability facts sidecar).
-    persist_report: Optional[Callable] = None
-    #: Files under ``analysis/<producer>/`` that ``persist_report`` writes
-    #: and later stages read as this scan's evidence, as (producer, name).
-    sidecars: Tuple[Tuple[str, str], ...] = ()
+    #: The raw report names this tool reads from a BOM directory, as
+    #: directory-relative forward-slash paths, in look-up order.
+    report_names: Callable[[List[str]], Tuple[str, ...]]
+    #: The place of the raw report a direct fallback run leaves behind, as a
+    #: directory-relative forward-slash path. It names the records' source
+    #: when the scan ran the tool itself.
+    fallback_source: str = ""
 
 
 def _remove_tool_slice(path: str) -> None:
@@ -1046,80 +1033,138 @@ def _remove_tool_slice(path: str) -> None:
 def _remove_tool_outputs(directory: str, tool: "ReachabilityTool") -> None:
     """Delete what ``tool`` wrote into ``directory`` on an earlier run.
 
-    The reachables slice, its split parts (``<base>-<n>.json``) and the
-    tool's sidecar files all read as this scan's evidence when present, so a
-    run that does not produce them must not find them there.
+    The converted reachables slice and its split parts (``<base>-<n>.json``)
+    read as this scan's reachability evidence when present, so a run that
+    does not produce them must not find them there. The converted slices are
+    no longer written; the names stay for the cleanup.
     """
-    from depscan.lib.scan_directory import ANALYSIS_DIR
-
     primary = os.path.join(directory, tool.slice_file)
     _remove_tool_slice(primary)
     base, ext = os.path.splitext(primary)
     for part in glob.glob(glob.escape(base) + "-*" + ext):
         if part[len(base) + 1 : len(part) - len(ext)].isdigit():
             _remove_tool_slice(part)
-    for producer, name in tool.sidecars:
-        _remove_tool_slice(os.path.join(directory, ANALYSIS_DIR, producer, name))
 
 
 def clear_tool_outputs(directory: str) -> None:
-    """Delete every language tool's slices and sidecars left in ``directory``.
+    """Delete every language tool's converted slices, the raw reports cdxgen
+    persisted for the tools, and the evidence files left in ``directory``.
 
-    A source scan writes these next to the BOM it generates, in the reports
-    directory. When that directory is reused, a later scan whose project
-    types do not run a tool would otherwise read the earlier run's files as
-    its own and report the tool as completed. A BOM directory the user
+    A source scan writes these in the reports directory it generates the BOM
+    into. When that directory is reused, a later scan whose project types do
+    not run a tool would otherwise read the earlier run's files as its own
+    and report the tool as completed, and an earlier store would be merged
+    into this scan's records. cdxgen persists a tool's raw report as
+    ``<prefix>-semantics.slices.json``, which the tool step reads before it
+    runs the tool itself, so a report an earlier run left there would stand
+    in for a report this run never produced. A BOM directory the user
     supplies is an input and is never cleared.
     """
+    from depscan.lib.scan_directory import EVIDENCE_FILE, EVIDENCE_INDEX_FILE
+
     if not directory or not os.path.isdir(directory):
         return
     for tool in _REACHABILITY_TOOLS:
         _remove_tool_outputs(directory, tool)
+    for name in (EVIDENCE_FILE, EVIDENCE_INDEX_FILE):
+        _remove_tool_slice(os.path.join(directory, name))
+    for path in glob.glob(os.path.join(glob.escape(directory), "*-semantics.slices.json")):
+        _remove_tool_slice(path)
 
 
-def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
-    """Run one reachability tool and drop its reachables slice next to the BOM.
+def _doctor_tool_version(analyzer: str, options: Dict) -> str:
+    """The version the doctor report read for ``analyzer``, or the empty
+    string when there is none. The adapters prefer the version the report
+    itself states; this is the caller's best effort beside it."""
+    report = options.get("doctor_report")
+    if report is None:
+        return ""
+    status = (report.tools_by_name() or {}).get(analyzer)
+    return str(status.version or "") if status is not None else ""
 
-    No-op (returns False) unless the project type matches the tool AND
-    reachability is on. Gracefully degrades when the tool is missing (warns
-    or returns False, never raises) so other languages and binary-less
-    environments are unaffected; ``--fail-on-error`` turns every degradation
-    into a :class:`ScanFailureError`.
 
-    This is the wiring point for tool reachability: the existing purl-keyed
-    pipeline discovers ``*reachables.slices*.json`` files by glob, so emitting
-    the slice in the BOM dir lights up FrameworkReachability and
-    SemanticReachability with zero engine changes.
+def _extract_report_records(
+    tool: "ReachabilityTool",
+    report,
+    source: str,
+    bom_data: Dict,
+    options: Dict,
+    fail_on_error: bool,
+    source_root: Optional[str] = None,
+) -> AdapterResult:
+    """Hand one raw report to the tool's evidence adapter, the only code
+    that knows the report format.
+
+    The BOM components and the metadata.component root go in for the purl
+    reconciliation; dosai takes the built alias index instead.
+    ``source_root`` is the scanned source directory, which the adapters
+    make the report's file paths relative to. An adapter
+    result that is not assessed reads as a downgrade the user asked to hear
+    about: under ``--fail-on-error`` it raises, elsewhere it is returned and
+    recorded.
+    """
+    adapter = tool.import_adapter()
+    producer_version = _doctor_tool_version(tool.name, options)
+    components = bom_data.get("components", []) or []
+    extra = []
+    meta_comp = (bom_data.get("metadata") or {}).get("component")
+    if isinstance(meta_comp, dict):
+        extra.append(meta_comp)
+    if tool.name == "dosai":
+        bom_index = adapter.build_bom_purl_index(components, extra_components=extra)
+        result = adapter.extract(
+            report,
+            source=source,
+            producer_version=producer_version,
+            bom_index=bom_index,
+            source_root=source_root,
+        )
+    else:
+        result = adapter.extract(
+            report,
+            source=source,
+            producer_version=producer_version,
+            bom_components=components,
+            extra_components=extra,
+            source_root=source_root,
+        )
+    if result.status != "completed" and fail_on_error and result.reason:
+        raise ScanFailureError(f"{tool.name} reachability was not assessed: {result.reason}")
+    return result
+
+
+def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[AdapterResult]:
+    """Run one reachability tool and hand its raw report to its adapter.
+
+    Returns None when the tool did not apply: the project type does not
+    select it, reachability is off, or there is no BOM to reconcile against.
+    Otherwise the tool's :class:`AdapterResult` comes back, completed with
+    the records or not assessed with the reason. Gracefully degrades when the
+    tool is missing, so other languages and binary-less environments are
+    unaffected; ``--fail-on-error`` turns every degradation into a
+    :class:`ScanFailureError`.
+
+    The raw report keeps the place it was found at and nothing else is
+    written: the enrichment stage merges the adapter's records into the
+    evidence store.
     """
     if not options:
-        return False
+        return None
     project_type_list: List[str] = options.get("project_type") or []
     if not any(pt in tool.project_types for pt in project_type_list):
-        return False
+        return None
     if bom_file:
         # A slice left by an earlier scan must not outlive a run where this
         # tool does not produce one, or the analyzer would read as completed.
         _remove_tool_outputs(os.path.dirname(os.path.abspath(bom_file)), tool)
     if options.get("reachability_analyzer") == "off":
-        return False
+        return None
     if not bom_file or not os.path.exists(bom_file):
-        return False
+        return None
     fail_on_error = bool(options.get("fail_on_error"))
-    # Lazy imports so other-language scans never pay the import cost and
-    # tests that monkeypatch the tool can run in isolation.
-    try:
-        converter = tool.import_converter()
-        from custom_json_diff.lib.utils import json_load as _json_load
-    except ImportError as e:
-        if fail_on_error:
-            raise ScanFailureError(
-                f"{tool.name} reachability dependencies unavailable: {e}"
-            ) from e
-        LOG.debug("%s reachability dependencies unavailable: %s", tool.name, e)
-        return False
+    from custom_json_diff.lib.utils import json_load as _json_load
 
     bom_dir = os.path.dirname(os.path.abspath(bom_file))
-    slice_path = os.path.join(bom_dir, tool.slice_file)
     prefix = project_type_list[0] if project_type_list else tool.default_prefix
 
     # PRIMARY: prefer the report cdxgen already produced. Under ``--profile
@@ -1133,11 +1178,12 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
     report = _load_tool_report(
         tool.name,
         cdxgen_report_path,
-        converter.is_report_ok,
+        _is_report_ok(tool),
         _json_load,
         require_report=True,
         fail_on_error=fail_on_error,
     )
+    source = f"{prefix}-semantics.slices.json"
     if report is not None:
         LOG.debug(
             "%s reachability: using cdxgen-produced report at %s",
@@ -1146,8 +1192,10 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
         )
     else:
         # FALLBACK: cdxgen did not produce a report (plugins unavailable, or
-        # reachability invoked without cdxgen). Run the tool directly.
-        report = tool.run_fallback(src_dir, bom_dir, options, converter.is_report_ok, _json_load)
+        # reachability invoked without cdxgen). Run the tool directly; it
+        # writes its raw report under analysis/<producer>/.
+        report = tool.run_fallback(src_dir, bom_dir, options, _is_report_ok(tool), _json_load)
+        source = tool.fallback_source
     if report is None:
         if fail_on_error:
             raise ScanFailureError(tool.no_report_error)
@@ -1159,27 +1207,29 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> bool:
             LOG.warning("%s reachability was not assessed: %s", tool.name, reason)
         else:
             LOG.debug("No %s report available; reachability via %s skipped.", tool.name, tool.name)
-        return False
+        return not_assessed(reason or tool.no_report_error)
 
     bom_data = _json_load(bom_file, log=LOG) or {}
-    components = bom_data.get("components", []) or []
-    # Include the metadata.component (workspace root) so the versioned
-    # workspace purl is always in the reconciliation index.
-    extra = []
-    meta_comp = (bom_data.get("metadata") or {}).get("component")
-    if isinstance(meta_comp, dict):
-        extra.append(meta_comp)
-    bom_index = converter.build_index(components, extra_components=extra)
-    if tool.persist_report:
-        tool.persist_report(report, converter, bom_index, bom_dir, options)
-    try:
-        flows = converter.convert(report, bom_index)
-        converter.write_slices(slice_path, flows)
-    except BaseException:
-        _remove_tool_slice(slice_path)
-        raise
-    LOG.debug("%s reachability: wrote %d flows to %s", tool.name, len(flows), slice_path)
-    return True
+    result = _extract_report_records(
+        tool, report, source, bom_data, options, fail_on_error, source_root=src_dir
+    )
+    if result.status == "completed":
+        LOG.debug(
+            "%s reachability: the adapter built %d records from %s",
+            tool.name,
+            len(result.records),
+            source,
+        )
+    else:
+        LOG.warning("%s reachability was not assessed: %s", tool.name, result.reason)
+    return result
+
+
+def _is_report_ok(tool: "ReachabilityTool") -> Callable:
+    """The report-shape check of ``tool``'s adapter, used to tell the report
+    cdxgen persisted apart from any other file that shares the path. Every
+    adapter names it after its own report, as ``is_<tool>_report``."""
+    return getattr(tool.import_adapter(), f"is_{tool.name}_report")
 
 
 RUSI_TOOL = ReachabilityTool(
@@ -1188,12 +1238,13 @@ RUSI_TOOL = ReachabilityTool(
     project_types=("rust", "cargo", "crates"),
     default_prefix="rust",
     slice_file=RUSI_REACHABLES_SLICE_FILE,
-    import_converter=_import_rusi_converter,
+    import_adapter=_import_rusi_adapter,
     run_fallback=_run_rusi_fallback,
     no_report_error=(
-        "No rusi report was available for this Rust project; reachability "
-        "slices were not produced."
+        "No rusi report was available for this Rust project; reachability was not assessed."
     ),
+    report_names=_language_report_names("rust", "analysis/rusi/rusi.json"),
+    fallback_source=os.path.join(ANALYSIS_DIR_STR, "rusi", "rusi.json").replace(os.sep, "/"),
 )
 
 GOLEM_TOOL = ReachabilityTool(
@@ -1201,11 +1252,13 @@ GOLEM_TOOL = ReachabilityTool(
     project_types=("go", "golang"),
     default_prefix="go",
     slice_file=GOLEM_REACHABLES_SLICE_FILE,
-    import_converter=_import_golem_converter,
+    import_adapter=_import_golem_adapter,
     run_fallback=_run_golem_fallback,
     no_report_error=(
-        "No golem report was available for this Go project; reachability slices were not produced."
+        "No golem report was available for this Go project; reachability was not assessed."
     ),
+    report_names=_language_report_names("go", "analysis/golem/golem.json"),
+    fallback_source=os.path.join(ANALYSIS_DIR_STR, "golem", "golem.json").replace(os.sep, "/"),
 )
 
 KOSI_TOOL = ReachabilityTool(
@@ -1215,12 +1268,13 @@ KOSI_TOOL = ReachabilityTool(
     project_types=("kotlin", "kt", "android"),
     default_prefix="kotlin",
     slice_file=KOSI_REACHABLES_SLICE_FILE,
-    import_converter=_import_kosi_converter,
+    import_adapter=_import_kosi_adapter,
     run_fallback=_run_kosi_fallback,
     no_report_error=(
-        "No kosi report was available for this Kotlin project; reachability "
-        "slices were not produced."
+        "No kosi report was available for this Kotlin project; reachability was not assessed."
     ),
+    report_names=_language_report_names("kotlin", "analysis/kosi/kosi.json"),
+    fallback_source=os.path.join(ANALYSIS_DIR_STR, "kosi", "kosi.json").replace(os.sep, "/"),
 )
 
 DOSAI_TOOL = ReachabilityTool(
@@ -1229,15 +1283,16 @@ DOSAI_TOOL = ReachabilityTool(
     project_types=("dotnet", "csharp", "nuget"),
     default_prefix="dotnet",
     slice_file=DOSAI_REACHABLES_SLICE_FILE,
-    import_converter=_import_dosai_converter,
+    import_adapter=_import_dosai_adapter,
     run_fallback=_run_dosai_fallback,
     no_report_error=(
         "No dosai report was available for this .NET project; reachability "
-        "slices were not produced and the VDR would silently downgrade "
-        "(issue #523)."
+        "was not assessed and the VDR would silently downgrade (issue #523)."
     ),
-    persist_report=_persist_dosai_facts,
-    sidecars=(("dosai", DOSAI_FACTS_FILE),),
+    report_names=_dosai_report_names,
+    fallback_source=os.path.join(ANALYSIS_DIR_STR, "dosai", "dotnet-dataflows.json").replace(
+        os.sep, "/"
+    ),
 )
 
 
@@ -1267,7 +1322,13 @@ def reachability_analyzers_for_types(project_types: List[str]) -> List[str]:
 
 
 def reachability_slice_files() -> Dict[str, str]:
-    """The reachables slices file each language tool writes, by tool name."""
+    """The converted reachables slice name of each language tool, by tool
+    name.
+
+    No tool writes these files. The names let the stale-output cleanup
+    remove a file an earlier dep-scan version left, and keep atom's adapter
+    from reading such a file as atom's own output.
+    """
     return {tool.name: tool.slice_file for tool in _REACHABILITY_TOOLS}
 
 
@@ -1283,6 +1344,175 @@ def analysis_report_dir(bom_dir: str, producer: str) -> str:
     directory = os.path.join(bom_dir, ANALYSIS_DIR, producer)
     os.makedirs(directory, exist_ok=True)
     return directory
+
+
+def _find_named_report(bom_dir, tool, tool_types, fail_on_error):
+    """The first of ``tool``'s known report names that holds a readable raw
+    report, as (parsed report, directory-relative name)."""
+    from custom_json_diff.lib.utils import json_load as _json_load
+
+    is_report_ok = _is_report_ok(tool)
+    for relative in tool.report_names(tool_types):
+        path = os.path.join(bom_dir, *relative.split("/"))
+        data = _load_tool_report(
+            tool.name,
+            path,
+            is_report_ok,
+            _json_load,
+            require_report=True,
+            fail_on_error=fail_on_error,
+        )
+        if data is not None:
+            return data, relative
+    return None, ""
+
+
+def _find_dosai_report(bom_dir, tool_types, fail_on_error):
+    """The dosai report a BOM directory holds, as (report, relative name).
+
+    The two raw artifacts of a direct run are assembled into the combined
+    report the adapter reads, exactly as the fallback run assembles its own;
+    a combined report under ``analysis/dosai/``, the one cdxgen persists, and
+    the cdxgen evinse name are handed over as they are.
+    """
+    from custom_json_diff.lib.utils import json_load as _json_load
+
+    adapter = _import_dosai_adapter()
+    dataflows_relative = os.path.join(ANALYSIS_DIR_STR, "dosai", "dotnet-dataflows.json")
+    methods_relative = os.path.join(ANALYSIS_DIR_STR, "dosai", "dotnet-methods.json")
+    dataflows_path = os.path.join(bom_dir, *dataflows_relative.split("/"))
+    methods_path = os.path.join(bom_dir, *methods_relative.split("/"))
+    if os.path.isfile(dataflows_path) or os.path.isfile(methods_path):
+        methods = _load_dosai_artifact(
+            methods_path if os.path.isfile(methods_path) else None,
+            "methods",
+            _json_load,
+            fail_on_error,
+        )
+        dataflows = _load_dosai_artifact(
+            dataflows_path if os.path.isfile(dataflows_path) else None,
+            "dataflows",
+            _json_load,
+            fail_on_error,
+        )
+        if not methods and not dataflows:
+            return None, ""
+        meta = (
+            (dataflows or {}).get("Metadata")
+            or (methods or {}).get("Metadata")
+            or {"Tool": "Dosai"}
+        )
+        combined = {"Metadata": meta, "methods": methods or {}, "dataflows": dataflows or {}}
+        source = dataflows_relative if os.path.isfile(dataflows_path) else methods_relative
+        return combined, source
+    candidates = []
+    analysis_dir = os.path.join(bom_dir, ANALYSIS_DIR_STR, "dosai")
+    raw_names = {os.path.basename(dataflows_path), os.path.basename(methods_path)}
+    if os.path.isdir(analysis_dir):
+        for name in sorted(os.listdir(analysis_dir)):
+            if name.endswith(".json") and name not in raw_names:
+                candidates.append(os.path.join(ANALYSIS_DIR_STR, "dosai", name))
+    candidates.extend(name for name in _dosai_report_names(tool_types) if "/" not in name)
+    for relative in candidates:
+        relative = relative.replace(os.sep, "/")
+        path = os.path.join(bom_dir, *relative.split("/"))
+        data = _load_tool_report(
+            "dosai",
+            path,
+            adapter.is_dosai_report,
+            _json_load,
+            require_report=True,
+            fail_on_error=fail_on_error,
+        )
+        if data is not None:
+            return data, relative
+    return None, ""
+
+
+def _bom_data_for_tool(bom_files, tool, fail_on_error):
+    """The parsed BOM document whose components the tool's records are
+    reconciled against: the BOM whose name names one of the tool's project
+    types, else the first BOM of the scan."""
+    from custom_json_diff.lib.utils import json_load as _json_load
+
+    chosen = None
+    for path in bom_files or []:
+        lowered = os.path.basename(str(path)).lower()
+        if any(f"-{t}" in lowered or lowered.startswith(f"sbom-{t}") for t in tool.project_types):
+            chosen = path
+            break
+    if chosen is None:
+        chosen = next(iter(bom_files or []), None)
+    if not chosen:
+        return {}
+    try:
+        return _json_load(chosen, log=LOG) or {}
+    except Exception as e:  # noqa: BLE001 - the scan degrades, it does not crash
+        if fail_on_error:
+            raise ScanFailureError(f"Could not read the BOM {chosen} for {tool.name}: {e}") from e
+        LOG.warning("Could not read the BOM %s for %s: %s", chosen, tool.name, e)
+        return {}
+
+
+def discover_reachability_reports(
+    bom_dir: str,
+    project_types: List[str],
+    options: Optional[Dict] = None,
+    bom_files: Optional[List[str]] = None,
+    source_root: Optional[str] = None,
+) -> Dict[str, AdapterResult]:
+    """Run every language tool's adapter over the raw report a BOM directory
+    holds, keyed by tool name.
+
+    ``source_root`` is the scanned source directory when the scan knows one;
+    the adapters make the reports' file paths relative to it, and to the
+    root a report states itself.
+
+    A BOM-directory scan runs no tool: the analysis ran when the data was
+    generated, and the adapters read the reports the directory carries. A
+    tool whose report is not there is not assessed with the reason, naming
+    what was looked for, or the doctor's reason when it explains why no
+    report can be on this machine. Reachability off leaves the map empty.
+    """
+    from depscan.lib.config import UNIVERSAL_SCAN_TYPE
+
+    if not bom_dir or not os.path.isdir(bom_dir) or not options:
+        return {}
+    if options.get("reachability_analyzer") == "off":
+        return {}
+    types = list(project_types or [])
+    aggregate = any(t in ("bom", UNIVERSAL_SCAN_TYPE) for t in types)
+    fail_on_error = bool(options.get("fail_on_error"))
+    results: Dict[str, AdapterResult] = {}
+    for tool in _REACHABILITY_TOOLS:
+        tool_types = [t for t in types if t in tool.project_types]
+        if not (aggregate or tool_types):
+            continue
+        if tool.name == "dosai":
+            report, source = _find_dosai_report(bom_dir, tool_types, fail_on_error)
+        else:
+            report, source = _find_named_report(bom_dir, tool, tool_types, fail_on_error)
+        if report is None:
+            reason = _capability_unavailable_reason(tool.name, options)
+            if not reason:
+                reason = (
+                    f"no {tool.name} report was found in the BOM directory "
+                    f"(looked for {', '.join(tool.report_names(tool_types))})"
+                )
+            LOG.warning("%s reachability was not assessed: %s", tool.name, reason)
+            results[tool.name] = not_assessed(reason)
+            continue
+        bom_data = _bom_data_for_tool(bom_files, tool, fail_on_error)
+        results[tool.name] = _extract_report_records(
+            tool, report, source, bom_data, options, fail_on_error, source_root=source_root
+        )
+        LOG.debug(
+            "%s reachability: the adapter built %d records from %s",
+            tool.name,
+            len(results[tool.name].records),
+            source,
+        )
+    return results
 
 
 def _capability_unavailable_reason(analyzer: str, options: Dict) -> Optional[str]:
@@ -1309,13 +1539,13 @@ def run_rusi_reachability(
     bom_file: str,
     src_dir: str,
     options: Optional[Dict] = None,
-) -> bool:
-    """Run rusi + the slice converter for a Rust project and drop the
-    atom-shaped reachables slice next to the BOM.
+) -> Optional[AdapterResult]:
+    """Run rusi for a Rust project and hand its raw report to the adapter.
 
-    No-op (returns False) unless the project is Rust AND reachability is on.
-    Gracefully degrades when the rusi binary is missing (warns, returns False,
-    never raises) so non-Rust and binary-less environments are unaffected.
+    Returns None unless the project is Rust AND reachability is on. Gracefully
+    degrades when the rusi binary is missing (a not-assessed result with the
+    reason, never raises) so non-Rust and binary-less environments are
+    unaffected.
     """
     return _run_reachability_tool(bom_file, src_dir, options, RUSI_TOOL)
 
@@ -1324,13 +1554,12 @@ def run_golem_reachability(
     bom_file: str,
     src_dir: str,
     options: Optional[Dict] = None,
-) -> bool:
-    """Run golem + the slice converter for a Go project and drop the
-    atom-shaped reachables slice next to the BOM.
+) -> Optional[AdapterResult]:
+    """Run golem for a Go project and hand its raw report to the adapter.
 
-    No-op (returns False) unless the project is Go AND reachability is on.
-    Gracefully degrades when the golem binary or Go toolchain is missing
-    (warns, returns False, never raises) so non-Go and binary-less
+    Returns None unless the project is Go AND reachability is on. Gracefully
+    degrades when the golem binary or Go toolchain is missing (a not-assessed
+    result with the reason, never raises) so non-Go and binary-less
     environments are unaffected.
     """
     return _run_reachability_tool(bom_file, src_dir, options, GOLEM_TOOL)
@@ -1340,12 +1569,13 @@ def run_kosi_reachability(
     bom_file: str,
     src_dir: str,
     options: Optional[Dict] = None,
-) -> bool:
-    """Run kosi + the slice converter for a Kotlin project and drop the
-    atom-shaped reachables slice next to the BOM.
+) -> Optional[AdapterResult]:
+    """Run kosi for a Kotlin project and hand its raw report to the adapter.
 
-    No-op (returns False) unless the project is Kotlin AND reachability is
-    on. Gracefully degrades when the kosi binary is missing.
+    Returns None unless the project is Kotlin AND reachability is on.
+    Gracefully degrades when the kosi binary is missing (a not-assessed
+    result with the reason, never raises) so non-Kotlin and binary-less
+    environments are unaffected.
     """
     return _run_reachability_tool(bom_file, src_dir, options, KOSI_TOOL)
 
@@ -1354,19 +1584,30 @@ def run_dosai_reachability(
     bom_file: str,
     src_dir: str,
     options: Optional[Dict] = None,
-) -> bool:
-    """Run dosai + the slice converter for a .NET project and drop the
-    atom-shaped reachables slice next to the BOM.
+) -> Optional[AdapterResult]:
+    """Run dosai for a .NET project and hand its raw report to the adapter.
 
-    No-op (returns False) unless the project is .NET AND reachability is on.
-    Gracefully degrades when the dosai binary or .NET runtime is missing (warns,
-    returns False, never raises) so non-.NET and binary-less environments are
-    unaffected. The native reachability facts are stashed as a sidecar for
-    VEX/advanced analysis; the verdict flows through the atom projection,
-    which faithfully carries every native-reachable purl in its flows'
-    ``purls``, so the existing purl-keyed engine picks them up unchanged.
+    Returns None unless the project is .NET AND reachability is on. Gracefully
+    degrades when the dosai binary or .NET runtime is missing (a not-assessed
+    result with the reason, never raises) so non-.NET and binary-less
+    environments are unaffected. The PRIMARY path consumes the cdxgen-persisted
+    combined report; the direct-spawn fallback assembles one from the two raw
+    artifacts it leaves under ``analysis/dosai/``.
     """
     return _run_reachability_tool(bom_file, src_dir, options, DOSAI_TOOL)
+
+
+def _reachability_runners() -> Dict[str, Callable]:
+    """The run helper of every reachability tool, keyed by name, in the order
+    the BOM step runs them. Built at call time so the helpers are looked up
+    as they are now, which is what tests and callers that replace one of
+    them rely on."""
+    return {
+        "rusi": run_rusi_reachability,
+        "golem": run_golem_reachability,
+        "kosi": run_kosi_reachability,
+        "dosai": run_dosai_reachability,
+    }
 
 
 def blint_reviews_requested(options: Optional[Dict]) -> bool:
@@ -1561,33 +1802,15 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     else:
         written_bom_files.append(postbuild_bom_file)
     any_success = bool(written_bom_files)
-    # Rust reachability via rusi: run once against the source and drop the
-    # slice next to the build BOM (the bom_dir the reachability engine scans).
-    # No-op for non-rust projects, when reachability is off, or when rusi is
-    # absent.
-    if any_success and any(
-        pt in ("rust", "cargo", "crates") for pt in (options.get("project_type") or [])
-    ):
-        run_rusi_reachability(build_bom_file, src_dir, options=options)
-    # Go reachability via golem: run once against the source and drop the
-    # slice next to the build BOM (the bom_dir the reachability engine scans).
-    # No-op for non-go projects, when reachability is off, or when golem is
-    # absent.
-    if any_success and any(pt in ("go", "golang") for pt in (options.get("project_type") or [])):
-        run_golem_reachability(build_bom_file, src_dir, options=options)
-    # Kotlin reachability via kosi, with its own guard on the kosi types.
-    if any_success and any(
-        pt in KOSI_TOOL.project_types for pt in (options.get("project_type") or [])
-    ):
-        run_kosi_reachability(build_bom_file, src_dir, options=options)
-    # .NET reachability via dosai: run once against the source and drop the
-    # slice next to the build BOM (the bom_dir the reachability engine scans).
-    # No-op for non-dotnet projects, when reachability is off, or when dosai is
-    # absent.
-    if any_success and any(
-        pt in ("dotnet", "csharp", "nuget") for pt in (options.get("project_type") or [])
-    ):
-        run_dosai_reachability(build_bom_file, src_dir, options=options)
+    # Each language tool whose project types select it runs once against the
+    # source; its raw report goes to the evidence adapter, whose result rides
+    # back to the enrichment stage on the BOM result.
+    adapter_results: Dict[str, AdapterResult] = {}
+    if any_success:
+        for name, runner in _reachability_runners().items():
+            result = runner(build_bom_file, src_dir, options=options)
+            if result is not None:
+                adapter_results[name] = result
     # `primary` stays None: no single one of these documents represents the
     # project, so nothing downstream may treat one as "the" BOM.
     return BomResult(
@@ -1595,6 +1818,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         bom_files=written_bom_files,
         extractor_failures=extractor_failures,
         not_assessed=not_assessed,
+        adapter_results=adapter_results,
     )
 
 

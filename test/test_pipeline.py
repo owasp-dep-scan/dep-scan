@@ -440,7 +440,12 @@ def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path,
     def fake_risk_audit(project_type, scoped_pkgs, private_ns, pkg_list):
         calls.append((project_type, [pkg["purl"] for pkg in pkg_list]))
         name = pkg_list[0]["name"]
-        return {name: {"scope": "required", "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True}}}
+        return {
+            name: {
+                "scope": "required",
+                "risk_metrics": {"risk_score": 0.9, "pkg_deprecated_risk": True},
+            }
+        }
 
     monkeypatch.setattr(pipeline, "risk_audit", fake_risk_audit)
     ctx = _ctx(tmp_path, ["-t", "universal"])
@@ -460,10 +465,7 @@ def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path,
         ("pypi", ["pkg:pypi/requests@2.0.0"]),
     ]
     assert scan.risk_not_assessed is None
-    rows = [
-        json.loads(line)
-        for line in Path(scan.risk_report_file).read_text().splitlines()
-    ]
+    rows = [json.loads(line) for line in Path(scan.risk_report_file).read_text().splitlines()]
     assert [row["Package"] for row in rows] == ["left-pad", "requests"]
 
 
@@ -480,9 +482,7 @@ def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
     )
     ctx = _ctx(tmp_path, ["-t", "universal"])
     scan = pipeline.TypeScan(project_type="universal")
-    scan.pkg_list = [
-        {"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}
-    ]
+    scan.pkg_list = [{"name": "guava", "version": "1.0", "purl": "pkg:maven/com.google/guava@1.0"}]
     ctx.perform_risk_audit = False
     assert pipeline.stage_analysis_risk(ctx, scan) is False
     assert scan.risk_not_assessed is None
@@ -500,8 +500,11 @@ def test_stage_analysis_risk_names_why_a_requested_audit_had_nothing_to_audit(
 
 def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
     """SemanticReachability over the evinse BOM and the atom 4 reachables
-    slice: the direct purls come from the BOM's occurrences evidence and the
-    reached purls from the recorded slice file."""
+    slice: the atom adapter turns the slices into records, the enrichment
+    stage writes them into the evidence store, and the engine counts the
+    reached purls from the store."""
+    from analysis_lib.evidence import store as evidence_store
+
     ctx = _ctx(
         tmp_path,
         ["--reachability-analyzer", "SemanticReachability", "-t", "python"],
@@ -526,9 +529,104 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
         "pkg:pypi/quart@0.23.1",
         "pkg:pypi/rich@15.0.0",
     }
+    assert scan.adapter_results.get("atom") is not None
+    assert scan.adapter_results["atom"].status == "completed"
+    store = Path(ctx.reports_dir) / evidence_store.EVIDENCE_FILE
+    assert store.is_file()
+    assert scan.reachability_options.evidence_file == str(store), (
+        "the engine reads the store the enrichment stage wrote"
+    )
+    records = evidence_store.read(str(store))
+    assert {r.producer.name for r in records} == {"atom"}
+    assert evidence_store.write(str(store), records) == len(records), (
+        "a second write of the same records is the same store"
+    )
+
+
+def _flow(purl, file_name):
+    """One atom 4 flow object reaching ``purl`` from ``file_name``."""
+    return {
+        "flows": [
+            {"id": 1, "parentFileName": file_name, "lineNumber": 3, "parentMethodName": "main"},
+            {"id": 2, "parentFileName": file_name, "lineNumber": 4, "parentMethodName": "call"},
+        ],
+        "purls": [purl],
+    }
+
+
+def test_a_timed_out_atom_run_keeps_its_caveat_through_a_later_project_type(tmp_path):
+    """A scan of two project types: the java run's atom was stopped by its
+    timeout, the python run's was not. The java slices' records carry the
+    timeout caveat, and the python type's enrichment, which finds the java
+    slices too, must neither rebuild them without the caveat nor replace the
+    caveated copies in the store."""
+    from analysis_lib.evidence import store as evidence_store
+    from depscan.lib.bom import ATOM_TIMEOUT_REASON
+
+    ctx = _ctx(tmp_path, ["--reachability-analyzer", "SemanticReachability", "-t", "java"])
+    reports = Path(ctx.reports_dir)
+    _write_bom(reports / "sbom-java.cdx.json")
+    (reports / "java-reachables.slices.json").write_text(
+        json.dumps([_flow("pkg:maven/a/b@1", "src/main/java/A.java")])
+    )
+    java = pipeline.TypeScan(project_type="java")
+    java.bom_dir = str(reports)
+    java.not_assessed = [ATOM_TIMEOUT_REASON]
+    pipeline.stage_enrichment(ctx, java)
+    (reports / "python-reachables.slices.json").write_text(
+        json.dumps([_flow("pkg:pypi/c@2", "app/main.py")])
+    )
+    python = pipeline.TypeScan(project_type="python")
+    python.bom_dir = str(reports)
+    pipeline.stage_enrichment(ctx, python)
+
+    records = evidence_store.read(str(reports / evidence_store.EVIDENCE_FILE))
+    by_source = {}
+    for record in records:
+        by_source.setdefault(record.source, []).append(record)
+    assert set(by_source) == {"java-reachables.slices.json", "python-reachables.slices.json"}
+    assert len(records) == 2, "each flow is one record, read once"
+    (java_record,) = by_source["java-reachables.slices.json"]
+    assert ("timeout", ATOM_TIMEOUT_REASON) in [(c.kind, c.detail) for c in java_record.caveats], (
+        "the java slices keep the timeout caveat of the run that wrote them"
+    )
+    (python_record,) = by_source["python-reachables.slices.json"]
+    assert not [c for c in python_record.caveats if c.kind == "timeout"], (
+        "the python run was not stopped"
+    )
+    # Both types grade on every atom file they found, as one completed result.
+    assert python.adapter_results["atom"].status == "completed"
+    assert {r.source for r in python.adapter_results["atom"].records} == set(by_source)
+    assert set(python.reached_purls) == {"pkg:maven/a/b@1", "pkg:pypi/c@2"}
+
+
+def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
+    """atom completed for this type but none of its records counts as
+    reached, while the engine's map (the whole store) holds a purl another
+    producer reached. The scope must not hand atom that purl: atom observed
+    nothing, so a finding atom covers is not assessed."""
+    from analysis_lib.evidence.adapters import AdapterResult
+    from analysis_lib.findings.exploitability import load_rules
+    from analysis_lib.findings.vdr_convert import reach_axis
+
+    scan = SimpleNamespace(
+        project_type="python",
+        reachability_succeeded=True,
+        reached_purls={"pkg:pypi/requests@2.32.1": 1},
+        adapter_results={"atom": AdapterResult(status="completed")},
+        pkg_list=[{"purl": "pkg:pypi/requests@2.32.1"}],
+        bom_dir=str(tmp_path),
+    )
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs.scope is not None
+    assert inputs.scope.reached_by == {"atom": set()}
+    assert reach_axis(inputs.scope, "pkg:pypi/requests@2.32.1") == "not_assessed"
 
 
 def test_stage_enrichment_is_a_no_op_with_reachability_off(tmp_path):
+    from depscan.lib.scan_directory import EVIDENCE_FILE
+
     ctx = _ctx(tmp_path, ["-t", "npm", "--reachability-analyzer", "off"])
     ctx.depscan_options["reachability_analyzer"] = "off"
     ctx.depscan_options["profile"] = "generic"
@@ -538,6 +636,8 @@ def test_stage_enrichment_is_a_no_op_with_reachability_off(tmp_path):
     assert scan.reachability_options is None
     # Null reachability succeeds with empty maps, so nothing was reached.
     assert not scan.reached_purls
+    # The store is still written, empty, so the layout is uniform.
+    assert (Path(ctx.reports_dir) / EVIDENCE_FILE).read_text() == ""
 
 
 # ---------------------------------------------------------------------------
@@ -710,7 +810,6 @@ def test_set_slices_args_and_stale_removal_use_the_same_paths(tmp_path):
     assert not any(os.path.exists(path) for path in paths)
 
 
-
 def test_generate_boms_removes_every_old_tool_slice_before_generation(tmp_path, monkeypatch):
     from depscan.lib.bom import reachability_slice_files
 
@@ -723,9 +822,7 @@ def test_generate_boms_removes_every_old_tool_slice_before_generation(tmp_path, 
     monkeypatch.setattr(
         pipeline, "create_bom", lambda *a, **k: seen.append([p.exists() for p in old]) or "bom"
     )
-    ctx = SimpleNamespace(
-        src_dir=str(tmp_path), depscan_options={}, doctor_report=None
-    )
+    ctx = SimpleNamespace(src_dir=str(tmp_path), depscan_options={}, doctor_report=None)
     scan = SimpleNamespace(
         project_type="python",
         target_bom_file=str(tmp_path / "sbom-python.cdx.json"),
@@ -774,19 +871,18 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
     assert captured["blint_reviews"] is expected
 
 
-def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected(
-    tmp_path, monkeypatch
-):
-    """When the reachability engine already read the slices, the
-    exploitability inputs reuse its per-file purl sets and never parse the
-    slices again."""
+def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):
+    """The exploitability inputs are built from the adapter results the BOM
+    step and the enrichment stage collected: the reached sets and the purl
+    types come from the records, and the slices are never read again."""
     from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.evidence.adapters import atom as atom_adapter
     from analysis_lib.findings.exploitability import load_rules
     from analysis_lib.findings.vdr_convert import reach_axis
     from analysis_lib import reachability as reachability_module
 
     slice_file = tmp_path / "java-reachables.slices.json"
-    slice_file.write_text("[]")
+    slice_file.write_text(json.dumps([{"flows": [], "purls": ["pkg:maven/a/b@1"]}]))
     options = ReachabilityAnalysisKV(
         project_types=["java"],
         src_dir=str(tmp_path),
@@ -798,7 +894,7 @@ def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected
         reachability_options=options,
         reachability_succeeded=True,
         reached_purls={"pkg:maven/a/b@1": 1},
-        reach_purls_by_file={str(slice_file): {"pkg:maven/a/b@1"}},
+        adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
     )
@@ -809,11 +905,14 @@ def test_exploitability_inputs_take_the_purl_sets_the_enrichment_stage_collected
 
     monkeypatch.setattr(reachability_module, "_iter_json_list", refuse_to_read)
     inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs is not None and inputs.scope is not None
+    assert inputs.scope.analyzers == ["atom"]
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
 
 
 def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(tmp_path):
     from analysis_lib import ReachabilityAnalysisKV
+    from analysis_lib.evidence.adapters import atom as atom_adapter
     from analysis_lib.findings.exploitability import load_rules
     from analysis_lib.findings.vdr_convert import reach_axis
 
@@ -830,7 +929,7 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         reachability_options=options,
         reachability_succeeded=True,
         reached_purls={"pkg:maven/a/b@1": 1},
-        reach_purls_by_file=None,
+        adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
     )
@@ -838,10 +937,8 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
     inputs = pipeline._exploitability_inputs(ctx, scan)
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
     assert reach_axis(inputs.scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"
-    # A dotnet facts file this scan did not produce is never read: dosai did
-    # not complete for a java scan, so exposure stays unassessed.
+    # dosai did not complete for a java scan, so exposure stays unassessed.
     assert inputs.dosai_ran is False
-    assert inputs.dosai_facts is None
     npm = inputs.evidence_for("pkg:npm/left-pad@1.0.0")
     assert npm.dosai is None
 
@@ -895,3 +992,41 @@ def test_setup_clears_tool_outputs_only_for_a_source_scan(tmp_path, bom_dir_scan
     ctx = pipeline.build_context(_args(argv))
     pipeline.stage_setup(ctx)
     assert stale.exists() is bom_dir_scan
+
+
+def test_a_source_scan_takes_the_atom_version_from_the_doctor(tmp_path, monkeypatch):
+    """A scan that ran cdxgen had the local atom write its slices, so the
+    doctor's atom version is the producer; a BOM scan reads the BOM's."""
+    monkeypatch.setattr(pipeline, "_doctor_analyzer_version", lambda analyzer, ctx: "4.0.3")
+    bom = tmp_path / "sbom-python.cdx.json"
+    bom.write_text(
+        json.dumps(
+            {
+                "bomFormat": "CycloneDX",
+                "specVersion": "1.6",
+                "metadata": {"tools": {"components": [{"name": "atom", "version": "4.0.1"}]}},
+            }
+        )
+    )
+    options = SimpleNamespace(bom_files=[str(bom)])
+    source_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=None))
+    assert pipeline._atom_producer_version(source_scan, options) == "4.0.3"
+    bom_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=str(tmp_path)))
+    assert pipeline._atom_producer_version(bom_scan, options) == "4.0.1"
+    assert pipeline._atom_producer_version(bom_scan, SimpleNamespace(bom_files=[])) == ""
+
+
+def test_the_source_root_of_a_stored_scan_is_only_an_explicit_src(tmp_path, monkeypatch):
+    monkeypatch.delenv("DEPSCAN_SOURCE_DIR_IMAGE", raising=False)
+    monkeypatch.chdir(tmp_path)
+    source = str(tmp_path / "project")
+    assert (
+        pipeline._source_root(
+            SimpleNamespace(bom=None, bom_dir=None, src_dir_image=source), source
+        )
+        == source
+    )
+    stored = SimpleNamespace(bom=None, bom_dir="boms", src_dir_image=str(tmp_path))
+    assert pipeline._source_root(stored, str(tmp_path)) is None, "the working directory default"
+    stored.src_dir_image = source
+    assert pipeline._source_root(stored, source) == source, "an explicit --src"

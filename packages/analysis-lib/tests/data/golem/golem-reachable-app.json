@@ -1,0 +1,1567 @@
+{
+ "schemaVersion": "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6",
+ "tool": {
+  "name": "golem",
+  "version": "4.3.1",
+  "description": "Go Library Evidence Mapper: semantic Go source evidence and call graph analyzer"
+ },
+ "runtime": {
+  "goos": "darwin",
+  "goarch": "arm64",
+  "goVersion": "go1.27.4",
+  "languageVersion": "go1.27",
+  "workingDir": "/src/repos/reachable-app",
+  "patterns": [
+   "./..."
+  ],
+  "tests": false,
+  "targetGoos": "darwin",
+  "targetGoarch": "arm64"
+ },
+ "options": {
+  "directory": "/src/repos/reachable-app",
+  "noRecurse": false,
+  "includeAllFlows": true,
+  "patterns": [
+   "./..."
+  ],
+  "tests": false,
+  "includeStdlib": false,
+  "includeLocal": true,
+  "callGraphMode": "static",
+  "dataFlowMode": "all",
+  "dataFlowCallGraphMode": "static",
+  "dataFlowPacks": [
+   "all"
+  ],
+  "dataFlowWorkers": 4,
+  "dataFlowLargeRepoFunctions": 1000,
+  "dataFlowMaxFunctionInstructions": 200,
+  "dataFlowMaxTraceNodes": 64,
+  "dataFlowMaxTraceEdges": 128,
+  "dataFlowSkipGenerated": true,
+  "dataFlowSkipTests": true,
+  "maxProcs": 4,
+  "includeSsa": false,
+  "includeSources": false
+ },
+ "rootModules": [
+  {
+   "path": "github.com/example/reachable-app",
+   "dir": "/src/repos/reachable-app",
+   "goMod": "/src/repos/reachable-app/go.mod",
+   "goVersion": "1.21",
+   "main": true,
+   "purl": "pkg:golang/github.com/example/reachable-app"
+  }
+ ],
+ "modules": [
+  {
+   "path": "github.com/example/reachable-app",
+   "dir": "/src/repos/reachable-app",
+   "goMod": "/src/repos/reachable-app/go.mod",
+   "goVersion": "1.21",
+   "main": true,
+   "purl": "pkg:golang/github.com/example/reachable-app"
+  },
+  {
+   "path": "github.com/example/vuln-lib",
+   "version": "v0.0.0",
+   "dir": "/src/repos/vuln-lib",
+   "goMod": "/src/repos/vuln-lib/go.mod",
+   "goVersion": "1.21",
+   "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+   "replace": {
+    "path": "../vuln-lib",
+    "dir": "/src/repos/vuln-lib",
+    "goMod": "/src/repos/vuln-lib/go.mod",
+    "goVersion": "1.21"
+   }
+  }
+ ],
+ "packages": [
+  {
+   "id": "github.com/example/reachable-app",
+   "name": "main",
+   "packagePath": "github.com/example/reachable-app",
+   "module": {
+    "path": "github.com/example/reachable-app",
+    "dir": "/src/repos/reachable-app",
+    "goMod": "/src/repos/reachable-app/go.mod",
+    "goVersion": "1.21",
+    "main": true,
+    "purl": "pkg:golang/github.com/example/reachable-app"
+   },
+   "standard": false,
+   "local": true,
+   "goFiles": [
+    "/src/repos/reachable-app/main.go"
+   ],
+   "compiledGoFiles": [
+    "/src/repos/reachable-app/main.go"
+   ],
+   "imports": [
+    {
+     "path": "fmt",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "fmt",
+     "packageName": "fmt",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 187,
+       "line": 7,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 192,
+       "line": 7,
+       "column": 7
+      }
+     },
+     "resolved": true
+    },
+    {
+     "path": "net/http",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "net/http",
+     "packageName": "http",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 194,
+       "line": 8,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 204,
+       "line": 8,
+       "column": 12
+      }
+     },
+     "resolved": true
+    },
+    {
+     "path": "github.com/example/vuln-lib",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "github.com/example/vuln-lib",
+     "packageName": "vulnlib",
+     "module": {
+      "path": "github.com/example/vuln-lib",
+      "version": "v0.0.0",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21",
+      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+      "replace": {
+       "path": "../vuln-lib",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
+       "goVersion": "1.21"
+      }
+     },
+     "standard": false,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 207,
+       "line": 10,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 236,
+       "line": 10,
+       "column": 31
+      }
+     },
+     "resolved": true
+    }
+   ],
+   "declarations": [
+    {
+     "id": "github.com/example/reachable-app||main|func()",
+     "name": "main",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/reachable-app",
+     "signature": "func()",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 240,
+       "line": 13,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 373,
+       "line": 17,
+       "column": 2
+      }
+     }
+    },
+    {
+     "id": "github.com/example/reachable-app||handleProcess|func(w net/http.ResponseWriter, r *net/http.Request)",
+     "name": "handleProcess",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/reachable-app",
+     "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 375,
+       "line": 19,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 612,
+       "line": 24,
+       "column": 2
+      }
+     }
+    }
+   ],
+   "usages": [
+    {
+     "id": "github.com/example/reachable-app|sha256:f753d6abba7fb74c006548d103774095388400599107953a3be4c78cbcf9f970",
+     "kind": "selector",
+     "name": "ProcessQuery",
+     "qualifiedName": "github.com/example/vuln-lib.ProcessQuery",
+     "packagePath": "github.com/example/vuln-lib",
+     "packageName": "vulnlib",
+     "usageScope": "runtime",
+     "module": {
+      "path": "github.com/example/vuln-lib",
+      "version": "v0.0.0",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21",
+      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+      "replace": {
+       "path": "../vuln-lib",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
+       "goVersion": "1.21"
+      }
+     },
+     "standard": false,
+     "local": false,
+     "symbolKind": "function",
+     "type": "func(input string) string",
+     "signature": "func(input string) string",
+     "method": false,
+     "builtin": false,
+     "call": true,
+     "argumentCount": 1,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 546,
+       "line": 22,
+       "column": 12
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 566,
+       "line": 22,
+       "column": 32
+      }
+     },
+     "enclosing": {
+      "id": "github.com/example/reachable-app||handleProcess|func(w net/http.ResponseWriter, r *net/http.Request)",
+      "name": "handleProcess",
+      "kind": "function",
+      "usageScope": "runtime",
+      "signature": "func(w net/http.ResponseWriter, r *net/http.Request)"
+     },
+     "importPath": "github.com/example/vuln-lib",
+     "importAliasKind": "default"
+    }
+   ],
+   "securitySignals": [
+    {
+     "id": "github.com/example/reachable-app|sha256:7e501651ae9ea55fa4db6d04343efb967fb3a3f7944ab8f9d817a64ae5c63178",
+     "category": "http-server",
+     "severity": "medium",
+     "confidence": "type-resolved",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/reachable-app",
+     "symbol": "net/http.ListenAndServe",
+     "description": "Starts an HTTP server without TLS at this call site.",
+     "recommendation": "Use TLS or document trusted network boundaries.",
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 338,
+       "line": 16,
+       "column": 6
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 357,
+       "line": 16,
+       "column": 25
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "files": [
+  {
+   "path": "/src/repos/reachable-app/main.go",
+   "packageName": "main",
+   "packagePath": "github.com/example/reachable-app",
+   "role": "runtime",
+   "compiled": true,
+   "generated": false,
+   "imports": [
+    {
+     "path": "fmt",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "fmt",
+     "packageName": "fmt",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 187,
+       "line": 7,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 192,
+       "line": 7,
+       "column": 7
+      }
+     },
+     "resolved": true
+    },
+    {
+     "path": "net/http",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "net/http",
+     "packageName": "http",
+     "standard": true,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 194,
+       "line": 8,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 204,
+       "line": 8,
+       "column": 12
+      }
+     },
+     "resolved": true
+    },
+    {
+     "path": "github.com/example/vuln-lib",
+     "aliasKind": "default",
+     "usageScope": "runtime",
+     "packageId": "github.com/example/vuln-lib",
+     "packageName": "vulnlib",
+     "module": {
+      "path": "github.com/example/vuln-lib",
+      "version": "v0.0.0",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21",
+      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+      "replace": {
+       "path": "../vuln-lib",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
+       "goVersion": "1.21"
+      }
+     },
+     "standard": false,
+     "local": false,
+     "direct": true,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 207,
+       "line": 10,
+       "column": 2
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 236,
+       "line": 10,
+       "column": 31
+      }
+     },
+     "resolved": true
+    }
+   ],
+   "declarations": [
+    {
+     "id": "github.com/example/reachable-app||main|func()",
+     "name": "main",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/reachable-app",
+     "signature": "func()",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 240,
+       "line": 13,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 373,
+       "line": 17,
+       "column": 2
+      }
+     }
+    },
+    {
+     "id": "github.com/example/reachable-app||handleProcess|func(w net/http.ResponseWriter, r *net/http.Request)",
+     "name": "handleProcess",
+     "kind": "function",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/reachable-app",
+     "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+     "exported": false,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 375,
+       "line": 19,
+       "column": 1
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 612,
+       "line": 24,
+       "column": 2
+      }
+     }
+    }
+   ],
+   "usages": [
+    {
+     "id": "github.com/example/reachable-app|sha256:f753d6abba7fb74c006548d103774095388400599107953a3be4c78cbcf9f970",
+     "kind": "selector",
+     "name": "ProcessQuery",
+     "qualifiedName": "github.com/example/vuln-lib.ProcessQuery",
+     "packagePath": "github.com/example/vuln-lib",
+     "packageName": "vulnlib",
+     "usageScope": "runtime",
+     "module": {
+      "path": "github.com/example/vuln-lib",
+      "version": "v0.0.0",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21",
+      "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+      "replace": {
+       "path": "../vuln-lib",
+       "dir": "/src/repos/vuln-lib",
+       "goMod": "/src/repos/vuln-lib/go.mod",
+       "goVersion": "1.21"
+      }
+     },
+     "standard": false,
+     "local": false,
+     "symbolKind": "function",
+     "type": "func(input string) string",
+     "signature": "func(input string) string",
+     "method": false,
+     "builtin": false,
+     "call": true,
+     "argumentCount": 1,
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 546,
+       "line": 22,
+       "column": 12
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 566,
+       "line": 22,
+       "column": 32
+      }
+     },
+     "enclosing": {
+      "id": "github.com/example/reachable-app||handleProcess|func(w net/http.ResponseWriter, r *net/http.Request)",
+      "name": "handleProcess",
+      "kind": "function",
+      "usageScope": "runtime",
+      "signature": "func(w net/http.ResponseWriter, r *net/http.Request)"
+     },
+     "importPath": "github.com/example/vuln-lib",
+     "importAliasKind": "default"
+    }
+   ],
+   "securitySignals": [
+    {
+     "id": "github.com/example/reachable-app|sha256:7e501651ae9ea55fa4db6d04343efb967fb3a3f7944ab8f9d817a64ae5c63178",
+     "category": "http-server",
+     "severity": "medium",
+     "confidence": "type-resolved",
+     "usageScope": "runtime",
+     "packagePath": "github.com/example/reachable-app",
+     "symbol": "net/http.ListenAndServe",
+     "description": "Starts an HTTP server without TLS at this call site.",
+     "recommendation": "Use TLS or document trusted network boundaries.",
+     "range": {
+      "start": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 338,
+       "line": 16,
+       "column": 6
+      },
+      "end": {
+       "filename": "/src/repos/reachable-app/main.go",
+       "offset": 357,
+       "line": 16,
+       "column": 25
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "imports": [
+  {
+   "path": "fmt",
+   "aliasKind": "default",
+   "usageScope": "runtime",
+   "packageId": "fmt",
+   "packageName": "fmt",
+   "standard": true,
+   "local": false,
+   "direct": true,
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 187,
+     "line": 7,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 192,
+     "line": 7,
+     "column": 7
+    }
+   },
+   "resolved": true
+  },
+  {
+   "path": "github.com/example/vuln-lib",
+   "aliasKind": "default",
+   "usageScope": "runtime",
+   "packageId": "github.com/example/vuln-lib",
+   "packageName": "vulnlib",
+   "module": {
+    "path": "github.com/example/vuln-lib",
+    "version": "v0.0.0",
+    "dir": "/src/repos/vuln-lib",
+    "goMod": "/src/repos/vuln-lib/go.mod",
+    "goVersion": "1.21",
+    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "replace": {
+     "path": "../vuln-lib",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
+     "goVersion": "1.21"
+    }
+   },
+   "standard": false,
+   "local": false,
+   "direct": true,
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 207,
+     "line": 10,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 236,
+     "line": 10,
+     "column": 31
+    }
+   },
+   "resolved": true
+  },
+  {
+   "path": "net/http",
+   "aliasKind": "default",
+   "usageScope": "runtime",
+   "packageId": "net/http",
+   "packageName": "http",
+   "standard": true,
+   "local": false,
+   "direct": true,
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 194,
+     "line": 8,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 204,
+     "line": 8,
+     "column": 12
+    }
+   },
+   "resolved": true
+  }
+ ],
+ "declarations": [
+  {
+   "id": "github.com/example/reachable-app||handleProcess|func(w net/http.ResponseWriter, r *net/http.Request)",
+   "name": "handleProcess",
+   "kind": "function",
+   "usageScope": "runtime",
+   "packagePath": "github.com/example/reachable-app",
+   "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+   "exported": false,
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 375,
+     "line": 19,
+     "column": 1
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 612,
+     "line": 24,
+     "column": 2
+    }
+   }
+  },
+  {
+   "id": "github.com/example/reachable-app||main|func()",
+   "name": "main",
+   "kind": "function",
+   "usageScope": "runtime",
+   "packagePath": "github.com/example/reachable-app",
+   "signature": "func()",
+   "exported": false,
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 240,
+     "line": 13,
+     "column": 1
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 373,
+     "line": 17,
+     "column": 2
+    }
+   }
+  }
+ ],
+ "usages": [
+  {
+   "id": "github.com/example/reachable-app|sha256:f753d6abba7fb74c006548d103774095388400599107953a3be4c78cbcf9f970",
+   "kind": "selector",
+   "name": "ProcessQuery",
+   "qualifiedName": "github.com/example/vuln-lib.ProcessQuery",
+   "packagePath": "github.com/example/vuln-lib",
+   "packageName": "vulnlib",
+   "usageScope": "runtime",
+   "module": {
+    "path": "github.com/example/vuln-lib",
+    "version": "v0.0.0",
+    "dir": "/src/repos/vuln-lib",
+    "goMod": "/src/repos/vuln-lib/go.mod",
+    "goVersion": "1.21",
+    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "replace": {
+     "path": "../vuln-lib",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
+     "goVersion": "1.21"
+    }
+   },
+   "standard": false,
+   "local": false,
+   "symbolKind": "function",
+   "type": "func(input string) string",
+   "signature": "func(input string) string",
+   "method": false,
+   "builtin": false,
+   "call": true,
+   "argumentCount": 1,
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 546,
+     "line": 22,
+     "column": 12
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 566,
+     "line": 22,
+     "column": 32
+    }
+   },
+   "enclosing": {
+    "id": "github.com/example/reachable-app||handleProcess|func(w net/http.ResponseWriter, r *net/http.Request)",
+    "name": "handleProcess",
+    "kind": "function",
+    "usageScope": "runtime",
+    "signature": "func(w net/http.ResponseWriter, r *net/http.Request)"
+   },
+   "importPath": "github.com/example/vuln-lib",
+   "importAliasKind": "default"
+  }
+ ],
+ "apiEndpoints": [
+  {
+   "id": "github.com/example/reachable-app|endpoint|http-listener||:8080|nil|/src/repos/reachable-app/main.go|16|6",
+   "kind": "http-listener",
+   "framework": "net/http",
+   "path": ":8080",
+   "host": ":8080",
+   "scheme": "http",
+   "handler": "nil",
+   "packagePath": "github.com/example/reachable-app",
+   "usageScope": "runtime",
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 338,
+     "line": 16,
+     "column": 6
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 371,
+     "line": 16,
+     "column": 39
+    }
+   },
+   "properties": {
+    "listener": "true"
+   }
+  },
+  {
+   "id": "github.com/example/reachable-app|sha256:9ac9284702ced651329f0ffad09f5251cc2da4a2cc0fd68f58d52c8242ef1d59",
+   "kind": "http-route",
+   "framework": "net/http",
+   "path": "/process",
+   "handler": "handleProcess",
+   "packagePath": "github.com/example/reachable-app",
+   "usageScope": "runtime",
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 255,
+     "line": 14,
+     "column": 2
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 297,
+     "line": 14,
+     "column": 44
+    }
+   },
+   "parameters": [
+    {
+     "name": "data",
+     "location": "query",
+     "typeName": "string"
+    }
+   ]
+  }
+ ],
+ "services": [
+  {
+   "id": "service|server|github.com/example/reachable-app|:8080",
+   "name": ":8080",
+   "kind": "server",
+   "host": ":8080",
+   "scheme": "http",
+   "packagePath": "github.com/example/reachable-app",
+   "endpoints": [
+    {
+     "endpointId": "github.com/example/reachable-app|endpoint|http-listener||:8080|nil|/src/repos/reachable-app/main.go|16|6",
+     "path": ":8080",
+     "properties": {
+      "framework": "net/http",
+      "handler": "nil"
+     }
+    }
+   ],
+   "properties": {
+    "evidence": "api-endpoint"
+   }
+  },
+  {
+   "id": "service|server|github.com/example/reachable-app|net/http",
+   "name": "net/http",
+   "kind": "server",
+   "packagePath": "github.com/example/reachable-app",
+   "endpoints": [
+    {
+     "endpointId": "github.com/example/reachable-app|sha256:9ac9284702ced651329f0ffad09f5251cc2da4a2cc0fd68f58d52c8242ef1d59",
+     "path": "/process",
+     "properties": {
+      "framework": "net/http",
+      "handler": "handleProcess"
+     }
+    }
+   ],
+   "properties": {
+    "evidence": "api-endpoint"
+   }
+  }
+ ],
+ "securitySignals": [
+  {
+   "id": "github.com/example/reachable-app|sha256:7e501651ae9ea55fa4db6d04343efb967fb3a3f7944ab8f9d817a64ae5c63178",
+   "category": "http-server",
+   "severity": "medium",
+   "confidence": "type-resolved",
+   "usageScope": "runtime",
+   "packagePath": "github.com/example/reachable-app",
+   "symbol": "net/http.ListenAndServe",
+   "description": "Starts an HTTP server without TLS at this call site.",
+   "recommendation": "Use TLS or document trusted network boundaries.",
+   "range": {
+    "start": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 338,
+     "line": 16,
+     "column": 6
+    },
+    "end": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 357,
+     "line": 16,
+     "column": 25
+    }
+   }
+  }
+ ],
+ "dataFlow": {
+  "engine": "seam",
+  "mode": "all",
+  "nodes": [
+   {
+    "id": "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2",
+    "kind": "sink",
+    "name": "Fprintf",
+    "symbol": "fmt.Fprintf",
+    "type": "int",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 593,
+     "line": 23,
+     "column": 20
+    },
+    "sink": true,
+    "category": "formatted-output",
+    "taintKinds": [
+     "user-input"
+    ],
+    "confidence": "medium",
+    "properties": {
+     "model": "go.fmt-fprintf.sink"
+    }
+   },
+   {
+    "id": "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+    "kind": "call",
+    "name": "ProcessQuery",
+    "symbol": "github.com/example/vuln-lib.ProcessQuery",
+    "type": "string",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 566,
+     "line": 22,
+     "column": 32
+    },
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+    "kind": "store",
+    "name": "t7",
+    "symbol": "&t6[0:int]",
+    "type": "any",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 603,
+     "line": 23,
+     "column": 30
+    },
+    "fieldPath": "[*]",
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+    "kind": "call",
+    "name": "Get",
+    "symbol": "(net/url.Values).Get",
+    "type": "string",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 526,
+     "line": 21,
+     "column": 28
+    },
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+    "kind": "call",
+    "name": "Query",
+    "symbol": "(*net/url.URL).Query",
+    "type": "net/url.Values",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 520,
+     "line": 21,
+     "column": 22
+    },
+    "confidence": "medium"
+   },
+   {
+    "id": "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+    "kind": "source",
+    "name": "Query",
+    "symbol": "net/url.(*URL).Query",
+    "packagePath": "github.com/example/reachable-app",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "functionId": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 520,
+     "line": 21,
+     "column": 22
+    },
+    "source": true,
+    "category": "http-input",
+    "taintKinds": [
+     "user-input"
+    ],
+    "confidence": "high"
+   }
+  ],
+  "edges": [
+   {
+    "id": "seam-edge|seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|store",
+    "sourceId": "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+    "targetId": "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+    "kind": "store",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 603,
+     "line": 23,
+     "column": 30
+    }
+   },
+   {
+    "id": "seam-edge|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2|sink",
+    "sourceId": "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+    "targetId": "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2",
+    "kind": "sink",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 593,
+     "line": 23,
+     "column": 20
+    }
+   },
+   {
+    "id": "seam-edge|sha256:50dad8d8b900831fe88a11c21f600400cc1a2239dbbaae5c3f5fa376d9c68681",
+    "sourceId": "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+    "targetId": "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+    "kind": "call-return",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 520,
+     "line": 21,
+     "column": 22
+    }
+   },
+   {
+    "id": "seam-edge|sha256:a9bed72db303e55d5fcf1e6a1abd029ba378e340dd39ef4a8aa92f6c0e32555f",
+    "sourceId": "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+    "targetId": "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+    "kind": "call-return",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 526,
+     "line": 21,
+     "column": 28
+    }
+   },
+   {
+    "id": "seam-edge|sha256:f65f050426751fd6c13c291f610ab8f05189bdd27cc74e1d3660d3b1b63bbba7",
+    "sourceId": "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+    "targetId": "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+    "kind": "call-return",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 566,
+     "line": 22,
+     "column": 32
+    }
+   }
+  ],
+  "slices": [
+   {
+    "id": "seam-slice|sha256:73ca70271dc2386a60faf3f50b548f5e57443000889c384a3c8be492a0161f4b",
+    "sourceId": "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+    "sinkId": "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2",
+    "flowKey": "df-flow|http-input|formatted-output|github.com/example/reachable-app.handleProcess|github.com/example/reachable-app.handleProcess|fmt.Fprintf|2|user-input|[*]",
+    "nodeIds": [
+     "seam-source|sha256:260c98cadd2ad57756bf2b232aa001418fe2053d23bef364e3f3332c24b244f7",
+     "seam-node|sha256:d87b6af0c26d5e338ce4c7431c6734d754ac9f60827283cca7b3014fb7f74cb2",
+     "seam-node|sha256:bc6cb08c58325cc72c6be055ee84051c754f1facea7e70e81afb6ded4553b970",
+     "seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955",
+     "seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803",
+     "seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2"
+    ],
+    "edgeIds": [
+     "seam-edge|sha256:50dad8d8b900831fe88a11c21f600400cc1a2239dbbaae5c3f5fa376d9c68681",
+     "seam-edge|sha256:a9bed72db303e55d5fcf1e6a1abd029ba378e340dd39ef4a8aa92f6c0e32555f",
+     "seam-edge|sha256:f65f050426751fd6c13c291f610ab8f05189bdd27cc74e1d3660d3b1b63bbba7",
+     "seam-edge|seam-node|sha256:87a508f222bd7a8465d2e006387fe278c0aecb14373dcef7ae6f95bfcbae6955|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|store",
+     "seam-edge|seam-node|sha256:a5d3e158015c27320e3d9936f524e7bc80a4978c1d335f30f244784429e76803|seam-node|sha256:4860fdd8d8324dc6a1042a79607f261ed6cae13c689a4d8fde6b9ae2dbc8ace2|sink"
+    ],
+    "edgeKinds": [
+     "call-return",
+     "sink",
+     "store"
+    ],
+    "pathLength": 5,
+    "sourceCategory": "http-input",
+    "sinkCategory": "formatted-output",
+    "sourceName": "Query",
+    "sourceSymbol": "net/url.(*URL).Query",
+    "sourceFunction": "github.com/example/reachable-app.handleProcess",
+    "sourcePackagePath": "github.com/example/reachable-app",
+    "sourcePurl": "pkg:golang/github.com/example/reachable-app",
+    "sinkName": "Fprintf",
+    "sinkSymbol": "fmt.Fprintf",
+    "sinkFunction": "github.com/example/reachable-app.handleProcess",
+    "sinkPackagePath": "github.com/example/reachable-app",
+    "sinkPurl": "pkg:golang/github.com/example/reachable-app",
+    "purls": [
+     "pkg:golang/github.com/example/reachable-app"
+    ],
+    "sinkArgumentIndex": 2,
+    "taintKinds": [
+     "user-input"
+    ],
+    "fieldPaths": [
+     "[*]"
+    ],
+    "crossesDependency": true,
+    "dependencyHops": 3,
+    "reachableFromRoots": true,
+    "ruleId": "GOLEM-DATAFLOW-REFLECTED-OUTPUT",
+    "ruleName": "User input reaches response/output",
+    "severity": "medium",
+    "riskScore": 55,
+    "sourceScope": "runtime",
+    "sinkScope": "runtime",
+    "sourceCriticality": "high",
+    "sinkCriticality": "medium",
+    "confidence": "medium",
+    "description": "http-input reaches fmt.Fprintf"
+   }
+  ],
+  "stats": {
+   "sourceCount": 1,
+   "sinkCount": 1,
+   "sliceCount": 1,
+   "nodeCount": 6,
+   "edgeCount": 5,
+   "summaryCount": 0,
+   "functionCount": 242,
+   "instructionCount": 0,
+   "elapsedMillis": 289,
+   "uniqueFlowCount": 1,
+   "maxPathLength": 5,
+   "averagePathLength": 5
+  },
+  "sliceReachability": {
+   "status": "computed",
+   "algorithm": "rta",
+   "rootKinds": [
+    "exported",
+    "init",
+    "main",
+    "synthetic-registration"
+   ],
+   "reachablePackages": [
+    "github.com/example/reachable-app",
+    "github.com/example/vuln-lib"
+   ],
+   "rootCount": 44,
+   "rootedSliceCount": 1,
+   "unrootedSliceCount": 0
+  }
+ },
+ "supplyChain": {
+  "goDirectiveVersion": "1.21",
+  "replaces": [
+   {
+    "kind": "replace",
+    "modulePath": "github.com/example/vuln-lib",
+    "targetModulePath": "../vuln-lib",
+    "localReplacement": true,
+    "targetPathKind": "relative",
+    "source": "go.mod"
+   }
+  ],
+  "modules": [
+   {
+    "path": "github.com/example/reachable-app",
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "main": true
+   },
+   {
+    "path": "github.com/example/vuln-lib",
+    "version": "v0.0.0",
+    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "properties": {
+     "localReplacement": "true",
+     "replacementModule": "../vuln-lib"
+    }
+   }
+  ]
+ },
+ "callGraph": {
+  "mode": "static",
+  "algorithm": "static",
+  "roots": [
+   {
+    "id": "github.com/example/reachable-app.handleProcess",
+    "function": "github.com/example/reachable-app.handleProcess",
+    "rootReason": "synthetic-registration"
+   },
+   {
+    "id": "github.com/example/reachable-app.init",
+    "function": "github.com/example/reachable-app.init",
+    "rootReason": "init"
+   },
+   {
+    "id": "github.com/example/reachable-app.main",
+    "function": "github.com/example/reachable-app.main",
+    "rootReason": "main"
+   }
+  ],
+  "reachability": {
+   "nodes": [
+    {
+     "nodeId": "github.com/example/reachable-app.handleProcess",
+     "reachableFromRoots": true
+    },
+    {
+     "nodeId": "github.com/example/reachable-app.init",
+     "reachableFromRoots": true
+    },
+    {
+     "nodeId": "github.com/example/reachable-app.main",
+     "reachableFromRoots": true
+    },
+    {
+     "nodeId": "github.com/example/vuln-lib.ProcessQuery",
+     "reachableFromRoots": true,
+     "minDepth": 1,
+     "rootIds": [
+      "github.com/example/reachable-app.handleProcess"
+     ]
+    },
+    {
+     "nodeId": "github.com/example/vuln-lib.UnusedFunction",
+     "reachableFromRoots": false
+    },
+    {
+     "nodeId": "github.com/example/vuln-lib.init",
+     "reachableFromRoots": true,
+     "minDepth": 1,
+     "rootIds": [
+      "github.com/example/reachable-app.init"
+     ]
+    }
+   ]
+  },
+  "nodes": [
+   {
+    "id": "github.com/example/reachable-app.handleProcess",
+    "name": "handleProcess",
+    "label": "github.com/example/reachable-app.handleProcess",
+    "kind": "function",
+    "packagePath": "github.com/example/reachable-app",
+    "packageName": "main",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "standard": false,
+    "local": true,
+    "external": false,
+    "visibility": "local",
+    "signature": "func(w net/http.ResponseWriter, r *net/http.Request)",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 380,
+     "line": 19,
+     "column": 6
+    }
+   },
+   {
+    "id": "github.com/example/reachable-app.init",
+    "name": "init",
+    "label": "github.com/example/reachable-app.init",
+    "kind": "function",
+    "packagePath": "github.com/example/reachable-app",
+    "packageName": "main",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "standard": false,
+    "local": true,
+    "external": false,
+    "synthetic": true,
+    "syntheticKind": "package initializer",
+    "visibility": "local",
+    "signature": "func()",
+    "position": {}
+   },
+   {
+    "id": "github.com/example/reachable-app.main",
+    "name": "main",
+    "label": "github.com/example/reachable-app.main",
+    "kind": "function",
+    "packagePath": "github.com/example/reachable-app",
+    "packageName": "main",
+    "module": {
+     "path": "github.com/example/reachable-app",
+     "dir": "/src/repos/reachable-app",
+     "goMod": "/src/repos/reachable-app/go.mod",
+     "goVersion": "1.21",
+     "main": true,
+     "purl": "pkg:golang/github.com/example/reachable-app"
+    },
+    "purl": "pkg:golang/github.com/example/reachable-app",
+    "standard": false,
+    "local": true,
+    "external": false,
+    "visibility": "local",
+    "signature": "func()",
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 245,
+     "line": 13,
+     "column": 6
+    }
+   },
+   {
+    "id": "github.com/example/vuln-lib.ProcessQuery",
+    "name": "ProcessQuery",
+    "label": "github.com/example/vuln-lib.ProcessQuery",
+    "kind": "function",
+    "packagePath": "github.com/example/vuln-lib",
+    "packageName": "vulnlib",
+    "module": {
+     "path": "github.com/example/vuln-lib",
+     "version": "v0.0.0",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
+     "goVersion": "1.21",
+     "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+     "replace": {
+      "path": "../vuln-lib",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21"
+     }
+    },
+    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "standard": false,
+    "local": false,
+    "external": true,
+    "visibility": "dependency",
+    "signature": "func(input string) string",
+    "position": {
+     "filename": "/src/repos/vuln-lib/vuln.go",
+     "offset": 392,
+     "line": 11,
+     "column": 6
+    }
+   },
+   {
+    "id": "github.com/example/vuln-lib.UnusedFunction",
+    "name": "UnusedFunction",
+    "label": "github.com/example/vuln-lib.UnusedFunction",
+    "kind": "function",
+    "packagePath": "github.com/example/vuln-lib",
+    "packageName": "vulnlib",
+    "module": {
+     "path": "github.com/example/vuln-lib",
+     "version": "v0.0.0",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
+     "goVersion": "1.21",
+     "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+     "replace": {
+      "path": "../vuln-lib",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21"
+     }
+    },
+    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "standard": false,
+    "local": false,
+    "external": true,
+    "visibility": "dependency",
+    "signature": "func() string",
+    "position": {
+     "filename": "/src/repos/vuln-lib/vuln.go",
+     "offset": 614,
+     "line": 17,
+     "column": 6
+    }
+   },
+   {
+    "id": "github.com/example/vuln-lib.init",
+    "name": "init",
+    "label": "github.com/example/vuln-lib.init",
+    "kind": "function",
+    "packagePath": "github.com/example/vuln-lib",
+    "packageName": "vulnlib",
+    "module": {
+     "path": "github.com/example/vuln-lib",
+     "version": "v0.0.0",
+     "dir": "/src/repos/vuln-lib",
+     "goMod": "/src/repos/vuln-lib/go.mod",
+     "goVersion": "1.21",
+     "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+     "replace": {
+      "path": "../vuln-lib",
+      "dir": "/src/repos/vuln-lib",
+      "goMod": "/src/repos/vuln-lib/go.mod",
+      "goVersion": "1.21"
+     }
+    },
+    "purl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "standard": false,
+    "local": false,
+    "external": true,
+    "synthetic": true,
+    "syntheticKind": "package initializer",
+    "visibility": "dependency",
+    "signature": "func()",
+    "position": {}
+   }
+  ],
+  "edges": [
+   {
+    "id": "github.com/example/reachable-app.handleProcess|sha256:9fa23d51d7d0fda43faccacb050453152f48385c8d53d1fdfd293f417f1f99ab",
+    "sourceId": "github.com/example/reachable-app.handleProcess",
+    "targetId": "github.com/example/vuln-lib.ProcessQuery",
+    "sourceName": "github.com/example/reachable-app.handleProcess",
+    "targetName": "github.com/example/vuln-lib.ProcessQuery",
+    "sourcePurl": "pkg:golang/github.com/example/reachable-app",
+    "sinkPurl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "purls": [
+     "pkg:golang/github.com/example/reachable-app",
+     "pkg:golang/github.com/example/vuln-lib@v0.0.0"
+    ],
+    "callType": "static",
+    "static": true,
+    "position": {
+     "filename": "/src/repos/reachable-app/main.go",
+     "offset": 566,
+     "line": 22,
+     "column": 32
+    }
+   },
+   {
+    "id": "github.com/example/reachable-app.init|github.com/example/vuln-lib.init||0|0|static",
+    "sourceId": "github.com/example/reachable-app.init",
+    "targetId": "github.com/example/vuln-lib.init",
+    "sourceName": "github.com/example/reachable-app.init",
+    "targetName": "github.com/example/vuln-lib.init",
+    "sourcePurl": "pkg:golang/github.com/example/reachable-app",
+    "sinkPurl": "pkg:golang/github.com/example/vuln-lib@v0.0.0",
+    "purls": [
+     "pkg:golang/github.com/example/reachable-app",
+     "pkg:golang/github.com/example/vuln-lib@v0.0.0"
+    ],
+    "callType": "static",
+    "static": true,
+    "position": {}
+   }
+  ],
+  "stats": {
+   "nodeCount": 6,
+   "edgeCount": 2
+  }
+ },
+ "stats": {
+  "packageCount": 1,
+  "moduleCount": 2,
+  "fileCount": 1,
+  "generatedFileCount": 0,
+  "importCount": 3,
+  "declarationCount": 2,
+  "usageCount": 1,
+  "runtimeUsageCount": 1,
+  "testUsageCount": 0,
+  "benchmarkUsageCount": 0,
+  "fuzzUsageCount": 0,
+  "exampleUsageCount": 0,
+  "buildDirectiveCount": 0,
+  "nativeArtifactCount": 0,
+  "nativeBoundaryCount": 0,
+  "buildShapeDeltaCount": 0,
+  "apiEndpointCount": 2,
+  "externalUrlCount": 0,
+  "serviceCount": 2,
+  "securitySignalCount": 1,
+  "goModReplaceCount": 1,
+  "goModExcludeCount": 0,
+  "vendorModuleCount": 0,
+  "workspaceModuleCount": 0,
+  "privateModuleHintCount": 0,
+  "licenseFileModuleCount": 0,
+  "cryptoLibraryCount": 0,
+  "cryptoAssetCount": 0,
+  "cryptoOperationCount": 0,
+  "cryptoMaterialCount": 0,
+  "cryptoProtocolCount": 0,
+  "cryptoFindingCount": 0,
+  "dataFlowSourceCount": 1,
+  "dataFlowSinkCount": 1,
+  "dataFlowSliceCount": 1,
+  "diagnosticCount": 0
+ }
+}

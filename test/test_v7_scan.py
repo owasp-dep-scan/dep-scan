@@ -26,7 +26,7 @@ from depscan.commands.output import json_path
 from depscan.commands.targets import detect_kind
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
-from depscan.lib import pipeline, vdb_setup
+from depscan.lib import pipeline, scan_directory, vdb_setup
 from depscan.lib import report as report_lib
 from depscan.lib.logger import LOG, console
 from xbom_lib import cdxgen as cdxgen_mod
@@ -1120,7 +1120,7 @@ def test_json_format_prints_one_document_and_nothing_else(
     assert entry["target"] == json_path(bom)
     assert entry["kind"] == "bom"
     assert entry["scanDir"] == str(reports).replace(os.sep, "/")
-    assert entry["manifest"]["layoutVersion"] == "1.0"
+    assert entry["manifest"]["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert len(entry["findings"]) == 1
     # Positive control: the scan ran, rendering on the moved console.
     assert scan_stubs["matching"], "the matching stage never ran"
@@ -1196,7 +1196,7 @@ def test_json_format_keeps_stray_stdout_writes_off_stdout(
     assert scan_stubs["database"] == ["printed"]
     captured = capfd.readouterr()
     document = json.loads(captured.out)
-    assert document["scans"][0]["manifest"]["layoutVersion"] == "1.0"
+    assert document["scans"][0]["manifest"]["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert "vdb download progress" not in captured.out
     assert "vdb download progress" in captured.err
 

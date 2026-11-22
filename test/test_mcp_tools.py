@@ -37,7 +37,7 @@ from depscan import api
 from depscan.commands.output import json_path
 from depscan.lib import bom as bom_mod
 from depscan.lib import doctor as doctor_mod
-from depscan.lib import pipeline, vdb_setup
+from depscan.lib import pipeline, scan_directory, vdb_setup
 from depscan.mcp_server import server as server_mod
 from xbom_lib import cdxgen as cdxgen_mod
 
@@ -404,13 +404,13 @@ def test_scan_summary_reports_the_manifest_summary(open_session, make_scan_dir):
     scan_dir = make_scan_dir("plain")
     document = drive(open_session, _scan_summary_target(scan_dir), (scan_dir.parent,))
     summary = document["manifestSummary"]
-    assert summary["layoutVersion"] == "1.0"
+    assert summary["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert summary["projectTypes"] == ["python"]
     assert set(summary["stagesByStatus"]) == {"completed", "skipped"}
     assert summary["stagesByStatus"] == {"completed": 7, "skipped": 3}
     assert summary["stageCount"] == 10
     assert summary["inputCount"] == 1
-    assert summary["fileCount"] == 4
+    assert summary["fileCount"] == 6
     assert summary["startUtc"]
     assert summary["endUtc"]
 
@@ -977,6 +977,35 @@ def test_an_oversized_finding_spills_to_a_file(open_session, make_scan_dir):
     assert spilled == published
 
 
+def _plant_reached_evidence(scan_dir):
+    """Overwrite the scan's (empty) evidence store with one reached-flow
+    record the explanation can render, the way a scan that ran a reachability
+    analyzer would have written it."""
+    from analysis_lib.evidence import EvidencePathNode, EvidenceProducer
+    from analysis_lib.evidence import store as evidence_store
+    from analysis_lib.evidence.adapters import build_record
+
+    record = build_record(
+        source="python-reachables.slices.json",
+        producer=EvidenceProducer(name="atom", version="9.9.9", report_schema_version="4"),
+        kind="reached-flow",
+        discriminator="atom-src-main",
+        purls=("pkg:pypi/requests@2.31.0",),
+        # Five distinct rows: the fewest an atom path renders with.
+        path=tuple(
+            EvidencePathNode(file="app/main.py", line=line, method="main", symbol=symbol)
+            for line, symbol in (
+                (11, "request.args"),
+                (12, "query"),
+                (14, "params"),
+                (16, "session"),
+                (18, "requests.get"),
+            )
+        ),
+    )
+    evidence_store.write(str(scan_dir / evidence_store.EVIDENCE_FILE), [record])
+
+
 # --- explain_finding ----------------------------------------------------------------
 
 
@@ -987,11 +1016,9 @@ def _first_published(scan_dir):
 def test_explain_finding_returns_the_finding_and_the_scan_text(open_session, make_scan_dir):
     scan_dir = make_scan_dir("plain")
     published = _first_published(scan_dir)
-    # The reachables slices file is what the explanation reads; a scan that
-    # ran no reachability analyzer records none, so the fixture plants one.
-    (scan_dir / "python-reachables.slices.json").write_bytes(
-        (DATA_DIR / "rust-reachables.slices.json").read_bytes()
-    )
+    # The evidence store is what the explanation reads; a scan that ran no
+    # reachability analyzer wrote an empty one, so the fixture plants a record.
+    _plant_reached_evidence(scan_dir)
 
     async def scenario(session):
         return await call_document(
@@ -1004,7 +1031,7 @@ def test_explain_finding_returns_the_finding_and_the_scan_text(open_session, mak
     document = drive(open_session, scenario, (scan_dir.parent,))
     assert document["finding"] == published
     assert document["explanation"].strip()
-    assert "src/main.rs" in document["explanation"]
+    assert "app/main.py" in document["explanation"]
     assert "\x1b" not in document["explanation"]
 
 
@@ -1020,7 +1047,9 @@ def test_explain_finding_names_what_is_missing(open_session, make_scan_dir):
         )
 
     message = drive(open_session, scenario, (scan_dir.parent,))
-    assert "reachables slices" in message
+    # The scan wrote the (empty) store, so the message names the gates the
+    # records did not meet, not a missing file.
+    assert "no evidence record met the rendering gates" in message
 
 
 def test_an_oversized_explanation_spills_to_a_file(open_session, make_scan_dir):
@@ -1031,9 +1060,7 @@ def test_an_oversized_explanation_spills_to_a_file(open_session, make_scan_dir):
     fat["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
     scan_dir = make_scan_dir("fat-explain", vulns=[fat])
     published = published_findings(scan_dir)[0]
-    (scan_dir / "python-reachables.slices.json").write_bytes(
-        (DATA_DIR / "rust-reachables.slices.json").read_bytes()
-    )
+    _plant_reached_evidence(scan_dir)
     arguments = {"scan_dir": str(scan_dir), "finding_id": published["id"]}
 
     async def scenario(session):
@@ -1249,15 +1276,15 @@ def test_diff_scans_refuses_a_directory_that_is_not_a_scan(open_session, make_sc
     assert "Cannot load a scan" in message
 
 
-def test_an_oversized_diff_spills_into_the_new_scan_directory(open_session, tmp_path, make_scan_dir):
+def test_an_oversized_diff_spills_into_the_new_scan_directory(
+    open_session, tmp_path, make_scan_dir
+):
     """A diff whose entries exceed the response budget spills into the
     later scan directory, the one a reader of the diff is moving to, and
     returns the spill envelope, validated against the diff_scans output
     schema."""
     fat_high = dict(VULN_HIGH)
-    fat_high["properties"] = [
-        {"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}
-    ]
+    fat_high["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
     fat_critical = dict(VULN_CRITICAL)
     fat_critical["properties"] = [
         {"name": "depscan:probe", "value": "b" * (TOOL_BUDGET_BYTES + 1000)}
@@ -1542,7 +1569,7 @@ def test_run_scan_real_run_with_allow_scans_records_secure_mode(
     assert document["target"] == json_path(os.path.abspath(str(target)))
     assert document["kind"] == "source"
     assert document["scanDir"] == expected_path(reports_dir)
-    assert document["manifest"]["layoutVersion"] == "1.0"
+    assert document["manifest"]["layoutVersion"] == scan_directory.LAYOUT_VERSION
     assert len(document["findings"]) == 1
     # Positive controls: the real run executed the stubbed cdxgen once, and
     # cdxgen received CDXGEN_SECURE_MODE=true for the whole run.

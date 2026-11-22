@@ -103,7 +103,7 @@ done
 
 # atom writes no reachables slice for C#; dep-scan's .NET reachability comes
 # from dosai, run here the way depscan scan runs it, so the data carries the
-# dotnet-reachables slice a source scan would.
+# raw dosai reports a source scan would persist under analysis/dosai/.
 for project_type in "${TYPES[@]}"; do
   if [ "$project_type" = "dotnet" ]; then
     if [ -z "${DEPSCAN_PYTHON:-}" ]; then
@@ -115,8 +115,8 @@ for project_type in "${TYPES[@]}"; do
       "$OUT_DIR/sbom-$project_type.cdx.json" "$SRC_DIR"
   fi
 done
-# dosai's native facts sidecar is not test data.
-rm -rf "$OUT_DIR/analysis"
+# The raw dosai reports under analysis/dosai/ ARE the test data: a BOM
+# directory scan reads them through the dosai adapter.
 
 # Only the JSON files are test data. The atom databases (*.atom) and source
 # maps (*.json.map) cdxgen leaves beside them are large and read by nothing

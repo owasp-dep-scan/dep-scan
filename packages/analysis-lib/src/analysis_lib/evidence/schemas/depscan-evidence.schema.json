@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:owasp:depscan:schema:evidence:1",
+  "title": "dep-scan evidence record",
+  "description": "One record of the scan directory's evidence.jsonl: what a reachability producer said about one package, kept as the producer gave it. Nothing is inferred from advisory text and no record carries a timestamp. The id is ev- plus the first 16 hex digits of the SHA-256 digest over the canonical JSON of the array [schema version, producer name, kind, comparable subject purls sorted, [file, line, method] of the first location, discriminator], where the discriminator is the producer's own object id for the report object, or its MD5 content hash when the report names none; the documented algorithm is in analysis_lib.evidence. When two records' ids still collide after truncation, the store appends -2, -3 in canonical-JSON order. The examples array carries the three producer shapes the store was designed around: a blint presence record, a cdxgen occurrence record and a tracebom runtime-trace record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "id",
+    "producer",
+    "kind",
+    "polarity",
+    "subject",
+    "locations",
+    "caveats",
+    "source"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "const": "1",
+      "description": "The record shape version. Every record of this shape carries 1."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^ev-[0-9a-f]{16}(-[0-9]+)?$",
+      "description": "The record id: ev- plus 16 lowercase hex digits of SHA-256 over the documented identity array, optionally followed by the store's collision suffix (-2, -3 and so on) when two records truncated to the same id."
+    },
+    "producer": {
+      "$ref": "#/$defs/producer",
+      "description": "The tool that produced the record, with the tool version and the report schema version the record was read from."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "reached-flow",
+        "usage",
+        "callsite",
+        "occurrence",
+        "callstack",
+        "entry-point",
+        "exploit-chain",
+        "sanitizer",
+        "dead-code",
+        "dependency",
+        "no-path",
+        "annotation",
+        "presence",
+        "introspection",
+        "runtime-trace",
+        "weakness",
+        "dangerous-api"
+      ],
+      "description": "What the producer said. reached-flow, usage, callsite, entry-point and exploit-chain come from the reachability tools; occurrence, callstack, annotation and introspection come from BOM production; presence and runtime-trace come from binary and runtime analysis; sanitizer, dead-code, dependency and no-path record negative or non-reaching evidence; weakness and dangerous-api are a producer's own weakness candidates and its reachable calls into dangerous APIs, kept as given and never counted as reached."
+    },
+    "polarity": {
+      "type": "string",
+      "enum": ["positive", "negative"],
+      "description": "positive when the record says the subject was observed or reached; negative when it says the opposite, such as a sanitizer on the path or a package the trace showed is not reached."
+    },
+    "subject": {
+      "$ref": "#/$defs/subject",
+      "description": "The package or component the record is about. The purls array may be empty for records that are about a place rather than a package, such as an entry point with no package resolved."
+    },
+    "locations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/location",
+        "description": "One place the evidence lives."
+      },
+      "description": "Where the evidence lives, relative to the scanned source root with forward slashes."
+    },
+    "path": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "$ref": "#/$defs/path-node",
+        "description": "One witness node on the path."
+      },
+      "description": "The witness path the producer walked, in its order, at most 64 nodes. When the producer gave more, the first 64 are kept and a path-truncated caveat is added."
+    },
+    "confidence": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The producer's own confidence value, exactly as it wrote it, for example High, high or 0.87. Absent when the producer states none; dep-scan never invents one."
+    },
+    "caveats": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/caveat",
+        "description": "One thing to discount or know about this record."
+      },
+      "description": "The caveats that apply to this record: a budget or timeout the producer hit, a schema drift, a path that was cut, an object of the report that could not become a record. Empty when there is nothing to flag."
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The scan-directory-relative file the record was read from, with forward slashes, for example python-reachables.slices.json or analysis/dosai/dotnet-dataflows.json."
+    },
+    "attributes": {
+      "type": "object",
+      "description": "Everything else the producer stated about the object, kept as given: reach fields, rule ids, taint kinds, service purls, exposure tiers, chain ids. A later grader reads what it needs from here; dep-scan adds nothing."
+    }
+  },
+  "$defs": {
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "reportSchemaVersion"],
+      "description": "The tool that produced the record, as it names itself.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Producer name, for example atom, golem, rusi, dosai, kosi, blint, cdxgen or tracebom."
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The producer tool's own version, for example 4.0.2 for atom 4.0.2."
+        },
+        "reportSchemaVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The version the report names for itself, a shape-implied version when the report carries none, or the literal string unknown."
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the record is about.",
+      "properties": {
+        "purls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "description": "One package URL, kept as the producer gave it."
+          },
+          "description": "The package URLs the record is about, deduplicated and comparable by the comparable-purl rule."
+        },
+        "componentRef": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The BOM component bom-ref the adapter resolved for the subject, present only when one was resolved."
+        }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file"],
+      "description": "One place the evidence lives, relative to the scanned source root with forward slashes.",
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The file path, relative to the scanned source root with forward slashes."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Line number in file, counting from 1."
+        },
+        "method": {
+          "type": "string",
+          "description": "The enclosing method or function name, when the producer resolved one."
+        }
+      }
+    },
+    "path-node": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One witness node of a path: a frame the producer walked. Every field is optional because producers describe different subsets.",
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "The file path, relative to the scanned source root with forward slashes."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Line number in file, counting from 1."
+        },
+        "method": {
+          "type": "string",
+          "description": "The method or function name at this node."
+        },
+        "symbol": {
+          "type": "string",
+          "description": "The fully qualified symbol the producer named at this node."
+        }
+      }
+    },
+    "caveat": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "detail"],
+      "description": "One thing a reader should discount or know: a budget the producer hit, a schema that drifted, a path that was cut, a record that could not be built.",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "budget",
+            "timeout",
+            "collapsed-edges",
+            "unresolved-call-sites",
+            "coverage-gap",
+            "path-truncated",
+            "schema-minor",
+            "schema-unknown",
+            "minimal-api",
+            "record-skipped",
+            "location-outside-root"
+          ],
+          "description": "budget and timeout when the producer stopped early; collapsed-edges and unresolved-call-sites when the producer's own analysis was imprecise; coverage-gap when a part of the scan had no analysis; path-truncated when a witness path was cut at 64 nodes; schema-minor for a newer minor report version; schema-unknown for a report that names no version; minimal-api for an entry point whose attribution the producer may have misplaced; record-skipped for a producer object that could not become a record; location-outside-root for a file the producer named outside the scanned source root, which the record leaves out rather than carry as an absolute path."
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What exactly happened, in one sentence a reader can act on."
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schemaVersion": "1",
+      "id": "ev-d594cade71a30234",
+      "producer": {"name": "blint", "version": "4.1.0", "reportSchemaVersion": "4"},
+      "kind": "presence",
+      "polarity": "positive",
+      "subject": {"purls": ["pkg:npm/sqlite3@5.8.0"]},
+      "locations": [
+        {"file": "build/Release/sqlite3.node", "method": "sqlite3_open"}
+      ],
+      "confidence": "high",
+      "caveats": [],
+      "source": "analysis/blint/findings.json"
+    },
+    {
+      "schemaVersion": "1",
+      "id": "ev-b95a5cc17efc5428",
+      "producer": {"name": "cdxgen", "version": "13.8.0", "reportSchemaVersion": "unknown"},
+      "kind": "occurrence",
+      "polarity": "positive",
+      "subject": {
+        "purls": ["pkg:npm/semver@7.6.0"],
+        "componentRef": "pkg:npm/semver@7.6.0"
+      },
+      "locations": [{"file": "lib/index.js", "line": 42, "method": "parseRange"}],
+      "caveats": [],
+      "source": "sbom-js.cdx.json"
+    },
+    {
+      "schemaVersion": "1",
+      "id": "ev-0f98099e5aad2142",
+      "producer": {"name": "tracebom", "version": "0.4.0", "reportSchemaVersion": "unknown"},
+      "kind": "runtime-trace",
+      "polarity": "positive",
+      "subject": {"purls": ["pkg:npm/sqlite3@5.8.0"]},
+      "locations": [{"file": "lib/coverage.js", "line": 118, "method": "start"}],
+      "path": [
+        {
+          "file": "lib/coverage.js",
+          "line": 118,
+          "method": "start",
+          "symbol": "Coverage.start"
+        },
+        {
+          "file": "lib/sqlite3.js",
+          "line": 64,
+          "method": "open",
+          "symbol": "Database.open"
+        }
+      ],
+      "attributes": {"frames": 2, "traceId": "tr-42"},
+      "caveats": [],
+      "source": "analysis/tracebom/traces.jsonl"
+    }
+  ]
+}

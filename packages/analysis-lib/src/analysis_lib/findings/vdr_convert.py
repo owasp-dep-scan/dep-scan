@@ -16,9 +16,10 @@ the shared-id case for repeated copies of one package.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from urllib.parse import unquote
 
+from analysis_lib.evidence import Evidence
 from analysis_lib.findings.fingerprint import finding_fingerprint
 from analysis_lib.findings.model import (
     Coverage,
@@ -29,6 +30,7 @@ from analysis_lib.findings.model import (
     Producer,
     Reference,
 )
+from analysis_lib.reachability import ATOM_SLICE_PURL_TYPES, counts_as_reached
 
 #: CycloneDX severity names, most severe first, with the score as the tie
 #: breaker of last resort.
@@ -166,6 +168,42 @@ def _purl_type(ref: str) -> str:
     return head[4:].lower() if head.lower().startswith("pkg:") else ""
 
 
+def reached_by_analyzer(records: Iterable[Evidence]) -> Dict[str, Dict[str, Set[str]]]:
+    """What each producer's reached-counted records put on an executed path.
+
+    The grouping is built from every record the caller holds, in one pass,
+    and the records are never deduplicated against each other across
+    producers: a purl two producers both reached stays in both of their
+    sets, so a set that stands for a full read of the evidence store is
+    built from all of it. Records that do not count as reached evidence per
+    :func:`analysis_lib.reachability.counts_as_reached` (negative ones, the
+    kinds outside :data:`analysis_lib.reachability.REACHED_COUNTED_KINDS`,
+    and those stating Low confidence) never enter the sets.
+
+    Each entry carries the purls under ``purls`` and the purl types the
+    scope should treat the producer as covering under ``types``. The
+    language tools cover one ecosystem each (:data:`TOOL_PURL_TYPES`) and
+    carry no types here; atom's come from the reachables file prefix of its
+    records' source (:data:`analysis_lib.reachability.ATOM_SLICE_PURL_TYPES`),
+    and a prefix that is not known contributes the purl types the records
+    with it carry.
+    """
+    result: Dict[str, Dict[str, Set[str]]] = {}
+    for record in records:
+        if not counts_as_reached(record):
+            continue
+        name = record.producer.name
+        entry = result.setdefault(name, {"purls": set(), "types": set()})
+        entry["purls"].update(record.subject.purls)
+        if name == "atom":
+            mapped = ATOM_SLICE_PURL_TYPES.get(record.source.split("-reachables", 1)[0].lower())
+            if mapped:
+                entry["types"].add(mapped)
+            else:
+                entry["types"] |= {t for t in map(_purl_type, record.subject.purls) if t}
+    return result
+
+
 @dataclass
 class ReachScope:
     """What the reachability analysis said about the components of one
@@ -180,15 +218,16 @@ class ReachScope:
     language tools each cover one ecosystem (:data:`TOOL_PURL_TYPES`);
     ``analyzer_types`` names the purl types of the other analyzers (atom's
     slice files decide them). ``reached_by`` holds the purls each analyzer
-    reached; when it is empty the single ``reached`` set stands for every
-    analyzer.
+    reached: an analyzer it does not name, or names with an empty set,
+    observed nothing. Only when ``reached_by`` is not given at all does the
+    single ``reached`` set stand for every analyzer.
     """
 
     analyzers: List[str] = field(default_factory=list)
     reached: Set[str] = field(default_factory=set)
     succeeded: bool = False
     analyzer_types: Dict[str, Set[str]] = field(default_factory=dict)
-    reached_by: Dict[str, Set[str]] = field(default_factory=dict)
+    reached_by: Optional[Dict[str, Set[str]]] = None
     _reached_cmp: Optional[Dict[str, Set[str]]] = field(
         default=None, init=False, repr=False, compare=False
     )
@@ -209,7 +248,10 @@ class ReachScope:
         if self._reached_cmp is None:
             self._reached_cmp = {}
         if name not in self._reached_cmp:
-            source = self.reached_by.get(name, set()) if self.reached_by else self.reached
+            if self.reached_by is None:
+                source = self.reached
+            else:
+                source = self.reached_by.get(name) or set()
             self._reached_cmp[name] = {comparable_purl(p) for p in source}
         return self._reached_cmp[name]
 

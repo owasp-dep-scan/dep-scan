@@ -5,7 +5,7 @@ description: The layout a scan writes, its manifest and findings files, and how 
 
 # The scan directory
 
-Every dep-scan scan writes one directory: the reports directory named by `-o`/`--reports-dir` or `DEPSCAN_REPORTS_DIR`, `reports` under the current directory by default. One case reuses a directory that already exists: when the scan's only target is a single BOM directory and no `-o`, `--reports-dir` or `DEPSCAN_REPORTS_DIR` was given, that BOM directory is the reports directory, so the manifest, the findings file and the VDR land next to the BOMs and `depscan report` loads the directory. An explicit reports directory, or more than one target, keeps the usual behaviour (more than one target writes `<reports-dir>/<n>-<name>/` per target); a BOM directory scanned with an explicit reports directory has its VDR written next to the BOMs, outside the scan directory, and that reports directory is refused at load time (see below). The BOM, VDR and slices files keep the names and places they have always had, so existing scripts and CI jobs keep reading them. On top of those, the scan writes two files of its own, `depscan.manifest.json` and `depscan.findings.json`, and keeps the raw reports of the tools it runs itself under `analysis/`. A saved directory is all `depscan report` reads, and the layout version in the manifest decides whether an older or newer dep-scan reads it.
+Every dep-scan scan writes one directory: the reports directory named by `-o`/`--reports-dir` or `DEPSCAN_REPORTS_DIR`, `reports` under the current directory by default. One case reuses a directory that already exists: when the scan's only target is a single BOM directory and no `-o`, `--reports-dir` or `DEPSCAN_REPORTS_DIR` was given, that BOM directory is the reports directory, so the manifest, the findings file and the VDR land next to the BOMs and `depscan report` loads the directory. An explicit reports directory, or more than one target, keeps the usual behaviour (more than one target writes `<reports-dir>/<n>-<name>/` per target); a BOM directory scanned with an explicit reports directory has its VDR written next to the BOMs, outside the scan directory, and that reports directory is refused at load time (see below). The BOM and VDR files keep the names and places they have always had, and cdxgen's slice files stay where cdxgen puts them, so existing scripts and CI jobs keep reading them. On top of those, the scan writes four files of its own, `depscan.manifest.json`, `depscan.findings.json`, `evidence.jsonl` and `evidence.index.json`, and keeps the raw reports of the tools it runs itself under `analysis/`. A saved directory is all `depscan report` reads, and the layout version in the manifest decides whether an older or newer dep-scan reads it.
 
 ## The layout
 
@@ -13,15 +13,19 @@ Every dep-scan scan writes one directory: the reports directory named by `-o`/`-
 reports/
 ├── depscan.manifest.json          the manifest, written last of every file
 ├── depscan.findings.json          one finding per advisory and component
-├── evidence.jsonl                 optional, in the layout; this version writes none
+├── evidence.jsonl                 the evidence store, one record per line
+├── evidence.index.json            record ids by component purl and finding
 ├── sbom-python.cdx.json           the BOM documents, named as before
 ├── depscan-universal.vdr.json     the VDR files, named as before
-├── python-reachables.slices.json  the slice files cdxgen and the analyzers wrote
+├── python-reachables.slices.json  the slice files cdxgen writes: atom's own
+│                                  slices and the semantics reports (a
+│                                  <language>-reachables file an earlier
+│                                  dep-scan wrote may linger in a reused
+│                                  directory)
 ├── analysis/
 │   ├── rusi/rusi.json             raw reports of the tools dep-scan runs itself
 │   ├── golem/golem.json
-│   └── dosai/dotnet-methods.json, dotnet-dataflows.json,
-│       dotnet-reachability.facts.json
+│   └── dosai/dotnet-methods.json, dotnet-dataflows.json
 ├── license-python.json            the license and risk reports
 ├── depscan-risk-python.json
 ├── depscan.html, depscan.txt      the rendered reports
@@ -41,7 +45,8 @@ The manifest's `files` array carries one entry for every file at the top of the 
 | `bom` | `sbom-<type>.cdx.json` and its lifecycle siblings, and a BOM the user placed here | cdxgen, blint (post-build), or `user` |
 | `vdr` | `*.vdr.json`, including `depscan-universal.vdr.json` | dep-scan |
 | `findings` | `depscan.findings.json` | dep-scan |
-| `slices` | `*.slices.json`, the slice files the analyzers' flows live in | cdxgen, or dep-scan for the `rust`, `go` and `dotnet` reachables it converts itself |
+| `evidence` | `evidence.jsonl`, `evidence.index.json` | dep-scan |
+| `slices` | `*.slices.json`, the slice files cdxgen writes: atom's own slices and the semantics reports | cdxgen, or dep-scan for the converted reachables slices its earlier versions wrote |
 | `raw-report` | everything under `analysis/<producer>/` | the reachability plugin named by the directory |
 | `csaf` | `*.csaf.json` | dep-scan |
 | `report` | `depscan.html`, `depscan.txt`, `depscan-prompts.md`, the license and risk reports, `depscan.toml.sample` and the template report | dep-scan |
@@ -56,7 +61,7 @@ The manifest's `files` array carries one entry for every file at the top of the 
 The manifest records what the scan read and what ran, so a directory can be interpreted without re-running anything: the inputs with their digests, the tools and capabilities of the machine as `depscan doctor` saw them, the database flavor and shards the matching stage used, the stages with their status, and the options with secrets removed. Two properties are worth knowing before reading one:
 
 - It is written last, after every other file, through a temporary file and a rename. A manifest that lists files lists files that exist, and an interrupted scan never leaves a half-written manifest behind.
-- The enrichment stage lists the reachability analyzers the scan could have used. An analyzer is `completed` only when the stage read reachables slices it produces (`rust-`, `go-` and `dotnet-reachables.slices.json` for rusi, golem and dosai, any other reachables slices for atom), whether the scan produced them or was given them. Otherwise it is `not-assessed`, with the doctor's reason, naming the capability, when the tool or toolchain is missing on this machine, and otherwise the reason that no slices were produced or given. An installed tool is never reported as an analysis that ran.
+- The enrichment stage lists the reachability analyzers the scan could have used. An analyzer is `completed` when its evidence adapter read a report of that analyzer: the scan ran the tool, cdxgen persisted its report, or a BOM directory scan was given one under a name the adapter looks for. Otherwise it is `not-assessed` with the adapter's reason: what was wrong with the report it found, or, when it found none, the doctor's reason naming the capability when the tool or toolchain is missing on this machine, and otherwise the report names it looked for. A BOM directory scan reads the reports the directory holds whether or not the tool is installed, so a damaged report is named as damaged on any machine. The doctor's reason stands in only when no adapter ran. An installed tool is never reported as an analysis that ran.
 - No absolute path, username or hostname appears outside the `inputs` array, which records each path as the user gave it. Paths in `files` are relative. The tool paths come from the doctor report with the user's home replaced by `~`, and options that can hold a secret, such as `cdxgen_args` or `vdb_image`, are recorded as `"<redacted>"` when they were set and null when they were not.
 
 <!-- The tables below are the output of:
@@ -67,7 +72,7 @@ Regenerate them with that command when the schema changes. -->
 
 | Field | What it holds |
 | --- | --- |
-| `layoutVersion` | The scan directory layout version as major.minor, starting at 1.0. A reader accepts any minor version of a major it knows and refuses any other major. |
+| `layoutVersion` | The scan directory layout version as major.minor. Layout 2.0 introduced the evidence store. A reader accepts any minor version of a major it knows and refuses any other major. |
 | `depscanVersion` | The version of dep-scan that ran the scan. |
 | `startUtc` | When the scan started, in UTC, as an RFC 3339 date-time. |
 | `endUtc` | When the scan ended, in UTC, as an RFC 3339 date-time. A scan that stopped early still records its end. |
@@ -107,7 +112,7 @@ Regenerate them with that command when the schema changes. -->
 | `reason` | Why the status is failed, skipped or not-assessed. Absent for completed. |
 | `capabilities` | The capability names the stage needed, named the way depscan doctor names them. |
 | `notAssessed` | Reasons parts of this stage's analysis did not run even though the stage completed, for example an atom run that a timeout stopped. Empty or absent for a stage whose whole scope ran. |
-| `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether the stage read slices it produced. |
+| `analyzers` | The reachability analyzers this stage could have used, each with its capability and whether the analyzer's evidence adapter read a report. |
 | `outputs` | The files this version of the stage would write, each with its status, so a missing output is named rather than left out silently. |
 
 ### analyzer fields
@@ -116,8 +121,9 @@ Regenerate them with that command when the schema changes. -->
 | --- | --- |
 | `name` | The analyzer name, for example atom, golem, rusi or dosai. |
 | `capability` | The capability the analyzer satisfies, named the way depscan doctor names it. |
-| `status` | completed when the stage read reachables slices this analyzer produces, whether this scan produced them or was given them. not-assessed when it read none, with the doctor's reason when the capability is unavailable on this machine, and otherwise the reason that no slices were produced or given. |
-| `reason` | For not-assessed, the doctor's reason the capability cannot run here, or that no slices were produced or given. |
+| `status` | completed when the analyzer's evidence adapter read a report of this analyzer, whether the scan ran the tool, cdxgen persisted the report, or a BOM directory scan was given one. not-assessed when it read none, with the reason the adapter gave: what was wrong with the report it found, or, when it found none, the doctor's reason when the capability is unavailable on this machine and otherwise the report names it looked for. The doctor's reason stands in only when no adapter ran. |
+| `reason` | For not-assessed, the adapter's reason (a report it could not read, or the report names it looked for), or the doctor's reason the capability cannot run here when the adapter gave none or no adapter ran. |
+| `caveats` | The producer-level caveats the analyzer's adapter reported for this scan, the same kinds an evidence record carries. Absent when the analyzer completed with nothing to flag. |
 
 ### stageOutput fields
 
@@ -132,14 +138,14 @@ Regenerate them with that command when the schema changes. -->
 | Field | What it holds |
 | --- | --- |
 | `path` | The path relative to the scan directory, always with forward slashes. |
-| `role` | What the file is in the scan directory layout. |
+| `role` | What the file is in the scan directory layout. evidence is the scan's evidence store and its index. |
 | `producer` | The tool that wrote the file: cdxgen, blint, dep-scan, a reachability plugin, or user for a file the user placed here. |
 | `projectType` | The project type the file belongs to, when the name carries one. |
 | `sha256` | The SHA-256 digest of the file's bytes. |
 
 ## The version rule
 
-`layoutVersion` is a `major.minor` string, starting at `1.0`. A reader accepts any minor version of a major it knows: layout `1.9` loads with dep-scan that writes `1.0`, because a minor bump adds optional things. A different major is refused with an error naming both versions, the one in the manifest and the one the reader supports.
+`layoutVersion` is a `major.minor` string. Layout 2.0 introduced the evidence store. A reader accepts any minor version of a major it knows: layout `2.3` loads with dep-scan that writes `2.0`, because a minor bump adds optional things, and a manifest whose major is 1 predates the evidence store and is refused. A different major is refused with an error naming both versions, the one in the manifest and the one the reader supports.
 
 ## Loading a directory back
 
@@ -152,8 +158,10 @@ depscan report <scan-dir>
 depscan report <scan-dir> --explain --explanation-mode EndpointsAndReachables
 ```
 
-`depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the slices and OpenAPI specifications the directory holds. It never generates BOMs, never runs analyzers and never opens the vulnerability database. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.
+`depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the evidence store and the OpenAPI specifications the directory holds. It never generates BOMs, never runs analyzers and never opens the vulnerability database. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.
 
-## The evidence file
+## The evidence files
 
-The layout names `evidence.jsonl` as optional. This version of dep-scan has no evidence store, so no scan writes it and no empty file is left in its place; the enrichment stage's entry in the manifest says so, recorded as not assessed with the reason.
+`evidence.jsonl` is the scan's evidence store: one record per line, sorted by id, each record a `depscan-evidence` schema object saying what one reachability producer observed (a reached flow, a usage, an entry point, an exploit chain, a sanitizer, or a negative finding such as dead code). The enrichment stage of each project type writes it after the adapters have read every report the scan holds, and a type scanned with reachability off still writes an empty store. A store or index an earlier scan left in the reports directory is removed when the scan starts, in every scan mode, so a scan where no project type reaches the enrichment stage has no store at all rather than an earlier scan's records. The records carry the producer's own words: a record's `confidence` is the one the producer stated, exactly as stated, and is absent when the producer stated none; witness paths are the producer's own; and nothing is inferred from advisory text. Where an adapter must decide something the producer left open, the record says so: a dosai entry without a confidence is counted by its kind's default, which the record names in the attributes `confidenceSource: "kind-default"` and `confidenceDefault` without setting `confidence`. The caveats are the producer's statements (a budget or timeout it hit, call sites it could not resolve) plus the ones the adapter adds about its reading: `schema-minor` and `schema-unknown` for the report's schema version, `minimal-api` for dosai attribution the producer can get wrong, `location-outside-root` when a file the producer named lies outside the source root and outside every package directory the adapter can spell (a file in a package cache such as the Go module cache, the Cargo registry or the NuGet cache is spelled by its package and version, as in `github.com/example/lib@v1.0.0/lib.go`), so the record leaves it out, and `record-skipped` on the analyzer's result, counting per reason the report objects that became no record.
+
+`evidence.index.json` maps the records to what they are about: `byComponent` maps each component purl to the ids of the records whose subject includes it, and `byFinding` maps each finding fingerprint to the ids of the records that touch the finding's component. It is written once the findings exist, before the manifest lists both files with their digests.

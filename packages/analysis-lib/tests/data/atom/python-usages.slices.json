@@ -1,0 +1,2254 @@
+{
+ "objectSlices": [
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 2,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "tmp0",
+      "typeFullName": "path",
+      "lineNumber": 23,
+      "columnNumber": 21,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 23,
+      "columnNumber": 21,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "abspath",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 23,
+       "columnNumber": 21
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "json",
+      "typeFullName": "json",
+      "lineNumber": 16,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 16,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "load",
+       "resolvedMethod": "json.load",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 142,
+       "columnNumber": 20
+      },
+      {
+       "callName": "dumps",
+       "resolvedMethod": "json.dumps",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 208,
+       "columnNumber": 26
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp1",
+      "typeFullName": "path",
+      "lineNumber": 23,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 23,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "dirname",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 23,
+       "columnNumber": 5
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "<module>",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan",
+      "isExternal": false,
+      "lineNumber": 2,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "<module>",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan",
+      "isExternal": false,
+      "lineNumber": 2,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "os",
+      "typeFullName": "os",
+      "lineNumber": 18,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 18,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "split",
+       "resolvedMethod": "tmp4.split",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 38,
+       "columnNumber": 13
+      }
+     ],
+     "argToCalls": [
+      {
+       "callName": "listdir",
+       "resolvedMethod": "os.listdir",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 120,
+       "columnNumber": 26
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "exit",
+      "typeFullName": "ANY",
+      "resolvedMethod": "sys.exit",
+      "isExternal": true,
+      "lineNumber": 213,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "exit",
+      "typeFullName": "ANY",
+      "resolvedMethod": "sys.exit",
+      "isExternal": true,
+      "lineNumber": 213,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "re",
+      "typeFullName": "re",
+      "lineNumber": 19,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 19,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "match",
+       "resolvedMethod": "re.match",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 58,
+       "columnNumber": 13
+      },
+      {
+       "callName": "match",
+       "resolvedMethod": "re.match",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 124,
+       "columnNumber": 17
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "glob",
+      "typeFullName": "glob",
+      "lineNumber": 17,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 17,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "glob",
+       "resolvedMethod": "glob.glob",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 104,
+       "columnNumber": 37
+      },
+      {
+       "callName": "glob",
+       "resolvedMethod": "glob.glob",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 105,
+       "columnNumber": 20
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "sys",
+      "typeFullName": "sys",
+      "lineNumber": 20,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 20,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "exit",
+       "resolvedMethod": "sys.exit",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 213,
+       "columnNumber": 5
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp2",
+      "typeFullName": "path",
+      "lineNumber": 22,
+      "columnNumber": 19,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 22,
+      "columnNumber": 19,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "join",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY",
+        "ANY",
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 22,
+       "columnNumber": 19
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan.check",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 147,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "tmp34",
+      "typeFullName": "ANY",
+      "lineNumber": 171,
+      "columnNumber": 17,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "\"depscan {0} is older than the dep-scan plugin ",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.stringExpressionList",
+      "isExternal": null,
+      "lineNumber": 171,
+      "columnNumber": 17,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "format",
+       "resolvedMethod": "tmp34.format",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 171,
+       "columnNumber": 17
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp36",
+      "typeFullName": "ANY",
+      "lineNumber": 178,
+      "columnNumber": 21,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "\"The installed depscan CLI is version {0}, older than the \" \"plugin's {1}. If a command fails with an unknown option, say \" \"so instead of working around it.\"",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.stringExpressionList",
+      "isExternal": null,
+      "lineNumber": 178,
+      "columnNumber": 21,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "format",
+       "resolvedMethod": "tmp36.format",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 178,
+       "columnNumber": 21
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "plugin_version_value",
+      "typeFullName": "ANY",
+      "position": 1,
+      "lineNumber": 147,
+      "columnNumber": 11,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "plugin_version_value",
+      "typeFullName": "ANY",
+      "position": 1,
+      "lineNumber": 147,
+      "columnNumber": 11,
+      "label": "PARAM"
+     },
+     "invokedCalls": [
+      {
+       "callName": "is_older",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.is_older",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 168,
+       "columnNumber": 47
+      },
+      {
+       "callName": "format",
+       "resolvedMethod": "tmp34.format",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 171,
+       "columnNumber": 17
+      },
+      {
+       "callName": "format",
+       "resolvedMethod": "tmp36.format",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 178,
+       "columnNumber": 21
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "check",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.check",
+      "isExternal": false,
+      "lineNumber": 147,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "check",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.check",
+      "isExternal": false,
+      "lineNumber": 147,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "env",
+      "typeFullName": "ANY",
+      "position": 2,
+      "lineNumber": 147,
+      "columnNumber": 33,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "env",
+      "typeFullName": "ANY",
+      "position": 2,
+      "lineNumber": 147,
+      "columnNumber": 33,
+      "label": "PARAM"
+     },
+     "invokedCalls": [
+      {
+       "callName": "find_on_path",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.find_on_path",
+       "paramTypes": [
+        "ANY",
+        "__builtin.bool"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 149,
+       "columnNumber": 14
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "binary",
+      "typeFullName": "ANY",
+      "lineNumber": 149,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "find_on_path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.find_on_path",
+      "isExternal": null,
+      "lineNumber": 149,
+      "columnNumber": 14,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "read_installed_version",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.read_installed_version",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 167,
+       "columnNumber": 17
+      },
+      {
+       "callName": "has_mcp_module",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.has_mcp_module",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 184,
+       "columnNumber": 12
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "format",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp36.format",
+      "isExternal": true,
+      "lineNumber": 178,
+      "columnNumber": 21,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "format",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp36.format",
+      "isExternal": true,
+      "lineNumber": 178,
+      "columnNumber": 21,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "format",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp34.format",
+      "isExternal": true,
+      "lineNumber": 171,
+      "columnNumber": 17,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "format",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp34.format",
+      "isExternal": true,
+      "lineNumber": 171,
+      "columnNumber": 17,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "installed",
+      "typeFullName": "ANY",
+      "lineNumber": 167,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "read_installed_version",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.read_installed_version",
+      "isExternal": null,
+      "lineNumber": 167,
+      "columnNumber": 17,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "is_older",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.is_older",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 168,
+       "columnNumber": 47
+      },
+      {
+       "callName": "format",
+       "resolvedMethod": "tmp34.format",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 171,
+       "columnNumber": 17
+      },
+      {
+       "callName": "format",
+       "resolvedMethod": "tmp36.format",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 178,
+       "columnNumber": 21
+      }
+     ],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan.find_on_path",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 35,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "split",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp4.split",
+      "isExternal": true,
+      "lineNumber": 38,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "split",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp4.split",
+      "isExternal": true,
+      "lineNumber": 38,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "env",
+      "typeFullName": "ANY",
+      "position": 2,
+      "lineNumber": 35,
+      "columnNumber": 27,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "env",
+      "typeFullName": "ANY",
+      "position": 2,
+      "lineNumber": 35,
+      "columnNumber": 27,
+      "label": "PARAM"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "get",
+       "resolvedMethod": "__builtin.bool.get",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 38,
+       "columnNumber": 13
+      },
+      {
+       "callName": "get",
+       "resolvedMethod": "__builtin.bool.get",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 38,
+       "columnNumber": 32
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp6",
+      "typeFullName": "path",
+      "lineNumber": 45,
+      "columnNumber": 16,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 45,
+      "columnNumber": 16,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "isfile",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 45,
+       "columnNumber": 16
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp7",
+      "typeFullName": "ANY",
+      "lineNumber": 43,
+      "columnNumber": 9,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "suffixes.__iter__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.__iter__",
+      "isExternal": null,
+      "lineNumber": 43,
+      "columnNumber": 9,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "__next__",
+       "resolvedMethod": null,
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 43,
+       "columnNumber": 9
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp8",
+      "typeFullName": "ANY",
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "dirs.__iter__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "dirs.__iter__",
+      "isExternal": null,
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "__next__",
+       "resolvedMethod": "tmp8.__next__",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 40,
+       "columnNumber": 5
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "get",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.get",
+      "isExternal": true,
+      "lineNumber": 38,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "get",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.get",
+      "isExternal": true,
+      "lineNumber": 38,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "__iter__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "dirs.__iter__",
+      "isExternal": true,
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "__iter__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "dirs.__iter__",
+      "isExternal": true,
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "__iter__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.__iter__",
+      "isExternal": true,
+      "lineNumber": 43,
+      "columnNumber": 9,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "__iter__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.__iter__",
+      "isExternal": true,
+      "lineNumber": 43,
+      "columnNumber": 9,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "suffixes",
+      "typeFullName": "__builtin.bool",
+      "lineNumber": 39,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "WINDOWS_SUFFIXES if os.name == \"nt\" else ",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.conditional",
+      "isExternal": null,
+      "lineNumber": 39,
+      "columnNumber": 16,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "__iter__",
+       "resolvedMethod": "__builtin.bool.__iter__",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 43,
+       "columnNumber": 9
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp5",
+      "typeFullName": "path",
+      "lineNumber": 44,
+      "columnNumber": 25,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 44,
+      "columnNumber": 25,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "join",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 44,
+       "columnNumber": 25
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "find_on_path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.find_on_path",
+      "isExternal": false,
+      "lineNumber": 35,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "find_on_path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.find_on_path",
+      "isExternal": false,
+      "lineNumber": 35,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "tmp4",
+      "typeFullName": "ANY",
+      "lineNumber": 38,
+      "columnNumber": 13,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "env.get",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.logicalOr",
+      "isExternal": null,
+      "lineNumber": 38,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "split",
+       "resolvedMethod": "tmp4.split",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 38,
+       "columnNumber": 13
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "__next__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp8.__next__",
+      "isExternal": true,
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "__next__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp8.__next__",
+      "isExternal": true,
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "get",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.get",
+      "isExternal": true,
+      "lineNumber": 38,
+      "columnNumber": 32,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "get",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.bool.get",
+      "isExternal": true,
+      "lineNumber": 38,
+      "columnNumber": 32,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "directory",
+      "typeFullName": "ANY",
+      "lineNumber": 41,
+      "columnNumber": 16,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "tmp8.__next__",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp8.__next__",
+      "isExternal": null,
+      "lineNumber": 40,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "join",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": null,
+       "lineNumber": 44,
+       "columnNumber": 25
+      }
+     ],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan.has_mcp_module",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 130,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "tmp25",
+      "typeFullName": "path",
+      "lineNumber": 135,
+      "columnNumber": 12,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 135,
+      "columnNumber": 12,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "isdir",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 135,
+       "columnNumber": 12
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "has_mcp_module",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.has_mcp_module",
+      "isExternal": false,
+      "lineNumber": 130,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "has_mcp_module",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.has_mcp_module",
+      "isExternal": false,
+      "lineNumber": 130,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "binary",
+      "typeFullName": "ANY",
+      "position": 1,
+      "lineNumber": 130,
+      "columnNumber": 20,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "binary",
+      "typeFullName": "ANY",
+      "position": 1,
+      "lineNumber": 130,
+      "columnNumber": 20,
+      "label": "PARAM"
+     },
+     "invokedCalls": [
+      {
+       "callName": "site_packages_of",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.site_packages_of",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 132,
+       "columnNumber": 16
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "tmp24",
+      "typeFullName": "path",
+      "lineNumber": 135,
+      "columnNumber": 26,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "os.path",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 135,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "join",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 135,
+       "columnNumber": 26
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "packages",
+      "typeFullName": "ANY",
+      "lineNumber": 132,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "site_packages_of",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.site_packages_of",
+      "isExternal": null,
+      "lineNumber": 132,
+      "columnNumber": 16,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "join",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": null,
+       "lineNumber": 135,
+       "columnNumber": 26
+      }
+     ],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan.is_older",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 74,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "is_older",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.is_older",
+      "isExternal": false,
+      "lineNumber": 74,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "is_older",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.is_older",
+      "isExternal": false,
+      "lineNumber": 74,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "installed",
+      "typeFullName": "ANY",
+      "position": 1,
+      "lineNumber": 74,
+      "columnNumber": 14,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "installed",
+      "typeFullName": "ANY",
+      "position": 1,
+      "lineNumber": 74,
+      "columnNumber": 14,
+      "label": "PARAM"
+     },
+     "invokedCalls": [
+      {
+       "callName": "parse_version",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.parse_version",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 76,
+       "columnNumber": 24
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "expected",
+      "typeFullName": "ANY",
+      "position": 2,
+      "lineNumber": 74,
+      "columnNumber": 25,
+      "label": "PARAM"
+     },
+     "definedBy": {
+      "name": "expected",
+      "typeFullName": "ANY",
+      "position": 2,
+      "lineNumber": 74,
+      "columnNumber": 25,
+      "label": "PARAM"
+     },
+     "invokedCalls": [
+      {
+       "callName": "parse_version",
+       "resolvedMethod": "agent-plugin.hooks.check_depscan.parse_version",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": false,
+       "lineNumber": 77,
+       "columnNumber": 23
+      }
+     ],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan.main",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 205,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "main",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.main",
+      "isExternal": false,
+      "lineNumber": 205,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "main",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.main",
+      "isExternal": false,
+      "lineNumber": 205,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "result",
+      "typeFullName": "ANY",
+      "lineNumber": 206,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "check",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.check",
+      "isExternal": null,
+      "lineNumber": 206,
+      "columnNumber": 14,
+      "label": "CALL"
+     },
+     "invokedCalls": [
+      {
+       "callName": "dumps",
+       "resolvedMethod": "json.dumps",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "isExternal": true,
+       "lineNumber": 208,
+       "columnNumber": 26
+      }
+     ],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "tmp39",
+      "typeFullName": "stdout",
+      "lineNumber": 208,
+      "columnNumber": 9,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "sys.stdout",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.fieldAccess",
+      "isExternal": null,
+      "lineNumber": 208,
+      "columnNumber": 9,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "write",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 208,
+       "columnNumber": 9
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "dumps",
+      "typeFullName": "ANY",
+      "resolvedMethod": "json.dumps",
+      "isExternal": true,
+      "lineNumber": 208,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "dumps",
+      "typeFullName": "ANY",
+      "resolvedMethod": "json.dumps",
+      "isExternal": true,
+      "lineNumber": 208,
+      "columnNumber": 26,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.check_depscan.parse_version",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/check_depscan.py",
+   "lineNumber": 50,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "strip",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp9.strip",
+      "isExternal": true,
+      "lineNumber": 60,
+      "columnNumber": 10,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "strip",
+      "typeFullName": "ANY",
+      "resolvedMethod": "tmp9.strip",
+      "isExternal": true,
+      "lineNumber": 60,
+      "columnNumber": 10,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "match",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.match",
+      "isExternal": true,
+      "lineNumber": 58,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "match",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.match",
+      "isExternal": true,
+      "lineNumber": 58,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 64,
+      "columnNumber": 37,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 64,
+      "columnNumber": 37,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "match",
+      "typeFullName": "ANY",
+      "lineNumber": 58,
+      "columnNumber": 5,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "re.match",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.match",
+      "isExternal": null,
+      "lineNumber": 58,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "group",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 64,
+       "columnNumber": 20
+      },
+      {
+       "callName": "group",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 64,
+       "columnNumber": 41
+      },
+      {
+       "callName": "group",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 64,
+       "columnNumber": 62
+      },
+      {
+       "callName": "group",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 65,
+       "columnNumber": 8
+      },
+      {
+       "callName": "group",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 66,
+       "columnNumber": 25
+      },
+      {
+       "callName": "group",
+       "resolvedMethod": null,
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": null,
+       "lineNumber": 67,
+       "columnNumber": 26
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "tmp9",
+      "typeFullName": "ANY",
+      "lineNumber": 60,
+      "columnNumber": 10,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "version or \"\"",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.logicalOr",
+      "isExternal": null,
+      "lineNumber": 60,
+      "columnNumber": 10,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "strip",
+       "resolvedMethod": "tmp9.strip",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 60,
+       "columnNumber": 10
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 64,
+      "columnNumber": 16,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 64,
+      "columnNumber": 16,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "parse_version",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.parse_version",
+      "isExternal": false,
+      "lineNumber": 50,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "parse_version",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.check_depscan.parse_version",
+      "isExternal": false,
+      "lineNumber": 50,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 67,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 67,
+      "columnNumber": 22,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 64,
+      "columnNumber": 58,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "int",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.int<meta>",
+      "isExternal": true,
+      "lineNumber": 64,
+      "columnNumber": 58,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  },
+  {
+   "code": "",
+   "fullName": "agent-plugin.hooks.stale_lockfile",
+   "signature": "",
+   "fileName": "agent-plugin/hooks/stale_lockfile.py",
+   "lineNumber": 2,
+   "columnNumber": 1,
+   "usages": [
+    {
+     "targetObj": {
+      "name": "re",
+      "typeFullName": "re",
+      "lineNumber": 13,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 13,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "compile",
+       "resolvedMethod": "re.compile",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 54,
+       "columnNumber": 13
+      },
+      {
+       "callName": "compile",
+       "resolvedMethod": "re.compile",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 54,
+       "columnNumber": 51
+      },
+      {
+       "callName": "sub",
+       "resolvedMethod": "re.sub",
+       "paramTypes": [
+        "ANY",
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 76,
+       "columnNumber": 12
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "sys",
+      "typeFullName": "sys",
+      "lineNumber": 14,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 14,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "exit",
+       "resolvedMethod": "sys.exit",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 130,
+       "columnNumber": 5
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "json",
+      "typeFullName": "json",
+      "lineNumber": 11,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 11,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "load",
+       "resolvedMethod": "json.load",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 81,
+       "columnNumber": 20
+      },
+      {
+       "callName": "dump",
+       "resolvedMethod": "json.dump",
+       "paramTypes": [
+        "ANY",
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 91,
+       "columnNumber": 13
+      },
+      {
+       "callName": "loads",
+       "resolvedMethod": "json.loads",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 120,
+       "columnNumber": 19
+      },
+      {
+       "callName": "dumps",
+       "resolvedMethod": "json.dumps",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 125,
+       "columnNumber": 26
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "frozenset",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.frozenset<meta>",
+      "isExternal": true,
+      "lineNumber": 16,
+      "columnNumber": 9,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "frozenset",
+      "typeFullName": "ANY",
+      "resolvedMethod": "__builtin.frozenset<meta>",
+      "isExternal": true,
+      "lineNumber": 16,
+      "columnNumber": 9,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "<module>",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.stale_lockfile",
+      "isExternal": false,
+      "lineNumber": 2,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "<module>",
+      "typeFullName": "ANY",
+      "resolvedMethod": "agent-plugin.hooks.stale_lockfile",
+      "isExternal": false,
+      "lineNumber": 2,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "os",
+      "typeFullName": "os",
+      "lineNumber": 12,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "import",
+      "typeFullName": "import",
+      "resolvedMethod": "import",
+      "isExternal": null,
+      "lineNumber": 12,
+      "columnNumber": 1,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "makedirs",
+       "resolvedMethod": "os.makedirs",
+       "paramTypes": [
+        "ANY"
+       ],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 89,
+       "columnNumber": 9
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "exit",
+      "typeFullName": "ANY",
+      "resolvedMethod": "sys.exit",
+      "isExternal": true,
+      "lineNumber": 130,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "exit",
+      "typeFullName": "ANY",
+      "resolvedMethod": "sys.exit",
+      "isExternal": true,
+      "lineNumber": 130,
+      "columnNumber": 5,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "PATTERNS",
+      "typeFullName": "__builtin.tuple",
+      "lineNumber": 54,
+      "columnNumber": 1,
+      "label": "LOCAL"
+     },
+     "definedBy": {
+      "name": "",
+      "typeFullName": "ANY",
+      "resolvedMethod": "<operator>.tupleLiteral",
+      "isExternal": null,
+      "lineNumber": 54,
+      "columnNumber": 12,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": [
+      {
+       "callName": "__iter__",
+       "resolvedMethod": "__builtin.tuple.__iter__",
+       "paramTypes": [],
+       "returnType": "ANY",
+       "position": 0,
+       "isExternal": true,
+       "lineNumber": 60,
+       "columnNumber": 33
+      }
+     ]
+    },
+    {
+     "targetObj": {
+      "name": "compile",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.compile",
+      "isExternal": true,
+      "lineNumber": 54,
+      "columnNumber": 51,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "compile",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.compile",
+      "isExternal": true,
+      "lineNumber": 54,
+      "columnNumber": 51,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    },
+    {
+     "targetObj": {
+      "name": "compile",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.compile",
+      "isExternal": true,
+      "lineNumber": 54,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "definedBy": {
+      "name": "compile",
+      "typeFullName": "ANY",
+      "resolvedMethod": "re.compile",
+      "isExternal": true,
+      "lineNumber": 54,
+      "columnNumber": 13,
+      "label": "CALL"
+     },
+     "invokedCalls": [],
+     "argToCalls": []
+    }
+   ]
+  }
+ ],
+ "userDefinedTypes": [
+  {
+   "name": "contrib.check_agent_plugin._StrictLoader<meta>",
+   "fields": [
+    {
+     "name": "<fakeNew>",
+     "typeFullName": "contrib.check_agent_plugin._StrictLoader.<fakeNew>",
+     "lineNumber": null,
+     "columnNumber": null,
+     "label": "LOCAL"
+    }
+   ],
+   "procedures": [
+    {
+     "callName": "<metaClassCallHandler>",
+     "resolvedMethod": "contrib.check_agent_plugin._StrictLoader.<metaClassCallHandler>",
+     "paramTypes": [],
+     "returnType": "contrib.check_agent_plugin._StrictLoader",
+     "isExternal": false,
+     "lineNumber": 61,
+     "columnNumber": 1
+    },
+    {
+     "callName": "<fakeNew>",
+     "resolvedMethod": "contrib.check_agent_plugin._StrictLoader.<fakeNew>",
+     "paramTypes": [
+      "contrib.check_agent_plugin._StrictLoader"
+     ],
+     "returnType": "ANY",
+     "isExternal": false,
+     "lineNumber": 61,
+     "columnNumber": 1
+    },
+    {
+     "callName": "__init__",
+     "resolvedMethod": "contrib.check_agent_plugin._StrictLoader<meta>.__init__",
+     "paramTypes": [
+      "ANY",
+      "ANY",
+      "ANY"
+     ],
+     "returnType": "ANY",
+     "isExternal": true,
+     "lineNumber": null,
+     "columnNumber": null
+    }
+   ],
+   "fileName": "contrib/check_agent_plugin.py",
+   "lineNumber": 61,
+   "columnNumber": 1
+  },
+  {
+   "name": "contrib.check_agent_plugin._StrictLoader",
+   "fields": [],
+   "procedures": [
+    {
+     "callName": "<body>",
+     "resolvedMethod": "contrib.check_agent_plugin._StrictLoader.<body>",
+     "paramTypes": [],
+     "returnType": "ANY",
+     "isExternal": false,
+     "lineNumber": 61,
+     "columnNumber": 1
+    },
+    {
+     "callName": "__init__",
+     "resolvedMethod": "contrib.check_agent_plugin._StrictLoader.__init__",
+     "paramTypes": [
+      "ANY",
+      "ANY",
+      "ANY"
+     ],
+     "returnType": "ANY",
+     "isExternal": true,
+     "lineNumber": null,
+     "columnNumber": null
+    },
+    {
+     "callName": "add_constructor",
+     "resolvedMethod": "contrib.check_agent_plugin._StrictLoader.add_constructor",
+     "paramTypes": [
+      "ANY",
+      "ANY",
+      "ANY",
+      "ANY"
+     ],
+     "returnType": "ANY",
+     "isExternal": true,
+     "lineNumber": null,
+     "columnNumber": null
+    }
+   ],
+   "fileName": "contrib/check_agent_plugin.py",
+   "lineNumber": 61,
+   "columnNumber": 1
+  }
+ ]
+}

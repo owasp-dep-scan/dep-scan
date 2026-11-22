@@ -56,6 +56,7 @@ def test_schema_names():
         "depscan-finding",
         "depscan-doctor",
         "depscan-manifest",
+        "depscan-evidence",
         "depscan-exploitability-rules",
         "depscan-scan-output",
         "depscan-report-output",
@@ -103,8 +104,8 @@ def test_load_schema_metadata():
 
 def test_load_schema_unknown_name():
     with pytest.raises(ValueError) as excinfo:
-        load_schema("evidence")
-    assert "evidence" in str(excinfo.value)
+        load_schema("measurements")
+    assert "measurements" in str(excinfo.value)
     assert "finding" in str(excinfo.value)
 
 
