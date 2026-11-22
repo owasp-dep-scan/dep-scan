@@ -261,6 +261,13 @@ def test_bom_usage_evidence_proves_presence_and_names_cdxgen():
         bom_components=[
             {"purl": REF, "scope": "required", "evidence": {"occurrences": [{"location": "a.py"}]}}
         ],
+        # The occurrence record the evidence adapter built from that BOM's
+        # usage evidence; presence reads the records, not the components.
+        records=[
+            _evidence_record(
+                [REF], producer_name="cdxgen", kind="occurrence", source="sbom-python.cdx.json"
+            )
+        ],
     )
     exploitability = exploitability_for(inputs.evidence_for(REF), RULES)
     assert exploitability.axes.presence == "proven"
