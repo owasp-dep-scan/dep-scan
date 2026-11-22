@@ -6,10 +6,13 @@ caveat, a truncated or malformed report that yields not-assessed and raises
 nothing, and the budget and timeout markers the runner saw), plus the
 contracts the reached sets depend on: the reached-counted purl set of the
 records equals the purls a unique-flow walk over the same slices carries
-(deduplicated by the flow content hash the adapter itself uses), service
-attribution equals the positional tag walk per flow, ids are byte-stable, a
-flow duplicated across split slice files is counted once, and every record
-validates against the evidence schema.
+(deduplicated by each flow's canonical JSON), the service attribution of
+each flow is the pinned pair the positional tag walk gives, ids are
+byte-stable, a flow duplicated across split slice files is counted once,
+and every record validates against the evidence schema. The atom version
+the caller names is the version the gate checks, record paths stay
+relative, the record source is the scan-directory-relative path, and a
+report value of an unexpected type is counted or refused, never raised.
 
 Fixtures: the recorded atom 4 slices under ``test/data/atom4`` and the
 trimmed pinned repotests recordings under ``tests/data/atom`` (see the README
@@ -23,8 +26,7 @@ from pathlib import Path
 import pytest
 
 from analysis_lib.evidence import MAX_PATH_NODES, EvidenceLocation, adapters
-from analysis_lib.evidence.adapters import gate_report_version
-from analysis_lib.evidence.adapters.atom import _flow_identity, _flow_service_purls, extract
+from analysis_lib.evidence.adapters.atom import extract
 from analysis_lib.evidence.store import canonical_record
 from analysis_lib.findings.schemas import validate
 from analysis_lib.reachability import _iter_json_list
@@ -48,15 +50,15 @@ def _flows(path):
 
 
 def _unique_flows(paths):
-    """Each distinct flow of the given files, once, deduplicated by the flow
-    content hash the adapter builds its records with."""
+    """Each distinct flow of the given files, once, deduplicated by the
+    flow's canonical JSON."""
     seen = set()
     flows = []
     for path in paths:
         for flow in _iter_json_list(str(path)):
             if not isinstance(flow, dict):
                 continue
-            identity = _flow_identity(flow)
+            identity = json.dumps(flow, sort_keys=True)
             if identity in seen:
                 continue
             seen.add(identity)
@@ -101,15 +103,44 @@ def _service_pairs(records):
     )
 
 
-def _flow_pairs(flows):
-    """(purls, service purls) per flow object, the attribution the tag walk gives."""
-    return Counter(
+# The (purls, service purls) pair of every flow in the two recordings, as
+# the engine's positional tag walk over the flows' node tags attributed them
+# before the adapters existed. The pinned slice's slf4j flow is the one flow
+# whose node tags mark a service.
+ATOM4_SERVICE_PAIRS = Counter(
+    {
+        ((), ()): 1,
+        (("pkg:pypi/custom-json-diff@2.1.6",), ()): 1,
         (
-            tuple(sorted(flow.get("purls") or [])),
-            tuple(sorted(_flow_service_purls(flow))),
-        )
-        for flow in flows
-    )
+            (
+                "pkg:pypi/custom-json-diff@2.1.6",
+                "pkg:pypi/quart@0.22.0",
+                "pkg:pypi/quart@0.23.1",
+            ),
+            (),
+        ): 1,
+        (("pkg:pypi/quart@0.22.0", "pkg:pypi/quart@0.23.1"), ()): 1,
+        (("pkg:pypi/rich@15.0.0",), ()): 1,
+    }
+)
+SLF4J = "pkg:maven/org.slf4j/slf4j-api@1.7.22?type=jar"
+PINNED_SERVICE_PAIRS = Counter(
+    {
+        (("pkg:maven/com.alibaba/fastjson@1.2.24?type=jar",), ()): 1,
+        (("pkg:maven/com.auth0/java-jwt@4.0.0?type=jar",), ()): 1,
+        (("pkg:maven/com.squareup.okhttp/okhttp@2.5.0?type=jar",), ()): 1,
+        (("pkg:maven/commons-collections/commons-collections@3.1?type=jar",), ()): 1,
+        (("pkg:maven/org.apache.httpcomponents/httpclient@4.5.12?type=jar",), ()): 1,
+        (("pkg:maven/org.apache.logging.log4j/log4j-core@2.9.1?type=jar",), ()): 1,
+        (("pkg:maven/org.apache.tomcat.embed/tomcat-embed-core@8.5.85?type=jar", SLF4J), ()): 1,
+        (("pkg:maven/org.codehaus.groovy/groovy@2.4.7?type=jar",), ()): 1,
+        (("pkg:maven/org.jsoup/jsoup@1.10.2?type=jar",), ()): 1,
+        ((SLF4J,), (SLF4J,)): 1,
+        (("pkg:maven/org.springframework/spring-context@4.3.6.RELEASE?type=jar",), ()): 1,
+        (("pkg:maven/org.springframework/spring-web@4.3.6.RELEASE?type=jar",), ()): 1,
+        (("pkg:maven/org.yaml/snakeyaml@1.21?type=jar",), ()): 1,
+    }
+)
 
 
 # --- reachables become reached-flow records -----------------------------
@@ -294,18 +325,14 @@ def test_service_attribution_matches_the_tag_walk_atom4():
     """Every fixture flow's service purls land on its record; the recorded
     atom 4 slices carry none."""
     result = extract([str(ATOM4_REACHABLES)])
-    assert _service_pairs(result.records) == _flow_pairs(_flows(ATOM4_REACHABLES))
+    assert _service_pairs(result.records) == ATOM4_SERVICE_PAIRS
 
 
 def test_service_attribution_matches_the_tag_walk_pinned_slice():
     """The same per-flow equality on the pinned recording, where one flow
     carries a service tag on a node that names no purl of its own."""
     result = extract([str(PINNED_REACHABLES)])
-    flows = _flows(PINNED_REACHABLES)
-    assert _service_pairs(result.records) == _flow_pairs(flows)
-    # Guard against a vacuous all-empty comparison: the recording does carry
-    # one flow whose purls the tag walk marks as services.
-    assert any(_flow_service_purls(flow) for flow in flows)
+    assert _service_pairs(result.records) == PINNED_SERVICE_PAIRS
 
 
 def test_duplicate_flows_across_files_count_once(tmp_path):
@@ -361,27 +388,36 @@ def test_atom2_wrapped_shape_is_refused_with_the_version_named(tmp_path):
     assert "4" in result.reason
 
 
-def test_version_gate_accepts_a_newer_minor_with_a_caveat():
-    """The version gate the adapter applies: a newer minor of the supported
-    major is accepted with the schema-minor caveat, the supported version is
-    accepted cleanly, and a report that names no version is accepted with the
-    schema-unknown caveat."""
-    gate = gate_report_version("4.1", supported_major=4, known_minor=0)
-    assert gate.accepted
-    assert [c.kind for c in gate.caveats] == ["schema-minor"]
-    gate = gate_report_version("4", supported_major=4, known_minor=0)
-    assert gate.accepted
-    assert gate.caveats == []
-    gate = gate_report_version("", supported_major=4, known_minor=0)
-    assert gate.accepted
-    assert [c.kind for c in gate.caveats] == ["schema-unknown"]
+def test_the_atom_major_the_caller_names_is_gated(tmp_path):
+    """atom names no version in its reports, so the gate reads the atom
+    version the caller names: major 4 is the "4" shape, read cleanly."""
+    result = extract([str(ATOM4_REACHABLES)], producer_version="4.0.3")
+    assert result.status == adapters.STATUS_COMPLETED
+    assert {r.producer.report_schema_version for r in result.records} == {"4"}
+    assert not any(c.kind.startswith("schema-") for c in result.caveats)
 
 
-def test_version_gate_refuses_an_unknown_major():
-    """A different major is refused with the version it saw named."""
-    gate = gate_report_version("5.0", supported_major=4, known_minor=0)
-    assert not gate.accepted
-    assert gate.reason is not None and "5.0" in gate.reason
+@pytest.mark.parametrize("version", ["3.2.1", "5.0.0", "v3.0"])
+def test_an_atom_version_of_another_major_is_refused(version):
+    """atom 3 writes the same bare array as atom 4; the caller's atom version
+    is what tells them apart, and another major is refused with it named."""
+    result = extract([str(ATOM4_REACHABLES)], producer_version=version)
+    assert result.status == adapters.STATUS_NOT_ASSESSED
+    assert result.records == []
+    assert result.reason is not None and version.lstrip("v") in result.reason
+
+
+def test_without_an_atom_version_the_shape_is_read_with_a_schema_unknown_caveat():
+    """A bare array without a caller version cannot say whether atom 3 or
+    atom 4 wrote it: it is read, and every record says the major is
+    unconfirmed."""
+    result = extract([str(ATOM4_REACHABLES)])
+    assert result.status == adapters.STATUS_COMPLETED
+    assert result.records
+    for record in result.records:
+        assert record.producer.report_schema_version == "unknown"
+        assert [c.kind for c in record.caveats] == ["schema-unknown"]
+    assert [c.kind for c in result.caveats] == ["schema-unknown"]
 
 
 # --- malformed and damaged reports ---------------------------------------
@@ -530,6 +566,7 @@ def test_budget_and_timeout_markers_carry_through(tmp_path):
         [str(ATOM4_REACHABLES)],
         parse_reports=[str(parse_report)],
         timeout_reasons=[timeout_reason],
+        producer_version="4.0.3",
     )
     assert result.status == adapters.STATUS_COMPLETED
     kinds = sorted(c.kind for c in result.caveats)
@@ -551,6 +588,7 @@ def test_an_unreadable_parse_report_still_caveats(tmp_path):
     result = extract(
         [str(ATOM4_REACHABLES)],
         parse_reports=[str(tmp_path / "absent-parse-report.json")],
+        producer_version="4.0.3",
     )
     assert result.status == adapters.STATUS_COMPLETED
     assert [c.kind for c in result.caveats] == ["budget"]
@@ -564,7 +602,9 @@ def test_a_clean_parse_report_adds_no_caveat(tmp_path):
         json.dumps({"total": 0, "counts": {"byOutcome": {}, "byFrontend": {}}, "records": []}),
         encoding="utf-8",
     )
-    result = extract([str(ATOM4_REACHABLES)], parse_reports=[str(parse_report)])
+    result = extract(
+        [str(ATOM4_REACHABLES)], parse_reports=[str(parse_report)], producer_version="4.0.3"
+    )
     assert result.status == adapters.STATUS_COMPLETED
     assert result.caveats == []
 
@@ -577,7 +617,9 @@ def test_usages_slices_become_usage_records():
     location, and the usage entries' target objects as the witness path."""
     with open(PINNED_USAGES, encoding="utf-8") as fp:
         object_slices = json.load(fp)["objectSlices"]
-    result = extract([str(PINNED_REACHABLES)], usages_files=[str(PINNED_USAGES)])
+    result = extract(
+        [str(PINNED_REACHABLES)], usages_files=[str(PINNED_USAGES)], producer_version="4.0.2"
+    )
     usages = [r for r in result.records if r.kind == "usage"]
     assert len(usages) == len(object_slices)
     for record in usages:
@@ -676,3 +718,126 @@ def test_producer_version_defaults_to_unknown():
     result = extract([str(ATOM4_REACHABLES)])
     assert result.records
     assert all(r.producer.version == "unknown" for r in result.records)
+
+
+# --- record paths, sources and malformed values ---------------------------
+
+
+def test_record_paths_stay_relative_with_forward_slashes(tmp_path):
+    """A Windows-style relative name becomes forward slashes, an absolute
+    name under the source root becomes relative to it, and an absolute name
+    elsewhere is left out of the record with a caveat, never kept."""
+    root = tmp_path / "project"
+    flows = [
+        {
+            "flows": [
+                {"parentFileName": "src\\app\\main.py", "lineNumber": 3, "parentMethodName": "m"}
+            ],
+            "purls": ["pkg:pypi/requests@2.0"],
+        },
+        {
+            "flows": [{"parentFileName": f"{root}/lib/util.py", "lineNumber": 7}],
+            "purls": ["pkg:pypi/flask@1.0"],
+        },
+        {
+            "flows": [
+                {"parentFileName": "/home/someone/elsewhere/app.py", "lineNumber": 1},
+                {"parentFileName": "C:\\Users\\someone\\app.py", "lineNumber": 2},
+            ],
+            "purls": ["pkg:pypi/six@1.0"],
+        },
+    ]
+    slices = tmp_path / "python-reachables.slices.json"
+    slices.write_text(json.dumps(flows), encoding="utf-8")
+    result = extract([str(slices)], producer_version="4.0.3", source_root=str(root))
+    assert result.status == adapters.STATUS_COMPLETED
+    by_purl = {r.subject.purls[0]: r for r in result.records}
+    assert by_purl["pkg:pypi/requests@2.0"].locations == [
+        EvidenceLocation(file="src/app/main.py", line=3, method="m")
+    ]
+    assert by_purl["pkg:pypi/flask@1.0"].locations == [
+        EvidenceLocation(file="lib/util.py", line=7)
+    ]
+    outside = by_purl["pkg:pypi/six@1.0"]
+    assert outside.locations == []
+    assert [node.file for node in outside.path or []] == [None, None]
+    assert [c.kind for c in outside.caveats] == ["location-outside-root"]
+    assert "2 file path(s)" in outside.caveats[0].detail
+    assert [c.kind for c in result.caveats] == ["location-outside-root"]
+    for record in result.records:
+        for location in record.locations:
+            assert not location.file.startswith("/") and ":" not in location.file
+
+
+def test_a_purls_string_is_not_split_into_characters(tmp_path):
+    """A flow whose purls is a string, not an array, is not the atom shape:
+    it is counted as skipped and contributes no purl."""
+    flows = [
+        {"flows": [], "purls": "pkg:pypi/flask@1.0"},
+        {"flows": [], "purls": ["pkg:pypi/requests@2.0"]},
+    ]
+    slices = tmp_path / "python-reachables.slices.json"
+    slices.write_text(json.dumps(flows), encoding="utf-8")
+    result = extract([str(slices)], producer_version="4.0.3")
+    assert result.status == adapters.STATUS_COMPLETED
+    assert _reached_purls(result.records) == {"pkg:pypi/requests@2.0"}
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "1 flows of the atom reachables slice python-reachables.slices.json carry a purls "
+        "value that is not an array and became no record"
+    ]
+
+
+def test_the_source_is_the_scan_directory_relative_path(tmp_path):
+    """Two OpenAPI documents with one base name in different directories of
+    the scan directory are two sources, so their records stay apart."""
+    scan_dir = tmp_path / "reports"
+    spec = {"paths": {"/a": {"x-atom-usages": {"call": {"a.py": [5]}}}}}
+    first = scan_dir / "openapi2.json"
+    second = scan_dir / "sub" / "openapi2.json"
+    second.parent.mkdir(parents=True)
+    for path in (first, second):
+        path.write_text(json.dumps(spec), encoding="utf-8")
+    result = extract(
+        [], openapi_files=[str(first), str(second)], scan_dir=str(scan_dir), producer_version="4"
+    )
+    entries = [r for r in result.records if r.kind == "entry-point"]
+    assert sorted(r.source for r in entries) == ["openapi2.json", "sub/openapi2.json"]
+    assert len({r.id for r in entries}) == 1
+    # Without a scan directory the source stays the base name, as before.
+    plain = extract([], openapi_files=[str(second)], producer_version="4")
+    assert [r.source for r in plain.records] == ["openapi2.json"]
+
+
+@pytest.mark.parametrize("value", [5, "x", {"a": 1}])
+def test_an_object_slice_whose_usages_is_not_an_array_is_read(tmp_path, value):
+    """An objectSlices entry whose usages is not an array has no usage
+    targets to walk: the record is built without a witness path."""
+    usages = tmp_path / "python-usages.slices.json"
+    usages.write_text(
+        json.dumps({"objectSlices": [{"fileName": "a.py", "lineNumber": 2, "usages": value}]}),
+        encoding="utf-8",
+    )
+    result = extract([], usages_files=[str(usages)], producer_version="4")
+    assert result.status == adapters.STATUS_COMPLETED
+    assert [(r.kind, r.path) for r in result.records] == [("usage", None)]
+    assert result.records[0].locations == [EvidenceLocation(file="a.py", line=2)]
+
+
+def test_ids_do_not_depend_on_the_source_root(tmp_path):
+    """The same flows with absolute names under two different checkouts
+    give the same record ids once the names are made relative."""
+    ids = []
+    for checkout in ("one", "two"):
+        root = tmp_path / checkout
+        flows = [
+            {
+                "flows": [{"parentFileName": f"{root}/app.py", "lineNumber": 4}],
+                "purls": ["pkg:pypi/requests@2.0"],
+            }
+        ]
+        slices = tmp_path / f"{checkout}-reachables.slices.json"
+        slices.write_text(json.dumps(flows), encoding="utf-8")
+        result = extract([str(slices)], producer_version="4", source_root=str(root))
+        ids.append([r.id for r in result.records])
+    assert ids[0] == ids[1]
+    assert len(ids[0]) == 1

@@ -6,13 +6,14 @@ tests read both; this README says how each was made and what was kept.
 
 ## python-*.slices.json: recorded for this repository with the latest tools
 
-Recorded with cdxgen `13.9.0` (master build `af131a30`, installed by
-`harness/tools-latest.sh`, run as `~/.local/bin/cdxgen`), which bundles atom
-`4.0.3` and atom-parsetools `2.0.0`. The scanned project was this
-repository's own checkout (read only; the recording was written elsewhere):
+Recorded with cdxgen `13.9.0`, a build of the cdxgen `master` branch at
+commit `af131a30`, which bundles atom `4.0.3` (the npm package
+`@appthreat/atom` 4.0.3) and atom-parsetools `2.0.0`. The scanned project
+was this repository's own checkout (read only; the recording was written
+elsewhere):
 
 ```console
-$ export DOTNET_ROOT=$HOME/.dotnet PATH=$HOME/.dotnet:$PATH
+$ export DOTNET_ROOT=<dotnet-sdk-dir> PATH=<dotnet-sdk-dir>:$PATH
 $ export ATOM_TOOLS_WORK_DIR=<recording-dir> ATOM_TOOLS_OPENAPI_FILENAME=python-openapi.json
 $ cdxgen -t python -o <recording-dir>/sbom-python.cdx.json --profile research \
     --reachables-slices-file <recording-dir>/python-reachables.slices.json \
@@ -52,13 +53,14 @@ names them: cdxgen `13.8.0`, atom `4.0.2`, cdxgen plugins `4.3.1`.
 
 They are kept beside the current-release recordings for one reason: atom's
 Java tagger emits the bare service tags (`web`, `framework`) the service
-attribution is exercised on, and the recordings the latest tools produced on
-this machine do not carry them (a Python scan of this repository tags nodes
+attribution is exercised on, and the recordings atom 4.0.3 produced for
+this repository and two JS web projects do not carry them (a Python scan of
+this repository tags nodes
 `framework-input`/`cli-source`/`comp-desc:framework`, none of which is a
 bare service tag; one JS web project failed under atom 4.0.3 outright, and
-a second carried only `library-call` tags). The Java runs could not be
-repeated here: the project needs its Maven build, which this machine does
-not have.
+a second carried only `library-call` tags). The Java recordings were not
+made again with atom 4.0.3, because the project needs a Maven build of its
+own before atom can slice it.
 
 - `java-reachables.slices.json`: thirteen whole flow objects covering
   thirteen distinct maven purls and both of atom's tag orders, including
@@ -72,5 +74,5 @@ not have.
 File names inside every object are the scanned repository's own relative
 paths (the `org.joychou` package structure and its source snippets for the
 java set, this repository's `depscan/` and `packages/` tree for the python
-set), not paths from the machine the recording was made on. No absolute
+set), not paths of the directory the recording was made in. No absolute
 paths, usernames, hostnames or secrets appear in any file.

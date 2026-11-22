@@ -12,22 +12,32 @@ nodes, an ``objectSlices`` entry becomes a ``usage`` record, a callsites
 entry becomes a ``callsite`` record, and an ``x-atom-usages`` object becomes
 an ``entry-point`` record.
 
-atom names no schema version in its reports, so the version comes from the
-shape: a bare array is the atom 4 reachables shape (the same rule the
-repotests staleness validator applies) and becomes ``"4"``; an object with a
-``reachables`` key is the atom 2 wrapped shape, refused here as an unknown
-major version with the reason naming the version seen. A file that is
-neither is not assessed with the reason naming what it holds, and a
-truncated or malformed file is not assessed as well; a damaged report in any
-input role fails the whole result, because a producer result that read only
-part of its input must not read as a complete one.
+atom names no schema version in its reports, and the bare array of flow
+objects is the shape atom 3 and atom 4 both write (the same rule the
+repotests staleness validator applies), so the version comes from the atom
+version the caller learned from its tool status: major 4 is read as the
+``"4"`` shape, any other major is refused as not assessed, and without a
+version the report is read with a ``schema-unknown`` caveat. An object with
+a ``reachables`` key is the atom 2 wrapped shape, refused here as an
+unknown major version with the reason naming the version seen. A file that
+is neither is not assessed with the reason naming what it holds, and a
+truncated or malformed file is not assessed as well; a damaged report in
+any input role fails the whole result, because a producer result that read
+only part of its input must not read as a complete one.
 
 The run-level markers the runner saw become caveats on every record and in
 the producer caveats: the ``--parse-report`` document atom writes on request
 lists the files the frontends left out or only partly read (a ``budget``
 caveat), and an exit-124 timeout the runner captured is passed through as
-the ``timeout`` caveat text it was given. A report array element that is not
-a flow object becomes a ``record-skipped`` caveat, never a silent drop.
+the ``timeout`` caveat text it was given. Report elements that are not flow
+objects, or flows whose ``purls`` is not an array, are counted in one
+``record-skipped`` caveat per reason.
+
+A record's ``source`` is the report file's path relative to the scan
+directory the caller names. atom writes file names relative to the scanned
+source root; backslashes become forward slashes, an absolute name under the
+source root the caller names is made relative, and any other absolute name
+is left out with a ``location-outside-root`` caveat.
 
 Service attribution is adapter work: a flow's ``attributes.servicePurls``
 holds exactly the purls the positional tag walk in this module marks as
@@ -57,10 +67,14 @@ from analysis_lib.evidence import (
 from analysis_lib.evidence.adapters import (
     STATUS_COMPLETED,
     AdapterResult,
-    VersionGate,
-    add_caveat,
+    SkipTally,
+    SourcePaths,
+    as_dict,
+    as_list,
+    as_str,
     build_record,
     gate_report_version,
+    guard_extract,
     not_assessed,
 )
 
@@ -94,10 +108,6 @@ def _damaged_reason(path: str, role: str, problem: str) -> str:
     return f"the atom {role} {os.path.basename(path)} {problem}"
 
 
-def _forward_slashes(value: str) -> str:
-    return value.replace(os.sep, "/")
-
-
 def _text(value: Any) -> Optional[str]:
     """A non-empty string value, or nothing."""
     return value if isinstance(value, str) and value else None
@@ -108,8 +118,42 @@ def _line_number(value: Any) -> Optional[int]:
     return value if isinstance(value, int) and not isinstance(value, bool) and value >= 1 else None
 
 
-def _source_name(path: StrPath) -> str:
-    return os.path.basename(os.fspath(path))
+def _source_name(path: StrPath, scan_dir: Optional[str] = None) -> str:
+    """The record source of a report file: its path relative to the scan
+    directory with forward slashes when the file lies in it, else its base
+    name."""
+    text = os.fspath(path)
+    if scan_dir:
+        try:
+            relative = os.path.relpath(os.path.abspath(text), os.path.abspath(scan_dir))
+        except ValueError:
+            relative = ""
+        if relative and relative != "." and not relative.startswith(".."):
+            return relative.replace(os.sep, "/").replace("\\", "/")
+    return os.path.basename(text)
+
+
+class _Where:
+    """Builds one record's locations and witness nodes through the
+    :class:`SourcePaths` of the analysis, counting the files left out so
+    the record can say so."""
+
+    def __init__(self, paths: SourcePaths) -> None:
+        self.paths = paths
+        self.left_out: set = set()
+
+    def file(self, value: Any) -> Optional[str]:
+        if not isinstance(value, str) or not value:
+            return None
+        relative = self.paths.relative(value)
+        if relative is None:
+            self.left_out.add(value)
+        return relative
+
+    def caveats(self, base: List[EvidenceCaveat]) -> Tuple[EvidenceCaveat, ...]:
+        if not self.left_out:
+            return tuple(base)
+        return tuple(base) + (self.paths.outside_root_caveat(len(self.left_out)),)
 
 
 def _skip_space(text: str, idx: int) -> int:
@@ -210,30 +254,29 @@ def _object_shape_reason(decoder: json.JSONDecoder, text: str, idx: int, path: s
     )
 
 
-def _flow_identity(flow: Dict[str, Any]) -> str:
+def _flow_identity(flow: Dict[str, Any], paths: Optional[SourcePaths] = None) -> str:
     """The stable identity of a reachables flow: the content hash of the
-    whole flow object, so a flow repeated in a second split file is seen as
-    the same one."""
-    return content_discriminator(flow)
+    whole flow object, with the source root spelled the same wherever atom
+    ran, so a flow repeated in a second split file is seen as the same one."""
+    return content_discriminator(paths.neutral(flow) if paths is not None else flow)
 
 
-def _node_location(node: Dict[str, Any]) -> Optional[EvidenceLocation]:
+def _node_location(node: Dict[str, Any], where: _Where) -> Optional[EvidenceLocation]:
     """The location of a flow node: its method's file, line and name."""
-    name = _text(node.get("parentFileName"))
-    if name is None:
+    file = where.file(node.get("parentFileName"))
+    if file is None:
         return None
     return EvidenceLocation(
-        file=_forward_slashes(name),
+        file=file,
         line=_line_number(node.get("lineNumber")),
         method=_text(node.get("parentMethodName")),
     )
 
 
-def _node_path_node(node: Dict[str, Any]) -> EvidencePathNode:
+def _node_path_node(node: Dict[str, Any], where: _Where) -> EvidencePathNode:
     symbol = _text(node.get("fullName")) or _text(node.get("name"))
-    file_name = _text(node.get("parentFileName"))
     return EvidencePathNode(
-        file=_forward_slashes(file_name) if file_name else None,
+        file=where.file(node.get("parentFileName")),
         line=_line_number(node.get("lineNumber")),
         method=_text(node.get("parentMethodName")),
         symbol=symbol,
@@ -312,7 +355,7 @@ def _node_service_purls(pieces: List[str], flow_purls: List[str]) -> Set[str]:
 def _flow_service_purls(flow: Dict[str, Any]) -> Set[str]:
     """The purls in ``flow`` that carry a SERVICE_TAG on their OWN node. See
     :func:`_node_service_purls` for the association rules."""
-    flow_purls = flow.get("purls") or []
+    flow_purls = [purl for purl in as_list(flow.get("purls")) if isinstance(purl, str)]
     service_purls: Set[str] = set()
     nodes = flow.get("flows")
     if isinstance(nodes, list):
@@ -328,13 +371,17 @@ def _flow_service_purls(flow: Dict[str, Any]) -> Set[str]:
 
 def _flow_record(
     flow: Dict[str, Any],
+    identity: str,
     source: str,
     producer: EvidenceProducer,
     caveats: List[EvidenceCaveat],
+    paths: SourcePaths,
 ) -> Evidence:
     """The reached-flow record of one unique flow object."""
-    nodes = [node for node in (flow.get("flows") or []) if isinstance(node, dict)]
-    location = _node_location(nodes[0]) if nodes else None
+    nodes = [node for node in as_list(flow.get("flows")) if isinstance(node, dict)]
+    where = _Where(paths)
+    location = _node_location(nodes[0], where) if nodes else None
+    path = tuple(_node_path_node(node, where) for node in nodes)
     attributes: Dict[str, Any] = {key: flow[key] for key in FLOW_ATTRIBUTE_KEYS if key in flow}
     service_purls = _flow_service_purls(flow)
     if service_purls:
@@ -343,12 +390,12 @@ def _flow_record(
         source=source,
         producer=producer,
         kind="reached-flow",
-        discriminator=_flow_identity(flow),
-        purls=tuple(purl for purl in (flow.get("purls") or []) if _text(purl)),
+        discriminator=identity,
+        purls=tuple(purl for purl in as_list(flow.get("purls")) if _text(purl)),
         locations=(location,) if location is not None else (),
-        path=tuple(_node_path_node(node) for node in nodes),
+        path=path,
         attributes=attributes or None,
-        caveats=tuple(caveats),
+        caveats=where.caveats(caveats),
     )
 
 
@@ -357,6 +404,7 @@ def _usage_record(
     source: str,
     producer: EvidenceProducer,
     caveats: List[EvidenceCaveat],
+    paths: SourcePaths,
 ) -> Evidence:
     """The usage record of one ``objectSlices`` entry.
 
@@ -365,10 +413,11 @@ def _usage_record(
     sub-entries that carry no target object contribute no node; they are
     structure atom gives no schema field to, not lost records.
     """
-    file_name = _text(entry.get("fileName"))
+    where = _Where(paths)
+    file_name = where.file(entry.get("fileName"))
     location = (
         EvidenceLocation(
-            file=_forward_slashes(file_name),
+            file=file_name,
             line=_line_number(entry.get("lineNumber")),
             method=_text(entry.get("fullName")),
         )
@@ -376,7 +425,7 @@ def _usage_record(
         else None
     )
     path_nodes: List[EvidencePathNode] = []
-    for usage in entry.get("usages") or []:
+    for usage in as_list(entry.get("usages")):
         if not isinstance(usage, dict):
             continue
         target = usage.get("targetObj")
@@ -393,11 +442,11 @@ def _usage_record(
         source=source,
         producer=producer,
         kind="usage",
-        discriminator=content_discriminator(entry),
+        discriminator=content_discriminator(paths.neutral(entry)),
         purls=(),
         locations=(location,) if location is not None else (),
         path=tuple(path_nodes),
-        caveats=tuple(caveats),
+        caveats=where.caveats(caveats),
     )
 
 
@@ -406,16 +455,18 @@ def _callsite_record(
     source: str,
     producer: EvidenceProducer,
     caveats: List[EvidenceCaveat],
+    paths: SourcePaths,
 ) -> Evidence:
     """The callsite record of one callsites entry.
 
     Callsite records never count as reached evidence; they record where a
     package's code is called from and how the call site was resolved.
     """
-    file_name = _text(entry.get("file"))
+    where = _Where(paths)
+    file_name = where.file(entry.get("file"))
     location = (
         EvidenceLocation(
-            file=_forward_slashes(file_name),
+            file=file_name,
             line=_line_number(entry.get("line")),
             method=_text(entry.get("method")),
         )
@@ -430,15 +481,15 @@ def _callsite_record(
         source=source,
         producer=producer,
         kind="callsite",
-        discriminator=content_discriminator(entry),
+        discriminator=content_discriminator(paths.neutral(entry)),
         purls=(purl,) if purl else (),
         locations=(location,) if location is not None else (),
         attributes=attributes or None,
-        caveats=tuple(caveats),
+        caveats=where.caveats(caveats),
     )
 
 
-def _extension_locations(extension: Dict[str, Any]) -> List[EvidenceLocation]:
+def _extension_locations(extension: Dict[str, Any], where: _Where) -> List[EvidenceLocation]:
     """The file and line locations an ``x-atom-usages`` object names.
 
     The values are per-file lists of line numbers, in the shape atom-tools
@@ -450,23 +501,25 @@ def _extension_locations(extension: Dict[str, Any]) -> List[EvidenceLocation]:
         if not isinstance(per_file, dict):
             continue
         for file, lines in per_file.items():
-            file_name = _text(file)
-            if file_name is None or not isinstance(lines, (list, tuple, set)):
+            if not isinstance(lines, (list, tuple, set)):
+                continue
+            file_name = where.file(file)
+            if file_name is None:
                 continue
             for line in lines:
                 number = _line_number(line)
                 if number is not None:
-                    locations.append(
-                        EvidenceLocation(file=_forward_slashes(file_name), line=number)
-                    )
+                    locations.append(EvidenceLocation(file=file_name, line=number))
     return locations
 
 
 def _entry_point_records(
     path: str,
+    name: str,
     producer: EvidenceProducer,
     caveats: List[EvidenceCaveat],
-    skipped: List[EvidenceCaveat],
+    skipped: SkipTally,
+    paths: SourcePaths,
 ) -> List[Any]:
     """The entry-point records of one OpenAPI document.
 
@@ -477,7 +530,6 @@ def _entry_point_records(
     attribution stays the engine's job.
     """
     role = "OpenAPI document"
-    name = _source_name(path)
     try:
         with open(path, encoding="utf-8") as fp:
             document = json.load(fp)
@@ -493,19 +545,12 @@ def _entry_point_records(
         raise _Damaged(
             _damaged_reason(path, role, f"holds a JSON {type(document).__name__}, not an object")
         )
-    paths = document.get("paths")
-    paths = paths if isinstance(paths, dict) else {}
+    path_objects = as_dict(document.get("paths"))
     records: List[Evidence] = []
-    for endpoint, path_object in paths.items():
+    for endpoint, path_object in path_objects.items():
         if not isinstance(path_object, dict):
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped",
-                    detail=(
-                        f"the atom {role} {name} holds a paths entry that is not an object; "
-                        "it became no record"
-                    ),
-                )
+            skipped.add(
+                f"paths entries of the atom {role} {name} are not objects and became no record"
             )
             continue
         for method_key, value in path_object.items():
@@ -518,14 +563,9 @@ def _entry_point_records(
             else:
                 continue
             if not isinstance(extension, dict):
-                skipped.append(
-                    EvidenceCaveat(
-                        kind="record-skipped",
-                        detail=(
-                            f"the atom {role} {name} holds an x-atom-usages value that is not "
-                            f"an object for the endpoint {endpoint!r}; it became no record"
-                        ),
-                    )
+                skipped.add(
+                    f"x-atom-usages values of the atom {role} {name} are not objects "
+                    "and became no record"
                 )
                 continue
             identity: Dict[str, Any] = {"endpoint": endpoint, "x-atom-usages": extension}
@@ -533,16 +573,18 @@ def _entry_point_records(
             if method is not None:
                 identity["method"] = method
                 attributes["method"] = method
+            where = _Where(paths)
+            locations = tuple(_extension_locations(extension, where))
             records.append(
                 build_record(
                     source=name,
                     producer=producer,
                     kind="entry-point",
-                    discriminator=content_discriminator(identity),
+                    discriminator=content_discriminator(paths.neutral(identity)),
                     purls=(),
-                    locations=tuple(_extension_locations(extension)),
+                    locations=locations,
                     attributes=attributes,
-                    caveats=tuple(caveats),
+                    caveats=where.caveats(caveats),
                 )
             )
     return records
@@ -577,7 +619,7 @@ def _object_entries(path: str, role: str, key: str) -> List[Any]:
     return entries
 
 
-def _parse_report_caveats(paths: Iterable[StrPath]) -> List[EvidenceCaveat]:
+def _parse_report_caveats(report_paths: Iterable[StrPath]) -> List[EvidenceCaveat]:
     """One budget caveat per atom ``--parse-report`` document that lists
     files the frontends left out or only partly read.
 
@@ -586,7 +628,7 @@ def _parse_report_caveats(paths: Iterable[StrPath]) -> List[EvidenceCaveat]:
     files adds nothing: the run parsed what it was given.
     """
     caveats: List[EvidenceCaveat] = []
-    for path in paths:
+    for path in report_paths:
         name = _source_name(path)
         try:
             with open(path, encoding="utf-8") as fp:
@@ -622,6 +664,52 @@ def _timeout_caveats(reasons: Iterable[str]) -> List[EvidenceCaveat]:
     return [EvidenceCaveat(kind="timeout", detail=reason) for reason in reasons if reason]
 
 
+def _version_major(producer_version: Any) -> Optional[str]:
+    """The major version the caller's atom version names, or ``None``."""
+    text = as_str(producer_version).strip().lstrip("vV")
+    major = text.split(".", 1)[0]
+    return major if major.isdigit() else None
+
+
+def _gate_version(producer_version: Any) -> Tuple[Optional[str], List[EvidenceCaveat], str]:
+    """The version gate for an atom analysis.
+
+    atom reports name no schema version, and the bare array of flow objects
+    is the shape atom 3 and atom 4 both write, so the shape alone cannot say
+    which major wrote it. The atom version the caller learned from its tool
+    status can: a major other than 4 is refused, major 4 is the ``"4"``
+    shape. Without a version the report is read as the shape it has, with
+    a ``schema-unknown`` caveat that says the major was not confirmed.
+
+    Returns the refusal reason, the caveats, and the report schema version
+    the producer block names.
+    """
+    major = _version_major(producer_version)
+    if major is None:
+        return (
+            None,
+            [
+                EvidenceCaveat(
+                    kind="schema-unknown",
+                    detail=(
+                        "atom reports name no schema version, and atom 3 and atom 4 write the "
+                        "same bare array shape; no atom version was given to tell them apart"
+                    ),
+                )
+            ],
+            "unknown",
+        )
+    gate = gate_report_version(major, SUPPORTED_MAJOR, KNOWN_MINOR)
+    if not gate.accepted:
+        return (
+            f"atom {as_str(producer_version).strip()} wrote these reports: {gate.reason}",
+            [],
+            major,
+        )
+    return None, list(gate.caveats), major
+
+
+@guard_extract(PRODUCER_NAME)
 def extract(
     report: Optional[Iterable["StrPath"]],
     *,
@@ -631,6 +719,8 @@ def extract(
     openapi_files: Optional[Iterable["StrPath"]] = None,
     parse_reports: Optional[Iterable["StrPath"]] = None,
     timeout_reasons: Optional[Iterable[str]] = None,
+    scan_dir: Optional[str] = None,
+    source_root: Optional[str] = None,
 ) -> AdapterResult:
     """The records of one atom analysis: its reachables, usages and callsites
     slices and its OpenAPI documents.
@@ -638,14 +728,19 @@ def extract(
     ``report`` holds the reachables slices paths, the input the reached sets
     are counted from; the other roles are optional. ``producer_version`` is
     the atom version the caller learned from its tool status, or the default
-    ``"unknown"``. Every record's source is the file it was read from, named
-    as it appears in the scan directory.
+    ``"unknown"``; its major is the report version the gate checks.
+    ``scan_dir`` is the scan directory: every record's source is the path of
+    the file it was read from relative to it, and the file's base name when
+    no scan directory is given or the file lies outside it. ``source_root``
+    is the scanned source directory; atom writes file names relative to it,
+    and an absolute one under it is made relative.
 
     A report that cannot be read whole returns a not-assessed result whose
     reason names the file and the problem; the same holds for the atom 2
-    wrapped reachables shape, which the version gate refuses as an unknown
-    major. The parse reports and timeout reasons the runner saw become
-    caveats on every record and in the producer caveats.
+    wrapped reachables shape and for an atom version of another major,
+    which the version gate refuses. The parse reports and timeout reasons
+    the runner saw become caveats on every record and in the producer
+    caveats.
     """
     reachables = [str(path) for path in report or []]
     usages = [str(path) for path in usages_files or []]
@@ -654,24 +749,28 @@ def extract(
     if not (reachables or usages or callsites or openapi):
         return not_assessed("no atom report was given; the adapter has nothing to read")
 
+    refusal, gate_caveats, schema_version = _gate_version(producer_version)
+    if refusal:
+        return not_assessed(refusal)
     producer = EvidenceProducer(
         name=PRODUCER_NAME,
         version=producer_version or "unknown",
-        report_schema_version="unknown",
+        report_schema_version=schema_version,
     )
-    # The caveats every record carries: the run-level markers, known before
-    # any record is built.
+    paths = SourcePaths([source_root])
+    # The caveats every record carries: the run-level markers and the gate's,
+    # known before any record is built.
     record_caveats = _parse_report_caveats(parse_reports or [])
     record_caveats.extend(_timeout_caveats(timeout_reasons or []))
-    skipped: List[EvidenceCaveat] = []
+    record_caveats.extend(gate_caveats)
+    skipped = SkipTally()
     records: List[Evidence] = []
     seen: Set[str] = set()
-    shape_version: Optional[str] = None
 
-    for slice_file in reachables:
-        name = _source_name(slice_file)
-        role = "reachables slice"
-        try:
+    try:
+        for slice_file in reachables:
+            name = _source_name(slice_file, scan_dir)
+            role = "reachables slice"
             text = _read_text(slice_file, role)
             lead = _skip_space(text, 0)
             if lead >= len(text):
@@ -687,83 +786,59 @@ def extract(
                         f"is not a JSON array or object; it starts with {text[lead]!r}",
                     )
                 )
-            shape_version = str(SUPPORTED_MAJOR)
-            non_flow_objects = 0
             for flow in _iter_array(text, lead, slice_file, role):
                 if not isinstance(flow, dict):
-                    non_flow_objects += 1
+                    skipped.add(
+                        f"array elements of the atom {role} {name} are not flow objects "
+                        "and became no record"
+                    )
                     continue
-                identity = _flow_identity(flow)
+                if (
+                    "purls" in flow
+                    and flow["purls"] is not None
+                    and not isinstance(flow["purls"], list)
+                ):
+                    skipped.add(
+                        f"flows of the atom {role} {name} carry a purls value that is not an "
+                        "array and became no record"
+                    )
+                    continue
+                identity = _flow_identity(flow, paths)
                 if identity in seen:
                     continue
                 seen.add(identity)
-                records.append(_flow_record(flow, name, producer, record_caveats))
-        except _Damaged as exc:
-            return not_assessed(str(exc))
-        if non_flow_objects:
-            skipped.append(
-                EvidenceCaveat(
-                    kind="record-skipped",
-                    detail=(
-                        f"the atom {role} {name} holds {non_flow_objects} array element(s) that "
-                        "are not flow objects; they became no record"
-                    ),
-                )
-            )
-
-    producer.report_schema_version = shape_version or "unknown"
-    gate: VersionGate = gate_report_version(shape_version or "", SUPPORTED_MAJOR, KNOWN_MINOR)
-    for caveat in gate.caveats:
-        for record in records:
-            add_caveat(record, caveat.kind, caveat.detail)
-        record_caveats.append(caveat)
-
-    try:
+                records.append(_flow_record(flow, identity, name, producer, record_caveats, paths))
         for usages_file in usages:
-            name = _source_name(usages_file)
-            entries = _object_entries(usages_file, "usages slice", "objectSlices")
-            non_entries = 0
-            for entry in entries:
+            name = _source_name(usages_file, scan_dir)
+            for entry in _object_entries(usages_file, "usages slice", "objectSlices"):
                 if not isinstance(entry, dict):
-                    non_entries += 1
-                    continue
-                records.append(_usage_record(entry, name, producer, record_caveats))
-            if non_entries:
-                skipped.append(
-                    EvidenceCaveat(
-                        kind="record-skipped",
-                        detail=(
-                            f"the atom usages slice {name} holds {non_entries} objectSlices "
-                            "element(s) that are not objects; they became no record"
-                        ),
+                    skipped.add(
+                        f"objectSlices elements of the atom usages slice {name} are not "
+                        "objects and became no record"
                     )
-                )
+                    continue
+                records.append(_usage_record(entry, name, producer, record_caveats, paths))
         for callsites_file in callsites:
-            name = _source_name(callsites_file)
-            entries = _object_entries(callsites_file, "callsites slice", "callsites")
-            non_entries = 0
-            for entry in entries:
+            name = _source_name(callsites_file, scan_dir)
+            for entry in _object_entries(callsites_file, "callsites slice", "callsites"):
                 if not isinstance(entry, dict):
-                    non_entries += 1
-                    continue
-                records.append(_callsite_record(entry, name, producer, record_caveats))
-            if non_entries:
-                skipped.append(
-                    EvidenceCaveat(
-                        kind="record-skipped",
-                        detail=(
-                            f"the atom callsites slice {name} holds {non_entries} callsites "
-                            "element(s) that are not objects; they became no record"
-                        ),
+                    skipped.add(
+                        f"callsites elements of the atom callsites slice {name} are not "
+                        "objects and became no record"
                     )
-                )
+                    continue
+                records.append(_callsite_record(entry, name, producer, record_caveats, paths))
         for openapi_file in openapi:
-            records.extend(_entry_point_records(openapi_file, producer, record_caveats, skipped))
+            name = _source_name(openapi_file, scan_dir)
+            records.extend(
+                _entry_point_records(openapi_file, name, producer, record_caveats, skipped, paths)
+            )
     except _Damaged as exc:
         return not_assessed(str(exc))
 
+    outside = paths.producer_caveat()
     return AdapterResult(
         status=STATUS_COMPLETED,
         records=records,
-        caveats=[*record_caveats, *skipped],
+        caveats=[*record_caveats, *skipped.caveats(), *([outside] if outside else [])],
     )
