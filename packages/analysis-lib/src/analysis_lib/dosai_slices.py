@@ -110,9 +110,21 @@ _DOSAI_SOURCE_EXT_RE = re.compile(r"\.(cs|vb|fs|fsx|fsi|r|rmd|qmd)$", re.IGNOREC
 # ReachabilityKind -> default Confidence when dosai omits it.
 _KIND_TO_CONFIDENCE = {
     "DataFlowNode": "High",
+    "DataFlowEdge": "High",
+    "DataFlowSlice": "High",
     "CallGraphEdge": "High",
     "ExternalCallGraphNode": "High",
     "Dependency": "Low",
+}
+# ReachabilityKind values that are call graph or data flow evidence, and the
+# lowest Confidence at which each one renders a verdict flow. An external call
+# graph node only names the package a call reaches, so it needs dosai's High.
+_FLOW_KIND_MIN_CONFIDENCE = {
+    "DataFlowNode": "Medium",
+    "DataFlowEdge": "Medium",
+    "DataFlowSlice": "Medium",
+    "CallGraphEdge": "Medium",
+    "ExternalCallGraphNode": "High",
 }
 _CONF_RANK = {"Low": 1, "Medium": 2, "High": 3}
 
@@ -344,9 +356,10 @@ def extract_native_reachability(report, bom_index: Optional[Dict[str, str]] = No
     ``reached_purls`` includes every purl whose dosai ``Reachable`` is true; the
     highest-confidence fact wins when the same purl appears in both the
     dataflows and methods slices (dataflows is authoritative for call/dataflow
-    evidence). ``ReachabilityKind`` ``DataFlowNode``/``CallGraphEdge`` => High
-    (call/dataflow evidence); ``ExternalCallGraphNode`` => High (external call
-    graph evidence); ``Dependency`` => Low (import/lockfile only).
+    evidence). ``ReachabilityKind`` ``DataFlowNode``/``DataFlowEdge``/
+    ``DataFlowSlice``/``CallGraphEdge`` => High (call/dataflow evidence);
+    ``ExternalCallGraphNode`` => High (external call graph evidence);
+    ``Dependency`` => Low (import/lockfile only).
     """
     bom_index = bom_index or {}
     dataflows, methods = split_dosai_report(report)
@@ -588,8 +601,9 @@ def _emit_reachability_flows(
     dataflows: dict, methods: dict, bom_index: Dict[str, str]
 ) -> List[dict]:
     """Emit an honest 2-node flow per native-reachable PackageReachability entry
-    whose ``ReachabilityKind`` is call/dataflow or external call graph evidence
-    (``CallGraphEdge``/``DataFlowNode``/``ExternalCallGraphNode``).
+    whose ``ReachabilityKind`` is call graph or data flow evidence
+    (``_FLOW_KIND_MIN_CONFIDENCE``) at Medium confidence or above, and at High
+    for ``ExternalCallGraphNode``. Low entries are never a verdict.
 
     This is the PRIMARY reachability signal: dosai already tells us the package
     is reachable, so this flow always renders (even when no dataflow slice
@@ -608,8 +622,12 @@ def _emit_reachability_flows(
             if not pr.get("Reachable"):
                 continue
             kind = pr.get("ReachabilityKind") or "Dependency"
-            if kind not in ("CallGraphEdge", "DataFlowNode", "ExternalCallGraphNode"):
+            min_confidence = _FLOW_KIND_MIN_CONFIDENCE.get(kind)
+            if min_confidence is None:
                 continue  # Dependency-only is too weak to render a flow
+            confidence = pr.get("Confidence") or _confidence_for_kind(kind)
+            if _conf_rank(str(confidence)) < _conf_rank(min_confidence):
+                continue  # dosai's Low is not a verdict
             raw = pr.get("Purl")
             if not raw:
                 continue
@@ -719,10 +737,9 @@ def convert_dosai_report(report, bom_index: Optional[Dict[str, str]] = None) -> 
          PRIMARY signal and always renders for a reachable package.
       3. **Endpoint flows** -- one per ``methods.ApiEndpoints[]``.
 
-    Every native-reachable purl (``Reachable==true`` with kind
-    ``DataFlowNode``/``CallGraphEdge``/``ExternalCallGraphNode``) appears in at
-    least one flow's ``purls``, so the existing engine's ``reached_purls`` loop
-    picks them up unchanged.
+    Every native-reachable purl whose entry passes the kind and confidence test
+    of ``_emit_reachability_flows`` appears in at least one flow's ``purls``,
+    so the existing engine's ``reached_purls`` loop picks them up unchanged.
 
     Deterministic: flows deduped by identity, then sorted by (purls, first-node
     id) -- mirrors golem/rusi.
