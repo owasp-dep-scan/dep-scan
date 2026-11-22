@@ -1172,6 +1172,29 @@
    },
    "timestamp": "2026-11-22T23:01:32Z",
    "text": "This Software-as-a-Service BOM (SaaSBOM) document was created on Sunday, November 22, 2026. The xBOM tools used are: python and cdxgen. The data was captured during the build lifecycle phase. The document describes an application named 'recapp' with version '0.1.0'. There are 12 components. 1 are described in this SaaSBOM under services. Further, there is a formulation section with components, workflows and steps for reproducibility. This SBOM contains 3 dynamically instrumented library components discovered during process execution tracing. These libraries were loaded at runtime and mapped back to system packages."
+  },
+  {
+   "subjects": [
+    "urn:uuid:6aab5db0-f2f4-453d-97f2-03e069cd5449"
+   ],
+   "annotator": {
+    "component": {
+     "group": "@cdxgen",
+     "name": "cdxgen",
+     "version": "13.9.0",
+     "purl": "pkg:npm/%40cdxgen/cdxgen@13.9.0",
+     "type": "application",
+     "bom-ref": "pkg:npm/@cdxgen/cdxgen@13.9.0",
+     "publisher": "OWASP Foundation",
+     "authors": [
+      {
+       "name": "OWASP Foundation"
+      }
+     ]
+    }
+   },
+   "timestamp": "2026-11-22T23:36:41Z",
+   "text": "The recording rule fired for this BOM.\n\n| Property | Value |\n| --- | --- |\n| cdx:audit:category | recording |\n| cdx:audit:name | Recording fixture rule |\n| cdx:audit:ruleId | REC-001 |\n| cdx:audit:severity | low |"
   }
  ]
 }

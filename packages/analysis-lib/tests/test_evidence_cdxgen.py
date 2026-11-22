@@ -31,10 +31,11 @@ RECAPP_PURL = "pkg:pypi/recapp@0.1.0"
 # The kinds and counts the recording yields: fourteen occurrence records
 # (4 + 4 + 3 + 3 over sqlparse 0.5.3, sqlparse 0.6.1, flask and defusedxml),
 # one callstack record per component that carries a callstack object, one
-# annotation record for the SaaSBOM provenance annotation, and one
-# introspection record. Verified against the recording by hand.
+# annotation record per annotation (the SaaSBOM provenance note and the
+# bom-audit rule finding), and one introspection record. Verified against
+# the recording by hand.
 EXPECTED_KINDS = {
-    "annotation": 1,
+    "annotation": 2,
     "callstack": 4,
     "introspection": 1,
     "occurrence": 14,
@@ -264,48 +265,97 @@ def test_an_empty_callstack_object_makes_no_record_and_is_counted():
 # --- annotation records -------------------------------------------------------
 
 
-def test_the_annotation_record_keeps_the_subjects_and_annotator():
+def test_the_annotation_record_keeps_the_subjects_annotator_and_text():
+    """The SaaSBOM provenance annotation: its subject is a purl, so the
+    record carries it as the subject purl, and its text is kept as given."""
     result = _extract()
-    record = next(r for r in result.records if r.kind == "annotation")
+    record = next(r for r in result.records if r.kind == "annotation" and r.subject.purls)
     assert record.subject.purls == [RECAPP_PURL]
     assert record.locations == []
     attributes = record.attributes or {}
     assert attributes["subjects"] == [RECAPP_PURL]
     assert attributes["annotator"]["component"]["name"] == "cdxgen"
     assert attributes["annotator"]["component"]["version"] == "13.9.0"
+    assert attributes["text"].startswith("This Software-as-a-Service BOM")
     # The annotation timestamp is the one field the record never carries.
     assert "timestamp" not in attributes
     assert "timestamp" not in json.dumps(record.to_dict())
 
 
-def test_a_document_annotation_keeps_its_properties_and_no_purl():
-    """A bom-audit annotation subjects the BOM serial number and carries its
-    findings as cdx:audit properties; its record keeps them as given with
-    empty subject purls, because a serial number is not a purl."""
+def test_the_bom_audit_annotation_record_keeps_the_real_shape():
+    """The recorded bom-audit annotation from a firing custom rule: cdxgen
+    subjects the BOM serial number, which is not a purl, and renders its
+    cdx:audit facts into the text as a markdown table instead of a
+    properties array. The record keeps the text and the subjects as given,
+    with empty subject purls and no invented properties key."""
+    result = _extract()
+    bom = _bom()
+    serial = bom["serialNumber"]
+    record = next(r for r in result.records if r.kind == "annotation" and not r.subject.purls)
+    attributes = record.attributes or {}
+    assert attributes["subjects"] == [serial]
+    assert attributes["annotator"]["component"]["version"] == "13.9.0"
+    assert "REC-001" in attributes["text"]
+    assert "cdx:audit:ruleId" in attributes["text"]
+    assert "properties" not in attributes
+    assert "timestamp" not in attributes
+    assert "timestamp" not in json.dumps(record.to_dict())
+
+
+def test_an_annotation_properties_array_is_kept_as_given():
+    """cdxgen 13.9.0 renders its audit facts into the annotation text, but
+    the CycloneDX shape allows a properties array; a BOM that carries one
+    has it kept as name/value pairs."""
     bom = _bom()
     serial = bom["serialNumber"]
     bom["annotations"].append(
         {
-            "bom-ref": "audit-1",
+            "bom-ref": "audit-2",
             "subjects": [serial],
             "annotator": {"component": {"name": "cdxgen", "version": "13.9.0"}},
             "timestamp": "2026-11-22T23:00:00Z",
-            "text": "Predictive audit score 62 (medium).",
+            "text": "A foreign annotation with structured properties.",
             "properties": [
                 {"name": "cdx:audit:severity", "value": "medium"},
-                {"name": "cdx:audit:target:purl", "value": SQLPARSE_PURL},
+                {"name": "cdx:audit:location:purl", "value": SQLPARSE_PURL},
             ],
         }
     )
     result = _extract(bom)
-    audit = next(r for r in result.records if r.kind == "annotation" and not r.subject.purls)
+    audit = next(
+        r
+        for r in result.records
+        if r.kind == "annotation" and r.attributes and "properties" in r.attributes
+    )
     attributes = audit.attributes or {}
-    assert attributes["subjects"] == [serial]
     assert attributes["properties"] == [
         {"name": "cdx:audit:severity", "value": "medium"},
-        {"name": "cdx:audit:target:purl", "value": SQLPARSE_PURL},
+        {"name": "cdx:audit:location:purl", "value": SQLPARSE_PURL},
     ]
+    assert audit.subject.purls == []
     assert "timestamp" not in attributes
+
+
+def test_annotations_differing_only_in_timestamp_share_one_id():
+    """A regenerated BOM rewrites the annotation timestamp while the
+    annotation stays the same; the id must not change with it."""
+    result = _extract()
+    original = next(r for r in result.records if r.kind == "annotation" and not r.subject.purls)
+    bom = _bom()
+    for annotation in bom["annotations"]:
+        if annotation.get("subjects") and str(annotation["subjects"][0]).startswith("urn:uuid:"):
+            annotation["timestamp"] = "2030-01-01T00:00:00Z"
+    regenerated = _extract(bom)
+    changed = next(
+        r
+        for r in regenerated.records
+        if r.kind == "annotation"
+        and not r.subject.purls
+        and r.attributes
+        and "REC-001" in r.attributes.get("text", "")
+    )
+    assert changed.id == original.id
+    assert changed.to_dict() == original.to_dict()
 
 
 # --- the introspection record -------------------------------------------------
@@ -547,9 +597,75 @@ def test_an_annotation_that_is_not_an_object_is_counted():
     bom["annotations"].append("not-an-annotation")
     result = _extract(bom)
     assert result.status == STATUS_COMPLETED
-    assert len([r for r in result.records if r.kind == "annotation"]) == 1
+    assert len([r for r in result.records if r.kind == "annotation"]) == 2
     assert _skipped_details(result) == [
         "1 annotations entries are not JSON objects and became no record"
+    ]
+
+
+def test_nested_sections_of_the_wrong_type_are_counted():
+    """A wrong type one level inside the report hides what that section
+    would have carried; each case is counted, nothing raises, and the rest
+    of the BOM still becomes records."""
+    bom = _bom()
+    bom["metadata"]["component"] = "recapp"
+    result = _extract(bom)
+    assert result.status == STATUS_COMPLETED
+    assert _skipped_details(result) == [
+        "1 metadata.component values are not JSON objects, "
+        "so their nested components became no record"
+    ]
+
+    bom = _bom()
+    _component(bom, "pip", "26.2.2")["components"] = {"inner": {}}
+    result = _extract(bom)
+    assert result.status == STATUS_COMPLETED
+    assert _skipped_details(result) == [
+        "1 nested components values are not arrays and became no record"
+    ]
+
+    bom = _bom()
+    _component(bom, "defusedxml", "0.7.1")["evidence"]["callstack"]["frames"] = "frames"
+    result = _extract(bom)
+    # The callstack object is still truthy evidence of usage, so its record
+    # stands, with no witness path and the loss counted.
+    callstack = next(
+        r for r in result.records if r.kind == "callstack" and DEFUSEDXML_PURL in r.subject.purls
+    )
+    assert callstack.path is None
+    assert _skipped_details(result) == [
+        "1 evidence.callstack frames values are not arrays and name no witness node"
+    ]
+
+
+def test_annotation_subjects_or_properties_of_the_wrong_type_are_counted():
+    bom = _bom()
+    bom["annotations"].append(
+        {
+            "bom-ref": "audit-3",
+            "subjects": "urn:uuid:not-a-list",
+            "annotator": {"component": {"name": "cdxgen", "version": "13.9.0"}},
+            "timestamp": "2026-11-22T23:00:00Z",
+            "text": "An annotation whose subjects and properties are strings.",
+            "properties": "cdx:audit:severity=medium",
+        }
+    )
+    result = _extract(bom)
+    assert result.status == STATUS_COMPLETED
+    record = next(
+        r
+        for r in result.records
+        if r.kind == "annotation"
+        and r.attributes
+        and r.attributes.get("subjects") == "urn:uuid:not-a-list"
+    )
+    assert record.subject.purls == []
+    assert record.attributes is not None
+    assert record.attributes["subjects"] == "urn:uuid:not-a-list"
+    assert "properties" not in record.attributes
+    assert _skipped_details(result) == [
+        "1 annotation subjects values are not arrays and name no subject",
+        "1 annotation properties values are not arrays and name no property",
     ]
 
 

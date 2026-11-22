@@ -22,11 +22,43 @@ cdxgen -t python --profile research \
 The result carries 4 components with `evidence.occurrences` (locations,
 lines, symbols and offsets), 4 with `evidence.callstack` frames, and one
 SaaSBOM provenance annotation whose subject is the application purl.
-A second run added `--bom-audit` (once plain, once with
-`--bom-audit-categories ai-inventory`); cdxgen 13.9.0 attaches its audit
-annotations to an internal copy and the written BOM carried none, so the
-committed recording is the plain run and the bom-audit annotation shape is
-covered by a test that injects it.
+
+The second annotation on the BOM comes from a second run over the same
+project with the BOM audit and one always-firing custom rule:
+
+```bash
+cdxgen -t python --bom-audit --bom-audit-rules-dir <rules-dir> \
+  -o audit-only.cdx.json <project-dir>
+```
+
+The rules directory held one YAML file:
+
+```yaml
+- id: REC-001
+  name: "Recording fixture rule"
+  description: "An always-firing rule used to record the bom-audit annotation shape."
+  severity: low
+  category: recording
+  condition: "true"
+  message: "The recording rule fired for this BOM."
+```
+
+cdxgen writes that finding as a document annotation whose subject is the BOM
+serial number, with the `cdx:audit:*` facts rendered into the text as a
+markdown table and no separate `properties` array. The same run also wrote
+predictive audit annotations (one per audited package, subjects are purls,
+`cdx:audit:target:purl` and its siblings in the text table); they exercise
+the same subject-purl reading as the SaaSBOM annotation and were not kept.
+
+The audit ran as its own pass for two reasons: the earlier attempts that
+combined `--profile research` with `--bom-audit` produced BOM audit findings
+(the rule fired, the table printed) but the evidence analysis that the
+research profile runs afterwards rewrote the output BOM from an earlier
+snapshot, so the written file lost the audit annotations; and a plain run
+keeps them. The annotation's subject named that pass's serial number, so it
+was rewritten to the serial number of the research run's BOM that the
+fixture keeps, which is what cdxgen would have written had the rule fired
+in that pass. Nothing else on the annotation was changed.
 
 ## What was cut
 
