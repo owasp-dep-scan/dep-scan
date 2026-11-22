@@ -87,6 +87,7 @@ def _build_install(tmp_path, layout):
         except (OSError, NotImplementedError):
             pytest.skip("symlinks are not available")
         shim = path_dir / name
+        package = None
     elif layout == "shim-pnpm":
         path_dir = tmp_path / "pnpm"
         package = (
@@ -109,7 +110,7 @@ def _build_install(tmp_path, layout):
             plugins = package / "node_modules" / "@cdxgen" / plugins_pkg / "plugins"
         _write_shims(path_dir, f"node_modules/{scope}/cdxgen/bin/cdxgen.js")
         shim = path_dir / ("cdxgen.cmd" if IS_WINDOWS else "cdxgen")
-    if layout != "link":
+    if package is not None:
         (package / "bin").mkdir(parents=True)
         (package / "bin" / "cdxgen.js").write_text("// cdxgen\n", encoding="utf-8")
         (package / "package.json").write_text("{}", encoding="utf-8")
