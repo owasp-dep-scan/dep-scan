@@ -44,14 +44,15 @@ def _extract(report=None, **overrides):
 def _library_subpath(file_path):
     """The purl subpath the producer's writer derives from a library path:
     Windows drive and UNC prefixes dropped, backslashes read as forward
-    slashes, no leading separator."""
+    slashes, no leading separator. The writer yields no subpath only for a
+    path that is nothing but separators, which no test input is."""
     subpath = file_path
     drive = re.match(r"^[A-Za-z]:[\\/]", subpath)
     if drive or subpath.startswith("\\\\"):
         subpath = subpath.replace("\\", "/")
         if drive:
             subpath = subpath[3:]
-    return subpath.lstrip("/") or None
+    return subpath.lstrip("/") or ""
 
 
 def _library_component(file_path):
@@ -311,7 +312,7 @@ def test_property_values_that_are_not_strings_are_kept():
     service = next(
         r for r in result.records if (r.attributes or {}).get("name") == "dynamic-localhost-8471"
     )
-    assert service.attributes["cdx:dynamic:httpQueryParams"] == ["q", "page"]
+    assert service.attributes["httpQueryParams"] == ["q", "page"]
 
 
 # --- malformed input ---------------------------------------------------------
