@@ -1,17 +1,18 @@
-# tracebom recording
+# tracebom recordings
 
-A trace BOM recorded as adapter test input. The tests in
-`test_evidence_tracebom.py` read it.
+Trace BOMs recorded as adapter test input. The tests in
+`test_evidence_tracebom.py` read them.
 
-## How it was made
+## How they were made
 
 `tracebom` is the one shipped inside the cdxgen package
 (`~/.local/bin/tracebom`); it prints `CycloneDX Generator 13.9.0`
 (cdxgen master `af131a30`).
 
-In a temporary directory (`/tmp/tracebom-rec`, deleted afterwards) the
-recording built one shared library and served two local endpoints, both
-bound to loopback only, no external network and no credentials:
+Both recordings ran in a temporary directory (deleted afterwards, spelled
+`<recording-dir>` below). The traced workload built one shared library and
+served two local endpoints, both bound to loopback only, no external
+network and no credentials:
 
 ```bash
 clang -shared -o libtrace-demo.dylib trace-demo.c        # int trace_demo_add(int, int)
@@ -23,28 +24,37 @@ openssl s_server -accept 8472 -www -key key.pem -cert cert.pem
 ```
 
 The traced command loaded the local library with ctypes and fetched both
-endpoints with curl:
+endpoints with curl (`fetch-demo.py` was
+`ctypes.CDLL("<recording-dir>/libtrace-demo.dylib")` plus one call to
+`trace_demo_add`):
 
 ```bash
-~/.local/bin/tracebom -d /tmp/tracebom-rec \
-  --cmd "sh -c '/usr/bin/python3 /tmp/tracebom-rec/fetch-demo.py; \
-/usr/bin/curl -s --noproxy \"\" http://localhost:8471/; \
-/usr/bin/curl -sk --noproxy \"\" https://localhost:8472/'" \
+~/.local/bin/tracebom -d <recording-dir> \
+  --cmd "sh -c 'python3 <recording-dir>/fetch-demo.py; \
+curl -s --noproxy \"\" http://localhost:8471/; \
+curl -sk --noproxy \"\" https://localhost:8472/'" \
   --proxy-egress --allow-host localhost --allow-port 8471,8472 \
   --timeout 60000 -o tracebom.json
 ```
 
-`fetch-demo.py` was `ctypes.CDLL("/tmp/tracebom-rec/libtrace-demo.dylib")`
-plus one call to `trace_demo_add`. The `--noproxy ""` and the host name
-`localhost` (not the `127.0.0.1` literal) are what the egress proxy needs
-to observe the fetches.
+The `--noproxy ""` and the host name `localhost` (not the `127.0.0.1`
+literal) are what the egress proxy needs to observe the fetches. The
+dry-run recording used one command that wrote a file and fetched two
+localhost URLs, with every side effect denied:
 
-## What the BOM holds
+```bash
+~/.local/bin/tracebom --sandbox-dry-run \
+  --cmd "sh -c 'echo traced > out.txt; curl -s http://localhost:8473/; \
+curl -sk https://localhost:8474/'" \
+  -d <recording-dir> --timeout 30000 -o tracebom-dry-run.json
+```
 
-Four `cryptographic-asset` components (three algorithms and the TLSv1.3
-protocol with its cipher suite, seen in the TLS handshake to the https
-endpoint) and two services, one per endpoint, each with
-`cdx:dynamic:egressDecision` `allowed`.
+## What each file holds
+
+`tracebom.json` holds four `cryptographic-asset` components (three
+algorithms and the TLSv1.3 protocol with its cipher suite, seen in the TLS
+handshake to the https endpoint) and two services, one per endpoint, each
+with `cdx:dynamic:egressDecision` `allowed`.
 
 It holds no library components: on macOS the safer-exec runtime
 (`@cdxgen/safer-exec-darwin-arm64` 1.3.0) reports library loads only as
@@ -55,10 +65,15 @@ the exact shape `lib/inventory/dynamic.js` writes (the shape cdxgen's own
 tests assert, including the Windows DLL spelling
 `C:\Windows\System32\bcrypt.dll`) to cover the file path relativisation.
 
+`tracebom-dry-run.json` holds no components and no services, only the ten
+`cdx:dynamic:dryRun*` metadata properties with the attempted-operation
+counts a denied run leaves (file reads, file writes, exec and fork
+attempts; only counts are recorded, never the paths or targets).
+
 ## What was cut
 
-Nothing. The recording is 2.4 KB and carries no path, user name or host
+Nothing. Both recordings are small and carry no path, user name or host
 name of the recording machine: the components describe algorithms, the
-endpoints name `localhost`, and the private key never left the temporary
-directory. The metadata timestamp and the random serial number are what
-tracebom printed.
+endpoints name `localhost`, the dry run records counts only, and the
+private key never left the temporary directory. The metadata timestamps
+and the random serial numbers are what tracebom printed.

@@ -1,19 +1,23 @@
 """Tests for the tracebom evidence adapter.
 
-The fixture under ``tests/data/tracebom`` is a real trace BOM written by
-tracebom 13.9.0 (the dynamic-trace mode shipped inside the cdxgen package)
-over a command that loaded a local shared library and fetched one http and
-one https endpoint on localhost. The README next to it records how it was
-made and that macOS reports no library loads to cdxgen, so the BOM holds
-cryptographic assets and services only. The library component the path
-tests add is the exact shape the producer's writer gives a traced library,
-taken from the producer's own tests (including the Windows DLL spelling),
-so the file path relativisation is covered on producer-shaped input.
+The fixtures under ``tests/data/tracebom`` are real trace BOMs written by
+tracebom 13.9.0 (the dynamic-trace mode shipped inside the cdxgen
+package). One holds what a traced run observed over a command that loaded
+a local shared library and fetched one http and one https endpoint on
+localhost; the README next to them records how they were made and that
+macOS reports no library loads to cdxgen, so the observed BOM holds
+cryptographic assets and services only. The other holds a dry run, where
+every side effect was denied and only the attempted-operation counts in
+the metadata remain. The library component the path tests add is the
+exact shape the producer's writer gives a traced library, taken from the
+producer's own tests (including the Windows DLL spelling), so the file
+path relativisation is covered on producer-shaped input.
 
 The tests cover the shape detection, the version gate, malformed nested
 input, record paths and ids that do not depend on the directory the trace
-ran in, the producer's values kept as given, and the rule that a runtime
-observation never counts as reached evidence.
+ran in, the producer's values kept as given, a dry run never reading as a
+trace that observed nothing, and the rule that a runtime observation
+never counts as reached evidence.
 """
 
 import json
@@ -141,6 +145,23 @@ def test_json_text_is_accepted_as_the_report():
     assert [r.id for r in from_text.records] == [r.id for r in parsed.records]
 
 
+def test_a_dry_run_trace_is_never_read_as_an_empty_trace():
+    """A dry run denies every side effect and leaves only the
+    attempted-operation counts in the metadata: no component, no service.
+    The counts are counted as metadata properties that became no record,
+    so the BOM never reads as a trace that observed nothing."""
+    report = json.loads((DATA / "tracebom-dry-run.json").read_text(encoding="utf-8"))
+    assert is_tracebom_report(report) is True
+    result = _extract(report)
+    assert result.status == STATUS_COMPLETED
+    assert result.records == []
+    skipped = [c for c in result.caveats if c.kind == "record-skipped"]
+    assert len(skipped) == 1
+    count = len(report["metadata"]["properties"])
+    assert skipped[0].detail.startswith(f"{count} metadata cdx:dynamic: properties")
+    assert "cdx:dynamic:dryRun:fileWrites" in skipped[0].detail
+
+
 # --- shape detection ---------------------------------------------------------
 
 
@@ -176,6 +197,15 @@ def test_a_newer_major_is_refused():
     assert result.status == STATUS_NOT_ASSESSED
     assert "2.0.0" in result.reason
     assert result.records == []
+
+
+def test_a_specversion_of_the_wrong_type_is_refused():
+    report = _report()
+    report["specVersion"] = ["1.7"]
+    result = _extract(report)
+    assert result.status == STATUS_NOT_ASSESSED
+    assert "list" in result.reason
+    assert "not a version string" in result.reason
 
 
 def test_a_newer_minor_is_accepted_with_a_caveat_on_every_record():
@@ -271,6 +301,29 @@ def test_a_library_outside_the_root_is_left_out_with_a_caveat():
             isinstance(value, str) and value.startswith("/")
             for value in (other.attributes or {}).values()
         )
+
+
+def test_absolute_paths_nested_in_property_values_are_never_stored_absolute():
+    """A property value that is an object or array is kept with the same
+    shape, and every absolute path inside it follows the same rule as a
+    plain path value: relative when a root holds it, otherwise left out
+    and named by the location-outside-root caveat."""
+    report = _with_library(_report(), "/src/libs/libtrace-demo.dylib")
+    report["components"][-1]["properties"].append(
+        {
+            "name": "cdx:dynamic:meta",
+            "value": {"path": "/opt/homebrew/lib/l.dylib", "kept": "as given"},
+        }
+    )
+    report["components"][-1]["properties"].append(
+        {"name": "cdx:dynamic:inside", "value": ["/src/libs/other.dylib", 7]}
+    )
+    result = _extract(report)
+    assert result.status == STATUS_COMPLETED
+    record = next(r for r in result.records if r.subject.purls)
+    assert record.attributes["cdx:dynamic:meta"] == {"path": None, "kept": "as given"}
+    assert record.attributes["cdx:dynamic:inside"] == ["libs/other.dylib", 7]
+    assert [c.kind for c in record.caveats] == ["location-outside-root"]
 
 
 # --- values kept as given ----------------------------------------------------
