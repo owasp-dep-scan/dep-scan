@@ -48,9 +48,11 @@
         "annotation",
         "presence",
         "introspection",
-        "runtime-trace"
+        "runtime-trace",
+        "weakness",
+        "dangerous-api"
       ],
-      "description": "What the producer said. reached-flow, usage, callsite, entry-point and exploit-chain come from the reachability tools; occurrence, callstack, annotation and introspection come from BOM production; presence and runtime-trace come from binary and runtime analysis; sanitizer, dead-code, dependency and no-path record negative or non-reaching evidence."
+      "description": "What the producer said. reached-flow, usage, callsite, entry-point and exploit-chain come from the reachability tools; occurrence, callstack, annotation and introspection come from BOM production; presence and runtime-trace come from binary and runtime analysis; sanitizer, dead-code, dependency and no-path record negative or non-reaching evidence; weakness and dangerous-api are a producer's own weakness candidates and its reachable calls into dangerous APIs, kept as given and never counted as reached."
     },
     "polarity": {
       "type": "string",

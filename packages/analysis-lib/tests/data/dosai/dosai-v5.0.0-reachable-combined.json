@@ -1731,7 +1731,345 @@
    "SinkCount": 8,
    "SliceCount": 6,
    "SourceCount": 3
-  }
+  },
+  "WeaknessCandidates": [
+   {
+    "Id": "wc1",
+    "Kind": "UnsafeDeserializationCandidate",
+    "Cwe": "CWE-502",
+    "Confidence": "High",
+    "Severity": "high",
+    "ConfidenceReasons": [
+     "Source matched category 'input'.",
+     "Sink matched category 'deserialization'.",
+     "Slice contains package URL metadata.",
+     "Sink reachable from cli entry point ep1() in 1 call(s)."
+    ],
+    "SliceId": "dfs1",
+    "SourceId": "dfn1",
+    "SinkId": "dfn4",
+    "SourceCategory": "input",
+    "SinkCategory": "deserialization",
+    "SourceLocation": "Program.cs:10:5",
+    "SinkLocation": "Program.cs:12:19",
+    "EntryPointId": "ep1",
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/Newtonsoft.Json@13.0.3"
+    ],
+    "Evidence": [
+     "Source input at Program.cs:10:5: input",
+     "Sink DeserializeObject at Program.cs:12:19: Newtonsoft.Json.JsonConvert.DeserializeObject<EchoRequest>(line)",
+     "Slice path has 4 nodes and 6 edges."
+    ],
+    "Summary": "input data reaches deserialization sink DeserializeObject."
+   },
+   {
+    "Id": "wc2",
+    "Kind": "UnsafeDeserializationCandidate",
+    "Cwe": "CWE-502",
+    "Confidence": "High",
+    "Severity": "high",
+    "ConfidenceReasons": [
+     "Source matched category 'input'.",
+     "Sink matched category 'deserialization'.",
+     "Slice contains package URL metadata.",
+     "Sink reachable from cli entry point ep1() in 1 call(s)."
+    ],
+    "SliceId": "dfs2",
+    "SourceId": "dfn1",
+    "SinkId": "dfn6",
+    "SourceCategory": "input",
+    "SinkCategory": "deserialization",
+    "SourceLocation": "Program.cs:10:5",
+    "SinkLocation": "Program.cs:12:19",
+    "EntryPointId": "ep1",
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/Newtonsoft.Json@13.0.3"
+    ],
+    "Evidence": [
+     "Source input at Program.cs:10:5: input",
+     "Sink DeserializeObject at Program.cs:12:19: Newtonsoft.Json.JsonConvert.DeserializeObject<EchoRequest>(line)",
+     "Slice path has 4 nodes and 6 edges."
+    ],
+    "Summary": "input data reaches deserialization sink DeserializeObject."
+   },
+   {
+    "Id": "wc3",
+    "Kind": "LogInjectionCandidate",
+    "Cwe": "CWE-117",
+    "Confidence": "High",
+    "Severity": "info",
+    "ConfidenceReasons": [
+     "Source matched category 'input'.",
+     "Sink matched category 'log'.",
+     "Slice contains package URL metadata.",
+     "Sink reachable from cli entry point ep1() in 1 call(s)."
+    ],
+    "SliceId": "dfs3",
+    "SourceId": "dfn1",
+    "SinkId": "dfn8",
+    "SourceCategory": "input",
+    "SinkCategory": "log",
+    "SourceLocation": "Program.cs:10:5",
+    "SinkLocation": "Program.cs:13:9",
+    "EntryPointId": "ep1",
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/System.Console"
+    ],
+    "Evidence": [
+     "Source input at Program.cs:10:5: input",
+     "Sink WriteLine at Program.cs:13:9: System.Console.WriteLine(req?.Method)",
+     "Slice path has 5 nodes and 10 edges."
+    ],
+    "Summary": "input data reaches log sink WriteLine."
+   },
+   {
+    "Id": "wc4",
+    "Kind": "UnsafeDeserializationCandidate",
+    "Cwe": "CWE-502",
+    "Confidence": "High",
+    "Severity": "high",
+    "ConfidenceReasons": [
+     "Source matched category 'cli'.",
+     "Sink matched category 'deserialization'.",
+     "Flow is near entrypoint 'ep1'.",
+     "Sink reachable from cli entry point ep1() in 1 call(s)."
+    ],
+    "SliceId": "dfs4",
+    "SourceId": "dfn10",
+    "SinkId": "dfn11",
+    "SourceCategory": "cli",
+    "SinkCategory": "deserialization",
+    "SourceLocation": "Program.cs:16:31",
+    "SinkLocation": "Program.cs:16:27",
+    "EntryPointId": "ep1",
+    "Purls": [],
+    "Evidence": [
+     "Source In at Program.cs:16:31: System.Console.In",
+     "Sink Run at Program.cs:16:27: Run(System.Console.In)",
+     "Slice path has 2 nodes and 1 edges."
+    ],
+    "Summary": "cli data reaches deserialization sink Run."
+   },
+   {
+    "Id": "wc5",
+    "Kind": "UnsafeDeserializationCandidate",
+    "Cwe": "CWE-502",
+    "Confidence": "High",
+    "Severity": "high",
+    "ConfidenceReasons": [
+     "Source matched category 'input'.",
+     "Sink matched category 'deserialization'.",
+     "Slice contains package URL metadata.",
+     "Sink reachable from cli entry point ep1() in 1 call(s)."
+    ],
+    "SliceId": "dfs5",
+    "SourceId": "dfn12",
+    "SinkId": "dfn15",
+    "SourceCategory": "input",
+    "SinkCategory": "deserialization",
+    "SourceLocation": "Program.cs:11:9",
+    "SinkLocation": "Program.cs:12:9",
+    "EntryPointId": "ep1",
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/Newtonsoft.Json@13.0.3"
+    ],
+    "Evidence": [
+     "Source input at Program.cs:11:9: input",
+     "Sink DeserializeObject<reachable_app.EchoRequest> at Program.cs:12:9: Newtonsoft.Json.JsonConvert.DeserializeObject<reachable_app.EchoRequest>(string):!!0",
+     "Slice path has 4 nodes and 6 edges."
+    ],
+    "Summary": "input data reaches deserialization sink DeserializeObject<reachable_app.EchoRequest>."
+   },
+   {
+    "Id": "wc6",
+    "Kind": "LogInjectionCandidate",
+    "Cwe": "CWE-117",
+    "Confidence": "High",
+    "Severity": "info",
+    "ConfidenceReasons": [
+     "Source matched category 'input'.",
+     "Sink matched category 'log'.",
+     "Slice contains package URL metadata.",
+     "Sink reachable from cli entry point ep1() in 1 call(s)."
+    ],
+    "SliceId": "dfs6",
+    "SourceId": "dfn12",
+    "SinkId": "dfn18",
+    "SourceCategory": "input",
+    "SinkCategory": "log",
+    "SourceLocation": "Program.cs:11:9",
+    "SinkLocation": "Program.cs:13:9",
+    "EntryPointId": "ep1",
+    "Purls": [
+     "pkg:nuget/System.Runtime",
+     "pkg:nuget/System.Console"
+    ],
+    "Evidence": [
+     "Source input at Program.cs:11:9: input",
+     "Sink WriteLine at Program.cs:13:9: System.Console.WriteLine(string)",
+     "Slice path has 6 nodes and 15 edges."
+    ],
+    "Summary": "input data reaches log sink WriteLine."
+   }
+  ],
+  "DangerousApiReachability": [
+   {
+    "Id": "dar1",
+    "Category": "deserialization",
+    "Symbol": "Newtonsoft.Json.JsonConvert.DeserializeObject<reachable_app.EchoRequest>(string):!!0",
+    "Purl": "pkg:nuget/Newtonsoft.Json@13.0.3",
+    "EntryPointIds": [
+     "ep1"
+    ],
+    "SliceIds": [
+     "dfs5"
+    ],
+    "NodeIds": [
+     "dfn15"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:12:9",
+     "Newtonsoft.Json.JsonConvert.DeserializeObject<reachable_app.EchoRequest>(string):!!0"
+    ]
+   },
+   {
+    "Id": "dar2",
+    "Category": "deserialization",
+    "Symbol": "Newtonsoft.Json.JsonConvert.DeserializeObject(string)",
+    "Purl": "pkg:nuget/Newtonsoft.Json@13.0.3",
+    "EntryPointIds": [
+     "ep1"
+    ],
+    "SliceIds": [
+     "dfs1"
+    ],
+    "NodeIds": [
+     "dfn4"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:12:19",
+     "Newtonsoft.Json.JsonConvert.DeserializeObject<EchoRequest>(line)"
+    ]
+   },
+   {
+    "Id": "dar3",
+    "Category": "deserialization",
+    "Symbol": "Newtonsoft.Json.JsonConvert.DeserializeObject(string)",
+    "Purl": "pkg:nuget/Newtonsoft.Json@13.0.3",
+    "EntryPointIds": [
+     "ep1"
+    ],
+    "SliceIds": [
+     "dfs2"
+    ],
+    "NodeIds": [
+     "dfn6"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:12:19",
+     "Newtonsoft.Json.JsonConvert.DeserializeObject<EchoRequest>(line)"
+    ]
+   },
+   {
+    "Id": "dar4",
+    "Category": "deserialization",
+    "Symbol": "Newtonsoft.Json.JsonConvert.DeserializeObject(string)",
+    "Purl": "pkg:nuget/Newtonsoft.Json@13.0.3",
+    "EntryPointIds": [],
+    "SliceIds": [],
+    "NodeIds": [
+     "dfn7"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:12:19",
+     "Newtonsoft.Json.JsonConvert.DeserializeObject<EchoRequest>(line)"
+    ]
+   },
+   {
+    "Id": "dar5",
+    "Category": "log",
+    "Symbol": "System.Console.WriteLine(string)",
+    "Purl": "pkg:nuget/System.Console",
+    "EntryPointIds": [
+     "ep1"
+    ],
+    "SliceIds": [
+     "dfs6"
+    ],
+    "NodeIds": [
+     "dfn18"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:13:9",
+     "System.Console.WriteLine(string)"
+    ]
+   },
+   {
+    "Id": "dar6",
+    "Category": "log",
+    "Symbol": "System.Console.WriteLine(string)",
+    "Purl": "pkg:nuget/System.Console",
+    "EntryPointIds": [
+     "ep1"
+    ],
+    "SliceIds": [
+     "dfs3"
+    ],
+    "NodeIds": [
+     "dfn8"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:13:9",
+     "System.Console.WriteLine(req?.Method)"
+    ]
+   },
+   {
+    "Id": "dar7",
+    "Category": "log",
+    "Symbol": "System.Console.WriteLine(string)",
+    "Purl": "pkg:nuget/System.Console",
+    "EntryPointIds": [],
+    "SliceIds": [],
+    "NodeIds": [
+     "dfn9"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:13:9",
+     "System.Console.WriteLine(req?.Method)"
+    ]
+   },
+   {
+    "Id": "dar8",
+    "Category": "deserialization",
+    "Symbol": "reachable_app.Program.Run(System.IO.TextReader)",
+    "EntryPointIds": [
+     "ep1"
+    ],
+    "SliceIds": [
+     "dfs4"
+    ],
+    "NodeIds": [
+     "dfn11"
+    ],
+    "Confidence": "High",
+    "Evidence": [
+     "Program.cs:16:27",
+     "Run(System.Console.In)"
+    ]
+   }
+  ]
  },
  "methods": {
   "ApiEndpoints": [],

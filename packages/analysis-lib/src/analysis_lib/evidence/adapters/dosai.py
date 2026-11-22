@@ -26,7 +26,8 @@ The sections this adapter reads become these records:
   becomes a ``dependency`` record, which is evidence a later reader can
   weigh but never counts as reached. The record's ``confidence`` is the
   entry's own; when an entry states none, the kind's default decides the
-  counting and is named in the ``confidenceDefault`` attribute, and
+  counting, the record carries ``confidenceSource: "kind-default"`` and
+  names the default in the ``confidenceDefault`` attribute, and
   ``ExternalCallGraphNode`` and the data-flow kinds default to High. An
   entry dosai calls not reachable becomes a negative ``no-path`` record.
 - ``ApiEndpoints`` and ``AttackSurface`` entry points become
@@ -46,6 +47,12 @@ The sections this adapter reads become these records:
   inbound or bidirectional service is attack surface and becomes an
   ``entry-point`` record, an outbound one becomes a ``presence`` record.
   Services attribute no package, so neither moves the reached set.
+- ``WeaknessCandidates`` become ``weakness`` records and
+  ``DangerousApiReachability`` entries become ``dangerous-api`` records.
+  Their subjects are the purls the entry names (``Purls``, ``Purl``),
+  reconciled; every field dosai wrote is kept in the attributes as given;
+  the location is the sink location, or the first location the evidence
+  lists. Neither kind counts as reached evidence.
 
 Attributes keep the producer's own statements under the names the report
 uses or the settled evidence vocabulary uses: ``exposure``,
@@ -212,6 +219,8 @@ _DATAFLOWS_LISTS = (
     "AttackSurface",
     "EntryPoints",
     "SanitizedFlows",
+    "WeaknessCandidates",
+    "DangerousApiReachability",
     "Nodes",
     "Diagnostics",
 )
@@ -1003,8 +1012,9 @@ def _package_reachability_record(pr: dict, half: str, ctx: _Context) -> Optional
     becomes a negative ``no-path`` record; an entry with neither verdict,
     or whose purl cannot be attributed, is counted as skipped. The record's
     confidence is the one the entry states, exactly as stated; when the
-    entry states none, the kind's default only decides the counting and is
-    named in the ``confidenceDefault`` attribute.
+    entry states none, the kind's default only decides the counting, and the
+    record carries ``confidenceSource: "kind-default"`` with the default in
+    the ``confidenceDefault`` attribute.
     """
     transparency = ctx.transparency
     verdict = pr.get("Reachable")
@@ -1196,6 +1206,80 @@ def _exploit_chain_record(chain: dict, ctx: _Context) -> Evidence:
         caveats=_Where(ctx.paths).caveats(
             ctx.side_caveats["dataflows"], [minimal] if minimal else []
         ),
+    )
+
+
+#: A dosai location string, ``<file>:<line>[:<column>]``.
+_LOCATION_TEXT_RE = re.compile(r"^(?P<file>.+?):(?P<line>\d+)(?::\d+)?$")
+
+
+def _text_location(where: "_Where", values: Iterable[Any]) -> Optional[EvidenceLocation]:
+    """The first ``<file>:<line>[:<column>]`` string among ``values`` that
+    names a source file, as a location."""
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        match = _LOCATION_TEXT_RE.match(value.strip())
+        if match and _is_source_file(match.group("file")):
+            return where.location(match.group("file"), match.group("line"))
+    return None
+
+
+def _weakness_record(entry: dict, ctx: _Context) -> Evidence:
+    """The weakness record of one ``WeaknessCandidates`` entry: the purls
+    the entry names as the subject, its confidence as stated, every field
+    kept as given, and the sink location (else the source location) as the
+    record's location. A weakness tied to an entry point that is not a
+    route, in a report with minimal-API routes, carries the minimal-API
+    caveat like the chain it comes from."""
+    transparency = ctx.transparency
+    purls = reconcile_purls(as_list(entry.get("Purls")), transparency.bom_index)
+    where = _Where(ctx.paths)
+    location = _text_location(where, (entry.get("SinkLocation"), entry.get("SourceLocation")))
+    entry_id = as_hashable_str(entry.get("EntryPointId"))
+    minimal = transparency.minimal_api_caveat(
+        f"the weakness candidate {as_hashable_str(entry.get('Id')) or 'without an id'}",
+        [entry_id] if entry_id else [],
+    )
+    confidence = entry.get("Confidence")
+    return build_record(
+        source=ctx.source,
+        producer=ctx.producer,
+        kind="weakness",
+        discriminator=ctx.discriminator(entry, entry.get("Id")),
+        purls=tuple(purls),
+        locations=tuple([location] if location else []),
+        confidence=confidence if isinstance(confidence, str) and confidence else None,
+        attributes=dict(entry) or None,
+        caveats=where.caveats(ctx.side_caveats["dataflows"], [minimal] if minimal else []),
+    )
+
+
+def _dangerous_api_record(entry: dict, ctx: _Context) -> Evidence:
+    """The dangerous-api record of one ``DangerousApiReachability`` entry:
+    the purl the entry names as the subject, its confidence as stated,
+    every field kept as given, and the first location its evidence lists.
+    In a report with minimal-API routes, an entry tied to no route carries
+    the minimal-API caveat."""
+    transparency = ctx.transparency
+    purl = reconcile_purl(entry.get("Purl"), transparency.bom_index)
+    where = _Where(ctx.paths)
+    location = _text_location(where, as_list(entry.get("Evidence")))
+    minimal = transparency.minimal_api_caveat(
+        f"the dangerous API call {as_hashable_str(entry.get('Id')) or 'without an id'}",
+        _ids(entry.get("EntryPointIds")),
+    )
+    confidence = entry.get("Confidence")
+    return build_record(
+        source=ctx.source,
+        producer=ctx.producer,
+        kind="dangerous-api",
+        discriminator=ctx.discriminator(entry, entry.get("Id")),
+        purls=(purl,) if purl else (),
+        locations=tuple([location] if location else []),
+        confidence=confidence if isinstance(confidence, str) and confidence else None,
+        attributes=dict(entry) or None,
+        caveats=where.caveats(ctx.side_caveats["dataflows"], [minimal] if minimal else []),
     )
 
 
@@ -1486,6 +1570,15 @@ def extract(
         records.append(_exploit_chain_record(chain, ctx))
     for flow in transparency.sanitized_flows:
         records.append(_sanitizer_record(flow, ctx))
+    for section, builder in (
+        ("WeaknessCandidates", _weakness_record),
+        ("DangerousApiReachability", _dangerous_api_record),
+    ):
+        for entry in as_list(dataflows.get(section)):
+            if not isinstance(entry, dict):
+                skipped.add(f"{section} entries are not JSON objects and became no record")
+                continue
+            records.append(builder(entry, ctx))
     for entry in as_list(methods.get("DeadCode")):
         if not isinstance(entry, dict):
             skipped.add("DeadCode entries are not JSON objects and became no record")

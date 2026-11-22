@@ -355,3 +355,11 @@ def test_the_model_resolves_nested_types():
     assert record.path is not None and isinstance(record.path[0], EvidencePathNode)
     assert isinstance(record.caveats[0], EvidenceCaveat)
     assert record.path[0].symbol == "sym"
+
+
+@pytest.mark.parametrize("kind", ["weakness", "dangerous-api"])
+def test_the_weakness_and_dangerous_api_kinds_validate(kind):
+    document = _example_record()
+    document["kind"] = kind
+    validate(SCHEMA_NAME, document)
+    assert Evidence.from_dict(document).kind == kind

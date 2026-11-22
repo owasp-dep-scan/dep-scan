@@ -43,7 +43,8 @@ The binary reports `Metadata.AnalyzerVersion` `5.0.0.0` (`AnalyzerBuild`
 
 Kept whole from the recording: `dataflows` `Statistics`, `Diagnostics`,
 `Slices`, `Nodes`, `PackageReachability`, `ExploitChains`, `AttackSurface`,
-`EntryPoints`, `SanitizedFlows`; `methods` `PackageReachability`,
+`EntryPoints`, `SanitizedFlows`, `WeaknessCandidates`,
+`DangerousApiReachability`; `methods` `PackageReachability`,
 `EntryPoints`, `ApiEndpoints`, `Services`, `DeadCode`, `Reachability`,
 `Diagnostics`, `Metadata`; the combined `Metadata` block. The `methods`
 `PackageReachability` entries carry the `ExternalCallGraphNode` kind at
@@ -54,14 +55,21 @@ those sections are present and empty; the `methods.Reachability` list
 carries the 13 unreachable node entries that exercise the dead-code
 records.
 
-Dropped (no consumer reads them): `dataflows` `Edges`,
-`DangerousApiReachability`, `MethodSummaries`, `Patterns`,
-`WeaknessCandidates`; `methods` `AiComponents`, `AssemblyInformation`,
+Dropped (no consumer reads them): `dataflows` `Edges`, `MethodSummaries`,
+`Patterns`; `methods` `AiComponents`, `AssemblyInformation`,
 `CallGraph`, `Constructors`, `Dependencies`, `Events`, `Fields`,
 `Frameworks`, `Methods`, `MethodCalls`, `Properties`, `RecursionClusters`,
 `SecurityFindings`, `SourceAssemblyMapping`. The `Methods` section was the
 only other place the recording carried absolute paths (assembly paths under
 `bin/Debug`).
+
+`WeaknessCandidates` (6 entries) and `DangerousApiReachability` (8 entries)
+were added later, whole, from a second run of the dosai 5.0.0 release
+build (`--version` prints the same `5.0.0+0c35f375...` string) over a copy of
+`reachable-app`, with the same two commands. That run's other sections are identical to the ones above, so
+the added entries refer to the same slices, nodes and entry points. Neither
+section carries an absolute path (their locations read `Program.cs:12:19`),
+so nothing in them was rewritten.
 
 ## dosai-main-unreachable-combined.json
 
@@ -88,7 +96,9 @@ only. Recording commands as above, with `unreachable-app` in place of
 `Metadata.AnalyzerVersion` `5.0.0.0` (`AnalyzerBuild`
 `5.0.0+0d4c331...`).
 
-Kept and dropped sections are the same lists as above. This recording has
+Kept and dropped sections are the same lists as above, except that this
+recording does not carry `WeaknessCandidates` or `DangerousApiReachability`.
+This recording has
 3 dataflow slices (one of them, `dfs2`, names no package purls, which
 exercises the record-skipped caveat), `ExternalCallGraphNode` entries for
 both packages, 3 exploit chains, and no `SanitizedFlows`, `ApiEndpoints`,

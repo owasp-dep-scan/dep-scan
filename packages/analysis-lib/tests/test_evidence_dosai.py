@@ -145,6 +145,8 @@ def test_v5_recording_record_kinds():
         "exploit-chain": 6,
         "entry-point": 1,  # the attack surface group's one entry
         "dead-code": 13,  # the methods reachability negatives
+        "weakness": 6,  # WeaknessCandidates
+        "dangerous-api": 8,  # DangerousApiReachability
     }
     assert _reached_purls(result) == V5_REACHED
 
@@ -1462,3 +1464,115 @@ def test_ids_do_not_depend_on_the_input_path():
         ids.append([r.id for r in _extract(report).records])
     assert len(ids[0]) == 1
     assert ids[0] == ids[1]
+
+
+# --- weakness candidates and dangerous API reachability -----------------------------
+
+
+def test_weakness_candidates_become_weakness_records_as_given():
+    """Each WeaknessCandidates entry is a weakness record: the purls dosai
+    names as the subject, its confidence as stated, every field it wrote kept
+    in the attributes, and its sink location as the record location."""
+    report = _load(V5_REACHABLE)
+    result = _extract(report)
+    weaknesses = [r for r in result.records if r.kind == "weakness"]
+    assert [_attrs(r)["Id"] for r in weaknesses] == ["wc1", "wc2", "wc3", "wc4", "wc5", "wc6"]
+    wc1 = weaknesses[0]
+    assert wc1.polarity == "positive"
+    assert wc1.subject.purls == ["pkg:nuget/Newtonsoft.Json@13.0.3", "pkg:nuget/System.Runtime"]
+    assert wc1.confidence == "High"
+    assert wc1.attributes == report["dataflows"]["WeaknessCandidates"][0]
+    assert [(loc.file, loc.line) for loc in wc1.locations] == [("Program.cs", 12)]
+
+
+def test_dangerous_api_reachability_becomes_dangerous_api_records_as_given():
+    report = _load(V5_REACHABLE)
+    result = _extract(report)
+    dangerous = [r for r in result.records if r.kind == "dangerous-api"]
+    assert len(dangerous) == 8
+    dar1 = dangerous[0]
+    assert dar1.subject.purls == ["pkg:nuget/Newtonsoft.Json@13.0.3"]
+    assert dar1.confidence == "High"
+    assert dar1.attributes == report["dataflows"]["DangerousApiReachability"][0]
+    assert [(loc.file, loc.line) for loc in dar1.locations] == [("Program.cs", 12)]
+    # dar8 names no purl, so its record has no subject rather than one
+    # the adapter guessed.
+    assert [tuple(r.subject.purls) for r in dangerous] == [
+        ("pkg:nuget/Newtonsoft.Json@13.0.3",)
+    ] * 4 + [("pkg:nuget/System.Console",)] * 3 + [()]
+
+
+def test_weakness_and_dangerous_api_records_leave_the_reached_set_alone():
+    """Without the two sections the reached set is the same pinned set."""
+    report = copy.deepcopy(_load(V5_REACHABLE))
+    with_sections = _extract(report)
+    del report["dataflows"]["WeaknessCandidates"]
+    del report["dataflows"]["DangerousApiReachability"]
+    without = _extract(report)
+    assert not any(r.kind in ("weakness", "dangerous-api") for r in without.records)
+    assert _reached_purls(with_sections) == _reached_purls(without) == V5_REACHED
+
+
+def test_a_weakness_on_a_non_route_entry_point_carries_the_minimal_api_caveat():
+    """dosai issue 140: main attaches the weakness to a route whose handler
+    has no sink, 5.0.0 to the Cli entry point ep3. The weakness on ep3 is
+    flagged, the one on a minimal-API route is not."""
+    report = _minimal_api_report("ep3", [])
+    report["dataflows"]["WeaknessCandidates"] = [
+        {
+            "Id": "wc1",
+            "Kind": "UnsafeDeserializationCandidate",
+            "EntryPointId": "ep3",
+            "Purls": ["pkg:nuget/Newtonsoft.Json@12.0.3"],
+            "Confidence": "High",
+            "SinkLocation": "Program.cs:14:19",
+        },
+        {
+            "Id": "wc2",
+            "Kind": "UnsafeDeserializationCandidate",
+            "EntryPointId": "ep:op:svc:minimal-api:_/Program.cs#GET:/health",
+            "Purls": ["pkg:nuget/Newtonsoft.Json@12.0.3"],
+            "Confidence": "High",
+            "SinkLocation": "Program.cs:14:19",
+        },
+    ]
+    result = _extract(report, bom_index={})
+    flagged = {
+        _attrs(r)["Id"]: any(c.kind == "minimal-api" for c in r.caveats)
+        for r in result.records
+        if r.kind == "weakness"
+    }
+    assert flagged == {"wc1": True, "wc2": False}
+
+
+def test_malformed_weakness_and_dangerous_api_entries_are_counted():
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {},
+        "dataflows": {
+            "WeaknessCandidates": ["x", {"Id": "wc9", "Purls": 5, "SinkLocation": 3}],
+            "DangerousApiReachability": [None, {"Id": "dar9", "Purl": "pkg:npm/x@1"}],
+        },
+    }
+    result = _extract(report)
+    assert result.status == "completed"
+    assert [(r.kind, r.subject.purls, r.locations) for r in result.records] == [
+        ("weakness", [], []),
+        ("dangerous-api", [], []),
+    ]
+    assert [c.detail for c in result.caveats if c.kind == "record-skipped"] == [
+        "1 WeaknessCandidates entries are not JSON objects and became no record",
+        "1 DangerousApiReachability entries are not JSON objects and became no record",
+    ]
+
+
+@pytest.mark.parametrize("section", ["WeaknessCandidates", "DangerousApiReachability"])
+def test_a_weakness_section_of_the_wrong_type_is_not_assessed(section):
+    report = {
+        "Metadata": {"Tool": "Dosai", "SchemaVersion": "5.1.0"},
+        "methods": {},
+        "dataflows": {section: {"a": 1}},
+    }
+    result = _extract(report)
+    assert result.status == "not-assessed"
+    assert section in (result.reason or "")

@@ -61,9 +61,12 @@ ID_DIGEST_HEX_LENGTH = 16
 MAX_PATH_NODES = 64
 
 #: The record kinds, in the settled order the schema lists them. The first
-#: seven plus ``no-path`` are the reachability producers' kinds; the rest
-#: exist so later producers (binary analysis, BOM annotations, observed
-#: runtime traces) fit without a schema change.
+#: seven plus ``no-path`` are the reachability producers' kinds; the next
+#: four exist so later producers (binary analysis, BOM annotations, observed
+#: runtime traces) fit without a schema change. ``weakness`` and
+#: ``dangerous-api`` are a producer's own weakness candidates and its
+#: reachable calls into dangerous APIs, which dosai reports; neither counts
+#: as reached evidence.
 KINDS = (
     "reached-flow",
     "usage",
@@ -80,6 +83,8 @@ KINDS = (
     "presence",
     "introspection",
     "runtime-trace",
+    "weakness",
+    "dangerous-api",
 )
 
 #: Whether a record says something was observed or says it was not.
