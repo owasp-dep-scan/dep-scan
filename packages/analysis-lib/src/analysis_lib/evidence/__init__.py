@@ -89,8 +89,10 @@ POLARITIES = ("positive", "negative")
 #: marks a newer minor report version, ``schema-unknown`` a report that
 #: names no version, ``record-skipped`` a producer object that could not
 #: become a record, ``minimal-api`` an entry point whose attribution the
-#: producer itself may have misplaced, and ``path-truncated`` a witness
-#: path cut at :data:`MAX_PATH_NODES`.
+#: producer itself may have misplaced, ``path-truncated`` a witness path
+#: cut at :data:`MAX_PATH_NODES`, and ``location-outside-root`` a file the
+#: producer named outside the scanned source root, which the record leaves
+#: out rather than carry as an absolute path.
 CAVEAT_KINDS = (
     "budget",
     "timeout",
@@ -102,6 +104,7 @@ CAVEAT_KINDS = (
     "schema-unknown",
     "minimal-api",
     "record-skipped",
+    "location-outside-root",
 )
 
 

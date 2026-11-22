@@ -159,6 +159,18 @@ def test_a_record_with_caveats_validates():
     validate(SCHEMA_NAME, document)
 
 
+def test_a_location_outside_root_caveat_validates():
+    document = _example_record()
+    document["caveats"] = [
+        {
+            "kind": "location-outside-root",
+            "detail": "1 file path(s) the producer named lie outside the source root",
+        }
+    ]
+    validate(SCHEMA_NAME, document)
+    assert Evidence.from_dict(document).caveats[0].kind == "location-outside-root"
+
+
 def test_a_suffixed_id_with_caveats_validates():
     document = _example_record()
     document["id"] = "ev-fedcba9876543210-2"

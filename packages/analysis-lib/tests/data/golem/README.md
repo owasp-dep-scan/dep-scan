@@ -6,18 +6,21 @@ paths and no repeated bulk. The tests in `test_evidence_golem.py` read them.
 
 ## How they were made
 
-golem 4.3.1, printed by the binary itself (`golem --version`), from the
-plugins directory `harness/tools-latest.sh` installs and prints:
-`~/.local/share/depscan-tools/cdxgen/node_modules/@cdxgen/
-cdxgen-plugins-bin-darwin-arm64/plugins/golem/golem-darwin-arm64`, the npm
-package `@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1. No other copy was
-used: golem, rusi and kosi live only in that plugins directory. The repos
-are the ones the repository carries at
-`test/data/golem/repos`, copied into a temporary recording directory so the
-recording root was never the checkout; `reachable-app` and `unreachable-app`
-were copied beside `vuln-lib`, which their `go.mod` replace directives point
-at. Each run mirrors the flags dep-scan's fallback runner passes
-(`xbom_lib.golem._build_golem_args`):
+golem 4.3.1, printed by the binary itself (`golem --version`), is the
+`plugins/golem/golem-darwin-arm64` binary of the npm package
+`@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1, the package this command
+installs:
+
+```bash
+npm install @cdxgen/cdxgen-plugins-bin-darwin-arm64@4.3.1
+```
+
+golem, rusi and kosi ship only in that package. The repos are the ones the
+repository carries at `test/data/golem/repos`, copied into a temporary
+recording directory so the recording root was never the checkout;
+`reachable-app` and `unreachable-app` were copied beside `vuln-lib`, which
+their `go.mod` replace directives point at. Each run mirrors the flags
+dep-scan's fallback runner passes (`xbom_lib.golem._build_golem_args`):
 
 ```bash
 CGO_ENABLED=0 GOFLAGS=-mod=readonly GOPROXY=off GOTOOLCHAIN=local \

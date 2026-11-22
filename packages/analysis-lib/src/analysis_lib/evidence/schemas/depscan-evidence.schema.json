@@ -210,9 +210,10 @@
             "schema-minor",
             "schema-unknown",
             "minimal-api",
-            "record-skipped"
+            "record-skipped",
+            "location-outside-root"
           ],
-          "description": "budget and timeout when the producer stopped early; collapsed-edges and unresolved-call-sites when the producer's own analysis was imprecise; coverage-gap when a part of the scan had no analysis; path-truncated when a witness path was cut at 64 nodes; schema-minor for a newer minor report version; schema-unknown for a report that names no version; minimal-api for an entry point whose attribution the producer may have misplaced; record-skipped for a producer object that could not become a record."
+          "description": "budget and timeout when the producer stopped early; collapsed-edges and unresolved-call-sites when the producer's own analysis was imprecise; coverage-gap when a part of the scan had no analysis; path-truncated when a witness path was cut at 64 nodes; schema-minor for a newer minor report version; schema-unknown for a report that names no version; minimal-api for an entry point whose attribution the producer may have misplaced; record-skipped for a producer object that could not become a record; location-outside-root for a file the producer named outside the scanned source root, which the record leaves out rather than carry as an absolute path."
         },
         "detail": {
           "type": "string",
