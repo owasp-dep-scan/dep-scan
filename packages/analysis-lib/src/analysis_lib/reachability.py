@@ -31,15 +31,33 @@ import os
 
 #: The record kinds whose positive records count as reached evidence. A
 #: record of another kind (a callsite, a dependency note, a sanitizer, a
-#: dead-code mark) is evidence about the package, never reached evidence.
+#: dead-code mark, a weakness candidate, a dangerous API call) is evidence
+#: about the package, never reached evidence.
 REACHED_COUNTED_KINDS = frozenset({"reached-flow", "usage", "entry-point"})
+
+#: The stated confidence that never counts as reached, compared without
+#: case: a producer that calls its own finding low confidence has not shown
+#: the package is reached.
+UNCOUNTED_CONFIDENCE = "low"
+
+
+def counts_as_reached(record: Evidence) -> bool:
+    """Whether one record counts as reached evidence: positive polarity, one
+    of :data:`REACHED_COUNTED_KINDS`, and a stated confidence, when the
+    record carries one, that is not Low. The rule is the same for every
+    producer, and every reader of the reached sets applies it through this
+    function."""
+    if record.polarity != "positive" or record.kind not in REACHED_COUNTED_KINDS:
+        return False
+    confidence = record.confidence
+    return not (isinstance(confidence, str) and confidence.strip().lower() == UNCOUNTED_CONFIDENCE)
 
 
 def _reached_records(records: Iterator[Evidence]) -> Iterator[Evidence]:
-    """The records that count as reached evidence, per the counting rule:
-    positive polarity and one of :data:`REACHED_COUNTED_KINDS`."""
+    """The records that count as reached evidence, per
+    :func:`counts_as_reached`."""
     for record in records:
-        if record.polarity == "positive" and record.kind in REACHED_COUNTED_KINDS:
+        if counts_as_reached(record):
             yield record
 
 

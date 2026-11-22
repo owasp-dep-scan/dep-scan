@@ -72,6 +72,7 @@ def _record(
     polarity="positive",
     source=None,
     attributes=None,
+    confidence=None,
 ):
     """One evidence record of the given shape, built the way the adapters
     build theirs."""
@@ -85,6 +86,7 @@ def _record(
         polarity=polarity,
         purls=tuple(purls),
         attributes=attributes,
+        confidence=confidence,
     )
 
 
@@ -708,3 +710,75 @@ def test_iter_json_list_matches_json_load_on_real_slices(tmp_path):
     with open(f) as fp:
         loaded = _json.load(fp)
     assert streamed == loaded
+
+
+# --- a stated Low confidence never counts -----------------------------------
+
+
+def _confidence_records():
+    """One reached record per stated confidence, for every counted kind, and
+    a Low record that names a service and a framework."""
+    records = []
+    for index, (confidence, kind) in enumerate(
+        [
+            ("Low", "reached-flow"),
+            ("low", "usage"),
+            (" LOW ", "entry-point"),
+            ("Medium", "reached-flow"),
+            ("high", "reached-flow"),
+            (None, "reached-flow"),
+        ]
+    ):
+        records.append(
+            _record(
+                [f"pkg:npm/{kind}-{(confidence or 'none').strip().lower()}@1"],
+                kind=kind,
+                producer_name="golem",
+                discriminator=f"c{index}",
+                confidence=confidence,
+            )
+        )
+    records.append(
+        _record(
+            ["pkg:npm/express@4.0.0"],
+            producer_name="golem",
+            discriminator="svc",
+            confidence="Low",
+            attributes={"servicePurls": ["pkg:npm/express@4.0.0"]},
+        )
+    )
+    return records
+
+
+def test_a_record_stating_low_confidence_never_counts_as_reached(tmp_path):
+    """The rule holds for every producer and every counted kind: a record
+    whose stated confidence is Low, in any letter case, puts no purl in the
+    reached set and no service in the reached services; Medium, High and an
+    absent confidence count."""
+    res = SemanticReachability(_options(tmp_path, _confidence_records())).process()
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:npm/reached-flow-medium@1",
+        "pkg:npm/reached-flow-high@1",
+        "pkg:npm/reached-flow-none@1",
+    }
+    assert set((res.reached_services or {}).keys()) == set()
+
+
+def test_framework_reachability_skips_low_confidence_records_too(tmp_path):
+    res = FrameworkReachability(_options(tmp_path, _confidence_records())).process()
+    assert set((res.reached_purls or {}).keys()) == {
+        "pkg:npm/reached-flow-medium@1",
+        "pkg:npm/reached-flow-high@1",
+        "pkg:npm/reached-flow-none@1",
+    }
+
+
+def test_reached_by_analyzer_skips_low_confidence_records():
+    from analysis_lib.findings.vdr_convert import reached_by_analyzer
+
+    grouped = reached_by_analyzer(_confidence_records())
+    assert grouped["golem"]["purls"] == {
+        "pkg:npm/reached-flow-medium@1",
+        "pkg:npm/reached-flow-high@1",
+        "pkg:npm/reached-flow-none@1",
+    }

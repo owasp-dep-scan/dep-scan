@@ -404,3 +404,24 @@ def test_each_source_gets_its_own_cap_and_label(tmp_path, monkeypatch):
     assert text.count("Reachable Packages:") == 2
     assert "pkg:pypi/b1@1" in text
     assert text.count("Reachable Flows") == 1, "the section heading is printed once"
+
+
+def test_a_low_confidence_record_is_not_explained_as_reached():
+    """The v5 recording's two Low-confidence slices (dfs3 and dfs6) do not
+    count as reached, so the reached modes do not render them, while the
+    Medium slices are wanted."""
+    records = _dosai_records()
+    slices = {
+        (r.attributes or {}).get("sliceId") or r.id: r
+        for r in records
+        if r.kind == "reached-flow" and r.path
+    }
+    wanted = {
+        key: explainer._wanted(record, "EndpointsAndReachables", {})
+        for key, record in slices.items()
+        if record.confidence in ("Low", "Medium")
+    }
+    low = {key for key, record in slices.items() if record.confidence == "Low"}
+    assert len(low) == 2
+    assert all(not wanted[key] for key in low)
+    assert any(wanted[key] for key in wanted if key not in low)

@@ -30,7 +30,7 @@ from analysis_lib.findings.model import (
     Producer,
     Reference,
 )
-from analysis_lib.reachability import ATOM_SLICE_PURL_TYPES, REACHED_COUNTED_KINDS
+from analysis_lib.reachability import ATOM_SLICE_PURL_TYPES, counts_as_reached
 
 #: CycloneDX severity names, most severe first, with the score as the tie
 #: breaker of last resort.
@@ -175,10 +175,10 @@ def reached_by_analyzer(records: Iterable[Evidence]) -> Dict[str, Dict[str, Set[
     and the records are never deduplicated against each other across
     producers: a purl two producers both reached stays in both of their
     sets, so a set that stands for a full read of the evidence store is
-    built from all of it. Records that do not count as reached evidence,
-    negative ones and the kinds outside
-    :data:`analysis_lib.reachability.REACHED_COUNTED_KINDS` first among
-    them, never enter the sets.
+    built from all of it. Records that do not count as reached evidence per
+    :func:`analysis_lib.reachability.counts_as_reached` (negative ones, the
+    kinds outside :data:`analysis_lib.reachability.REACHED_COUNTED_KINDS`,
+    and those stating Low confidence) never enter the sets.
 
     Each entry carries the purls under ``purls`` and the purl types the
     scope should treat the producer as covering under ``types``. The
@@ -190,7 +190,7 @@ def reached_by_analyzer(records: Iterable[Evidence]) -> Dict[str, Dict[str, Set[
     """
     result: Dict[str, Dict[str, Set[str]]] = {}
     for record in records:
-        if record.polarity != "positive" or record.kind not in REACHED_COUNTED_KINDS:
+        if not counts_as_reached(record):
             continue
         name = record.producer.name
         entry = result.setdefault(name, {"purls": set(), "types": set()})

@@ -37,7 +37,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from analysis_lib.evidence.store import EVIDENCE_FILE, stream as stream_evidence
-from analysis_lib.reachability import REACHED_COUNTED_KINDS
+from analysis_lib.reachability import counts_as_reached
 from depscan.lib.config import (
     max_flows_per_prompt,
     max_purl_per_flow,
@@ -487,7 +487,7 @@ def _wanted(record, explanation_mode, purl_vuln_map) -> bool:
     negative_only = explanation_mode in ("NonReachables",)
     if record.polarity == "negative":
         return negative_only and record.kind in NON_REACHABLE_KINDS
-    counted = record.kind in REACHED_COUNTED_KINDS
+    counted = counts_as_reached(record)
     if negative_only:
         return (
             counted
@@ -604,11 +604,7 @@ def explain_records(
         console.print()
         console.print(rtable)
         reachable_explanations += 1
-        if (
-            explanation_mode in ("LLMPrompts",)
-            and record.kind in REACHED_COUNTED_KINDS
-            and record.path
-        ):
+        if explanation_mode in ("LLMPrompts",) and counts_as_reached(record) and record.path:
             endpoint_reached_purls = getattr(vdr_result, "endpoint_reached_purls", None) or {}
             if any(p in endpoint_reached_purls for p in record.subject.purls):
                 for p in record.subject.purls:
