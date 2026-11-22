@@ -229,6 +229,32 @@ def test_a_bom_dir_scan_writes_the_evidence_store_and_lists_it(scan_stubs, tmp_p
     assert enrichment["outputs"] == [{"file": "evidence.jsonl", "status": "completed"}]
 
 
+def test_the_same_scan_twice_writes_byte_identical_stores(scan_stubs, tmp_path):
+    """Two scans of the same BOM directory produce the same evidence.jsonl
+    and evidence.index.json byte for byte: the record ids are hashes of what
+    the producers stated, so nothing run-dependent may leak into the store."""
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    for target in (first_dir, second_dir):
+        target.mkdir()
+        for entry in (FIXTURES / "dotnet-podcasts").iterdir():
+            if entry.is_file():
+                shutil.copy2(entry, target / entry.name)
+    options = {
+        "bom_dir": str(first_dir),
+        "reports_dir": str(first_dir),
+        "reachability_analyzer": "SemanticReachability",
+        "no_banner": True,
+    }
+    api.scan(api.scan_options(**options))
+    options.update(bom_dir=str(second_dir), reports_dir=str(second_dir))
+    api.scan(api.scan_options(**options))
+    for name in ("evidence.jsonl", "evidence.index.json"):
+        first = (first_dir / name).read_bytes()
+        second = (second_dir / name).read_bytes()
+        assert first and first == second, f"{name} differs between two scans of the same input"
+
+
 def test_the_engine_counts_the_fixture_purls_from_the_records(scan_stubs, tmp_path):
     from analysis_lib import ReachabilityAnalysisKV
     from analysis_lib.reachability import SemanticReachability
