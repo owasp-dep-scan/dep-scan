@@ -313,6 +313,10 @@ jobs:
       - name: Install depscan
         run: |
           uv sync --all-extras --all-packages
+          # The self-hosted runner keeps global npm packages between jobs. A
+          # cdxgen installed under its newer package name owns the same
+          # commands (cdxi and others), so remove both names first.
+          sudo npm uninstall -g @cdxgen/cdxgen @cyclonedx/cdxgen @appthreat/atom || true
           sudo npm install -g @cyclonedx/cdxgen @appthreat/atom --omit=optional
       - name: semantic analysis self
         run: |
