@@ -39,9 +39,14 @@ count.
 An object that cannot become a record (a component or service whose
 ``properties`` or ``endpoints`` are of the wrong JSON type, a property
 entry that is not an object with a name) is counted in one
-``record-skipped`` caveat per reason, never dropped silently. A file path
-no root holds never enters a record as an absolute path: the record says
-which files it left out through a ``location-outside-root`` caveat.
+``record-skipped`` caveat per reason, never dropped silently. The
+metadata's ``cdx:dynamic:`` properties describe the traced run itself
+(a dry run leaves only the attempted-operation counts there, with no
+component or service beside them), so they are counted by name in the
+same way and a dry-run trace never reads as a trace that observed
+nothing. A file path no root holds never enters a record as an absolute
+path, at any depth of a property value: the record says which files it
+left out through a ``location-outside-root`` caveat.
 
 Record ids do not follow the directory the trace ran in. The purl,
 ``bom-ref`` and ``evidence`` identity of a traced object restate the file
@@ -194,15 +199,27 @@ class _PathValues:
         return EvidenceLocation(file=relative)
 
     def attribute(self, value: Any) -> Any:
-        """The stored form of a property value: a path relative to the root
-        when the value is an absolute path, the value itself otherwise. An
-        absolute path no root holds is left out and counted."""
-        if isinstance(value, str) and is_absolute_path(value.replace("\\", "/").strip()):
+        """The stored form of a property value: an object or array keeps its
+        shape, and every absolute path string inside it, at any depth,
+        follows the same rule as a plain path value. A path a root holds is
+        stored relative; a path no root holds is left out (counted) and
+        becomes null where it stood, or omits the whole value when it was
+        the value."""
+        return self._scrub(value)
+
+    def _scrub(self, value: Any) -> Any:
+        if isinstance(value, str):
+            if not is_absolute_path(value.replace("\\", "/").strip()):
+                return value
             relative = self.paths.relative(value)
             if relative is None:
                 self.left_out.add(value)
                 return None
             return relative
+        if isinstance(value, list):
+            return [self._scrub(item) for item in value]
+        if isinstance(value, dict):
+            return {key: self._scrub(item) for key, item in value.items()}
         return value
 
     def caveats(self, base: List[EvidenceCaveat]) -> Tuple[EvidenceCaveat, ...]:
@@ -223,7 +240,11 @@ def _parse_report(report) -> Tuple[Optional[Any], Optional[str]]:
 
 
 def _spec_version_text(report: dict) -> str:
-    """The ``specVersion`` as text, keeping a number the gate can read."""
+    """The ``specVersion`` as the report schema version text, for a BOM the
+    gate already accepted: a string as stated, a number as its text, and
+    empty when the BOM names no version. The gate itself reads the raw
+    value, so a version of the wrong JSON type is refused there rather
+    than flattened into a missing one."""
     seen = report.get("specVersion")
     if isinstance(seen, str):
         return seen.strip()
@@ -294,7 +315,7 @@ def extract(report, *, source: str, source_root: Optional[str] = None) -> Adapte
         )
 
     seen = _spec_version_text(report)
-    gate = gate_report_version(seen, SUPPORTED_MAJOR, KNOWN_MINOR)
+    gate = gate_report_version(report.get("specVersion"), SUPPORTED_MAJOR, KNOWN_MINOR)
     if not gate.accepted:
         return not_assessed(gate.reason or "")
     base_caveats = list(gate.caveats)
@@ -307,6 +328,7 @@ def extract(report, *, source: str, source_root: Optional[str] = None) -> Adapte
     paths = SourcePaths(roots=[source_root])
     skipped = SkipTally()
     records = []
+    _count_metadata_dynamic_properties(report, skipped)
 
     for component in _walk_components(report.get("components"), skipped):
         properties = component.get("properties")
@@ -368,6 +390,26 @@ def extract(report, *, source: str, source_root: Optional[str] = None) -> Adapte
     outside = paths.producer_caveat()
     caveats = _dedupe_caveats(base_caveats + skipped.caveats() + ([outside] if outside else []))
     return AdapterResult(status=STATUS_COMPLETED, records=records, caveats=caveats)
+
+
+def _count_metadata_dynamic_properties(report: dict, skipped: SkipTally) -> None:
+    """Count the metadata's ``cdx:dynamic:`` properties that become no
+    record, naming them.
+
+    These properties describe the traced run itself rather than any traced
+    object: a dry run denies every side effect and leaves only the
+    attempted-operation counts here, with no component or service beside
+    them. They marked the BOM as a trace, so they are counted rather than
+    dropped, and a dry-run trace never reads as a trace that observed
+    nothing."""
+    pairs = _property_pairs(as_dict(report.get("metadata")), skipped)
+    dynamic = [name for name, _ in pairs if name.startswith(DYNAMIC_PROPERTY_PREFIX)]
+    if dynamic:
+        skipped.add(
+            "metadata cdx:dynamic: properties that describe the traced run rather than "
+            f"any traced object became no record ({', '.join(sorted(set(dynamic)))})",
+            len(dynamic),
+        )
 
 
 def _traced_component_record(
