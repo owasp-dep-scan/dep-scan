@@ -416,3 +416,51 @@ def test_reachability_off_still_writes_an_empty_store(scan_stubs, tmp_path):
     enrichment = _enrichment_stage(result.manifest)
     assert enrichment["status"] == "skipped"
     assert enrichment["analyzers"] == []
+
+
+@pytest.mark.parametrize("left_behind", [("evidence.jsonl", "evidence.index.json"), ("evidence.index.json",)])
+def test_a_scan_that_never_reaches_enrichment_lists_no_earlier_evidence(
+    scan_stubs, tmp_path, left_behind
+):
+    """A BOM directory scan whose BOM has no packages stops before the
+    enrichment stage, so it writes no store. The store and index an earlier
+    scan left in that directory must not be indexed and listed in the
+    manifest as this scan's evidence, and an index left without its store
+    must not survive either."""
+    bom_dir = tmp_path / "empty"
+    bom_dir.mkdir()
+    (bom_dir / "sbom-python.cdx.json").write_text(
+        json.dumps({"bomFormat": "CycloneDX", "specVersion": "1.6", "components": []})
+    )
+    stale = {
+        "schemaVersion": "1",
+        "id": "ev-0000000000000001",
+        "producer": {"name": "atom", "version": "x", "reportSchemaVersion": "unknown"},
+        "kind": "reached-flow",
+        "polarity": "positive",
+        "subject": {"purls": ["pkg:pypi/stale@1.0"]},
+        "source": "old.json",
+        "locations": [],
+        "caveats": [],
+    }
+    if "evidence.jsonl" in left_behind:
+        (bom_dir / "evidence.jsonl").write_text(json.dumps(stale) + "\n")
+    (bom_dir / "evidence.index.json").write_text(
+        json.dumps({"schemaVersion": "1", "byComponent": {"pkg:pypi/stale@1.0": [stale["id"]]}})
+    )
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    stages = {stage["name"]: stage["status"] for stage in result.manifest["stages"]}
+    assert stages["inventory"] == "skipped"
+    assert "enrichment" not in stages
+    listed = {entry["path"] for entry in result.manifest["files"]}
+    assert "evidence.jsonl" not in listed and "evidence.index.json" not in listed
+    assert not (bom_dir / "evidence.jsonl").exists()
+    assert not (bom_dir / "evidence.index.json").exists()

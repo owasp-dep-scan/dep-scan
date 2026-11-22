@@ -170,6 +170,45 @@ def test_a_colliding_truncated_id_gets_a_deterministic_suffix(tmp_path):
     assert again.read_bytes() == path.read_bytes()
 
 
+def test_copies_that_differ_only_in_caveats_merge_their_caveats(tmp_path):
+    """The same record built by two runs, one of which hit a timeout, is one
+    record carrying the timeout: the caveat is never lost to whichever copy
+    the store saw last, and the write is the same whatever the order."""
+    timeout = EvidenceCaveat(kind="timeout", detail="atom was stopped")
+    budget = EvidenceCaveat(kind="budget", detail="two files parsed only partly")
+    plain = _record("flow-1")
+    timed_out = _record("flow-1", caveats=[timeout])
+    both = _record("flow-1", caveats=[budget, timeout])
+    assert plain.id == timed_out.id == both.id
+
+    path = tmp_path / "evidence.jsonl"
+    assert store.write(str(path), [timed_out, plain, both]) == 1
+    (merged,) = store.read(str(path))
+    assert merged.id == plain.id, "a caveat merge never suffixes the id"
+    assert {(c.kind, c.detail) for c in merged.caveats} == {
+        ("timeout", "atom was stopped"),
+        ("budget", "two files parsed only partly"),
+    }
+    again = tmp_path / "again.jsonl"
+    store.write(str(again), [both, plain, timed_out])
+    assert again.read_bytes() == path.read_bytes()
+
+
+def test_a_caveat_merge_keeps_the_collision_rule_for_other_differences(tmp_path):
+    """Records that share an id and differ in more than caveats still keep
+    both, the later one suffixed, with each copy's caveats merged first."""
+    timeout = EvidenceCaveat(kind="timeout", detail="atom was stopped")
+    first = _record("flow-1", attributes={"order": "first"})
+    first_timed_out = _record("flow-1", attributes={"order": "first"}, caveats=[timeout])
+    second = _record("flow-1", attributes={"order": "second"})
+    path = tmp_path / "evidence.jsonl"
+    assert store.write(str(path), [first, second, first_timed_out]) == 2
+    by_order = {record.attributes["order"]: record for record in store.read(str(path))}
+    assert by_order["first"].caveats == [timeout]
+    assert by_order["second"].caveats == []
+    assert {by_order["first"].id, by_order["second"].id} == {first.id, first.id + "-2"}
+
+
 def test_merge_keeps_earlier_records_and_adds_new_ones():
     base = [_record("flow-1")]
     merged = store.merge(base, [base[0], _record("flow-2")])

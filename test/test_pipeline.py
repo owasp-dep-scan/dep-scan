@@ -543,6 +543,84 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
     )
 
 
+def _flow(purl, file_name):
+    """One atom 4 flow object reaching ``purl`` from ``file_name``."""
+    return {
+        "flows": [
+            {"id": 1, "parentFileName": file_name, "lineNumber": 3, "parentMethodName": "main"},
+            {"id": 2, "parentFileName": file_name, "lineNumber": 4, "parentMethodName": "call"},
+        ],
+        "purls": [purl],
+    }
+
+
+def test_a_timed_out_atom_run_keeps_its_caveat_through_a_later_project_type(tmp_path):
+    """A scan of two project types: the java run's atom was stopped by its
+    timeout, the python run's was not. The java slices' records carry the
+    timeout caveat, and the python type's enrichment, which finds the java
+    slices too, must neither rebuild them without the caveat nor replace the
+    caveated copies in the store."""
+    from analysis_lib.evidence import store as evidence_store
+    from depscan.lib.bom import ATOM_TIMEOUT_REASON
+
+    ctx = _ctx(tmp_path, ["--reachability-analyzer", "SemanticReachability", "-t", "java"])
+    reports = Path(ctx.reports_dir)
+    _write_bom(reports / "sbom-java.cdx.json")
+    (reports / "java-reachables.slices.json").write_text(
+        json.dumps([_flow("pkg:maven/a/b@1", "src/main/java/A.java")])
+    )
+    java = pipeline.TypeScan(project_type="java")
+    java.bom_dir = str(reports)
+    java.not_assessed = [ATOM_TIMEOUT_REASON]
+    pipeline.stage_enrichment(ctx, java)
+    (reports / "python-reachables.slices.json").write_text(
+        json.dumps([_flow("pkg:pypi/c@2", "app/main.py")])
+    )
+    python = pipeline.TypeScan(project_type="python")
+    python.bom_dir = str(reports)
+    pipeline.stage_enrichment(ctx, python)
+
+    records = evidence_store.read(str(reports / evidence_store.EVIDENCE_FILE))
+    by_source = {}
+    for record in records:
+        by_source.setdefault(record.source, []).append(record)
+    assert set(by_source) == {"java-reachables.slices.json", "python-reachables.slices.json"}
+    assert len(records) == 2, "each flow is one record, read once"
+    (java_record,) = by_source["java-reachables.slices.json"]
+    assert [(c.kind, c.detail) for c in java_record.caveats] == [
+        ("timeout", ATOM_TIMEOUT_REASON)
+    ], "the java slices keep the timeout caveat of the run that wrote them"
+    (python_record,) = by_source["python-reachables.slices.json"]
+    assert python_record.caveats == [], "the python run was not stopped"
+    # Both types grade on every atom file they found, as one completed result.
+    assert python.adapter_results["atom"].status == "completed"
+    assert {r.source for r in python.adapter_results["atom"].records} == set(by_source)
+    assert set(python.reached_purls) == {"pkg:maven/a/b@1", "pkg:pypi/c@2"}
+
+
+def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
+    """atom completed for this type but none of its records counts as
+    reached, while the engine's map (the whole store) holds a purl another
+    producer reached. The scope must not hand atom that purl: atom observed
+    nothing, so a finding atom covers is not assessed."""
+    from analysis_lib.evidence.adapters import AdapterResult
+    from analysis_lib.findings.exploitability import load_rules
+    from analysis_lib.findings.vdr_convert import reach_axis
+
+    scan = SimpleNamespace(
+        project_type="python",
+        reachability_succeeded=True,
+        reached_purls={"pkg:pypi/requests@2.32.1": 1},
+        adapter_results={"atom": AdapterResult(status="completed")},
+        pkg_list=[{"purl": "pkg:pypi/requests@2.32.1"}],
+        bom_dir=str(tmp_path),
+    )
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs.scope.reached_by == {"atom": set()}
+    assert reach_axis(inputs.scope, "pkg:pypi/requests@2.32.1") == "not_assessed"
+
+
 def test_stage_enrichment_is_a_no_op_with_reachability_off(tmp_path):
     from depscan.lib.scan_directory import EVIDENCE_FILE
 
