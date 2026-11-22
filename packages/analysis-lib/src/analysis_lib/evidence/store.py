@@ -6,12 +6,15 @@ either the previous store or the complete new one, and two writes of the
 same records produce identical bytes.
 
 Exact duplicates collapse: the enrichment stage re-merges and rewrites the
-store once per project type, so the same record can arrive twice. Records
-whose ids survived truncation but whose contents differ do not collapse;
-they keep their identity. The group's members are ordered by their
-canonical JSON, the first keeps the bare id and the ones after it get a
-``-2``, ``-3`` suffix, so a rerun renames the same records the same way and
-nothing is dropped.
+store once per project type, so the same record can arrive twice. Copies
+that differ only in their caveats (one run of a producer hit a timeout or a
+budget the other did not report) become one record carrying every caveat
+of every copy, so no caveat is lost to whichever copy arrived last. Records
+whose ids match but whose other contents differ do not collapse; they keep
+their identity. The group's members are ordered by their canonical JSON,
+the first keeps the bare id and the ones after it get a ``-2``, ``-3``
+suffix, so a rerun renames the same records the same way and nothing is
+dropped.
 
 Reads stream one record at a time: the reachability engine walks the whole
 store once per scan and never needs it in memory at once.
@@ -52,30 +55,61 @@ def canonical_record(record: Evidence) -> str:
 def merge(base: Iterable[Evidence], incoming: Iterable[Evidence]) -> List[Evidence]:
     """The records written so far plus the records of this round.
 
-    Merging only concatenates; :func:`finalize` applies the duplicate and
-    collision rules at write time, so the rules hold for the file no matter
-    how many rounds were merged.
+    Merging only concatenates; :func:`finalize` applies the duplicate,
+    caveat and collision rules at write time, so the rules hold for the file
+    no matter how many rounds were merged.
     """
     return [*base, *incoming]
 
 
+def _canonical_without_caveats(record: Evidence) -> str:
+    data = record.to_dict()
+    data.pop("caveats", None)
+    return json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _fold_caveats(copies: List[Evidence]) -> Evidence:
+    """One record for copies that differ only in caveats.
+
+    The copies are taken in canonical order; the first copy's caveats keep
+    their order and every caveat a later copy adds follows, each once.
+    """
+    copies = sorted(copies, key=canonical_record)
+    caveats = []
+    seen = set()
+    for record in copies:
+        for caveat in record.caveats:
+            key = (caveat.kind, caveat.detail)
+            if key in seen:
+                continue
+            seen.add(key)
+            caveats.append(caveat)
+    if len(caveats) == len(copies[0].caveats):
+        return copies[0]
+    return replace(copies[0], caveats=caveats)
+
+
 def finalize(records: Iterable[Evidence]) -> List[Evidence]:
-    """The records as the store carries them: deduped, collisions suffixed,
-    sorted by id.
+    """The records as the store carries them: deduped, caveats merged,
+    collisions suffixed, sorted by id.
 
     Records with the same id and the same canonical JSON collapse to one.
-    Records with the same id and different content all survive: the group
-    is ordered by canonical JSON, the first member keeps the bare id and
-    each later member takes a ``-2``, ``-3`` suffix. Both rules are
-    deterministic, so a rerun of the same records writes the same file.
+    Records with the same id that differ only in their caveats become one
+    record holding the caveats of all of them. Records with the same id and
+    other differences all survive: the group is ordered by canonical JSON,
+    the first member keeps the bare id and each later member takes a ``-2``,
+    ``-3`` suffix. The rules are deterministic, so a rerun of the same
+    records writes the same file.
     """
-    seen: Dict[str, Dict[str, Evidence]] = {}
+    seen: Dict[str, Dict[str, List[Evidence]]] = {}
     for record in records:
         group = seen.setdefault(record.id, {})
-        group.setdefault(canonical_record(record), record)
+        group.setdefault(_canonical_without_caveats(record), []).append(record)
     final: List[Evidence] = []
     for record_id, group in seen.items():
-        members = sorted(group.values(), key=canonical_record)
+        members = sorted(
+            (_fold_caveats(copies) for copies in group.values()), key=canonical_record
+        )
         final.append(members[0])
         for suffix, record in enumerate(members[1:], start=2):
             final.append(replace(record, id=f"{record_id}-{suffix}"))

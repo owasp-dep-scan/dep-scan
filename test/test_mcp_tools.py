@@ -976,6 +976,7 @@ def test_an_oversized_finding_spills_to_a_file(open_session, make_scan_dir):
     spilled = json.loads(Path(envelope["file"]).read_text(encoding="utf-8"))
     assert spilled == published
 
+
 def _plant_reached_evidence(scan_dir):
     """Overwrite the scan's (empty) evidence store with one reached-flow
     record the explanation can render, the way a scan that ran a reachability
@@ -990,12 +991,20 @@ def _plant_reached_evidence(scan_dir):
         kind="reached-flow",
         discriminator="atom-src-main",
         purls=("pkg:pypi/requests@2.31.0",),
-        path=(
-            EvidencePathNode(file="src/main.rs", line=11, method="main"),
-            EvidencePathNode(file="src/main.rs", line=14, method="main", symbol="query"),
+        # Five distinct rows: the fewest an atom path renders with.
+        path=tuple(
+            EvidencePathNode(file="app/main.py", line=line, method="main", symbol=symbol)
+            for line, symbol in (
+                (11, "request.args"),
+                (12, "query"),
+                (14, "params"),
+                (16, "session"),
+                (18, "requests.get"),
+            )
         ),
     )
     evidence_store.write(str(scan_dir / evidence_store.EVIDENCE_FILE), [record])
+
 
 # --- explain_finding ----------------------------------------------------------------
 
@@ -1022,7 +1031,7 @@ def test_explain_finding_returns_the_finding_and_the_scan_text(open_session, mak
     document = drive(open_session, scenario, (scan_dir.parent,))
     assert document["finding"] == published
     assert document["explanation"].strip()
-    assert "src/main.rs" in document["explanation"]
+    assert "app/main.py" in document["explanation"]
     assert "\x1b" not in document["explanation"]
 
 
@@ -1267,15 +1276,15 @@ def test_diff_scans_refuses_a_directory_that_is_not_a_scan(open_session, make_sc
     assert "Cannot load a scan" in message
 
 
-def test_an_oversized_diff_spills_into_the_new_scan_directory(open_session, tmp_path, make_scan_dir):
+def test_an_oversized_diff_spills_into_the_new_scan_directory(
+    open_session, tmp_path, make_scan_dir
+):
     """A diff whose entries exceed the response budget spills into the
     later scan directory, the one a reader of the diff is moving to, and
     returns the spill envelope, validated against the diff_scans output
     schema."""
     fat_high = dict(VULN_HIGH)
-    fat_high["properties"] = [
-        {"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}
-    ]
+    fat_high["properties"] = [{"name": "depscan:probe", "value": "a" * (TOOL_BUDGET_BYTES + 1000)}]
     fat_critical = dict(VULN_CRITICAL)
     fat_critical["properties"] = [
         {"name": "depscan:probe", "value": "b" * (TOOL_BUDGET_BYTES + 1000)}

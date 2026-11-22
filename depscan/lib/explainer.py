@@ -1,12 +1,24 @@
 """The explanation rendering over the evidence store.
 
 Every producer's records are rendered the same way: the reached modes show
-the positive records that count as reached evidence and the exploit chains
-that put them in context, with the witness path's file and line when the
-producer walked one and the subject purls otherwise; the NonReachables mode
-shows the negative records (dead code, no observed path, sanitizers) plus the
-reached packages that carry no finding. Nothing here knows a report format:
-the adapters already reduced each producer's report to records.
+the positive records that count as reached evidence, as their witness paths'
+files and lines, and the exploit chains that put them in context; the
+NonReachables mode shows the negative records (dead code, no observed path,
+sanitizers) plus the reached packages that carry no finding. Nothing here
+knows a report format: the adapters already reduced each producer's report
+to records.
+
+A record is explained only when it says something a reader can follow. In
+the reached modes a record without purls is left out unless it is an exploit
+chain; a reached record must carry a witness path that renders enough
+distinct rows (:data:`MIN_ATOM_PATH_ROWS`, :data:`MIN_ANALYZER_PATH_ROWS`),
+and a path whose rows were already shown is not shown again. The
+explanations per package set, per path start and per path end (the symbol
+the first and the last witness node name) are capped by
+``max_purls_reachable_explanations``, ``max_source_reachable_explanations``
+and ``max_sink_reachable_explanations``, and each record source by
+``max_reachable_explanations``, so one noisy package or entry point cannot
+fill the section.
 
 The section structure, the headings, the endpoint table and the LLM prompt
 mode are the ones the explanation rendering has always had.
@@ -15,10 +27,12 @@ mode are the ones the explanation rendering has always had.
 import glob
 import os
 from collections import defaultdict
+from typing import List
 
 from custom_json_diff.lib.utils import json_load
 from rich import box
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.table import Table
 from rich.tree import Tree
 
@@ -27,7 +41,10 @@ from analysis_lib.reachability import REACHED_COUNTED_KINDS
 from depscan.lib.config import (
     max_flows_per_prompt,
     max_purl_per_flow,
+    max_purls_reachable_explanations,
     max_reachable_explanations,
+    max_sink_reachable_explanations,
+    max_source_reachable_explanations,
 )
 from depscan.lib.logger import LOG, console
 
@@ -42,6 +59,13 @@ SEVERITY_COLORS = {
 
 #: The negative record kinds the NonReachables mode renders.
 NON_REACHABLE_KINDS = ("dead-code", "no-path", "sanitizer")
+
+#: The fewest distinct rows a witness path must render for its record to be
+#: explained. atom's paths walk every data-flow step, so one that collapses
+#: to fewer rows says nothing a reader can follow; the language analyzers
+#: report a source and a sink, so two rows are an honest flow.
+MIN_ATOM_PATH_ROWS = 5
+MIN_ANALYZER_PATH_ROWS = 2
 
 #: What a record of each kind says, when nothing more specific applies.
 _KIND_DESCRIPTIONS = {
@@ -148,22 +172,41 @@ Below are several data flows deemed safe and non-reachable. Use the provided tip
 Below are several data flows identified by depscan, including reachable ones. Use the tips provided to strengthen your application’s security posture.
             """
         )
-    has_explanation, tips = explain_records(
-        explanation_mode,
-        records,
-        project_type,
-        vdr_result,
-        purl_vuln_map,
-        prompts_file,
-        rsection,
-    )
-    if has_explanation:
-        # The blank line closes the last flow table. The HTML report's parser
-        # only carries a table's packages column into the report once a blank
-        # line follows the table, so the section must not end on the caption.
-        console.print()
-    if has_explanation and tips:
-        console.print(Markdown(tips))
+    # One section per record source, the way each slices file always got its
+    # own: the explanation cap applies per source, and a label names the
+    # source when the store holds more than one with records to explain.
+    by_source = defaultdict(list)
+    for record in records:
+        if _wanted(record, explanation_mode, purl_vuln_map):
+            by_source[record.source].append(record)
+    has_any_explanation = False
+    flags = {"sanitizer": False, "purls": False}
+    purl_grouped_records = defaultdict(list)
+    for source in sorted(by_source):
+        headers = []
+        if not has_any_explanation:
+            headers.append(rsection)
+        if len(by_source) > 1:
+            headers.append(Markdown(f"# Explanations for {source}"))
+        if explain_records(
+            explanation_mode,
+            by_source[source],
+            vdr_result,
+            purl_vuln_map,
+            headers,
+            flags,
+            purl_grouped_records,
+        ):
+            has_any_explanation = True
+    if not has_any_explanation:
+        return
+    # The blank line closes the last flow table. The HTML report's parser
+    # only carries a table's packages column into the report once a blank
+    # line follows the table, so the section must not end on the caption.
+    console.print()
+    console.print(Markdown(_design_tips(explanation_mode, flags)))
+    if purl_grouped_records:
+        save_llm_prompts(purl_grouped_records, purl_vuln_map, project_type, prompts_file)
 
 
 def _track_usage_targets(usage_targets, usages_object):
@@ -279,11 +322,17 @@ def get_vulns_for_purls(purls, purl_vuln_map):
     return current_max_severity, found_vulns
 
 
-def _record_locations_tree(record) -> Tree:
-    """The witness path as a tree of ``file#line    method (symbol)`` rows,
-    or the subject purls as one row when the producer walked no path."""
-    tree = None
-    last_row = None
+def _path_rows(record) -> List[str]:
+    """The rows a record's witness path renders, ``file#line    method
+    (symbol)``, with nothing repeated.
+
+    A node with neither a location nor a name renders nothing. A node on the
+    same file and line as the row before it adds nothing a reader can see,
+    and a row already shown earlier in the path is a loop back, so neither
+    becomes a row.
+    """
+    rows: List[str] = []
+    last_location = None
     for node in record.path or []:
         file_name = getattr(node, "file", None)
         line = getattr(node, "line", None)
@@ -291,25 +340,56 @@ def _record_locations_tree(record) -> Tree:
         symbol = getattr(node, "symbol", None)
         location = ""
         if file_name and not str(file_name).startswith("unknown"):
-            location = f"{file_name}#{line if line else ''}    "
-        label = method or symbol or ""
-        row = f"[gray37]{location}[/gray37]{label}".strip()
-        if not row or row == last_row:
+            location = f"{file_name}#{line if line else ''}"
+        if location and location == last_location:
             continue
-        last_row = row
-        if tree is None:
-            tree = Tree(row)
-        else:
+        label = method or ""
+        if symbol and not symbol.startswith("<") and symbol != method:
+            label = f"{label} ({symbol})" if label else symbol
+        label = escape(label)
+        row = (
+            f"[gray37]{escape(location)}    [/gray37]{label}".strip()
+            if location
+            else label.strip()
+        )
+        if not row or row in rows:
+            continue
+        last_location = location or last_location
+        rows.append(row)
+    return rows
+
+
+def _path_ends(record):
+    """What the first and the last node of a record's witness path name: the
+    symbol the producer recorded there, else the enclosing method. The
+    source and sink caps count explanations by these, so many paths from one
+    request parameter, or into one call, are explained only a few times.
+    ``None`` for a record without a path."""
+
+    def name(node):
+        return getattr(node, "symbol", None) or getattr(node, "method", None) or None
+
+    path = record.path or []
+    if not path:
+        return None, None
+    return name(path[0]), name(path[-1])
+
+
+def _record_locations_tree(record, rows: List[str]) -> Tree:
+    """The witness path rows as a tree, or the record's own summary as one
+    row when it has no path to show."""
+    if rows:
+        tree = Tree(rows[0])
+        for row in rows[1:]:
             tree.add(row)
-    if tree is None:
-        purls = record.subject.purls or []
-        label = _KIND_DESCRIPTIONS.get(record.kind, record.kind)
-        if record.locations:
-            location = record.locations[0]
-            place = f"{location.file}#{location.line if location.line else ''}"
-            label = f"{label} at {place.strip()}"
-        tree = Tree(label if not purls else f"{label}: {len(purls)} package(s)")
-    return tree
+        return tree
+    purls = record.subject.purls or []
+    label = _KIND_DESCRIPTIONS.get(record.kind, record.kind)
+    if record.locations:
+        location = record.locations[0]
+        place = f"{location.file}#{location.line if location.line else ''}"
+        label = f"{label} at {place.strip()}"
+    return Tree(label if not purls else f"{label}: {len(purls)} package(s)")
 
 
 def _record_description(record, vdr_result, purl_vuln_map):
@@ -396,64 +476,111 @@ def _record_comment(record, purl_vuln_map):
     return "\n".join(comments)
 
 
-def explain_records(
-    explanation_mode,
-    records,
-    project_type,
-    vdr_result,
-    purl_vuln_map,
-    prompts_file=None,
-    header_section=None,
-):
-    """Render the records the mode asks for, and return whether anything was
-    rendered together with the design tips that follow it.
+def _wanted(record, explanation_mode, purl_vuln_map) -> bool:
+    """Whether the mode renders records of this kind and polarity at all.
 
     The reached modes render the positive records that count as reached
     evidence and the exploit chains beside them. The NonReachables mode
-    renders the negative records and the reached packages that carry no
-    finding, the packages whose reach is not the reason to worry.
+    renders the negative records and the reached records whose packages
+    carry no finding, the packages whose reach is not the reason to worry.
     """
-    reachable_explanations = 0
-    purls_reachable_explanations = defaultdict(int)
-    has_explanation = False
-    header_shown = False
-    has_sanitizer = False
-    explained_ids = {}
-    purl_grouped_records = defaultdict(list)
     negative_only = explanation_mode in ("NonReachables",)
+    if record.polarity == "negative":
+        return negative_only and record.kind in NON_REACHABLE_KINDS
+    counted = record.kind in REACHED_COUNTED_KINDS
+    if negative_only:
+        return (
+            counted
+            and bool(record.subject.purls)
+            and not any(p in purl_vuln_map for p in record.subject.purls)
+        )
+    return counted or record.kind == "exploit-chain"
+
+
+def _shows_something(record, rows: List[str]) -> bool:
+    """The quality gate of one wanted record: a reached record must name its
+    packages and carry a path that renders enough rows to follow.
+
+    An exploit chain is context for the flows rather than a flow, so it
+    needs neither, and the negative records of the NonReachables mode say
+    what was not found, so they carry no path to judge.
+    """
+    if record.polarity == "negative" or record.kind == "exploit-chain":
+        return True
+    if not record.subject.purls:
+        return False
+    minimum = MIN_ATOM_PATH_ROWS if record.producer.name == "atom" else MIN_ANALYZER_PATH_ROWS
+    return len(rows) >= minimum
+
+
+def explain_records(
+    explanation_mode,
+    records,
+    vdr_result,
+    purl_vuln_map,
+    headers=None,
+    flags=None,
+    purl_grouped_records=None,
+):
+    """Render one source's records the mode wants, and return whether any
+    was rendered.
+
+    ``headers`` are printed before the first table. ``flags`` collects what
+    the design tips depend on (a sanitizer was shown, a record with purls was
+    shown) and ``purl_grouped_records`` the endpoint-reachable records the
+    LLM prompts mode writes, both across the sources of one explanation.
+    Every record passes the quality gate of :func:`_shows_something`, the
+    repeated-path check and the per package set, per path start and per
+    path end caps; at most ``max_reachable_explanations`` records are rendered.
+    """
+    flags = flags if flags is not None else {}
+    purl_grouped_records = purl_grouped_records if purl_grouped_records is not None else {}
+    reachable_explanations = 0
+    by_purls = defaultdict(int)
+    by_source = defaultdict(int)
+    by_sink = defaultdict(int)
+    shown_paths = set()
+    explained_ids = set()
+    headers_shown = False
 
     for record in records:
         if reachable_explanations + 1 > max_reachable_explanations:
             break
-        if record.polarity == "negative":
-            wanted = negative_only and record.kind in NON_REACHABLE_KINDS
-        else:
-            counted = record.kind in REACHED_COUNTED_KINDS
-            if negative_only:
-                wanted = (
-                    counted
-                    and bool(record.subject.purls)
-                    and not any(p in purl_vuln_map for p in record.subject.purls)
-                )
-            else:
-                wanted = counted or record.kind == "exploit-chain"
-        if not wanted:
-            continue
-        if record.kind == "sanitizer":
-            has_sanitizer = True
         # Have we rendered this record already? The store is deduped by id,
         # so this only guards a caller-held list that was not.
-        if explained_ids.get(record.id):
+        if record.id in explained_ids:
             continue
-        explained_ids[record.id] = True
+        rows = _path_rows(record)
+        if not _shows_something(record, rows):
+            continue
+        source_key, sink_key = _path_ends(record)
+        if rows and tuple(rows) in shown_paths:
+            continue
+        if source_key and by_source[source_key] + 1 > max_source_reachable_explanations:
+            continue
+        if sink_key and by_sink[sink_key] + 1 > max_sink_reachable_explanations:
+            continue
+        purls_str = ",".join(sorted(record.subject.purls))
+        if purls_str and by_purls[purls_str] + 1 > max_purls_reachable_explanations:
+            continue
+        explained_ids.add(record.id)
+        if rows:
+            shown_paths.add(tuple(rows))
+        if source_key:
+            by_source[source_key] += 1
+        if sink_key:
+            by_sink[sink_key] += 1
+        if purls_str:
+            by_purls[purls_str] += 1
+            flags["purls"] = True
+        if record.kind == "sanitizer":
+            flags["sanitizer"] = True
         max_severity, vuln_ids = get_vulns_for_purls(record.subject.purls, purl_vuln_map)
         desc = _record_description(record, vdr_result, purl_vuln_map)
         title_style = "bold"
         if max_severity and max_severity in SEVERITY_COLORS:
             title_style = SEVERITY_COLORS[max_severity]
-            desc = (
-                f"[{title_style}][{max_severity} {', '.join(vuln_ids)}][/{title_style}] {desc}"
-            )
+            desc = f"[{title_style}][{max_severity} {', '.join(vuln_ids)}][/{title_style}] {desc}"
         rtable = Table(
             box=box.DOUBLE_EDGE,
             show_lines=True,
@@ -468,18 +595,15 @@ def explain_records(
             border_style=title_style if max_severity else "white",
         )
         rtable.add_column(header="Flow", vertical="top")
-        rtable.add_row(_record_locations_tree(record))
-        if not header_shown and header_section:
-            console.print()
-            console.print(header_section)
-            header_shown = True
+        rtable.add_row(_record_locations_tree(record, rows))
+        if not headers_shown:
+            for header in headers or []:
+                console.print()
+                console.print(header)
+            headers_shown = True
         console.print()
         console.print(rtable)
-        has_explanation = True
         reachable_explanations += 1
-        purls_str = ",".join(sorted(record.subject.purls))
-        if purls_str:
-            purls_reachable_explanations[purls_str] += 1
         if (
             explanation_mode in ("LLMPrompts",)
             and record.kind in REACHED_COUNTED_KINDS
@@ -489,32 +613,33 @@ def explain_records(
             if any(p in endpoint_reached_purls for p in record.subject.purls):
                 for p in record.subject.purls:
                     purl_grouped_records[p].append(record)
+    return reachable_explanations > 0
 
+
+def _design_tips(explanation_mode, flags) -> str:
+    """The design tips that follow the explanations."""
     tips = """## Secure Design Tips"""
-    if negative_only:
+    if explanation_mode in ("NonReachables",):
         tips += """
 - Automate tests (including fuzzing) to verify validation, sanitization, encoding, and encryption.
 - Align the implementation with the original architecture and threat models to ensure security compliance.
 - Extract reusable methods into a shared library for organization-wide use.
 """
-    elif has_explanation:
-        if has_sanitizer:
-            tips += """
+    elif flags.get("sanitizer"):
+        tips += """
 - Review the validation and sanitization methods used in the application.
 - To enhance the security posture, implement a common validation middleware.
 """
-        elif purls_reachable_explanations:
-            tips += """
+    elif flags.get("purls"):
+        tips += """
 - Consider implementing a common validation and sanitization library to reduce the risk of exploitability.
 """
-        else:
-            tips += """
+    else:
+        tips += """
 - Enhance your unit and integration tests to cover the flows listed above.
 - Continuously fuzz the parser and validation functions with diverse payloads.
 """
-    if purl_grouped_records:
-        save_llm_prompts(purl_grouped_records, purl_vuln_map, project_type, prompts_file)
-    return has_explanation, tips
+    return tips
 
 
 def get_comment_symbol(filename):
@@ -578,8 +703,6 @@ def save_llm_prompts(purl_grouped_records, purl_vuln_map, project_type, prompts_
     with open(prompts_file, "w", encoding="utf-8") as f:
         f.write("# LLM Prompts generated by OWASP dep-scan\n\n")
         for purl, records in purl_grouped_records.items():
-            prompt_text = generate_grouped_llm_prompt(
-                purl, records, purl_vuln_map, project_type
-            )
+            prompt_text = generate_grouped_llm_prompt(purl, records, purl_vuln_map, project_type)
             f.write(prompt_text)
             f.write("\n---\n\n")

@@ -218,15 +218,16 @@ class ReachScope:
     language tools each cover one ecosystem (:data:`TOOL_PURL_TYPES`);
     ``analyzer_types`` names the purl types of the other analyzers (atom's
     slice files decide them). ``reached_by`` holds the purls each analyzer
-    reached; when it is empty the single ``reached`` set stands for every
-    analyzer.
+    reached: an analyzer it does not name, or names with an empty set,
+    observed nothing. Only when ``reached_by`` is not given at all does the
+    single ``reached`` set stand for every analyzer.
     """
 
     analyzers: List[str] = field(default_factory=list)
     reached: Set[str] = field(default_factory=set)
     succeeded: bool = False
     analyzer_types: Dict[str, Set[str]] = field(default_factory=dict)
-    reached_by: Dict[str, Set[str]] = field(default_factory=dict)
+    reached_by: Optional[Dict[str, Set[str]]] = None
     _reached_cmp: Optional[Dict[str, Set[str]]] = field(
         default=None, init=False, repr=False, compare=False
     )
@@ -247,7 +248,10 @@ class ReachScope:
         if self._reached_cmp is None:
             self._reached_cmp = {}
         if name not in self._reached_cmp:
-            source = self.reached_by.get(name, set()) if self.reached_by else self.reached
+            if self.reached_by is None:
+                source = self.reached
+            else:
+                source = self.reached_by.get(name) or set()
             self._reached_cmp[name] = {comparable_purl(p) for p in source}
         return self._reached_cmp[name]
 

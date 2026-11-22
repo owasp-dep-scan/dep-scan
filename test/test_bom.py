@@ -251,8 +251,13 @@ def test_export_bom_writes_dates_the_validator_accepts(tmp_path):
         "version": 1,
         "metadata": {"tools": {"components": []}},
         "components": [
-            {"type": "library", "name": "lodash", "version": "4.17.20",
-             "purl": "pkg:npm/lodash@4.17.20", "bom-ref": "pkg:npm/lodash@4.17.20"}
+            {
+                "type": "library",
+                "name": "lodash",
+                "version": "4.17.20",
+                "purl": "pkg:npm/lodash@4.17.20",
+                "bom-ref": "pkg:npm/lodash@4.17.20",
+            }
         ],
     }
     vulnerabilities = [
@@ -477,11 +482,14 @@ def test_a_tool_slice_from_an_earlier_scan_is_removed(tmp_path):
     stale = tmp_path / bom_mod.KOSI_TOOL.slice_file
     stale.write_text("{}")
     # The tool applies but reachability is off: no slice may remain.
-    assert bom_mod.run_kosi_reachability(
-        str(bom_file),
-        str(tmp_path),
-        options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
-    ) is None
+    assert (
+        bom_mod.run_kosi_reachability(
+            str(bom_file),
+            str(tmp_path),
+            options={"project_type": ["kotlin"], "reachability_analyzer": "off"},
+        )
+        is None
+    )
     assert not stale.exists()
 
 
@@ -526,6 +534,30 @@ def test_clear_tool_outputs_removes_the_evidence_files(tmp_path):
     assert not (tmp_path / "go-reachables.slices.json").exists()
 
 
+def test_clear_tool_outputs_removes_the_semantics_reports_cdxgen_persisted(tmp_path):
+    """cdxgen persists a language tool's raw report as
+    ``<prefix>-semantics.slices.json``, and the tool step reads that file
+    before it runs the tool. A source scan of a reused reports directory must
+    not find an earlier run's report there, so the setup cleanup removes it
+    with the other tool outputs, and leaves atom's own slices alone."""
+    from depscan.lib import bom as bom_mod
+
+    for name in (
+        "dotnet-semantics.slices.json",
+        "rust-semantics.slices.json",
+        "python-semantics.slices.json",
+        "python-reachables.slices.json",
+    ):
+        (tmp_path / name).write_text("{}")
+    bom_mod.clear_tool_outputs(str(tmp_path))
+    assert not (tmp_path / "dotnet-semantics.slices.json").exists()
+    assert not (tmp_path / "rust-semantics.slices.json").exists()
+    assert not (tmp_path / "python-semantics.slices.json").exists()
+    assert (tmp_path / "python-reachables.slices.json").exists(), (
+        "atom's slices of the scanned type are cleared by their own step"
+    )
+
+
 def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_path):
     from depscan.lib import bom as bom_mod
 
@@ -534,6 +566,8 @@ def test_a_tool_slice_of_another_type_is_not_removed_by_an_unrelated_tool(tmp_pa
     other = tmp_path / bom_mod.KOSI_TOOL.slice_file
     other.write_text("{}")
     bom_mod.run_golem_reachability(
-        str(bom_file), str(tmp_path), options={"project_type": ["go"], "reachability_analyzer": "off"}
+        str(bom_file),
+        str(tmp_path),
+        options={"project_type": ["go"], "reachability_analyzer": "off"},
     )
     assert other.exists()

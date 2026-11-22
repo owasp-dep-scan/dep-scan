@@ -21,6 +21,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 from datetime import datetime, timezone
@@ -89,6 +90,14 @@ _SLICE_KINDS = ("deps", "usages", "callsites", "data-flow", "reachables", "seman
 #: raw report. Nothing writes them any more; the names stay so a stale file
 #: keeps its true producer, kosi's included.
 _LANGUAGE_REACHABLES = ("rust", "go", "dotnet", "kosi")
+
+#: A converted reachables slice of an earlier dep-scan version, split parts
+#: (``.slices_1.json``, ``.slices-1.json``) included. The other slices of
+#: those prefixes, such as ``dotnet-usages.slices.json`` or the
+#: ``rust-semantics.slices.json`` raw report, are cdxgen's.
+_LANGUAGE_REACHABLES_RE = re.compile(
+    r"^(?:%s)-reachables\.slices(?:[_-]\d+)?\.json$" % "|".join(_LANGUAGE_REACHABLES)
+)
 
 #: Files the rendering stages write, named for their role.
 _REPORT_FILES = {
@@ -312,7 +321,7 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         return entry
     if ".slices" in name and name.endswith(".json"):
         prefix = _parse_slice_project_type(name[: -len(".json")])
-        producer = "dep-scan" if prefix in _LANGUAGE_REACHABLES else "cdxgen"
+        producer = "dep-scan" if _LANGUAGE_REACHABLES_RE.match(name) else "cdxgen"
         if prefix:
             entry.update(role="slices", producer=producer, projectType=prefix)
         else:
@@ -393,9 +402,12 @@ def analyzer_entries(
     the analyzer's adapter found and read a report: the BOM step handed one
     over, or a BOM-directory adapter found and read one, because the
     analysis ran when the data was generated. Anything else is
-    ``not-assessed``: the reason is the adapter's own, and the doctor's
-    capability reason stands in when the adapter gave none, so a tool being
-    installed is never reported as an analysis that ran. The producer-level
+    ``not-assessed``: the reason is the adapter's own whenever an adapter
+    result exists (a BOM-directory scan reads the reports the directory
+    holds, so a damaged report is named as damaged even on a machine without
+    the tool), and the doctor's capability reason stands in only when there
+    is no result or it gave no reason, so a tool being installed is never
+    reported as an analysis that ran. The producer-level
     caveats of a completed result are carried on the entry as ``caveats``.
 
     atom applies to every scan; a language analyzer applies when the scan's
@@ -418,9 +430,9 @@ def analyzer_entries(
                     {"kind": caveat.kind, "detail": caveat.detail} for caveat in result.caveats
                 ]
         else:
-            reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
+            reason = result.reason if result is not None and result.reason else None
             if not reason:
-                reason = result.reason if result is not None and result.reason else None
+                reason = doctor_lib.capability_unavailable_reason(capability, tools_by_name, data)
             if not reason:
                 reason = f"no {name} report was produced or given for this scan"
             entry.update(

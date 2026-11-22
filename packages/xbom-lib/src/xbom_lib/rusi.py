@@ -45,8 +45,9 @@ from xbom_lib.process import build_command, find_executable, tool_env
 # Constants -- mirrored in depscan/lib/config.py for the CLI layer.
 # ---------------------------------------------------------------------------
 
-# Minimum rusi version known to produce the schema this converter targets.
-# The converter is defensive, so this is a soft gate (warn, don't crash).
+# Minimum rusi version known to produce the report schema dep-scan's rusi
+# evidence adapter reads. The adapter gates the report's own schema version,
+# so this is a soft gate (warn, don't crash).
 RUSI_MIN_VERSION = "2.5.2"
 
 # env override for the binary path
@@ -250,12 +251,13 @@ def run_rusi(
     if not result.success or not result.report_path:
         return result
 
-    # schema/version sanity (soft): warn but keep the file so the converter
-    # can still try.
+    # schema/version sanity (soft): warn but keep the file, so the evidence
+    # adapter can still read what it understands and record the rest as
+    # caveats.
     report_ok, schema_msg = _peek_report(result.report_path)
     if logger and not report_ok:
         logger.warning(
-            "rusi report at %s did not validate: %s. Conversion may be incomplete.",
+            "rusi report at %s did not validate: %s. The evidence it yields may be incomplete.",
             result.report_path,
             schema_msg,
         )

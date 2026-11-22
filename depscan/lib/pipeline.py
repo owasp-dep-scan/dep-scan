@@ -38,7 +38,7 @@ import socket
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple
 
 if TYPE_CHECKING:
     from analysis_lib.evidence.adapters import AdapterResult
@@ -227,10 +227,21 @@ class ScanContext:
     #: scans graded, for the findings document; a pair whose reach was
     #: assessed keeps the assessment over a later unassessed one.
     exploitability: Dict = field(default_factory=dict)
-    #: The evidence records this scan's adapters built, keyed by record id,
-    #: so a scan of several project types rewrites the store once per type
+    #: The evidence records this scan's adapters built, in arrival order, so
+    #: a scan of several project types rewrites the store once per type
     #: holding every type's records without reading the previous file back.
-    evidence_records: Dict = field(default_factory=dict)
+    #: A record that arrives again is kept again; the store's write rules
+    #: fold the copies (and merge their caveats) at write time.
+    evidence_records: List = field(default_factory=list)
+    #: The Python object ids of the records already in ``evidence_records``,
+    #: so a result shared by several types is added once.
+    evidence_record_objects: Set[int] = field(default_factory=set)
+    #: atom's adapter results, one per group of atom output files read
+    #: together, keyed by the group's sorted resolved paths. A file is read
+    #: once per scan, by the first project type whose enrichment finds it,
+    #: with that type's run markers (an atom timeout) as caveats; later types
+    #: reuse the group's records instead of reading the file again.
+    atom_results: Dict[Tuple[str, ...], "AdapterResult"] = field(default_factory=dict)
     #: The rule table this scan grades with, loaded once before matching.
     grading_rules: Optional[Any] = None
     all_pkg_group_rows: Dict = field(default_factory=dict)
@@ -664,6 +675,7 @@ def stage_setup(ctx):
         # the reports directory; files an earlier run left there would read
         # as this scan's reachability and exposure evidence.
         clear_tool_outputs(reports_dir)
+    _clear_evidence_store(reports_dir)
     # Are we running with a config file
     ctx.config_file_mode = args.config and os.path.exists(args.config)
     ctx.depscan_options = {**vars(args), "src_dir": src_dir, "reports_dir": reports_dir}
@@ -694,6 +706,32 @@ def stage_setup(ctx):
     except ValueError as e:
         raise ScanStageError(str(e)) from e
     _start_scan_directory(ctx)
+
+
+def _clear_evidence_store(reports_dir) -> None:
+    """Remove the evidence store and its index an earlier scan left in the
+    reports directory.
+
+    The store is written from this scan's adapter results alone, by the
+    enrichment stage of each project type. A scan where no type reaches that
+    stage (every type skipped inventory, say) writes no store, and the
+    files of an earlier scan must not then be indexed and listed in the
+    manifest as this scan's evidence. Every scan mode clears them, the BOM
+    directory modes included, because the reports directory of those is
+    often the BOM directory an earlier scan wrote into.
+    """
+    if not reports_dir:
+        return
+    for name in (scan_directory.EVIDENCE_FILE, scan_directory.EVIDENCE_INDEX_FILE):
+        path = os.path.join(str(reports_dir), name)
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            continue
+        except OSError as e:
+            raise ScanStageError(
+                f"The evidence file {path} an earlier scan left could not be removed: {e}"
+            ) from e
 
 
 def _start_scan_directory(ctx):
@@ -1429,9 +1467,7 @@ def stage_enrichment(ctx, scan):
         # atom's slices are its own native output; its adapter runs here, over
         # the slices and OpenAPI files the scan holds. The language tools'
         # results are already on the type scan from the BOM step.
-        atom_result = _atom_adapter_result(ctx, scan, reachability_options)
-        if atom_result is not None:
-            scan.adapter_results["atom"] = atom_result
+        scan.adapter_results["atom"] = _atom_adapter_result(ctx, scan, reachability_options)
         _write_evidence_store(ctx, evidence_file, scan.adapter_results)
     else:
         # Reachability off still writes an (empty) store, so the layout is
@@ -1453,38 +1489,79 @@ def stage_enrichment(ctx, scan):
 
 
 def _atom_adapter_result(ctx, scan, options):
-    """atom's adapter result for this project type, or None when atom had
-    nothing at all to read.
+    """atom's adapter result for this project type.
 
     atom's slices are its native output: every reachables slices file the
     language tools do not claim is atom's, as are the usages and callsites
-    slices. The producer version comes from the doctor's atom status, and the
-    run markers the BOM step recorded (an atom run a timeout stopped) travel
-    into the records as timeout caveats.
+    slices and the OpenAPI documents. The producer version comes from the
+    doctor's atom status. When the scan holds no atom output at all the
+    result is not assessed, with the doctor's reason when the capability is
+    unavailable on this machine and the adapter's otherwise.
+
+    Each file is read once per scan. The files no earlier project type read
+    are read together, with this type's run markers (an atom run a timeout
+    stopped) as timeout caveats, so the caveats stay on the records of the
+    files the timed-out run wrote. The result for this type combines every
+    group of files it covers: completed when every group completed, else the
+    first group's not-assessed reason.
     """
+    from analysis_lib.evidence.adapters import AdapterResult, not_assessed
     from analysis_lib.evidence.adapters import atom as atom_adapter
 
     stems = tuple(
-        file_name.split(".slices", 1)[0]
-        for file_name in reachability_slice_files().values()
+        file_name.split(".slices", 1)[0] for file_name in reachability_slice_files().values()
     )
-    reachables, usages, callsites = [], [], []
+    roles: Dict[str, str] = {}
     for path in options.slices_files or []:
         name = os.path.basename(path)
         if "reachables.slices" in name and not name.startswith(stems):
-            reachables.append(path)
+            roles[os.path.realpath(path)] = "reachables"
         elif "usages.slices" in name:
-            usages.append(path)
+            roles[os.path.realpath(path)] = "usages"
         elif "callsites.slices" in name:
-            callsites.append(path)
-    result = atom_adapter.extract(
-        reachables,
-        producer_version=_doctor_analyzer_version("atom", ctx),
-        usages_files=usages,
-        callsites_files=callsites,
-        openapi_files=options.openapi_spec_files,
-        timeout_reasons=[reason for reason in scan.not_assessed if reason],
-    )
+            roles[os.path.realpath(path)] = "callsites"
+    for path in options.openapi_spec_files or []:
+        roles.setdefault(os.path.realpath(path), "openapi")
+    read_before = {path for group in ctx.atom_results for path in group}
+    fresh = tuple(sorted(path for path in roles if path not in read_before))
+    if fresh:
+
+        def of_role(role):
+            return [path for path in fresh if roles[path] == role]
+
+        ctx.atom_results[fresh] = atom_adapter.extract(
+            of_role("reachables"),
+            producer_version=_doctor_analyzer_version("atom", ctx),
+            usages_files=of_role("usages"),
+            callsites_files=of_role("callsites"),
+            openapi_files=of_role("openapi"),
+            timeout_reasons=[reason for reason in scan.not_assessed if reason],
+        )
+    groups = [result for group, result in ctx.atom_results.items() if roles.keys() & set(group)]
+    if not groups:
+        # No atom output at all: the doctor's reason, when it explains why
+        # (cdxgen missing on this machine), says more than the adapter's.
+        reason = None
+        if ctx.doctor_report is not None:
+            reason = doctor_lib.capability_unavailable_reason(
+                doctor_lib.ANALYZER_CAPABILITIES["atom"],
+                ctx.doctor_report.tools_by_name(),
+                ctx.doctor_report.data,
+            )
+        result = not_assessed(reason) if reason else atom_adapter.extract([])
+    else:
+        refused = next((result for result in groups if result.status != "completed"), None)
+        if refused is not None:
+            result = refused
+        else:
+            caveats = []
+            for group in groups:
+                caveats.extend(c for c in group.caveats if c not in caveats)
+            result = AdapterResult(
+                status=groups[0].status,
+                records=[record for group in groups for record in group.records],
+                caveats=caveats,
+            )
     if result.status != "completed":
         LOG.warning("atom reachability was not assessed: %s", result.reason)
     return result
@@ -1504,12 +1581,14 @@ def _write_evidence_store(ctx, evidence_file: str, adapter_results: Dict) -> Non
 
     The records accumulate on the scan context, so a scan of several project
     types rewrites the file once per type holding every type's records, and
-    the store applies the duplicate and ordering rules at write time. The
-    previous file is never read back: a scan of a reused directory replaces
-    what an earlier scan left, so a report this scan did not read (because it
-    was deleted, damaged, or moved) stops counting instead of surviving in
-    the store. A result that was not assessed contributes no records: its
-    reason is what the analyzer entries carry instead.
+    the store applies its write rules: an exact copy collapses, copies that
+    differ only in caveats become one record carrying every caveat, and
+    records that share an id but differ otherwise each keep a suffixed id.
+    The previous file is never read back: a scan of a reused directory
+    replaces what an earlier scan left, so a report this scan did not read
+    (because it was deleted, damaged, or moved) stops counting instead of
+    surviving in the store. A result that was not assessed contributes no
+    records: its reason is what the analyzer entries carry instead.
     """
     incoming = []
     for name in ("atom", "rusi", "golem", "kosi", "dosai"):
@@ -1517,8 +1596,11 @@ def _write_evidence_store(ctx, evidence_file: str, adapter_results: Dict) -> Non
         if result is not None:
             incoming.extend(result.records)
     for record in incoming:
-        ctx.evidence_records[record.id] = record
-    written = evidence_store.write(evidence_file, ctx.evidence_records.values())
+        if id(record) in ctx.evidence_record_objects:
+            continue
+        ctx.evidence_record_objects.add(id(record))
+        ctx.evidence_records.append(record)
+    written = evidence_store.write(evidence_file, ctx.evidence_records)
     LOG.debug(
         "The evidence store %s holds %d records (%d from this project type).",
         evidence_file,
@@ -1565,9 +1647,12 @@ def _exploitability_inputs(ctx, scan):
 
     The analyzers named are those whose adapter completed for this type, and
     the reached sets and purl types come from the same adapter results'
-    records. When reachability was off, failed or produced no purls, the
-    scope says so and every finding of the type records ``reach`` as not
-    assessed. The records also carry the exposure and witness evidence, so
+    records. An analyzer that completed without a reached-counted record
+    gets an empty reached set, so it observed nothing; the engine's reached
+    map, which counts the whole store, never stands in for it. When
+    reachability was off, failed or produced no purls, the scope says so and
+    every finding of the type records ``reach`` as not assessed. The
+    records also carry the exposure and witness evidence, so
     nothing but the records this scan produced is graded on: a report left
     by an earlier run is never read.
     """
@@ -1575,9 +1660,7 @@ def _exploitability_inputs(ctx, scan):
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
 
     results = scan.adapter_results or {}
-    analyzers = [
-        name for name, result in results.items() if result.status == "completed"
-    ]
+    analyzers = [name for name, result in results.items() if result.status == "completed"]
     records = []
     for name in ("atom", "rusi", "golem", "kosi", "dosai"):
         result = results.get(name)
@@ -1589,7 +1672,9 @@ def _exploitability_inputs(ctx, scan):
         reached=set((scan.reached_purls or {}).keys()),
         succeeded=scan.reachability_succeeded,
         analyzer_types={"atom": by_analyzer.get("atom", {}).get("types", set())},
-        reached_by={name: entry["purls"] for name, entry in by_analyzer.items()},
+        reached_by={
+            name: set(by_analyzer.get(name, {}).get("purls", set())) for name in analyzers
+        },
     )
     return ExploitabilityInputs(
         rules=ctx.grading_rules,

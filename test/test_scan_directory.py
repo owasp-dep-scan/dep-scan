@@ -9,9 +9,11 @@ with (or without) those tools would say.
 
 The checked-in fixture under ``test/data/scan-directory`` was written by
 api.scan with a stubbed doctor report (cdxgen present, the language tools
-and their toolchains missing); the input path was then made relative and
-the home directory replaced. Its manifest is hand-checked field by field in
-the compatibility tests.
+and their toolchains missing), over the BOM and a one-flow atom reachables
+slice beside it, so its evidence store, index and finding carry a reached
+record; the input path was then made relative and the sample config keeps
+generic paths in place of the generating machine's. Its manifest is
+hand-checked field by field in the compatibility tests.
 """
 
 import dataclasses
@@ -310,9 +312,7 @@ def test_fingerprints_are_stable_across_runs(scan_stubs, tmp_path):
     assert first.findings == second.findings
 
 
-def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(
-    scan_stubs, tmp_path
-):
+def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(scan_stubs, tmp_path):
     """The grade the scan computed reaches the findings document and the VDR
     file as the same assessment: axes, grade, rule and sources in the
     findings, depscan:exploitability: properties in the VDR."""
@@ -334,9 +334,7 @@ def test_the_scan_grades_exploitability_and_the_vdr_carries_the_properties(
     # The BOM component was read for presence, but no analyzer reached it.
     assert exploitability["sources"] == {"presence": ["vdb", "cdxgen"]}
     vdr = json.loads((Path(result.reports_dir) / "given.vdr.json").read_text())
-    properties = {
-        prop["name"]: prop["value"] for prop in vdr["vulnerabilities"][0]["properties"]
-    }
+    properties = {prop["name"]: prop["value"] for prop in vdr["vulnerabilities"][0]["properties"]}
     assert properties["depscan:exploitability:grade"] == "moderate"
     assert properties["depscan:exploitability:rule"] == "assessed"
     assert properties["depscan:exploitability:axis:presence"] == "likely"
@@ -349,7 +347,7 @@ def test_an_override_rule_table_reaches_the_grading(scan_stubs, tmp_path):
     bom = _write_bom(tmp_path / "given.cdx.json")
     rules = tmp_path / "rules.yaml"
     rules.write_text(
-        'rules:\n  - id: org-standard\n    match:\n      presence: [likely]\n    grade: low\n',
+        "rules:\n  - id: org-standard\n    match:\n      presence: [likely]\n    grade: low\n",
         encoding="utf-8",
     )
     result = api.scan(
@@ -484,12 +482,11 @@ def test_fixture_is_a_valid_scan_directory():
     assert enrichment["status"] == "completed"
     assert enrichment["capabilities"] == ["reachability"]
     analyzers = {entry["name"]: entry for entry in enrichment["analyzers"]}
-    # A BOM-only scan reads no slices, so no analyzer contributed.
+    # atom's reachables slice beside the BOM is the one report the scan read.
     assert analyzers["atom"] == {
         "name": "atom",
         "capability": "reachability",
-        "status": "not-assessed",
-        "reason": "no atom report was given; the adapter has nothing to read",
+        "status": "completed",
     }
     assert analyzers["rusi"]["status"] == "not-assessed"
     assert analyzers["rusi"]["capability"] == "reachability:rust"
@@ -516,7 +513,10 @@ def test_fixture_is_a_valid_scan_directory():
         "django-app.vdr.json",
         "evidence.jsonl",
         "evidence.index.json",
+        "python-reachables.slices.json",
     }
+    assert digests["python-reachables.slices.json"]["role"] == "slices"
+    assert digests["python-reachables.slices.json"]["producer"] == "cdxgen"
     assert digests["evidence.jsonl"]["role"] == "evidence"
     assert digests["evidence.index.json"]["role"] == "evidence"
     assert digests["evidence.jsonl"]["producer"] == "dep-scan"
@@ -533,7 +533,28 @@ def test_fixture_is_a_valid_scan_directory():
     findings = json.loads((FIXTURE_DIR / "depscan.findings.json").read_text())
     assert findings["schemaVersion"] == scan_directory.FINDINGS_SCHEMA_VERSION
     assert len(findings["findings"]) == 1
-    validate("finding", findings["findings"][0])
+    finding = findings["findings"][0]
+    validate("finding", finding)
+    # The store holds atom's record of the flow to requests, the index joins
+    # the finding to it, and the finding names it as the witness of its reach.
+    records = [
+        json.loads(line)
+        for line in (FIXTURE_DIR / "evidence.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert len(records) == 1
+    (record,) = records
+    validate("evidence", record)
+    assert record["producer"]["name"] == "atom"
+    assert record["kind"] == "reached-flow"
+    assert record["subject"]["purls"] == ["pkg:pypi/requests@2.32.1"]
+    assert record["source"] == "python-reachables.slices.json"
+    assert len(record["path"]) == 5
+    index = json.loads((FIXTURE_DIR / "evidence.index.json").read_text())
+    assert index["byComponent"] == {"pkg:pypi/requests@2.32.1": [record["id"]]}
+    assert index["byFinding"] == {finding["id"]: [record["id"]]}
+    assert finding["exploitability"]["axes"]["reach"] == "likely"
+    assert finding["exploitability"]["sources"]["reach"] == ["atom"]
+    assert finding["exploitability"]["witness"] == record["id"]
     vdr = json.loads((FIXTURE_DIR / "django-app.vdr.json").read_text())
     assert vdr["bomFormat"] == "CycloneDX"
     assert len(vdr["vulnerabilities"]) == 1
@@ -682,6 +703,38 @@ def test_a_missing_analyzer_is_not_assessed_with_the_doctor_reason(
         assert analyzers[name]["status"] == "completed", f"{name}: {analyzers[name]}"
 
 
+def test_a_damaged_report_is_named_even_without_the_tool(scan_stubs, fake_tools, tmp_path):
+    """A BOM directory scan reads the reports the directory holds whether or
+    not the tool is installed. When dosai is missing on this machine but the
+    directory holds a dosai report of a schema major the adapter refuses, the
+    entry carries the adapter's reason for that report, not the doctor's
+    reason that dosai is missing."""
+    fake_tools["remove"]("dosai")
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    _write_bom(bom_dir / "sbom-python.cdx.json")
+    _placed, source = RAW_REPORTS["dosai"]
+    report = json.loads(source.read_text(encoding="utf-8"))
+    report.setdefault("Metadata", {})["SchemaVersion"] = "99.0.0"
+    for half in ("methods", "dataflows"):
+        if isinstance(report.get(half), dict) and isinstance(report[half].get("Metadata"), dict):
+            report[half]["Metadata"]["SchemaVersion"] = "99.0.0"
+    (bom_dir / "dotnet-semantics.slices.json").write_text(json.dumps(report))
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(tmp_path / "reports"),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    dosai = _enrichment_analyzers(result.manifest)["dosai"]
+    assert dosai["status"] == "not-assessed"
+    assert "99" in dosai["reason"], dosai["reason"]
+    assert "dosai was not found" not in dosai["reason"]
+
+
 def test_an_installed_analyzer_without_a_report_is_not_reported_as_completed(
     scan_stubs, fake_tools, tmp_path
 ):
@@ -768,9 +821,7 @@ def test_a_requested_risk_audit_records_what_it_could_audit(
     The requested audit that had nothing to read is recorded as not
     assessed with its reason, never as "not requested".
     """
-    monkeypatch.setattr(
-        pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], [])
-    )
+    monkeypatch.setattr(pipeline, "get_pkg_list", lambda f: ([{"purl": purl, "name": "pkg"}], []))
     monkeypatch.setattr(pipeline, "risk_audit", lambda *a: {})
     bom = _write_bom(tmp_path / "given.cdx.json")
     reports = tmp_path / "reports"
@@ -1116,6 +1167,12 @@ def test_classify_file_roles():
         "bom.json": {"role": "bom", "producer": "user"},
         "python-reachables.slices.json": {"role": "slices", "producer": "cdxgen"},
         "go-reachables.slices.json": {"role": "slices", "producer": "dep-scan"},
+        "dotnet-reachables.slices_1.json": {"role": "slices", "producer": "dep-scan"},
+        "kosi-reachables.slices.json": {"role": "slices", "producer": "dep-scan"},
+        "rust-semantics.slices.json": {"role": "slices", "producer": "cdxgen"},
+        "dotnet-semantics.slices.json": {"role": "slices", "producer": "cdxgen"},
+        "dotnet-usages.slices.json": {"role": "slices", "producer": "cdxgen"},
+        "go-callsites.slices.json": {"role": "slices", "producer": "cdxgen"},
         "python-openapi.json": {"projectType": "python"},
         "report.csaf.json": {"role": "csaf"},
         "license-npm.json": {"role": "report"},
@@ -1190,9 +1247,9 @@ def test_analyzer_entries_follow_the_adapter_results_and_the_doctor(fake_tools, 
     assert by_name["golem"]["capability"] == "reachability:go"
     assert "golem was not found" in by_name["golem"]["reason"], "the doctor reason stands in"
     assert by_name["dosai"]["status"] == "not-assessed"
-    assert by_name["dosai"]["reason"] == (
-        "the report schema version 4.0.0 is not supported"
-    ), "the adapter's own reason is kept when it gives one"
+    assert by_name["dosai"]["reason"] == ("the report schema version 4.0.0 is not supported"), (
+        "the adapter's own reason is kept when it gives one"
+    )
     python_only = scan_directory.analyzer_entries(report, ["python"], results)
     assert [entry["name"] for entry in python_only] == ["atom"]
 
@@ -1241,7 +1298,9 @@ class _FakeAdapter:
         return isinstance(report, dict) and "flows" in report
 
     @staticmethod
-    def extract(report, *, source, producer_version="", bom_components=None, extra_components=None):
+    def extract(
+        report, *, source, producer_version="", bom_components=None, extra_components=None
+    ):
         from analysis_lib.evidence import EvidenceCaveat, EvidenceProducer
         from analysis_lib.evidence.adapters import (
             STATUS_COMPLETED,

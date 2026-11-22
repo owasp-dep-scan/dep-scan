@@ -403,9 +403,13 @@ max_request_failures = get_int_from_env("max_request_failures", 5)
 # Universal scan
 UNIVERSAL_SCAN_TYPE = "universal"
 
+# How many records the explanation renders per record source (each slices
+# file or raw report the evidence store's records came from).
 max_reachable_explanations = get_int_from_env("max_reachable_explanations", 20)
 
-# How many explanations for a given combination of purls
+# How many explanations one combination of package purls, one path start and
+# one path end (the symbol the first and the last witness node name) may each
+# get, so one noisy package or entry point cannot fill the section.
 max_purls_reachable_explanations = get_int_from_env("max_purls_reachable_explanations", 3)
 max_source_reachable_explanations = get_int_from_env("max_source_reachable_explanations", 2)
 max_sink_reachable_explanations = get_int_from_env("max_sink_reachable_explanations", 2)
