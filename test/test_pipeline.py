@@ -827,6 +827,7 @@ def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypat
 
     monkeypatch.setattr(reachability_module, "_iter_json_list", refuse_to_read)
     inputs = pipeline._exploitability_inputs(ctx, scan)
+    assert inputs is not None and inputs.scope is not None
     assert inputs.scope.analyzers == ["atom"]
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
 

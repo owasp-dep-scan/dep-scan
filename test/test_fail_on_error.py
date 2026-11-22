@@ -195,7 +195,7 @@ def test_dosai_corrupt_report_degrades_by_default(tmp_path, monkeypatch, caplog)
     bom, options = _corrupt_report_case(tmp_path, monkeypatch)
     with caplog.at_level("WARNING"):
         result = run_dosai_reachability(bom, str(tmp_path), options=options)
-    assert result.status == "completed"
+    assert result is not None and result.status == "completed"
     assert any(
         "methods" in r.getMessage() and "incomplete" in r.getMessage() for r in caplog.records
     )
@@ -222,7 +222,7 @@ def test_dosai_missing_dataflows_warns(tmp_path, monkeypatch, caplog):
     }
     with caplog.at_level("WARNING"):
         result = run_dosai_reachability(bom, str(tmp_path), options=options)
-    assert result.status == "completed"
+    assert result is not None and result.status == "completed"
     assert any(
         "dataflows" in r.getMessage() and "incomplete" in r.getMessage() for r in caplog.records
     )

@@ -122,7 +122,8 @@ def test_explain_renders_entry_points_and_chains_for_dosai(tmp_path, monkeypatch
     assert entry_points, "the recording carries entry points"
     with_route = [r for r in entry_points if (r.attributes or {}).get("route")]
     if with_route:
-        assert str(with_route[0].attributes["route"]) in text, "the endpoint renders"
+        route = (with_route[0].attributes or {}).get("route")
+        assert route is not None and str(route) in text, "the endpoint renders"
     chains = [r for r in records if r.kind == "exploit-chain"]
     assert chains, "the recording carries exploit chains"
     assert "exploit chain" in text.lower()

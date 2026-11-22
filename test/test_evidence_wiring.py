@@ -123,6 +123,7 @@ def scan_stubs(monkeypatch):
     class StubResult:
         success = True
         prioritized_pkg_vuln_trees = {}
+        exploitability = None
 
         def __init__(self, pkg_vulnerabilities):
             self.pkg_vulnerabilities = pkg_vulnerabilities
@@ -216,6 +217,7 @@ def test_a_bom_dir_scan_writes_the_evidence_store_and_lists_it(scan_stubs, tmp_p
     index_document = json.loads(index.read_text())
     assert index_document["schemaVersion"] == "1"
     manifest = result.manifest
+    assert manifest is not None
     digests = {entry["path"]: entry for entry in manifest["files"]}
     assert digests["evidence.jsonl"]["role"] == "evidence"
     assert digests["evidence.index.json"]["role"] == "evidence"
