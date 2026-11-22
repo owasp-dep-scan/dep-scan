@@ -189,6 +189,9 @@ def test_records_validate_against_the_evidence_schema_and_are_byte_stable():
         assert record.schema_version == "1"
         assert record.producer.name == "blint"
         assert record.producer.version == "4.0.1"
+        # the reports name no schema version of their own; the gated tool
+        # version is the producer version, never a report schema version
+        assert record.producer.report_schema_version == "unknown"
         validate("depscan-evidence", record.to_dict())
 
 
@@ -212,6 +215,7 @@ def test_newer_minor_version_is_accepted_with_a_schema_minor_caveat():
     for record in result.records:
         assert "schema-minor" in _caveat_kinds(record.caveats)
         assert record.producer.version == "4.1.0"
+        assert record.producer.report_schema_version == "unknown"
 
 
 def test_missing_version_is_accepted_with_a_schema_unknown_caveat():
@@ -221,6 +225,7 @@ def test_missing_version_is_accepted_with_a_schema_unknown_caveat():
     for record in result.records:
         assert "schema-unknown" in _caveat_kinds(record.caveats)
         assert record.producer.version == "unknown"
+        assert record.producer.report_schema_version == "unknown"
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +371,11 @@ def test_windows_style_binary_path_never_reaches_a_location_or_id():
     assert result.status == STATUS_COMPLETED
     (record,) = result.records
     assert record.locations == []
+    # the basename of a path left out keeps the record usable without
+    # carrying the absolute path anywhere
+    assert record.attributes["fileName"] == "server.exe"
+    assert "exe_name" not in record.attributes
+    assert "C:" not in json.dumps(record.to_dict())
     assert "location-outside-root" in _caveat_kinds(record.caveats)
     assert "location-outside-root" in _caveat_kinds(result.caveats)
     # the id is the one the same entry with no path fields gives, so the

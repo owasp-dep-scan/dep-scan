@@ -200,3 +200,28 @@ def test_findings_from_blint_records_reads_only_blint_negative_presence_records(
     check = next(r for r in records if r.polarity == "negative")
     no_rule = dataclasses.replace(check, attributes={"title": "no rule id"})
     assert findings_from_blint_records([no_rule]) == []
+
+
+def test_outside_root_binaries_stay_separate_findings_by_basename():
+    """Two same-rule findings on binaries outside the scan root must not
+    merge onto one location-less finding: the record keeps the basename and
+    the finding uses it, the same fallback the document reader applies."""
+    document = _recording("findings.json")
+    under = document["findings"][0]
+    under["filename"] = under["exe_name"] = "/scans/demo/" + under["filename"]
+    outside = document["findings"][1:]
+    outside[0]["filename"] = outside[0]["exe_name"] = "/elsewhere/agent.elf"
+    outside[1]["filename"] = outside[1]["exe_name"] = "/other/root/scanner.elf"
+    records = _records(document, source_root="/scans/demo")
+    location_less = [r for r in records if r.polarity == "negative" and not r.locations]
+    assert {r.attributes.get("fileName") for r in location_less} == {"agent.elf", "scanner.elf"}
+    assert "/elsewhere" not in json.dumps([r.to_dict() for r in records])
+    assert "/other/root" not in json.dumps([r.to_dict() for r in records])
+    from_records = findings_from_blint_records(records)
+    from_document = findings_from_blint(document, producer_version="4.0.1", scan_root="/scans/demo")
+    assert len(from_records) == 3
+    assert len({f.id for f in from_records}) == 3
+    assert [f.id for f in from_records] == [f.id for f in from_document]
+    assert [(f.locations or [])[0].binary for f in from_records] == [
+        (f.locations or [])[0].binary for f in from_document
+    ] == ["corpus/fortified-libc-demo.elf", "agent.elf", "scanner.elf"]
