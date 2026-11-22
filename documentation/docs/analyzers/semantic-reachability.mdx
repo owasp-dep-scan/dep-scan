@@ -42,7 +42,7 @@ For multiple images, such as a docker-compose setup, build the images and genera
 
 ## Resources and runtime
 
-Semantic analysis, including computing the atom slices that feed all three tiers, is resource-intensive. For larger codebases, allocate over 64GB of memory and expect runtimes of 15 minutes or more. The cost is dominated by slicing, which happens once during BOM generation; the semantic analyzer itself consumes the resulting slices plus the extra BOMs and OpenAPI inputs. Sample semantic analysis reports, including the BOM and slices dataset for real projects, are available in the [AppThreat Hugging Face repository](https://huggingface.co/datasets/AppThreat/ukaina/tree/main), which is useful for sizing your own runs.
+Semantic analysis, including computing the atom slices that feed all three tiers, is resource-intensive. For larger codebases, allocate over 64GB of memory and expect runtimes of 15 minutes or more. The cost is dominated by slicing, which happens once during BOM generation; the semantic analyzer itself consumes the resulting evidence records plus the extra BOMs and OpenAPI inputs. Sample semantic analysis reports, including the BOM and slices dataset for real projects, are available in the [AppThreat Hugging Face repository](https://huggingface.co/datasets/AppThreat/ukaina/tree/main), which is useful for sizing your own runs.
 
 ## Explanation modes
 

@@ -10,7 +10,7 @@ After this chapter you will be able to run dep-scan reachability on a Go project
 
 ## What golem is and when to use it
 
-[golem (Go Source Inspector)](https://github.com/cdxgen/cdxgen-plugins-bin) is the native slicer dep-scan uses for Go. It is shipped prebuilt via cdxgen-plugins-bin and emits a call graph, interprocedural source-to-sink data-flow slices, API endpoints, and symbol-usage evidence with purl attribution. dep-scan converts that report into its shared, purl-keyed reachability pipeline, so a vulnerable module whose functions are actually called (for example `pgx.Connect` in a SQL-injection CVE) is marked Reachable, while a module that is merely present in the BOM but never called is not. Reachability is on by default for Go once the slices are present, so for most projects you scan with the research profile and read the Reachable insights.
+[golem (Go Source Inspector)](https://github.com/cdxgen/cdxgen-plugins-bin) is the native analyzer dep-scan uses for Go. It is shipped prebuilt via cdxgen-plugins-bin and emits a call graph, interprocedural source-to-sink data-flow slices, API endpoints, and symbol-usage evidence with purl attribution. dep-scan's golem adapter reads that report into the evidence store so the shared, purl-keyed reachability engine counts from records, so a vulnerable module whose functions are actually called (for example `pgx.Connect` in a SQL-injection CVE) is marked Reachable, while a module that is merely present in the BOM but never called is not. Reachability is on by default for Go once the analyzer report is present, so for most projects you scan with the research profile and read the Reachable insights.
 
 ## Prerequisites
 
@@ -28,11 +28,11 @@ Unlike the rusi and dosai paths, dep-scan invokes golem directly when a Go proje
 The Go data path is shorter than the cdxgen-mediated Rust and .NET paths, because dep-scan drives golem itself.
 
 ```text
-  dep-scan ──runs (--include-all-flows)──▶ golem ──▶ report
+  dep-scan ──runs (--include-all-flows)──▶ golem ──▶ report (analysis/golem/golem.json)
                                                         │
-                                                 converted to
+                                                      read by
                                                         ▼
-                              go-reachables.slices.json ──▶ reached_purls
+                              golem adapter ──▶ evidence.jsonl ──▶ reached_purls
        (golem needs `go` on PATH; --go-analyzer-network offline sets GOPROXY=off)
 ```
 
@@ -64,33 +64,30 @@ Reachability is on by default (`--reachability-analyzer FrameworkReachability`).
 
 ## Analysis walkthrough
 
-Consider the `real-cve-app` source. Its `main` imports `github.com/satori/go.uuid` and calls `uuid.NewV4()`, so the satori module is on a real call path. golem emits a call-graph edge and, where applicable, a data-flow slice that carries the versioned purl `pkg:golang/github.com/satori/go.uuid@v1.2.0`, which the converter reconciles onto the BOM component. That purl lands in `reached_purls`, so any advisory affecting `satori/go.uuid@v1.2.0` is tagged Reachable and `depscan:prioritized`. The gorilla/mux module, by contrast, is imported with a blank import (`_ "github.com/gorilla/mux"`) and never called, so it does not earn a reachable flow on call grounds; its treatment depends on whether the blank import itself is enough to satisfy your triage policy, which is a useful conversation to have with your team.
+Consider the `real-cve-app` source. Its `main` imports `github.com/satori/go.uuid` and calls `uuid.NewV4()`, so the satori module is on a real call path. golem emits a call-graph edge and, where applicable, a data-flow slice, and the adapter's reconciler maps it onto the BOM's versioned `pkg:golang/github.com/satori/go.uuid@v1.2.0`. That purl lands in `reached_purls`, so any advisory affecting `satori/go.uuid@v1.2.0` is tagged Reachable and `depscan:prioritized`. The gorilla/mux module, by contrast, is imported with a blank import (`_ "github.com/gorilla/mux"`) and never called, so it does not earn a reachable flow on call grounds; its treatment depends on whether the blank import itself is enough to satisfy your triage policy, which is a useful conversation to have with your team.
 
-A representative slice (drawn from the committed `test/data/go-reachables.slices.json` fixture, trimmed for readability) shows the shape dep-scan consumes, including an endpoint and a data-flow into `pgx.Connect`:
+A representative record (from the committed golem 4.3.1 recording of that fixture, trimmed for readability; the real record in `evidence.jsonl` is one compact line) shows the shape the engine consumes:
 
 ```json
 {
-  "flows": [
-    {
-      "code": "main.main",
-      "parentFileName": "main.go",
-      "tags": "call-graph, go, call-graph"
-    },
-    {
-      "code": "pgx.Connect",
-      "parentFileName": "main.go",
-      "lineNumber": 25,
-      "isExternal": true,
-      "tags": "pkg:golang/github.com/jackc/pgx/v4@v4.18.1, call-graph, go, call-graph"
-    }
+  "id": "ev-8bb201f00ced957c",
+  "producer": { "name": "golem", "version": "4.3.1", "reportSchemaVersion": "https://cdxgen.github.io/cdxgen-plugins-bin/golem/schema/v6" },
+  "kind": "reached-flow",
+  "polarity": "positive",
+  "subject": { "purls": ["pkg:golang/github.com/satori/go.uuid@v1.2.0"] },
+  "locations": [{ "file": "vendor/github.com/satori/go.uuid/sql.go", "line": 37, "method": "(*github.com/satori/go.uuid.UUID).Scan" }],
+  "path": [
+    { "method": "(*github.com/satori/go.uuid.NullUUID).Scan", "symbol": "(*github.com/satori/go.uuid.NullUUID).Scan" },
+    { "file": "vendor/github.com/satori/go.uuid/sql.go", "line": 37, "method": "(*github.com/satori/go.uuid.UUID).Scan", "symbol": "(*github.com/satori/go.uuid.UUID).Scan" }
   ],
-  "purls": ["pkg:golang/github.com/jackc/pgx/v4@v4.18.1"]
+  "attributes": { "reachableFromRoots": false, "rootIds": [], "rootLabels": [], "servicePurls": [] },
+  "source": "analysis/golem/golem.json"
 }
 ```
 
-The versioned purl in both the `tags` string and the `purls` array is what the reconciler matches against the BOM component. Without that version, the flow would be evidence of a call but not evidence that the *affected* version is the one installed.
+The versioned purl in the subject is what the reconciler matched against the BOM component. Without that version, the record would be evidence of a call but not evidence that the *affected* version is the one installed.
 
-The contrast with `unreachable-app` is precise. That fixture declares `github.com/example/vuln-lib` through a `replace` directive but its `handleHealth` handler only writes "ok" and never calls `vulnlib.ProcessQuery`. golem produces no call-graph edge and no data-flow slice touching `vuln-lib`, so the converter emits no flow carrying its purl, `reached_purls` stays empty for that module, and the finding never earns the Reachable insight. The module is present in the BOM and would appear in the full Vulnerability Disclosure Report, but it carries `depscan:prioritized=false`, which is the triage signal to deprioritize it.
+The contrast with `unreachable-app` is precise. That fixture declares `github.com/example/vuln-lib` through a `replace` directive but its `handleHealth` handler only writes "ok" and never calls `vulnlib.ProcessQuery`. golem produces no call-graph edge and no data-flow slice touching `vuln-lib`, so the adapter builds no record carrying its purl, `reached_purls` stays empty for that module, and the finding never earns the Reachable insight. The module is present in the BOM and would appear in the full Vulnerability Disclosure Report, but it carries `depscan:prioritized=false`, which is the triage signal to deprioritize it.
 
 ## Safety and network behavior
 
@@ -100,7 +97,7 @@ Package loading also compiles the cgo packages it finds, which means the C compi
 
 ## Reading the artifacts
 
-Three files in the reports directory tell the story. The `go-reachables.slices.json` holds the converted slices; check here first if no module is Reachable, because an empty or purl-less file explains the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached module becomes `known_affected` while a module that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
+Three files in the reports directory tell the story. The `evidence.jsonl` at the top holds the records the adapter built, and `analysis/golem/golem.json` carries the raw golem report they came from; check here first if no module is Reachable, because records without purls explain the silence. The `<base>.vdr.json` carries the `depscan:prioritized` property and the `depscan:insights` text ("Reachable", "Endpoint-Reachable") per vulnerability; filter the `vulnerabilities` array on those properties to reconstruct the prioritized set, as described in the [VDR guide](../output/vdr-guide). When you generate a VEX document with `--csaf`, a reached module becomes `known_affected` while a module that was not observed on a reached path stays `under_investigation`, as covered in the [CSAF VEX guide](../output/vex-csaf-guide).
 
 ## Troubleshooting
 
@@ -108,4 +105,4 @@ If golem reports that it cannot load packages, the usual cause is a missing Go t
 
 ## Summary
 
-golem gives Go the same reachable-versus-present semantics every other language enjoys in dep-scan, through a converter that reconciles native call-graph, endpoint, and data-flow slices onto the BOM's versioned purls. The `real-cve-app` fixture shows a real historically vulnerable module (`satori/go.uuid`) marked Reachable because `uuid.NewV4()` is called, while `unreachable-app` shows a module that is merely declared and therefore never reached. Keep `GOFLAGS=-mod=readonly` for untrusted repos, reach for `--go-analyzer-network offline` when the cache supports it, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters [Rust reachability](rust-reachability) and [.NET reachability](dotnet-reachability) cover the other native slicers, and the [Framework reachability](../analyzers/framework-reachability) chapter explains the engine these slicers feed.
+golem gives Go the same reachable-versus-present semantics every other language enjoys in dep-scan, through an adapter that reconciles native call-graph, endpoint, and data-flow slices onto the BOM's versioned purls. The `real-cve-app` fixture shows a real historically vulnerable module (`satori/go.uuid`) marked Reachable because `uuid.NewV4()` is called, while `unreachable-app` shows a module that is merely declared and therefore never reached. Keep `GOFLAGS=-mod=readonly` for untrusted repos, reach for `--go-analyzer-network offline` when the cache supports it, and read the prioritized set from the VDR or the CSAF status from the VEX. The neighboring chapters [Rust reachability](rust-reachability) and [.NET reachability](dotnet-reachability) cover the other native slicers, and the [Framework reachability](../analyzers/framework-reachability) chapter explains the engine these slicers feed.
