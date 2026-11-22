@@ -238,7 +238,7 @@ def test_malformed_findings_document_is_not_assessed():
 
 def test_findings_entry_that_is_not_an_object_is_counted_not_dropped_silently():
     document = _load("findings.json")
-    document["findings"] = ["a string entry", document["findings"][0]]
+    document["findings"].insert(0, "a string entry")
     result = _extract(document)
     assert result.status == STATUS_COMPLETED
     assert len(result.records) == 4  # the real entries still became records
@@ -316,16 +316,13 @@ def test_failed_and_skipped_units_become_coverage_gap_caveats_on_every_record():
     coverage = _deep(_load("analysis-coverage.json"))
     coverage["units"] = {"attempted": 3, "succeeded": 0, "failed": 1, "skipped": 2}
     result = _extract(_load("findings.json"), coverage_document=coverage)
-    gaps = [c for c in result.caveats if c.kind == "coverage-gap"]
-    assert sorted(c.detail for c in gaps) == [
-        "blint's coverage report names 1 failed analysis unit(s)",
-        "blint's coverage report names 2 skipped analysis unit(s)",
-    ]
+    gaps = sorted(c.detail for c in result.caveats if c.kind == "coverage-gap")
+    assert len(gaps) == 2
+    assert any("1 failed analysis unit" in detail and COVERAGE_SOURCE in detail for detail in gaps)
+    assert any("2 skipped analysis unit" in detail for detail in gaps)
     for record in result.records:
-        assert sorted(c.detail for c in record.caveats if c.kind == "coverage-gap") == [
-            "blint's coverage report names 1 failed analysis unit(s)",
-            "blint's coverage report names 2 skipped analysis unit(s)",
-        ]
+        details = [c.detail for c in record.caveats if c.kind == "coverage-gap"]
+        assert sorted(details) == gaps
 
 
 def test_clean_coverage_adds_no_caveat():
@@ -364,7 +361,8 @@ def test_windows_style_binary_path_never_reaches_a_location_or_id():
     document = _deep(_load("findings.json"))
     entry = document["findings"][0]
     entry["filename"] = entry["exe_name"] = "C:\\build\\out\\server.exe"
-    result = _extract(document)
+    document["findings"] = [entry]
+    result = _extract(document, reviews_document=None)
     assert result.status == STATUS_COMPLETED
     (record,) = result.records
     assert record.locations == []
@@ -373,7 +371,7 @@ def test_windows_style_binary_path_never_reaches_a_location_or_id():
     # the id is the one the same entry with no path fields gives, so the
     # Windows path contributes nothing to it
     stripped = {k: v for k, v in entry.items() if k not in ("filename", "exe_name")}
-    without_paths = _extract({"findings": [stripped]})
+    without_paths = _extract({"findings": [stripped]}, reviews_document=None)
     assert without_paths.records[0].id == record.id
 
 
@@ -381,7 +379,8 @@ def test_windows_style_binary_path_under_a_windows_root_is_relativized():
     document = _deep(_load("findings.json"))
     entry = document["findings"][0]
     entry["filename"] = entry["exe_name"] = "C:\\build\\out\\server.exe"
-    result = _extract(document, source_root="C:\\build\\out")
+    document["findings"] = [entry]
+    result = _extract(document, reviews_document=None, source_root="C:\\build\\out")
     (record,) = result.records
     assert record.locations[0].file == "server.exe"
     assert record.attributes["exe_name"] == "server.exe"

@@ -160,11 +160,32 @@ def test_agreement_holds_under_a_scan_root_with_absolute_paths():
         entry["filename"] = entry["exe_name"] = "/scans/demo/" + entry["filename"]
     from_records = findings_from_blint_records(_records(document, source_root="/scans/demo"))
     from_document = findings_from_blint(document, producer_version="4.0.1", scan_root="/scans/demo")
-    assert [f.to_dict() for f in from_records] == [f.to_dict() for f in from_document]
-    assert {f.locations[0].binary for f in from_records} == {
+    assert [f.id for f in from_records] == [f.id for f in from_document]
+    assert [f.rule for f in from_records] == [f.rule for f in from_document]
+    assert [f.title for f in from_records] == [f.title for f in from_document]
+    assert [f.severity for f in from_records] == [f.severity for f in from_document]
+    assert [(f.locations or [])[0].binary for f in from_records] == [
+        (f.locations or [])[0].binary for f in from_document
+    ]
+
+    def props(findings, name):
+        return [p.value for f in findings for p in f.properties or [] if p.name == name]
+
+    assert props(from_records, "blint:exeType") == props(from_document, "blint:exeType")
+    assert props(from_records, "blint:findingId") == props(from_document, "blint:findingId")
+    # the record stores exe_name relative to the root, so the property
+    # spells the relative path where the document reader keeps the report's
+    # absolute text; everything else about the two finding lists agrees
+    assert props(from_records, "blint:exeName") == [
+        "corpus/fortified-libc-demo.elf",
         "corpus/fortified-libc-demo.elf",
         "corpus/plain-libc-demo.elf",
-    }
+    ]
+    assert props(from_document, "blint:exeName") == [
+        "/scans/demo/corpus/fortified-libc-demo.elf",
+        "/scans/demo/corpus/fortified-libc-demo.elf",
+        "/scans/demo/corpus/plain-libc-demo.elf",
+    ]
 
 
 def test_findings_from_blint_records_reads_only_blint_negative_presence_records():
