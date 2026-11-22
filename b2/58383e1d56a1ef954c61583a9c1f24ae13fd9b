@@ -1,0 +1,21 @@
+contrib/repotests/validate.py
+  s_7318da1b9edd46::t_b778ba110968b4 126-131,134,139-140,142-152,156-192,199-201,228-229,231-235,237,260-261,263,265
+test/test_repotests_validator.py
+  s_7318da1b9edd46::t_d2896074884894 184-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b258383e1d56a1ef954c61583a9c1f24ae13fd9b",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
