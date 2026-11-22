@@ -1690,6 +1690,11 @@ def stage_render_explain(ctx, scan):
             scan.vdr_result,
             args.explanation_mode,
             ctx.depscan_options["llm_prompt_file"],
+            # The enrichment stage writes the store at the top of the reports
+            # directory, which is not the BOM directory a --bom-dir scan was
+            # given; name it so the explanation reads the store this scan
+            # wrote.
+            evidence_file=os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE),
         )
     else:
         LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")

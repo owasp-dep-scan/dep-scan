@@ -8,7 +8,8 @@ description: 'Proves or disproves that a vulnerable package or function is reach
 Use this skill when the question is "is this finding reachable here", after
 a scan exists. dep-scan's own reachability enrichment runs through
 `depscan scan --profile ci` or `--checks reachability`, and its outputs
-come first: the `*-reachables.slices.json` files next to the BOM, the raw
+come first: the scan's evidence store (`evidence.jsonl`, whose records
+carry each producer's own flows, witness paths and caveats), the raw
 reports under `analysis/<tool>/`, and each finding's
 `exploitability.axes.reach`. The analyzers below are run directly only for
 what a scan does not record, and each step says what that is.
@@ -36,9 +37,9 @@ examples use `/tmp/reach`), with absolute paths.
 ## Go: golem with an explicit root set
 
 When dep-scan runs golem itself it leaves golem's own default root set in
-place (recorded in the report's `callGraph.roots`) and copies each
-call-graph node's `reachableFromRoots`, `minDepth` and `rootIds` into
-`go-reachables.slices.json` (the raw report is
+place (recorded in the report's `callGraph.roots`); the golem adapter
+carries each call-graph node's `reachableFromRoots`, `minDepth` and
+`rootIds` into its evidence records (the raw report is
 `analysis/golem/golem.json`). It does not ask for witness paths to a
 vulnerable symbol, because golem runs before the advisories are matched,
 so this step runs golem directly with the symbol named and, when the
@@ -93,8 +94,8 @@ and do not present an empty graph as "nothing is reachable".
 ## Kotlin and JVM: kosi
 
 For Kotlin and Android scans dep-scan runs kosi's `syntax`
-backend itself (it reads source only and starts no build) and writes
-`kosi-reachables.slices.json`, with the raw report in
+backend itself (it reads source only and starts no build) and reads the
+report into evidence records, with the raw report in
 `analysis/kosi/kosi.json`. The syntax tier has library usages joined to
 explicit imports (a wildcard import or an import that matches more than
 one artifact attributes nothing), and no call graph or data flow, so this
@@ -142,11 +143,11 @@ user's consent in the conversation, stated at the step.
 ## .NET: dosai
 
 dep-scan keeps dosai's exploit chains, attack-surface tiers, sanitized
-flows and service trust zones: `analysis/dosai/dotnet-reachability.facts.json`
-carries `exploit_chains`, `attack_surface`, `sanitized_flows`,
-`sanitizers_nearby` and `services`, and each slice in
-`dotnet-reachables.slices.json` carries a `dosai` entry with its
-`exposure`, `exploitChains` and `sanitizersNearby`. dosai emits no slice
+flows and service trust zones as evidence records: `exploit-chain`
+records carry the chains with their entry point, exposure and hop count,
+`entry-point` records carry the attack-surface tier and `trustZone` of
+each service, and `sanitizer` records carry the sanitized flows and
+`sanitizersNearby` (the raw report is under `analysis/dosai/`). dosai emits no slice
 for a trace it sanitized, so a nearby sanitizer is context, not a reason
 to discount the slice; quote its category (an HTML encoder does not
 sanitize a SQL or command sink). Read those first; run dosai directly

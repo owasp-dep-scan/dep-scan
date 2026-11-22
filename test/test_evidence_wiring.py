@@ -229,6 +229,42 @@ def test_a_bom_dir_scan_writes_the_evidence_store_and_lists_it(scan_stubs, tmp_p
     assert enrichment["outputs"] == [{"file": "evidence.jsonl", "status": "completed"}]
 
 
+def test_a_stale_converted_slice_in_a_bom_dir_is_never_atom_evidence(scan_stubs, tmp_path):
+    """A BOM directory that an earlier dep-scan version scanned may still
+    carry a converted language-tool slice (rust-, go- or dotnet-). Those
+    files are no longer written or read, and atom's adapter must not adopt
+    one as atom evidence: the stems filter excludes them, so the store holds
+    no record sourced from the stale file and its purls stay unreached."""
+    bom_dir = tmp_path / "dejacode"
+    bom_dir.mkdir()
+    for entry in (FIXTURES / "dejacode").iterdir():
+        if entry.is_file():
+            shutil.copy2(entry, bom_dir / entry.name)
+    (bom_dir / "rust-reachables.slices.json").write_text(
+        json.dumps(
+            [{"flows": [{"tags": "pkg:cargo/stale@9.9.9, rust"}], "purls": ["pkg:cargo/stale@9.9.9"]}]
+        ),
+        encoding="utf-8",
+    )
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            reachability_analyzer="SemanticReachability",
+            no_banner=True,
+        )
+    )
+    records = [
+        json.loads(line)
+        for line in (Path(result.reports_dir) / "evidence.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert records, "the atom adapter produced records for the atom-only project"
+    assert not any(r["source"] == "rust-reachables.slices.json" for r in records), (
+        "a stale converted slice must not be read as atom's own output"
+    )
+    assert not any("pkg:cargo/stale@9.9.9" in r["subject"]["purls"] for r in records)
+
+
 def test_the_same_scan_twice_writes_byte_identical_stores(scan_stubs, tmp_path):
     """Two scans of the same BOM directory produce the same evidence.jsonl
     and evidence.index.json byte for byte: the record ids are hashes of what

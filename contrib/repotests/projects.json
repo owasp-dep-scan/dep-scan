@@ -168,7 +168,7 @@
       "cdxgenArgs": ["--profile", "research"],
       "minReachablePurls": 2,
       "mustReach": ["Microsoft.Extensions.Logging"],
-      "notes": "atom writes no reachables slice for C#; generate.sh adds the dosai dotnet-reachables slice, which needs DEPSCAN_PYTHON and a .NET runtime dosai runs on."
+      "notes": "atom writes no reachables slice for C#; generate.sh adds the raw dosai reports under analysis/dosai/, which needs DEPSCAN_PYTHON and a .NET runtime dosai runs on."
     },
     {
       "name": "dejacode",

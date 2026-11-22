@@ -18,7 +18,10 @@ reports/
 ├── sbom-python.cdx.json           the BOM documents, named as before
 ├── depscan-universal.vdr.json     the VDR files, named as before
 ├── python-reachables.slices.json  the slice files cdxgen writes: atom's own
-│                                  slices and the semantics reports
+│                                  slices and the semantics reports (a
+│                                  <language>-reachables file an earlier
+│                                  dep-scan wrote may linger in a reused
+│                                  directory)
 ├── analysis/
 │   ├── rusi/rusi.json             raw reports of the tools dep-scan runs itself
 │   ├── golem/golem.json
@@ -43,7 +46,7 @@ The manifest's `files` array carries one entry for every file at the top of the 
 | `vdr` | `*.vdr.json`, including `depscan-universal.vdr.json` | dep-scan |
 | `findings` | `depscan.findings.json` | dep-scan |
 | `evidence` | `evidence.jsonl`, `evidence.index.json` | dep-scan |
-| `slices` | `*.slices.json`, the slice files cdxgen writes: atom's own slices and the semantics reports | cdxgen |
+| `slices` | `*.slices.json`, the slice files cdxgen writes: atom's own slices and the semantics reports | cdxgen, or dep-scan for the converted reachables slices its earlier versions wrote |
 | `raw-report` | everything under `analysis/<producer>/` | the reachability plugin named by the directory |
 | `csaf` | `*.csaf.json` | dep-scan |
 | `report` | `depscan.html`, `depscan.txt`, `depscan-prompts.md`, the license and risk reports, `depscan.toml.sample` and the template report | dep-scan |

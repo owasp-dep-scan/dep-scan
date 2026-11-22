@@ -93,8 +93,6 @@ def explain(
         of the BOM directory when not given
     """
     pattern_methods = {}
-    has_any_explanation = False
-    slices_files = []
     openapi_spec_files = None
 
     purl_vuln_map = defaultdict(list)

@@ -123,6 +123,30 @@ def cdxgen_tool_versions(bom):
     ]
 
 
+DOSAI_RAW_REPORTS = (
+    "analysis/dosai/dotnet-dataflows.json",
+    "dotnet-semantics.slices.json",
+    "csharp-data-flow.slices.json",
+)
+
+
+def _dosai_raw_report(data_path):
+    """The parsed dosai raw report a published project directory carries, or
+    None. The names are the ones the dosai adapter looks for in a BOM
+    directory."""
+    for name in DOSAI_RAW_REPORTS:
+        candidate = data_path / name
+        if not candidate.is_file():
+            continue
+        try:
+            report = json.loads(candidate.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        if isinstance(report, dict) and report.get("Metadata", {}).get("Tool") == "Dosai":
+            return report
+    return None
+
+
 def check_staleness(data_dir, entry):
     """Decisions on staleness: current cdxgen, atom 4 shape, non-empty flows.
 
@@ -154,10 +178,20 @@ def check_staleness(data_dir, entry):
             )
 
     slice_files = sorted(data_path.glob(REACHABLES_GLOB))
-    if not slice_files:
-        failures.append(f"no reachables slice files matching {REACHABLES_GLOB} in {data_dir}")
     flows = 0
     flows_with_purl = 0
+    dosai_report = _dosai_raw_report(data_path)
+    if not slice_files and dosai_report is None:
+        failures.append(f"no reachables slice files matching {REACHABLES_GLOB} in {data_dir}")
+    if not slice_files and dosai_report is not None:
+        # A .NET project's published data carries dosai's raw reports under
+        # analysis/dosai/ instead of a converted reachables slice; the
+        # packages' purls live in the report's PackageReachability entries.
+        for entry in dosai_report.get("PackageReachability") or []:
+            flows += 1
+            purl = entry.get("Purl")
+            if isinstance(purl, str) and purl.startswith("pkg:"):
+                flows_with_purl += 1
     for slice_file in slice_files:
         try:
             text = slice_file.read_text(encoding="utf-8")

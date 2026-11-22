@@ -85,7 +85,9 @@ _PATH_OPTIONS = (
 #: The suffixes of the cdxgen slice files, for role and project type parsing.
 _SLICE_KINDS = ("deps", "usages", "callsites", "data-flow", "reachables", "semantics")
 
-#: The reachables slices dep-scan itself writes from a plugin's raw report.
+#: The reachables slices dep-scan's earlier versions wrote from a plugin's
+#: raw report. Nothing writes them any more; the names stay so a stale file
+#: keeps its true producer.
 _LANGUAGE_REACHABLES = ("rust", "go", "dotnet")
 
 #: Files the rendering stages write, named for their role.
