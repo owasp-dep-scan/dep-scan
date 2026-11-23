@@ -1,0 +1,22 @@
+depscan/api.py
+  h_0926447d100ad2 333,478-491
+depscan/lib/pipeline.py
+  h_0926447d100ad2 196-205,283-287,1347-1370,1872,1879-1887,1903,2241-2250,2291-2307,2311-2316,2318-2319,2321,2328,2330-2333,2335-2343,2347-2370
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  h_0926447d100ad2 314-320,329,375-377
+packages/analysis-lib/tests/test_vdr_convert.py
+  h_0926447d100ad2 289,291-295,299,302-303,320-326
+test/test_evidence_wiring.py
+  h_0926447d100ad2 135-142,144-145,149,154,1066,1069-1074,1088,1096-1101,1104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "287e33b253bb964b1a3d5955dc637896ffb94e0b",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
