@@ -1,0 +1,19 @@
+agent-plugin/skills/depscan-triage/SKILL.md
+  s_486b0f791e3b4d::t_48ce7ad4bfdf36 99-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ef6c7d04b6e72bef791e9a2102113a3fba03f9bd",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
