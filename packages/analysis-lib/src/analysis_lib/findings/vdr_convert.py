@@ -314,8 +314,8 @@ def finding_from_vdr(
     ``usage_not_assessed`` is why the package's usage evidence was not
     read (the BOM it came from was not assessed). When the presence axis
     is graded and not ``proven``, the finding's coverage carries that
-    reason, so a ``likely`` presence never reads as usage measured and not
-    found. The finding itself stays assessed: the database match ran.
+    reason, so a ``likely`` or ``unlikely`` presence never reads as usage
+    measured and not found. The finding itself stays assessed: the database match ran.
 
     :raises ValueError: when ``component_ref`` is not a valid package URL.
     """

@@ -92,9 +92,9 @@ def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[F
     The finding's components are the record's subject purls, the binary's
     reconciled component. Its coverage carries the record's coverage-gap
     and record-skipped caveats (units blint failed or skipped, report
-    entries that became no record) as reasons and reads ``not_assessed``
-    when there is one, so a review that did not cover the whole target
-    never reads as complete.
+    entries that became no record) as reasons, so a review that did not
+    cover the whole target never reads as complete; the state stays
+    ``assessed``, because blint ran.
 
     A record whose attributes carry no rule id is skipped, and the same
     rule on the same binary collapses onto one finding.

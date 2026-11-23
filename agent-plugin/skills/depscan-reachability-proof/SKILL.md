@@ -216,7 +216,9 @@ not concrete traces). Sanitizers, authentication and binary hardening are
 barriers, not refutations. A summary states, per finding: presence (`likely`
 when the package is in the BOM, `proven` on a cdxgen occurrence or callstack
 record in `evidence.jsonl` or a reached value; BOM directory and lifecycle
-scans grade presence without those records), reach (the witness, which
+scans grade presence without those records, except for a BOM file passed
+with `--bom` from outside the aggregated directory, whose records still
+prove presence), reach (the witness, which
 names the id of the evidence record that carries the path, or not
 assessed), exposure
 (the entry point and its tier), and barrier (sanitizers or authentication
