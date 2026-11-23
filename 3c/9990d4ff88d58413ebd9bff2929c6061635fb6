@@ -1,0 +1,22 @@
+depscan/lib/pipeline.py
+  h_0926447d100ad2 1559-1560
+documentation/docs/output/scan-directory.mdx
+  h_0926447d100ad2 62-65
+packages/analysis-lib/src/analysis_lib/output.py
+  h_0926447d100ad2 1047,1050,1071-1077,1079,1083,1085,1122-1132,1134-1137,1139,1141
+packages/analysis-lib/tests/test_output.py
+  h_0926447d100ad2 357-428
+test/test_pipeline.py
+  h_0926447d100ad2 391,427,468
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3c9990d4ff88d58413ebd9bff2929c6061635fb6",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
