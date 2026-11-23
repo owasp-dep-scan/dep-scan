@@ -256,6 +256,20 @@ Without `--checks` and without `--profile` the set is `vulnerabilities,reachabil
 
 The binary check on a source scan never replaces the scan's own inventory: the cdxgen BOM keeps every source component and its vulnerability findings, and blint's review reports land under `analysis/blint/` with each review result in `depscan.findings.json` as a `binary-hardening` finding. A review that fails is recorded as a failed `binary-review` stage on the manifest, with blint's reason.
 
+## Excluding trees from a scan
+
+A source scan reads the whole tree it is given, test fixtures and build material included, so a tree such as `test/` can add components and findings that are not part of the product. Name the trees to leave out with `--exclude` patterns in `--cdxgen-args` (or the `CDXGEN_ARGS` environment variable):
+
+```bash
+depscan scan /absolute/path/to/project --cdxgen-args "--exclude 'test/**' --exclude 'ci/**'" -o /absolute/path/to/reports
+```
+
+The patterns follow cdxgen's rules. They are globs anchored at the scanned path, never at the working directory, and `*` matches one path segment. `test/**` leaves out the `test` directory at the scanned root only; a leading `**/` is needed only to reach same-named directories nested below the root. Quote each pattern so the shell does not expand it, and give one `--exclude` per tree.
+
+dep-scan reads the same patterns once and applies them to every walk it starts itself, so a tree that is excluded for cdxgen is excluded everywhere: the targets of blint's binary review and of the post-build BOM, and the targets of the golem, rusi, kosi and dosai runs dep-scan makes when cdxgen left no report. Where a tool accepts an exclusion argument dep-scan passes it; where it does not, dep-scan filters the target list it hands the tool. No separate option exists for this. Excluding `test/**` from a scan of a tree that keeps `.nupkg` fixtures there removes their NuGet components, the vulnerability findings on them and the binary-hardening findings blint reported for them.
+
+A source scan of a tree that holds Dockerfiles or compose files also reads every image those files name. cdxgen pulls the images the local daemon lacks and extracts their layers, whatever the scan type, so a tree whose container files are build or CI material turns a scan into a long image-pulling run whose result depends on the daemon's state. Look for container files before scanning a large tree, and exclude the folders that hold CI or build images (for example `--exclude 'ci/**' --exclude 'contrib/**'`) when they are not product content. Container files under an excluded tree add no image pulls. A scan that outruns cdxgen's time budget fails with a reason naming the budget; `CDXGEN_TIMEOUT_MS` raises it (see [the environment variables](env-var)).
+
 ## The profiles
 
 `--profile` names one of five scan profiles. Each sets a check set and analyzer settings; an explicitly passed option always wins over the profile, so `--profile quick --reachability-analyzer FrameworkReachability` keeps framework reachability on.

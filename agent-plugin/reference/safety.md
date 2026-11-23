@@ -126,7 +126,9 @@ entry, give the purl without the credential, or the account name and host.
   product content, exclude their trees with
   `--cdxgen-args "--exclude 'ci/**'"` (one `--exclude` per tree, the
   pattern anchored at the scanned root, a leading `**/` only for same-named
-  nested directories), and say which trees were excluded. cdxgen stops at
+  nested directories), and say which trees were excluded. dep-scan applies
+  the same patterns to the blint review and to the golem, rusi, kosi and
+  dosai runs it starts itself, so no second setting is needed. cdxgen stops at
   its time budget (`CDXGEN_TIMEOUT_MS`, 30 minutes by default) when a scan
   outruns it; the failure reason names the budget.
 - golem fetches Go modules for a source scan unless
