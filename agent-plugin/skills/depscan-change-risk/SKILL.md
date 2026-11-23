@@ -36,25 +36,21 @@ CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/old-revision --format jso
 CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
 ```
 
-Bound each side before launching: look at what the tree carries, and when a
-side holds container files, fixture corpora or other non-product trees,
-pass the same `--cdxgen-args "--exclude ..."` set on both sides (the
-patterns anchor at each scanned root), or the two inventories cover
-different material and the delta answers a different question than the one
-asked. Two universal scans of container-heavy trees also pull every image
-the Dockerfiles name, so the unbounded pair can spend most of an hour per
-side; name the scope the diff will rest on before the first command runs.
+Bound both sides the same way before launching. When a tree holds container
+files, fixture corpora or other non-product trees, pass the same
+`--cdxgen-args "--exclude ..."` set to both scans (patterns anchor at each
+scanned root), and name that scope before the first command runs: two
+inventories of different material answer a different question than the one
+asked, and a source scan reads and pulls every image its Dockerfiles name
+(see [reference/safety.md](../../reference/safety.md)).
 
 Read both manifests' `stages` first: a stage that is anything but
 `completed` on one side makes the delta for its categories not assessed.
-Then check what each side's inventory actually covered before reading any
-delta: compare the two BOMs' component counts and purl-type mix (and the
-introspection summary beside each BOM, whose `overall` names the tier the
-scan reached), and name the scope the diff rests on. Two scans of the same
-tree with different image or fixture coverage are not a like-for-like
-pair, and a verdict such as "better" or "unchanged" must say which
-components it covers, not only which directories were excluded. Then
-diff the findings by id: added ids are new findings, missing ids are
+Then check what each side's inventory covered: compare the two BOMs'
+component counts and purl-type mix and the introspection summary beside
+each BOM (its `overall` names the tier reached). A verdict such as
+"better" or "unchanged" says which components it covers, not only which
+directories were excluded. Then diff the findings by id: added ids are new findings, missing ids are
 fixed ones, and shared ids with a changed severity or coverage changed
 state.
 

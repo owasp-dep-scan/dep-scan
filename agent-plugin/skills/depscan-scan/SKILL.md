@@ -72,12 +72,15 @@ and `docker` is on `PATH`, the `auto` engine pulls the
 that carries Dockerfiles or compose files reads every image they name: it
 pulls the ones the daemon lacks and extracts their layers, which on a
 container-heavy tree can consume the whole cdxgen time budget (30 minutes
-by default, `CDXGEN_TIMEOUT_MS` to raise it). When those files are build or
-CI material rather than the product, exclude their trees before scanning,
-for example
+by default, `CDXGEN_TIMEOUT_MS` to raise it). Look for container files
+before scanning a large tree. When they are CI or build material rather
+than the product, exclude their folders, for example
 `--cdxgen-args "--exclude 'ci/**' --exclude 'test/**'"`, one `--exclude`
-per tree with the pattern anchored at the scanned root (see
-[reference/safety.md](../../reference/safety.md)).
+per tree with the pattern anchored at the scanned root. dep-scan applies
+the same patterns to its own walks (the binary review and the golem, rusi,
+kosi and dosai runs it makes; a language tool that cannot take exclusions
+starts on the one project folder the patterns leave, or is reported as not
+assessed), so one set keeps a tree out of every stage (see [reference/safety.md](../../reference/safety.md)).
 
 ```bash
 CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports

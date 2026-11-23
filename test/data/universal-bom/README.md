@@ -9,4 +9,4 @@ original `sbom-universal.cdx.json` holds 1821 components; this cut keeps
 the first component of three purl types (golang, npm and deb), reduced to
 `type`, `name`, `version`, `purl` and `bom-ref`, which is what the
 reachability tools' purl-type gate reads. The golang component is the one
-that makes a universal scan a golem scan.
+that makes a universal scan under SemanticReachability a golem scan.
