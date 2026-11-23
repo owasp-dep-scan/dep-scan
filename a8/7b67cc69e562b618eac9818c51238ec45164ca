@@ -1,0 +1,21 @@
+test/conftest.py
+  s_fe578a6c9c51d0::t_378fd77cad446d 1-2,5-49,91-113
+test/test_vdb_isolation.py
+  s_fe578a6c9c51d0::t_b8a46f5f237dd4 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a87b67cc69e562b618eac9818c51238ec45164ca",
+  "prompts": {},
+  "sessions": {
+    "s_fe578a6c9c51d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1263418f-f4b0-4e74-91c8-18f9057618b4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
