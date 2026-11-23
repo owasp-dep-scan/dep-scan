@@ -1,0 +1,19 @@
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_486b0f791e3b4d::t_74ab445d77dce5 41-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "921c04cc5c16eea45fab93b031b622be288c90c7",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
