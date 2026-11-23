@@ -394,6 +394,42 @@ def test_stage_analysis_licenses_writes_the_license_report(tmp_path, monkeypatch
     assert "CC-BY-NC-4.0" in rows[0]["License Id"]
 
 
+def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(
+    tmp_path, monkeypatch
+):
+    """A license scan that matched nothing still writes its report.
+
+    The report file is the mark of a scan that ran: it is written with no
+    rows when every license was clean, and when no package carried license
+    data at all. The packages without any license data are counted on the
+    scan instead of vanishing, so the manifest's licenses stage can say how
+    much of the list was never assessed.
+    """
+    monkeypatch.setenv("FETCH_LICENSE", "true")
+    ctx = _ctx(tmp_path, ["-t", "npm"])
+    scan = pipeline.TypeScan(project_type="npm")
+    scan.pkg_list = [
+        # MIT is a known, condition-free license, so it earns no row.
+        {"name": "clean", "version": "1.0.0", "purl": "pkg:npm/clean@1.0.0", "licenses": ["MIT"]},
+        {"name": "bare", "version": "2.0.0", "purl": "pkg:npm/bare@2.0.0"},
+    ]
+    assert pipeline.stage_analysis_licenses(ctx, scan) is True
+    license_report = Path(ctx.reports_dir) / "license-npm.json"
+    assert license_report.is_file(), "an assessed-clean license scan writes its report"
+    assert license_report.read_text().strip() == ""
+    assert scan.license_not_assessed == (
+        "1 of 2 packages carry no license data at all; their licenses were not assessed"
+    )
+    # No package carrying license data at all is the same honest shape.
+    bare = pipeline.TypeScan(project_type="npm")
+    bare.pkg_list = [{"name": "bare", "version": "2.0.0", "purl": "pkg:npm/bare@2.0.0"}]
+    assert pipeline.stage_analysis_licenses(ctx, bare) is True
+    assert (Path(ctx.reports_dir) / "license-npm.json").read_text().strip() == ""
+    assert bare.license_not_assessed == (
+        "1 of 1 packages carry no license data at all; their licenses were not assessed"
+    )
+
+
 def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch):
     calls = {}
 

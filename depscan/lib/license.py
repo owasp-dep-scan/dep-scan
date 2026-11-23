@@ -40,16 +40,24 @@ def build_license_data(license_dir, spdx_license_list):
     return licenses_dict
 
 
+def license_lookup_key(pkg):
+    """The key :func:`bulk_lookup` files a package's licenses under, or None
+    for a package without the name and version a lookup needs."""
+    if not pkg.get("name") or not pkg.get("version"):
+        return None
+    if pkg.get("vendor"):
+        return f"{pkg.get('vendor')}:{pkg['name']}@{pkg['version']}"
+    return f"{pkg['name']}@{pkg['version']}"
+
+
 def bulk_lookup(license_dict, pkg_list):
     """Lookup package licenses"""
     pkg_licenses = {}
     for pkg in pkg_list:
         # Failsafe in case the bom file contains incorrect entries
-        if not pkg.get("name") or not pkg.get("version"):
+        pkg_key = license_lookup_key(pkg)
+        if not pkg_key:
             continue
-        pkg_key = pkg["name"] + "@" + pkg["version"]
-        if pkg.get("vendor"):
-            pkg_key = pkg.get("vendor") + ":" + pkg["name"] + "@" + pkg["version"]
         if pkg.get("licenses"):
             for lic in pkg.get("licenses"):
                 if lic == "X11":
@@ -62,3 +70,25 @@ def bulk_lookup(license_dict, pkg_list):
                     curr_list.append(match_lic)
                 pkg_licenses[pkg_key] = curr_list
     return pkg_licenses
+
+
+def packages_without_license_data(pkg_list, licenses_results):
+    """How many packages carry no license data at all, of how many the lookup
+    examined.
+
+    A package absent from ``licenses_results`` is one whose BOM entry stated
+    no license, so the license scan had nothing to assess for it. The count
+    is what the licenses stage records, so those packages are named instead
+    of silently reading as assessed and clean. Packages the lookup cannot
+    key (no name or version) are outside both counts.
+    """
+    without = 0
+    total = 0
+    for pkg in pkg_list or []:
+        key = license_lookup_key(pkg)
+        if not key:
+            continue
+        total += 1
+        if key not in licenses_results:
+            without += 1
+    return without, total

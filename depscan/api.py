@@ -296,6 +296,11 @@ def _run_stages(
                 project_type=project_type,
                 capabilities=["license"],
                 skipped_reason="license analysis was not requested",
+                record_extra=lambda: {
+                    "notAssessed": [tscan.license_not_assessed]
+                    if tscan.license_not_assessed
+                    else []
+                },
             )
             _stage(
                 ctx,

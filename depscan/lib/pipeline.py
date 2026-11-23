@@ -94,7 +94,7 @@ from depscan.lib.config import (
     spdx_license_list,
     write_vdb_image_marker,
 )
-from depscan.lib.license import build_license_data, bulk_lookup
+from depscan.lib.license import build_license_data, bulk_lookup, packages_without_license_data
 from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console, log_console
 
 LOGO = """
@@ -167,6 +167,10 @@ class TypeScan:
     risk_error: Optional[str] = None
     # Why a requested risk audit had nothing it could audit for this type.
     risk_not_assessed: Optional[str] = None
+    #: How many of this type's packages carried no license data at all, as
+    #: the notAssessed line the licenses stage records; None when the stage
+    #: did not run or every package carried license data.
+    license_not_assessed: Optional[str] = None
     # Why BOM generation failed for this type; the scan goes on to the next.
     inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
@@ -1481,7 +1485,11 @@ def stage_analysis_licenses(ctx, scan) -> bool:
     """Look up license risks, before any security-related analysis.
 
     Returns False when license analysis was not requested, so the scan's
-    manifest can record the stage as skipped rather than silent.
+    manifest can record the stage as skipped rather than silent. When it
+    ran, the report file is written whatever the lookup matched (see
+    :func:`licenses_risk_table`), and the packages whose BOM entries stated
+    no license are counted in ``scan.license_not_assessed`` so the manifest
+    can say they were never assessed rather than clean.
     """
     args = ctx.args
     # Is the user interested in seeing license risks? Handle that first before any security-related analysis.
@@ -1491,6 +1499,12 @@ def stage_analysis_licenses(ctx, scan) -> bool:
         build_license_data(license_data_dir, spdx_license_list),
         pkg_list=scan.pkg_list,
     )
+    without, total = packages_without_license_data(scan.pkg_list, licenses_results)
+    if without:
+        scan.license_not_assessed = (
+            f"{without} of {total} packages carry no license data at all; "
+            "their licenses were not assessed"
+        )
     license_report_file = os.path.join(ctx.reports_dir, f"license-{scan.project_type}.json")
     ltable = licenses_risk_table(scan.project_type, licenses_results, license_report_file)
     if ltable and not args.no_vuln_table:

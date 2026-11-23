@@ -1121,6 +1121,38 @@ def test_a_scan_whose_every_inventory_failed_writes_no_findings_file(
     )
 
 
+def test_a_license_scan_counts_the_packages_without_license_data(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """The licenses stage says how many packages carry no license data.
+
+    A completed licenses stage with no report file and no count read as a
+    scan that matched nothing; the report is written whenever the stage ran
+    and the count lands on the stage's notAssessed line.
+    """
+    monkeypatch.setenv("FETCH_LICENSE", "true")
+    # The fixture's stub package carries no version; the lookup keys on name
+    # and version, so give it a package that keys and states no license.
+    monkeypatch.setattr(
+        pipeline,
+        "get_pkg_list",
+        lambda f: ([{"purl": "pkg:pypi/requests@2.32.1", "name": "requests", "version": "2.32.1"}], []),
+    )
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True),
+        render=False,
+    )
+    assert result.manifest is not None
+    licenses = next(stage for stage in result.manifest["stages"] if stage["name"] == "licenses")
+    assert licenses["status"] == "completed"
+    assert licenses["notAssessed"] == [
+        "1 of 1 packages carry no license data at all; their licenses were not assessed"
+    ]
+    assert (reports / "license-bom.json").is_file()
+
+
 def test_a_scan_that_assessed_and_found_nothing_writes_the_empty_findings_file(
     scan_stubs, monkeypatch, tmp_path
 ):
