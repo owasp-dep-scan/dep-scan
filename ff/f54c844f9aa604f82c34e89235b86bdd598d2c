@@ -1,0 +1,28 @@
+depscan/lib/report.py
+  h_0926447d100ad2 16-23,71-125,158-162,164
+documentation/docs/output/scan-directory.mdx
+  h_0926447d100ad2 164
+packages/analysis-lib/src/analysis_lib/output.py
+  h_0926447d100ad2 151,163,235
+test/data/report-vdr/README.md
+  h_0926447d100ad2 1-35
+test/data/report-vdr/depscan.findings.json
+  h_0926447d100ad2 1
+test/data/report-vdr/depscan.manifest.json
+  h_0926447d100ad2 1-395
+test/data/report-vdr/sbom-universal.vdr.json
+  h_0926447d100ad2 1
+test/test_scan_directory.py
+  h_0926447d100ad2 59,295-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fff54c844f9aa604f82c34e89235b86bdd598d2c",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
