@@ -26,6 +26,7 @@ from analysis_lib.evidence import Evidence
 from analysis_lib.findings.fingerprint import finding_fingerprint
 from analysis_lib.findings.model import (
     Coverage,
+    CoverageReason,
     Finding,
     FindingProperty,
     Location,
@@ -51,6 +52,30 @@ def _evidence(value: Any) -> Optional[List[str]]:
     return [json.dumps(value, sort_keys=True, default=str)]
 
 
+#: The capability a binary-hardening finding's coverage names, as the
+#: doctor names it.
+BINARY_CAPABILITY = "binary"
+
+#: The record caveat kinds that mean the review did not cover everything it
+#: was asked to: units blint failed or skipped, and report entries the
+#: adapter could not turn into records.
+_COVERAGE_CAVEAT_KINDS = ("coverage-gap", "record-skipped")
+
+
+def _coverage(record: Evidence) -> Coverage:
+    """The finding's coverage from the record's caveats: ``assessed`` when
+    the review covered everything, else ``not_assessed`` with one reason per
+    coverage caveat, in the record's order."""
+    reasons = [
+        CoverageReason(capability=BINARY_CAPABILITY, reason=caveat.kind, detail=caveat.detail)
+        for caveat in record.caveats or []
+        if caveat.kind in _COVERAGE_CAVEAT_KINDS
+    ]
+    if not reasons:
+        return Coverage(state="assessed")
+    return Coverage(state="not_assessed", reasons=reasons)
+
+
 def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[Finding]:
     """The findings of the blint check records the evidence adapter made.
 
@@ -64,6 +89,13 @@ def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[F
     from a moved root keeps the finding id. A record whose location the
     adapter left out because the binary sits outside the root carries the
     path's basename in its attributes, and the finding uses that basename.
+
+    The finding's components are the record's subject purls, the binary's
+    reconciled component. Its coverage carries the record's coverage-gap
+    and record-skipped caveats (units blint failed or skipped, report
+    entries that became no record) as reasons and reads ``not_assessed``
+    when there is one, so a review that did not cover the whole target
+    never reads as complete.
 
     A record whose attributes carry no rule id is skipped, and the same
     rule on the same binary collapses onto one finding.
@@ -103,9 +135,10 @@ def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[F
             rule=rule,
             title=title,
             severity=_severity(attributes.get("severity")),
-            coverage=Coverage(state="assessed"),
+            coverage=_coverage(record),
             producer=Producer(name="blint", version=record.producer.version),
             confidence=confidence if confidence in _CONFIDENCES else None,
+            components=sorted(record.subject.purls) or None,
             locations=[Location(binary=binary)] if binary else None,
             evidence=_evidence(attributes.get("evidence")),
             properties=properties or None,

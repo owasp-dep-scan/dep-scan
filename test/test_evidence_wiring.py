@@ -158,8 +158,9 @@ BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF = {
 # become. The values were recorded from the recording and then checked by
 # hand against it: every rule id, title, severity, binary path, exe type and
 # finding id is the report's own value, the producer version is the one the
-# blint-written SBOM's metadata.tools names, and the fingerprints were
-# verified to differ per binary.
+# blint-written SBOM's metadata.tools names, the fingerprints were verified
+# to differ per binary, and the coverage is assessed because the recording's
+# coverage report names no failed or skipped unit.
 RECORDED_BINARY_FINDINGS = [
     {
         "id": "dsf1:5e6f5b7a9f96031b3bb1a8c1312b6af7cf34fd7d8deef3b704ffd74bf78a69f1",
@@ -207,6 +208,10 @@ RECORDED_BINARY_FINDINGS = [
         "severity": "info",
         "coverage": {"state": "assessed"},
         "producer": {"name": "blint", "version": "4.0.1"},
+        # The plain binary is the blint-written SBOM's metadata component,
+        # so its record reconciles to that component's purl; the fortified
+        # binary has no component in the SBOM.
+        "components": ["pkg:generic/plain-libc-demo.elf"],
         "locations": [{"binary": "corpus/plain-libc-demo.elf"}],
         "properties": [
             {"name": "blint:exeType", "value": "genericbinary"},
