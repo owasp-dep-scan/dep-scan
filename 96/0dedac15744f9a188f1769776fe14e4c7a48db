@@ -1,0 +1,29 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/cdxgen.py
+  s_23234c20518dda::t_fe0ae49834cf04 1-463
+packages/analysis-lib/tests/test_evidence_cdxgen.py
+  s_293754ccc01af0::t_74a6728f5d5576 67,147-149,166-167,170-174,365-368,607-609,662,684-685,717
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "960dedac15744f9a188f1769776fe14e4c7a48db",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_293754ccc01af0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_0d2b81b7-0185-4892-82ff-158dbdcf1dfe",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

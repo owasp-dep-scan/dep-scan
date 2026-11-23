@@ -1,0 +1,19 @@
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_293754ccc01af0::t_41998059a39ded 4-11,90-94,293-300,315,327-332,334,349,359-363,376-378,395-400,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94ce72025cdbd02cbfe3614e8f89d6d109fd6606",
+  "prompts": {},
+  "sessions": {
+    "s_293754ccc01af0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_0d2b81b7-0185-4892-82ff-158dbdcf1dfe",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/analysis-lib/tests/data/tracebom/README.md
+  s_293754ccc01af0::t_3fad439d2fb7c5 1,3-4,6,12-15,27-29,32-35,40-43,45-50,52-57,68-72,75,77-79
+packages/analysis-lib/tests/data/tracebom/tracebom-dry-run.json
+  s_293754ccc01af0::t_a79bc4bf53e584 1
+packages/analysis-lib/tests/test_evidence_tracebom.py
+  s_23234c20518dda::t_85aefba9b8fdf1 3-14,18-20,148-164,202-210,306-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "030154be936c8c671b4a8cbe209d7a690b329648",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_293754ccc01af0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_0d2b81b7-0185-4892-82ff-158dbdcf1dfe",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

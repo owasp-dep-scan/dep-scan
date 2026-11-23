@@ -1,0 +1,26 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/cdxgen.py
+  s_7318da1b9edd46::t_70782a996c3029 9-11,13,17-33,36-71,79-104,110-111,124,131,135,143-147,152-163,166-185,193-194,201,203-206,210-215,218-221,263-391,426-427,429-432,438,443-446,464-466,471,478-520,540-543,556-561,571,578-580,586-588,590-591,593-598,600-601,603-604,606-609,611-622,637,645-846
+  s_7318da1b9edd46::t_57b54af508d88f 848-850
+packages/analysis-lib/tests/data/cdxgen/README.md
+  s_7318da1b9edd46::t_774cc7a2006c26 3-7,56-59,75-106
+packages/analysis-lib/tests/data/cdxgen/sbom-kotlin-kosi.cdx.json
+  s_7318da1b9edd46::t_27d4b34a2dff25 1-349
+packages/analysis-lib/tests/test_evidence_cdxgen.py
+  s_7318da1b9edd46::t_893c730d695859 3-11,22,93-103,247-249,251,277,389-390,394-395,397,530,533,552-554,558-562,565,569-578,606-610,616,619,624-629,631,642,645-647,651-654,735-738,750-753,755,869-883,891-895,923-1191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dde8da44fda463d5b578cd94ab501d32b904176d",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

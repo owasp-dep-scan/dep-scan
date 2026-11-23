@@ -1,0 +1,23 @@
+depscan/lib/pipeline.py
+  s_896e432144b9f7::t_efd61917520602 2081-2087
+documentation/docs/concepts/sbom-and-evidence.mdx
+  s_896e432144b9f7::t_87cb124e12db22 17
+documentation/docs/output/scan-directory.mdx
+  s_896e432144b9f7::t_86ecf3cbca075a 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e43c5801e7185331f6c81349304fdc0baf872d51",
+  "prompts": {},
+  "sessions": {
+    "s_896e432144b9f7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_624e55f3-23a9-4d67-994e-ab49963740e1",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

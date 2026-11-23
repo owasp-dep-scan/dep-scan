@@ -1,0 +1,19 @@
+depscan/lib/pipeline.py
+  s_23234c20518dda::t_f6329381c8f054 1702-1706,1712,1717-1736,1738,1740-1749,1759-1765,1770,1780,1783-1795,1799,1801-1805,1809,1967,1972-1978,1981,1983-1987,1991,2078-2087,2089,2103-2110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5545b8f0e012d308241f96eee0b508ad8df07e7c",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

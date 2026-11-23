@@ -1,0 +1,49 @@
+server.json
+  s_7318da1b9edd46::t_2fa906608a6aba 6,18,27
+documentation/docs/doctor.mdx
+  s_7318da1b9edd46::t_2fa906608a6aba 32
+agent-plugin/.claude-plugin/plugin.json
+  s_7318da1b9edd46::t_6b9bacaf266730 4
+packages/reporting-lib/pyproject.toml
+  s_7318da1b9edd46::t_2fa906608a6aba 3
+agent-plugin/.zcode-plugin/plugin.json
+  s_7318da1b9edd46::t_6b9bacaf266730 3
+packages/server-lib/pyproject.toml
+  s_7318da1b9edd46::t_2fa906608a6aba 3,13
+packages/xbom-lib/pyproject.toml
+  s_7318da1b9edd46::t_2fa906608a6aba 3
+agent-plugin/plugin.json
+  s_7318da1b9edd46::t_6b9bacaf266730 5
+test/test_agent_plugin_hooks.py
+  s_7318da1b9edd46::t_6b9bacaf266730 24,117
+test/test_agent_plugin_check.py
+  s_7318da1b9edd46::t_6b9bacaf266730 167
+build/assets/Info.plist
+  s_7318da1b9edd46::t_2fa906608a6aba 12
+agent-plugin/gemini-extension.json
+  s_7318da1b9edd46::t_6b9bacaf266730 3
+packages/analysis-lib/pyproject.toml
+  s_7318da1b9edd46::t_2fa906608a6aba 3
+pyproject.toml
+  s_7318da1b9edd46::t_2fa906608a6aba 3,18-20,54,60
+.cursor-plugin/marketplace.json
+  s_7318da1b9edd46::t_6b9bacaf266730 9,16
+uv.lock
+  s_7318da1b9edd46::t_57f5b15f8e8b42 807,836,841,874,1524
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "76bf840990bacc9a2de08a4c2f3b715fed75c645",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

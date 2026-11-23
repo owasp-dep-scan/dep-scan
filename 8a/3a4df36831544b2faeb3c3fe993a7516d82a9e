@@ -1,0 +1,25 @@
+packages/analysis-lib/src/analysis_lib/findings/blint_convert.py
+  s_7318da1b9edd46::t_4b494ead9509a6 66-69,75
+packages/analysis-lib/tests/test_blint_convert.py
+  s_7318da1b9edd46::t_e5066526c13164 127-129,143
+documentation/docs/output/scan-directory.mdx
+  s_7318da1b9edd46::t_42a221b346ec50 168
+documentation/docs/concepts/sbom-and-evidence.mdx
+  s_7318da1b9edd46::t_577af7976d5b0f 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a3a4df36831544b2faeb3c3fe993a7516d82a9e",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_23234c20518dda::t_807cbc08ca0e10 220-237,333,348-354,371-380,390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5c61a1dc0fe98f31c644a7dd5bc1923ab07b9efa",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

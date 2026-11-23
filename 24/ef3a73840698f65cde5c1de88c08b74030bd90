@@ -1,0 +1,21 @@
+packages/xbom-lib/src/xbom_lib/blint.py
+  s_293754ccc01af0::t_2cdb2459db9610 13-15,51-55,61-62,71-73,80-83,86-88,91-93,100-106,130-132,134-145,157-159,161
+test/test_blint_reviews.py
+  s_293754ccc01af0::t_5e6a7c22e1906f 100-104,108-121,125-129,141,150-156,227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24ef3a73840698f65cde5c1de88c08b74030bd90",
+  "prompts": {},
+  "sessions": {
+    "s_293754ccc01af0": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_0d2b81b7-0185-4892-82ff-158dbdcf1dfe",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

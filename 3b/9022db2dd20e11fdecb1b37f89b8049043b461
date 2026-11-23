@@ -1,0 +1,25 @@
+depscan/lib/pipeline.py
+  s_7318da1b9edd46::t_c73f3c0e055836 771-773,776,779,781
+packages/xbom-lib/src/xbom_lib/blint.py
+  s_7318da1b9edd46::t_8dd5be421f6021 68-72,74
+test/test_blint_reviews.py
+  s_7318da1b9edd46::t_e92efe272e24f1 139-159
+test/test_evidence_wiring.py
+  s_7318da1b9edd46::t_f8f1748e180e9f 1742-1769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3b9022db2dd20e11fdecb1b37f89b8049043b461",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/analysis-lib/tests/data/cdxgen/README.md
+  s_23234c20518dda::t_2bf250c94f65d2 1-44
+packages/analysis-lib/tests/data/cdxgen/sbom-python.cdx.json
+  s_23234c20518dda::t_49aa5fd89d7e9f 1-1177
+packages/analysis-lib/tests/data/cdxgen/sbom-python.cdx.json.introspection.json
+  s_23234c20518dda::t_4fb510db91da89 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75e340b5cd35cb0b9e089dbd92656a30d1322746",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

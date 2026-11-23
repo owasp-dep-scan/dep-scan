@@ -1,0 +1,21 @@
+pyproject.toml
+  s_7318da1b9edd46::t_84288d5900b468 55,59,110,114
+uv.lock
+  s_7318da1b9edd46::t_6f6f10d19e8484 21,249,268,270,275,277,279,382-524,560-681,1577-1578,1987-2055,2438,2444,2446,2543-2544
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa497ab344590b6401dde34bac3a6f4d52b0c48a",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

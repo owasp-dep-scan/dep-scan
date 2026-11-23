@@ -1,0 +1,16 @@
+documentation/docs/concepts/sbom-and-evidence.mdx
+  h_0926447d100ad2 17,27-28,42
+documentation/docs/output/scan-directory.mdx
+  h_0926447d100ad2 28-31,53,60,168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b4fedfa9955cb6622d706786695bc0536423cd8",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

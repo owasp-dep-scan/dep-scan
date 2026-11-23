@@ -1,0 +1,14 @@
+packages/analysis-lib/tests/test_exploitability.py
+  h_0926447d100ad2 6-8,18-23,41,295-352,362-366,670-671,677-679,701-704,731-895
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a12db27853d7ac90972a4a21c53eff2cc7a8a7a2",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
