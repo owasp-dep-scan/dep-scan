@@ -42,7 +42,8 @@ The explanation is rendered for the whole scan in this version; read it as
 the scan's context around each finding, not as a per-finding text. It is
 built from the slices and OpenAPI files in the scan directory, so a scan
 that ran without reachability (`--profile quick`, a skipped or failed
-reachability stage) has nothing to explain, and the output says so.
+reachability stage) has nothing to explain and no explanation appears;
+report the explanation as not assessed, not as an all-clear.
 
 ## The MCP server
 
@@ -85,8 +86,12 @@ is never "nothing is reachable".
    `coverage.state`: `assessed` means the matcher evaluated it against the
    database; anything else was not evaluated.
 3. Rank what to fix first by severity, reachability state where the scan
-   recorded one, and whether a fixed version exists. Say what each ranking
-   rests on.
+   recorded one, and whether a fixed version exists: each finding's
+   `fix.fixed_versions` carries it, and the VDR the scan wrote
+   (`<bom>.vdr.json`, such as `sbom-docker.vdr.json`) repeats it in each
+   vulnerability's `recommendation` string. The VDR's `ratings` arrays can
+   hold empty objects, so read severities from the findings document. Say
+   what each ranking rests on.
 4. Answer reachability questions with what the scan records (the
    reachability slices and the explanation with `--explain`). Absence of a
    reachability entry is not evidence of "not reachable"; say the scan did
