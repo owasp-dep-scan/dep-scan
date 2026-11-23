@@ -1,0 +1,20 @@
+packages/reporting-lib/src/reporting_lib/htmlgen.py
+  s_486b0f791e3b4d::t_b1a037ef758830 18,109-113,351-356,1220-1318,1981-2036,2499-2505
+  s_486b0f791e3b4d::t_4bae0efb0e86ac 2506
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c9ab7747c086a4fd227aab71e2442d22b653eca",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
