@@ -136,6 +136,27 @@ def test_review_writes_findings_and_reviews_and_drops_stale_reports(monkeypatch,
     assert (reports / blint_mod.BLINT_REVIEWS_FILE).is_file()
 
 
+def test_a_relative_review_path_is_walked_as_an_absolute_one(monkeypatch, tmp_path):
+    """blint names each binary by the path it walked. A relative source
+    directory is made absolute before the review starts, so the reports
+    name files under the scan root rather than relative to the working
+    directory, and the finding ids of a relative ``-i`` equal those of an
+    absolute one."""
+    seen = {}
+
+    class Recording(_FakeRunner):
+        def start(self, options, exe_files):
+            seen["dirs"] = list(options.src_dir_image)
+            return super().start(options, exe_files)
+
+    monkeypatch.setattr(blint_mod, "AnalysisRunner", Recording)
+    (tmp_path / "bins").mkdir()
+    monkeypatch.chdir(tmp_path)
+    result = blint_mod.run_blint_reviews(["bins"], str(tmp_path / "r"))
+    assert result.success
+    assert seen["dirs"] == [str(tmp_path / "bins")]
+
+
 def test_review_failure_is_returned_not_raised(monkeypatch, tmp_path):
     class Broken(_FakeRunner):
         def start(self, options, exe_files):

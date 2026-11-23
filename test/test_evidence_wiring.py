@@ -1739,6 +1739,34 @@ def test_review_findings_survive_a_blint_bom_without_components(scan_stubs, tmp_
     ), "the review's records reach the store"
 
 
+def test_a_relative_source_directory_keeps_the_binary_finding_ids(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """``-i bins`` relative to the working directory gives the same binary
+    finding ids as the absolute path: the scan root is resolved before any
+    adapter relativizes the review's paths, which name the binaries under
+    the absolute directory the review walked."""
+    (tmp_path / "src").mkdir()
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        pipeline,
+        "create_bom",
+        _blint_writing_bom(None, lambda src_dir: os.path.abspath(src_dir) + "/"),
+    )
+    result = api.scan(
+        api.scan_options(
+            src_dir_image="src",
+            reports_dir="reports",
+            project_type=["binary"],
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    expected = {finding["id"] for finding in RECORDED_BINARY_FINDINGS}
+    assert {finding["id"] for finding in _binary_findings(result)} == expected
+
+
 def test_each_bom_is_read_once_by_the_evidence_producers(scan_stubs, tmp_path, monkeypatch):
     """The BOM documents of a type are read and parsed once however many
     evidence producers need them: cdxgen's adapter, the blint version and

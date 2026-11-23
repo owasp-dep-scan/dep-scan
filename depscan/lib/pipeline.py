@@ -768,15 +768,17 @@ def _source_root(args, src_dir) -> Optional[str]:
     on the command line or through ``DEPSCAN_SOURCE_DIR_IMAGE``. Without a
     root the adapters keep each path in their outside-root form, and dosai
     uses the input path its report states. A ``--src`` that names the
-    working directory itself reads the same as no ``--src``.
+    working directory itself reads the same as no ``--src``. The root is
+    absolute: a relative ``--src`` resolves against the working directory,
+    the directory the tools resolved it against.
     """
     if not _reads_stored_analysis(args):
-        return src_dir or None
+        return os.path.abspath(src_dir) if src_dir else None
     given = args.src_dir_image
     if os.getenv("DEPSCAN_SOURCE_DIR_IMAGE") or given == ".":
-        return src_dir or None
+        return os.path.abspath(src_dir) if src_dir else None
     if given and os.path.abspath(given) != os.getcwd():
-        return src_dir or None
+        return os.path.abspath(src_dir) if src_dir else None
     return None
 
 
