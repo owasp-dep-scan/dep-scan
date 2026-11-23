@@ -1,0 +1,19 @@
+test/test_blint_reviews.py
+  s_fe578a6c9c51d0::t_9db72fc1ab074b 109-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d2aa1d5f4ff2c41c238bb033b1e0f51b3ab7c7e0",
+  "prompts": {},
+  "sessions": {
+    "s_fe578a6c9c51d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1263418f-f4b0-4e74-91c8-18f9057618b4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
