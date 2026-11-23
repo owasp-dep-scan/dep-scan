@@ -956,6 +956,7 @@ def test_the_store_holds_records_of_every_evidence_producer(scan_stubs, tmp_path
     for record in records:
         assert not _is_absolute(record["source"]), record["source"]
         assert (bom_dir / record["source"]).is_file(), record["source"]
+    assert result.manifest is not None
     listed = {entry["path"] for entry in result.manifest["files"]}
     assert {"analysis/blint/findings.json", "analysis/tracebom/tracebom.json"} <= listed
 
