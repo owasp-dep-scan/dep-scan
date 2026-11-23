@@ -60,7 +60,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from logging import Logger
-from typing import Optional
+from typing import Optional, Sequence
 
 from xbom_lib.plugins import bundled_plugin_path, find_bundled_plugin, get_plugins_bin_target
 from xbom_lib.process import build_command, find_executable, tool_env
@@ -326,15 +326,20 @@ def _build_dosai_args(
     command: str,
     *,
     pattern_packs: str = DEFAULT_PATTERN_PACKS,
+    exclude: Sequence[str] = (),
 ) -> list:
     """Build the dosai argument list for one command.
 
     Mirrors cdxgen's ``runDosaiCommand``: ``[<command>, "--path", <src>, "--o",
     <out>]`` plus ``--pattern-packs <packs>`` ONLY for the ``dataflows``
     command (the ``methods`` command does not accept it -- see module
-    docstring). Run with ``shell=False``, ``cwd=<src>``.
+    docstring). Run with ``shell=False``, ``cwd=<src>``. Each ``exclude``
+    glob becomes one ``--exclude <glob>`` (dosai matches it relative to
+    ``--path``, both commands accept it).
     """
     args = [command, "--path", os.path.abspath(src_dir), "--o", os.path.abspath(out_path)]
+    for pattern in exclude:
+        args.extend(["--exclude", pattern])
     if command == DOSAI_DATAFLOWS_COMMAND and pattern_packs:
         args.extend(["--pattern-packs", pattern_packs])
     return args
@@ -357,6 +362,7 @@ def _run_dosai_once(
     logger: Optional[Logger],
     timeout: Optional[int],
     version: Optional[str],
+    exclude: Sequence[str] = (),
 ) -> tuple[bool, str, bool]:
     """Execute a single dosai command. Returns ``(ok, output, sdk_missing)``.
 
@@ -364,7 +370,9 @@ def _run_dosai_once(
     ``sdk_missing`` flags a missing .NET runtime so the caller can skip (not
     fail) with a diagnostic.
     """
-    args = [binary] + _build_dosai_args(src_dir, out_path, command, pattern_packs=pattern_packs)
+    args = [binary] + _build_dosai_args(
+        src_dir, out_path, command, pattern_packs=pattern_packs, exclude=exclude
+    )
     if logger:
         logger.debug("Executing '%s'", " ".join(args))
     try:
@@ -402,6 +410,7 @@ def run_dosai(
     pattern_packs: str = DEFAULT_PATTERN_PACKS,
     logger: Optional[Logger] = None,
     timeout: Optional[int] = DEFAULT_TIMEOUT,
+    exclude: Sequence[str] = (),
 ) -> DosaiResult:
     """Run dosai ``dataflows`` + ``methods`` on ``src_dir`` and persist raw JSON.
 
@@ -414,6 +423,8 @@ def run_dosai(
     continue without dosai reachability), never an error. ``success`` is True
     when at least one of the two artifacts was produced (a single-artifact
     result is still useful: dataflows carries its own ``PackageReachability``).
+
+    ``exclude`` lists globs (relative to ``src_dir``) that dosai skips.
     """
     binary = find_dosai_binary(logger=logger)
     if not binary:
@@ -465,6 +476,7 @@ def run_dosai(
             logger=logger,
             timeout=timeout,
             version=version,
+            exclude=exclude,
         )
         outputs.append(out)
         if missing:

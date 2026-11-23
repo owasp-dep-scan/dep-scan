@@ -4,6 +4,7 @@ How the review's check findings reach ``depscan.findings.json`` through the
 blint adapter's records needs no blint installed and is tested in
 ``test_scan_directory.py``."""
 
+import dataclasses
 import json
 import os
 import shutil
@@ -160,23 +161,105 @@ def test_review_failure_is_returned_not_raised(monkeypatch, tmp_path):
     assert result.success is False and "boom" in (result.command_output or "")
 
 
-@pytest.mark.parametrize("fail_on_error, expected", [(False, True), (True, False)])
-def test_generator_survives_a_review_failure_unless_fail_on_error(
-    monkeypatch, tmp_path, fail_on_error, expected
-):
-    monkeypatch.setattr(blint_mod, "run_sbom_mode", lambda options: "sbom")
+@dataclasses.dataclass
+class _OptionsWithoutExclude:
+    src_dir_image: list
+    deep_mode: bool = False
+    no_error: bool = False
+    no_reviews: bool = False
+    quiet_mode: bool = False
+    stdout_mode: bool = False
+    reports_dir: str = ""
+    sbom_mode: bool = False
+    db_mode: bool = False
+    use_blintdb: bool = False
+    image_url: str = ""
+    sbom_output: str = ""
+
+
+@dataclasses.dataclass
+class _OptionsWithExcludeField(_OptionsWithoutExclude):
+    exclude: list = dataclasses.field(default_factory=list)
+
+
+def _generator_run(monkeypatch, tmp_path, options_class, options):
+    seen = {}
+
+    def fake_sbom(blint_options):
+        seen["options"] = blint_options
+        return "sbom"
+
+    monkeypatch.setattr(blint_mod, "BlintOptions", options_class)
+    monkeypatch.setattr(blint_mod, "run_sbom_mode", fake_sbom)
     monkeypatch.setattr(blint_mod, "blintdb_setup", lambda options: None)
-    monkeypatch.setattr(
-        blint_mod,
-        "run_blint_reviews",
-        lambda *a, **k: blint_mod.BlintReviewResult(success=False, command_output="no review"),
-    )
     generator = blint_mod.BlintGenerator(
-        str(tmp_path),
-        str(tmp_path / "bom.json"),
-        options={"blint_reviews_dir": str(tmp_path / "r"), "fail_on_error": fail_on_error},
+        str(tmp_path), str(tmp_path / "bom.json"), options=options
     )
-    assert generator.generate().success is expected
+    assert generator.generate().success
+    return seen["options"]
+
+
+def test_the_generator_takes_the_target_list_and_the_patterns(monkeypatch, tmp_path):
+    options = {"blint_targets": ["/a,b", "/c"], "exclude_patterns": ["test/**"]}
+    seen = _generator_run(monkeypatch, tmp_path, _OptionsWithExcludeField, options)
+    assert seen.src_dir_image == ["/a,b", "/c"], "a comma in a path survives"
+    assert seen.exclude == ["test/**"]
+
+
+def test_the_generator_without_a_target_list_splits_the_source_directory(monkeypatch, tmp_path):
+    seen = _generator_run(monkeypatch, tmp_path, _OptionsWithExcludeField, {})
+    assert seen.src_dir_image == [str(tmp_path)]
+    assert seen.exclude == []
+
+
+def test_the_generator_passes_no_exclude_to_a_blint_without_the_field(monkeypatch, tmp_path):
+    options = {"blint_targets": ["/c"], "exclude_patterns": ["test/**"]}
+    seen = _generator_run(monkeypatch, tmp_path, _OptionsWithoutExclude, options)
+    assert not hasattr(seen, "exclude")
+
+
+@pytest.mark.parametrize("takes_exclude", [True, False])
+def test_a_review_hands_the_patterns_to_the_blint_walks_that_take_them(
+    monkeypatch, tmp_path, takes_exclude
+):
+    calls = {}
+
+    if takes_exclude:
+
+        def lister(src, exclude=None):
+            calls.setdefault("gen_file_list", exclude)
+            return []
+
+        def bundles(src, exclude=None):
+            calls["bundles"] = exclude
+            return []
+
+        def clickonce(src, exclude=None):
+            calls["clickonce"] = exclude
+            return []
+
+    else:
+
+        def lister(src):
+            calls["gen_file_list"] = "no parameter"
+            return []
+
+        def bundles(src):
+            calls["bundles"] = "no parameter"
+            return []
+
+        def clickonce(src):
+            calls["clickonce"] = "no parameter"
+            return []
+
+    monkeypatch.setattr(blint_mod, "gen_file_list", lister)
+    monkeypatch.setattr(blint_mod, "find_macos_bundles", bundles)
+    monkeypatch.setattr(blint_mod, "find_clickonce_files", clickonce)
+    monkeypatch.setattr(blint_mod, "AnalysisRunner", _FakeRunner)
+    result = blint_mod.run_blint_reviews([str(tmp_path)], str(tmp_path / "r"), exclude=["test/**"])
+    assert result.success
+    expected = ["test/**"] if takes_exclude else "no parameter"
+    assert calls == {"gen_file_list": expected, "bundles": expected, "clickonce": expected}
 
 
 def test_reviews_remove_the_reports_of_an_earlier_scan_before_they_start(tmp_path, monkeypatch):
