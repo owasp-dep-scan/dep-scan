@@ -90,8 +90,8 @@ by default) and `EntryPoints`.
 
 Read the dep-scan scan directory of the same project
 (`depscan report <scan-dir> --format json`). When no scan of the project
-exists yet, make one before the join: load `depscan-scan`, whose own rule
-is to be loaded before writing any depscan command, and whose core form
+exists yet, make one before the join: load `depscan-scan` first (its own
+rule is to be loaded before writing any depscan command); its core form
 is:
 
 ```bash

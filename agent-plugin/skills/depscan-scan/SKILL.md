@@ -101,7 +101,7 @@ Any stage whose status is not `completed` (`failed`, `skipped`,
 `not-assessed`), and any stage missing after one that stopped the run,
 means part of the analysis did not run; report "not assessed" with the
 stage's reason rather than a clean result. `depscan doctor --format json` shows the same state
-machine-wide. The verbs this skill does not carry, `depscan version` (the
+machine-wide. The verbs this skill does not show, `depscan version` (the
 dep-scan version and every tool's version) among them, are listed in
 [reference/commands.md](../../reference/commands.md) with the document each
 writes.
