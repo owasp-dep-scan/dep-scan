@@ -111,3 +111,16 @@ def test_bom_components_skips_bad_metadata_entries():
         "metadata": {"component": {"components": [None, {"type": "library", "name": "m"}]}}
     }
     assert [component["name"] for component in bom_components(document)] == ["m"]
+
+
+def test_the_directory_readers_skip_a_report_the_bom_glob_picks_up(tmp_path):
+    """The BOM file list is a name glob, and a license or risk report whose
+    name contains \"bom\" reaches it as a JSON array; the loaders skip it
+    instead of reading it as a BOM document."""
+    from analysis_lib.packages import retrieve_bom_dependency_tree, retrieve_oci_properties
+
+    report = tmp_path / "license-bom.json"
+    report.write_text(json.dumps([{"Package": "demo", "License Id": "MIT"}]), encoding="utf-8")
+    assert get_pkg_list(str(report)) == ([], [])
+    assert retrieve_bom_dependency_tree(None, str(tmp_path)) == []
+    assert retrieve_oci_properties(None, str(tmp_path)) == {}
