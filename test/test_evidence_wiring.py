@@ -1582,6 +1582,88 @@ def _presence(result):
     }
 
 
+@pytest.mark.parametrize(
+    "analyzers",
+    [
+        {"reachability_analyzer": "off"},
+        {"reachability_analyzer": "SemanticReachability"},
+        {"reachability_analyzer": "off", "vuln_analyzer": "LifecycleAnalyzer"},
+    ],
+    ids=["plain", "semantic", "lifecycle"],
+)
+def test_a_user_bom_keeps_its_usage_proof_on_every_analyzer(
+    scan_stubs, tmp_path, monkeypatch, analyzers
+):
+    """A ``--bom`` scan proves usage from the BOM's records whichever
+    analyzer runs. SemanticReachability and the LifecycleAnalyzer aggregate
+    the reports directory and append the user BOM, which lies outside it,
+    with its components whole; those components keep their usage proof
+    exactly as a plain ``--bom`` scan does."""
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", tuple(USAGE_PRESENCE))
+    bom = tmp_path / "given" / "user.cdx.json"
+    bom.parent.mkdir()
+    bom.write_text(json.dumps(_usage_bom()), encoding="utf-8")
+    result = api.scan(
+        api.scan_options(
+            bom=str(bom), reports_dir=str(tmp_path / "reports"), no_banner=True, **analyzers
+        ),
+        render=False,
+    )
+    assert _presence(result) == USAGE_PRESENCE
+
+
+def test_a_source_scan_grades_only_the_loaded_components_usage(scan_stubs, tmp_path, monkeypatch):
+    """The usage records of components the package loader leaves out (a
+    nested application, a top-level data twin) prove nothing, even though
+    the adapter records them: the finding of a loaded package with the same
+    purl reads the loaded component alone."""
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", tuple(USAGE_PRESENCE))
+    result = _source_scan_of(_usage_bom(), tmp_path, monkeypatch)
+    assert _presence(result) == USAGE_PRESENCE
+    occurrences = {
+        record["subject"]["purls"][0]
+        for record in _store_records(tmp_path / "reports")
+        if record["kind"] == "occurrence"
+    }
+    assert {"pkg:pypi/napp@1.0", "pkg:pypi/dd@1.0"} <= occurrences, (
+        "the excluded components' records still reach the store"
+    )
+
+
+def test_a_bom_the_adapter_refuses_names_the_reason_on_the_findings(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """A BOM whose spec major cdxgen's adapter does not read loads its
+    packages, but its usage evidence is not assessed: presence stays at the
+    database match, and each finding whose presence is not proven names the
+    adapter's reason in its coverage, so likely never reads as usage
+    measured and not found."""
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", tuple(USAGE_PRESENCE))
+    result = _source_scan_of(_usage_bom(spec_version="2.0"), tmp_path, monkeypatch)
+    assert set(_presence(result).values()) == {"likely"}
+    reasons = {}
+    for finding in result.findings:
+        assert finding["coverage"]["state"] == "assessed"
+        reasons[finding["components"][0]] = finding["coverage"].get("reasons")
+    # The nested application is not a package the loader kept from that
+    # BOM, so its usage could never have proven anything there.
+    assert reasons.pop("pkg:pypi/napp@1.0") is None
+    for ref, found in reasons.items():
+        assert found is not None, ref
+        (reason,) = found
+        assert reason["capability"] == "presence:usage"
+        assert reason["reason"] == "report-not-assessed"
+        assert "sbom-python.cdx.json" in reason["detail"] and "2.0" in reason["detail"]
+
+
+def test_a_bom_the_adapter_reads_names_no_usage_reason(scan_stubs, tmp_path, monkeypatch):
+    """The same BOM at a spec version the adapter reads carries no coverage
+    reason on any finding."""
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", tuple(USAGE_PRESENCE))
+    result = _source_scan_of(_usage_bom(), tmp_path, monkeypatch)
+    assert all("reasons" not in finding["coverage"] for finding in result.findings)
+
+
 def test_a_source_scan_reads_no_trace_bom_left_in_its_reports_dir(
     scan_stubs, tmp_path, monkeypatch
 ):

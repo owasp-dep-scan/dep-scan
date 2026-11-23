@@ -620,8 +620,10 @@ def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
         adapter_results={"atom": AdapterResult(status="completed")},
         pkg_list=[{"purl": "pkg:pypi/requests@2.32.1"}],
         bom_dir=str(tmp_path),
+        usage_documents={},
+        cdxgen_reads={},
     )
-    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
     inputs = pipeline._exploitability_inputs(ctx, scan)
     assert inputs.scope is not None
     assert inputs.scope.reached_by == {"atom": set()}
@@ -860,6 +862,8 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
     )
     scan_dir = SimpleNamespace(build=lambda **k: {})
     monkeypatch.setattr(pipeline.scan_directory, "write_manifest", lambda *a, **k: None)
+    records = [object()]
+    usage_not_assessed = {"pkg:pypi/a@1": "the BOM was not assessed"}
     ctx = SimpleNamespace(
         scan_dir=scan_dir,
         reports_dir=str(tmp_path),
@@ -870,13 +874,15 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         project_types=types,
         vdb_flavor=None,
         shards_connected=False,
-        evidence_records=[],
+        evidence_records=records,
+        usage_not_assessed=usage_not_assessed,
     )
     pipeline.finish_scan_directory(ctx)
     assert captured["blint_reviews"] is expected
-    assert captured["evidence_records"] == [], (
+    assert captured["evidence_records"] is records, (
         "the findings file receives the scan's evidence records, the blint ones included"
     )
+    assert captured["usage_not_assessed"] is usage_not_assessed
 
 
 def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):
@@ -905,8 +911,10 @@ def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypat
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
+        usage_documents={},
+        cdxgen_reads={},
     )
-    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
 
     def refuse_to_read(*args, **kwargs):
         raise AssertionError("the slices were parsed again")
@@ -940,8 +948,10 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
+        usage_documents={},
+        cdxgen_reads={},
     )
-    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
     inputs = pipeline._exploitability_inputs(ctx, scan)
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
     assert reach_axis(inputs.scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"

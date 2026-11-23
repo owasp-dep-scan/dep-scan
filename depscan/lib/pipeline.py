@@ -274,6 +274,11 @@ class ScanContext:
     #: The Python object ids of the records already in ``evidence_records``,
     #: so a result shared by several types is added once.
     evidence_record_objects: Set[int] = field(default_factory=set)
+    #: Why a package's usage evidence was not assessed, keyed by comparable
+    #: purl: the reason cdxgen's adapter gave for not reading the BOM the
+    #: package was loaded from with its evidence. A finding of such a package
+    #: whose presence was not proven carries the reason in its coverage.
+    usage_not_assessed: Dict[str, str] = field(default_factory=dict)
     #: atom's adapter results, one per group of atom output files read
     #: together, keyed by the group's sorted resolved paths. A file is read
     #: once per scan, by the first project type whose enrichment finds it,
@@ -848,6 +853,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
             for project_type in (ctx.project_types or [None])
         ),
         evidence_records=ctx.evidence_records,
+        usage_not_assessed=ctx.usage_not_assessed,
     )
     evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
     if os.path.isfile(evidence_path):
@@ -1311,6 +1317,13 @@ def _produce_boms(ctx, scan):
     return True
 
 
+def _component_key(component) -> Optional[str]:
+    """The key the package loader tells components apart by: the
+    ``bom-ref``, else the purl."""
+    key = component.get("bom-ref") or component.get("purl")
+    return key if isinstance(key, str) and key else None
+
+
 def _load_packages(ctx, scan):
     """Load the package list for this type from its BOM documents.
 
@@ -1326,11 +1339,16 @@ def _load_packages(ctx, scan):
         )
         scan.pkg_list = get_all_pkg_list(scan.bom_dir)
         if ctx.args.bom and os.path.realpath(ctx.args.bom) not in get_all_bom_files(scan.bom_dir):
-            seen = {pkg.get("bom-ref") or pkg.get("purl") for pkg in scan.pkg_list}
+            seen = {_component_key(pkg) for pkg in scan.pkg_list}
             user_pkgs, _ = get_pkg_list(ctx.args.bom)
-            scan.pkg_list += [
-                pkg for pkg in user_pkgs if (pkg.get("bom-ref") or pkg.get("purl")) not in seen
-            ]
+            appended = [pkg for pkg in user_pkgs if _component_key(pkg) not in seen]
+            scan.pkg_list += appended
+            # The aggregated loader keeps only the identity evidence of the
+            # components it loads; the user BOM appended to it keeps each
+            # component whole, usage evidence included.
+            scan.usage_documents = {
+                ctx.args.bom: {key for key in map(_component_key, appended) if key}
+            }
     # We are working with a single BOM file and will collect all packages from it accordingly.
     elif scan.bom_file:
         LOG.debug("Scanning using the bom file %s", scan.bom_file)
@@ -1341,6 +1359,9 @@ def _load_packages(ctx, scan):
                 scan.bom_file,
             )
         scan.pkg_list, _ = get_pkg_list(scan.bom_file)
+        scan.usage_documents = {
+            scan.bom_file: {key for key in map(_component_key, scan.pkg_list) if key}
+        }
     # An empty package list is reported whatever its source. Matching zero
     # packages would print "No vulnerabilities found", which reads as clean.
     if not scan.pkg_list:
@@ -2178,15 +2199,18 @@ def _exploitability_inputs(ctx, scan):
     records this scan produced is graded on: a report left by an earlier
     run is never read.
 
-    A scan that aggregates a BOM directory (``scan.bom_dir`` set, the
-    BOM-directory and lifecycle modes) grades presence without the BOM's
-    usage records: the aggregated loader rewrites every component it loads
-    to the identity evidences alone, so usage was never proven from those
-    components and the grading inputs drop the usage records to match. A
-    user BOM appended to such a scan keeps its evidence in the package
-    list, so its packages grade one step lower here than the
-    component-reading rule graded them. The records still reach the
-    evidence store, which is additive; only the grading skips them.
+    Presence reads cdxgen's usage records (occurrences and callstacks) only
+    for the components the package loader kept with their evidence
+    (:func:`_usage_records`): every component of a scan that loads one BOM
+    (a source scan with the default analyzer, a ``--bom`` scan), and the
+    components of a user BOM appended to an aggregated load. A scan that
+    aggregates a BOM directory (the BOM-directory and lifecycle modes)
+    loads every other component with its identity evidence alone, so their
+    usage records prove nothing. The records still reach the evidence
+    store, which is additive; only the grading skips them. A BOM whose
+    usage evidence would grade but which cdxgen's adapter did not assess
+    leaves the adapter's reason in ``ctx.usage_not_assessed`` for the
+    findings of its packages.
     """
     from analysis_lib.findings.exploitability import ExploitabilityInputs, USAGE_KINDS
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
@@ -2201,24 +2225,12 @@ def _exploitability_inputs(ctx, scan):
     for name in (*REACHABILITY_PRODUCERS, *EVIDENCE_PRODUCERS):
         result = results.get(name)
         if result is not None:
-            records.extend(result.records)
-    if scan.bom_dir:
-        # A scan that aggregates a BOM directory builds its package list
-        # through the aggregated loader, which rewrites every loaded
-        # component's evidence block to the identity evidences alone, so such
-        # a scan never proved a package used from its occurrences or
-        # callstacks. The usage records are dropped from the grading inputs
-        # to grade those scans the same way; the store keeps them. A user
-        # BOM appended to an aggregating scan keeps its evidence in the
-        # package list, so its packages grade one step lower here than the
-        # component-reading rule graded them; that corner is accepted for
-        # now because matching it needs per-document provenance through the
-        # loader.
-        records = [
-            record
-            for record in records
-            if not (record.producer.name == "cdxgen" and record.kind in USAGE_KINDS)
-        ]
+            records.extend(
+                record
+                for record in result.records
+                if not (record.producer.name == "cdxgen" and record.kind in USAGE_KINDS)
+            )
+    records.extend(_usage_records(ctx, scan))
     by_analyzer = reached_by_analyzer(records)
     scope = ReachScope(
         analyzers=analyzers,
@@ -2236,6 +2248,50 @@ def _exploitability_inputs(ctx, scan):
         dosai_ran="dosai" in analyzers,
         records=records,
     )
+
+
+def _usage_records(ctx, scan) -> List[Any]:
+    """cdxgen's usage records of the components the package loader kept
+    with their evidence.
+
+    ``scan.usage_documents`` names each BOM the loader kept usage evidence
+    from and the keys of the components it kept. A usage record of that
+    document grades when its component is one of them: matched on the
+    ``bom-ref``, or on the purl when the component has none. A record of a
+    component the loader left out (a ``data`` component, a nested
+    ``application``) or of another document grades nothing. When the
+    adapter did not assess such a document, its packages have no usage
+    records, and the adapter's reason is kept for their findings so
+    presence never reads as measured and unused."""
+    from analysis_lib.findings.exploitability import USAGE_KINDS
+    from analysis_lib.findings.vdr_convert import comparable_purl
+
+    records = []
+    for document, keys in (scan.usage_documents or {}).items():
+        read = scan.cdxgen_reads.get(str(document))
+        if read is None:
+            continue
+        if read.status != "completed":
+            reason = (
+                f"cdxgen's usage evidence in {os.path.basename(str(document))} was not "
+                f"assessed: {read.reason}"
+            )
+            for pkg in scan.pkg_list or []:
+                purl = pkg.get("purl")
+                if _component_key(pkg) in keys and isinstance(purl, str) and purl:
+                    ctx.usage_not_assessed.setdefault(comparable_purl(purl), reason)
+            continue
+        for record in read.records:
+            if record.producer.name != "cdxgen" or record.kind not in USAGE_KINDS:
+                continue
+            component_ref = record.subject.component_ref
+            if component_ref:
+                kept = component_ref in keys
+            else:
+                kept = any(purl in keys for purl in record.subject.purls)
+            if kept:
+                records.append(record)
+    return records
 
 
 def _collect_exploitability(ctx, vdr_result):

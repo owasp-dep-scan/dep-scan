@@ -590,6 +590,7 @@ def write_findings(
     exploitability: Optional[Dict[Any, Any]] = None,
     blint_reviews: bool = False,
     evidence_records: Optional[Iterable[Any]] = None,
+    usage_not_assessed: Optional[Dict[str, str]] = None,
 ):
     """Write ``depscan.findings.json`` from the scan's VDR entries and the
     blint binary review.
@@ -602,14 +603,20 @@ def write_findings(
     blint's review; without it the blint records among ``evidence_records``
     are not this scan's findings and are ignored. The binary-hardening
     findings are built from the blint records this scan's adapter produced,
-    with the producer version the records carry.
+    with the producer version the records carry. ``usage_not_assessed``
+    maps a comparable purl to the reason its BOM's usage evidence was not
+    read; a vulnerability finding of that package whose presence is not
+    proven names the reason in its coverage.
     Returns the document written.
     """
     from analysis_lib.findings.blint_convert import findings_from_blint_records
     from analysis_lib.findings.vdr_convert import findings_from_vdr
 
     findings = findings_from_vdr(
-        vulnerabilities, producer_version=depscan_version, exploitability=exploitability
+        vulnerabilities,
+        producer_version=depscan_version,
+        exploitability=exploitability,
+        usage_not_assessed=usage_not_assessed,
     )
     if blint_reviews:
         findings.extend(findings_from_blint_records(evidence_records))
