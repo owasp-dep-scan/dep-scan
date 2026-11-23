@@ -1825,3 +1825,104 @@ def test_each_bom_is_read_once_by_the_evidence_producers(scan_stubs, tmp_path, m
     )
     assert reads.count("sbom-python.cdx.json") == 1
     assert reads.count("sbom-postbuild-binary.cdx.json") == 1
+
+
+def test_binary_findings_of_a_directory_target_name_their_binary_component(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """blint's BOM for a directory target lists each scanned binary as a
+    component nested in the root ``metadata.component``. Those components
+    are what the review's binaries reconcile to, so every binary finding
+    names its own binary's purl."""
+    from depscan.lib.bom import BomResult
+
+    src = tmp_path / "src"
+    (src / "corpus").mkdir(parents=True)
+
+    def fake_create_bom(bom_file, src_dir, options=None):
+        sbom = json.loads((BLINT_DATA / "sbom-blint.json").read_text(encoding="utf-8"))
+        plain = sbom["metadata"]["component"]
+        fortified = json.loads(
+            json.dumps(plain).replace("plain-libc-demo.elf", "fortified-libc-demo.elf")
+        )
+        sbom["metadata"]["component"] = {
+            "type": "application",
+            "name": "corpus",
+            "purl": "pkg:generic/corpus",
+            "bom-ref": "pkg:generic/corpus",
+            "components": [fortified, plain],
+        }
+        Path(bom_file).write_text(json.dumps(sbom), encoding="utf-8")
+        reviews = Path(bom_file).parent / "analysis" / "blint"
+        reviews.mkdir(parents=True, exist_ok=True)
+        for name in ("findings.json", "reviews.json", "analysis-coverage.json"):
+            text = (BLINT_DATA / name).read_text(encoding="utf-8")
+            text = text.replace('"corpus/', '"' + os.path.abspath(src_dir) + "/corpus/")
+            (reviews / name).write_text(text, encoding="utf-8")
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(tmp_path / "reports"),
+            project_type=["binary"],
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    components = {
+        finding["locations"][0]["binary"]: finding.get("components")
+        for finding in _binary_findings(result)
+    }
+    assert components == {
+        "corpus/fortified-libc-demo.elf": ["pkg:generic/fortified-libc-demo.elf"],
+        "corpus/plain-libc-demo.elf": ["pkg:generic/plain-libc-demo.elf"],
+    }
+
+
+def test_a_single_file_target_keeps_the_binary_name_property(scan_stubs, tmp_path, monkeypatch):
+    """A scan of one binary file reports paths relative to the directory
+    that holds it: the finding's location and ``blint:exeName`` are the
+    file's base name, and the id is the one the base name gives."""
+    from analysis_lib.findings.fingerprint import finding_fingerprint
+    from depscan.lib.bom import BomResult
+
+    target = tmp_path / "src" / "plain-libc-demo.elf"
+    target.parent.mkdir()
+    target.write_bytes(b"\x7fELF")
+
+    def fake_create_bom(bom_file, src_dir, options=None):
+        Path(bom_file).write_text(
+            (BLINT_DATA / "sbom-blint.json").read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        reviews = Path(bom_file).parent / "analysis" / "blint"
+        reviews.mkdir(parents=True, exist_ok=True)
+        for name in ("findings.json", "reviews.json", "analysis-coverage.json"):
+            text = (BLINT_DATA / name).read_text(encoding="utf-8")
+            for binary in ("plain-libc-demo.elf", "fortified-libc-demo.elf"):
+                text = text.replace(f'"corpus/{binary}"', json.dumps(os.path.abspath(src_dir)))
+            (reviews / name).write_text(text, encoding="utf-8")
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(target),
+            reports_dir=str(tmp_path / "reports"),
+            project_type=["binary"],
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    binary = _binary_findings(result)
+    assert binary
+    for finding in binary:
+        assert finding["locations"] == [{"binary": "plain-libc-demo.elf"}]
+        assert finding["id"] == finding_fingerprint(
+            "binary-hardening", finding["rule"], [], file="plain-libc-demo.elf"
+        )
+        properties = {p["name"]: p["value"] for p in finding["properties"]}
+        assert properties["blint:exeName"] == "plain-libc-demo.elf"

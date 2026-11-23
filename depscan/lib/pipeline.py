@@ -771,16 +771,27 @@ def _source_root(args, src_dir) -> Optional[str]:
     uses the input path its report states. A ``--src`` that names the
     working directory itself reads the same as no ``--src``. The root is
     absolute: a relative ``--src`` resolves against the working directory,
-    the directory the tools resolved it against.
+    the directory the tools resolved it against. A target that is a single
+    file (a binary) is reported by the directory that holds it, so the root
+    is that directory and the file is spelled by its base name.
     """
     if not _reads_stored_analysis(args):
-        return os.path.abspath(src_dir) if src_dir else None
+        return _root_directory(src_dir)
     given = args.src_dir_image
     if os.getenv("DEPSCAN_SOURCE_DIR_IMAGE") or given == ".":
-        return os.path.abspath(src_dir) if src_dir else None
+        return _root_directory(src_dir)
     if given and os.path.abspath(given) != os.getcwd():
-        return os.path.abspath(src_dir) if src_dir else None
+        return _root_directory(src_dir)
     return None
+
+
+def _root_directory(src_dir) -> Optional[str]:
+    """``src_dir`` as an absolute directory: the directory that holds it
+    when it names a file."""
+    if not src_dir:
+        return None
+    root = os.path.abspath(src_dir)
+    return os.path.dirname(root) if os.path.isfile(root) else root
 
 
 def _clear_evidence_store(reports_dir) -> None:
@@ -1994,21 +2005,38 @@ def _blint_bom_version(scan) -> str:
     return ""
 
 
-def _bom_metadata_components(scan) -> List[Dict]:
-    """The root ``metadata.component`` of this type's BOM documents.
+#: How deep :func:`_bom_metadata_components` follows nested components
+#: below a root component; deeper nesting is not a shape blint writes.
+_ROOT_COMPONENT_DEPTH = 8
 
-    The package loader walks past it by design, but a binary scan's BOM
-    names the scanned binary there, which is exactly the component a blint
-    finding's binary reconciles to."""
+
+def _bom_metadata_components(scan) -> List[Dict]:
+    """The root ``metadata.component`` of this type's BOM documents and the
+    components nested below it.
+
+    The package loader walks past them by design, but a binary scan's BOM
+    names the scanned binaries there, which are exactly the components a
+    blint finding's binary reconciles to: a single-file target is the root
+    component itself, and a directory target lists each binary as a
+    component nested in the root. The walk stops at
+    :data:`_ROOT_COMPONENT_DEPTH` levels and visits each object once."""
     components = []
+    seen = set()
     for bom_file in scan.bom_files or []:
         if os.path.basename(str(bom_file)).endswith(".introspection.json"):
             continue
         data = _bom_document(scan, bom_file)
         metadata = data.get("metadata") if isinstance(data, dict) else None
-        component = metadata.get("component") if isinstance(metadata, dict) else None
-        if isinstance(component, dict):
+        stack = [(metadata.get("component"), 0)] if isinstance(metadata, dict) else []
+        while stack:
+            component, depth = stack.pop()
+            if not isinstance(component, dict) or id(component) in seen:
+                continue
+            seen.add(id(component))
             components.append(component)
+            nested = component.get("components")
+            if depth < _ROOT_COMPONENT_DEPTH and isinstance(nested, list):
+                stack.extend((child, depth + 1) for child in reversed(nested))
     return components
 
 
