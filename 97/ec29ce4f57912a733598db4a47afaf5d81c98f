@@ -1,0 +1,14 @@
+agent-plugin/skills/depscan-memory-safety/SKILL.md
+  h_0926447d100ad2 3,10-17,32,39-47,51-52,97-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97ec29ce4f57912a733598db4a47afaf5d81c98f",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
