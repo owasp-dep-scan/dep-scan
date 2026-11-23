@@ -1,0 +1,19 @@
+depscan/commands/translate.py
+  s_4a6a58bac00e51::t_7c9b605665be03 100-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9f711f701fdbf5ae536d0de7ba462225c5bbe5d",
+  "prompts": {},
+  "sessions": {
+    "s_4a6a58bac00e51": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_167d96bc-00c2-4c25-b28c-ac9187da53da",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
