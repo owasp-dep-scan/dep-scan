@@ -37,7 +37,8 @@ def retrieve_bom_dependency_tree(bom_file, bom_dir):
         bom_data = json_load(file_path)
         # The file list is a name glob; a non-object document is not a BOM.
         if isinstance(bom_data, dict):
-            dependencies += bom_data.get("dependencies", [])
+            tree = bom_data.get("dependencies")
+            dependencies += tree if isinstance(tree, list) else []
     return dependencies
 
 
@@ -63,9 +64,11 @@ def retrieve_oci_properties(bom_file, bom_dir):
         # The file list is a name glob; a non-object document is not a BOM.
         if not isinstance(bom_data, dict):
             continue
-        for p in bom_data.get("metadata", {}).get("properties", []):
-                if p.get("name", "").startswith("oci:image:"):
-                    props[p.get("name")] = p.get("value")
+        metadata = bom_data.get("metadata")
+        properties = metadata.get("properties") if isinstance(metadata, dict) else None
+        for p in properties if isinstance(properties, list) else []:
+            if isinstance(p, dict) and str(p.get("name") or "").startswith("oci:image:"):
+                props[p["name"]] = p.get("value")
     return props
 
 

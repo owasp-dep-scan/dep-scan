@@ -861,3 +861,43 @@ def test_converted_readers_tolerate_missing_cna_blocks(record):
     assert references == []
     assert source == {"name": ""}
     assert get_unaffected({"source_data": record, "matching_vers": ""}) == ""
+
+
+def test_the_cve_fail_safe_insight_for_a_deployed_only_package_says_deployed():
+    """A package that is in the post-build inventory but not a direct
+    dependency reaches the same fail-safe branch; its insight must not call
+    it a direct dependency."""
+    from analysis_lib.prioritize import analyze_cve_vuln
+
+    purl = "pkg:npm/postcss@8.4.31"
+    vuln = {
+        "cve_id": "CVE-2026-41305",
+        "matched_by": purl,
+        "matching_vers": "vers:apache/>=0.0.0",
+        "purl_prefix": "pkg:npm/postcss",
+        "type": "npm",
+        "source_data": _exploit_cve5_record(),
+        "fix_version": "8.4.50",
+    }
+    _, vdict, _, _ = analyze_cve_vuln(
+        vuln,
+        reached_purls={},
+        direct_purls={},
+        reached_services={},
+        endpoint_reached_purls={},
+        optional_pkgs=[],
+        required_pkgs=[],
+        prebuild_purls={},
+        build_purls={},
+        postbuild_purls={purl: 1},
+        purl_identities={},
+        bom_dependency_tree=[],
+        counts=Counts(),
+    )
+    plain = [
+        p["value"]
+        for p in (vdict.get("properties") or [])
+        if p.get("name") == "depscan:insights"
+    ]
+    assert any("Deployed dependency with known exploits, reach not assessed" in i for i in plain)
+    assert not any("Direct dependency with known exploits" in i for i in plain)

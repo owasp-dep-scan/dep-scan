@@ -761,13 +761,16 @@ def analyze_cve_vuln(
                 # Fail safe. Packages with exploits and direct or deployed
                 # usage without a reachable flow are still prioritized to
                 # reduce false negatives, but the insight names what the
-                # records show: a direct dependency with known exploits,
-                # reach not assessed.
+                # records show: a direct (or only a deployed) dependency
+                # with known exploits, reach not assessed.
+                usage_label = (
+                    "Direct dependency" if direct_purls.get(purl) else "Deployed dependency"
+                )
                 insights.append(
-                    "[bright_red]:exclamation_mark: Direct dependency with known "
+                    f"[bright_red]:exclamation_mark: {usage_label} with known "
                     "exploits, reach not assessed[/bright_red]"
                 )
-                plain_insights.append("Direct dependency with known exploits, reach not assessed")
+                plain_insights.append(f"{usage_label} with known exploits, reach not assessed")
             if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
                 plain_insights.append("Reachable and Exploitable")
                 # Remove any simple reachable insights

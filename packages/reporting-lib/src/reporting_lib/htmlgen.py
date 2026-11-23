@@ -1258,7 +1258,9 @@ class ReportGenerator:
 
             if current_location == self.BINARY_HARDENING_RESULTS_DATA:
                 if line.startswith("║") and line.endswith("║"):  # in table row
-                    columns = line[1:-1].rsplit("│", maxsplit=current_columns_count - 1)
+                    # The last column is the finding's free-text title, so a
+                    # separator character inside it stays in that cell.
+                    columns = line[1:-1].split("│", maxsplit=current_columns_count - 1)
 
                     normalized_columns = [self.normalize_rich_text(column) for column in columns]
                     if normalized_columns == self.BINARY_HARDENING_RESULTS_DATA_COLUMNS:

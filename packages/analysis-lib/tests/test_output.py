@@ -451,3 +451,13 @@ def test_risk_report_file_holds_plain_json_rows(tmp_path):
             "Identified Risks": ["Includes binary", "Has attestation", "SHA256:abc"],
         }
     ]
+
+
+def test_license_report_file_is_valid_json_when_no_package_has_license_data(tmp_path):
+    """A scan whose packages carry no license data still writes a license
+    report, and the file is the empty JSON array rather than an empty file."""
+    from analysis_lib.output import licenses_risk_table
+
+    report_file = tmp_path / "license-npm.json"
+    assert licenses_risk_table("npm", {}, str(report_file)) is None
+    assert json.loads(report_file.read_text()) == []
