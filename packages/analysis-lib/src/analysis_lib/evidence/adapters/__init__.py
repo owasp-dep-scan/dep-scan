@@ -12,8 +12,11 @@ the reason and how many objects it covers.
 
 The helpers here are the parts every adapter shares: the schema version
 gate, the witness path cap, the caveat helpers, the type-safe readers for
-report values, the source path mapping that keeps record paths relative,
-the root-neutral discriminator and the record builder that computes ids.
+report values, the source path mapping that keeps record paths relative
+and takes the root and home directories out of stored text, the
+root-neutral and machine-neutral discriminators, the cdxgen tool version
+gate the cdxgen and tracebom adapters share, and the record builder that
+computes ids.
 The per-producer modules own everything format-specific.
 """
 
@@ -87,7 +90,12 @@ class VersionGate:
 
 
 def gate_report_version(
-    report_version: Any, supported_major: int, known_minor: int
+    report_version: Any,
+    supported_major: int,
+    known_minor: int,
+    *,
+    holder: str = "report",
+    noun: str = "schema version",
 ) -> VersionGate:
     """The schema version gate every adapter applies to its report.
 
@@ -100,6 +108,11 @@ def gate_report_version(
     major is refused with a reason naming the version seen, and the adapter
     returns a not-assessed result with that reason. A number given where a
     string belongs (``5.1``) is read as its text.
+
+    ``holder`` and ``noun`` name what was read in the reasons and caveats
+    (``the report names no schema version``); an adapter that gates on a
+    tool version a BOM states passes ``holder="BOM"`` and
+    ``noun="cdxgen version"``, so the text says what the gate read.
     """
     if report_version is None or isinstance(report_version, bool):
         text = ""
@@ -109,15 +122,14 @@ def gate_report_version(
         return VersionGate(
             False,
             reason=(
-                f"the report schema version is a {type(report_version).__name__}, "
-                "not a version string"
+                f"the {holder} {noun} is a {type(report_version).__name__}, not a version string"
             ),
         )
     if not text:
         return VersionGate(
             True,
             caveats=[
-                EvidenceCaveat(kind="schema-unknown", detail="the report names no schema version")
+                EvidenceCaveat(kind="schema-unknown", detail=f"the {holder} names no {noun}")
             ],
         )
     parts = text.split(".")
@@ -125,8 +137,8 @@ def gate_report_version(
         return VersionGate(
             False,
             reason=(
-                f"the report schema version {text!r} names no numeric major version; "
-                f"this adapter reads major {supported_major} reports"
+                f"the {holder} {noun} {text!r} names no numeric major version; "
+                f"this adapter reads major {supported_major} {holder}s"
             ),
         )
     major = int(parts[0])
@@ -134,8 +146,8 @@ def gate_report_version(
         return VersionGate(
             False,
             reason=(
-                f"the report schema version {text} is not supported; "
-                f"this adapter reads major {supported_major} reports"
+                f"the {holder} {noun} {text} is not supported; "
+                f"this adapter reads major {supported_major} {holder}s"
             ),
         )
     minor = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
@@ -146,13 +158,83 @@ def gate_report_version(
                 EvidenceCaveat(
                     kind="schema-minor",
                     detail=(
-                        f"the report names schema version {text}; "
+                        f"the {holder} names {noun} {text}; "
                         f"this adapter knows {supported_major}.{known_minor} and earlier"
                     ),
                 )
             ],
         )
     return VersionGate(True)
+
+
+def _tool_entries(bom: dict) -> List[dict]:
+    """The tool objects a BOM's ``metadata.tools`` lists, in either the
+    CycloneDX 1.5 list form or the 1.6 ``components`` form."""
+    tools = as_dict(bom.get("metadata")).get("tools")
+    entries = tools if isinstance(tools, list) else as_list(as_dict(tools).get("components"))
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def cdxgen_tool(bom: dict) -> Tuple[bool, Any]:
+    """Whether a BOM's ``metadata.tools`` names cdxgen, and the version
+    value it gives (``None`` when it gives none)."""
+    for entry in _tool_entries(bom):
+        if as_str(entry.get("name")) == "cdxgen":
+            return True, entry.get("version")
+    return False, None
+
+
+def _tool_names(bom: dict) -> str:
+    """The tools a BOM's ``metadata.tools`` lists, as ``name version`` text,
+    or ``no tool``."""
+    names = []
+    for entry in _tool_entries(bom):
+        name = as_str(entry.get("name"))
+        if name:
+            names.append(f"{name} {as_str(entry.get('version'))}".strip())
+    return ", ".join(names) or "no tool"
+
+
+def gate_cdxgen_tool_version(
+    bom: dict, supported_major: int, known_minor: int, output: str
+) -> Tuple[VersionGate, str]:
+    """The cdxgen tool version gate the cdxgen and tracebom adapters apply,
+    on the version the BOM's own ``metadata.tools`` names, never the
+    locally installed cdxgen.
+
+    Another major is refused and a newer minor accepted with a
+    ``schema-minor`` caveat, as :func:`gate_report_version` does. A BOM
+    that names cdxgen with no version is accepted with a ``schema-unknown``
+    caveat, and so is a BOM another tool wrote, with the caveat naming the
+    tools it lists; ``output`` names what cdxgen writes that the adapter
+    reads (``BOM``, ``tracebom``). The second value is the version text
+    for the producer block, ``unknown`` when the BOM names none."""
+    named, version = cdxgen_tool(bom)
+    if not named:
+        return (
+            VersionGate(
+                True,
+                caveats=[
+                    EvidenceCaveat(
+                        kind="schema-unknown",
+                        detail=(
+                            f"the BOM's metadata.tools names {_tool_names(bom)} and no cdxgen; "
+                            f"this adapter reads the shapes cdxgen's {output} writes"
+                        ),
+                    )
+                ],
+            ),
+            "unknown",
+        )
+    gate = gate_report_version(
+        version, supported_major, known_minor, holder="BOM", noun="cdxgen version"
+    )
+    text = ""
+    if isinstance(version, str):
+        text = version.strip()
+    elif isinstance(version, (int, float)) and not isinstance(version, bool):
+        text = str(version)
+    return gate, text or "unknown"
 
 
 def cap_path(
@@ -422,6 +504,72 @@ class SourcePaths:
             return {key: self.neutral(item) for key, item in value.items()}
         return value
 
+    def absolute_form(self, path: str) -> Optional[str]:
+        """The stable spelling of one absolute path with no side effect on
+        :attr:`dropped`: its relative path when a root or a package
+        directory holds it (``.`` for a root itself), its package cache
+        spelling, or ``None``."""
+        text = posixpath.normpath(_slashes(path.strip()))
+        for root in self._roots:
+            if (text.casefold() if _DRIVE_RE.match(root) else text) == (
+                root.casefold() if _DRIVE_RE.match(root) else root
+            ):
+                return "."
+            below = _under(text, root)
+            if below is not None:
+                return below
+        for directory, label in self._prefixes:
+            below = _under(text, directory)
+            if below is not None:
+                return f"{label}/{below}"
+        return _cache_form(text)
+
+    def stable(self, value: Any) -> Any:
+        """``value`` spelled the same on every machine, for hashing into a
+        discriminator; never stored.
+
+        A string that is one absolute path becomes its relative path when a
+        root or package directory holds it, its package cache spelling, or
+        ``<outside>/`` plus its file name when nothing holds it, so neither
+        the scan root nor a home directory changes the hash. Any other
+        string has the roots and package directories rewritten as
+        :meth:`neutral` does and every home directory (``/home/<user>``,
+        ``/Users/<user>``, ``C:\\Users\\<user>``) spelled ``~``."""
+        if isinstance(value, str):
+            text = _slashes(value).strip()
+            if is_absolute_path(text):
+                form = self.absolute_form(text)
+                if form is not None:
+                    return form
+                return "<outside>/" + posixpath.basename(posixpath.normpath(text))
+            return _HOME_RE.sub("~", self.neutral(value))
+        if isinstance(value, list):
+            return [self.stable(item) for item in value]
+        if isinstance(value, dict):
+            return {key: self.stable(item) for key, item in value.items()}
+        return value
+
+    def redact(self, value: Any) -> Any:
+        """``value`` with the scan root and home directories taken out of
+        every string, at any depth, for storing as a record attribute.
+
+        A root followed by a path becomes that path relative to the root
+        (``python3 /src/app.py`` reads ``python3 app.py``), a root on its
+        own becomes ``.``, and a home directory becomes ``~``, in either
+        slash spelling. The rest of the text is kept as given: a value that
+        names no root and no home directory (a URL path, a system library
+        path) carries neither a user name nor the checkout path."""
+        if isinstance(value, str):
+            text = value
+            for root in self._roots:
+                text = _strip_dir(text, root)
+            return _HOME_RE.sub("~", text)
+        if isinstance(value, list):
+            return [self.redact(item) for item in value]
+        if isinstance(value, dict):
+            return {key: self.redact(item) for key, item in value.items()}
+        return value
+
     def outside_root_caveat(self, count: int) -> EvidenceCaveat:
         """The caveat a record carries for ``count`` files it left out."""
         return EvidenceCaveat(
@@ -443,6 +591,29 @@ class SourcePaths:
                 "root and no package directory; the records leave them out"
             ),
         )
+
+
+#: A home directory inside any text: ``/home/<user>``, ``/Users/<user>``
+#: or a Windows ``<drive>:\\Users\\<user>`` in either slash spelling. The
+#: match starts at the beginning of the text or after a character that
+#: cannot end a path segment, so ``http://host/home/x`` is not a home.
+_HOME_RE = re.compile(
+    r"(?<![A-Za-z0-9_.~/\\-])(?:/home/|/Users/|(?i:[A-Z]:[\\/]users[\\/]))"
+    r"[^/\\\s\"'<>|:;,]+"
+)
+
+
+def _strip_dir(text: str, directory: str) -> str:
+    """``text`` with ``directory`` (forward slashes) taken out wherever it
+    starts a path, in either slash spelling: ``<directory>/x`` reads ``x``
+    and the directory on its own reads ``.``."""
+    flags = re.IGNORECASE if _DRIVE_RE.match(directory) else 0
+    spellings = {directory, directory.replace("/", "\\")}
+    for spelling in sorted(spellings, key=len, reverse=True):
+        lead = r"(?<![A-Za-z0-9_.~/\\-])" + re.escape(spelling)
+        text = re.sub(lead + r"[/\\]+", "", text, flags=flags)
+        text = re.sub(lead + r"(?=$|[^A-Za-z0-9_.~/\\-])", ".", text, flags=flags)
+    return text
 
 
 def _replace_dir(text: str, directory: str, replacement: str) -> str:
@@ -484,10 +655,33 @@ def neutral_discriminator(obj: Any, paths: SourcePaths, *extra: Any) -> str:
     return content_discriminator([paths.neutral(_without_ids(obj)), *paths.neutral(list(extra))])
 
 
+def stable_discriminator(obj: Any, paths: SourcePaths, *extra: Any) -> str:
+    """A discriminator for a report object that is the same on every
+    machine: :func:`content_discriminator` over the object and any
+    ``extra`` values spelled by :meth:`SourcePaths.stable`.
+
+    Unlike :func:`neutral_discriminator` it keeps the producer's id fields
+    (an adapter whose producer derives no id from a path passes them in
+    as content) and it spells a path outside every root by its file name,
+    so neither the scan root nor the home directory moves the id."""
+    return content_discriminator([paths.stable(obj), *paths.stable(list(extra))])
+
+
+#: The ``record-skipped`` reason for a report object nested deeper than the
+#: interpreter can walk. The adapter counts the object and reads the rest.
+TOO_DEEP_REASON = "report objects nest deeper than the adapter reads and became no record"
+
+
 def guard_extract(producer: str) -> Callable:
     """Wrap an adapter's ``extract`` so that a report of an unexpected shape
     that the per-entry checks did not catch returns a not-assessed result
-    with the reason instead of raising or returning a partial result."""
+    with the reason instead of raising or returning a partial result.
+
+    A report nested deeper than the interpreter's recursion limit, or one
+    too large for memory, is such a shape too. Adapters that can read the
+    rest of a report around one over-deep object count that object as a
+    skip with :data:`TOO_DEEP_REASON` themselves; this wrapper is the last
+    line for the cases no per-object check covers."""
 
     def decorate(fn: Callable[..., "AdapterResult"]) -> Callable[..., "AdapterResult"]:
         @functools.wraps(fn)
@@ -498,6 +692,15 @@ def guard_extract(producer: str) -> Callable:
                 return not_assessed(
                     f"the {producer} report has a shape this adapter cannot read "
                     f"({type(exc).__name__}: {exc}); it was not assessed"
+                )
+            except RecursionError:
+                return not_assessed(
+                    f"the {producer} report nests its values deeper than this adapter "
+                    "reads; it was not assessed"
+                )
+            except MemoryError:
+                return not_assessed(
+                    f"the {producer} report is too large to read in memory; it was not assessed"
                 )
 
         return wrapper
@@ -567,11 +770,15 @@ __all__ = [
     "guard_extract",
     "is_absolute_path",
     "neutral_discriminator",
+    "stable_discriminator",
+    "TOO_DEEP_REASON",
     "STATUS_COMPLETED",
     "STATUS_NOT_ASSESSED",
     "VersionGate",
     "add_caveat",
     "build_record",
+    "cdxgen_tool",
+    "gate_cdxgen_tool_version",
     "cap_path",
     "content_discriminator",
     "gate_report_version",
