@@ -5,9 +5,8 @@ Trace BOMs recorded as adapter test input. The tests in
 
 ## How they were made
 
-`tracebom` is the one shipped inside the cdxgen package
-(`tracebom` (from the cdxgen install)); it prints `CycloneDX Generator 13.9.0`
-(cdxgen master `af131a30`).
+`tracebom` is the command the cdxgen 13.9.0 package installs; it prints
+`CycloneDX Generator 13.9.0` (cdxgen master `af131a30`).
 
 Both recordings ran in a temporary directory (deleted afterwards, spelled
 `<recording-dir>` below). The traced workload built one shared library and
@@ -60,10 +59,16 @@ It holds no library components: on macOS the safer-exec runtime
 (`@cdxgen/safer-exec-darwin-arm64` 1.3.0) reports library loads only as
 `file-read` violation events and never emits the `lib-load` events cdxgen
 collects, so tracebom on this platform writes no component with a
-`cdx:dynamic:filePath` property. The tests add one library component in
-the exact shape `lib/inventory/dynamic.js` writes (the shape cdxgen's own
-tests assert, including the Windows DLL spelling
-`C:\Windows\System32\bcrypt.dll`) to cover the file path relativisation.
+`cdx:dynamic:filePath` property. The tests add library components in the
+two shapes `lib/inventory/dynamic.js` writes: a generic purl whose subpath
+is the loaded file's absolute path (the shape cdxgen's own tests assert,
+including the Windows DLL spelling `C:\Windows\System32\bcrypt.dll`),
+and a file the OS package manager owns, named by that package's purl with
+its `arch` and `distro` qualifiers (the purls `osPackageResolver.poku.js`
+asserts, such as `pkg:deb/ubuntu/libc6@2.39-0ubuntu8.9`). The services an
+eBPF HTTP trace builds on Linux (only `cdx:service:httpMethod`, and the
+`urn:service:dynamic:` bom-ref) are added the same way, from
+`traceRunner.js`.
 
 `tracebom-dry-run.json` holds no components and no services, only the ten
 `cdx:dynamic:dryRun*` metadata properties with the attempted-operation
