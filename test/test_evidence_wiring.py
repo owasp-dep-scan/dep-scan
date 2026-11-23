@@ -131,15 +131,13 @@ DEJACODE_USAGE_EVIDENCE = {
     },
 }
 
-# Master's presence values on a BOM-directory scan of the dejacode fixture
-# with the usage evidence above attached, reachability off, recorded before
-# the records-based axis replaced the component-reading one. Master's
-# aggregated package list rewrites every component's evidence to the
-# identity evidences alone, so a BOM-directory scan never proved usage from
-# occurrences or callstacks: the values are likely or unlikely only, and
-# proven comes from reach alone. They are pinned as literals, not recomputed
-# by the code under test, so a regression in what the wiring feeds the axis
-# cannot redefine them.
+# The presence values a BOM-directory scan of the dejacode fixture gives with
+# the usage evidence above attached and reachability off. The aggregated
+# loader keeps only the identity evidences of each component, so usage
+# never proves presence on such a scan: the values are likely or unlikely
+# only, and proven comes from reach alone. They are pinned as literals, not
+# recomputed by the code under test, so a regression in what the wiring
+# feeds the axis cannot redefine them.
 BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF = {
     "pkg:pypi/defusedxml@0.7.1": "likely",
     "pkg:pypi/django-axes@8.3.1": "unlikely",
@@ -1065,7 +1063,7 @@ def test_the_index_joins_a_finding_to_its_cdxgen_occurrence_record(scan_stubs, t
 
 def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_path, monkeypatch):
     """A BOM-directory scan of the dejacode fixture with usage evidence
-    attached gives every component the values master gave it, recorded in
+    attached gives every component the values pinned in
     BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF: the aggregated package list
     keeps only the identity evidences, so usage proves nothing there and
     presence is likely or unlikely, with proven reserved for reach. The
@@ -1098,8 +1096,8 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_pa
     ), "the usage records are still written to the store"
 
     # With reachability on, every component of this fixture is reached, and
-    # presence is proven by reach alone, exactly as on master: the stripped
-    # usage view costs nothing there.
+    # presence is proven by reach alone: the stripped usage view costs
+    # nothing there.
     reach_result = api.scan(
         api.scan_options(
             bom_dir=str(bom_dir),

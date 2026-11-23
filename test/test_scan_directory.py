@@ -44,6 +44,17 @@ from depscan.lib.scan_directory import (
 )
 
 DATA_DIR = Path(__file__).parent / "data"
+
+#: The committed blint recordings the findings-file tests build their
+#: evidence records from; reading them needs the adapter, not blint itself.
+BLINT_DATA = (
+    Path(__file__).resolve().parent.parent
+    / "packages"
+    / "analysis-lib"
+    / "tests"
+    / "data"
+    / "blint"
+)
 FIXTURE_DIR = DATA_DIR / "scan-directory"
 
 VULN_REQUESTS = {
@@ -1514,3 +1525,64 @@ def test_a_rules_override_is_recorded_as_an_input_with_its_digest(tmp_path):
     assert recorded == [
         {"type": "file", "path": str(rules), "sha256": scan_directory.sha256_file(str(rules))}
     ]
+
+
+def test_findings_file_carries_the_blint_check_findings(tmp_path):
+    """The findings file builds its binary-hardening findings from the scan's
+    blint evidence records: the producer version is the record's own (the
+    version the blint-written BOM's metadata.tools names) and the binary
+    path is the location's relative spelling."""
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    document = scan_directory.write_findings(
+        str(reports), [], "7.0.0", blint_reviews=True, evidence_records=_blint_review_records()
+    )
+    assert len(document["findings"]) == 3, "the three recorded checks become findings"
+    finding = next(f for f in document["findings"] if f["rule"] == "CHECK_CANARY")
+    assert finding["category"] == "binary-hardening"
+    assert finding["producer"] == {"name": "blint", "version": "4.0.1"}
+    assert finding["locations"] == [{"binary": "corpus/fortified-libc-demo.elf"}]
+    on_disk = json.loads((reports / scan_directory.FINDINGS_FILE).read_text())
+    assert on_disk == document
+
+
+def test_records_are_ignored_without_a_review_request(tmp_path):
+    """The review request, not the presence of records, gates the binary
+    findings: a scan that did not ask for the review never writes them, the
+    records of a report an earlier scan left included."""
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    document = scan_directory.write_findings(
+        str(reports), [], "7.0.0", blint_reviews=False, evidence_records=_blint_review_records()
+    )
+    assert document["findings"] == []
+
+
+def test_a_review_request_without_records_writes_no_binary_findings(tmp_path):
+    """A review that was requested but produced no records (a report the
+    adapter refused) writes no binary findings rather than failing the
+    findings file."""
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    document = scan_directory.write_findings(str(reports), [], "7.0.0", blint_reviews=True)
+    assert document["findings"] == []
+
+
+def _blint_review_records():
+    """The blint adapter's records over the committed recordings, the way a
+    scan that requested the review builds them: the three documents with
+    their scan-directory-relative sources, versioned from the blint-written
+    BOM's metadata.tools."""
+    from analysis_lib.evidence.adapters import blint as blint_adapter
+
+    result = blint_adapter.extract(
+        (BLINT_DATA / "findings.json").read_text(encoding="utf-8"),
+        source="analysis/blint/findings.json",
+        producer_version="4.0.1",
+        reviews_document=(BLINT_DATA / "reviews.json").read_text(encoding="utf-8"),
+        reviews_source="analysis/blint/reviews.json",
+        coverage_document=(BLINT_DATA / "analysis-coverage.json").read_text(encoding="utf-8"),
+        coverage_source="analysis/blint/analysis-coverage.json",
+    )
+    assert result.status == "completed", result.reason
+    return result.records
