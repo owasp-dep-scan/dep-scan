@@ -41,7 +41,11 @@ report carries `crypto.findings` (rule ids such as
 `GOLEM-CRYPTO-LITERAL-MATERIAL` and `GOLEM-CRYPTO-TLS-INSECURE-SKIP-VERIFY`,
 the second also visible as a `tls-insecure` security signal), plus
 `crypto.libraries`, `crypto.operations`, `crypto.materials` and
-`crypto.protocols`. rusi's `crypto` section carries `libraries`,
+`crypto.protocols`. When golem cannot read Go from the project (no Go
+module in the tree), the `crypto` key is absent from the report entirely:
+the empty state is read from `diagnostics` (the reason the packages could
+not be read) and `stats` (`fileCount` 0), and Go crypto is not assessed,
+never "none used". rusi's `crypto` section carries `libraries`,
 `components`, `materials` and `findings`; its weak primitive findings
 cover MD5 and SHA-1, it is not a TLS configuration verifier, and it does
 not separate every weak hash
@@ -54,7 +58,12 @@ location.
 
 For the CycloneDX CBOM of a broader codebase, cdxgen's `crypto-bom` skill
 is the companion (this plugin names it rather than repeating its
-guidance).
+guidance). Its text ships inside the installed cdxgen package, whose
+`agent-plugin` directory sits next to the `bin/` the `cdxgen` command runs
+from: `agent-plugin/skills/crypto-bom/SKILL.md` under the package root
+(for example
+`~/.local/share/depscan-tools/cdxgen/agent-plugin/skills/crypto-bom/SKILL.md`
+on a user-level install).
 
 ## Join crypto to reachability
 
