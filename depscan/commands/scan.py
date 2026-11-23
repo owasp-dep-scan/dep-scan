@@ -694,6 +694,11 @@ def _append_check_lists(internal, resolution) -> set:
             techniques.append(technique)
             changed.add("techniques")
     internal.techniques = techniques or None
+    # Which techniques the checks added, beside whatever the user passed:
+    # create_bom keeps them out of the cdxgen invocation on a source scan,
+    # because a check's technique (the binary check's binary-analysis)
+    # narrows cdxgen's inventory instead of adding an analysis beside it.
+    internal.check_appended_techniques = list(resolution.append_techniques) or None
     return changed
 
 

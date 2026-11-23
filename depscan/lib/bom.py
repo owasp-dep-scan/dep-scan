@@ -614,14 +614,24 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
                 f"{CDXGEN_MIN_VERSION} or newer"
             ),
         )
+    # A technique the binary check appended narrows cdxgen's inventory to
+    # file-level components (no manifest parsing), which is the opposite of
+    # what the check wants on a source scan: the review runs beside the full
+    # inventory instead. The user's own --technique values pass through
+    # untouched; only the check-appended ones are kept out.
+    check_appended = options.get("check_appended_techniques") or []
+    generator_options = options
+    if check_appended:
+        kept = [t for t in (options.get("techniques") or []) if t not in check_appended]
+        generator_options = {**options, "techniques": kept or None}
     # For lifecycle analysis, we need to generate multiple BOM files
     if lifecycle_analysis_mode:
-        return create_lifecycle_boms(cdxgen_lib, src_dir, options)
+        return create_lifecycle_boms(cdxgen_lib, src_dir, generator_options)
     # Invoke the cdxgen library directly
     with console_status(
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
-        bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=options).generate()
+        bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=generator_options).generate()
         extractor_failures: List[str] = []
         not_assessed: List[str] = []
         if bom_result.success:

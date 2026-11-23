@@ -875,3 +875,58 @@ def test_the_tool_step_hands_the_scanned_source_directory_to_the_adapter(tmp_pat
     for record in result.records:
         for location in record.locations:
             assert not location.file.startswith("/"), location.file
+
+
+def test_a_check_appended_technique_never_narrows_the_cdxgen_inventory(tmp_path, monkeypatch):
+    """The binary check appends the binary-analysis technique to ask for
+    blint's review; passed on to cdxgen it narrows the inventory to
+    file-level components and the manifest components (npm, cargo, and the
+    rest) vanish with their findings. The generator must not receive a
+    technique that only a check appended, while a technique the user passed
+    reaches cdxgen unchanged and the review still runs."""
+    from depscan.lib import bom as bom_mod
+
+    seen = {"techniques": [], "review": []}
+
+    class _CapturingGen:
+        def __init__(self, src_dir, bom_file, logger=None, options=None):
+            self.bom_file = bom_file
+            seen["techniques"].append((options or {}).get("techniques"))
+
+        def generate(self):
+            with open(self.bom_file, "w") as fh:
+                json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+            return _FakeGenResult(True)
+
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _CapturingGen)
+    for name in (
+        "run_rusi_reachability",
+        "run_golem_reachability",
+        "run_kosi_reachability",
+        "run_dosai_reachability",
+    ):
+        monkeypatch.setattr(bom_mod, name, lambda *a, **k: None)
+    monkeypatch.setattr(
+        bom_mod,
+        "_run_blint_review",
+        lambda bom_file, src_dir, options: seen["review"].append(bom_file) or [],
+    )
+    bom_file = str(tmp_path / "sbom-universal.cdx.json")
+    check_added = {
+        "project_type": ["universal"],
+        "techniques": ["binary-analysis"],
+        "check_appended_techniques": ["binary-analysis"],
+    }
+    result = bom_mod.create_bom(bom_file, str(tmp_path), options=dict(check_added))
+    assert result.success, result.failure_reason
+    assert seen["techniques"] == [None], "the check-appended technique reached cdxgen"
+    assert seen["review"], "the binary review did not run beside the inventory"
+    # A technique the user passed explicitly narrows cdxgen, as asked.
+    seen["techniques"].clear()
+    user_only = dict(check_added)
+    user_only["techniques"] = ["binary-analysis", "filename"]
+    user_only["check_appended_techniques"] = None
+    result = bom_mod.create_bom(str(tmp_path / "b2.json"), str(tmp_path), options=user_only)
+    assert result.success, result.failure_reason
+    assert seen["techniques"] == [["binary-analysis", "filename"]]
