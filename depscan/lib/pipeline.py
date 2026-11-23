@@ -68,6 +68,7 @@ from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
 from depscan.lib import binary_review, explainer, utils
+from depscan.lib.exclusions import ExclusionSet
 from depscan.lib import doctor as doctor_lib
 from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
@@ -1071,6 +1072,11 @@ def finalize_setup(ctx):
         LOG.info(f"Loading custom vulnerability data from {args.custom_data}")
         search.load_custom_data(args.custom_data)
     ctx.purl_pkg_list = pkg_list
+    exclusions = ExclusionSet.from_options(ctx.depscan_options)
+    if exclusions:
+        # The patterns bound dep-scan's own walks as well as cdxgen's; naming
+        # them (and where they came from) shows what a scan left out.
+        LOG.info("Exclude patterns applied to this scan's walks: %s", exclusions.describe())
     if args.search_purl:
         # Automatically enable risk audit for single purl searches
         ctx.perform_risk_audit = True

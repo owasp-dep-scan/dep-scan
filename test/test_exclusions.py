@@ -39,9 +39,10 @@ def test_patterns_are_read_from_the_cdxgen_argument_string():
 
 
 def test_the_set_reads_the_options_of_a_scan():
-    assert ExclusionSet.from_options({"cdxgen_args": "--exclude 'a/**'"}).patterns == ("a/**",)
-    assert not ExclusionSet.from_options({})
-    assert not ExclusionSet.from_options(None)
+    options = {"cdxgen_args": "--exclude 'a/**'"}
+    assert ExclusionSet.from_options(options, env={}, cwd=".").patterns == ("a/**",)
+    assert not ExclusionSet.from_options({}, env={}, cwd=".")
+    assert not ExclusionSet.from_options(None, env={}, cwd=".")
 
 
 @pytest.mark.parametrize(
@@ -339,3 +340,130 @@ def test_dosai_still_runs_with_a_runner_that_takes_no_patterns(tmp_path, monkeyp
         json.load,
     )
     assert seen == {"ran": True}
+
+
+# braces, as cdxgen's glob and blint's matcher read them ---------------------
+
+
+@pytest.mark.parametrize(
+    "pattern, path, expected",
+    [
+        ("{test,docs}/**", "test/a", True),
+        ("{test,docs}/**", "docs/a/b", True),
+        ("{test,docs}/**", "src/a", False),
+        ("**/*.{nupkg,dll}", "x/a.dll", True),
+        ("**/*.{nupkg,dll}", "x/a.nupkg", True),
+        ("**/*.{nupkg,dll}", "x/a.exe", False),
+        ("{a,{b,c}}/x", "b/x", True),
+        ("{a,{b,c}}/x", "c/x", True),
+        ("{a,{b,c}}/x", "d/x", False),
+        ("src/{x}/y", "src/{x}/y", True),
+        ("src/{x}/y", "src/x/y", False),
+        ("{a,b", "{a,b", True),
+    ],
+)
+def test_brace_sets_expand_the_way_blint_expands_them(pattern, path, expected):
+    assert ExclusionSet.from_patterns([pattern]).excludes(path) is expected
+
+
+def test_brace_sets_reach_the_blint_targets(tmp_path):
+    root = str(tmp_path)
+    _touch(root, "test", "a.nupkg")
+    _touch(root, "docs", "b.dll")
+    keep = _touch(root, "bin", "c.dll")
+    options = {"cdxgen_args": "--exclude '{test,docs}/**'"}
+    targets = bom_mod.blint_targets(root, options)
+    assert targets == [os.path.join(root, "bin")] and keep.startswith(targets[0])
+
+
+# the other places cdxgen reads --exclude from ---------------------------------
+
+
+def test_the_environment_variable_supplies_the_patterns_without_arguments(tmp_path):
+    env = {"CDXGEN_EXCLUDE": "test/**"}
+    found = ExclusionSet.from_options({}, env=env, cwd=str(tmp_path))
+    assert found.patterns == ("test/**",)
+    assert found.source == "CDXGEN_EXCLUDE"
+    alias = ExclusionSet.from_options({}, env={"CDXGEN_EXCLUDE_REGEX": "x/**"}, cwd=str(tmp_path))
+    assert alias.patterns == ("x/**",) and alias.source == "CDXGEN_EXCLUDE_REGEX"
+
+
+def test_the_command_line_wins_over_the_environment_and_the_config_file(tmp_path):
+    (tmp_path / ".cdxgenrc").write_text(json.dumps({"exclude": ["file/**"]}))
+    env = {"CDXGEN_EXCLUDE": "env/**"}
+    options = {"cdxgen_args": "--exclude 'cli/**'"}
+    assert ExclusionSet.from_options(options, env=env, cwd=str(tmp_path)).patterns == ("cli/**",)
+    # Replaced, never merged, like a yargs array.
+    assert ExclusionSet.from_options({}, env=env, cwd=str(tmp_path)).patterns == ("env/**",)
+    assert ExclusionSet.from_options({}, env={}, cwd=str(tmp_path)).patterns == ("file/**",)
+
+
+@pytest.mark.parametrize(
+    "name, body",
+    [
+        (".cdxgenrc", json.dumps({"exclude": ["a/**", "b/**"]})),
+        (".cdxgen.json", json.dumps({"excludeRegex": "a/**"})),
+        (".cdxgen.yml", "exclude:\n  - a/**\n"),
+        (".cdxgen.yaml", "exclude-regex: a/**\n"),
+    ],
+)
+def test_the_project_config_file_supplies_the_patterns(tmp_path, name, body):
+    (tmp_path / name).write_text(body)
+    found = ExclusionSet.from_options({}, env={}, cwd=str(tmp_path))
+    assert found.patterns[0] == "a/**"
+    assert found.source == str(tmp_path / name)
+    assert found.excludes("a/x")
+
+
+def test_the_last_config_file_is_the_whole_config_as_in_cdxgen(tmp_path):
+    (tmp_path / ".cdxgenrc").write_text(json.dumps({"exclude": ["first/**"]}))
+    (tmp_path / ".cdxgen.json").write_text(json.dumps({"exclude": ["second/**"]}))
+    assert ExclusionSet.from_options({}, env={}, cwd=str(tmp_path)).patterns == ("second/**",)
+    # A later file without the option replaces the earlier config entirely.
+    (tmp_path / ".cdxgen.yml").write_text("type: js\n")
+    assert not ExclusionSet.from_options({}, env={}, cwd=str(tmp_path))
+
+
+def test_a_broken_config_file_gives_no_patterns(tmp_path):
+    (tmp_path / ".cdxgenrc").write_text("{not json")
+    assert not ExclusionSet.from_options({}, env={}, cwd=str(tmp_path))
+
+
+def test_the_description_names_the_patterns_and_their_source():
+    found = ExclusionSet.from_options(
+        {"cdxgen_args": "--exclude 'a/**' --exclude 'b/**'"}, env={}, cwd="."
+    )
+    assert found.describe() == "a/**, b/** (from --cdxgen-args)"
+
+
+def test_the_scan_logs_the_patterns_it_applied(monkeypatch, tmp_path, caplog):
+    import logging
+
+    from depscan.lib import pipeline
+
+    monkeypatch.setenv("CDXGEN_EXCLUDE", "test/**")
+    monkeypatch.chdir(tmp_path)
+    ctx = pipeline.ScanContext(args=None)
+    ctx.depscan_options = {}
+    ctx.reports_dir = str(tmp_path / "r")
+    args = type(
+        "A",
+        (),
+        {
+            "custom_data": None,
+            "search_purl": None,
+            "bom": None,
+            "bom_dir": None,
+            "project_type": None,
+            "non_universal_scan": False,
+            "exclude_types": [],
+        },
+    )()
+    ctx.args = args
+    ctx.src_dir = str(tmp_path)
+    with caplog.at_level(logging.INFO, logger="depscan"):
+        try:
+            pipeline.finalize_setup(ctx)
+        except Exception:  # noqa: BLE001 - only the log line before it matters
+            pass
+    assert any("test/** (from CDXGEN_EXCLUDE)" in r.getMessage() for r in caplog.records)
