@@ -1,0 +1,23 @@
+packages/analysis-lib/src/analysis_lib/findings/blint_convert.py
+  s_23234c20518dda::t_eb47a6f1745ed5 12-19,23,64-66,68-69,87
+packages/analysis-lib/tests/test_blint_convert.py
+  s_23234c20518dda::t_fd48711e1e042c 2-12,20,25-85,104-110,114-117,121-122,125,132,141,153-178
+test/test_blint_reviews.py
+  s_23234c20518dda::t_22cf2ca79f36f4 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c1599b2ad7ca195597a89de723886ad937bfef2",
+  "prompts": {},
+  "sessions": {
+    "s_23234c20518dda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9336f088-a59c-4ea9-8e6f-c00d75b0ed50",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
