@@ -284,12 +284,33 @@ def _parse_slice_project_type(name: str) -> Optional[str]:
     return None
 
 
+def _document_names_tool(document, tool: str) -> bool:
+    """Whether a parsed CycloneDX document's ``metadata.tools`` names ``tool``.
+
+    Both shapes the spec allows are read: the object form of spec 1.6 and
+    later (``{"components": [...]}``) and the bare list of 1.5 and earlier.
+    The version is not asked for; naming the tool is enough.
+    """
+    if not isinstance(document, dict):
+        return False
+    metadata = document.get("metadata")
+    if not isinstance(metadata, dict):
+        return False
+    tools = metadata.get("tools")
+    if isinstance(tools, dict):
+        tools = tools.get("components")
+    if not isinstance(tools, list):
+        return False
+    return any(isinstance(entry, dict) and entry.get("name") == tool for entry in tools)
+
+
 def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
     """One ``files`` entry: role, producer and project type of a file.
 
     ``relative_path`` uses forward slashes and never starts with a slash.
     ``is_cyclonedx`` is the parsed document when the caller has one, used to
-    tell a user's BOM apart from other JSON the directory may hold. The
+    tell a user's BOM apart from other JSON the directory may hold, and to
+    name a BOM's producer from the tool its own ``metadata.tools`` names. The
     manifest itself is never classified; callers leave it out.
     """
     name = os.path.basename(relative_path)
@@ -333,7 +354,12 @@ def classify_file(relative_path: str, is_cyclonedx=None) -> Dict[str, Any]:
         bom_stem = name[: -len(".cdx.json")]
         project_type = _parse_bom_project_type(bom_stem)
         if project_type is not None:
-            producer = "blint" if bom_stem.startswith("sbom-postbuild-") else "cdxgen"
+            producer = (
+                "blint"
+                if bom_stem.startswith("sbom-postbuild-")
+                or _document_names_tool(is_cyclonedx, "blint")
+                else "cdxgen"
+            )
             entry.update(role="bom", producer=producer, projectType=project_type)
         else:
             entry.update(role="bom", producer="user")
@@ -378,7 +404,8 @@ def walk_files(reports_dir: str) -> List[Dict[str, Any]]:
             if not os.path.isfile(absolute):
                 continue
             relative = os.path.relpath(absolute, reports_dir).replace(os.sep, "/")
-            entry = classify_file(relative)
+            document = _parse_json_document(absolute) if name.endswith(".cdx.json") else None
+            entry = classify_file(relative, is_cyclonedx=document)
             try:
                 entry["sha256"] = sha256_file(absolute)
             except OSError:
@@ -386,6 +413,20 @@ def walk_files(reports_dir: str) -> List[Dict[str, Any]]:
             entries.append(entry)
     entries.sort(key=lambda entry: entry["path"])
     return entries
+
+
+def _parse_json_document(path: str):
+    """A file parsed as JSON, or None when it cannot be read or parsed.
+
+    Only BOM documents are parsed, to name their producer from the tool the
+    document itself states; a file that is not readable as JSON keeps the
+    answer its name gives.
+    """
+    try:
+        with open(path, encoding="utf-8") as fp:
+            return json.load(fp)
+    except (OSError, ValueError):
+        return None
 
 
 def analyzer_entries(

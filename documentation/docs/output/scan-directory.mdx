@@ -45,7 +45,7 @@ The manifest's `files` array carries one entry for every file at the top of the 
 
 | Role | Files | Written by |
 | --- | --- | --- |
-| `bom` | `sbom-<type>.cdx.json` and its lifecycle siblings, and a BOM the user placed here | cdxgen, blint (post-build), or `user` |
+| `bom` | `sbom-<type>.cdx.json` and its lifecycle siblings, and a BOM the user placed here | the tool the BOM's own `metadata.tools` names: cdxgen, or blint for the post-build document and any other BOM blint wrote, for example the one the binary check writes into the `sbom-<type>` path; `user` for a BOM the user placed here under another name |
 | `vdr` | `*.vdr.json`, including `depscan-universal.vdr.json` | dep-scan |
 | `findings` | `depscan.findings.json` | dep-scan |
 | `evidence` | `evidence.jsonl`, `evidence.index.json` | dep-scan |

@@ -1213,6 +1213,54 @@ def test_classify_file_roles():
     )
 
 
+def test_a_boms_producer_is_the_tool_its_metadata_names(tmp_path):
+    """A BOM file blint wrote is attributed to blint whatever its name.
+
+    The binary check writes blint's SBOM into the requested ``sbom-<type>``
+    path, so the name alone cannot tell the two generators apart; the
+    document's own ``metadata.tools`` entry is what names its producer.
+    """
+    blint_bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {
+            "tools": {
+                "components": [
+                    {
+                        "type": "application",
+                        "group": "owasp-dep-scan",
+                        "name": "blint",
+                        "version": "4.1.0",
+                    }
+                ]
+            }
+        },
+        "components": [{"type": "file", "name": "libc.so.6", "purl": "pkg:file/libc.so.6"}],
+    }
+    cdxgen_bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.6",
+        "metadata": {"tools": {"components": [{"type": "application", "name": "cdxgen"}]}},
+        "components": [{"type": "library", "name": "requests", "version": "2.32.1"}],
+    }
+    # The spec 1.5-and-earlier shape, a bare list, names the producer too.
+    listed_bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.5",
+        "metadata": {"tools": [{"name": "blint", "version": "4.1.0"}]},
+    }
+    (tmp_path / "sbom-universal.cdx.json").write_text(json.dumps(blint_bom))
+    (tmp_path / "sbom-python.cdx.json").write_text(json.dumps(cdxgen_bom))
+    (tmp_path / "sbom-postbuild-universal.cdx.json").write_text(json.dumps(listed_bom))
+    (tmp_path / "sbom-broken.cdx.json").write_text("not json")
+    entries = {entry["path"]: entry for entry in scan_directory.walk_files(str(tmp_path))}
+    assert entries["sbom-universal.cdx.json"]["producer"] == "blint"
+    assert entries["sbom-python.cdx.json"]["producer"] == "cdxgen"
+    assert entries["sbom-postbuild-universal.cdx.json"]["producer"] == "blint"
+    # An unreadable document keeps the name-based answer rather than guessing.
+    assert entries["sbom-broken.cdx.json"]["producer"] == "cdxgen"
+
+
 def test_walk_files_hashes_the_scan_files_but_not_the_manifest(tmp_path):
     (tmp_path / "depscan.findings.json").write_text("{}")
     (tmp_path / "evidence.jsonl").write_text("")
