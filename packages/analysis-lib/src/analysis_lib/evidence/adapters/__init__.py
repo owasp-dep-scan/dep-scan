@@ -184,6 +184,19 @@ def cdxgen_tool(bom: dict) -> Tuple[bool, Any]:
     return False, None
 
 
+def bom_tool_version(bom: Any, name: str) -> str:
+    """The version a parsed BOM's ``metadata.tools`` gives the named tool,
+    as text, or the empty string when the BOM names no such tool or no
+    version for it."""
+    if not isinstance(bom, dict):
+        return ""
+    for entry in _tool_entries(bom):
+        if as_str(entry.get("name")) == name:
+            version = entry.get("version")
+            return str(version) if version not in (None, "") else ""
+    return ""
+
+
 def _tool_names(bom: dict) -> str:
     """The tools a BOM's ``metadata.tools`` lists, as ``name version`` text,
     or ``no tool``."""

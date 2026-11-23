@@ -1239,3 +1239,19 @@ def test_a_kosi_endpoint_service_becomes_an_entry_point_naming_no_package():
     assert entry.attributes["properties"]["cdx:kosi:endpoint:framework"] == "ktor"
     assert entry.caveats == result.records[0].caveats
     validate("evidence", entry.to_dict())
+
+
+def test_bom_tool_version_reads_both_tools_forms():
+    """The shared reader finds a tool's version in the CycloneDX 1.5 list
+    form and the 1.6 ``components`` form, and gives the empty string for a
+    missing tool, a missing version or a document that is not an object."""
+    from analysis_lib.evidence.adapters import bom_tool_version
+
+    listed = {"metadata": {"tools": [{"name": "atom", "version": "4.0.3"}]}}
+    nested = {"metadata": {"tools": {"components": [{"name": "blint", "version": "4.0.1"}]}}}
+    assert bom_tool_version(listed, "atom") == "4.0.3"
+    assert bom_tool_version(nested, "blint") == "4.0.1"
+    assert bom_tool_version(nested, "atom") == ""
+    assert bom_tool_version({"metadata": {"tools": [{"name": "atom"}]}}, "atom") == ""
+    assert bom_tool_version({"metadata": {"tools": "atom"}}, "atom") == ""
+    assert bom_tool_version([], "atom") == ""

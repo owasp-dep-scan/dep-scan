@@ -53,6 +53,7 @@ from analysis_lib.output import (
 )
 from analysis_lib.packages import get_all_pkg_list, get_pkg_list
 from analysis_lib.evidence import store as evidence_store
+from analysis_lib.evidence.adapters import bom_tool_version
 from analysis_lib.reachability import get_reachability_impl
 from analysis_lib.search import get_pkgs_by_scope
 from analysis_lib.vdr import VDRAnalyzer
@@ -1721,7 +1722,7 @@ def _atom_producer_version(ctx, scan, options) -> str:
     if not _reads_stored_analysis(ctx.args):
         return _doctor_analyzer_version("atom", ctx)
     for bom_file in options.bom_files or []:
-        version = _bom_tool_version(_bom_document(scan, bom_file), "atom")
+        version = bom_tool_version(_bom_document(scan, bom_file), "atom")
         if version:
             return version
     return ""
@@ -1746,23 +1747,6 @@ def _bom_document(scan, path: str) -> Any:
                 value = text
         scan.bom_documents[key] = value
     return scan.bom_documents[key]
-
-
-def _bom_tool_version(bom: Any, tool_name: str) -> str:
-    """The version a parsed BOM's ``metadata.tools`` gives the named tool,
-    in the CycloneDX 1.5 list form or the 1.6 ``components`` form, or the
-    empty string."""
-    if not isinstance(bom, dict):
-        return ""
-    metadata = bom.get("metadata")
-    tools = metadata.get("tools") if isinstance(metadata, dict) else None
-    entries = tools if isinstance(tools, list) else []
-    if isinstance(tools, dict) and isinstance(tools.get("components"), list):
-        entries = tools["components"]
-    for entry in entries:
-        if isinstance(entry, dict) and entry.get("name") == tool_name and entry.get("version"):
-            return str(entry["version"])
-    return ""
 
 
 def _doctor_analyzer_version(analyzer: str, ctx) -> str:
@@ -2003,7 +1987,7 @@ def _blint_bom_version(scan) -> str:
     installed blint package is never asked: the BOM's own statement is the
     version the records are versioned with."""
     for bom_file in scan.bom_files or []:
-        version = _bom_tool_version(_bom_document(scan, bom_file), "blint")
+        version = bom_tool_version(_bom_document(scan, bom_file), "blint")
         if version:
             return version
     return ""
