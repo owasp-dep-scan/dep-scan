@@ -1,0 +1,33 @@
+packages/analysis-lib/tests/test_evidence_blint.py
+  s_7318da1b9edd46::t_738ea2f20ba1fc 210,214-223,227,500,503
+agent-plugin/agents/binary-reviewer.md
+  s_7318da1b9edd46::t_19c80e4f7993a5 37
+documentation/docs/agent-skills-toolchain.mdx
+  s_7318da1b9edd46::t_738ea2f20ba1fc 42
+agent-plugin/skills/depscan-binary/SKILL.md
+  s_7318da1b9edd46::t_738ea2f20ba1fc 44
+documentation/docs/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_738ea2f20ba1fc 142
+agent-plugin/skills/depscan-mobile-app/SKILL.md
+  s_7318da1b9edd46::t_738ea2f20ba1fc 45
+packages/analysis-lib/src/analysis_lib/evidence/adapters/blint.py
+  s_7318da1b9edd46::t_738ea2f20ba1fc 92
+agent-plugin/reference/tools.md
+  s_7318da1b9edd46::t_738ea2f20ba1fc 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "501bb78f988215f6c02d7ea30f85055f4c1cb2c0",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
