@@ -56,6 +56,7 @@ BLINT_DATA = (
     / "blint"
 )
 FIXTURE_DIR = DATA_DIR / "scan-directory"
+REPORT_VDR_DIR = DATA_DIR / "report-vdr"
 
 VULN_REQUESTS = {
     "id": "CVE-2024-1111",
@@ -289,6 +290,55 @@ def test_round_trip_scan_load_and_report(scan_stubs, tmp_path, capsys):
     assert "Vulnerabilities count: 1" in output
     assert "high: 1" in output
     assert "2.32.2" in output, "the fix version of the one advisory is rendered"
+
+
+def test_report_renders_the_fields_the_vdr_persists(capsys, monkeypatch):
+    """The report verb's table carries what the VDR file keeps.
+
+    The scan-time table renders transient fields the VDR writer strips
+    before the file is written, so the loaded entries must get them back
+    from the persisted form: the advisory id and the affected component in
+    the package column, the insights from the ``depscan:insights``
+    property, and the fix version from the affects versions. The fixture is
+    a cut of a real scan whose VDR was written the normal way.
+    """
+    monkeypatch.setenv("COLUMNS", "200")
+    exit_code = report_lib.run_report_command([str(REPORT_VDR_DIR)])
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "Vulnerabilities count: 1" in out
+    assert "CVE-2026-118764" in out
+    assert "minimatch@10.2.6" in out
+    assert "Indirect dependency" in out
+    assert "11.0.1" in out
+
+
+def test_table_entry_splits_the_insights_the_vdr_writer_joins():
+    """One property value holds every plain insight of an entry, joined by
+    the backslash-n the VDR writer writes; the rebuilt entry splits them
+    back into the list the table renders, and reads the fix version and the
+    package prefix from the affects entry."""
+    entry = report_lib._table_entry(
+        {
+            "id": "CVE-2026-118764",
+            "affects": [
+                {
+                    "ref": "pkg:npm/minimatch@10.2.6",
+                    "versions": [
+                        {"range": "vers:npm/>=7.0.0", "status": "affected"},
+                        {"version": "11.0.1", "status": "unaffected"},
+                    ],
+                }
+            ],
+            "ratings": [{"severity": "medium", "score": 6.9}],
+            "properties": [
+                {"name": "depscan:insights", "value": "Indirect dependency\\nKnown Exploits"}
+            ],
+        }
+    )
+    assert entry["insights"] == ["Indirect dependency", "Known Exploits"]
+    assert entry["fixed_location"] == "11.0.1"
+    assert entry["purl_prefix"] == "pkg:npm/minimatch"
 
 
 def test_findings_are_the_conversion_of_the_vdr_entries(scan_stubs, tmp_path):

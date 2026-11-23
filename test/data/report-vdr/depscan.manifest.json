@@ -1,0 +1,395 @@
+{
+  "layoutVersion": "2.0",
+  "depscanVersion": "7.0.0a2",
+  "startUtc": "2026-11-23T12:32:33.582644Z",
+  "endUtc": "2026-11-23T12:32:37.767078Z",
+  "inputs": [
+    {
+      "type": "dir",
+      "path": "cdx-proto",
+      "git": {
+        "commit": "cdb2fc91fd208d5249bc7bca5b3d13142da72080",
+        "dirty": true
+      }
+    }
+  ],
+  "stages": [
+    {
+      "name": "setup",
+      "status": "completed",
+      "capabilities": []
+    },
+    {
+      "name": "database",
+      "status": "completed",
+      "capabilities": [
+        "vulnerabilities"
+      ]
+    },
+    {
+      "name": "inventory",
+      "status": "completed",
+      "capabilities": [
+        "reachability:rust",
+        "reachability:go",
+        "reachability:kotlin",
+        "reachability:dotnet"
+      ],
+      "projectType": "universal",
+      "outputs": [
+        {
+          "file": "sbom-universal.cdx.json",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "name": "licenses",
+      "status": "skipped",
+      "capabilities": [
+        "license"
+      ],
+      "projectType": "universal",
+      "reason": "license analysis was not requested"
+    },
+    {
+      "name": "risk",
+      "status": "skipped",
+      "capabilities": [],
+      "projectType": "universal",
+      "reason": "the risk audit was not requested"
+    },
+    {
+      "name": "enrichment",
+      "status": "completed",
+      "capabilities": [
+        "reachability"
+      ],
+      "projectType": "universal",
+      "analyzers": [
+        {
+          "name": "atom",
+          "capability": "reachability",
+          "status": "not-assessed",
+          "reason": "no atom report was given; the adapter has nothing to read"
+        },
+        {
+          "name": "rusi",
+          "capability": "reachability:rust",
+          "status": "not-assessed",
+          "reason": "no rusi report was produced or given for this scan"
+        },
+        {
+          "name": "golem",
+          "capability": "reachability:go",
+          "status": "not-assessed",
+          "reason": "no golem report was produced or given for this scan"
+        },
+        {
+          "name": "kosi",
+          "capability": "reachability:kotlin",
+          "status": "not-assessed",
+          "reason": "no kosi report was produced or given for this scan"
+        },
+        {
+          "name": "dosai",
+          "capability": "reachability:dotnet",
+          "status": "not-assessed",
+          "reason": "no dosai report was produced or given for this scan"
+        }
+      ],
+      "outputs": [
+        {
+          "file": "evidence.jsonl",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "name": "matching",
+      "status": "completed",
+      "capabilities": [
+        "vulnerabilities"
+      ],
+      "projectType": "universal"
+    },
+    {
+      "name": "vdr",
+      "status": "completed",
+      "capabilities": [],
+      "projectType": "universal",
+      "outputs": [
+        {
+          "file": "sbom-universal.vdr.json",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "name": "explain",
+      "status": "skipped",
+      "capabilities": [],
+      "projectType": "universal",
+      "reason": "the explanation was not requested"
+    },
+    {
+      "name": "render",
+      "status": "completed",
+      "capabilities": []
+    }
+  ],
+  "options": {
+    "annotate": false,
+    "bom_engine": "auto",
+    "cdxgen_args": "<redacted>",
+    "cdxgen_server": null,
+    "csaf": false,
+    "csaf_version": "2.1",
+    "deep_scan": false,
+    "enable_debug": false,
+    "exclude_malware": false,
+    "exclude_types": [],
+    "explain": false,
+    "explanation_mode": "EndpointsAndReachables",
+    "fail_on_error": false,
+    "fuzzy_search": false,
+    "go_analyzer_cgo": false,
+    "go_analyzer_network": "auto",
+    "lifecycles": null,
+    "malware_only": false,
+    "no_banner": false,
+    "no_vuln_table": false,
+    "non_universal_scan": false,
+    "private_ns": null,
+    "profile": "generic",
+    "project_type": [
+      "universal"
+    ],
+    "quiet": false,
+    "reachability_analyzer": "FrameworkReachability",
+    "report_name": "rendered.report",
+    "risk_audit": false,
+    "rust_analyzer_backend": "stable",
+    "search_order": "pcu",
+    "search_purl": null,
+    "server_allowed_hosts": null,
+    "server_host": "127.0.0.1",
+    "server_mode": false,
+    "server_port": "7070",
+    "severity": null,
+    "spec_version": "1.6",
+    "suggest": true,
+    "techniques": null,
+    "vdb_compression": null,
+    "vdb_distro": null,
+    "vdb_extended": null,
+    "vdb_flavor": null,
+    "vdb_image": null,
+    "vdb_offline": false,
+    "vdb_scope": null,
+    "vdb_time": null,
+    "vuln_analyzer": "auto"
+  },
+  "files": [
+    {
+      "path": "sbom-universal.vdr.json",
+      "role": "vdr",
+      "producer": "dep-scan",
+      "sha256": "c5852773861f373f3a2c825bad03225a1949a794e46abacddd70d309d65dc364"
+    },
+    {
+      "path": "depscan.findings.json",
+      "role": "findings",
+      "producer": "dep-scan",
+      "sha256": "704b703318d89605528734acb547a51b8c427a90e09d314af476e1dcdab126fe"
+    }
+  ],
+  "database": {
+    "vulnerabilityDatabase": {
+      "present": true,
+      "directory": "~/Library/Application Support/vdb",
+      "image": "ghcr.io/appthreat/vdb7-full:v7.0.x-xz",
+      "flavor": "full",
+      "shards": {
+        "enabled": false,
+        "present": []
+      },
+      "createdUtc": "2026-11-22T23:05:55+00:00",
+      "ageHours": 13.4,
+      "stale": false,
+      "maxAgeHours": 48,
+      "cveDataCount": 9696630,
+      "cveIndexCount": 9696509,
+      "extendedMetadataPresent": false,
+      "cveMetadataRows": 0
+    },
+    "flavorUsed": "full",
+    "shardsUsed": []
+  },
+  "tools": [
+    {
+      "name": "cdxgen",
+      "path": "~/.local/bin/cdxgen",
+      "version": "13.9.0",
+      "source": "path",
+      "reason": null,
+      "minVersion": "13.8.0"
+    }
+  ],
+  "platform": {
+    "os": "darwin",
+    "arch": "arm64",
+    "libc": null
+  },
+  "capabilities": [
+    {
+      "name": "vulnerabilities",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "data:vdb"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/592",
+      "description": "Match components against the vulnerability database."
+    },
+    {
+      "name": "reachability",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "tool:cdxgen"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/592",
+      "description": "Reachability from the slices cdxgen and atom produce."
+    },
+    {
+      "name": "reachability:rust",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "tool:cdxgen",
+        "tool:rusi"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/603",
+      "description": "Rust reachability through the rusi plugin."
+    },
+    {
+      "name": "reachability:go",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "tool:cdxgen",
+        "tool:golem",
+        "tool:go"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/603",
+      "description": "Go reachability through the golem plugin and the Go toolchain."
+    },
+    {
+      "name": "reachability:kotlin",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "tool:kosi"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/602",
+      "description": "Kotlin and JVM reachability through the kosi plugin (syntax backend, no build)."
+    },
+    {
+      "name": "reachability:dotnet",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "tool:cdxgen",
+        "tool:dosai",
+        "tool:dotnet"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/601",
+      "description": ".NET reachability through the dosai plugin and the .NET runtime."
+    },
+    {
+      "name": "license",
+      "status": "available",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/592",
+      "description": "License risk from the licence data vendored with dep-scan."
+    },
+    {
+      "name": "mcp",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "python:mcp"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/631",
+      "description": "The MCP server over stdio (`depscan mcp`) for agents."
+    },
+    {
+      "name": "memory-safety",
+      "status": "not-implemented",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/613",
+      "description": "Memory-safety findings for C and C++ sources."
+    },
+    {
+      "name": "memory-safety:c",
+      "status": "not-implemented",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/613",
+      "description": "Memory-safety analysis of C sources with atom memory-safety."
+    },
+    {
+      "name": "mobile",
+      "status": "not-implemented",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/625",
+      "description": "Android and iOS app analysis."
+    },
+    {
+      "name": "mobile:android",
+      "status": "not-implemented",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/625",
+      "description": "Android app analysis with blint, atom and kosi."
+    },
+    {
+      "name": "supply-chain",
+      "status": "available",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/606",
+      "description": "Package risk audit and malware advisory reporting."
+    },
+    {
+      "name": "binary",
+      "status": "available",
+      "missing": [],
+      "requirements": [
+        "tool:blint"
+      ],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/620",
+      "description": "Binary analysis with blint."
+    },
+    {
+      "name": "code",
+      "status": "not-implemented",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/605",
+      "description": "Findings from the analyzers' own code rules."
+    },
+    {
+      "name": "crypto",
+      "status": "not-implemented",
+      "missing": [],
+      "requirements": [],
+      "issue": "https://github.com/owasp-dep-scan/dep-scan/issues/606",
+      "description": "Crypto findings from the cbom-security audit pack."
+    }
+  ]
+}

@@ -13,7 +13,14 @@ import sys
 from typing import List
 
 from analysis_lib import VdrAnalysisKV
-from analysis_lib.output import exploitability_grade_stats, generate_console_output, summary_stats
+from analysis_lib.output import (
+    affects_fix_version,
+    exploitability_grade_stats,
+    generate_console_output,
+    pkg_sub_tree,
+    purl_prefix_from_ref,
+    summary_stats,
+)
 
 from depscan import api
 from depscan.commands.output import (
@@ -61,6 +68,61 @@ def parse_report_args(argv: List[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+#: The property that carries an entry's plain insights, joined into one
+#: value by the backslash-n the VDR writer writes.
+INSIGHTS_PROPERTY = "depscan:insights"
+INSIGHTS_SEPARATOR = "\\n"
+
+
+def _table_entry(vuln):
+    """One VDR entry as the input the table renderer expects.
+
+    The renderer reads the transient fields the scan's analysis attaches to
+    its entries, which the VDR writer strips before the file is written, so
+    each is rebuilt from the fields the file persists: the insights from the
+    ``depscan:insights`` property, the fix version and the package prefix
+    from the first affects entry, and the package column as a single-node
+    tree that names the advisory the way the scan-time tree does. Entries
+    that name no affects ref keep the renderer's empty forms.
+    """
+    entry = dict(vuln)
+    entry.setdefault("id", "unknown")
+    entry.setdefault("bom-ref", entry.get("purl") or entry["id"])
+    insights = []
+    for prop in entry.get("properties") or []:
+        if isinstance(prop, dict) and prop.get("name") == INSIGHTS_PROPERTY:
+            insights.extend(
+                part for part in str(prop.get("value") or "").split(INSIGHTS_SEPARATOR) if part
+            )
+    entry["insights"] = insights
+    affects = [
+        affect
+        for affect in entry.get("affects") or []
+        if isinstance(affect, dict) and affect.get("ref")
+    ]
+    if not affects:
+        entry["purl_prefix"] = ""
+        entry["fixed_location"] = ""
+        entry["p_rich_tree"] = None
+        return entry
+    ref = str(affects[0]["ref"])
+    entry["purl_prefix"] = purl_prefix_from_ref(ref)
+    # The affects versions are where the scan's writer puts the fix; an
+    # entry that instead carries the transient field itself (a hand-made or
+    # stub-written VDR) keeps it.
+    entry["fixed_location"] = affects_fix_version(affects[0]) or str(entry.get("fixed_location") or "")
+    rating = (entry.get("ratings") or [{}])[0]
+    _, entry["p_rich_tree"] = pkg_sub_tree(
+        ref,
+        ref.replace(":", "/"),
+        {},
+        pkg_severity=rating.get("severity") or "unknown",
+        as_tree=True,
+        extra_text=f":left_arrow: {entry['id']}",
+    )
+    return entry
+
+
 def _graded_pairs(findings, vulnerabilities):
     """The (advisory id, component) -> exploitability map of one project
     type, read from the scan directory's findings.
@@ -93,19 +155,13 @@ def _render_results(tscan, findings=None) -> None:
     """Print the results table and summary stats of one project type.
 
     The table is the one the scan itself printed, rendered from the VDR the
-    scan wrote. The dependency tree column stays empty, because the scan
-    directory does not carry the BOM's dependency tree. The table renderer
-    expects the fields the scan's writer always sets, so each entry is
-    normalized on a copy rather than trusted.
+    scan wrote. The dependency tree column shows the single affected
+    component instead of the tree, because the scan directory does not carry
+    the BOM's dependency tree. The table renderer expects the fields the
+    scan's analysis attaches to its entries, so each entry is rebuilt from
+    the persisted VDR fields rather than trusted.
     """
-    vulnerabilities = []
-    for vuln in tscan.vulnerabilities:
-        entry = dict(vuln)
-        entry.setdefault("id", "unknown")
-        entry.setdefault("bom-ref", entry.get("purl") or entry["id"])
-        if not isinstance(entry.get("insights"), list):
-            entry["insights"] = []
-        vulnerabilities.append(entry)
+    vulnerabilities = [_table_entry(vuln) for vuln in tscan.vulnerabilities]
     options = VdrAnalysisKV(
         tscan.project_type,
         init_results=[],

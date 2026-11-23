@@ -148,7 +148,7 @@ def pkg_sub_tree(
     )
 
 
-def _purl_prefix_from_ref(ref):
+def purl_prefix_from_ref(ref):
     """Derive the version-less purl prefix of an affects ref.
 
     Mirrors the purl_prefix vdb indexes: refs carrying a version lose their
@@ -160,7 +160,7 @@ def _purl_prefix_from_ref(ref):
     return ref
 
 
-def _affects_fix_version(affects_entry):
+def affects_fix_version(affects_entry):
     """Per-component fix version: the unaffected version recorded on the
     affects entry by analyze_cve_vuln / process_vuln_occ."""
     for vers in affects_entry.get("versions") or []:
@@ -232,7 +232,7 @@ def _expanded_vuln_rows(vdr, bom_dependency_tree):
             extra_text=f":left_arrow: {vid}",
         )
         rows.append(
-            (_purl_prefix_from_ref(ref), p_rich_tree, _affects_fix_version(affects_entry), ref)
+            (purl_prefix_from_ref(ref), p_rich_tree, affects_fix_version(affects_entry), ref)
         )
     if not rows:
         return [(vdr.get("purl_prefix") or "", vdr.get("p_rich_tree"), None, None)]

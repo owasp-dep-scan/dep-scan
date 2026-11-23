@@ -161,7 +161,7 @@ depscan report <scan-dir>
 depscan report <scan-dir> --explain --explanation-mode EndpointsAndReachables
 ```
 
-`depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the evidence store and the OpenAPI specifications the directory holds. It never generates BOMs, never runs analyzers and never opens the vulnerability database. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.
+`depscan report` re-renders a saved directory: the results table and the summary counts of every project type, and with `--explain` the explanation the scan rendered, reading the evidence store and the OpenAPI specifications the directory holds. The table carries the same fields the scan printed: the advisory id and the affected component, the insights the VDR holds as its `depscan:insights` property, the fix version from the affects versions and the exploitability grade. Without the BOM's dependency tree, the package column shows the affected component and the advisory instead of the tree path. It never generates BOMs, never runs analyzers and never opens the vulnerability database. A directory that cannot be loaded, or an explanation whose inputs the directory does not hold, is answered with the reason on stderr and exit code 1.
 
 ## The evidence files
 
