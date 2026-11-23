@@ -1,0 +1,55 @@
+agent-plugin/reference/commands.md
+  s_521ad8e421d1a2::t_432ab51822cc45 67
+agent-plugin/reference/safety.md
+  s_521ad8e421d1a2::t_2adaf29af701d9 129-131
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_521ad8e421d1a2::t_a718506ad098a3 39-45,49-53
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_521ad8e421d1a2::t_74476cc6cf649d 75-77,79-82
+documentation/docs/cli-usage.mdx
+  s_1087ee9131e711::t_4e1acd79237896 259-272
+documentation/docs/env-var.mdx
+  s_1087ee9131e711::t_8bc712a530529e 46
+documentation/docs/languages/dotnet-reachability.mdx
+  s_342dcc8e7dfe36::t_5e2642996f01e0 28
+documentation/docs/languages/go-reachability.mdx
+  s_342dcc8e7dfe36::t_f64033aadd8d01 26
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  s_342dcc8e7dfe36::t_05e5a8bcd60565 15
+documentation/docs/languages/rust-reachability.mdx
+  s_342dcc8e7dfe36::t_d8de8fb1efea09 25
+test/data/universal-bom/README.md
+  s_521ad8e421d1a2::t_a0e624f0e45ad7 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "572802593af103ed98a2eb6631381becf33dd706",
+  "prompts": {},
+  "sessions": {
+    "s_1087ee9131e711": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ae819df-8088-44e6-9f9a-5fcc6582ca1c",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_342dcc8e7dfe36": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "255d7107-36b5-4cc2-86d4-41de6b519238",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_521ad8e421d1a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d879692-e9c2-4325-bd9c-f554823f9e9a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
