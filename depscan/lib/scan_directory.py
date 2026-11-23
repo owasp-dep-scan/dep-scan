@@ -604,9 +604,10 @@ def write_findings(
     are not this scan's findings and are ignored. The binary-hardening
     findings are built from the blint records this scan's adapter produced,
     with the producer version the records carry. ``usage_not_assessed``
-    maps a comparable purl to the reason its BOM's usage evidence was not
-    read; a vulnerability finding of that package whose presence is not
-    proven names the reason in its coverage.
+    maps a comparable purl to the reason usage evidence of that package in
+    a BOM of the scan was not assessed; every vulnerability finding of
+    that package that carries an exploitability assessment names the
+    reason in its coverage, proven presence included.
     Returns the document written.
     """
     from analysis_lib.findings.blint_convert import findings_from_blint_records

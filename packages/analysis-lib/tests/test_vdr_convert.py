@@ -286,20 +286,21 @@ def test_a_component_evidence_block_without_records_proves_nothing():
 
 
 @pytest.mark.parametrize(
-    "presence_reached, expected_reasons",
+    "presence_reached, expected_presence",
     [
-        (False, 1),
-        # A reached package is proven by reach; its unread usage evidence
-        # changes nothing about the presence value, so no reason is named.
-        (True, 0),
+        (False, "likely"),
+        # A reached package is proven by reach, and the unread usage
+        # evidence is still named: the BOM that was not assessed counts as
+        # missing whatever the reach evidence proved.
+        (True, "proven"),
     ],
 )
 def test_unread_usage_evidence_is_named_in_the_finding_coverage(
-    presence_reached, expected_reasons
+    presence_reached, expected_presence
 ):
     """A package whose BOM's usage evidence was not assessed keeps the
-    presence the database match gives it, and the finding's coverage names
-    why usage could not prove more. The finding itself stays assessed."""
+    presence the other evidence gives it, and the finding's coverage names
+    the unread BOM either way. The finding itself stays assessed."""
     scope = ReachScope(
         analyzers=["atom"],
         reached={REF} if presence_reached else {OTHER},
@@ -316,15 +317,14 @@ def test_unread_usage_evidence_is_named_in_the_finding_coverage(
         usage_not_assessed={REF: reason},
     )
     assert finding.coverage.state == "assessed"
+    assert _exploitability(finding).axes.presence == expected_presence
     reasons = finding.coverage.reasons or []
-    assert len(reasons) == expected_reasons
-    if expected_reasons:
-        assert _exploitability(finding).axes.presence == "likely"
-        assert reasons[0].to_dict() == {
-            "capability": "presence:usage",
-            "reason": "report-not-assessed",
-            "detail": reason,
-        }
+    assert len(reasons) == 1
+    assert reasons[0].to_dict() == {
+        "capability": "presence:usage",
+        "reason": "report-not-assessed",
+        "detail": reason,
+    }
     validate("finding", finding.to_dict())
 
 

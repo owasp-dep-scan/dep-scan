@@ -620,7 +620,6 @@ def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
         adapter_results={"atom": AdapterResult(status="completed")},
         pkg_list=[{"purl": "pkg:pypi/requests@2.32.1"}],
         bom_dir=str(tmp_path),
-        usage_documents={},
         cdxgen_reads={},
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
@@ -911,7 +910,6 @@ def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypat
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
-        usage_documents={},
         cdxgen_reads={},
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
@@ -948,7 +946,6 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
-        usage_documents={},
         cdxgen_reads={},
     )
     ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
