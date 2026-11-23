@@ -33,6 +33,13 @@ Use absolute paths for the scan target and for `-o`. Relative paths break
 the report paths a later skill or the MCP server reads back, and the
 result documents record the scan directory the run used.
 
+A new scan pointed with `-o` at a directory that already holds a finished
+scan replaces its manifest, findings, VDR and rendered reports, and the
+manifest that recorded the earlier scan's provenance is lost. Write each
+scan to a fresh reports directory; when a request needs to scan from a
+finished scan's directory (a BOM directory an earlier scan produced), copy
+that directory aside first and say so.
+
 ## Parse output as a document, and branch on the exit code
 
 With `--format json`, every verb writes exactly one JSON document to stdout

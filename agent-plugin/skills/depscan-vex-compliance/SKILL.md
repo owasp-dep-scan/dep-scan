@@ -25,9 +25,11 @@ statement to `not_affected` beyond what the evidence says.
 depscan scan /absolute/path/to/project --csaf --format json -o /absolute/path/to/reports
 ```
 
-The scan writes `sbom-<type>.csaf.json` next to the BOM in the reports
-directory (CSAF 2.1 by default; `--csaf-version 2.0` selects the older
-version). The document's vulnerabilities carry the findings the scan
+The scan writes the CSAF next to the BOM in the reports directory, named
+after it: `sbom-<type>.csaf.json` (for example `sbom-docker.csaf.json`),
+or `depscan-universal.csaf.json` for a BOM directory, like the VDR below
+(CSAF 2.1 by default; `--csaf-version 2.0` selects the older version).
+The document's vulnerabilities carry the findings the scan
 matched, and their product status comes from the scan's reachability
 result:
 
@@ -47,6 +49,13 @@ A target without a BOM cannot carry the export: a purl scan with `--csaf`
 exits 0 but skips the export with a stderr warning, because there is no BOM
 to name the output and build the product tree from. Run `--csaf` against a
 source, container or BOM target, never against a purl.
+
+A scan replaces what its `-o` directory holds: the manifest, findings, VDR
+and rendered reports of a finished scan are overwritten, and the manifest
+that recorded that scan's provenance is lost. Never point `-o` at a
+directory that already holds a finished scan; write to a fresh reports
+directory, and when the target itself is an existing scan directory (a BOM
+directory an earlier scan produced), copy it aside first and say so.
 
 ## Produce a CycloneDX VDR
 
@@ -85,6 +94,7 @@ hand-edited disclosure no longer reflects the scan that produced it.
 | A machine-readable disclosure of this scan | `depscan scan <project> --csaf --format json -o <reports>` |
 | CSAF 2.0 instead of 2.1 | Add `--csaf-version 2.0` |
 | The CycloneDX VDR of an existing scan | Read `sbom-<type>.vdr.json` from the scan directory, or `depscan report <scan-dir> --format json` |
+| A CSAF document for a target whose scan already exists | Re-scan with `--csaf` into a fresh reports directory; never `-o` into the finished scan's directory |
 | No reachability-based statements | Add `--reachability-analyzer off` |
 | Is this CSAF or VDR file valid | `depscan validate <file> --format json` |
 
