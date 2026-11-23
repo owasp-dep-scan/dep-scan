@@ -416,7 +416,7 @@ def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(
     assert pipeline.stage_analysis_licenses(ctx, scan) is True
     license_report = Path(ctx.reports_dir) / "license-npm.json"
     assert license_report.is_file(), "an assessed-clean license scan writes its report"
-    assert license_report.read_text().strip() == ""
+    assert json.loads(license_report.read_text()) == []
     assert scan.license_not_assessed == (
         "1 of 2 packages carry no license data at all; their licenses were not assessed"
     )
