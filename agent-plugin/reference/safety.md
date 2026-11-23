@@ -56,6 +56,13 @@ document. The exit codes are:
 Exit 4 with a capability the machine lacks is a fact to report, not a
 failure to retry with different flags until it disappears.
 
+When a scan exits 1 or its manifest records a failed stage, do not
+attribute a cause from the summary line alone: run the same command with
+`SCAN_DEBUG_MODE=debug` in the environment and read the producer's own
+error output before saying what failed or why (the non-debug console
+names the variable). A cause this cannot establish is reported as
+unknown, with the failing stage and its recorded reason.
+
 ## A clean result must be earned
 
 A scan that exits 0 with no findings is not evidence of a clean project
