@@ -9,7 +9,7 @@ finish stage write.
 
 The evidence producers beside the reachability analyzers (the cdxgen BOM
 adapter, the blint review adapter and the tracebom adapter) are exercised on
-the recordings the adapter pieces committed under
+the committed adapter recordings under
 ``packages/analysis-lib/tests/data/``, placed into scan directories the way a
 real scan's files lie.
 """
@@ -29,7 +29,7 @@ from depscan.lib import pipeline, vdb_setup
 DATA_DIR = Path(__file__).parent / "data"
 FIXTURES = DATA_DIR / "repotests"
 
-# The recordings the adapter pieces committed, reused as the scan-directory
+# The committed adapter recordings, reused as the scan-directory
 # files of the evidence producers: the blint review reports and the SBOM its
 # sbom mode writes, the cdxgen BOM with the introspection report beside it,
 # and the tracebom trace BOM.
@@ -61,8 +61,8 @@ DEJACODE_REACHED_PURLS = {
 # Real cdxgen usage evidence of the dejacode project, cut to two entries per
 # component. The committed repotests fixture carries the same components
 # without their evidence blocks; the wiring tests attach these to four of
-# them (occurrences, a callstack only, and both shapes) so the presence axis
-# has usage evidence to read. Every value is the pinned BOM's own, with
+# them (occurrences, a callstack only, and both shapes) so a scan has usage
+# evidence to read into its store. Every value is the pinned BOM's own, with
 # nothing rewritten: the locations are relative paths and carry no machine
 # traces.
 DEJACODE_USAGE_EVIDENCE = {
@@ -128,28 +128,90 @@ DEJACODE_USAGE_EVIDENCE = {
     },
 }
 
-# Master's presence values on the dejacode fixture with the usage evidence
-# above attached and reachability off, recorded before the records-based axis
-# replaced the component-reading one: a scratch reconstruction of the old rule
-# (evidence.occurrences or a truthy evidence.callstack on the exact
-# component, proven on any usage, unlikely when every copy of the package is
-# optional or excluded, likely otherwise) computed these values over the same
-# components. They are pinned as literals, not recomputed by the code under
-# test, so a regression in what the wiring feeds the axis cannot redefine
-# them.
-MASTER_PRESENCE_WITH_REACHABILITY_OFF = {
-    "pkg:pypi/defusedxml@0.7.1": "proven",
-    "pkg:pypi/django-axes@8.3.1": "proven",
+# Master's presence values on a BOM-directory scan of the dejacode fixture
+# with the usage evidence above attached, reachability off, recorded before
+# the records-based axis replaced the component-reading one. Master's
+# aggregated package list rewrites every component's evidence to the
+# identity evidences alone, so a BOM-directory scan never proved usage from
+# occurrences or callstacks: the values are likely or unlikely only, and
+# proven comes from reach alone. They are pinned as literals, not recomputed
+# by the code under test, so a regression in what the wiring feeds the axis
+# cannot redefine them.
+BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF = {
+    "pkg:pypi/defusedxml@0.7.1": "likely",
+    "pkg:pypi/django-axes@8.3.1": "unlikely",
     "pkg:pypi/django-crispy-forms@2.7": "unlikely",
     "pkg:pypi/django-guardian@3.5.2": "unlikely",
     "pkg:pypi/django-otp@1.7.5": "likely",
-    "pkg:pypi/django-registration@5.2.1": "proven",
+    "pkg:pypi/django-registration@5.2.1": "likely",
     "pkg:pypi/django@6.1.2": "likely",
     "pkg:pypi/license-expression@30.4.4": "likely",
     "pkg:pypi/odfdo@3.27.3": "likely",
     "pkg:pypi/qrcode@8.2": "likely",
-    "pkg:pypi/requests@2.34.2": "proven",
+    "pkg:pypi/requests@2.34.2": "likely",
 }
+
+# The three binary-hardening findings the committed blint recording's checks
+# become. The values were recorded from the recording and then checked by
+# hand against it: every rule id, title, severity, binary path, exe type and
+# finding id is the report's own value, the producer version is the one the
+# blint-written SBOM's metadata.tools names, and the fingerprints were
+# verified to differ per binary.
+RECORDED_BINARY_FINDINGS = [
+    {
+        "id": "dsf1:5e6f5b7a9f96031b3bb1a8c1312b6af7cf34fd7d8deef3b704ffd74bf78a69f1",
+        "category": "binary-hardening",
+        "rule": "CHECK_CANARY",
+        "title": "Missing Canary Protection",
+        "severity": "medium",
+        "coverage": {"state": "assessed"},
+        "producer": {"name": "blint", "version": "4.0.1"},
+        "locations": [{"binary": "corpus/fortified-libc-demo.elf"}],
+        "properties": [
+            {"name": "blint:exeType", "value": "genericbinary"},
+            {"name": "blint:findingId", "value": "0d534158c6e6430c7b58b4afd945e25b"},
+            {"name": "blint:exeName", "value": "corpus/fortified-libc-demo.elf"},
+        ],
+    },
+    {
+        "id": "dsf1:fba6581dd6ebe8ff5ffce5735cacca8b9219e1c7f196441fd468a75176ef59f6",
+        "category": "binary-hardening",
+        "rule": "CHECK_ABI_FLOOR",
+        "title": (
+            "Requires a Newer Runtime Than the Deployment Baseline (GLIBC floor 2.34 exceeds "
+            "the built-in default baseline 2.28; set --glibc-baseline or BLINT_GLIBC_BASELINE "
+            "to your deployment target to make this a policy finding)"
+        ),
+        "severity": "info",
+        "coverage": {"state": "assessed"},
+        "producer": {"name": "blint", "version": "4.0.1"},
+        "locations": [{"binary": "corpus/fortified-libc-demo.elf"}],
+        "properties": [
+            {"name": "blint:exeType", "value": "genericbinary"},
+            {"name": "blint:findingId", "value": "27ef6a560f059a570deb3930892a0e59"},
+            {"name": "blint:exeName", "value": "corpus/fortified-libc-demo.elf"},
+        ],
+    },
+    {
+        "id": "dsf1:8269c8793a5d4bd0190139d6783ff309efeb4bb4394fc1c1e49e072727a375f2",
+        "category": "binary-hardening",
+        "rule": "CHECK_ABI_FLOOR",
+        "title": (
+            "Requires a Newer Runtime Than the Deployment Baseline (GLIBC floor 2.34 exceeds "
+            "the built-in default baseline 2.28; set --glibc-baseline or BLINT_GLIBC_BASELINE "
+            "to your deployment target to make this a policy finding)"
+        ),
+        "severity": "info",
+        "coverage": {"state": "assessed"},
+        "producer": {"name": "blint", "version": "4.0.1"},
+        "locations": [{"binary": "corpus/plain-libc-demo.elf"}],
+        "properties": [
+            {"name": "blint:exeType", "value": "genericbinary"},
+            {"name": "blint:findingId", "value": "7353638ece12802f2859c401cfa1ade6"},
+            {"name": "blint:exeName", "value": "corpus/plain-libc-demo.elf"},
+        ],
+    },
+]
 
 
 # The tool versions the fake scripts print, exactly as the doctor tests and
@@ -991,19 +1053,19 @@ def test_the_index_joins_a_finding_to_its_cdxgen_occurrence_record(scan_stubs, t
     )
 
 
-def test_presence_with_reachability_off_equals_the_recorded_master_values(
+def test_bom_dir_presence_equals_the_recorded_stripped_values(
     scan_stubs, tmp_path, monkeypatch
 ):
-    """The presence values of every dejacode component, with the fixture's
-    real usage evidence attached and reachability off so nothing is proven by
-    reach, equal the values recorded from the component-reading rule the
-    records-based axis replaced (see MASTER_PRESENCE_WITH_REACHABILITY_OFF).
-    The callstack-only component stays proven and the components without
-    usage evidence keep their likely or unlikely start, so a wiring that
-    skipped the cdxgen adapter, or dropped the callstack records, cannot
-    pass."""
+    """A BOM-directory scan of the dejacode fixture with usage evidence
+    attached gives every component the values master gave it, recorded in
+    BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF: the aggregated package list
+    keeps only the identity evidences, so usage proves nothing there and
+    presence is likely or unlikely, with proven reserved for reach. The
+    BOM's usage records still reach the store (they are additive); only the
+    grading skips them, so a wiring that fed them to the axis cannot pass
+    this test, and neither can one that skipped the cdxgen adapter."""
     monkeypatch.setattr(
-        sys.modules[__name__], "STUB_FINDING_PURLS", tuple(MASTER_PRESENCE_WITH_REACHABILITY_OFF)
+        sys.modules[__name__], "STUB_FINDING_PURLS", tuple(BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF)
     )
     bom_dir = _dejacode_with_evidence(tmp_path)
     result = api.scan(
@@ -1019,19 +1081,114 @@ def test_presence_with_reachability_off_equals_the_recorded_master_values(
         finding["components"][0]: finding["exploitability"]["axes"]["presence"]
         for finding in result.findings
     }
-    assert values == MASTER_PRESENCE_WITH_REACHABILITY_OFF
+    assert values == BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF
+    records = _store_records(bom_dir)
+    assert any(
+        record["kind"] == "occurrence" for record in records if record["producer"]["name"] == "cdxgen"
+    ), "the usage records are still written to the store"
+
+    # With reachability on, every component of this fixture is reached, and
+    # presence is proven by reach alone, exactly as on master: the stripped
+    # usage view costs nothing there.
+    reach_result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    values = {
+        finding["components"][0]: finding["exploitability"]["axes"]["presence"]
+        for finding in reach_result.findings
+    }
+    assert set(values.values()) == {"proven"}
 
 
-def test_the_binary_findings_equal_the_document_reader_findings(scan_stubs, tmp_path):
+def test_source_scan_presence_proves_usage_from_the_records(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """A source scan's package list keeps the components' evidence blocks,
+    so its usage records grade: the component with occurrences is proven
+    with reachability off, the optional component without evidence is
+    unlikely and the required one without evidence stays likely. This is
+    the other half of the asymmetry the BOM-directory test pins."""
+    from depscan.lib.bom import BomResult
+
+    src = tmp_path / "src"
+    src.mkdir()
+    reports = tmp_path / "reports"
+
+    def fake_create_bom(bom_file, src_dir, options=None):
+        document = {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+            "components": [
+                {
+                    "type": "library",
+                    "name": "used",
+                    "purl": "pkg:pypi/used@1.0",
+                    "bom-ref": "pkg:pypi/used@1.0",
+                    "scope": "required",
+                    "evidence": {"occurrences": [{"location": "app.py", "line": 3}]},
+                },
+                {
+                    "type": "library",
+                    "name": "unused-optional",
+                    "purl": "pkg:pypi/unused-optional@1.0",
+                    "bom-ref": "pkg:pypi/unused-optional@1.0",
+                    "scope": "optional",
+                },
+                {
+                    "type": "library",
+                    "name": "unused",
+                    "purl": "pkg:pypi/unused@1.0",
+                    "bom-ref": "pkg:pypi/unused@1.0",
+                    "scope": "required",
+                },
+            ],
+        }
+        with open(bom_file, "w", encoding="utf-8") as fp:
+            json.dump(document, fp)
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "STUB_FINDING_PURLS",
+        ("pkg:pypi/used@1.0", "pkg:pypi/unused-optional@1.0", "pkg:pypi/unused@1.0"),
+    )
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            project_type=["python"],
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    values = {
+        finding["components"][0]: finding["exploitability"]["axes"]["presence"]
+        for finding in result.findings
+    }
+    assert values == {
+        "pkg:pypi/used@1.0": "proven",
+        "pkg:pypi/unused-optional@1.0": "unlikely",
+        "pkg:pypi/unused@1.0": "likely",
+    }
+
+
+def test_the_binary_findings_equal_the_recorded_findings(scan_stubs, tmp_path):
     """The binary-hardening findings a scan writes from the blint records
-    equal, id for id and field for field, what the document reader gives on
-    the same findings.json: same fingerprints, severities, confidences,
-    locations and properties, and the producer version the blint-written
-    BOM's metadata.tools names. The one accepted difference, that the
-    blint:exeName property spells the binary path relative, does not show
-    here because the recording already spells the binary paths relative."""
-    from analysis_lib.findings.blint_convert import findings_from_blint
-
+    equal, id for id and field for field, the findings recorded from the
+    blint recording and checked against it by hand: the fingerprints,
+    severities, locations and properties are the report's own, and the
+    producer version is the one the blint-written BOM's metadata.tools
+    names. The same three findings are pinned field by field at the unit
+    level in packages/analysis-lib/tests/test_blint_convert.py."""
     bom_dir = _evidence_producers_dir(tmp_path)
     result = api.scan(
         api.scan_options(
@@ -1044,12 +1201,8 @@ def test_the_binary_findings_equal_the_document_reader_findings(scan_stubs, tmp_
         render=False,
     )
     binary = [finding for finding in result.findings if finding["category"] == "binary-hardening"]
-    document = json.loads((BLINT_DATA / "findings.json").read_text())
-    expected = {
-        finding.id: finding.to_dict()
-        for finding in findings_from_blint(document, producer_version="4.0.1")
-    }
-    assert len(expected) == 3, "the document reader reads the three recorded checks"
+    expected = {finding["id"]: finding for finding in RECORDED_BINARY_FINDINGS}
+    assert len(expected) == 3
     assert {finding["id"] for finding in binary} == set(expected)
     for finding in binary:
         assert finding == expected[finding["id"]], finding["id"]
@@ -1204,3 +1357,118 @@ def test_records_without_a_review_request_write_no_binary_findings(scan_stubs, t
         "the BOM directory's review reports are recorded"
     )
     assert not any(f["category"] == "binary-hardening" for f in result.findings)
+
+
+def test_a_non_utf8_json_in_a_bom_dir_does_not_stop_the_scan(scan_stubs, tmp_path):
+    """A .json file with non-UTF-8 bytes at the top level of a BOM directory
+    is read by the trace BOM discovery before any adapter guards it, so the
+    read itself must degrade: the file is reported as unreadable, and the
+    scan completes with the healthy BOM's records."""
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    shutil.copy2(CDXGEN_DATA / "sbom-python.cdx.json", bom_dir / "sbom-python.cdx.json")
+    (bom_dir / "notes.json").write_bytes(b"\xff\xfe{\"not\": \"utf-8 text\"}")
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    assert result.manifest is not None, "the scan completed"
+    assert any(
+        record["producer"]["name"] == "cdxgen" for record in _store_records(bom_dir)
+    ), "the healthy BOM's records are still collected"
+
+
+def test_one_damaged_bom_does_not_cost_the_healthy_boms_records(scan_stubs, tmp_path):
+    """A BOM document the cdxgen adapter refuses (truncated JSON) costs its
+    own records alone: the healthy document's records survive, each carrying
+    a record-skipped caveat naming the refused file and the reason, so a
+    damaged BOM in a directory of healthy ones never zeroes the usage
+    evidence."""
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    shutil.copy2(CDXGEN_DATA / "sbom-python.cdx.json", bom_dir / "sbom-python.cdx.json")
+    (bom_dir / "sbom-broken.cdx.json").write_text("{ truncated")
+    api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    records = [record for record in _store_records(bom_dir)]
+    sources = {record["source"] for record in records}
+    assert "sbom-python.cdx.json" in sources, "the healthy BOM's records survive"
+    assert "sbom-broken.cdx.json" not in sources, "the damaged BOM leaves no records"
+    healthy = [record for record in records if record["source"] == "sbom-python.cdx.json"]
+    assert healthy
+    skipped = [
+        caveat
+        for record in healthy
+        for caveat in record["caveats"]
+        if caveat["kind"] == "record-skipped"
+    ]
+    assert skipped and all("sbom-broken.cdx.json" in caveat["detail"] for caveat in skipped), (
+        "the surviving records name the refused file and the reason"
+    )
+
+
+def test_a_source_scan_without_a_review_request_ignores_stale_blint_reports(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """A source scan that did not ask for the binary review must not read the
+    analysis/blint/ reports an earlier binary scan left in the reused reports
+    directory: no blint records enter the store and no binary findings are
+    written, however fresh the files look."""
+    from depscan.lib.bom import BomResult
+
+    src = tmp_path / "src"
+    src.mkdir()
+    reports = tmp_path / "reports"
+    stale = reports / "analysis" / "blint"
+    stale.mkdir(parents=True)
+    for name in ("findings.json", "reviews.json"):
+        shutil.copy2(BLINT_DATA / name, stale / name)
+    shutil.copy2(BLINT_DATA / "sbom-blint.json", reports / "sbom-postbuild-binary.cdx.json")
+
+    def fake_create_bom(bom_file, src_dir, options=None):
+        document = {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+            "components": [
+                {
+                    "type": "library",
+                    "name": "used",
+                    "purl": "pkg:pypi/used@1.0",
+                    "bom-ref": "pkg:pypi/used@1.0",
+                    "scope": "required",
+                }
+            ],
+        }
+        with open(bom_file, "w", encoding="utf-8") as fp:
+            json.dump(document, fp)
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            project_type=["python"],
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    assert not any(
+        record["producer"]["name"] == "blint" for record in _store_records(reports)
+    ), "an earlier scan's review reports must not become this scan's evidence"
+    assert not any(f["category"] == "binary-hardening" for f in result.findings)
+    assert (reports / "analysis" / "blint" / "findings.json").is_file(), "the files stay put"

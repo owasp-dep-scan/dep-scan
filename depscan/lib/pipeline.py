@@ -1699,40 +1699,54 @@ def _record_source(path: str, base: str) -> str:
 def _read_report_text(path: str) -> Optional[str]:
     """A report file's text, or None when there is no readable file.
 
-    A file that exists but cannot be read is logged and read as absent: the
-    adapter that would have read it then reports nothing rather than failing
-    the scan, and the warning names what was lost."""
+    A file that exists but cannot be read, or is not UTF-8 text (a binary or
+    mislabelled file a discovery walk may open before any adapter guards
+    it), is logged and read as absent: the adapter that would have read it
+    then reports nothing rather than failing the scan, and the warning names
+    what was lost."""
     try:
         with open(path, encoding="utf-8") as fp:
             return fp.read()
     except FileNotFoundError:
         return None
-    except OSError as e:
+    except (OSError, ValueError) as e:
         LOG.warning("The report %s could not be read and was not assessed: %s", path, e)
         return None
 
 
-def _merge_adapter_results(results: List):
-    """One adapter result for a producer that read several documents.
+def _merge_adapter_results(reads: List[Tuple[str, Any]]):
+    """One adapter result for a producer that read several documents, from
+    the ``(source, result)`` pair of each read.
 
-    The merge follows the atom groups' rule: completed when every read
-    completed, else the first refusal's reason; the records concatenate and
-    the caveats keep first-seen order."""
-    from analysis_lib.evidence.adapters import AdapterResult
+    A document the adapter refused costs its own records and no others: the
+    healthy documents' records survive, each carrying a ``record-skipped``
+    caveat naming the refused file and the reason, so one damaged BOM in a
+    directory of healthy ones never silently zeroes the rest. Only when
+    every read refused does the producer read as not assessed, with the
+    first refusal's reason. The surviving records concatenate and the
+    caveats keep first-seen order."""
+    from analysis_lib.evidence import EvidenceCaveat
+    from analysis_lib.evidence.adapters import AdapterResult, add_caveat
 
-    if len(results) == 1:
-        return results[0]
-    refused = next((result for result in results if result.status != "completed"), None)
-    if refused is not None:
-        return refused
+    if len(reads) == 1:
+        return reads[0][1]
+    refused = [(source, result) for source, result in reads if result.status != "completed"]
+    if len(refused) == len(reads):
+        return refused[0][1]
+    records = []
     caveats = []
-    for result in results:
+    for result in (result for _, result in reads if result.status == "completed"):
         caveats.extend(caveat for caveat in result.caveats if caveat not in caveats)
-    return AdapterResult(
-        status=results[0].status,
-        records=[record for result in results for record in result.records],
-        caveats=caveats,
-    )
+        records.extend(result.records)
+    for source, result in refused:
+        detail = (
+            f"the report {source} was not assessed and its records were "
+            f"skipped: {result.reason}"
+        )
+        caveats.append(EvidenceCaveat(kind="record-skipped", detail=detail))
+        for record in records:
+            add_caveat(record, "record-skipped", detail)
+    return AdapterResult(status="completed", records=records, caveats=caveats)
 
 
 def _cdxgen_adapter_result(ctx, scan):
@@ -1742,16 +1756,18 @@ def _cdxgen_adapter_result(ctx, scan):
     The documents are the ones the inventory stage settled on, a BOM
     directory's BOM files or the type's own BOM, and each carries the
     build-introspection report that sits beside it
-    (``<bom>.introspection.json``, cdxgen's own naming). The presence axis
-    reads these records, which is why the adapter runs whatever the
-    reachability setting. A BOM the adapter refuses (a schema version it
-    cannot read) is logged with the reason and leaves no records: the axis
-    then sees no usage evidence for that BOM, never a made-up one.
+    (``<bom>.introspection.json``, cdxgen's own naming). The adapter runs
+    whatever the reachability setting, because the presence axis reads the
+    BOM's usage records on the scans whose package list keeps them; a scan
+    that aggregates a BOM directory still records them, and its grading
+    skips them (see :func:`_exploitability_inputs`). A BOM the adapter
+    refuses (a schema version it cannot read) is logged with the reason and
+    costs its own records alone, so the healthy documents' records survive.
     """
     from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
 
     base = scan.bom_dir or ctx.reports_dir
-    results = []
+    reads = []
     for bom_file in scan.bom_files or []:
         if os.path.basename(str(bom_file)).endswith(".introspection.json"):
             # The introspection report of the BOM beside it, not a BOM: it
@@ -1761,29 +1777,36 @@ def _cdxgen_adapter_result(ctx, scan):
         bom_text = _read_report_text(bom_file)
         if bom_text is None:
             continue
+        source = _record_source(bom_file, base)
         introspection_file = f"{bom_file}.introspection.json"
         introspection = _read_report_text(introspection_file)
-        results.append(
-            cdxgen_adapter.extract(
-                bom_text,
-                source=_record_source(bom_file, base),
-                introspection=introspection,
-                introspection_source=(
-                    _record_source(introspection_file, base) if introspection is not None else ""
+        reads.append(
+            (
+                source,
+                cdxgen_adapter.extract(
+                    bom_text,
+                    source=source,
+                    introspection=introspection,
+                    introspection_source=(
+                        _record_source(introspection_file, base)
+                        if introspection is not None
+                        else ""
+                    ),
+                    source_root=ctx.source_root,
                 ),
-                source_root=ctx.source_root,
             )
         )
-    if not results:
+    if not reads:
         return None
-    result = _merge_adapter_results(results)
-    if result.status != "completed":
-        LOG.warning("cdxgen evidence was not assessed: %s", result.reason)
-    else:
+    for source, read in reads:
+        if read.status != "completed":
+            LOG.warning("cdxgen evidence from %s was not assessed: %s", source, read.reason)
+    result = _merge_adapter_results(reads)
+    if result.status == "completed":
         LOG.debug(
             "cdxgen evidence: the adapter built %d records from %d BOM document(s)",
             len(result.records),
-            len(results),
+            len(reads),
         )
     return result
 
@@ -1941,26 +1964,31 @@ def _tracebom_adapter_result(ctx, scan):
     candidates = _tracebom_candidates(ctx, scan)
     if not candidates:
         return None
-    results = []
+    reads = []
     for path, base in candidates:
         text = _read_report_text(path)
         if text is None:
             continue
-        results.append(
-            tracebom_adapter.extract(
-                text, source=_record_source(path, base), source_root=ctx.source_root
+        source = _record_source(path, base)
+        reads.append(
+            (
+                source,
+                tracebom_adapter.extract(
+                    text, source=source, source_root=ctx.source_root
+                ),
             )
         )
-    if not results:
+    if not reads:
         return None
-    result = _merge_adapter_results(results)
-    if result.status != "completed":
-        LOG.warning("tracebom evidence was not assessed: %s", result.reason)
-    else:
+    for source, read in reads:
+        if read.status != "completed":
+            LOG.warning("tracebom evidence from %s was not assessed: %s", source, read.reason)
+    result = _merge_adapter_results(reads)
+    if result.status == "completed":
         LOG.debug(
             "tracebom evidence: the adapter built %d records from %d trace BOM(s)",
             len(result.records),
-            len(results),
+            len(reads),
         )
     return result
 
@@ -2047,8 +2075,18 @@ def _exploitability_inputs(ctx, scan):
     exposure and witness evidence of every producer, so nothing but the
     records this scan produced is graded on: a report left by an earlier
     run is never read.
+
+    A scan that aggregates a BOM directory (``scan.bom_dir`` set, the
+    BOM-directory and lifecycle modes) grades presence without the BOM's
+    usage records. The package loader for those scans rewrites every
+    component's evidence block to the identity evidences alone, so the
+    components the axis sees never carried occurrences or callstacks and
+    usage was never proven from them; feeding the records the adapter read
+    from the same BOMs would prove what the components themselves do not
+    say. The records still reach the evidence store, which is additive;
+    only the grading skips them.
     """
-    from analysis_lib.findings.exploitability import ExploitabilityInputs
+    from analysis_lib.findings.exploitability import ExploitabilityInputs, USAGE_KINDS
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
 
     results = scan.adapter_results or {}
@@ -2062,6 +2100,14 @@ def _exploitability_inputs(ctx, scan):
         result = results.get(name)
         if result is not None:
             records.extend(result.records)
+    if scan.bom_dir:
+        # The BOM's own usage records are the ones the aggregated components
+        # no longer carry; every other record grades as it did.
+        records = [
+            record
+            for record in records
+            if not (record.producer.name == "cdxgen" and record.kind in USAGE_KINDS)
+        ]
     by_analyzer = reached_by_analyzer(records)
     scope = ReachScope(
         analyzers=analyzers,
