@@ -1189,6 +1189,46 @@ def test_a_failed_lifecycle_sub_run_is_named_and_the_written_documents_listed(
     ), "the failed sub-run is named"
 
 
+def test_a_failed_blint_review_is_a_failed_manifest_stage(scan_stubs, monkeypatch, tmp_path):
+    """A blint review that failed is recorded as a failed stage with the
+    reason, next to the inventory that kept going."""
+    reason = "blint review failed: [Errno 2] No such file or directory"
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    bom = _write_bom(reports / "sbom-universal.cdx.json")
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=True,
+            bom_files=[bom],
+            primary=bom,
+            not_assessed=[],
+            review_not_assessed=[reason],
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            no_banner=True,
+            techniques=["binary-analysis"],
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    review = next(
+        stage for stage in result.manifest["stages"] if stage["name"] == "binary-review"
+    )
+    assert review["status"] == "failed"
+    assert review["reason"] == reason
+    assert review["capabilities"] == ["binary"]
+    inventory = next(stage for stage in result.manifest["stages"] if stage["name"] == "inventory")
+    assert inventory["status"] == "completed"
+
+
 def test_an_explanation_that_rendered_nothing_names_the_gate(scan_stubs, tmp_path):
     """The explain stage says why nothing was explained instead of reading
     as an explanation that ran and said nothing."""

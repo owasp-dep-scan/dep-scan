@@ -175,6 +175,10 @@ class TypeScan:
     #: explainer (a missing input or the rendering gates); None when
     #: something was rendered or no explanation was requested.
     explain_not_assessed: Optional[str] = None
+    #: Why a requested blint binary review did not assess, recorded as the
+    #: scan's binary-review stage; empty when the review ran or none was
+    #: requested.
+    review_not_assessed: List[str] = field(default_factory=list)
     # Why BOM generation failed for this type; the scan goes on to the next.
     inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
@@ -1316,6 +1320,7 @@ def _produce_boms(ctx, scan):
             getattr(bom_result, "introspection_gate_missed", None) or []
         )
         scan.adapter_results = dict(getattr(bom_result, "adapter_results", None) or {})
+        scan.review_not_assessed = list(getattr(bom_result, "review_not_assessed", None) or [])
     if not creation_status:
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
@@ -1996,8 +2001,9 @@ def _blint_adapter_result(ctx, scan):
     tools' raw reports; a source scan that did not ask for the review reads
     nothing, so an earlier run's reports never stand in for this scan's. The
     producer version is the one the blint-written BOM's ``metadata.tools``
-    names; the locally installed blint is never asked. ``source_root`` is
-    the source directory blint reviewed.
+    names; on a source scan, whose BOM cdxgen wrote, no document names
+    blint, so the doctor report's installed blint version stands in.
+    ``source_root`` is the source directory blint reviewed.
     """
     from analysis_lib.evidence.adapters import blint as blint_adapter
 
@@ -2026,7 +2032,7 @@ def _blint_adapter_result(ctx, scan):
     result = blint_adapter.extract(
         documents.get("findings"),
         source=source_of("findings.json") if "findings" in documents else "",
-        producer_version=_blint_bom_version(scan),
+        producer_version=_blint_bom_version(scan) or _doctor_analyzer_version("blint", ctx),
         reviews_document=documents.get("reviews"),
         reviews_source=source_of("reviews.json") if "reviews" in documents else None,
         coverage_document=documents.get("coverage"),

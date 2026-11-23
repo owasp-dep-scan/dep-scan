@@ -20,6 +20,7 @@ from xbom_lib.cdxgen import (
     cdxgen_install_hint,
     cdxgen_timeout_hint,
     check_cdxgen_version,
+    deep_enabled,
     find_cdxgen_cmd,
     resource_path as xbom_resource_path,
 )
@@ -118,6 +119,9 @@ class BomResult:
         names the CDXGEN_TIMEOUT_MS budget that was in effect, because
         dep-scan sets that budget and a run stopped at it looks like any
         other failure from here.
+    :param review_not_assessed: why a requested blint binary review did not
+        assess, kept so the scan records a failed review stage instead of a
+        console warning nobody reads back.
     """
 
     success: bool
@@ -128,6 +132,7 @@ class BomResult:
     adapter_results: Dict[str, AdapterResult] = field(default_factory=dict)
     introspection_gate_missed: List[str] = field(default_factory=list)
     failure_reason: Optional[str] = None
+    review_not_assessed: List[str] = field(default_factory=list)
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
@@ -527,26 +532,35 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     if not options:
         options = {}
     # Get the various options and filenames
-    techniques = options.get("techniques") or []
     lifecycles = options.get("lifecycles") or []
     project_type_list = options.get("project_type") or []
     bom_engine = options.get("bom_engine", "")
     lifecycle_analysis_mode = options.get("lifecycle_analysis_mode", False)
-    # Detect if blint needs to be used for the given project type, technique, and lifecycle.
-    # For binaries, generate an sbom with blint directly
-    if (
+    # The blint BOM path is for targets that are binaries: a binary or apk
+    # project type, an explicitly chosen blint engine, or the post-build
+    # stage of a lifecycle run. The binary-analysis technique alone (the
+    # binary check on a source scan) must not take it: replacing the cdxgen
+    # inventory with a blint-written one loses every source component and
+    # with them the vulnerability findings, so on a source scan the check
+    # runs blint's security review beside the cdxgen BOM instead
+    # (:func:`_run_blint_review`).
+    blint_bom = (
         bom_engine == "BlintGenerator"
-        or "binary-analysis" in techniques
         or "post-build" in lifecycles
         or any([t in ("binary", "apk") for t in project_type_list])
-    ):
-        blint_ok = create_blint_bom(
-            bom_file, src_dir, options=options, reviews=blint_reviews_requested(options)
+    )
+    if blint_bom:
+        blint_ok = create_blint_bom(bom_file, src_dir, options=options)
+        review_not_assessed = (
+            _run_blint_review(bom_file, src_dir, options)
+            if blint_ok and blint_reviews_requested(options)
+            else []
         )
         return BomResult(
             success=blint_ok,
             bom_files=[bom_file] if blint_ok else [],
             primary=bom_file if blint_ok else None,
+            review_not_assessed=review_not_assessed,
         )
     cdxgen_server = options.get("cdxgen_server")
     cdxgen_lib = CdxgenGenerator
@@ -651,6 +665,14 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             result = runner(bom_file, src_dir, options=options)
             if result is not None:
                 adapter_results[name] = result
+        # The binary check on a source scan: blint reviews the binaries the
+        # tree holds beside the cdxgen inventory, and the review's findings
+        # reach the evidence store from its reports.
+        review_not_assessed = (
+            _run_blint_review(bom_file, src_dir, options)
+            if blint_reviews_requested(options)
+            else []
+        )
         return BomResult(
             success=True,
             bom_files=[bom_file],
@@ -661,6 +683,7 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             introspection_gate_missed=(
                 [bom_file] if getattr(bom_result, "returncode", None) == 4 else []
             ),
+            review_not_assessed=review_not_assessed,
         )
 
 
@@ -1644,6 +1667,33 @@ def blint_reviews_requested(options: Optional[Dict]) -> bool:
     )
 
 
+def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> List[str]:
+    """Run blint's security and capability review and keep its reports.
+
+    The review writes ``findings.json``, ``reviews.json`` and
+    ``analysis-coverage.json`` under ``analysis/blint/`` beside the BOM,
+    which is where the blint evidence adapter reads them, so the review's
+    findings reach the evidence store and ``depscan.findings.json``.
+    dep-scan drives the review itself rather than leaving it to the BOM
+    generator, so the cdxgen path of a source scan and the blint path of a
+    binary target share one step whose outcome the scan can record. A
+    failure never raises; its reason comes back for the manifest.
+
+    Returns the reasons the review did not assess, empty when it ran.
+    """
+    from xbom_lib.blint import run_blint_reviews
+
+    review_dir = analysis_report_dir(os.path.dirname(os.path.abspath(bom_file)), "blint")
+    with console_status(f"Running blint's binary review on '{src_dir}'.", spinner=SPINNER):
+        review = run_blint_reviews(
+            src_dir.split(","), review_dir, deep=deep_enabled(options or {})
+        )
+    if review.success:
+        return []
+    LOG.warning("%s", review.command_output)
+    return [review.command_output or "the blint review failed without a reason"]
+
+
 def create_blint_bom(
     bom_file: str,
     src_dir: str = ".",
@@ -1836,6 +1886,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     # What if the build directory is different to the source
     build_dir = os.getenv("DEPSCAN_BUILD_DIR") or options.get("build_dir") or src_dir
     res = create_blint_bom(postbuild_bom_file, build_dir, options=coptions)
+    review_not_assessed: List[str] = []
     if not res or not os.path.exists(postbuild_bom_file):
         reason = (
             "the post-build lifecycle BOM was not generated; the blint invocation "
@@ -1848,6 +1899,10 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         )
     else:
         written_bom_files.append(postbuild_bom_file)
+        if blint_reviews_requested(options):
+            # The binary check on a lifecycle scan reviews the built
+            # artefacts beside the post-build document they went into.
+            review_not_assessed = _run_blint_review(postbuild_bom_file, build_dir, options)
     any_success = bool(written_bom_files)
     # Each language tool whose project types select it runs once against the
     # source; its raw report goes to the evidence adapter, whose result rides
@@ -1867,6 +1922,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         not_assessed=not_assessed,
         adapter_results=adapter_results,
         introspection_gate_missed=introspection_gate_missed,
+        review_not_assessed=review_not_assessed,
     )
 
 

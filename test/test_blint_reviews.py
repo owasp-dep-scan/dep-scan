@@ -75,10 +75,44 @@ def test_create_bom_asks_for_reviews_on_the_binary_check(monkeypatch, tmp_path):
         lambda bom_file, src_dir, options=None, reviews=False: calls.append(reviews) or False,
     )
     bom_mod.create_bom(
-        str(tmp_path / "b.json"), str(tmp_path), {"techniques": ["binary-analysis"]}
+        str(tmp_path / "b.json"), str(tmp_path), {"project_type": ["binary"]}
     )
     bom_mod.create_bom(str(tmp_path / "b.json"), str(tmp_path), {"lifecycles": ["post-build"]})
-    assert calls == [True, False]
+    assert calls == [False, False]
+
+
+def test_the_review_step_keeps_its_reports_under_analysis_blint(monkeypatch, tmp_path):
+    """dep-scan's own review step hands blint the analysis/blint directory
+    beside the BOM, absolute source paths and the deep setting, and reports
+    success by writing nothing."""
+    seen = {}
+
+    def fake_run(src_dirs, reports_dir, deep=False):
+        seen["src_dirs"] = list(src_dirs)
+        seen["reports_dir"] = reports_dir
+        seen["deep"] = deep
+        return blint_mod.BlintReviewResult(success=True, files=[])
+
+    monkeypatch.setattr(blint_mod, "run_blint_reviews", fake_run)
+    bom_file = tmp_path / "reports" / "sbom-universal.cdx.json"
+    reasons = bom_mod._run_blint_review(str(bom_file), "src,dist", {"deep": True})
+    assert reasons == []
+    assert seen["reports_dir"] == str(tmp_path / "reports" / "analysis" / "blint")
+    assert seen["src_dirs"] == ["src", "dist"]
+    assert seen["deep"] is True
+
+
+def test_the_review_step_returns_the_failure_reason(monkeypatch, tmp_path):
+    """A failed review hands its reason back for the manifest to record."""
+    monkeypatch.setattr(
+        blint_mod,
+        "run_blint_reviews",
+        lambda *a, **k: blint_mod.BlintReviewResult(
+            success=False, command_output="blint review failed: [Errno 2] boom"
+        ),
+    )
+    reasons = bom_mod._run_blint_review(str(tmp_path / "sbom.cdx.json"), str(tmp_path), {})
+    assert reasons == ["blint review failed: [Errno 2] boom"]
 
 
 def _copy_binary(tmp_path):

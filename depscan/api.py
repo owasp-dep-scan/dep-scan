@@ -286,6 +286,18 @@ def _run_stages(
                 },
             ):
                 continue
+            # A requested blint review that failed ran during the inventory;
+            # its failure is a stage of its own beside the inventory that
+            # kept going, so a review problem never leaves only a warning.
+            for reason in tscan.review_not_assessed:
+                if ctx.scan_dir is not None:
+                    ctx.scan_dir.record_stage(
+                        "binary-review",
+                        "failed",
+                        project_type=project_type,
+                        reason=reason,
+                        capabilities=["binary"],
+                    )
             ctx.scans.append(tscan)
             _stage(
                 ctx,

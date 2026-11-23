@@ -370,6 +370,107 @@ def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
     assert result.primary is None
 
 
+def test_the_binary_check_keeps_the_cdxgen_bom_on_a_source_scan(tmp_path, monkeypatch):
+    """`--checks binary` on a source scan reviews binaries beside the cdxgen
+    inventory instead of replacing it with a blint BOM.
+
+    Routing the whole BOM through blint for the technique's sake lost the
+    cdxgen components and every vulnerability finding; the blint BOM path is
+    for binary targets.
+    """
+    from depscan.lib import bom as bom_mod
+
+    seen = {"blint_bom": 0, "review": []}
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
+    monkeypatch.setattr(
+        bom_mod,
+        "create_blint_bom",
+        lambda *a, **k: seen.__setitem__("blint_bom", seen["blint_bom"] + 1) or True,
+    )
+    for name in (
+        "run_rusi_reachability",
+        "run_golem_reachability",
+        "run_kosi_reachability",
+        "run_dosai_reachability",
+    ):
+        monkeypatch.setattr(bom_mod, name, lambda *a, **k: None)
+    monkeypatch.setattr(
+        bom_mod,
+        "_run_blint_review",
+        lambda bom_file, src_dir, options: seen["review"].append(bom_file) or [],
+    )
+
+    target = str(tmp_path / "sbom-universal.cdx.json")
+    result = bom_mod.create_bom(
+        target, str(tmp_path), {"project_type": ["universal"], "techniques": ["binary-analysis"]}
+    )
+
+    assert result.success is True
+    assert result.primary == target
+    assert seen["blint_bom"] == 0, "a source scan does not replace the cdxgen BOM with a blint one"
+    assert seen["review"] == [target], "the binary check runs blint's review beside the cdxgen BOM"
+    assert result.review_not_assessed == []
+
+
+def test_a_binary_target_keeps_the_blint_bom_path_with_the_review(tmp_path, monkeypatch):
+    """A binary target still scans through blint's own BOM, with the review
+    driven by dep-scan beside it."""
+    from depscan.lib import bom as bom_mod
+
+    seen = {"review": [], "reviews_flag": None}
+
+    def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
+        with open(bom_file, "w") as fh:
+            json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+        seen["reviews_flag"] = reviews
+        return True
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
+    monkeypatch.setattr(
+        bom_mod,
+        "_run_blint_review",
+        lambda bom_file, src_dir, options: seen["review"].append(bom_file) or [],
+    )
+
+    target = str(tmp_path / "sbom-binary.cdx.json")
+    result = bom_mod.create_bom(
+        target, str(tmp_path), {"project_type": ["binary"], "techniques": ["binary-analysis"]}
+    )
+
+    assert result.success is True
+    assert result.primary == target
+    assert seen["reviews_flag"] is False, "dep-scan drives the review; the generator writes the BOM"
+    assert seen["review"] == [target]
+
+
+def test_a_failed_blint_review_is_kept_for_the_manifest(tmp_path, monkeypatch):
+    """A review that fails leaves its reason on the BOM result, so a stage
+    can record it instead of only warning on the console."""
+    from depscan.lib import bom as bom_mod
+
+    reason = "blint review failed: [Errno 2] No such file or directory"
+
+    def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
+        with open(bom_file, "w") as fh:
+            json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+        return True
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
+    monkeypatch.setattr(
+        bom_mod, "_run_blint_review", lambda bom_file, src_dir, options: [reason]
+    )
+
+    result = bom_mod.create_bom(
+        str(tmp_path / "sbom-binary.cdx.json"),
+        str(tmp_path),
+        {"project_type": ["binary"], "techniques": ["binary-analysis"]},
+    )
+
+    assert result.success is True, "the BOM was written; the review failure is not the BOM's"
+    assert result.review_not_assessed == [reason]
+
+
 def test_a_failed_cdxgen_run_names_its_time_budget(tmp_path, monkeypatch, caplog):
     """A failed cdxgen invocation says what time budget was in effect.
 
