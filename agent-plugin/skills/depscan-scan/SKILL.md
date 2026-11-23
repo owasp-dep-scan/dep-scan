@@ -78,8 +78,9 @@ than the product, exclude their folders, for example
 `--cdxgen-args "--exclude 'ci/**' --exclude 'test/**'"`, one `--exclude`
 per tree with the pattern anchored at the scanned root. dep-scan applies
 the same patterns to its own walks (the binary review and the golem, rusi,
-kosi and dosai runs it makes), so one set keeps a tree out of every stage
-(see [reference/safety.md](../../reference/safety.md)).
+kosi and dosai runs it makes; a language tool that cannot take exclusions
+starts on the one project folder the patterns leave, or is reported as not
+assessed), so one set keeps a tree out of every stage (see [reference/safety.md](../../reference/safety.md)).
 
 ```bash
 CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports
