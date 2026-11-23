@@ -12,7 +12,7 @@ never a reason to install anything without the user's consent.
 | golem, rusi, kosi, trustinspector, trivy-cdxgen | `@cdxgen/cdxgen-plugins-bin-<platform>` (installed with cdxgen) | `GOLEM_CMD`, `RUSI_CMD`, `KOSI_CMD`, `TRUSTINSPECTOR_CMD`, `TRIVY_CMD` (read by cdxgen); dep-scan reads `DEPSCAN_GOLEM_BINARY` and `DEPSCAN_RUSI_BINARY` |
 | dosai | its own release (a .NET tool) | `DOSAI_CMD` |
 | atom | the `@appthreat/atom` npm package | none |
-| atom-tools, blint | dep-scan's `ext` extra (atom-tools 1.0.x, blint 4.0.x) | none |
+| atom-tools, blint | dep-scan's `ext` extra (atom-tools 1.0.x, blint 4.1.x) | none |
 | cdxgen, cdx-audit | the `@cyclonedx/cdxgen` npm package | `CDXGEN_CMD` for cdxgen |
 | vdb | vulnerability-db, a dependency of dep-scan | none |
 

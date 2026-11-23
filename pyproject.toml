@@ -52,11 +52,11 @@ dev = [
     "mcp[cli]>=2.0.0,<3.0.0",
 ]
 server = ["ds-server-lib~=7.0.0a2"]
-ext = ["atom-tools~=1.0.5", "blint~=4.0.1"]
+ext = ["atom-tools~=1.0.5", "blint~=4.1.0"]
 mcp = ["mcp[cli]>=2.0.0,<3.0.0"]
 all = [
     "atom-tools~=1.0.5",
-    "blint~=4.0.1",
+    "blint~=4.1.0",
     "ds-server-lib~=7.0.0a2",
     "PyGithub~=2.10.0",
     "mcp[cli]>=2.0.0,<3.0.0",
@@ -107,11 +107,11 @@ project-excludes = [
 ]
 
 [tool.uv]
-# blint 4 requires wasm-tools 2.1 and multi-demangle 2.1 or later; the
+# blint 4.1 requires wasm-tools 2.2 and multi-demangle 2.1 or later; the
 # constraints keep a resolver from moving either to a later major line that
 # blint 4 was not tested against.
 constraint-dependencies = [
-    "wasm-tools~=2.1",
+    "wasm-tools~=2.2",
     "multi-demangle~=2.1",
 ]
 
