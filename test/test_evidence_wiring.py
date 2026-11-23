@@ -1727,7 +1727,11 @@ def _blint_writing_bom(components, prefix):
         reviews.mkdir(parents=True, exist_ok=True)
         for name in ("findings.json", "reviews.json", "analysis-coverage.json"):
             text = (BLINT_DATA / name).read_text(encoding="utf-8")
-            text = text.replace('"corpus/', '"' + prefix(src_dir) + "corpus/")
+            # The prefix goes into JSON text, so it is escaped as JSON: a
+            # Windows path's backslashes would otherwise make the report
+            # unreadable, as blint's own writer never does.
+            escaped = json.dumps(prefix(src_dir))[1:-1]
+            text = text.replace('"corpus/', '"' + escaped + "corpus/")
             (reviews / name).write_text(text, encoding="utf-8")
         return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
 
@@ -1857,7 +1861,8 @@ def test_binary_findings_of_a_directory_target_name_their_binary_component(
         reviews.mkdir(parents=True, exist_ok=True)
         for name in ("findings.json", "reviews.json", "analysis-coverage.json"):
             text = (BLINT_DATA / name).read_text(encoding="utf-8")
-            text = text.replace('"corpus/', '"' + os.path.abspath(src_dir) + "/corpus/")
+            escaped = json.dumps(os.path.abspath(src_dir))[1:-1]
+            text = text.replace('"corpus/', '"' + escaped + "/corpus/")
             (reviews / name).write_text(text, encoding="utf-8")
         return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
 
