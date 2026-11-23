@@ -1,0 +1,14 @@
+depscan/lib/scan_directory.py
+  h_0926447d100ad2 607-610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bc68b840b4fafb2c9c4e3b5da7e1300a8119fd2",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
