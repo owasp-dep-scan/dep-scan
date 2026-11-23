@@ -2357,8 +2357,7 @@ def _mark_usage_not_assessed(ctx, scan, document: str, reason: Optional[str]) ->
 
     keys, purls = (scan.cdxgen_document_keys or {}).get(str(document), (set(), set()))
     detail = (
-        f"cdxgen's usage evidence in {os.path.basename(str(document))} was not "
-        f"assessed: {reason}"
+        f"cdxgen's usage evidence in {os.path.basename(str(document))} was not assessed: {reason}"
     )
     for pkg in scan.pkg_list or []:
         purl = pkg.get("purl")

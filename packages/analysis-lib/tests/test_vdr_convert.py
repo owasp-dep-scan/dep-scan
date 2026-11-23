@@ -318,8 +318,9 @@ def test_unread_usage_evidence_is_named_in_the_finding_coverage(
     )
     assert finding.coverage.state == "assessed"
     assert _exploitability(finding).axes.presence == expected_presence
-    (reason_entry,) = finding.coverage.reasons or [None]
-    assert reason_entry.to_dict() == {
+    reasons = finding.coverage.reasons or []
+    assert len(reasons) == 1
+    assert reasons[0].to_dict() == {
         "capability": "presence:usage",
         "reason": "report-not-assessed",
         "detail": reason,

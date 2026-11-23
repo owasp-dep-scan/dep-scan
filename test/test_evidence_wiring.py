@@ -1807,9 +1807,7 @@ def test_a_refused_bom_still_names_itself_on_a_finding_graded_from_another(
 
     healthy = document("1.7", [3, 7])
     (bom_dir / "first.cdx.json").write_text(json.dumps(healthy), encoding="utf-8")
-    (bom_dir / "second.cdx.json").write_text(
-        json.dumps(document("2.0", [5])), encoding="utf-8"
-    )
+    (bom_dir / "second.cdx.json").write_text(json.dumps(document("2.0", [5])), encoding="utf-8")
     result = api.scan(
         api.scan_options(
             bom_dir=str(bom_dir),
@@ -1885,8 +1883,7 @@ def test_records_of_components_the_loader_leaves_out_count_as_not_assessed(
     assert _presence(result) == {purl: "proven"}, "the kept component's record graded"
     matching = _matching_stage(result.manifest, "python")
     assert matching.get("notAssessed") == [
-        "3 cdxgen usage records grade nothing: their components are not in "
-        "the loaded package list"
+        "3 cdxgen usage records grade nothing: their components are not in the loaded package list"
     ]
     occurrences = {
         record["subject"]["purls"][0]
