@@ -1,0 +1,21 @@
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_521ad8e421d1a2::t_06538137190a88 81-83
+documentation/docs/cli-usage.mdx
+  s_521ad8e421d1a2::t_3e877fb4eb2f22 269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b1b49cbf9e9bafe2c469d9fb85837b79303ae39",
+  "prompts": {},
+  "sessions": {
+    "s_521ad8e421d1a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d879692-e9c2-4325-bd9c-f554823f9e9a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
