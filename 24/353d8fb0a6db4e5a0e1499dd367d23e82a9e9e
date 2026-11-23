@@ -1,0 +1,14 @@
+agent-plugin/skills/depscan-mobile-app/SKILL.md
+  h_0926447d100ad2 37-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24353d8fb0a6db4e5a0e1499dd367d23e82a9e9e",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
