@@ -96,7 +96,18 @@ is never "nothing is reachable".
    reachability slices and the explanation with `--explain`). Absence of a
    reachability entry is not evidence of "not reachable"; say the scan did
    not assess it.
-5. Never mark a finding `not_affected`, never record a decision, and never
+5. Attribute every "fix this" item to where the component really comes
+   from before calling it the user's own: a universal or container scan
+   mixes the project's manifest-born components with image-born ones, and
+   the SBOM's `internal:SrcFile` property is a weak guide (a stamp such as
+   `pnpm-lock.yaml` can land on an image RPM). Confirm attribution by
+   finding the exact version in the project's own manifest or lockfile
+   (the purl and version must both match); a version the lockfile does not
+   pin came from an image or fixture, and a lockfile bump will not clear
+   it. Count the noise bucket from the findings themselves, not from a
+   category name, and re-check every count and total you state against a
+   query you can show.
+6. Never mark a finding `not_affected`, never record a decision, and never
    quote a secret the findings or BOM carry. Name the component instead.
 
 ## What this proves and what it does not
