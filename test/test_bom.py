@@ -370,6 +370,35 @@ def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
     assert result.primary is None
 
 
+def test_a_failed_cdxgen_run_names_its_time_budget(tmp_path, monkeypatch, caplog):
+    """A failed cdxgen invocation says what time budget was in effect.
+
+    dep-scan itself sets CDXGEN_TIMEOUT_MS (30 minutes by default) and kills
+    cdxgen at it, so the failure reason names the budget and how to raise it
+    on the console and for the manifest, without claiming the budget was
+    necessarily the cause.
+    """
+    from depscan.lib import bom as bom_mod
+    from xbom_lib.cdxgen import CDXGEN_TIMEOUT_MS
+
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator(success=False, writes=False))
+    monkeypatch.setattr(bom_mod, "run_rusi_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_dosai_reachability", lambda *a, **k: None)
+
+    result = bom_mod.create_bom(str(tmp_path / "sbom.cdx.json"), str(tmp_path), {})
+
+    assert result.success is False
+    assert "CDXGEN_TIMEOUT_MS" in result.failure_reason
+    assert CDXGEN_TIMEOUT_MS in result.failure_reason, "the reason names the budget in effect"
+    assert "raise CDXGEN_TIMEOUT_MS" in result.failure_reason
+    assert any(
+        "CDXGEN_TIMEOUT_MS" in message for message in caplog.messages
+    ), "the console names the budget too"
+
+
 def test_create_bom_requires_cdxgen_server_url(tmp_path):
     from depscan.lib import bom as bom_mod
 

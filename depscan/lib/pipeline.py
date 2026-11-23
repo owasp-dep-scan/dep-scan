@@ -1319,8 +1319,12 @@ def _produce_boms(ctx, scan):
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
             scan.target_bom_file,
         )
+        # The generator's own reason, when it gave one, says more than the
+        # generic line: a cdxgen failure names its exit status and the
+        # CDXGEN_TIMEOUT_MS budget that was in effect.
         scan.inventory_error = (
-            f"the BOM for the {scan.project_type} type was not created; the type's "
+            getattr(bom_result, "failure_reason", None)
+            or f"the BOM for the {scan.project_type} type was not created; the type's "
             "packages were not scanned"
         )
         if ctx.args.fail_on_error:

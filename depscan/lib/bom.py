@@ -18,6 +18,7 @@ from xbom_lib.cdxgen import (
     CdxgenServerGenerator,
     as_command_list,
     cdxgen_install_hint,
+    cdxgen_timeout_hint,
     check_cdxgen_version,
     find_cdxgen_cmd,
     resource_path as xbom_resource_path,
@@ -112,6 +113,11 @@ class BomResult:
     :param introspection_gate_missed: the documents cdxgen wrote with exit
         status 4 (an introspection score below its gate). The inventory
         stage logs their fidelity tier from the introspection records.
+    :param failure_reason: why nothing was produced, for the manifest's
+        inventory stage. Set when the generator failed; a cdxgen failure
+        names the CDXGEN_TIMEOUT_MS budget that was in effect, because
+        dep-scan sets that budget and a run stopped at it looks like any
+        other failure from here.
     """
 
     success: bool
@@ -121,6 +127,7 @@ class BomResult:
     not_assessed: List[str] = field(default_factory=list)
     adapter_results: Dict[str, AdapterResult] = field(default_factory=dict)
     introspection_gate_missed: List[str] = field(default_factory=list)
+    failure_reason: Optional[str] = None
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
@@ -176,6 +183,25 @@ def _atom_not_assessed(bom_result) -> List[str]:
     return []
 
 
+def _cdxgen_failure_reason(bom_result, stage: str) -> str:
+    """Why a failed cdxgen run produced no document, for console and manifest.
+
+    The exit status is named when the process exited on its own, and so is
+    the CDXGEN_TIMEOUT_MS budget that was in effect: dep-scan itself sets it
+    (30 minutes by default) and stops cdxgen at it, and a run stopped at the
+    budget is indistinguishable from any other failure from here, so the
+    text says what was in effect without claiming the cause.
+    """
+    returncode = getattr(bom_result, "returncode", None)
+    status = (
+        f"exited with status {returncode}" if returncode is not None else "did not finish"
+    )
+    return (
+        f"cdxgen {status} while generating the {stage} BOM, so no document was written. "
+        f"{cdxgen_timeout_hint()}. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output."
+    )
+
+
 def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
     """Interpret a finished cdxgen run from its exit status.
 
@@ -211,11 +237,7 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
                 stage,
             )
         return failures
-    LOG.error(
-        "cdxgen exited with status %s while generating the %s BOM. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output.",
-        returncode,
-        stage,
-    )
+    LOG.error("%s", _cdxgen_failure_reason(bom_result, stage))
     return []
 
 
@@ -570,7 +592,13 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     # control, so it is checked before the first run; the container image and
     # the cdxgen server are pinned or remote and skip the check.
     if cdxgen_lib is CdxgenGenerator and not _refuse_old_cdxgen(logger=LOG):
-        return BomResult(success=False)
+        return BomResult(
+            success=False,
+            failure_reason=(
+                f"the local cdxgen command was refused; dep-scan needs cdxgen "
+                f"{CDXGEN_MIN_VERSION} or newer"
+            ),
+        )
     # For lifecycle analysis, we need to generate multiple BOM files
     if lifecycle_analysis_mode:
         return create_lifecycle_boms(cdxgen_lib, src_dir, options)
@@ -594,14 +622,26 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             *CDXGEN_PARTIAL_EXIT_CODES,
         )
         if not bom_result.success or not partial_ok:
+            reason = _cdxgen_failure_reason(bom_result, "project")
+            if not bom_result.success:
+                # The verdict above interprets finished runs only; a run that
+                # never finished (stopped at the time budget, missing command)
+                # has this reason as its only console message.
+                LOG.error("%s", reason)
             LOG.info("The cdxgen invocation was unsuccessful. Try generating the BOM separately.")
             LOG.debug(bom_result.command_output)
-            return BomResult(success=False)
+            return BomResult(success=False, failure_reason=reason)
         # cdxgen can report success without writing anything, so the requested
         # path only counts once it is on disk.
         if not os.path.exists(bom_file):
             LOG.debug("cdxgen reported success but `%s` was not written.", bom_file)
-            return BomResult(success=False)
+            return BomResult(
+                success=False,
+                failure_reason=(
+                    f"cdxgen reported success but the project BOM was not written "
+                    f"at {os.path.basename(bom_file)}"
+                ),
+            )
         # Each language tool whose project types select it runs (or reads the
         # report cdxgen persisted) and hands its raw report to its evidence
         # adapter. No converted reachables slice is written: the enrichment

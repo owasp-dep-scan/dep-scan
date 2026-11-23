@@ -181,6 +181,19 @@ def _exec_timeout_seconds() -> Optional[float]:
         return None
 
 
+def cdxgen_timeout_hint() -> str:
+    """The cdxgen time budget that was in effect, and how to raise it.
+
+    dep-scan passes this budget to every cdxgen run and stops cdxgen at it,
+    so a run that failed under it may or may not have been stopped by the
+    budget; the text names what was in effect without claiming the cause.
+    """
+    return (
+        f"The run had a CDXGEN_TIMEOUT_MS budget of {CDXGEN_TIMEOUT_MS} ms in effect; "
+        "if cdxgen was stopped at the budget, raise CDXGEN_TIMEOUT_MS for this scan"
+    )
+
+
 def as_command_list(cmd) -> List[str]:
     """Normalize a resolved tool command to the argument list to execute.
 
