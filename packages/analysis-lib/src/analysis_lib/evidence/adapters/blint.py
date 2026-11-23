@@ -89,7 +89,7 @@ from analysis_lib.evidence.adapters import (
 #: The gate runs on the tool version because the reports carry no schema
 #: version of their own.
 SUPPORTED_MAJOR = 4
-KNOWN_MINOR = 0
+KNOWN_MINOR = 1
 
 PRODUCER_NAME = "blint"
 

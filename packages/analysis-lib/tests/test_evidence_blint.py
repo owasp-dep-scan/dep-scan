@@ -207,14 +207,24 @@ def test_unknown_major_version_is_refused_naming_the_version():
     assert result.records == []
 
 
-def test_newer_minor_version_is_accepted_with_a_schema_minor_caveat():
+def test_the_known_minor_version_is_read_without_a_version_caveat():
     result = _extract(_load("findings.json"), producer_version="4.1.0")
+    assert result.status == STATUS_COMPLETED
+    assert len(result.records) == 4
+    assert "schema-minor" not in _caveat_kinds(result.caveats)
+    for record in result.records:
+        assert "schema-minor" not in _caveat_kinds(record.caveats)
+        assert record.producer.version == "4.1.0"
+
+
+def test_newer_minor_version_is_accepted_with_a_schema_minor_caveat():
+    result = _extract(_load("findings.json"), producer_version="4.2.0")
     assert result.status == STATUS_COMPLETED
     assert len(result.records) == 4
     assert "schema-minor" in _caveat_kinds(result.caveats)
     for record in result.records:
         assert "schema-minor" in _caveat_kinds(record.caveats)
-        assert record.producer.version == "4.1.0"
+        assert record.producer.version == "4.2.0"
         assert record.producer.report_schema_version == "unknown"
 
 
@@ -487,10 +497,10 @@ def test_the_gate_caveats_name_the_blint_version_the_bom_states():
     assert ("schema-unknown", "the BOM names no blint version") in [
         (c.kind, c.detail) for c in missing.caveats
     ]
-    newer = _extract(_load("findings.json"), producer_version="4.1.0")
+    newer = _extract(_load("findings.json"), producer_version="4.2.0")
     assert (
         "schema-minor",
-        "the BOM names blint version 4.1.0; this adapter knows 4.0 and earlier",
+        "the BOM names blint version 4.2.0; this adapter knows 4.1 and earlier",
     ) in [(c.kind, c.detail) for c in newer.caveats]
 
 

@@ -34,7 +34,7 @@ so load the matching skill with the Skill tool before step 2.
 1. Confirm the artifact path is absolute and the file exists. Identify the
    kind (ELF, PE, Mach-O, driver, MSI, APK, IPA) and say which you chose.
    Read the installed blint version; dep-scan's `ext` extra carries blint
-   4.0.x, and an older blint 3.2.x lacks the coverage report,
+   4.1.x, and an older blint 3.2.x lacks the coverage report,
    `capabilities` and `diff`.
 2. Run blint's review (`blint -i <artifact> -o <reports-dir> --no-banner`)
    and, for apps, the deep SBOM (`blint --no-banner sbom -i <artifact>

@@ -41,7 +41,7 @@ run its installer.
 
 ## Which blint
 
-dep-scan's `ext` extra installs blint 4.0.x. Older blint 3.2.x installs
+dep-scan's `ext` extra installs blint 4.1.x. Older blint 3.2.x installs
 lack the analysis coverage report, `capabilities`, `diff`, ELF link closure and a
 parse cache. Read the version first
 (`python -c "import importlib.metadata as m; print(m.version('blint'))"`
