@@ -1,0 +1,25 @@
+packages/analysis-lib/tests/test_dosai_runner.py
+  s_fe578a6c9c51d0::t_3318d778a0f196 239-250
+packages/xbom-lib/src/xbom_lib/blint.py
+  s_fe578a6c9c51d0::t_d5a3f508bde74e 2,4,10,39-63,81-84,103-107,121-123,132,134,137-147,194-200,208,214
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_fe578a6c9c51d0::t_3f95088d9df28d 63,329,336-338,341-342,365,373-375,413,426-427,479
+test/test_blint_reviews.py
+  s_fe578a6c9c51d0::t_df81543e2600d5 7,164-193,196,198-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1dae97c23b83a41228542a99038bd269f970a998",
+  "prompts": {},
+  "sessions": {
+    "s_fe578a6c9c51d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1263418f-f4b0-4e74-91c8-18f9057618b4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
