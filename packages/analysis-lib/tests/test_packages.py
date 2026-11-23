@@ -124,3 +124,29 @@ def test_the_directory_readers_skip_a_report_the_bom_glob_picks_up(tmp_path):
     assert get_pkg_list(str(report)) == ([], [])
     assert retrieve_bom_dependency_tree(None, str(tmp_path)) == []
     assert retrieve_oci_properties(None, str(tmp_path)) == {}
+
+
+def test_oci_properties_and_dependency_tree_tolerate_malformed_sections(tmp_path):
+    """A BOM whose metadata, properties or dependencies have the wrong type
+    contributes nothing instead of raising."""
+    from analysis_lib.packages import retrieve_bom_dependency_tree, retrieve_oci_properties
+
+    odd = tmp_path / "odd-bom.json"
+    odd.write_text(
+        json.dumps({"metadata": {"properties": None}, "dependencies": None}), encoding="utf-8"
+    )
+    worse = tmp_path / "worse-bom.json"
+    worse.write_text(
+        json.dumps(
+            {
+                "metadata": {"properties": ["x", {"name": "oci:image:Id", "value": "abc"}]},
+                "dependencies": [{"ref": "a"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    assert retrieve_oci_properties(None, str(tmp_path)) == {"oci:image:Id": "abc"}
+    assert retrieve_bom_dependency_tree(None, str(tmp_path)) == [{"ref": "a"}]
+    listing = tmp_path / "list-bom.json"
+    listing.write_text(json.dumps({"metadata": "x"}), encoding="utf-8")
+    assert retrieve_oci_properties(None, str(tmp_path)) == {"oci:image:Id": "abc"}

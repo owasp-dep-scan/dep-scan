@@ -422,7 +422,7 @@ def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(tmp_path
     bare = pipeline.TypeScan(project_type="npm")
     bare.pkg_list = [{"name": "bare", "version": "2.0.0", "purl": "pkg:npm/bare@2.0.0"}]
     assert pipeline.stage_analysis_licenses(ctx, bare) is True
-    assert (Path(ctx.reports_dir) / "license-npm.json").read_text().strip() == ""
+    assert (Path(ctx.reports_dir) / "license-npm.json").read_text().strip() == "[]"
     assert bare.license_not_assessed == (
         "1 of 1 packages carry no license data at all; their licenses were not assessed"
     )

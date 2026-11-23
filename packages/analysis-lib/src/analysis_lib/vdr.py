@@ -238,4 +238,5 @@ class VDRAnalyzer(XBOMAnalyzer):
             endpoint_reached_purls=endpoint_reached_purls,
             purl_identities=purl_identities,
             exploitability=exploitability,
+            rows_without_component=counts.no_matched_by_count,
         )

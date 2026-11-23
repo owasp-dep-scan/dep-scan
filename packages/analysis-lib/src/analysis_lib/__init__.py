@@ -84,6 +84,10 @@ class VDRResult:
     #: The (advisory id, affects ref) -> Exploitability map the entries were
     #: graded into, or None when this run graded no exploitability.
     exploitability: Optional[Dict] = None
+    #: Database rows the export left out because they named no component
+    #: (an empty ``matched_by``); the caller states the count on the scan's
+    #: coverage so the rows are never dropped silently.
+    rows_without_component: int = 0
 
 
 class Counts:

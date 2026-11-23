@@ -1093,9 +1093,10 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
     Analyze package licenses
 
     The report file, when one is given, is written whenever the analysis
-    ran, holding no rows when every license was clean or no package carried
-    license data at all; the empty file is how an assessed-clean license
-    scan stays distinguishable from one that never ran.
+    ran, as a JSON array that holds no rows when every license was clean or
+    no package carried license data at all; the empty array is how an
+    assessed-clean license scan stays distinguishable from one that never
+    ran, and the file stays valid JSON.
 
     :param project_type: Project type
     :param licenses_results: A dict with the license results for each package.
@@ -1104,7 +1105,7 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
     """
     if not licenses_results:
         if license_report_file:
-            file_write(license_report_file, "")
+            file_write(license_report_file, "[]")
         return None
     table = Table(
         title=f"License Scan Summary ({project_type})",
