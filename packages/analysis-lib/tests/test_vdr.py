@@ -201,6 +201,70 @@ def test_fuzzy_search_surfaces_all_components(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# A database row whose matched_by is empty names no component, so the export
+# skips it instead of writing an affects ref that is the empty string.
+# ---------------------------------------------------------------------------
+
+
+class _RecordingLogger:
+    """A stand-in logger that collects the formatted info lines."""
+
+    def __init__(self):
+        self.lines = []
+
+    def info(self, msg, *args):
+        self.lines.append(msg % args if args else msg)
+
+    def debug(self, msg, *args):
+        pass
+
+
+def test_a_row_without_matched_by_is_skipped_not_exported_with_an_empty_ref(monkeypatch):
+    """A row whose matched_by is empty used to become affects: [{"ref": ""}],
+    which the CycloneDX schema rejects. The export must skip such rows and
+    log how many were skipped, while the rows that name a component keep
+    their affects refs."""
+    logger = _RecordingLogger()
+
+    def _fake_find_vulns(*_args, **_kwargs):
+        return (
+            [
+                _raw_vdb_result("CVE-2023-44487", "pkg:npm/postcss@8.4.31", "8.4.50"),
+                _raw_vdb_result("CVE-2023-44487", ""),
+            ],
+            {},
+            {},
+        )
+
+    monkeypatch.setattr(vdr_module, "find_vulns", _fake_find_vulns)
+    options = VdrAnalysisKV(
+        project_type="nodejs",
+        init_results=[],
+        pkg_aliases={},
+        purl_aliases={},
+        suggest_mode=False,
+        scoped_pkgs={"required": [], "optional": []},
+        no_vuln_table=True,
+        pkg_list=[{"purl": "pkg:npm/postcss@8.4.31"}],
+        logger=logger,
+    )
+    result = VDRAnalyzer(options).process()
+
+    vdrs = result.pkg_vulnerabilities or []
+    assert result.success is True
+    assert len(vdrs) == 1
+    assert _vdr_refs(vdrs[0]) == {"pkg:npm/postcss@8.4.31"}, (
+        "the row without a matched_by must not reach the exported affects"
+    )
+    assert all(a.get("ref") for vdr in vdrs for a in vdr["affects"]), (
+        "no affects ref may be the empty string"
+    )
+    assert any("1" in line and "matched_by" in line for line in logger.lines), (
+        f"the skipped row must be counted in a log line; got {logger.lines}"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Fixture-driven end-to-end test: a single BOM with three versions of postcss
 # and two of minimatch (the shape of the reporter's SBOM), scanned through
 # VDRAnalyzer with the BOM file feeding lifecycle and dependency-tree parsing.

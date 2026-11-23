@@ -135,6 +135,12 @@ class VDRAnalyzer(XBOMAnalyzer):
                     counts,
                 )
             else:
+                # A database row that names no component cannot become an
+                # affects ref: the CycloneDX schema rejects the empty string
+                # such a row used to leave behind. Skip it and keep count.
+                if not str(vuln_occ_dict.get("matched_by") or "").strip():
+                    counts.no_matched_by_count += 1
+                    continue
                 # All our focus has gone into this particular method.
                 counts, vuln, add_to_pkg_group_rows, likely_false_positive = analyze_cve_vuln(
                     vuln_occ_dict,
@@ -174,6 +180,12 @@ class VDRAnalyzer(XBOMAnalyzer):
             if add_to_pkg_group_rows:
                 include_pkg_group_rows.add(vuln.get("bom-ref"))
             # If the user doesn't want any table output return quickly
+        if counts.no_matched_by_count and options.logger:
+            options.logger.info(
+                "Skipped %d vulnerability match(es) whose matched_by named no "
+                "component; the VDR carries no affects ref for them.",
+                counts.no_matched_by_count,
+            )
         if options.suggest_mode:
             pkg_vulnerabilities = make_version_suggestions(
                 pkg_vulnerabilities, options.project_type
