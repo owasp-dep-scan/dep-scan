@@ -1,0 +1,16 @@
+agent-plugin/reference/safety.md
+  h_0926447d100ad2 101-105
+agent-plugin/skills/depscan-container-image/SKILL.md
+  h_0926447d100ad2 61-64,75-80,86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d8e12335cc9196ab300ac84503db3d8c3f43bf70",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
