@@ -140,6 +140,10 @@ class ReachabilityAnalysisKV:
     require_multi_usage: bool = False
     source_tags: Optional[List[str]] = None
     sink_tags: Optional[List[str]] = None
+    #: The scan root the evidence adapters made record paths relative to;
+    #: the engine spells the OpenAPI usage targets against the same root.
+    #: ``src_dir`` stands in when it is not given.
+    source_root: Optional[str] = None
 
     def __post_init__(self):
         # Collect bom files

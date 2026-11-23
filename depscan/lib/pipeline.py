@@ -1596,6 +1596,7 @@ def stage_enrichment(ctx, scan):
             source_tags=ctx.depscan_options.get("source_tags"),
             sink_tags=ctx.depscan_options.get("sink_tags"),
             evidence_file=evidence_file,
+            source_root=ctx.source_root,
         )
     if adapters_run and reachability_options is not None:
         # atom's slices are its own native output; its adapter runs here, over

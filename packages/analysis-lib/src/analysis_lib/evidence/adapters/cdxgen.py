@@ -23,7 +23,13 @@ Five kinds of evidence become records:
    becomes a record with no location and the entry in its attributes: a
    non-empty occurrences value is usage evidence, and the presence axis
    must see it. A truthy occurrences value that is not an array becomes
-   one such record.
+   one such record. An entry identical to an earlier one of the same
+   component carries its ordinal in the discriminator, so each entry stays
+   one record in the store, the count of uses the BOM states.
+   Occurrence and callstack records name the component's place in the
+   BOM in the ``bomPosition`` attribute: ``top-level``, ``nested`` (one
+   level below a top-level component) or ``root-nested`` (below the root
+   ``metadata.component``).
 2. One ``callstack`` record per callstack value, the frames in the
    producer's order as the witness path. The frames are also kept as
    given in the ``frames`` attribute, with ``fullFilename`` relativized
@@ -233,16 +239,27 @@ def _count_section_problems(bom: dict, skipped: SkipTally) -> None:
             )
 
 
-def _population(bom: dict, skipped: SkipTally) -> List[Any]:
-    """The components the package loader walks: the root component's
-    nested components, the top-level components, and one level of nesting
-    below each of them.
+#: Where in the BOM a component sits, as the ``bomPosition`` attribute of
+#: its occurrence and callstack records: a top-level ``components`` entry,
+#: a component nested one level below one, or a component nested in the
+#: root ``metadata.component``. The reachability engine counts direct uses
+#: from top-level components only, the way the BOM's direct usage has
+#: always been counted.
+POSITION_TOP_LEVEL = "top-level"
+POSITION_NESTED = "nested"
+POSITION_ROOT_NESTED = "root-nested"
+
+
+def _population(bom: dict, skipped: SkipTally) -> List[Tuple[Any, str]]:
+    """The components the package loader walks, each with its position:
+    the root component's nested components, the top-level components, and
+    one level of nesting below each of them.
 
     A component or components section of the wrong JSON type hides what it
     would have carried; each such section is counted in ``skipped`` so the
     loss is never silent.
     """
-    population: List[Any] = []
+    population: List[Tuple[Any, str]] = []
     metadata = bom.get("metadata")
     root_component = metadata.get("component") if isinstance(metadata, dict) else None
     if root_component is not None and not isinstance(root_component, dict):
@@ -251,9 +268,12 @@ def _population(bom: dict, skipped: SkipTally) -> List[Any]:
             "so their nested components became no record"
         )
     else:
-        population.extend(as_list(as_dict(root_component).get("components")))
+        population.extend(
+            (comp, POSITION_ROOT_NESTED)
+            for comp in as_list(as_dict(root_component).get("components"))
+        )
     components = as_list(bom.get("components"))
-    population.extend(components)
+    population.extend((comp, POSITION_TOP_LEVEL) for comp in components)
     for comp in components:
         if not isinstance(comp, dict):
             continue
@@ -261,7 +281,7 @@ def _population(bom: dict, skipped: SkipTally) -> List[Any]:
         if nested is None:
             continue
         if isinstance(nested, list):
-            population.extend(nested)
+            population.extend((child, POSITION_NESTED) for child in nested)
         else:
             skipped.add("nested components values are not arrays and became no record")
     return population
@@ -591,13 +611,23 @@ def extract(
     kosi_caveats = _kosi_run_caveats(bom, skipped)
     evidence_caveats = base_caveats + kosi_caveats
 
-    for component in _population(bom, skipped):
+    repeats: Dict[Tuple[Any, ...], int] = {}
+    for component, position in _population(bom, skipped):
         if not isinstance(component, dict):
             skipped.add("components entries are not JSON objects and became no record")
             continue
         try:
             records.extend(
-                _component_records(component, producer, source, paths, evidence_caveats, skipped)
+                _component_records(
+                    component,
+                    producer,
+                    source,
+                    paths,
+                    evidence_caveats,
+                    skipped,
+                    position=position,
+                    repeats=repeats,
+                )
             )
         except RecursionError:
             skipped.add(TOO_DEEP_REASON)
@@ -661,23 +691,41 @@ def _component_records(
     paths: SourcePaths,
     base_caveats: List[EvidenceCaveat],
     skipped: SkipTally,
+    position: str = POSITION_TOP_LEVEL,
+    repeats: Optional[Dict[Tuple[Any, ...], int]] = None,
 ) -> List:
-    """The occurrence and callstack records of one component."""
+    """The occurrence and callstack records of one component.
+
+    Each record carries the component's ``position`` in the BOM as its
+    ``bomPosition`` attribute. An occurrence entry identical to an earlier
+    one of the same component in the same document (``repeats`` counts
+    them per document) gets its ordinal in the discriminator, so the store
+    keeps one record per entry, as the BOM lists them, instead of folding
+    the copies into one."""
     records: List = []
     evidence = as_dict(component.get("evidence"))
     purls = _purls(component)
     component_ref = as_hashable_str(component.get("bom-ref"))
     kosi = _grouped([pair for pair in _properties(component) if pair[0].startswith(KOSI_PREFIX)])
+    counts = repeats if repeats is not None else {}
 
     def record(kind: str, obj: Any, **fields: Any):
         attributes = dict(fields.pop("attributes", None) or {})
+        attributes["bomPosition"] = position
         if kosi:
             attributes["kosiProperties"] = paths.redact(kosi)
+        discriminator = stable_discriminator(obj, paths)
+        if kind == "occurrence":
+            key = (purls, component_ref, position, discriminator)
+            ordinal = counts.get(key, 0)
+            counts[key] = ordinal + 1
+            if ordinal:
+                discriminator = f"{discriminator}#{ordinal}"
         return build_record(
             source=source,
             producer=producer,
             kind=kind,
-            discriminator=stable_discriminator(obj, paths),
+            discriminator=discriminator,
             purls=purls,
             component_ref=component_ref,
             attributes=attributes or None,

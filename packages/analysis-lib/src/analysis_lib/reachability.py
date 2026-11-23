@@ -7,9 +7,10 @@ handler purls feed the reached-services set, and a reached purl typed
 ``framework`` in the BOM and not filterable is endpoint-reachable. The
 records come from the store the enrichment stage wrote; the engine reads no
 producer report itself. The direct purls are counted from cdxgen's
-occurrence records of the BOM documents the analysis was given, one per
-occurrence, and an occurrence whose file is an ``x-atom-usages`` usage
-target of the OpenAPI documents makes its package endpoint-reachable. The
+occurrence records of the top-level components of the BOM documents the
+analysis was given, one per occurrence entry, and an occurrence whose file
+is an ``x-atom-usages`` usage target of the OpenAPI documents makes its
+package endpoint-reachable. The
 BOMs are still read for their component types and lifecycles, which the
 post-build binary reachability support uses.
 """
@@ -25,6 +26,7 @@ from analysis_lib.endpoints import (
     is_endpoint_filterable,
 )
 from analysis_lib.evidence import Evidence
+from analysis_lib.evidence.adapters import SourcePaths
 from analysis_lib.evidence.store import stream as stream_evidence
 from custom_json_diff.lib.utils import json_load
 from collections import defaultdict
@@ -78,14 +80,34 @@ def _document_sources(bom_files: Optional[Iterable[str]], base: Optional[str]) -
     return {report_source(str(path), base or ".") for path in bom_files}
 
 
-def _is_occurrence_of(record: Evidence, sources: Set[str]) -> bool:
-    """Whether the record is a cdxgen occurrence record of one of the
-    documents whose record sources are ``sources``."""
-    return (
+def _is_direct_use(record: Evidence, sources: Set[str]) -> bool:
+    """Whether the record is one direct use of its package: a cdxgen
+    occurrence record of one of the documents whose record sources are
+    ``sources``, of a top-level component of that BOM. Occurrences of
+    nested components stay usage evidence for presence but are not direct
+    uses of the project."""
+    if not (
         record.producer.name == "cdxgen"
         and record.kind == "occurrence"
         and record.source in sources
-    )
+    ):
+        return False
+    position = (record.attributes or {}).get("bomPosition", "top-level")
+    return position == "top-level"
+
+
+def _usage_target_files(usage_targets: Dict[str, bool], root: Optional[str]) -> Set[str]:
+    """The ``x-atom-usages`` file keys spelled the way cdxgen's adapter
+    spells an occurrence file: relative to the scan root with forward
+    slashes, ``./`` dropped. Both sides then follow the one rule, whatever
+    separator or prefix atom-tools and cdxgen wrote."""
+    paths = SourcePaths(roots=[root] if root else [])
+    files = set()
+    for key in usage_targets:
+        relative = paths.relative(key)
+        if relative:
+            files.add(relative)
+    return files
 
 
 def _iter_json_list(file_path: str):
@@ -186,7 +208,7 @@ class FrameworkReachability(ReachabilityAnalyzer):
         # reached purls from the reached-counted records.
         if analysis_options.evidence_file and os.path.isfile(analysis_options.evidence_file):
             for record in stream_evidence(analysis_options.evidence_file):
-                if _is_occurrence_of(record, sources):
+                if _is_direct_use(record, sources):
                     for apurl in record.subject.purls:
                         direct_purls[apurl] += 1
                 if not counts_as_reached(record):
@@ -332,9 +354,10 @@ class SemanticReachability(FrameworkReachability):
                             interesting_postbuild_purls[purl] = True
         # Count the direct purls, reached purls, services and endpoint
         # reachability from the evidence records. Each occurrence record of
-        # the given BOMs is one direct use of its package. A package is
-        # endpoint-reachable from its occurrences only when one of ITS OWN
-        # occurrence files is an atom usage target (x-atom-usages), never
+        # a top-level component of the given BOMs is one direct use of its
+        # package. A package is endpoint-reachable from its occurrences only
+        # when one of ITS OWN occurrence files is an atom usage target
+        # (x-atom-usages, compared in the adapter's relative spelling), never
         # because usage_targets is globally non-empty; that would attribute
         # endpoints to packages whose own locations are never used. The
         # adapters own service attribution: a record's ``servicePurls``
@@ -342,15 +365,18 @@ class SemanticReachability(FrameworkReachability):
         # so this walk never reads tags. An entry point's handler purls are
         # its subject purls and count as services without an attribute.
         sources = _document_sources(analysis_options.bom_files, analysis_options.bom_dir)
+        target_files = _usage_target_files(
+            usage_targets, analysis_options.source_root or analysis_options.src_dir
+        )
         if analysis_options.evidence_file and os.path.isfile(analysis_options.evidence_file):
             for record in stream_evidence(analysis_options.evidence_file):
-                if _is_occurrence_of(record, sources):
+                if _is_direct_use(record, sources):
                     location = record.locations[0].file if record.locations else None
                     for purl in record.subject.purls:
                         direct_purls[purl] += 1
                         if (
                             location
-                            and usage_targets.get(location)
+                            and location in target_files
                             and not is_endpoint_filterable(purl)
                         ):
                             endpoint_reached_purls[purl] += 1

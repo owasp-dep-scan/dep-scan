@@ -167,7 +167,7 @@ def test_occurrence_records_keep_the_producer_values():
     call = next(r for r in by_purl if r.locations[0].line == 18)
     assert call.locations[0].file == "app.py"
     assert call.locations[0].method == "sqlparse.format"
-    assert call.attributes == {"offset": 13}
+    assert call.attributes == {"offset": 13, "bomPosition": "top-level"}
     assert call.subject.purls == [SQLPARSE_PURL]
     assert call.subject.component_ref == SQLPARSE_PURL
     assert call.producer.name == "cdxgen"
@@ -175,7 +175,7 @@ def test_occurrence_records_keep_the_producer_values():
     # carries the line and nothing it would have to invent.
     plain_import = next(r for r in by_purl if r.locations[0].line == 4)
     assert plain_import.locations[0].method is None
-    assert plain_import.attributes is None
+    assert plain_import.attributes == {"bomPosition": "top-level"}
 
 
 def test_components_without_evidence_make_no_records():
@@ -616,7 +616,9 @@ def test_occurrences_of_the_wrong_type_stand_as_one_location_less_record():
     occurrences = [
         r for r in result.records if r.kind == "occurrence" and SQLPARSE_PURL in r.subject.purls
     ]
-    assert [(r.locations, r.attributes) for r in occurrences] == [([], {"occurrence": "app.py:4"})]
+    assert [(r.locations, r.attributes) for r in occurrences] == [
+        ([], {"occurrence": "app.py:4", "bomPosition": "top-level"})
+    ]
     # The component's callstack still becomes a record.
     assert [
         r for r in result.records if r.kind == "callstack" and SQLPARSE_PURL in r.subject.purls
@@ -643,7 +645,7 @@ def test_a_callstack_of_the_wrong_type_is_counted():
         r for r in result.records if r.kind == "callstack" and DEFUSEDXML_PURL in r.subject.purls
     ]
     assert [(r.path, r.attributes) for r in callstacks] == [
-        (None, {"callstack": [{"function": "parse_config"}]})
+        (None, {"callstack": [{"function": "parse_config"}], "bomPosition": "top-level"})
     ]
     assert [
         r for r in result.records if r.kind == "occurrence" and DEFUSEDXML_PURL in r.subject.purls
@@ -748,11 +750,75 @@ def test_occurrence_entries_without_a_location_still_prove_usage():
         r for r in result.records if r.kind == "occurrence" and SQLPARSE_PURL in r.subject.purls
     ]
     assert [(r.locations, r.attributes) for r in purl_records] == [
-        ([], {"line": 5}),
-        ([_location("app.py", 4)], None),
-        ([], {"occurrence": "not-an-object"}),
+        ([], {"line": 5, "bomPosition": "top-level"}),
+        ([_location("app.py", 4)], {"bomPosition": "top-level"}),
+        ([], {"occurrence": "not-an-object", "bomPosition": "top-level"}),
     ]
     assert _skipped_details(result) == []
+
+
+def test_records_name_the_position_of_their_component_in_the_bom():
+    """Each occurrence and callstack record names where its component sits:
+    a top-level component, one nested below it, or one nested in the root
+    metadata component. The reachability engine counts direct uses from the
+    top-level ones alone."""
+    from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
+
+    def used(name):
+        return {
+            "type": "library",
+            "name": name,
+            "purl": f"pkg:pypi/{name}@1.0",
+            "bom-ref": f"pkg:pypi/{name}@1.0",
+            "evidence": {"occurrences": [{"location": "app.py", "line": 1}]},
+        }
+
+    bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.7",
+        "metadata": {
+            "component": {"type": "application", "name": "root", "components": [used("mc")]}
+        },
+        "components": [{**used("top"), "components": [used("child")]}],
+    }
+    result = cdxgen_adapter.extract(bom, source="sbom.cdx.json")
+    positions = {
+        r.subject.purls[0]: (r.attributes or {}).get("bomPosition") for r in result.records
+    }
+    assert positions == {
+        "pkg:pypi/mc@1.0": "root-nested",
+        "pkg:pypi/top@1.0": "top-level",
+        "pkg:pypi/child@1.0": "nested",
+    }
+
+
+def test_repeated_identical_occurrences_stay_one_record_each_in_the_store(tmp_path):
+    """Two identical occurrence entries of one component are two uses, as
+    the BOM lists them: the second carries its ordinal in the discriminator,
+    so the store keeps both records instead of folding them into one, and
+    a second read of the same BOM still folds onto the same two ids."""
+    from analysis_lib.evidence import store
+    from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
+
+    entry = {"location": "app.py", "line": 3}
+    bom = {
+        "bomFormat": "CycloneDX",
+        "specVersion": "1.7",
+        "components": [
+            {
+                "type": "library",
+                "name": "top",
+                "purl": "pkg:pypi/top@1.0",
+                "bom-ref": "pkg:pypi/top@1.0",
+                "evidence": {"occurrences": [dict(entry), dict(entry)]},
+            }
+        ],
+    }
+    first = cdxgen_adapter.extract(bom, source="sbom.cdx.json").records
+    again = cdxgen_adapter.extract(bom, source="sbom.cdx.json").records
+    assert len({r.id for r in first}) == 2
+    path = str(tmp_path / "evidence.jsonl")
+    assert store.write(path, [*first, *again]) == 2
 
 
 def test_nested_values_of_the_wrong_type_are_read_without_raising():

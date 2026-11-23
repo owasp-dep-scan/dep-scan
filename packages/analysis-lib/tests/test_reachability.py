@@ -299,14 +299,16 @@ def test_endpoint_reached_purls_follow_the_bom_types_and_the_filter_list(tmp_pat
     }
 
 
-def _cdxgen_records(bom_path, base):
+def _cdxgen_records(bom_path, base, source_root=None):
     """cdxgen's adapter records of one BOM, sourced the way the scan sources
     them: the file's path relative to the scan directory."""
     from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
     from analysis_lib.reachability import report_source
 
     result = cdxgen_adapter.extract(
-        bom_path.read_text(encoding="utf-8"), source=report_source(str(bom_path), str(base))
+        bom_path.read_text(encoding="utf-8"),
+        source=report_source(str(bom_path), str(base)),
+        source_root=source_root,
     )
     assert result.status == "completed", result.reason
     return list(result.records)
@@ -348,6 +350,99 @@ def test_usage_targets_still_reach_endpoints_through_bom_occurrences(tmp_path):
     assert (res.reached_purls or {}) == {"pkg:npm/used@1": 1}
     assert (res.endpoint_reached_purls or {}) == {"pkg:npm/used@1": 1}
     assert (res.direct_purls or {}) == {"pkg:npm/used@1": 2}
+
+
+@pytest.mark.parametrize("spelling", ["relative", "absolute", "dot", "backslash"])
+def test_endpoint_usage_targets_match_whatever_the_file_spelling(tmp_path, spelling):
+    """atom-tools and cdxgen take the file names from the same atom slices,
+    so an x-atom-usages key and an occurrence location share a spelling:
+    relative, absolute under the source root, ``./``-prefixed, or with
+    Windows backslashes. The adapter rewrites the location into its
+    relative form, and the engine spells the key the same way, so each
+    spelling makes the framework endpoint-reachable."""
+    src = tmp_path / "src"
+    src.mkdir()
+    location = {
+        "relative": "app/routes.py",
+        "absolute": str(src / "app" / "routes.py"),
+        "dot": "./app/routes.py",
+        "backslash": "app\\routes.py",
+    }[spelling]
+    bom = _write(
+        tmp_path / "sbom-python.cdx.json",
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "components": [
+                {
+                    "type": "framework",
+                    "name": "flask",
+                    "purl": "pkg:pypi/flask@3.1.3",
+                    "bom-ref": "pkg:pypi/flask@3.1.3",
+                    "evidence": {"occurrences": [{"location": location, "line": 4}]},
+                }
+            ],
+        },
+    )
+    openapi = _write(
+        tmp_path / "python-openapi.json",
+        {"paths": {"/x": {"x-atom-usages": {"call": {location: [4]}}}}},
+    )
+    records = _cdxgen_records(bom, tmp_path, source_root=str(src))
+    _fill_store(tmp_path, records)
+    options = ReachabilityAnalysisKV(
+        project_types=["python"],
+        src_dir=str(src),
+        bom_dir=str(tmp_path),
+        bom_files=[str(bom)],
+        slices_files=[],
+        openapi_spec_files=[str(openapi)],
+        source_root=str(src),
+    )
+    res = SemanticReachability(options).process()
+    assert dict(res.direct_purls or {}) == {"pkg:pypi/flask@3.1.3": 1}
+    assert dict(res.endpoint_reached_purls or {}) == {"pkg:pypi/flask@3.1.3": 1}
+
+
+def _used(name, occurrences=1):
+    return {
+        "type": "library",
+        "name": name,
+        "purl": f"pkg:pypi/{name}@1.0",
+        "bom-ref": f"pkg:pypi/{name}@1.0",
+        "evidence": {"occurrences": [{"location": "app.py", "line": 3}] * occurrences},
+    }
+
+
+@pytest.mark.parametrize("analyzer", [FrameworkReachability, SemanticReachability])
+def test_direct_purls_count_top_level_components_and_every_entry(tmp_path, analyzer):
+    """A direct use is an occurrence entry of a top-level component, counted
+    once per entry as the BOM lists them, identical entries included. The
+    occurrences of a nested component and of a component nested in the
+    root metadata component stay in the store as usage evidence but are not
+    direct uses."""
+    bom = _write(
+        tmp_path / "sbom-python.cdx.json",
+        {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "metadata": {
+                "component": {
+                    "type": "application",
+                    "name": "root",
+                    "purl": "pkg:pypi/root@1.0",
+                    "evidence": {"occurrences": [{"location": "root.py"}]},
+                    "components": [_used("mc")],
+                }
+            },
+            "components": [{**_used("top", occurrences=2), "components": [_used("child", 2)]}],
+        },
+    )
+    records = _cdxgen_records(bom, tmp_path)
+    res = analyzer(_options(tmp_path, records, bom_files=[bom])).process()
+    assert dict(res.direct_purls or {}) == {"pkg:pypi/top@1.0": 2}
+    stored = {r.subject.purls[0] for r in read_store(str(tmp_path / "evidence.jsonl"))}
+    assert {"pkg:pypi/mc@1.0", "pkg:pypi/child@1.0"} <= stored
 
 
 @pytest.mark.parametrize("analyzer", [FrameworkReachability, SemanticReachability])
