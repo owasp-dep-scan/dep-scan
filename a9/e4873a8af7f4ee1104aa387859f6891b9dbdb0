@@ -1,0 +1,20 @@
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  h_0926447d100ad2 31-36,229-235,245-246
+packages/analysis-lib/src/analysis_lib/findings/vdr_convert.py
+  h_0926447d100ad2 152-163,169
+packages/analysis-lib/tests/test_exploitability.py
+  h_0926447d100ad2 682-731
+test/test_evidence_wiring.py
+  h_0926447d100ad2 1775-1837
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a9e4873a8af7f4ee1104aa387859f6891b9dbdb0",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
