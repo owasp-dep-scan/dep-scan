@@ -1,0 +1,16 @@
+packages/analysis-lib/src/analysis_lib/advisory.py
+  h_0926447d100ad2 391-395
+packages/analysis-lib/tests/test_utils.py
+  h_0926447d100ad2 567-609
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91f48495bd9cc52c8231b0ac73553e92a72aa1b3",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
