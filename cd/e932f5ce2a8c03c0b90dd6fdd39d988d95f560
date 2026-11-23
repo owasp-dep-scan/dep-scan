@@ -1,0 +1,28 @@
+documentation/docs/analyzers/framework-reachability.mdx
+  h_0926447d100ad2 19
+documentation/docs/concepts/prioritization.mdx
+  h_0926447d100ad2 21,61
+documentation/docs/migrate-v6-to-v7.mdx
+  h_0926447d100ad2 135
+documentation/docs/output/vdr-guide.mdx
+  h_0926447d100ad2 52
+packages/analysis-lib/src/analysis_lib/output.py
+  h_0926447d100ad2 455-457
+packages/analysis-lib/src/analysis_lib/prioritize.py
+  h_0926447d100ad2 427,433-444,744,756,760-770
+packages/analysis-lib/tests/test_output.py
+  h_0926447d100ad2 357-380
+packages/analysis-lib/tests/test_vdr.py
+  h_0926447d100ad2 11-14,19,26,29,273-436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cde932f5ce2a8c03c0b90dd6fdd39d988d95f560",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
