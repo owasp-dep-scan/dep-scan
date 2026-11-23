@@ -1,0 +1,70 @@
+depscan/lib/scan_directory.py
+  s_486b0f791e3b4d::t_d631103d10964e 288-307,313-314,358-363,408-409,419-430
+  s_486b0f791e3b4d::t_d7462a25a9c7e1 431-432
+depscan/lib/bom.py
+  s_486b0f791e3b4d::t_d631103d10964e 21,23,40,118-125,135-136,192-210,246,540-548,552-558,564,610-616,640-645,648,653-659,669-676,687,1061-1064,1181-1196,1216-1225,1309,1324,1341-1344,1360,1707-1733,1806,1820-1827,1829-1841,1926,1928-1933,1939-1942,1962
+documentation/docs/env-var.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 45
+documentation/docs/adv-usage.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 93-94
+depscan/api.py
+  s_486b0f791e3b4d::t_d631103d10964e 289-300,311-315,371-375,556-573
+depscan/lib/explainer.py
+  s_486b0f791e3b4d::t_d631103d10964e 30,105,118-121,125,148,152-162,164-168,171,223-229,237
+depscan/lib/pipeline.py
+  s_486b0f791e3b4d::t_d631103d10964e 97,170-181,877-886,891-905,908,918,1328,1334-1336,1338-1339,1508-1512,1522-1527,2009-2011,2040,2511,2525-2529
+documentation/docs/languages/dotnet-reachability.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 28
+documentation/docs/migrate-v6-to-v7.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 146
+documentation/docs/cli-usage.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 247,257
+  s_486b0f791e3b4d::t_84f4da67987d24 258
+documentation/docs/output/scan-directory.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 49
+  s_486b0f791e3b4d::t_228e577b755ac4 61,65
+packages/analysis-lib/src/analysis_lib/output.py
+  s_486b0f791e3b4d::t_d631103d10964e 1095-1099,1103,1106-1107,1148-1152
+test/test_pipeline.py
+  s_486b0f791e3b4d::t_d631103d10964e 397-432,914-916
+documentation/docs/languages/rust-reachability.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 25
+test/test_scan_directory.py
+  s_486b0f791e3b4d::t_d631103d10964e 1142-1367,1495-1540
+  s_486b0f791e3b4d::t_6bb461fdd5a4c9 1541-1542
+test/test_explainer.py
+  s_486b0f791e3b4d::t_d631103d10964e 254,264-319
+test/test_bom.py
+  s_486b0f791e3b4d::t_d631103d10964e 373-583,641-687
+  s_486b0f791e3b4d::t_2349a928703e55 688-689
+documentation/docs/analyzers/semantic-reachability.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 61
+test/test_blint_reviews.py
+  s_486b0f791e3b4d::t_d631103d10964e 78,81-115
+test/data/universal-bom/README.md
+  s_486b0f791e3b4d::t_d631103d10964e 1-12
+depscan/lib/license.py
+  s_486b0f791e3b4d::t_d631103d10964e 43-52,58-59,73-94
+documentation/docs/languages/go-reachability.mdx
+  s_486b0f791e3b4d::t_d631103d10964e 26
+test/data/universal-bom/sbom-universal-go.cdx.json
+  s_486b0f791e3b4d::t_d631103d10964e 1-27
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  s_486b0f791e3b4d::t_d631103d10964e 184-196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6ed8c2001bd3fd03d0cf7f51ae6e3f86403a5d02",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
