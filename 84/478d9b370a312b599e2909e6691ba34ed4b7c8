@@ -1,0 +1,14 @@
+test/test_evidence_wiring.py
+  h_0926447d100ad2 959
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84478d9b370a312b599e2909e6691ba34ed4b7c8",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
