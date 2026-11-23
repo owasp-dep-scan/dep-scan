@@ -23,6 +23,7 @@ from analysis_lib.output import (
 )
 
 from depscan import api
+from depscan.lib import binary_review
 from depscan.commands.output import (
     EXIT_FAILURE,
     json_path,
@@ -197,6 +198,19 @@ def _render_results(tscan, findings=None) -> None:
         console.print(f"No vulnerabilities found for project type '{tscan.project_type}'.")
 
 
+def _render_binary_review(result) -> None:
+    """Print the binary review's findings of a saved scan directory.
+
+    The rows come from the binary-hardening findings of the directory's
+    ``depscan.findings.json``, so the table's count agrees with that file,
+    the way the scan's own rendering counts them. A directory that holds
+    none, because no review ran, prints nothing here.
+    """
+    rows = binary_review.hardening_rows(result.findings)
+    if rows:
+        console.print(binary_review.binary_hardening_table(rows))
+
+
 def _run_json_report(result) -> int:
     """Print the loaded scan directory as one JSON document on stdout.
 
@@ -262,6 +276,7 @@ def run_report_args(args: argparse.Namespace) -> int:
     )
     for tscan in result.types:
         _render_results(tscan, result.findings)
+    _render_binary_review(result)
     if args.explain:
         try:
             text = api.explain(result, mode=args.explanation_mode)
