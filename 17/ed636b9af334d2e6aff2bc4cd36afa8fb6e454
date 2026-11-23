@@ -1,0 +1,26 @@
+documentation/docs/output/scan-directory.mdx
+  h_0926447d100ad2 17,171
+packages/analysis-lib/src/analysis_lib/evidence/store.py
+  h_0926447d100ad2 25-28,183-190,202-210,212-214
+packages/analysis-lib/tests/test_evidence_store.py
+  h_0926447d100ad2 308-310,319-339
+test/data/scan-directory/depscan.manifest.json
+  h_0926447d100ad2 207
+test/data/scan-directory/evidence.index.json
+  h_0926447d100ad2 8
+test/test_evidence_wiring.py
+  h_0926447d100ad2 771,1071-1073,1769
+test/test_scan_directory.py
+  h_0926447d100ad2 574-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17ed636b9af334d2e6aff2bc4cd36afa8fb6e454",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
