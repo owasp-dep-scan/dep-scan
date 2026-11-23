@@ -153,7 +153,7 @@ def test_outside_root_binaries_stay_separate_findings_by_basename():
     findings = findings_from_blint_records(records)
     assert len(findings) == 3
     assert len({finding.id for finding in findings}) == 3
-    assert [finding.locations[0].binary for finding in findings] == [
+    assert [(finding.locations or [])[0].binary for finding in findings] == [
         "corpus/fortified-libc-demo.elf",
         "agent.elf",
         "scanner.elf",
