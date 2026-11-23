@@ -825,12 +825,12 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         ctx.reports_dir,
         ctx.all_pkg_vulnerabilities,
         get_version(),
-        scan_root=ctx.src_dir,
         exploitability=ctx.exploitability,
         blint_reviews=any(
             blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
             for project_type in (ctx.project_types or [None])
         ),
+        evidence_records=ctx.evidence_records,
     )
     evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
     if os.path.isfile(evidence_path):
