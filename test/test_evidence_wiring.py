@@ -1387,6 +1387,35 @@ def test_a_non_utf8_json_in_a_bom_dir_does_not_stop_the_scan(scan_stubs, tmp_pat
     )
 
 
+def test_a_deeply_nested_json_in_a_bom_dir_does_not_stop_the_scan(scan_stubs, tmp_path):
+    """A .json file at the top level of a BOM directory that nests deeper
+    than the JSON parser reaches is read by the trace BOM discovery: it is
+    not a trace BOM, and the discovery goes on, so the trace BOM the
+    directory does hold and the healthy BOM are both recorded."""
+    bom_dir = tmp_path / "boms"
+    (bom_dir / "analysis" / "tracebom").mkdir(parents=True)
+    shutil.copy2(CDXGEN_DATA / "sbom-python.cdx.json", bom_dir / "sbom-python.cdx.json")
+    shutil.copy2(
+        TRACEBOM_DATA / "tracebom.json", bom_dir / "analysis" / "tracebom" / "tracebom.json"
+    )
+    # Deep enough to exhaust the parser's stack on every supported Python:
+    # the C decoder of 3.15 guards its stack rather than the recursion limit.
+    depth = 200_000
+    (bom_dir / "deep.json").write_text("[" * depth + "]" * depth, encoding="utf-8")
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+        ),
+        render=False,
+    )
+    assert result.manifest is not None, "the scan completed"
+    producers = {record["producer"]["name"] for record in _store_records(bom_dir)}
+    assert {"cdxgen", "tracebom"} <= producers
+
+
 def test_one_damaged_bom_does_not_cost_the_healthy_boms_records(scan_stubs, tmp_path):
     """A BOM document the cdxgen adapter refuses (truncated JSON) costs its
     own records alone: the healthy document's records survive, each carrying

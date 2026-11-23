@@ -1731,8 +1731,8 @@ def _bom_document(scan, path: str) -> Any:
     """One BOM document of this type, parsed once per type.
 
     The value is the parsed JSON, or the file's text when it is not JSON
-    (so cdxgen's adapter reports the parse error as before), or None when
-    the file cannot be read. The inventory stage's evidence producers all
+    or nests deeper than the parser reaches (so cdxgen's adapter reports
+    the failure as not assessed), or None when the file cannot be read. The inventory stage's evidence producers all
     read through here, so a large BOM is parsed once however many of them
     need it."""
     key = str(path)
@@ -1742,7 +1742,7 @@ def _bom_document(scan, path: str) -> Any:
         if text is not None:
             try:
                 value = json.loads(text)
-            except ValueError:
+            except (ValueError, RecursionError):
                 value = text
         scan.bom_documents[key] = value
     return scan.bom_documents[key]
@@ -2070,7 +2070,9 @@ def _tracebom_candidates(ctx, scan) -> List[Tuple[str, str]]:
                 continue
             try:
                 report = json.loads(text)
-            except ValueError:
+            except (ValueError, RecursionError):
+                # Not JSON, or nested deeper than the parser reaches: not a
+                # trace BOM either way.
                 continue
         if is_tracebom_report(report):
             seen.add(real)
