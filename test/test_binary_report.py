@@ -82,7 +82,9 @@ def _blint_bom_document(binary_name="demo-tool"):
         "bomFormat": "CycloneDX",
         "specVersion": "1.7",
         "metadata": {
-            "tools": {"components": [{"type": "application", "name": "blint", "version": "4.1.0"}]},
+            "tools": {
+                "components": [{"type": "application", "name": "blint", "version": "4.1.0"}]
+            },
             "component": {
                 "type": "application",
                 "bom-ref": f"pkg:generic/{binary_name}",
@@ -134,7 +136,9 @@ def _stub_create_bom(calls, *, findings_entries, coverage_units):
         with open(os.path.join(directory, "findings.json"), "w", encoding="utf-8") as fp:
             json.dump({"findings": findings_entries}, fp)
         if coverage_units is not None:
-            with open(os.path.join(directory, "analysis-coverage.json"), "w", encoding="utf-8") as fp:
+            with open(
+                os.path.join(directory, "analysis-coverage.json"), "w", encoding="utf-8"
+            ) as fp:
                 json.dump({"units": coverage_units}, fp)
         return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
 
@@ -297,3 +301,32 @@ def test_report_states_the_coverage_of_a_saved_clean_scan(capsys, monkeypatch):
         "Binary hardening checks completed with no findings: "
         "1 attempted, 1 succeeded, 0 failed, 0 skipped units." in out
     )
+
+
+def test_hardening_table_cells_are_text_not_markup():
+    """A title that looks like rich markup is shown as written, and a stray
+    closing tag does not raise."""
+    import io
+
+    from rich.console import Console
+
+    from depscan.lib import binary_review
+
+    rows = [
+        {
+            "category": "binary-hardening",
+            "rule": "[bold]rule[/bold]",
+            "severity": "high",
+            "title": "[bold]x[/bold]",
+            "locations": [{"binary": "bin/[red]a"}],
+        },
+        {"category": "binary-hardening", "rule": "r2", "severity": "low", "title": "[/x]"},
+    ]
+    buffer = io.StringIO()
+    Console(file=buffer, width=200, force_terminal=False).print(
+        binary_review.binary_hardening_table(rows)
+    )
+    text = buffer.getvalue()
+    assert "[bold]x[/bold]" in text
+    assert "[/x]" in text
+    assert "bin/[red]a" in text

@@ -1123,3 +1123,22 @@ def test_the_source_root_of_a_stored_scan_is_only_an_explicit_src(tmp_path, monk
     assert pipeline._source_root(stored, str(tmp_path)) is None, "the working directory default"
     stored.src_dir_image = source
     assert pipeline._source_root(stored, source) == source, "an explicit --src"
+
+
+def test_matching_not_assessed_counts_rows_that_named_no_component():
+    from depscan import api
+
+    tscan = SimpleNamespace(
+        ungraded_usage_records=0, vdr_result=SimpleNamespace(rows_without_component=3)
+    )
+    assert api._matching_not_assessed(tscan) == [
+        "3 vulnerability rows named no component and are not in the VDR or the findings"
+    ]
+    clean = SimpleNamespace(
+        ungraded_usage_records=0, vdr_result=SimpleNamespace(rows_without_component=0)
+    )
+    assert api._matching_not_assessed(clean) == []
+    assert (
+        api._matching_not_assessed(SimpleNamespace(ungraded_usage_records=0, vdr_result=None))
+        == []
+    )

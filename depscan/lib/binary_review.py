@@ -16,6 +16,7 @@ import os
 from typing import Any, Dict, Iterable, List, Optional
 
 from rich import box
+from rich.markup import escape
 from rich.table import Table
 
 #: The findings category the blint review's checks become.
@@ -68,11 +69,13 @@ def binary_hardening_table(rows: List[Dict[str, Any]]) -> Table:
     for header in ("Binary", "Check", "Severity", "Title"):
         table.add_column(header=header, vertical="top")
     for finding in rows:
+        # The cells are text from the binary and the check, never markup: a
+        # title such as "[/x]" would otherwise raise or be rendered away.
         table.add_row(
-            _binary_name(finding),
-            str(finding.get("rule") or ""),
-            str(finding.get("severity") or "").upper(),
-            str(finding.get("title") or ""),
+            escape(_binary_name(finding)),
+            escape(str(finding.get("rule") or "")),
+            escape(str(finding.get("severity") or "").upper()),
+            escape(str(finding.get("title") or "")),
         )
     return table
 

@@ -498,17 +498,24 @@ def _analyzer_entries(ctx, tscan):
 
 
 def _matching_not_assessed(tscan):
-    """The not-assessed line the matching stage's manifest entry carries.
+    """The not-assessed lines the matching stage's manifest entry carries.
 
     The usage records whose components the scan did not load graded
-    nothing; the count says so on the entry, so the skipped records are
-    never dropped silently."""
-    if not tscan.ungraded_usage_records:
-        return []
-    return [
-        f"{tscan.ungraded_usage_records} cdxgen usage records grade nothing: "
-        "their components are not in the loaded package list"
-    ]
+    nothing, and the database rows that name no component are left out of
+    the VDR and the findings; the counts say so on the entry, so neither is
+    dropped silently."""
+    lines = []
+    if tscan.ungraded_usage_records:
+        lines.append(
+            f"{tscan.ungraded_usage_records} cdxgen usage records grade nothing: "
+            "their components are not in the loaded package list"
+        )
+    rows = getattr(tscan.vdr_result, "rows_without_component", 0) or 0
+    if rows:
+        lines.append(
+            f"{rows} vulnerability rows named no component and are not in the VDR or the findings"
+        )
+    return lines
 
 
 def _inventory_capabilities(options, project_type: str) -> List[str]:
