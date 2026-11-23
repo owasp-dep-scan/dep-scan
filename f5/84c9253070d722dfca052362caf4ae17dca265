@@ -1,0 +1,21 @@
+depscan/lib/scan_directory.py
+  s_486b0f791e3b4d::t_8e1473bf29b10b 107
+packages/analysis-lib/tests/test_vex.py
+  s_486b0f791e3b4d::t_79bfaa21d7620b 682-763
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f584c9253070d722dfca052362caf4ae17dca265",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
