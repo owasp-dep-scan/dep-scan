@@ -1,0 +1,18 @@
+packages/analysis-lib/src/analysis_lib/__init__.py
+  h_0926447d100ad2 101-103
+packages/analysis-lib/src/analysis_lib/vdr.py
+  h_0926447d100ad2 138-143,183-188
+packages/analysis-lib/tests/test_vdr.py
+  h_0926447d100ad2 203-266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "489d127b07869a3060cb14bc55e6cc94f97bf68f",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
