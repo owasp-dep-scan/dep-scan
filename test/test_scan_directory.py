@@ -1198,6 +1198,7 @@ def test_classify_file_roles():
         "license-npm.json": {"role": "report"},
         "depscan-risk-npm.json": {"role": "report"},
         "depscan.toml.sample": {"role": "report"},
+        "csaf.toml.sample": {"role": "report"},
         "depscan.html": {"role": "report"},
         "unknown.json": {"role": "other"},
     }

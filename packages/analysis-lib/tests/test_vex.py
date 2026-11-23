@@ -680,6 +680,88 @@ def test_export_csaf_writes_csaf_file_and_leaves_vdr_intact(tmp_path, version):
 
 
 # ---------------------------------------------------------------------------
+# The starter csaf.toml: a sample in the reports directory, never a write
+# into the scanned project or the working directory.
+# ---------------------------------------------------------------------------
+
+
+def _csaf_result(bom):
+    class _Result:
+        pkg_vulnerabilities = bom["vulnerabilities"]
+        reached_purls = {}
+
+    return _Result()
+
+
+def test_export_csaf_writes_the_starter_sample_into_the_reports_dir(tmp_path):
+    """A scan whose project carries no csaf.toml must leave the project
+    untouched: the starter lands beside the reports as csaf.toml.sample,
+    the sample convention the scan directory already uses, and the document
+    is still built from the default metadata."""
+    src_dir = tmp_path / "project"
+    reports_dir = tmp_path / "reports"
+    src_dir.mkdir()
+    reports_dir.mkdir()
+    bom = _load_demo()
+    vdr_path = reports_dir / "demo.vdr.json"
+    vdr_path.write_text('{"vdr": true}')
+
+    outfile, errors = export_csaf(
+        _csaf_result(bom),
+        src_dir=str(src_dir),
+        reports_dir=str(reports_dir),
+        bom_file=str(vdr_path),
+        bom=bom,
+    )
+
+    assert outfile is not None and errors == [], f"export failed: {errors}"
+    assert list(src_dir.iterdir()) == [], "the scanned project must keep nothing"
+    sample = reports_dir / "csaf.toml.sample"
+    assert sample.is_file(), "the starter must land in the reports directory"
+    assert "[publisher]" in sample.read_text(encoding="utf-8")
+    document = json.loads(Path(outfile).read_text())
+    assert document["document"]["publisher"]["name"] == "OWASP dep-scan"
+
+
+def test_export_csaf_reads_a_user_placed_csaf_toml_and_writes_no_sample(tmp_path):
+    """A csaf.toml the user placed in the project still customises the
+    document, and no sample is written beside the reports."""
+    src_dir = tmp_path / "project"
+    reports_dir = tmp_path / "reports"
+    src_dir.mkdir()
+    reports_dir.mkdir()
+    (src_dir / "csaf.toml").write_text(
+        "[document]\n"
+        'category = "csaf_vex"\n'
+        'title = "Custom title"\n'
+        "[publisher]\n"
+        'category = "vendor"\n'
+        'name = "Example Corp"\n'
+        'namespace = "https://example.com"\n'
+        "[tracking]\n"
+        'status = "final"\n'
+        'version = "3"\n',
+        encoding="utf-8",
+    )
+    bom = _load_demo()
+    vdr_path = reports_dir / "demo.vdr.json"
+    vdr_path.write_text('{"vdr": true}')
+
+    outfile, errors = export_csaf(
+        _csaf_result(bom),
+        src_dir=str(src_dir),
+        reports_dir=str(reports_dir),
+        bom_file=str(vdr_path),
+        bom=bom,
+    )
+
+    assert outfile is not None and errors == [], f"export failed: {errors}"
+    assert not (reports_dir / "csaf.toml.sample").exists()
+    document = json.loads(Path(outfile).read_text())
+    assert document["document"]["publisher"]["name"] == "Example Corp"
+
+
+# ---------------------------------------------------------------------------
 # juice-shop e2e (environment-gated; runs when fixtures are available so the
 # full real-world document stays under schema/reachability assertion).
 # ---------------------------------------------------------------------------

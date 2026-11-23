@@ -104,6 +104,7 @@ _REPORT_FILES = {
     "depscan.txt",
     "depscan-prompts.md",
     "depscan.toml.sample",
+    "csaf.toml.sample",
     "rendered.report",
 }
 

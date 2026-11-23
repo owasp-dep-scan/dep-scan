@@ -33,6 +33,7 @@ reports/
 ├── depscan-risk-python.json
 ├── depscan.html, depscan.txt      the rendered reports
 └── report.csaf.json               the CSAF VEX document, with --csaf
+    csaf.toml.sample               the starter CSAF metadata, with --csaf
 ```
 
 The tree shows every kind of file a scan can write; a scan writes only the ones that apply to it. A package URL target has no BOM, so its scan writes no BOM and no VDR, and its findings are in `depscan.findings.json` alone.
@@ -52,7 +53,7 @@ The manifest's `files` array carries one entry for every file at the top of the 
 | `slices` | `*.slices.json`, the slice files cdxgen writes: atom's own slices and the semantics reports | cdxgen, or dep-scan for the converted reachables slices its earlier versions wrote |
 | `raw-report` | everything under `analysis/<producer>/` | the tool named by the directory: a reachability plugin, blint's binary review, or tracebom |
 | `csaf` | `*.csaf.json` | dep-scan |
-| `report` | `depscan.html`, `depscan.txt`, `depscan-prompts.md`, the license and risk reports, `depscan.toml.sample` and the template report | dep-scan |
+| `report` | `depscan.html`, `depscan.txt`, `depscan-prompts.md`, the license and risk reports, `depscan.toml.sample`, `csaf.toml.sample` and the template report | dep-scan |
 | `other` | everything else, for example `*-openapi.json` | varies |
 
 ## The findings file

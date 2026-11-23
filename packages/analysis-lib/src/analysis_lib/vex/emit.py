@@ -7,7 +7,8 @@ filesystem. It guarantees two safety invariants:
   ``<base>.csaf.json`` and an assertion blocks generation when it would
   collide with the supplied BOM/VDR path.
 * **Single-run generation.** A missing ``csaf.toml`` does not abort the run;
-  a starter template is written and generation continues with sensible
+  a starter is written as ``csaf.toml.sample`` into the reports directory
+  (never into the scanned project) and generation continues with sensible
   defaults.
 
 Validation runs against the bundled official CSAF schema so a broken document
@@ -179,19 +180,23 @@ def output_path(bom_file: str, reports_dir: str) -> str:
     return outfile
 
 
-def load_meta(src_dir: str) -> Dict[str, Any]:
+def load_meta(src_dir: str, reports_dir: str) -> Dict[str, Any]:
     """Load ``csaf.toml`` from ``src_dir`` (or ``$DEPSCAN_CSAF_TEMPLATE``).
 
     Falls back to :data:`DEFAULT_META` when absent and writes a starter toml
-    for user editing -- without exiting (one-run UX). Returns the metadata.
+    for user editing -- without exiting (one-run UX). The starter lands as
+    ``csaf.toml.sample`` in ``reports_dir``, the same convention as
+    ``depscan.toml.sample``, because the scanned project is untrusted input
+    a scan must not write into. Returns the metadata.
     """
     toml_file_path = os.getenv("DEPSCAN_CSAF_TEMPLATE") or os.path.join(src_dir, "csaf.toml")
     if not os.path.isfile(toml_file_path):
-        write_toml(toml_file_path)
+        sample_path = os.path.join(reports_dir, "csaf.toml.sample")
+        write_toml(sample_path)
         LOG.info(
             "CSAF toml not found; wrote starter template to %s and continuing "
             "with defaults. Edit it to customize publisher/tracking.",
-            toml_file_path,
+            sample_path,
         )
         return _meta_with_version(dict(DEFAULT_META))
     try:
@@ -209,10 +214,13 @@ def _meta_with_version(meta: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def write_toml(toml_file_path: str, metadata: Optional[Dict[str, Any]] = None) -> None:
-    """Write a starter ``csaf.toml`` for operator customization."""
+    """Write a starter ``csaf.toml.sample`` for operator customization."""
     meta = metadata or DEFAULT_META
     meta = _meta_with_version(meta)
     try:
+        parent = os.path.dirname(toml_file_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         with open(toml_file_path, "w") as fh:
             fh.write(toml.dumps(meta))
     except OSError as exc:
@@ -249,7 +257,7 @@ def export_csaf(
         hard failure. Validation errors are returned (and logged) but do not
         suppress the write, so the document is still available for debugging.
     """
-    meta = load_meta(src_dir)
+    meta = load_meta(src_dir, reports_dir)
     if bom is None:
         try:
             with open(bom_file, "r") as fh:
