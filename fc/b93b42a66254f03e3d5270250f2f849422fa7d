@@ -1,0 +1,22 @@
+depscan/lib/bom.py
+  h_0926447d100ad2 21,116-120,130,186-204,240,595-601,625-630,633,638-644
+depscan/lib/pipeline.py
+  h_0926447d100ad2 1322-1324,1326-1327
+documentation/docs/env-var.mdx
+  h_0926447d100ad2 45
+packages/xbom-lib/src/xbom_lib/cdxgen.py
+  h_0926447d100ad2 184-196
+test/test_bom.py
+  h_0926447d100ad2 373-401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fcb93b42a66254f03e3d5270250f2f849422fa7d",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
