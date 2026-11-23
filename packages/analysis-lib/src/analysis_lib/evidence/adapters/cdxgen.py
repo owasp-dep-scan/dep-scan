@@ -6,37 +6,69 @@ package's code was seen, with a location, line, symbol and offset), its
 ``evidence.callstack`` (the frame chain cdxgen recorded for the package),
 the document-level ``annotations`` (the SaaSBOM provenance note, whose
 subjects are purls, and the bom-audit findings, whose subjects are the BOM
-serial number), and the build-introspection report that sits beside the
-BOM when cdxgen ran with ``--introspect``.
+serial number), the ``cdx:kosi:*`` properties cdxgen writes when kosi
+analysed a Kotlin project, and the build-introspection report that sits
+beside the BOM when cdxgen ran with ``--introspect``.
 
-Four kinds of evidence become records:
+Five kinds of evidence become records:
 
 1. One ``occurrence`` record per occurrence entry, with the component's
    purl and ``bom-ref``, the occurrence's location relativized, its line
-   and symbol, and its remaining fields (``offset``) in the attributes.
-2. One ``callstack`` record per callstack object, the frames in the
-   producer's order as the witness path. A callstack whose ``frames``
-   list is empty still becomes a record with no path: the object is
-   truthy evidence of usage, and the presence axis must see it. The
-   frame ``column`` has no field on a witness node and is not carried
-   anywhere. A callstack object with no keys at all is falsy, proves no
-   usage and is counted as a skip, never dropped silently.
+   and symbol, and its remaining fields (``offset``, ``additionalContext``)
+   in the attributes. A ``line`` or ``symbol`` no location carries (a line
+   of 0, a symbol that is not a string, or any line when the record has no
+   location) stays in the attributes as given. An entry that names no location, or is not a JSON object, still
+   becomes a record with no location and the entry in its attributes: a
+   non-empty occurrences value is usage evidence, and the presence axis
+   must see it. A truthy occurrences value that is not an array becomes
+   one such record.
+2. One ``callstack`` record per callstack value, the frames in the
+   producer's order as the witness path. The frames are also kept as
+   given in the ``frames`` attribute, with ``fullFilename`` relativized
+   (``null`` when no root holds it), because a witness node has no field
+   for the frame's ``column``, ``parameters`` or the ``package`` a frame
+   names beside its ``module``. A callstack whose ``frames`` list is empty
+   still becomes a record with no path, and so does a truthy callstack
+   that is not a JSON object: either is usage evidence. A falsy callstack
+   (``{}``, ``[]``) proves no usage and is counted as a skip.
 3. One ``annotation`` record per ``annotations[]`` entry. The subject
    purls are the ``subjects`` entries that are purls; a bom-audit
-   annotation subjects the BOM serial number, which is not a purl, so
-   its record keeps empty purls while the attributes keep the subjects,
-   the annotator and the text exactly as given (cdxgen renders its
-   ``cdx:audit:*`` facts into the text; a BOM that carries a properties
-   array has it kept as name/value pairs too). The annotation timestamp
-   is dropped from the record and left out of the id, so a regenerated
-   BOM that rewrites only the timestamp keeps the same record id.
-4. One ``introspection`` record per introspection report: the ``overall``
-   block and the ``ledger`` block as given, gated on the report's own
-   ``schemaVersion`` and versioned from its own ``cdxgen`` block. The
-   introspection report is a second input: when it is malformed or names
-   an unsupported schema major, that costs one ``record-skipped`` caveat
-   on the BOM result, never a not-assessed BOM. A ledger the producer
-   marked truncated adds a ``budget`` caveat.
+   annotation subjects the BOM serial number, which is not a purl, so its
+   record keeps empty purls while the attributes keep the subjects, the
+   annotator and the text as given (cdxgen renders its ``cdx:audit:*``
+   facts into the text; a properties array is kept too). The annotation
+   timestamp is dropped from the record.
+4. One ``introspection`` record per introspection report: the
+   ``overall``, ``ledger``, ``ecosystems``, ``coverageGaps``,
+   ``remediation`` and ``observations`` blocks as given, gated on the
+   report's own ``schemaVersion`` and versioned from its own ``cdxgen``
+   block. ``coverageGaps`` names the ecosystems cdxgen found markers for
+   but could not assess. The introspection report is a second input: when
+   it is malformed or names an unsupported schema major, that costs one
+   ``record-skipped`` caveat on the BOM result, never a not-assessed BOM.
+   A ledger the producer marked truncated adds a ``budget`` caveat.
+5. One ``entry-point`` record per service that carries a
+   ``cdx:kosi:endpoint:*`` property: a route kosi found the application
+   serving. It names no package (the purls stay empty), so it is kept as
+   attack surface without counting any package as reached; the name,
+   endpoints, authentication flags and properties are its attributes.
+
+The remaining ``cdx:kosi:*`` properties travel with the records. A
+component's own ``cdx:kosi:*`` properties (``reachableFromRoots``,
+``dataFlowCategories``, ``pathKind``, ``crossesDependency``) are kept in
+the ``kosiProperties`` attribute of that component's occurrence and
+callstack records. The run-level properties cdxgen writes on the root
+component (``metadata.component``, or ``metadata.properties``) become
+caveats, the same way the kosi adapter reads them from kosi's own report:
+``cdx:kosi:degraded`` and ``cdx:kosi:diagnosticErrors`` become
+``coverage-gap`` caveats, each ``cdx:kosi:diagnostic:<code>`` count
+becomes a ``timeout``, ``budget`` or ``coverage-gap`` caveat by its code,
+and they land on the result and on every occurrence, callstack and
+entry-point record of the BOM. The other run-level properties (the kosi
+and Kotlin versions, slice counts, source coverage, the root's own
+data-flow facts) are counted by name in a ``record-skipped`` caveat, and
+so are services kosi found as outbound calls (``cdx:kosi:service:*``),
+which name no package.
 
 The population walk mirrors the package loader's: the root component's
 nested ``metadata.component.components``, the top-level ``components``,
@@ -44,27 +76,39 @@ and one level of nesting below each of them. Component-type filtering
 stays the loader's business; this adapter records the evidence the BOM
 actually carries.
 
-The version gates read the documents' own versions: the BOM's
-``specVersion`` (major 1, minor 7 known; a 2.0 BOM is refused as
-not-assessed naming the version) and the introspection report's
-``schemaVersion`` (major 1, minor 1 known). The producer version is the
-cdxgen version the BOM's own ``metadata.tools`` names, in either the
-1.5 list form or the 1.6 ``components`` form, never the locally
-installed cdxgen; ``unknown`` when the BOM names none, and for the
-introspection record the version the report's ``cdxgen`` block names.
+Two version gates apply, both on what the BOM itself states, never on the
+locally installed cdxgen. The BOM's ``specVersion`` (major 1, minor 7
+known) and the cdxgen version its ``metadata.tools`` names (major 13,
+minor 9 known, the release line the shapes were checked against; older
+releases spelled an occurrence's line inside its location). Another major
+of either is refused as not-assessed naming the version; a newer minor
+is accepted with a ``schema-minor`` caveat; a BOM that names no cdxgen
+version, or that another tool wrote, is accepted with a
+``schema-unknown`` caveat naming what it lists. The introspection report
+has its own ``schemaVersion`` gate (major 1, minor 1 known). A BOM
+section of the wrong type (``metadata``, ``components``, ``annotations``,
+``services``) costs that section alone, counted, and the other sections
+still give records.
 
-Record paths are relative to the caller's source root with forward
-slashes; the BOM does not name its source directory. A location the root
-cannot relativize is left out of the record with a
-``location-outside-root`` caveat rather than stored absolute, and ids
-are computed from root-neutral content, so the same BOM produced in
-another directory gives the same ids.
+No record carries an absolute path, a user name or the scan root. Record
+paths are relative to the caller's source root with forward slashes; a
+location the root cannot relativize is left out of the record with a
+``location-outside-root`` caveat, and every attribute string has the
+root and home directories taken out. Record ids are computed with every
+path spelled by :meth:`SourcePaths.stable` (relative to the root, or
+``<outside>/`` and the file name), so the same BOM produced in another
+directory or by another user gives the same ids. An annotation's id
+leaves out what changes when the same BOM is generated again: the
+timestamp, a subject that is the BOM's own serial number, and the
+creation date the SaaSBOM note writes into its text; a bom-audit
+annotation is identified by its ``cdx:audit:*`` facts and subjects.
 """
 
 from __future__ import annotations
 
 import json
-from typing import Any, List, Optional, Tuple
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 from analysis_lib.evidence import (
     EvidenceCaveat,
@@ -77,16 +121,18 @@ from analysis_lib.evidence.adapters import (
     STATUS_COMPLETED,
     SkipTally,
     SourcePaths,
+    TOO_DEEP_REASON,
     as_dict,
     as_hashable_str,
     as_line,
     as_list,
     as_str,
     build_record,
+    gate_cdxgen_tool_version,
     gate_report_version,
     guard_extract,
-    neutral_discriminator,
     not_assessed,
+    stable_discriminator,
 )
 
 #: The BOM spec version major this adapter reads, and the newest minor it
@@ -94,11 +140,48 @@ from analysis_lib.evidence.adapters import (
 SUPPORTED_MAJOR = 1
 KNOWN_MINOR = 7
 
+#: The cdxgen release line whose BOM shapes this adapter was checked
+#: against, and the newest minor of it.
+CDXGEN_SUPPORTED_MAJOR = 13
+CDXGEN_KNOWN_MINOR = 9
+
 #: The introspection report's own schema version gate.
 INTROSPECTION_SUPPORTED_MAJOR = 1
 INTROSPECTION_KNOWN_MINOR = 1
 
+#: The introspection report blocks the record keeps, in the order the
+#: report writes them. ``overall`` and ``ledger`` are objects, the rest
+#: arrays.
+INTROSPECTION_BLOCKS: Tuple[Tuple[str, type], ...] = (
+    ("overall", dict),
+    ("ledger", dict),
+    ("ecosystems", list),
+    ("coverageGaps", list),
+    ("remediation", list),
+    ("observations", list),
+)
+
 PRODUCER_NAME = "cdxgen"
+
+#: The prefix of every property cdxgen writes from a kosi report.
+KOSI_PREFIX = "cdx:kosi:"
+KOSI_ENDPOINT_PREFIX = "cdx:kosi:endpoint:"
+KOSI_SERVICE_PREFIX = "cdx:kosi:service:"
+KOSI_DIAGNOSTIC_PREFIX = "cdx:kosi:diagnostic:"
+
+#: The date the SaaSBOM provenance note writes into its text
+#: (``created on Sunday, November 22, 2026``), and any ISO timestamp.
+_DATE_RE = re.compile(
+    r"\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday), "
+    r"[A-Z][a-z]+ \d{1,2}, \d{4}\b"
+)
+_ISO_TIMESTAMP_RE = re.compile(
+    r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?"
+)
+
+#: One ``| cdx:audit:<name> | <value> |`` row of a bom-audit annotation's
+#: text table.
+_AUDIT_ROW_RE = re.compile(r"^\|\s*(cdx:audit:[^|\s]+)\s*\|\s*(.*?)\s*\|\s*$", re.MULTILINE)
 
 
 def _parse_report(value: Any) -> Tuple[Optional[Any], Optional[str]]:
@@ -107,52 +190,35 @@ def _parse_report(value: Any) -> Tuple[Optional[Any], Optional[str]]:
     if isinstance(value, (str, bytes)):
         try:
             return json.loads(value), None
+        except RecursionError:
+            return None, "the report nests its values deeper than this adapter reads"
         except ValueError as e:
             return None, f"the report is not valid JSON: {e}"
     return value, None
 
 
-def _bom_tool_version(bom: dict) -> str:
-    """The cdxgen version the BOM's own ``metadata.tools`` names.
-
-    CycloneDX 1.5 spells the section as a list of tool objects and 1.6 as
-    an object with ``components``; both are read. The locally installed
-    cdxgen is never asked: the BOM's own statement is the evidence.
-    """
-    tools = as_dict(bom.get("metadata")).get("tools")
-    entries = (
-        as_list(tools) if isinstance(tools, list) else as_list(as_dict(tools).get("components"))
-    )
-    for entry in entries:
-        if isinstance(entry, dict) and as_str(entry.get("name")) == "cdxgen":
-            version = as_str(entry.get("version"))
-            if version:
-                return version
-    return ""
-
-
 #: The BOM sections the adapter reads, with the JSON type each must have
-#: when present. A section of another type means the document is not the
-#: shape cdxgen writes and is not assessed at all.
+#: when present. A section of another type costs that section alone.
 _SECTION_TYPES = (
-    (("metadata",), dict),
-    (("components",), list),
-    (("annotations",), list),
+    ("metadata", dict),
+    ("components", list),
+    ("annotations", list),
+    ("services", list),
 )
 
 
-def _section_problem(bom: dict) -> Optional[str]:
-    """The first consumed section of the wrong JSON type, named, or ``None``.
-
-    A ``null`` section reads as absent. Any other value of the wrong type
-    means the document is not a BOM this adapter can read.
-    """
-    for keys, expected in _SECTION_TYPES:
-        value = bom.get(keys[0])
+def _count_section_problems(bom: dict, skipped: SkipTally) -> None:
+    """Count every consumed section of the wrong JSON type. A ``null``
+    section reads as absent; any other value of the wrong type costs that
+    section's objects, and the other sections are still read."""
+    for key, expected in _SECTION_TYPES:
+        value = bom.get(key)
         if value is not None and not isinstance(value, expected):
             want = "an object" if expected is dict else "an array"
-            return f"{keys[0]} is a {type(value).__name__}, expected {want}"
-    return None
+            skipped.add(
+                f"{key} sections are a {type(value).__name__}, expected {want}, "
+                "and their contents became no record"
+            )
 
 
 def _population(bom: dict, skipped: SkipTally) -> List[Any]:
@@ -194,6 +260,135 @@ def _purls(component: dict) -> Tuple[str, ...]:
     return (purl,) if purl else ()
 
 
+def _properties(obj: Any) -> List[Tuple[str, Any]]:
+    """The ``(name, value)`` pairs of an object's properties array; entries
+    that are not objects with a string name are passed over (the caller
+    reads only the names it knows)."""
+    pairs = []
+    for entry in as_list(as_dict(obj).get("properties")):
+        if isinstance(entry, dict):
+            name = as_hashable_str(entry.get("name"))
+            if name is not None:
+                pairs.append((name, entry.get("value")))
+    return pairs
+
+
+def _grouped(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+    """Properties keyed by name; a name stated more than once keeps every
+    value, as a list, in the order stated."""
+    out: Dict[str, Any] = {}
+    for name, value in pairs:
+        if name not in out:
+            out[name] = value
+        elif isinstance(out[name], list):
+            out[name].append(value)
+        else:
+            out[name] = [out[name], value]
+    return out
+
+
+# ---------------------------------------------------------------------------
+# kosi properties
+# ---------------------------------------------------------------------------
+
+
+def _kosi_run_caveats(bom: dict, skipped: SkipTally) -> List[EvidenceCaveat]:
+    """The caveats the BOM's run-level ``cdx:kosi:*`` properties carry.
+
+    cdxgen writes them on the root component (``metadata.component``);
+    ``metadata.properties`` is read as well. ``degraded`` and
+    ``diagnosticErrors`` mean parts of kosi's analysis are absent or not
+    facts about the code; a diagnostic count is a timeout, a budget or a
+    place kosi could not look, by its code. Every other run-level property
+    is counted by name, so none disappears without a count."""
+    metadata = as_dict(bom.get("metadata"))
+    pairs = [
+        (name, value)
+        for name, value in _properties(metadata.get("component")) + _properties(metadata)
+        if name.startswith(KOSI_PREFIX)
+    ]
+    caveats: List[EvidenceCaveat] = []
+    other: List[str] = []
+    for name, value in pairs:
+        text = value if isinstance(value, str) else json.dumps(value)
+        if name == "cdx:kosi:degraded":
+            caveats.append(
+                EvidenceCaveat(
+                    kind="coverage-gap",
+                    detail=(
+                        f"kosi marked its analysis degraded ({text}), so its counts are not "
+                        "facts about the code"
+                    ),
+                )
+            )
+        elif name == "cdx:kosi:diagnosticErrors":
+            caveats.append(
+                EvidenceCaveat(
+                    kind="coverage-gap",
+                    detail=(
+                        f"kosi reported error diagnostics ({text}): those parts of its "
+                        "analysis are absent from the BOM"
+                    ),
+                )
+            )
+        elif name.startswith(KOSI_DIAGNOSTIC_PREFIX):
+            code = name[len(KOSI_DIAGNOSTIC_PREFIX) :]
+            detail = f"kosi diagnostic {code} reported {text} time(s)"
+            words = code.lower().split("-")
+            if "timeout" in words:
+                caveats.append(EvidenceCaveat(kind="timeout", detail=detail))
+            elif any(
+                word.startswith("truncat") or word in ("budget", "cap", "caps") for word in words
+            ):
+                caveats.append(EvidenceCaveat(kind="budget", detail=detail))
+            else:
+                caveats.append(EvidenceCaveat(kind="coverage-gap", detail=detail))
+        else:
+            other.append(name)
+    if other:
+        skipped.add(
+            "root cdx:kosi: properties that describe the kosi run or the application "
+            f"rather than a dependency became no record ({', '.join(sorted(set(other)))})",
+            len(other),
+        )
+    return _dedupe(caveats)
+
+
+def _kosi_entry_point(
+    service: dict,
+    producer: EvidenceProducer,
+    source: str,
+    paths: SourcePaths,
+    caveats: List[EvidenceCaveat],
+):
+    """The entry-point record of a route kosi found the application
+    serving, or ``None`` for a service that carries no
+    ``cdx:kosi:endpoint:*`` property."""
+    pairs = _properties(service)
+    if not any(name.startswith(KOSI_ENDPOINT_PREFIX) for name, _ in pairs):
+        return None
+    attributes: Dict[str, Any] = {}
+    for field in ("name", "endpoints", "authenticated", "x-trust-boundary"):
+        if service.get(field) is not None:
+            attributes[field] = paths.redact(service[field])
+    attributes["properties"] = paths.redact(_grouped(pairs))
+    return build_record(
+        source=source,
+        producer=producer,
+        kind="entry-point",
+        discriminator=stable_discriminator(
+            {key: value for key, value in service.items() if key != "bom-ref"}, paths
+        ),
+        attributes=attributes,
+        caveats=tuple(caveats),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Introspection
+# ---------------------------------------------------------------------------
+
+
 def _introspection_record(
     introspection: Any,
     source: str,
@@ -228,33 +423,33 @@ def _introspection_record(
             )
         ]
     caveats = list(gate.caveats)
-    for block in ("ledger", "overall"):
+    attributes: Dict[str, Any] = {}
+    for block, expected in INTROSPECTION_BLOCKS:
         value = parsed.get(block)
-        if value is not None and not isinstance(value, dict):
+        if value is None:
+            continue
+        if not isinstance(value, expected):
+            want = "object" if expected is dict else "array"
             caveats.append(
                 EvidenceCaveat(
                     kind="record-skipped",
                     detail=(
                         f"the introspection report's {block} block is a "
-                        f"{type(value).__name__}, not the object expected; "
+                        f"{type(value).__name__}, not the {want} expected; "
                         "it became no attribute"
                     ),
                 )
             )
-    ledger = as_dict(parsed.get("ledger"))
-    if ledger.get("truncated"):
+            continue
+        if value:
+            attributes[block] = paths.redact(value)
+    if as_dict(parsed.get("ledger")).get("truncated"):
         caveats.append(
             EvidenceCaveat(
                 kind="budget",
                 detail="the introspection ledger is marked truncated, so its counts may be incomplete",
             )
         )
-    overall = as_dict(parsed.get("overall"))
-    attributes = {}
-    if overall:
-        attributes["overall"] = overall
-    if ledger:
-        attributes["ledger"] = ledger
     raw_version = parsed.get("schemaVersion")
     seen_version = (
         str(raw_version).strip()
@@ -266,17 +461,61 @@ def _introspection_record(
         version=as_str(as_dict(parsed.get("cdxgen")).get("version")) or "unknown",
         report_schema_version=seen_version or "unknown",
     )
-    # The id covers only the blocks the record carries, so a re-run of the
-    # same build (a new runId and timestamp, the same verdict) keeps it.
+    # The id covers the verdict blocks only, so a re-run of the same build
+    # (a new runId and timestamp, the same verdict) keeps it.
+    verdict = {key: attributes[key] for key in ("overall", "ledger") if key in attributes}
     record = build_record(
         source=source,
         producer=producer,
         kind="introspection",
-        discriminator=neutral_discriminator(attributes, paths),
+        discriminator=stable_discriminator(verdict, paths),
         attributes=attributes or None,
         caveats=tuple(caveats),
     )
     return record, []
+
+
+# ---------------------------------------------------------------------------
+# Annotations
+# ---------------------------------------------------------------------------
+
+
+def _annotation_identity(annotation: dict, serial: Optional[str]) -> Any:
+    """What an annotation's id hashes: its content without the parts that
+    change when the same BOM is generated again.
+
+    The timestamp is left out, and a subject that is the BOM's own serial
+    number (a fresh ``urn:uuid`` every run) reads ``<bom>``. A bom-audit
+    annotation is its ``cdx:audit:*`` facts (from the text table and any
+    properties array), its subjects and its annotator; any other
+    annotation is its content with the creation date and timestamps in its
+    text spelled ``<date>``."""
+    subjects = [
+        "<bom>" if serial and subject == serial else subject
+        for subject in as_list(annotation.get("subjects"))
+    ]
+    text = annotation.get("text")
+    audit: Dict[str, Any] = {}
+    if isinstance(text, str):
+        for name, value in _AUDIT_ROW_RE.findall(text):
+            audit.setdefault(name, value)
+    for name, value in _properties(annotation):
+        if name.startswith("cdx:audit:"):
+            audit.setdefault(name, value)
+    if "cdx:audit:ruleId" in audit or "cdx:audit:target:purl" in audit:
+        return {"audit": audit, "subjects": subjects, "annotator": annotation.get("annotator")}
+    identity = {
+        key: value for key, value in annotation.items() if key not in ("timestamp", "subjects")
+    }
+    identity["subjects"] = subjects
+    if isinstance(text, str):
+        identity["text"] = _ISO_TIMESTAMP_RE.sub("<date>", _DATE_RE.sub("<date>", text))
+    return identity
+
+
+# ---------------------------------------------------------------------------
+# The adapter
+# ---------------------------------------------------------------------------
 
 
 @guard_extract(PRODUCER_NAME)
@@ -298,9 +537,10 @@ def extract(
     ``introspection_source`` its scan-directory-relative file. ``source_root``
     is the scanned source directory as the caller knows it; record paths are
     relative to it with forward slashes. The result is the records, or
-    not-assessed with the reason: a document that is not a BOM object, has
-    a consumed section of an unexpected type, or names a BOM ``specVersion``
-    this adapter does not read is never read as a smaller report.
+    not-assessed with the reason: a document that is not a BOM object, or
+    names a BOM ``specVersion`` or cdxgen major this adapter does not read,
+    is never read as a smaller report. A section of the wrong type is a
+    counted skip.
     """
     bom, parse_error = _parse_report(bom)
     if parse_error or not isinstance(bom, dict):
@@ -308,15 +548,17 @@ def extract(
             f"the report is a {type(bom).__name__}, not the CycloneDX BOM object"
         )
         return not_assessed(reason)
-    problem = _section_problem(bom)
-    if problem:
-        return not_assessed(f"the cdxgen BOM is malformed and was not assessed: {problem}")
     gate = gate_report_version(bom.get("specVersion"), SUPPORTED_MAJOR, KNOWN_MINOR)
     if not gate.accepted:
         return not_assessed(
             gate.reason or "the BOM names a schema version this adapter cannot read"
         )
-    base_caveats = list(gate.caveats)
+    tool_gate, tool_version = gate_cdxgen_tool_version(
+        bom, CDXGEN_SUPPORTED_MAJOR, CDXGEN_KNOWN_MINOR, "BOM"
+    )
+    if not tool_gate.accepted:
+        return not_assessed(tool_gate.reason or "")
+    base_caveats = list(gate.caveats) + list(tool_gate.caveats)
 
     raw_spec = bom.get("specVersion")
     seen_version = (
@@ -326,161 +568,58 @@ def extract(
     )
     producer = EvidenceProducer(
         name=PRODUCER_NAME,
-        version=_bom_tool_version(bom) or "unknown",
+        version=tool_version,
         report_schema_version=seen_version or "unknown",
     )
 
     paths = SourcePaths(roots=[source_root])
     skipped = SkipTally()
     records: List = []
+    _count_section_problems(bom, skipped)
+    kosi_caveats = _kosi_run_caveats(bom, skipped)
+    evidence_caveats = base_caveats + kosi_caveats
 
     for component in _population(bom, skipped):
         if not isinstance(component, dict):
             skipped.add("components entries are not JSON objects and became no record")
             continue
-        evidence = as_dict(component.get("evidence"))
-        purls = _purls(component)
-        component_ref = as_hashable_str(component.get("bom-ref"))
+        try:
+            records.extend(
+                _component_records(component, producer, source, paths, evidence_caveats, skipped)
+            )
+        except RecursionError:
+            skipped.add(TOO_DEEP_REASON)
 
-        raw_occurrences = evidence.get("occurrences")
-        if raw_occurrences is None:
-            occurrences: List = []
-        elif isinstance(raw_occurrences, list):
-            occurrences = raw_occurrences
-        else:
-            skipped.add(
-                "evidence.occurrences values are not arrays and became no occurrence record"
+    serial = as_hashable_str(bom.get("serialNumber"))
+    annotations = bom.get("annotations")
+    for annotation in annotations if isinstance(annotations, list) else []:
+        try:
+            record = _annotation_record(
+                annotation, serial, producer, source, paths, base_caveats, skipped
             )
-            occurrences = []
+        except RecursionError:
+            skipped.add(TOO_DEEP_REASON)
+            continue
+        if record is not None:
+            records.append(record)
 
-        for occurrence in occurrences:
-            if not isinstance(occurrence, dict):
-                skipped.add(
-                    "evidence.occurrences entries are not JSON objects and became no record"
-                )
-                continue
-            location = as_str(occurrence.get("location")).strip()
-            if not location:
-                skipped.add("evidence.occurrences entries name no location and became no record")
-                continue
-            file = paths.relative(location)
-            line = as_line(occurrence.get("line"))
-            symbol = as_str(occurrence.get("symbol")) or None
-            attributes = {
-                key: value
-                for key, value in occurrence.items()
-                if key not in ("location", "line", "symbol")
-            }
-            caveats = list(base_caveats)
-            if file is None:
-                caveats.append(paths.outside_root_caveat(1))
-            records.append(
-                build_record(
-                    source=source,
-                    producer=producer,
-                    kind="occurrence",
-                    discriminator=neutral_discriminator(occurrence, paths),
-                    purls=purls,
-                    component_ref=component_ref,
-                    locations=(EvidenceLocation(file=file, line=line, method=symbol),)
-                    if file is not None
-                    else (),
-                    attributes=attributes or None,
-                    caveats=tuple(caveats),
-                )
-            )
-
-        raw_callstack = evidence.get("callstack")
-        if raw_callstack is None:
+    services = bom.get("services")
+    outbound = 0
+    for service in services if isinstance(services, list) else []:
+        if not isinstance(service, dict):
             continue
-        if not isinstance(raw_callstack, dict):
-            skipped.add("evidence.callstack values are not JSON objects and became no record")
+        try:
+            record = _kosi_entry_point(service, producer, source, paths, evidence_caveats)
+        except RecursionError:
+            skipped.add(TOO_DEEP_REASON)
             continue
-        if not raw_callstack:
-            # A keyless callstack object is falsy in Python, so it proves
-            # no usage on the BOM reader either; it is counted, not dropped.
-            skipped.add("evidence.callstack objects are empty and became no record")
-            continue
-        raw_frames = raw_callstack.get("frames")
-        if raw_frames is not None and not isinstance(raw_frames, list):
-            # The callstack object itself is still truthy usage evidence, so
-            # its record stands with no witness path and the loss counted.
-            skipped.add("evidence.callstack frames values are not arrays and name no witness node")
-            raw_frames = None
-        frames = as_list(raw_frames)
-        nodes: List[EvidencePathNode] = []
-        left_out = 0
-        for frame in frames:
-            if not isinstance(frame, dict):
-                skipped.add(
-                    "evidence.callstack frames are not JSON objects and name no witness node"
-                )
-                continue
-            raw_file = frame.get("fullFilename")
-            file = paths.relative(raw_file)
-            if isinstance(raw_file, str) and raw_file.strip() and file is None:
-                left_out += 1
-            nodes.append(
-                EvidencePathNode(
-                    file=file,
-                    line=as_line(frame.get("line")),
-                    method=as_str(frame.get("function")) or None,
-                    symbol=as_str(frame.get("module")) or as_str(frame.get("package")) or None,
-                )
-            )
-        caveats = list(base_caveats)
-        if left_out:
-            caveats.append(paths.outside_root_caveat(left_out))
-        records.append(
-            build_record(
-                source=source,
-                producer=producer,
-                kind="callstack",
-                discriminator=neutral_discriminator(raw_callstack, paths),
-                purls=purls,
-                component_ref=component_ref,
-                path=tuple(nodes),
-                caveats=tuple(caveats),
-            )
-        )
-
-    for annotation in as_list(bom.get("annotations")):
-        if not isinstance(annotation, dict):
-            skipped.add("annotations entries are not JSON objects and became no record")
-            continue
-        raw_subjects = annotation.get("subjects")
-        if raw_subjects is not None and not isinstance(raw_subjects, list):
-            skipped.add("annotation subjects values are not arrays and name no subject")
-        subjects = [s for s in as_list(raw_subjects) if isinstance(s, str)]
-        attributes = {}
-        annotator = annotation.get("annotator")
-        if annotator is not None:
-            attributes["annotator"] = annotator
-        if "subjects" in annotation:
-            attributes["subjects"] = raw_subjects
-        properties = annotation.get("properties")
-        if properties is not None and not isinstance(properties, list):
-            skipped.add("annotation properties values are not arrays and name no property")
-        elif isinstance(properties, list):
-            attributes["properties"] = properties
-        text = annotation.get("text")
-        if isinstance(text, str) and text:
-            attributes["text"] = text
-        # The timestamp changes on every regenerated BOM while the annotation
-        # stays the same, so the id hashes the object without it, the way the
-        # introspection id leaves the report's run ids out.
-        annotation_for_id = {k: v for k, v in annotation.items() if k != "timestamp"}
-        records.append(
-            build_record(
-                source=source,
-                producer=producer,
-                kind="annotation",
-                discriminator=neutral_discriminator(annotation_for_id, paths),
-                purls=tuple(s for s in subjects if s.startswith("pkg:")),
-                attributes=attributes or None,
-                caveats=tuple(base_caveats),
-            )
-        )
+        if record is not None:
+            records.append(record)
+        elif any(name.startswith(KOSI_SERVICE_PREFIX) for name, _ in _properties(service)):
+            outbound += 1
+    skipped.add(
+        "services kosi found as outbound calls name no package and became no record", outbound
+    )
 
     introspection_records: List = []
     introspection_caveats: List[EvidenceCaveat] = []
@@ -495,7 +634,7 @@ def extract(
             introspection_caveats.extend(introspection_evidence.caveats)
 
     outside = paths.producer_caveat()
-    caveats = base_caveats + introspection_caveats + skipped.caveats()
+    caveats = evidence_caveats + introspection_caveats + skipped.caveats()
     if outside:
         caveats.append(outside)
     return AdapterResult(
@@ -503,7 +642,212 @@ def extract(
     )
 
 
+def _component_records(
+    component: dict,
+    producer: EvidenceProducer,
+    source: str,
+    paths: SourcePaths,
+    base_caveats: List[EvidenceCaveat],
+    skipped: SkipTally,
+) -> List:
+    """The occurrence and callstack records of one component."""
+    records: List = []
+    evidence = as_dict(component.get("evidence"))
+    purls = _purls(component)
+    component_ref = as_hashable_str(component.get("bom-ref"))
+    kosi = _grouped([pair for pair in _properties(component) if pair[0].startswith(KOSI_PREFIX)])
+
+    def record(kind: str, obj: Any, **fields: Any):
+        attributes = dict(fields.pop("attributes", None) or {})
+        if kosi:
+            attributes["kosiProperties"] = paths.redact(kosi)
+        return build_record(
+            source=source,
+            producer=producer,
+            kind=kind,
+            discriminator=stable_discriminator(obj, paths),
+            purls=purls,
+            component_ref=component_ref,
+            attributes=attributes or None,
+            **fields,
+        )
+
+    raw_occurrences = evidence.get("occurrences")
+    if isinstance(raw_occurrences, list):
+        occurrences = raw_occurrences
+    elif raw_occurrences:
+        # A truthy value of the wrong type is still usage evidence on the
+        # component reading, so it stands as one record with no location.
+        occurrences = [raw_occurrences]
+    else:
+        if raw_occurrences is not None and raw_occurrences != []:
+            skipped.add("evidence.occurrences values are empty and became no record")
+        occurrences = []
+
+    for occurrence in occurrences:
+        if not isinstance(occurrence, dict):
+            records.append(
+                record(
+                    "occurrence",
+                    occurrence,
+                    attributes={"occurrence": paths.redact(occurrence)},
+                    caveats=tuple(base_caveats),
+                )
+            )
+            continue
+        location = as_str(occurrence.get("location")).strip()
+        file = paths.relative(location) if location else None
+        raw_line = occurrence.get("line")
+        line = as_line(raw_line)
+        raw_symbol = occurrence.get("symbol")
+        symbol = as_str(raw_symbol) or None
+        attributes = {
+            key: paths.redact(value)
+            for key, value in occurrence.items()
+            if key not in ("location", "line", "symbol")
+        }
+        # A line or symbol that no location carries (there is no location,
+        # or the location cannot hold the value) stays in the attributes.
+        if raw_line is not None and (file is None or line is None):
+            attributes["line"] = raw_line
+        if raw_symbol is not None and raw_symbol != "" and (file is None or symbol is None):
+            attributes["symbol"] = paths.redact(raw_symbol)
+        caveats = list(base_caveats)
+        if location and file is None:
+            caveats.append(paths.outside_root_caveat(1))
+        records.append(
+            record(
+                "occurrence",
+                occurrence,
+                locations=(EvidenceLocation(file=file, line=line, method=symbol),)
+                if file is not None
+                else (),
+                attributes=attributes,
+                caveats=tuple(caveats),
+            )
+        )
+
+    raw_callstack = evidence.get("callstack")
+    if raw_callstack is None:
+        return records
+    if not raw_callstack:
+        # A falsy callstack ({} or []) proves no usage on the component
+        # reading either; it is counted, not dropped.
+        skipped.add("evidence.callstack values are empty and became no record")
+        return records
+    if not isinstance(raw_callstack, dict):
+        records.append(
+            record(
+                "callstack",
+                raw_callstack,
+                attributes={"callstack": paths.redact(raw_callstack)},
+                caveats=tuple(base_caveats),
+            )
+        )
+        return records
+    raw_frames = raw_callstack.get("frames")
+    if raw_frames is not None and not isinstance(raw_frames, list):
+        # The callstack object itself is still truthy usage evidence, so
+        # its record stands with no witness path and the loss counted.
+        skipped.add("evidence.callstack frames values are not arrays and name no witness node")
+        raw_frames = None
+    nodes: List[EvidencePathNode] = []
+    kept_frames: List[Any] = []
+    left_out = 0
+    for frame in as_list(raw_frames):
+        if not isinstance(frame, dict):
+            skipped.add("evidence.callstack frames are not JSON objects and name no witness node")
+            kept_frames.append(paths.redact(frame))
+            continue
+        raw_file = frame.get("fullFilename")
+        file = paths.relative(raw_file)
+        if isinstance(raw_file, str) and raw_file.strip() and file is None:
+            left_out += 1
+        kept = {key: paths.redact(value) for key, value in frame.items()}
+        if "fullFilename" in frame:
+            kept["fullFilename"] = file
+        kept_frames.append(kept)
+        nodes.append(
+            EvidencePathNode(
+                file=file,
+                line=as_line(frame.get("line")),
+                method=as_str(frame.get("function")) or None,
+                symbol=as_str(frame.get("module")) or as_str(frame.get("package")) or None,
+            )
+        )
+    caveats = list(base_caveats)
+    if left_out:
+        caveats.append(paths.outside_root_caveat(left_out))
+    other = {key: paths.redact(value) for key, value in raw_callstack.items() if key != "frames"}
+    attributes = dict(other)
+    if kept_frames:
+        attributes["frames"] = kept_frames
+    records.append(
+        record(
+            "callstack",
+            raw_callstack,
+            path=tuple(nodes),
+            attributes=attributes,
+            caveats=tuple(caveats),
+        )
+    )
+    return records
+
+
+def _annotation_record(
+    annotation: Any,
+    serial: Optional[str],
+    producer: EvidenceProducer,
+    source: str,
+    paths: SourcePaths,
+    base_caveats: List[EvidenceCaveat],
+    skipped: SkipTally,
+):
+    """The record of one annotation, or ``None`` with the reason counted."""
+    if not isinstance(annotation, dict):
+        skipped.add("annotations entries are not JSON objects and became no record")
+        return None
+    raw_subjects = annotation.get("subjects")
+    if raw_subjects is not None and not isinstance(raw_subjects, list):
+        skipped.add("annotation subjects values are not arrays and name no subject")
+    subjects = [s for s in as_list(raw_subjects) if isinstance(s, str)]
+    attributes = {}
+    annotator = annotation.get("annotator")
+    if annotator is not None:
+        attributes["annotator"] = paths.redact(annotator)
+    if "subjects" in annotation:
+        attributes["subjects"] = paths.redact(raw_subjects)
+    properties = annotation.get("properties")
+    if properties is not None and not isinstance(properties, list):
+        skipped.add("annotation properties values are not arrays and name no property")
+    elif isinstance(properties, list):
+        attributes["properties"] = paths.redact(properties)
+    text = annotation.get("text")
+    if isinstance(text, str) and text:
+        attributes["text"] = paths.redact(text)
+    return build_record(
+        source=source,
+        producer=producer,
+        kind="annotation",
+        discriminator=stable_discriminator(_annotation_identity(annotation, serial), paths),
+        purls=tuple(s for s in subjects if s.startswith("pkg:")),
+        attributes=attributes or None,
+        caveats=tuple(base_caveats),
+    )
+
+
+def _dedupe(caveats: List[EvidenceCaveat]) -> List[EvidenceCaveat]:
+    out: List[EvidenceCaveat] = []
+    for caveat in caveats:
+        if caveat not in out:
+            out.append(caveat)
+    return out
+
+
 __all__ = [
+    "CDXGEN_KNOWN_MINOR",
+    "CDXGEN_SUPPORTED_MAJOR",
+    "INTROSPECTION_BLOCKS",
     "INTROSPECTION_KNOWN_MINOR",
     "INTROSPECTION_SUPPORTED_MAJOR",
     "KNOWN_MINOR",
