@@ -1,7 +1,10 @@
 # cdxgen recordings
 
-A real cdxgen 13.9.0 BOM and its build-introspection report, kept as adapter
-test input. The tests in `test_evidence_cdxgen.py` read them.
+Real cdxgen 13.9.0 BOMs and a build-introspection report, kept as adapter
+test input. The tests in `test_evidence_cdxgen.py` read them:
+`sbom-python.cdx.json` with its introspection report, and
+`sbom-kotlin-kosi.cdx.json`, which carries the `cdx:kosi:*` properties
+cdxgen writes from a kosi analysis (see the last section).
 
 ## How they were made
 
@@ -50,15 +53,10 @@ predictive audit annotations (one per audited package, subjects are purls,
 `cdx:audit:target:purl` and its siblings in the text table); they exercise
 the same subject-purl reading as the SaaSBOM annotation and were not kept.
 
-The audit ran as its own pass for two reasons: the earlier attempts that
-combined `--profile research` with `--bom-audit` produced BOM audit findings
-(the rule fired, the table printed) but the evidence analysis that the
-research profile runs afterwards rewrote the output BOM from an earlier
-snapshot, so the written file lost the audit annotations; and a plain run
-keeps them. The annotation's subject named that pass's serial number, so it
-was rewritten to the serial number of the research run's BOM that the
-fixture keeps, which is what cdxgen would have written had the rule fired
-in that pass. Nothing else on the annotation was changed.
+cdxgen 13.9.0 drops the bom-audit annotations when `--profile research`
+runs its evidence pass after the audit, so the audit ran as its own pass
+and its annotation was copied in with the subject set to the kept BOM's
+serial number. Nothing else on the annotation was changed.
 
 ## What was cut
 
@@ -74,3 +72,35 @@ in that pass. Nothing else on the annotation was changed.
   changed; every kept value is what cdxgen printed.
 
 The recordings carry no other absolute paths, usernames or hostnames.
+
+## The Kotlin recording with kosi properties
+
+`sbom-kotlin-kosi.cdx.json` is a cdxgen 13.9.0 research-profile BOM over a
+one-file Kotlin JVM project (`src/main/kotlin/demo/App.kt`, with
+`com.squareup.okhttp3:okhttp` 4.12.0 as its only dependency) whose code
+reads a line from standard input and passes it to okhttp's
+`Request.Builder.url` and to `Runtime.exec`. The project was written for
+the recording and is not carried here. cdxgen ran kosi 4.3.1 from
+`@cdxgen/cdxgen-plugins-bin-darwin-arm64` 4.3.1, with Gradle 9.6.1 and the
+okhttp jar already in the local Gradle cache:
+
+```bash
+cdxgen -t kotlin --profile research -o sbom-kotlin.cdx.json <project-dir>
+```
+
+The run-level `cdx:kosi:*` properties (the kosi and Kotlin versions, slice
+and source coverage counts, the root's data-flow facts and the five
+`cdx:kosi:diagnostic:*` counts) are on the root component, okhttp carries
+`cdx:kosi:reachableFromRoots`, two occurrences and a two-frame callstack,
+and the one service is the outbound okhttp call kosi found, described by
+`cdx:kosi:service:*` properties. The run reported no `cdx:kosi:degraded`,
+no `cdx:kosi:diagnosticErrors` and no API endpoint; the tests add those in
+the shapes `lib/ecosystems/kosi.js` writes.
+
+What was cut: every component except okhttp (27 Kotlin toolchain and
+transitive jars without evidence), the `dependencies`, `formulation`,
+`annotations` and `citations` sections and `metadata.properties`, okhttp's
+`evidence.identity` and `cdx:gradle:GradleRootPath` property, and the root
+component's `buildFile`, `projectDir` and `rootDir` properties: those were
+the only values holding absolute paths of the recording machine. Every kept
+value is what cdxgen printed.
