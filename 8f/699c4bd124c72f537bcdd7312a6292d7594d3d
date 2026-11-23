@@ -1,0 +1,16 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/cdxgen.py
+  h_0926447d100ad2 46-49,117-119,518-526,537,891-899
+packages/analysis-lib/tests/test_evidence_cdxgen.py
+  h_0926447d100ad2 305-307,313-314,1016-1059
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f699c4bd124c72f537bcdd7312a6292d7594d3d",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
