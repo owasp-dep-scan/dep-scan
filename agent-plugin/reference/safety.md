@@ -98,6 +98,11 @@ entry, give the purl without the credential, or the account name and host.
   a cdxgen on `PATH` at the minimum version, first. Only when neither
   exists and `docker` is on `PATH` (outside Windows) does it pull the
   `ghcr.io/cdxgen/cdxgen` image. Say which one ran.
+- A container scan of an image reference the daemon does not have pulls
+  the image from its registry by itself (cdxgen pulls when its check of
+  the local daemon finds nothing, and the layers can be large). Check the
+  daemon first and ask before scanning, or have the user pull the
+  reference or export a rootfs.
 - golem fetches Go modules for a source scan unless
   `--go-analyzer-network offline` is passed.
 - `depscan-vdb` and `depscan-coverage-loop` change state and run only when
