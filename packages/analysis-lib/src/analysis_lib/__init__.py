@@ -98,6 +98,9 @@ class Counts:
     fix_version_count = 0
     wont_fix_version_count = 0
     distro_packages_count = 0
+    #: Database rows whose matched_by named no component; the VDR export
+    #: skips them instead of writing an affects ref that is the empty string.
+    no_matched_by_count = 0
     has_os_packages = False
     has_redhat_packages = False
     has_ubuntu_packages = False

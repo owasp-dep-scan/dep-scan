@@ -768,7 +768,7 @@ def test_the_finding_joins_its_evidence_and_names_a_witness(scan_stubs, tmp_path
     assert finding["components"] == [STUB_FINDING_PURL]
     reports = Path(result.reports_dir)
     index = json.loads((reports / "evidence.index.json").read_text())
-    joined = index["byFinding"][finding["id"]]
+    joined = index["byFinding"][f"{finding['id']} {finding['components'][0]}"]
     assert joined, "the index joins the finding to the records of its package"
     records = {
         record["id"]: record
@@ -1068,7 +1068,9 @@ def test_the_index_joins_a_finding_to_its_cdxgen_occurrence_record(scan_stubs, t
     }
     assert occurrence_ids, "the store holds the cdxgen occurrence records of the finding's package"
     index = json.loads((bom_dir / "evidence.index.json").read_text())
-    assert occurrence_ids <= set(index["byFinding"][finding["id"]]), (
+    assert occurrence_ids <= set(
+        index["byFinding"][f"{finding['id']} {finding['components'][0]}"]
+    ), (
         "the join must reach the specific occurrence records of the component"
     )
 
@@ -1764,7 +1766,7 @@ def test_an_aggregated_directory_grades_usage_from_every_bom(scan_stubs, tmp_pat
     }, "each document's records reached the store under their own source"
     index = json.loads((bom_dir / "evidence.index.json").read_text())
     (finding,) = result.findings
-    joined = set(index["byFinding"][finding["id"]])
+    joined = set(index["byFinding"][f"{finding['id']} {finding['components'][0]}"])
     assert {record["id"] for record in usage} <= joined, (
         "the finding joins the records of both documents"
     )

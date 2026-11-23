@@ -305,15 +305,36 @@ def test_the_index_groups_records_by_component_and_finding(tmp_path):
         "pkg:pypi/requests@2.32.1": [flow3.id],
     }
     assert index["byFinding"] == {
-        FINDING_ID: sorted([flow1.id, flow3.id]),
-        "dsf1:" + "b" * 64: [],
-        "dsf1:" + "c" * 64: [],
+        f"{FINDING_ID} pkg:npm/lodash@4.17.21": sorted([flow1.id, flow3.id]),
+        f"dsf1:{'b' * 64} pkg:npm/semver@7.6.0?arch=x86#subpath": [],
+        f"dsf1:{'c' * 64} pkg:golang/nothing/matches@1.0.0": [],
     }
 
     path = tmp_path / "evidence.index.json"
     store.write_index(str(path), index)
     written = json.loads(path.read_text(encoding="utf-8"))
     assert written == index
+
+
+def test_two_versions_of_one_package_keep_separate_index_entries():
+    """Two findings share a fingerprint when one advisory hits two versions
+    of a package, because the fingerprint leaves the version out so
+    suppressions survive upgrades. Each version must keep its own index
+    entry, keyed by the finding id and the finding's first component purl,
+    joining only that version's records."""
+    flow56 = _record("flow-56", purls=["pkg:golang/golang.org/x/crypto@v0.56.0"])
+    flow57 = _record("flow-57", purls=["pkg:golang/golang.org/x/crypto@v0.57.0"])
+    findings = [
+        {"id": FINDING_ID, "components": ["pkg:golang/golang.org/x/crypto@v0.56.0"]},
+        {"id": FINDING_ID, "components": ["pkg:golang/golang.org/x/crypto@v0.57.0"]},
+    ]
+
+    index = store.build_index([flow56, flow57], findings)
+
+    assert index["byFinding"] == {
+        f"{FINDING_ID} pkg:golang/golang.org/x/crypto@v0.56.0": [flow56.id],
+        f"{FINDING_ID} pkg:golang/golang.org/x/crypto@v0.57.0": [flow57.id],
+    }, "two versions of one package must not share one entry"
 
 
 def test_an_index_written_twice_is_byte_identical(tmp_path):

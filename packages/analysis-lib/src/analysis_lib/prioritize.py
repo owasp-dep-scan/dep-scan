@@ -424,17 +424,24 @@ def process_vuln_occ(
             insights.append(":receipt: Vendor Confirmed")
             plain_insights.append("Vendor Confirmed")
     if clinks.get("exploit"):
-        if reached_purls.get(purl) or direct_purls.get(purl):
+        if reached_purls.get(purl):
             insights.append(
                 "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
             )
             plain_insights.append("Reachable and Exploitable")
             counts.has_reachable_exploit_count += 1
-            # Fail safe. Packages with exploits and direct usage without
-            # a reachable flow are still considered reachable to reduce
-            # false negatives
-            if not reached_purls.get(purl):
-                reached_purls[purl] = 1
+        elif direct_purls.get(purl):
+            # Fail safe. Packages with exploits and direct usage without a
+            # reachable flow are still prioritized to reduce false negatives,
+            # but the insight names what the records show: a direct
+            # dependency with known exploits, reach not assessed.
+            insights.append(
+                "[bright_red]:exclamation_mark: Direct dependency with known "
+                "exploits, reach not assessed[/bright_red]"
+            )
+            plain_insights.append("Direct dependency with known exploits, reach not assessed")
+            counts.has_reachable_exploit_count += 1
+            reached_purls[purl] = 1
         elif has_flagged_cwe:
             if (vendor and vendor in ("gnu",)) or (
                 purl_obj and purl_obj.get("name") in ("glibc", "openssl")
@@ -734,7 +741,7 @@ def analyze_cve_vuln(
     # There are exploits
     if exploits and not likely_false_positive:
         cve_requires_attn = True
-        # Also reachable
+        # Also reachable, or used directly
         if (
             reached_purls.get(purl)
             or endpoint_reached_purls.get(purl)
@@ -746,10 +753,21 @@ def analyze_cve_vuln(
                     "[bright_red]:collision: Endpoint-Reachable and Exploitable[/bright_red]"
                 )
                 plain_insights.append("Endpoint-Reachable and Exploitable")
-            else:
+            elif reached_purls.get(purl):
                 insights.append(
                     "[bright_red]:exclamation_mark: Reachable and Exploitable[/bright_red]"
                 )
+            else:
+                # Fail safe. Packages with exploits and direct or deployed
+                # usage without a reachable flow are still prioritized to
+                # reduce false negatives, but the insight names what the
+                # records show: a direct dependency with known exploits,
+                # reach not assessed.
+                insights.append(
+                    "[bright_red]:exclamation_mark: Direct dependency with known "
+                    "exploits, reach not assessed[/bright_red]"
+                )
+                plain_insights.append("Direct dependency with known exploits, reach not assessed")
             if reached_purls.get(purl) or endpoint_reached_purls.get(purl):
                 plain_insights.append("Reachable and Exploitable")
                 # Remove any simple reachable insights

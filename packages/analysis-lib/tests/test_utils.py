@@ -564,6 +564,49 @@ def test_cve_to_vdr_on_stored_cve5_records(cve_id, expected_refs, foreign_adviso
         assert any(foreign_advisory in a["url"] for a in advisories)
 
 
+def _cve5_record_with_metrics(base_score):
+    """A minimal CVE-5 record whose cna carries one CVSSv3.1 metric; the
+    score is whatever the caller passes, as a database row would hold it."""
+    return {
+        "containers": {
+            "cna": {
+                "references": None,
+                "descriptions": None,
+                "problemTypes": None,
+                "affected": None,
+                "metrics": [
+                    {
+                        "cvssV3_1": {
+                            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:N/A:N",
+                            "version": "3.1",
+                            "baseSeverity": "LOW",
+                            "baseScore": base_score,
+                        }
+                    }
+                ],
+            }
+        },
+        "cveMetadata": None,
+    }
+
+
+def test_a_rating_without_a_numeric_score_omits_the_score_field():
+    """A database row whose metric carries a vector but no baseScore must
+    produce a rating without a ``score`` key: the CycloneDX schema rejects
+    the empty string the writer used to emit."""
+    rating = advisory.cve_to_vdr(_cve5_record_with_metrics(None), "CVE-2026-114061")[6]
+    assert rating["method"] == "CVSSv31"
+    assert rating["severity"] == "low"
+    assert rating["vector"] == "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:N/I:N/A:N"
+    assert "score" not in rating, "an unrated vector must not carry an empty score"
+
+
+def test_a_rating_with_a_numeric_score_keeps_the_score_field():
+    """A metric with a numeric baseScore still reaches the rating unchanged."""
+    rating = advisory.cve_to_vdr(_cve5_record_with_metrics(3.1), "CVE-2026-114061")[6]
+    assert rating["score"] == 3.1
+
+
 def test_analyze_cve_vuln_handles_missing_cve_metadata_and_affected():
     cve_record = {
         "containers": {

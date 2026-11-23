@@ -22,8 +22,10 @@ store once per scan and never needs it in memory at once.
 The index maps components and findings to the records about them.
 ``byComponent`` keys are comparable purl forms, so a reached key and an
 ``affects`` ref spelled differently still land on the same entry;
-``byFinding`` maps each finding id to the records whose subject purls
-include any of the finding's component purls.
+``byFinding`` maps each finding to the records whose subject purls
+include any of the finding's component purls, keyed by the finding id
+and the finding's first component purl, so two versions of one package
+(who share a fingerprint) keep separate entries.
 """
 
 import contextlib
@@ -178,10 +180,14 @@ def build_index(records: Iterable[Evidence], findings: Iterable[Dict[str, Any]])
     """The index document for the given records and findings.
 
     ``findings`` are the finding dictionaries of ``depscan.findings.json``,
-    each with its ``id`` and ``components`` purls. A finding whose
-    components match nothing still gets its (empty) entry, so the index
-    says explicitly that no record backs it. Keys come back sorted, and the
-    id lists under them are sorted.
+    each with its ``id`` and ``components`` purls. Each ``byFinding`` key is
+    the finding id and the finding's first component purl joined by one
+    space, so two findings that share a fingerprint (one advisory hitting
+    two versions of a package) keep their own entries; a finding with no
+    components is keyed by its bare id. A finding whose components match
+    nothing still gets its (empty) entry, so the index says explicitly that
+    no record backs it. Keys come back sorted, and the id lists under them
+    are sorted.
     """
     from analysis_lib.findings.vdr_convert import comparable_purl
 
@@ -193,11 +199,19 @@ def build_index(records: Iterable[Evidence], findings: Iterable[Dict[str, Any]])
     by_finding: Dict[str, List[str]] = {}
     for finding in findings:
         finding_id = str(finding.get("id") or "")
-        keys = {comparable_purl(str(purl)) for purl in finding.get("components") or []}
+        purls = [
+            str(purl) for purl in finding.get("components") or [] if str(purl).strip()
+        ]
+        # The key spells the finding's first component purl beside the id:
+        # two versions of one package share a fingerprint (the id leaves the
+        # version out so suppressions survive upgrades) but never an entry,
+        # so each version joins only its own records. A finding without
+        # components keeps the bare id as its key.
+        entry_key = f"{finding_id} {purls[0]}" if purls else finding_id
         matched: set = set()
-        for key in keys:
-            matched.update(by_component.get(key, ()))
-        by_finding[finding_id] = sorted(matched)
+        for purl in purls:
+            matched.update(by_component.get(comparable_purl(purl), ()))
+        by_finding[entry_key] = sorted(matched)
     return {
         "schemaVersion": INDEX_SCHEMA_VERSION,
         "byComponent": {key: sorted(ids) for key, ids in sorted(by_component.items())},

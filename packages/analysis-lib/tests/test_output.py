@@ -354,3 +354,27 @@ def test_each_merged_component_row_shows_its_own_grade():
     assert list(table.columns[-1].cells) == ["moderate\nreached", "moderate\nreached"]
     # The summary counts pairs, as the caption does.
     assert exploitability_grade_stats(graded) == {"moderate": 1, "low": 1}
+
+
+def test_next_steps_count_the_fail_safe_label_as_known_exploits():
+    """The fail-safe insight names known exploits in lower case; the
+    next-steps analysis must still read it as exploit evidence, so the
+    finding keeps its place in the priority table."""
+    from analysis_lib.output import find_next_steps
+
+    analysis = find_next_steps(
+        POSTCSS_8431,
+        ["CVE-2026-41305"],
+        ["Direct dependency with known exploits, reach not assessed"],
+        "8.5.0",
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+    )
+    assert analysis["has_exploits"] is True
+    assert analysis["is_exploitable"] is False

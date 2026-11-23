@@ -571,7 +571,9 @@ def test_fixture_is_a_valid_scan_directory():
     assert len(record["path"]) == 5
     index = json.loads((FIXTURE_DIR / "evidence.index.json").read_text())
     assert index["byComponent"] == {"pkg:pypi/requests@2.32.1": [record["id"]]}
-    assert index["byFinding"] == {finding["id"]: [record["id"]]}
+    assert index["byFinding"] == {
+        f"{finding['id']} {finding['components'][0]}": [record["id"]]
+    }
     assert finding["exploitability"]["axes"]["reach"] == "likely"
     assert finding["exploitability"]["sources"]["reach"] == ["atom"]
     assert finding["exploitability"]["witness"] == record["id"]
@@ -1198,6 +1200,7 @@ def test_classify_file_roles():
         "license-npm.json": {"role": "report"},
         "depscan-risk-npm.json": {"role": "report"},
         "depscan.toml.sample": {"role": "report"},
+        "csaf.toml.sample": {"role": "report"},
         "depscan.html": {"role": "report"},
         "unknown.json": {"role": "other"},
     }
