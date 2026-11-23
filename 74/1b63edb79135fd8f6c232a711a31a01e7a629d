@@ -1,0 +1,40 @@
+packages/analysis-lib/src/analysis_lib/packages.py
+  s_48e06faba5a13f::t_3713dc17761a87 67-71
+  s_48e06faba5a13f::t_acaa076011abb7 40-41
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_48e06faba5a13f::t_f96de730d560a6 340-342,356,386-390,392-393,399
+packages/analysis-lib/src/analysis_lib/output.py
+  s_48e06faba5a13f::t_7c6c384a4f0b7d 1096-1099,1108
+packages/analysis-lib/src/analysis_lib/prioritize.py
+  s_48e06faba5a13f::t_41c4231e57cff8 764-768,770,773
+packages/analysis-lib/tests/test_exploitability.py
+  s_48e06faba5a13f::t_a8fed332d312ad 789,791-792,924-925,927-928,1263-1287
+packages/analysis-lib/tests/test_output.py
+  s_48e06faba5a13f::t_02dcf5a4f8043a 454-463
+packages/analysis-lib/tests/test_packages.py
+  s_48e06faba5a13f::t_059375577b48e5 127-152
+packages/analysis-lib/tests/test_vdr.py
+  s_48e06faba5a13f::t_b39d57374c2a7f 864-903
+packages/reporting-lib/src/reporting_lib/htmlgen.py
+  s_48e06faba5a13f::t_8c59d21255dc08 1261-1263
+test/test_htmlgen.py
+  s_48e06faba5a13f::t_bd57d19a143747 315-358
+test/test_pipeline.py
+  s_48e06faba5a13f::t_c9774f6770e46f 427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "741b63edb79135fd8f6c232a711a31a01e7a629d",
+  "prompts": {},
+  "sessions": {
+    "s_48e06faba5a13f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b27e440-d09a-44b4-84ed-1c3f593516e9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
