@@ -8,19 +8,25 @@ pkg_vulnerabilities — so dedupe_vdrs never got the chance to merge the extra
 affects[].refs and the VDR under-reported the affected components. The filter
 must only collapse exact duplicates of the same (CVE, fix version, component),
 which is the cross-BOM (--bom-dir) case it was written for.
+
+The later sections cover the rows the export skips (a match that names no
+component) and the insight the occurrence builder renders for its fail-safe
+path (a direct dependency with known exploits, reach not assessed).
 """
 
 import json
 import os
+from types import SimpleNamespace
 
 import pytest
 from vdb.lib import config as vdb_config
 from vdb.lib import db as vdb_db
 from vdb.lib.osv import OSVSource
 
-from analysis_lib import VdrAnalysisKV
+from analysis_lib import Counts, VdrAnalysisKV
 from analysis_lib import vdr as vdr_module
 from analysis_lib.output import generate_console_output as real_gco
+from analysis_lib.prioritize import process_vuln_occ
 from analysis_lib.vdr import VDRAnalyzer
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
@@ -262,6 +268,170 @@ def test_a_row_without_matched_by_is_skipped_not_exported_with_an_empty_ref(monk
     assert any("1" in line and "matched_by" in line for line in logger.lines), (
         f"the skipped row must be counted in a log line; got {logger.lines}"
     )
+
+
+# ---------------------------------------------------------------------------
+# The occurrence builder's fail-safe: a direct dependency with known exploits
+# and no traced flow is not rendered as reachable.
+# ---------------------------------------------------------------------------
+
+_FAIL_SAFE_PURL = "pkg:golang/github.com/satori/go.uuid@v1.2.0"
+
+
+def _exploit_occurrence(purl):
+    """One VulnerabilityOccurrence-shaped dict carrying an exploit-db
+    reference, so process_vuln_occ takes its known-exploits branch."""
+    return {
+        "id": "GHSA-vc85-9fcg-rc3m",
+        "problem_type": "CWE-400",
+        "cvss_score": 7.5,
+        "cvss_v2": None,
+        "cvss_v3": {"vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"},
+        "package_issue": {
+            "affected_location": {
+                "vendor": "github.com/satori",
+                "package": "go.uuid",
+                "version": "v1.2.0",
+            },
+            "fixed_location": "v1.2.0",
+        },
+        "short_description": "Predictable UUID generation",
+        "long_description": "The package generates predictable UUIDs.",
+        "related_urls": ["https://www.exploit-db.com/exploits/49337"],
+        "severity": "HIGH",
+        "effective_severity": "HIGH",
+        "matched_by": f"{purl}|v1.2.0",
+        "source_update_time": "2021-01-01T00:00:00",
+        "source_orig_time": "2017-01-01T00:00:00",
+    }
+
+
+def test_the_occurrence_fail_safe_direct_insight_names_reach_not_assessed():
+    """process_vuln_occ used to label a direct dependency with known
+    exploits "Reachable and Exploitable" although no flow was traced. The
+    insight must name a direct dependency with known exploits and reach not
+    assessed, while the promotion and the count still apply."""
+    opts = SimpleNamespace(
+        project_type="go",
+        pkg_aliases={},
+        purl_aliases={"github.com/satori:go.uuid:v1.2.0": _FAIL_SAFE_PURL},
+    )
+    reached: dict = {}
+    counts = Counts()
+
+    _, _, vdr = process_vuln_occ(
+        {},
+        {_FAIL_SAFE_PURL: 1},
+        "",
+        [],
+        opts,
+        reached,
+        [],
+        _exploit_occurrence(_FAIL_SAFE_PURL),
+        counts,
+    )
+
+    plain = [
+        p["value"]
+        for p in (vdr.get("properties") or [])
+        if p.get("name") == "depscan:insights"
+    ]
+    rich = "\n".join(vdr.get("insights") or [])
+    assert any("Direct dependency with known exploits, reach not assessed" in i for i in plain), (
+        f"the fail-safe insight must name the direct dependency; got {plain}"
+    )
+    assert "Reachable" not in rich and not any("Reachable" in i for i in plain), (
+        f"no fail-safe output may claim reach; got {rich!r} and {plain}"
+    )
+    assert reached.get(_FAIL_SAFE_PURL) == 1
+    assert counts.has_reachable_exploit_count == 1
+
+
+def _exploit_cve5_record():
+    """A CVE-5 record whose cna carries an exploit-db reference and a
+    CVSSv3.1 metric, the form vdb 7 returns as source_data."""
+    return {
+        "containers": {
+            "cna": {
+                "references": [{"url": "https://www.exploit-db.com/exploits/49337"}],
+                "descriptions": [{"lang": "en", "value": "Predictable UUID generation"}],
+                "metrics": [
+                    {
+                        "cvssV3_1": {
+                            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+                            "version": "3.1",
+                            "baseSeverity": "HIGH",
+                            "baseScore": 7.5,
+                        }
+                    }
+                ],
+                "problemTypes": None,
+                "affected": None,
+            }
+        },
+        "cveMetadata": {"cveId": "CVE-2026-41305"},
+    }
+
+
+def test_the_cve_fail_safe_direct_insight_names_reach_not_assessed():
+    """analyze_cve_vuln used to render its fail-safe path (a direct or
+    deployed dependency with known exploits, no traced flow) as "Reachable
+    and Exploitable" in the console and the HTML. The insight must name
+    what it is, while the promotion, the count and the prioritization
+    stay."""
+    from analysis_lib.prioritize import analyze_cve_vuln
+
+    purl = "pkg:npm/postcss@8.4.31"
+    vuln = {
+        "cve_id": "CVE-2026-41305",
+        "matched_by": purl,
+        "matching_vers": "vers:apache/>=0.0.0",
+        "purl_prefix": "pkg:npm/postcss",
+        "type": "npm",
+        "source_data": _exploit_cve5_record(),
+        "fix_version": "8.4.50",
+    }
+    reached: dict = {}
+    counts = Counts()
+
+    _, vdict, add_to_pkg_group_rows, _ = analyze_cve_vuln(
+        vuln,
+        reached_purls=reached,
+        direct_purls={purl: 1},
+        reached_services={},
+        endpoint_reached_purls={},
+        optional_pkgs=[],
+        required_pkgs=[],
+        prebuild_purls={},
+        build_purls={},
+        postbuild_purls={},
+        purl_identities={},
+        bom_dependency_tree=[],
+        counts=counts,
+    )
+
+    plain = [
+        p["value"]
+        for p in (vdict.get("properties") or [])
+        if p.get("name") == "depscan:insights"
+    ]
+    rich = "\n".join(vdict.get("insights") or [])
+    assert any("Direct dependency with known exploits, reach not assessed" in i for i in plain), (
+        f"the fail-safe insight must name the direct dependency; got {plain}"
+    )
+    assert "Direct dependency with known exploits, reach not assessed" in rich, (
+        "the console and the HTML render this wording from the rich insights"
+    )
+    assert "Reachable" not in rich and not any("Reachable" in i for i in plain), (
+        f"no fail-safe output may claim reach; got {rich!r} and {plain}"
+    )
+    # The fail-safe prioritization itself stays: the package is promoted and
+    # the finding remains flagged and prioritized.
+    assert reached.get(purl) == 1
+    assert counts.has_reachable_exploit_count == 1
+    assert add_to_pkg_group_rows is True
+    properties = {p["name"]: p["value"] for p in vdict.get("properties") or []}
+    assert properties.get("depscan:prioritized") == "true"
 
 
 # ---------------------------------------------------------------------------

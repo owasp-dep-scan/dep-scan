@@ -452,7 +452,9 @@ def find_next_steps(
         insights_str = "\n".join(insights) or ""
     if "Exploitable" in insights_str:
         is_exploitable = True
-    if "Exploits" in insights_str:
+    # "Exploits" is the capital of the Known Exploits labels; the fail-safe
+    # label spells its exploits in lower case, so it is matched on its own.
+    if "Exploits" in insights_str or "known exploits" in insights_str:
         has_exploits = True
     if "Deployed dependency" in insights_str or is_binary_detection:
         is_deployed = True
