@@ -31,6 +31,7 @@ into the same exit code. Stages never call ``sys.exit`` themselves.
 """
 
 import contextlib
+import glob
 import json
 import os
 import secrets
@@ -101,6 +102,19 @@ LOGO = """
          |
 """
 
+#: The producers whose adapters the reachability engine grades on. Their
+#: results drive the reach scope, the manifest's analyzer entries and the
+#: store's reachability records; the order fixes the analyzers list.
+REACHABILITY_PRODUCERS = ("atom", "rusi", "golem", "kosi", "dosai")
+
+#: The producers whose adapters collect evidence without grading
+#: reachability: the BOM's own usage evidence and annotations (cdxgen), the
+#: binary review (blint) and the runtime trace (tracebom). Their records
+#: reach the evidence store and the exploitability inputs, and nothing else:
+#: they are not reachability analyzers, so the manifest's analyzer entries
+#: never list them and their records never count as reached.
+EVIDENCE_PRODUCERS = ("blint", "cdxgen", "tracebom")
+
 SERVER_LIB = None
 try:
     from server_lib import ServerOptions, simple
@@ -168,10 +182,12 @@ class TypeScan:
     #: True once the reachability engine ran and returned a result for this
     #: type; slices on disk alone do not make the analysis succeeded.
     reachability_succeeded: bool = False
-    #: The evidence adapter result of every analyzer that produced records or
-    #: read a report for this type, keyed by analyzer name: the language
-    #: tools from the BOM step, atom from this stage. The analyzer entries,
-    #: the store write and the exploitability inputs all read them.
+    #: The evidence adapter result of every producer that produced records or
+    #: read a report for this type, keyed by producer name: the reachability
+    #: analyzers from the BOM step and this stage, and the evidence producers
+    #: (blint, cdxgen, tracebom) from this stage. The analyzer entries read
+    #: only the reachability names; the store write and the exploitability
+    #: inputs read them all.
     adapter_results: Dict[str, "AdapterResult"] = field(default_factory=dict)
     results: List = field(default_factory=list)
     vdr_result: Optional[object] = None
@@ -809,12 +825,12 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         ctx.reports_dir,
         ctx.all_pkg_vulnerabilities,
         get_version(),
-        scan_root=ctx.src_dir,
         exploitability=ctx.exploitability,
         blint_reviews=any(
             blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
             for project_type in (ctx.project_types or [None])
         ),
+        evidence_records=ctx.evidence_records,
     )
     evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
     if os.path.isfile(evidence_path):
@@ -1503,13 +1519,12 @@ def stage_enrichment(ctx, scan):
         # the slices and OpenAPI files the scan holds. The language tools'
         # results are already on the type scan from the BOM step.
         scan.adapter_results["atom"] = _atom_adapter_result(ctx, scan, reachability_options)
-        _write_evidence_store(ctx, evidence_file, scan.adapter_results)
-    else:
-        # Reachability off still writes an (empty) store, so the layout is
-        # uniform whatever the scan asked for and a reused directory never
-        # carries an earlier scan's records into a scan that assessed
-        # nothing.
-        _write_evidence_store(ctx, evidence_file, {})
+    # The evidence producers run whatever the reachability setting: the BOM's
+    # own usage evidence drives the presence axis even when nothing grades
+    # reach, so a scan with reachability off still writes a store holding the
+    # inventory records, and never one holding a reachability producer's.
+    _collect_evidence_records(ctx, scan)
+    _write_evidence_store(ctx, evidence_file, scan.adapter_results)
     scan.reachability_analyzer = reachability_analyzer
     scan.reachability_options = reachability_options
     # We now have reachability results, OpenAPI endpoints, BOMs, and component scope information.
@@ -1655,6 +1670,329 @@ def _doctor_analyzer_version(analyzer: str, ctx) -> str:
     return str(status.version or "") if status is not None else ""
 
 
+def _collect_evidence_records(ctx, scan) -> None:
+    """Run every evidence producer's adapter for this project type and keep
+    the results beside the reachability adapters'."""
+    for name, collect in (
+        ("cdxgen", _cdxgen_adapter_result),
+        ("blint", _blint_adapter_result),
+        ("tracebom", _tracebom_adapter_result),
+    ):
+        result = collect(ctx, scan)
+        if result is not None:
+            scan.adapter_results[name] = result
+
+
+def _record_source(path: str, base: str) -> str:
+    """A report file's record source: its path relative to ``base``, the
+    directory the other adapters' sources are relative to, and its base name
+    when it sits outside it, so no source is ever absolute or climbs out."""
+    try:
+        relative = os.path.relpath(os.path.abspath(path), os.path.abspath(base))
+    except ValueError:
+        relative = ""
+    if relative and relative != "." and not relative.startswith(".."):
+        return relative.replace(os.sep, "/").replace("\\", "/")
+    return os.path.basename(path)
+
+
+def _read_report_text(path: str) -> Optional[str]:
+    """A report file's text, or None when there is no readable file.
+
+    A file that exists but cannot be read, or is not UTF-8 text (a binary or
+    mislabelled file a discovery walk may open before any adapter guards
+    it), is logged and read as absent: the adapter that would have read it
+    then reports nothing rather than failing the scan, and the warning names
+    what was lost."""
+    try:
+        with open(path, encoding="utf-8") as fp:
+            return fp.read()
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError) as e:
+        LOG.warning("The report %s could not be read and was not assessed: %s", path, e)
+        return None
+
+
+def _merge_adapter_results(reads: List[Tuple[str, Any]]):
+    """One adapter result for a producer that read several documents, from
+    the ``(source, result)`` pair of each read.
+
+    A document the adapter refused costs its own records and no others: the
+    healthy documents' records survive, each carrying a ``record-skipped``
+    caveat naming the refused file and the reason, so one damaged BOM in a
+    directory of healthy ones never silently zeroes the rest. Only when
+    every read refused does the producer read as not assessed, with the
+    first refusal's reason. The surviving records concatenate and the
+    caveats keep first-seen order."""
+    from analysis_lib.evidence import EvidenceCaveat
+    from analysis_lib.evidence.adapters import AdapterResult, add_caveat
+
+    if len(reads) == 1:
+        return reads[0][1]
+    refused = [(source, result) for source, result in reads if result.status != "completed"]
+    if len(refused) == len(reads):
+        return refused[0][1]
+    records = []
+    caveats = []
+    for result in (result for _, result in reads if result.status == "completed"):
+        caveats.extend(caveat for caveat in result.caveats if caveat not in caveats)
+        records.extend(result.records)
+    for source, result in refused:
+        detail = (
+            f"the report {source} was not assessed and its records were "
+            f"skipped: {result.reason}"
+        )
+        caveats.append(EvidenceCaveat(kind="record-skipped", detail=detail))
+        for record in records:
+            add_caveat(record, "record-skipped", detail)
+    return AdapterResult(status="completed", records=records, caveats=caveats)
+
+
+def _cdxgen_adapter_result(ctx, scan):
+    """cdxgen's BOM evidence as records: one adapter call per BOM document
+    whose components this type's package list was built from.
+
+    The documents are the ones the inventory stage settled on, a BOM
+    directory's BOM files or the type's own BOM, and each carries the
+    build-introspection report that sits beside it
+    (``<bom>.introspection.json``, cdxgen's own naming). The adapter runs
+    whatever the reachability setting, because the presence axis reads the
+    BOM's usage records on the scans whose package list keeps them; a scan
+    that aggregates a BOM directory still records them, and its grading
+    skips them (see :func:`_exploitability_inputs`). A BOM the adapter
+    refuses (a schema version it cannot read) is logged with the reason and
+    costs its own records alone, so the healthy documents' records survive.
+    """
+    from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
+
+    base = scan.bom_dir or ctx.reports_dir
+    reads = []
+    for bom_file in scan.bom_files or []:
+        if os.path.basename(str(bom_file)).endswith(".introspection.json"):
+            # The introspection report of the BOM beside it, not a BOM: it
+            # reaches this list because its name contains "bom" and it is
+            # handed to that BOM's call instead.
+            continue
+        bom_text = _read_report_text(bom_file)
+        if bom_text is None:
+            continue
+        source = _record_source(bom_file, base)
+        introspection_file = f"{bom_file}.introspection.json"
+        introspection = _read_report_text(introspection_file)
+        reads.append(
+            (
+                source,
+                cdxgen_adapter.extract(
+                    bom_text,
+                    source=source,
+                    introspection=introspection,
+                    introspection_source=(
+                        _record_source(introspection_file, base)
+                        if introspection is not None
+                        else ""
+                    ),
+                    source_root=ctx.source_root,
+                ),
+            )
+        )
+    if not reads:
+        return None
+    for source, read in reads:
+        if read.status != "completed":
+            LOG.warning("cdxgen evidence from %s was not assessed: %s", source, read.reason)
+    result = _merge_adapter_results(reads)
+    if result.status == "completed":
+        LOG.debug(
+            "cdxgen evidence: the adapter built %d records from %d BOM document(s)",
+            len(result.records),
+            len(reads),
+        )
+    return result
+
+
+def _blint_adapter_result(ctx, scan):
+    """blint's review reports as evidence records, or None when this scan
+    holds none of its documents.
+
+    A scan that requested the review reads the reports the review wrote
+    under ``analysis/blint/`` beside the BOM (they are fresh: the review
+    removes stale copies before it starts). A BOM directory scan also reads
+    the reports an earlier run left there, the way it reads the language
+    tools' raw reports; a source scan that did not ask for the review reads
+    nothing, so an earlier run's reports never stand in for this scan's. The
+    producer version is the one the blint-written BOM's ``metadata.tools``
+    names; the locally installed blint is never asked. ``source_root`` is
+    the source directory blint reviewed.
+    """
+    from analysis_lib.evidence.adapters import blint as blint_adapter
+
+    base = scan.bom_dir or ctx.reports_dir
+    directory = os.path.join(base, scan_directory.ANALYSIS_DIR, "blint")
+    documents = {}
+    for key, name in (
+        ("findings", "findings.json"),
+        ("reviews", "reviews.json"),
+        ("coverage", "analysis-coverage.json"),
+    ):
+        text = _read_report_text(os.path.join(directory, name))
+        if text is not None:
+            documents[key] = text
+    if not documents:
+        return None
+    requested = blint_reviews_requested(
+        {**ctx.depscan_options, "project_type": [scan.project_type]}
+    )
+    if not requested and not ctx.bom_dir_mode:
+        return None
+
+    def source_of(name: str) -> str:
+        return _record_source(os.path.join(directory, name), base)
+
+    result = blint_adapter.extract(
+        documents.get("findings"),
+        source=source_of("findings.json") if "findings" in documents else "",
+        producer_version=_blint_bom_version(scan),
+        reviews_document=documents.get("reviews"),
+        reviews_source=source_of("reviews.json") if "reviews" in documents else None,
+        coverage_document=documents.get("coverage"),
+        coverage_source=source_of("analysis-coverage.json") if "coverage" in documents else None,
+        bom_components=scan.pkg_list,
+        extra_components=_bom_metadata_components(scan),
+        source_root=ctx.source_root,
+    )
+    if result.status != "completed":
+        LOG.warning("blint evidence was not assessed: %s", result.reason)
+    else:
+        LOG.debug(
+            "blint evidence: the adapter built %d records from %s", len(result.records), directory
+        )
+    return result
+
+
+def _blint_bom_version(scan) -> str:
+    """The blint version this scan's blint-written BOM names in its
+    ``metadata.tools``, or the empty string when no BOM names one.
+
+    The blint-written BOM is the one blint's sbom mode produced. On a scan
+    that ran blint it is this scan's own BOM; on a BOM directory scan it is
+    the ``sbom-postbuild-*`` document the directory holds. The locally
+    installed blint package is never asked: the BOM's own statement is the
+    version the records are versioned with."""
+    for bom_file in scan.bom_files or []:
+        version = _bom_tool_version(bom_file, "blint")
+        if version:
+            return version
+    return ""
+
+
+def _bom_metadata_components(scan) -> List[Dict]:
+    """The root ``metadata.component`` of this type's BOM documents.
+
+    The package loader walks past it by design, but a binary scan's BOM
+    names the scanned binary there, which is exactly the component a blint
+    finding's binary reconciles to."""
+    components = []
+    for bom_file in scan.bom_files or []:
+        if os.path.basename(str(bom_file)).endswith(".introspection.json"):
+            continue
+        data = json_load(bom_file, log=LOG)
+        if not isinstance(data, dict):
+            continue
+        component = (data.get("metadata") or {}).get("component")
+        if isinstance(component, dict):
+            components.append(component)
+    return components
+
+
+def _tracebom_candidates(ctx, scan) -> List[Tuple[str, str]]:
+    """The trace BOM files this scan holds, as (path, source base) pairs.
+
+    ``analysis/tracebom/*.json`` follows the raw-report convention and is
+    looked for in the BOM directory and the scan directory, whichever of
+    them holds it. On a BOM directory scan a trace-shaped JSON at the top
+    level of the directory is discovered by its shape, through the adapter's
+    own detector: dep-scan never runs tracebom, so a trace BOM is whatever
+    the user or the generating run left there."""
+    from analysis_lib.evidence.adapters.tracebom import is_tracebom_report
+
+    bases = []
+    for base in (scan.bom_dir, ctx.reports_dir):
+        if base and base not in bases:
+            bases.append(base)
+    candidates: List[Tuple[str, str]] = []
+    seen = set()
+    for base in bases:
+        directory = os.path.join(base, scan_directory.ANALYSIS_DIR, "tracebom")
+        for path in sorted(glob.glob(os.path.join(glob.escape(directory), "*.json"))):
+            real = os.path.realpath(path)
+            if real not in seen:
+                seen.add(real)
+                candidates.append((path, base))
+    if not ctx.bom_dir_mode or not scan.bom_dir:
+        return candidates
+    own_files = {
+        scan_directory.MANIFEST_FILE,
+        scan_directory.FINDINGS_FILE,
+        scan_directory.EVIDENCE_INDEX_FILE,
+    }
+    for name in sorted(os.listdir(scan.bom_dir)):
+        if not name.endswith(".json") or name in own_files or name.endswith(".vdr.json"):
+            continue
+        path = os.path.join(scan.bom_dir, name)
+        if not os.path.isfile(path) or os.path.realpath(path) in seen:
+            continue
+        text = _read_report_text(path)
+        if text is None:
+            continue
+        try:
+            report = json.loads(text)
+        except ValueError:
+            continue
+        if is_tracebom_report(report):
+            seen.add(os.path.realpath(path))
+            candidates.append((path, scan.bom_dir))
+    return candidates
+
+
+def _tracebom_adapter_result(ctx, scan):
+    """The trace BOMs this scan holds as runtime-trace records, or None when
+    it holds none. A runtime observation is not reachability evidence: the
+    records reach the store and nothing grades on them."""
+    from analysis_lib.evidence.adapters import tracebom as tracebom_adapter
+
+    candidates = _tracebom_candidates(ctx, scan)
+    if not candidates:
+        return None
+    reads = []
+    for path, base in candidates:
+        text = _read_report_text(path)
+        if text is None:
+            continue
+        source = _record_source(path, base)
+        reads.append(
+            (
+                source,
+                tracebom_adapter.extract(
+                    text, source=source, source_root=ctx.source_root
+                ),
+            )
+        )
+    if not reads:
+        return None
+    for source, read in reads:
+        if read.status != "completed":
+            LOG.warning("tracebom evidence from %s was not assessed: %s", source, read.reason)
+    result = _merge_adapter_results(reads)
+    if result.status == "completed":
+        LOG.debug(
+            "tracebom evidence: the adapter built %d records from %d trace BOM(s)",
+            len(result.records),
+            len(reads),
+        )
+    return result
+
+
 def _write_evidence_store(ctx, evidence_file: str, adapter_results: Dict) -> None:
     """Add every adapter result's records to this scan's store and write it.
 
@@ -1667,10 +2005,11 @@ def _write_evidence_store(ctx, evidence_file: str, adapter_results: Dict) -> Non
     replaces what an earlier scan left, so a report this scan did not read
     (because it was deleted, damaged, or moved) stops counting instead of
     surviving in the store. A result that was not assessed contributes no
-    records: its reason is what the analyzer entries carry instead.
+    records: the reachability ones' reason is what the analyzer entries
+    carry instead, and every producer's is logged where it is collected.
     """
     incoming = []
-    for name in ("atom", "rusi", "golem", "kosi", "dosai"):
+    for name in (*REACHABILITY_PRODUCERS, *EVIDENCE_PRODUCERS):
         result = adapter_results.get(name)
         if result is not None:
             incoming.extend(result.records)
@@ -1724,27 +2063,51 @@ def _exploitability_inputs(ctx, scan):
     """What this scan produced for the exploitability of the findings the
     matching stage is about to grade, for one project type's scan.
 
-    The analyzers named are those whose adapter completed for this type, and
-    the reached sets and purl types come from the same adapter results'
-    records. An analyzer that completed without a reached-counted record
-    gets an empty reached set, so it observed nothing; the engine's reached
-    map, which counts the whole store, never stands in for it. When
-    reachability was off, failed or produced no purls, the scope says so and
-    every finding of the type records ``reach`` as not assessed. The
-    records also carry the exposure and witness evidence, so
-    nothing but the records this scan produced is graded on: a report left
-    by an earlier run is never read.
+    The analyzers named are the reachability producers whose adapter
+    completed for this type; the evidence producers are not reachability
+    analyzers and never enter the scope. The reached sets and purl types
+    come from the same adapter results' records. An analyzer that completed
+    without a reached-counted record gets an empty reached set, so it
+    observed nothing; the engine's reached map, which counts the whole
+    store, never stands in for it. When reachability was off, failed or
+    produced no purls, the scope says so and every finding of the type
+    records ``reach`` as not assessed. The records carry the usage,
+    exposure and witness evidence of every producer, so nothing but the
+    records this scan produced is graded on: a report left by an earlier
+    run is never read.
+
+    A scan that aggregates a BOM directory (``scan.bom_dir`` set, the
+    BOM-directory and lifecycle modes) grades presence without the BOM's
+    usage records. The package loader for those scans rewrites every
+    component's evidence block to the identity evidences alone, so the
+    components the axis sees never carried occurrences or callstacks and
+    usage was never proven from them; feeding the records the adapter read
+    from the same BOMs would prove what the components themselves do not
+    say. The records still reach the evidence store, which is additive;
+    only the grading skips them.
     """
-    from analysis_lib.findings.exploitability import ExploitabilityInputs
+    from analysis_lib.findings.exploitability import ExploitabilityInputs, USAGE_KINDS
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
 
     results = scan.adapter_results or {}
-    analyzers = [name for name, result in results.items() if result.status == "completed"]
+    analyzers = [
+        name
+        for name in REACHABILITY_PRODUCERS
+        if results.get(name) is not None and results[name].status == "completed"
+    ]
     records = []
-    for name in ("atom", "rusi", "golem", "kosi", "dosai"):
+    for name in (*REACHABILITY_PRODUCERS, *EVIDENCE_PRODUCERS):
         result = results.get(name)
         if result is not None:
             records.extend(result.records)
+    if scan.bom_dir:
+        # The BOM's own usage records are the ones the aggregated components
+        # no longer carry; every other record grades as it did.
+        records = [
+            record
+            for record in records
+            if not (record.producer.name == "cdxgen" and record.kind in USAGE_KINDS)
+        ]
     by_analyzer = reached_by_analyzer(records)
     scope = ReachScope(
         analyzers=analyzers,

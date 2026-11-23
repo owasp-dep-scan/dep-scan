@@ -866,9 +866,13 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         project_types=types,
         vdb_flavor=None,
         shards_connected=False,
+        evidence_records=[],
     )
     pipeline.finish_scan_directory(ctx)
     assert captured["blint_reviews"] is expected
+    assert captured["evidence_records"] == [], (
+        "the findings file receives the scan's evidence records, the blint ones included"
+    )
 
 
 def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):
