@@ -15,7 +15,9 @@ Five kinds of evidence become records:
 1. One ``occurrence`` record per occurrence entry, with the component's
    purl and ``bom-ref``, the occurrence's location relativized, its line
    and symbol, and its remaining fields (``offset``, ``additionalContext``)
-   in the attributes. A ``line`` or ``symbol`` no location carries (a line
+   in the attributes. cdxgen releases before 12.4 spelled the line inside
+   the location (``app.py#12``); such a location with no ``line`` field is
+   read as the file and the line. A ``line`` or ``symbol`` no location carries (a line
    of 0, a symbol that is not a string, or any line when the record has no
    location) stays in the attributes as given. An entry that names no location, or is not a JSON object, still
    becomes a record with no location and the entry in its attributes: a
@@ -78,13 +80,17 @@ actually carries.
 
 Two version gates apply, both on what the BOM itself states, never on the
 locally installed cdxgen. The BOM's ``specVersion`` (major 1, minor 7
-known) and the cdxgen version its ``metadata.tools`` names (major 13,
-minor 9 known, the release line the shapes were checked against; older
-releases spelled an occurrence's line inside its location). Another major
-of either is refused as not-assessed naming the version; a newer minor
-is accepted with a ``schema-minor`` caveat; a BOM that names no cdxgen
-version, or that another tool wrote, is accepted with a
-``schema-unknown`` caveat naming what it lists. The introspection report
+known) and the cdxgen version its ``metadata.tools`` names. cdxgen 10.0
+through 13.9 are known: the occurrence and callstack shapes are
+CycloneDX's own and the same across those release lines, so every one of
+them is read alike. A cdxgen major newer than 13 is refused as
+not-assessed naming the version, a newer minor of 13 is accepted with a
+``schema-minor`` caveat, and a release older than 10.0 is accepted with a
+``schema-unknown`` caveat naming it as older than the known range. A
+newer ``specVersion`` major is refused and a newer minor carries a
+``schema-minor`` caveat. A BOM that names no cdxgen version, or that
+another tool wrote, is accepted with a ``schema-unknown`` caveat naming
+what it lists. The introspection report
 has its own ``schemaVersion`` gate (major 1, minor 1 known). A BOM
 section of the wrong type (``metadata``, ``components``, ``annotations``,
 ``services``) costs that section alone, counted, and the other sections
@@ -140,9 +146,10 @@ from analysis_lib.evidence.adapters import (
 SUPPORTED_MAJOR = 1
 KNOWN_MINOR = 7
 
-#: The cdxgen release line whose BOM shapes this adapter was checked
-#: against, and the newest minor of it.
-CDXGEN_SUPPORTED_MAJOR = 13
+#: The cdxgen releases whose BOM shapes this adapter knows: from the oldest
+#: (major, minor) through the newest major and its newest known minor.
+CDXGEN_OLDEST = (10, 0)
+CDXGEN_NEWEST_MAJOR = 13
 CDXGEN_KNOWN_MINOR = 9
 
 #: The introspection report's own schema version gate.
@@ -182,6 +189,11 @@ _ISO_TIMESTAMP_RE = re.compile(
 #: One ``| cdx:audit:<name> | <value> |`` row of a bom-audit annotation's
 #: text table.
 _AUDIT_ROW_RE = re.compile(r"^\|\s*(cdx:audit:[^|\s]+)\s*\|\s*(.*?)\s*\|\s*$", re.MULTILINE)
+
+
+#: An occurrence location as cdxgen releases before 12.4 spelled it, with
+#: the line after a ``#``.
+_LEGACY_LOCATION_RE = re.compile(r"^(.+)#(\d+)$")
 
 
 def _parse_report(value: Any) -> Tuple[Optional[Any], Optional[str]]:
@@ -554,7 +566,7 @@ def extract(
             gate.reason or "the BOM names a schema version this adapter cannot read"
         )
     tool_gate, tool_version = gate_cdxgen_tool_version(
-        bom, CDXGEN_SUPPORTED_MAJOR, CDXGEN_KNOWN_MINOR, "BOM"
+        bom, CDXGEN_OLDEST, CDXGEN_NEWEST_MAJOR, CDXGEN_KNOWN_MINOR, "BOM"
     )
     if not tool_gate.accepted:
         return not_assessed(tool_gate.reason or "")
@@ -696,8 +708,11 @@ def _component_records(
             )
             continue
         location = as_str(occurrence.get("location")).strip()
-        file = paths.relative(location) if location else None
         raw_line = occurrence.get("line")
+        legacy = _LEGACY_LOCATION_RE.match(location) if raw_line is None else None
+        if legacy:
+            location, raw_line = legacy.group(1), int(legacy.group(2))
+        file = paths.relative(location) if location else None
         line = as_line(raw_line)
         raw_symbol = occurrence.get("symbol")
         symbol = as_str(raw_symbol) or None
@@ -846,7 +861,8 @@ def _dedupe(caveats: List[EvidenceCaveat]) -> List[EvidenceCaveat]:
 
 __all__ = [
     "CDXGEN_KNOWN_MINOR",
-    "CDXGEN_SUPPORTED_MAJOR",
+    "CDXGEN_NEWEST_MAJOR",
+    "CDXGEN_OLDEST",
     "INTROSPECTION_BLOCKS",
     "INTROSPECTION_KNOWN_MINOR",
     "INTROSPECTION_SUPPORTED_MAJOR",

@@ -196,19 +196,31 @@ def _tool_names(bom: dict) -> str:
 
 
 def gate_cdxgen_tool_version(
-    bom: dict, supported_major: int, known_minor: int, output: str
+    bom: dict,
+    oldest: Tuple[int, int],
+    newest_major: int,
+    known_minor: int,
+    output: str,
 ) -> Tuple[VersionGate, str]:
     """The cdxgen tool version gate the cdxgen and tracebom adapters apply,
     on the version the BOM's own ``metadata.tools`` names, never the
     locally installed cdxgen.
 
-    Another major is refused and a newer minor accepted with a
-    ``schema-minor`` caveat, as :func:`gate_report_version` does. A BOM
-    that names cdxgen with no version is accepted with a ``schema-unknown``
-    caveat, and so is a BOM another tool wrote, with the caveat naming the
-    tools it lists; ``output`` names what cdxgen writes that the adapter
-    reads (``BOM``, ``tracebom``). The second value is the version text
-    for the producer block, ``unknown`` when the BOM names none."""
+    The adapter knows the releases from ``oldest`` (major, minor) through
+    ``newest_major``.``known_minor``: every maintained release line in that
+    range writes the shapes it reads. A major newer than ``newest_major``
+    is refused, since its shapes are unknown. A newer minor of
+    ``newest_major`` is accepted with a ``schema-minor`` caveat; the minor
+    rule applies to the newest known major only. A version older than
+    ``oldest`` is accepted with a ``schema-unknown`` caveat naming it as
+    older than the known range. A version that is not a string or number,
+    or whose major is not numeric, is refused as :func:`gate_report_version`
+    refuses it. A BOM that names cdxgen with no version is accepted with a
+    ``schema-unknown`` caveat, and so is a BOM another tool wrote, with the
+    caveat naming the tools it lists; ``output`` names what cdxgen writes
+    that the adapter reads (``BOM``, ``tracebom``). The second value is the
+    version text for the producer block, ``unknown`` when the BOM names
+    none."""
     named, version = cdxgen_tool(bom)
     if not named:
         return (
@@ -226,15 +238,66 @@ def gate_cdxgen_tool_version(
             ),
             "unknown",
         )
-    gate = gate_report_version(
-        version, supported_major, known_minor, holder="BOM", noun="cdxgen version"
-    )
     text = ""
     if isinstance(version, str):
         text = version.strip()
     elif isinstance(version, (int, float)) and not isinstance(version, bool):
         text = str(version)
-    return gate, text or "unknown"
+    parts = text.split(".")
+    if not text or not parts[0].isdigit():
+        # No version, a version of the wrong type, or one with no numeric
+        # major: the generic gate words each of these.
+        gate = gate_report_version(
+            version, newest_major, known_minor, holder="BOM", noun="cdxgen version"
+        )
+        return gate, text or "unknown"
+    major = int(parts[0])
+    minor = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
+    known = f"{oldest[0]}.{oldest[1]} through {newest_major}.{known_minor}"
+    if major > newest_major:
+        return (
+            VersionGate(
+                False,
+                reason=(
+                    f"the BOM cdxgen version {text} is newer than this adapter knows; "
+                    f"it reads cdxgen {known} BOMs"
+                ),
+            ),
+            text,
+        )
+    if (major, minor) < oldest:
+        return (
+            VersionGate(
+                True,
+                caveats=[
+                    EvidenceCaveat(
+                        kind="schema-unknown",
+                        detail=(
+                            f"the BOM names cdxgen version {text}, older than the "
+                            f"{known} range this adapter knows"
+                        ),
+                    )
+                ],
+            ),
+            text,
+        )
+    if major == newest_major and minor > known_minor:
+        return (
+            VersionGate(
+                True,
+                caveats=[
+                    EvidenceCaveat(
+                        kind="schema-minor",
+                        detail=(
+                            f"the BOM names cdxgen version {text}; this adapter knows "
+                            f"{newest_major}.{known_minor} and earlier"
+                        ),
+                    )
+                ],
+            ),
+            text,
+        )
+    return VersionGate(True), text
 
 
 def cap_path(

@@ -986,30 +986,80 @@ def test_a_bom_another_tool_wrote_carries_a_caveat_naming_the_tool():
     )
 
 
-def test_an_unknown_cdxgen_major_is_refused_naming_the_version():
-    result = _extract(_with_tools([{"name": "cdxgen", "version": "99.0.0"}]))
-    assert result.status == STATUS_NOT_ASSESSED
-    assert result.reason == (
-        "the BOM cdxgen version 99.0.0 is not supported; this adapter reads major 13 BOMs"
-    )
-    older = _extract(_with_tools([{"name": "cdxgen", "version": "12.3.0"}]))
-    assert older.status == STATUS_NOT_ASSESSED
+_OLDER = "older than the 10.0 through 13.9 range this adapter knows"
 
 
-def test_a_newer_cdxgen_minor_or_no_version_is_accepted_with_a_caveat():
-    newer = _extract(_with_tools([{"name": "cdxgen", "version": "13.12.0"}]))
-    assert newer.status == STATUS_COMPLETED
-    for record in _bom_records(newer):
-        assert (
-            "schema-minor",
-            "the BOM names cdxgen version 13.12.0; this adapter knows 13.9 and earlier",
-        ) in [(c.kind, c.detail) for c in record.caveats]
-    unversioned = _extract(_with_tools([{"name": "cdxgen"}]))
-    for record in _bom_records(unversioned):
-        assert ("schema-unknown", "the BOM names no cdxgen version") in [
-            (c.kind, c.detail) for c in record.caveats
-        ]
-        assert record.producer.version == "unknown"
+@pytest.mark.parametrize(
+    "version, status, caveat",
+    [
+        (
+            "9.11.0",
+            STATUS_COMPLETED,
+            ("schema-unknown", f"the BOM names cdxgen version 9.11.0, {_OLDER}"),
+        ),
+        ("10.10.0", STATUS_COMPLETED, None),
+        ("12.1.2", STATUS_COMPLETED, None),
+        ("13.9.0", STATUS_COMPLETED, None),
+        (
+            "13.10.0",
+            STATUS_COMPLETED,
+            (
+                "schema-minor",
+                "the BOM names cdxgen version 13.10.0; this adapter knows 13.9 and earlier",
+            ),
+        ),
+        ("14.0.0", STATUS_NOT_ASSESSED, None),
+        (None, STATUS_COMPLETED, ("schema-unknown", "the BOM names no cdxgen version")),
+    ],
+    ids=[
+        "9-older",
+        "10-known",
+        "12-known",
+        "13.9-known",
+        "13.10-newer-minor",
+        "14-newer-major",
+        "missing",
+    ],
+)
+def test_the_cdxgen_version_gate_knows_10_through_13(version, status, caveat):
+    """cdxgen 10 through 13 write the same occurrence and callstack shapes,
+    so all of them are read; the minor rule applies to 13 alone, a newer
+    major is refused and an older release is read with a caveat."""
+    tool = {"name": "cdxgen"}
+    if version is not None:
+        tool["version"] = version
+    result = _extract(_with_tools([tool]))
+    assert result.status == status
+    if status == STATUS_NOT_ASSESSED:
+        assert result.reason == (
+            "the BOM cdxgen version 14.0.0 is newer than this adapter knows; "
+            "it reads cdxgen 10.0 through 13.9 BOMs"
+        )
+        assert result.records == []
+        return
+    records = _bom_records(result)
+    assert records
+    for record in records:
+        tool_caveats = [(c.kind, c.detail) for c in record.caveats if "cdxgen version" in c.detail]
+        assert tool_caveats == ([caveat] if caveat else [])
+        assert record.producer.version == (version or "unknown")
+
+
+def test_a_pre_12_4_location_with_the_line_inside_is_read_as_file_and_line():
+    bom = _bom()
+    bom["metadata"]["tools"] = [{"name": "cdxgen", "version": "11.2.0"}]
+    _component(bom, "sqlparse", "0.5.3")["evidence"]["occurrences"] = [
+        {"location": "app.py#12"},
+        {"location": "app.py#7", "line": 7},
+    ]
+    result = _extract(bom)
+    occurrences = [
+        r for r in result.records if r.kind == "occurrence" and SQLPARSE_PURL in r.subject.purls
+    ]
+    assert [r.locations for r in occurrences] == [
+        [_location("app.py", 12)],
+        [_location("app.py#7", 7)],
+    ]
 
 
 # --- no machine paths, ids that do not follow the user ----------------------------

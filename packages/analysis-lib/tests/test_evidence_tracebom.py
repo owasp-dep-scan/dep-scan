@@ -25,6 +25,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 from analysis_lib.evidence.adapters import STATUS_COMPLETED, STATUS_NOT_ASSESSED
 from analysis_lib.evidence.adapters.tracebom import extract, is_tracebom_report
 from analysis_lib.findings.schemas import validate
@@ -621,22 +623,67 @@ def test_a_trace_bom_another_tool_wrote_carries_a_caveat_naming_it():
     assert any("names no tool and no cdxgen" in d for d in details)
 
 
-def test_an_unknown_cdxgen_major_is_refused_and_a_newer_minor_carries_a_caveat():
-    refused = _extract(_with_tools({"components": [{"name": "cdxgen", "version": "99.0.0"}]}))
-    assert refused.status == STATUS_NOT_ASSESSED
-    assert "cdxgen version 99.0.0 is not supported" in refused.reason
-    newer = _extract(_with_tools({"components": [{"name": "cdxgen", "version": "13.12.0"}]}))
-    assert newer.status == STATUS_COMPLETED
-    assert {(c.kind, c.detail) for r in newer.records for c in r.caveats} == {
+_TRACE_OLDER = "older than the 12.6 through 13.9 range this adapter knows"
+
+
+@pytest.mark.parametrize(
+    "version, status, caveat",
+    [
         (
-            "schema-minor",
-            "the BOM names cdxgen version 13.12.0; this adapter knows 13.9 and earlier",
-        )
-    }
-    unversioned = _extract(_with_tools([{"name": "cdxgen"}]))
-    assert {(c.kind, c.detail) for r in unversioned.records for c in r.caveats} == {
-        ("schema-unknown", "the BOM names no cdxgen version")
-    }
+            "12.5.1",
+            STATUS_COMPLETED,
+            ("schema-unknown", f"the BOM names cdxgen version 12.5.1, {_TRACE_OLDER}"),
+        ),
+        ("12.6.0", STATUS_COMPLETED, None),
+        ("13.9.0", STATUS_COMPLETED, None),
+        (
+            "13.10.0",
+            STATUS_COMPLETED,
+            (
+                "schema-minor",
+                "the BOM names cdxgen version 13.10.0; this adapter knows 13.9 and earlier",
+            ),
+        ),
+        ("14.0.0", STATUS_NOT_ASSESSED, None),
+        (None, STATUS_COMPLETED, ("schema-unknown", "the BOM names no cdxgen version")),
+    ],
+    ids=[
+        "12.5-older",
+        "12.6-known",
+        "13.9-known",
+        "13.10-newer-minor",
+        "14-newer-major",
+        "missing",
+    ],
+)
+def test_the_cdxgen_version_gate_knows_the_releases_that_ship_tracebom(version, status, caveat):
+    tool = {"name": "cdxgen"}
+    if version is not None:
+        tool["version"] = version
+    result = _extract(_with_tools([tool]))
+    assert result.status == status
+    if status == STATUS_NOT_ASSESSED:
+        assert "cdxgen version 14.0.0 is newer than this adapter knows" in result.reason
+        return
+    assert result.records
+    for record in result.records:
+        assert [(c.kind, c.detail) for c in record.caveats] == ([caveat] if caveat else [])
+
+
+def test_a_12_x_path_qualifier_library_names_no_machine_path():
+    """cdxgen 12.x spelled the library path as a ``path`` qualifier and set
+    the bom-ref to the encoded purl."""
+    component = _library_component("/home/alice/proj/build/liba.so")
+    component["purl"] = component["bom-ref"] = (
+        "pkg:generic/liba.so?path=%2Fhome%2Falice%2Fproj%2Fbuild%2Fliba.so"
+    )
+    report = _with_tools([{"name": "cdxgen", "version": "12.6.0"}])
+    report["components"].append(component)
+    result = _extract(report, source_root="/home/alice/proj")
+    record = next(r for r in result.records if r.subject.purls)
+    assert record.subject.purls == ["pkg:generic/liba.so?path=build/liba.so"]
+    assert record.subject.component_ref == "pkg:generic/liba.so?path=build/liba.so"
+    _assert_no_machine_paths(result, "alice", "/home/")
 
 
 # --- property values and names --------------------------------------------------

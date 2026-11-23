@@ -18,12 +18,17 @@ An ordinary source BOM matches none of these and is refused.
 
 Two version gates apply. The BOM's own ``specVersion`` (major 1, minor 7
 known) and the cdxgen version its ``metadata.tools`` names, because
-tracebom ships inside the cdxgen package and has no version of its own
-(major 13, minor 9 known). Another major of either is refused as
-not-assessed naming the version; a newer minor is accepted with a
-``schema-minor`` caveat; a BOM that names no cdxgen version is accepted
-with a ``schema-unknown`` caveat, which names the tools it does list when
-another tool wrote it.
+tracebom ships inside the cdxgen package and has no version of its own.
+tracebom first shipped in cdxgen 12.6, and 12.6 through 13.9 are known:
+12.x spelled a library's path as a ``path`` qualifier of the generic purl
+where 13.x uses the subpath, and the adapter reads both. A cdxgen major
+newer than 13 is refused as not-assessed naming the version, a newer
+minor of 13 is accepted with a ``schema-minor`` caveat, and a version
+older than 12.6 is accepted with a ``schema-unknown`` caveat naming it as
+older than the known range. A newer ``specVersion`` major is refused and
+a newer minor carries a ``schema-minor`` caveat. A BOM that names no
+cdxgen version is accepted with a ``schema-unknown`` caveat, which names
+the tools it does list when another tool wrote it.
 
 Three kinds of object become ``runtime-trace`` records, all with positive
 polarity:
@@ -119,9 +124,11 @@ from analysis_lib.evidence.adapters import (
 SUPPORTED_MAJOR = 1
 KNOWN_MINOR = 7
 
-#: The cdxgen release line whose tracebom output this adapter was checked
-#: against, and the newest minor of it.
-CDXGEN_SUPPORTED_MAJOR = 13
+#: The cdxgen releases whose tracebom output this adapter knows: from the
+#: release tracebom first shipped in through the newest major and its
+#: newest known minor.
+CDXGEN_OLDEST = (12, 6)
+CDXGEN_NEWEST_MAJOR = 13
 CDXGEN_KNOWN_MINOR = 9
 
 PRODUCER_NAME = "tracebom"
@@ -482,7 +489,7 @@ def extract(report, *, source: str, source_root: Optional[str] = None) -> Adapte
     if not gate.accepted:
         return not_assessed(gate.reason or "")
     tool_gate, tool_version = gate_cdxgen_tool_version(
-        report, CDXGEN_SUPPORTED_MAJOR, CDXGEN_KNOWN_MINOR, "tracebom"
+        report, CDXGEN_OLDEST, CDXGEN_NEWEST_MAJOR, CDXGEN_KNOWN_MINOR, "tracebom"
     )
     if not tool_gate.accepted:
         return not_assessed(tool_gate.reason or "")
@@ -731,7 +738,8 @@ def _dedupe_caveats(caveats: List[EvidenceCaveat]) -> List[EvidenceCaveat]:
 
 __all__ = [
     "CDXGEN_KNOWN_MINOR",
-    "CDXGEN_SUPPORTED_MAJOR",
+    "CDXGEN_NEWEST_MAJOR",
+    "CDXGEN_OLDEST",
     "KNOWN_MINOR",
     "MAX_COMPONENT_DEPTH",
     "PRODUCER_NAME",
