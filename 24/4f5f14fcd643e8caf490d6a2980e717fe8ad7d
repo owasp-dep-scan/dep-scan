@@ -1,0 +1,19 @@
+agent-plugin/reference/safety.md
+  s_486b0f791e3b4d::t_bdca5eef4b2866 59-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "244f5f14fcd643e8caf490d6a2980e717fe8ad7d",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
