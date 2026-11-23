@@ -1,0 +1,30 @@
+agent-plugin/reference/safety.md
+  s_4a6a58bac00e51::t_e86a2d2ec085c0 116-117,120-131
+agent-plugin/reference/commands.md
+  s_4a6a58bac00e51::t_b2d634c8c02c60 67
+  s_4a6a58bac00e51::t_ff4cc8070a8aa0 69
+agent-plugin/skills/depscan-scan/SKILL.md
+  s_4a6a58bac00e51::t_512d0b4d1c215f 71-80
+agent-plugin/skills/depscan-supply-chain/SKILL.md
+  s_4a6a58bac00e51::t_ff4cc8070a8aa0 29,32-36
+  s_4a6a58bac00e51::t_880dbd7f29094f 37
+agent-plugin/skills/depscan-change-risk/SKILL.md
+  s_4a6a58bac00e51::t_962a3ddba44e5b 35-36,39-46
+  s_4a6a58bac00e51::t_4995411739fe34 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad09e897c2b71e02044c282f010e32cb03fd6be6",
+  "prompts": {},
+  "sessions": {
+    "s_4a6a58bac00e51": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_167d96bc-00c2-4c25-b28c-ac9187da53da",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
