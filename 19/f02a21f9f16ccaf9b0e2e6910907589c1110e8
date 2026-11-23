@@ -1,0 +1,16 @@
+agent-plugin/skills/depscan-attack-surface/SKILL.md
+  h_0926447d100ad2 93-94
+agent-plugin/skills/depscan-scan/SKILL.md
+  h_0926447d100ad2 104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19f02a21f9f16ccaf9b0e2e6910907589c1110e8",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
