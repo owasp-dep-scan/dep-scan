@@ -1,0 +1,16 @@
+depscan/lib/pipeline.py
+  h_0926447d100ad2 34,105-117,185-190,1522-1527,1673-1967,1980-1981,1984,2038-2049,2055-2059,2061
+test/test_evidence_wiring.py
+  h_0926447d100ad2 9-14,20,32-43,61-153,230-234,267-268,338-385,600-610,613-617,621,916-1205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a83c611f8e69fde7c144ae6727a6a5ce46804cb",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
