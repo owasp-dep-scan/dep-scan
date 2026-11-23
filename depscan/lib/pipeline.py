@@ -1790,14 +1790,12 @@ def _collect_evidence_records(ctx, scan) -> None:
 def _record_source(path: str, base: str) -> str:
     """A report file's record source: its path relative to ``base``, the
     directory the other adapters' sources are relative to, and its base name
-    when it sits outside it, so no source is ever absolute or climbs out."""
-    try:
-        relative = os.path.relpath(os.path.abspath(path), os.path.abspath(base))
-    except ValueError:
-        relative = ""
-    if relative and relative != "." and not relative.startswith(".."):
-        return relative.replace(os.sep, "/").replace("\\", "/")
-    return os.path.basename(path)
+    when it sits outside it, so no source is ever absolute or climbs out.
+    The reachability engine finds a BOM's occurrence records by the same
+    spelling."""
+    from analysis_lib.reachability import report_source
+
+    return report_source(path, base)
 
 
 def _read_report_text(path: str) -> Optional[str]:

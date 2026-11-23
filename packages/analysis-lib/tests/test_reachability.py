@@ -32,6 +32,8 @@ Covers:
 import json
 from pathlib import Path
 
+import pytest
+
 from analysis_lib import ReachabilityAnalysisKV
 from analysis_lib.evidence import EvidenceProducer
 from analysis_lib.evidence.adapters import build_record
@@ -297,32 +299,85 @@ def test_endpoint_reached_purls_follow_the_bom_types_and_the_filter_list(tmp_pat
     }
 
 
-def test_usage_targets_still_reach_endpoints_through_bom_occurrences(tmp_path):
-    """The OpenAPI usage targets and the BOM occurrences keep their role: a
-    component whose own occurrence location is an ``x-atom-usages`` target
-    is endpoint-reachable even when no record types it framework."""
-    bom = _write(
-        tmp_path / "bom.cdx.json",
+def _cdxgen_records(bom_path, base):
+    """cdxgen's adapter records of one BOM, sourced the way the scan sources
+    them: the file's path relative to the scan directory."""
+    from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
+    from analysis_lib.reachability import report_source
+
+    result = cdxgen_adapter.extract(
+        bom_path.read_text(encoding="utf-8"), source=report_source(str(bom_path), str(base))
+    )
+    assert result.status == "completed", result.reason
+    return list(result.records)
+
+
+def _usage_bom(path, location="src/app.js"):
+    return _write(
+        path,
         {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
             "components": [
                 {
                     "type": "library",
                     "purl": "pkg:npm/used@1",
-                    "evidence": {"occurrences": [{"location": "src/app.js"}]},
+                    "bom-ref": "pkg:npm/used@1",
+                    "evidence": {
+                        "occurrences": [{"location": location}, {"location": "src/other.js"}]
+                    },
                 }
-            ]
+            ],
         },
     )
+
+
+def test_usage_targets_still_reach_endpoints_through_bom_occurrences(tmp_path):
+    """The OpenAPI usage targets and the BOM's occurrence records keep their
+    role: a component whose own occurrence file is an ``x-atom-usages``
+    target is endpoint-reachable even when no record types it framework."""
+    bom = _usage_bom(tmp_path / "bom.cdx.json")
     openapi = _write(
         tmp_path / "openapi.json",
         {"paths": {"/x": {"x-atom-usages": {"call": {"src/app.js": [10]}}}}},
     )
-    records = [_record(["pkg:npm/used@1"], discriminator="d1")]
+    records = [_record(["pkg:npm/used@1"], discriminator="d1"), *_cdxgen_records(bom, tmp_path)]
     res = SemanticReachability(
         _options(tmp_path, records, bom_files=[bom], openapi=[openapi])
     ).process()
     assert (res.reached_purls or {}) == {"pkg:npm/used@1": 1}
     assert (res.endpoint_reached_purls or {}) == {"pkg:npm/used@1": 1}
+    assert (res.direct_purls or {}) == {"pkg:npm/used@1": 2}
+
+
+@pytest.mark.parametrize("analyzer", [FrameworkReachability, SemanticReachability])
+def test_direct_purls_count_the_occurrence_records_of_the_given_boms(tmp_path, analyzer):
+    """Each cdxgen occurrence record of a BOM the analysis was given is one
+    direct use of its package. The occurrence records of a BOM the analysis
+    was not given (a user BOM outside the scan directory, which the BOM glob
+    never finds) count nothing, and with nothing reached either the run is
+    not a success."""
+    given = _usage_bom(tmp_path / "bom.cdx.json")
+    elsewhere_dir = tmp_path / "elsewhere"
+    elsewhere_dir.mkdir()
+    elsewhere = _usage_bom(elsewhere_dir / "user.cdx.json")
+    records = _cdxgen_records(given, tmp_path)
+    # The engine reads the records, never the BOM's evidence blocks: the
+    # document on disk keeps its components and loses its evidence.
+    stripped = json.loads(given.read_text(encoding="utf-8"))
+    for component in stripped["components"]:
+        component.pop("evidence")
+    _write(given, stripped)
+    res = analyzer(_options(tmp_path, records, bom_files=[given])).process()
+    assert res.success is True
+    assert dict(res.direct_purls or {}) == {"pkg:npm/used@1": 2}
+
+    other = tmp_path / "other"
+    other.mkdir()
+    records = _cdxgen_records(elsewhere, other)
+    res = analyzer(_options(other, records, bom_files=[])).process()
+    assert dict(res.direct_purls or {}) == {}
+    assert res.success is False
 
 
 def test_binary_reachability_still_reaches_post_build_frameworks(tmp_path):
