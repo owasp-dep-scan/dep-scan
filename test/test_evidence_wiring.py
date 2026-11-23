@@ -16,6 +16,7 @@ real scan's files lie.
 
 import hashlib
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -1472,3 +1473,213 @@ def test_a_source_scan_without_a_review_request_ignores_stale_blint_reports(
     )
     assert not any(f["category"] == "binary-hardening" for f in result.findings)
     assert (reports / "analysis" / "blint" / "findings.json").is_file(), "the files stay put"
+
+
+# ---------------------------------------------------------------------------
+# Usage provenance, refused BOMs, review findings and trace inputs
+# ---------------------------------------------------------------------------
+
+#: A cdxgen BOM whose components carry each usage shape the presence axis
+#: reads, plus the components the package loader leaves out: a nested
+#: ``application`` and a top-level ``data`` twin of a library, both with
+#: occurrences of their own.
+USAGE_COMPONENTS = [
+    {
+        "type": "library",
+        "name": "occ",
+        "purl": "pkg:pypi/occ@1.0",
+        "bom-ref": "pkg:pypi/occ@1.0",
+        "evidence": {"occurrences": [{"location": "app.py", "line": 3}]},
+    },
+    {
+        "type": "library",
+        "name": "cs",
+        "purl": "pkg:pypi/cs@1.0",
+        "bom-ref": "pkg:pypi/cs@1.0",
+        "evidence": {
+            "callstack": {"frames": [{"fullFilename": "app.py", "line": 4, "function": "f"}]}
+        },
+    },
+    {"type": "library", "name": "plain", "purl": "pkg:pypi/plain@1.0", "bom-ref": "plain"},
+    {
+        "type": "library",
+        "name": "parent",
+        "purl": "pkg:pypi/parent@1.0",
+        "bom-ref": "pkg:pypi/parent@1.0",
+        "components": [
+            {
+                "type": "application",
+                "name": "napp",
+                "purl": "pkg:pypi/napp@1.0",
+                "bom-ref": "pkg:pypi/napp@1.0",
+                "evidence": {"occurrences": [{"location": "app.py", "line": 13}]},
+            }
+        ],
+    },
+    {
+        "type": "data",
+        "name": "dd",
+        "purl": "pkg:pypi/dd@1.0",
+        "bom-ref": "dd-data",
+        "evidence": {"occurrences": [{"location": "app.py", "line": 15}]},
+    },
+    {"type": "library", "name": "dd", "purl": "pkg:pypi/dd@1.0", "bom-ref": "dd-lib"},
+]
+
+#: The presence values these components grade to on every scan whose
+#: package list keeps their evidence: a source scan, a ``--bom`` scan, and
+#: a user BOM appended to an aggregating scan. The excluded components'
+#: usage proves nothing, so ``napp`` and ``dd`` stay likely. The values were
+#: checked against a run that read the components' evidence blocks directly
+#: and are pinned as literals, not recomputed by the code under test.
+USAGE_PRESENCE = {
+    "pkg:pypi/occ@1.0": "proven",
+    "pkg:pypi/cs@1.0": "proven",
+    "pkg:pypi/plain@1.0": "likely",
+    "pkg:pypi/napp@1.0": "likely",
+    "pkg:pypi/dd@1.0": "likely",
+}
+
+
+def _usage_bom(spec_version="1.7"):
+    return {
+        "bomFormat": "CycloneDX",
+        "specVersion": spec_version,
+        "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+        "components": json.loads(json.dumps(USAGE_COMPONENTS)),
+    }
+
+
+def _source_scan_of(document, tmp_path, monkeypatch, **options):
+    """A source scan whose BOM generation writes ``document``."""
+    from depscan.lib.bom import BomResult
+
+    src = tmp_path / "src"
+    src.mkdir(exist_ok=True)
+
+    def fake_create_bom(bom_file, src_dir, options=None):
+        with open(bom_file, "w", encoding="utf-8") as fp:
+            json.dump(document, fp)
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+
+    monkeypatch.setattr(pipeline, "create_bom", fake_create_bom)
+    settings = {
+        "src_dir_image": str(src),
+        "reports_dir": str(tmp_path / "reports"),
+        "project_type": ["python"],
+        "no_banner": True,
+        "reachability_analyzer": "off",
+    }
+    settings.update(options)
+    return api.scan(api.scan_options(**settings), render=False)
+
+
+def _presence(result):
+    return {
+        finding["components"][0]: finding["exploitability"]["axes"]["presence"]
+        for finding in result.findings
+        if finding["category"] == "vulnerability"
+    }
+
+
+def test_a_source_scan_reads_no_trace_bom_left_in_its_reports_dir(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """dep-scan never runs tracebom, so a trace BOM in a source scan's
+    reports directory was left by an earlier run or another tool: the scan
+    records nothing from it."""
+    stale = tmp_path / "reports" / "analysis" / "tracebom"
+    stale.mkdir(parents=True)
+    shutil.copy2(TRACEBOM_DATA / "tracebom.json", stale / "old-run.json")
+    _source_scan_of(_usage_bom(), tmp_path, monkeypatch)
+    producers = {record["producer"]["name"] for record in _store_records(tmp_path / "reports")}
+    assert "tracebom" not in producers
+    assert "cdxgen" in producers
+
+
+def _blint_writing_bom(components, prefix):
+    """A BOM generation that writes the blint recording the way a binary
+    scan's review leaves it: the blint-written SBOM (with ``components``
+    replaced) and the three review reports under ``analysis/blint/``, their
+    binary paths spelled under ``prefix(src_dir)``."""
+    from depscan.lib.bom import BomResult
+
+    def fake_create_bom(bom_file, src_dir, options=None):
+        sbom = json.loads((BLINT_DATA / "sbom-blint.json").read_text(encoding="utf-8"))
+        if components is not None:
+            sbom["components"] = components
+        Path(bom_file).write_text(json.dumps(sbom), encoding="utf-8")
+        reviews = Path(bom_file).parent / "analysis" / "blint"
+        reviews.mkdir(parents=True, exist_ok=True)
+        for name in ("findings.json", "reviews.json", "analysis-coverage.json"):
+            text = (BLINT_DATA / name).read_text(encoding="utf-8")
+            text = text.replace('"corpus/', '"' + prefix(src_dir) + "corpus/")
+            (reviews / name).write_text(text, encoding="utf-8")
+        return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
+
+    return fake_create_bom
+
+
+def _binary_findings(result):
+    return [finding for finding in result.findings if finding["category"] == "binary-hardening"]
+
+
+def test_review_findings_survive_a_blint_bom_without_components(scan_stubs, tmp_path, monkeypatch):
+    """A blint-written BOM that lists no components (a static or stripped
+    binary) leaves the type with no packages, so it never reaches the
+    enrichment stage. The review still ran: its records are collected where
+    the review ran and its findings are the recorded ones."""
+    src = tmp_path / "src"
+    src.mkdir()
+    monkeypatch.setattr(
+        pipeline,
+        "create_bom",
+        _blint_writing_bom([], lambda src_dir: os.path.abspath(src_dir) + "/"),
+    )
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(tmp_path / "reports"),
+            project_type=["binary"],
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    stages = {stage["name"]: stage["status"] for stage in result.manifest["stages"]}
+    assert stages["inventory"] == "skipped" and "enrichment" not in stages
+    expected = {finding["id"]: finding for finding in RECORDED_BINARY_FINDINGS}
+    binary = _binary_findings(result)
+    assert {finding["id"] for finding in binary} == set(expected)
+    assert any(
+        record["producer"]["name"] == "blint" for record in _store_records(tmp_path / "reports")
+    ), "the review's records reach the store"
+
+
+def test_each_bom_is_read_once_by_the_evidence_producers(scan_stubs, tmp_path, monkeypatch):
+    """The BOM documents of a type are read and parsed once however many
+    evidence producers need them: cdxgen's adapter, the blint version and
+    root component lookups, atom's version lookup and the trace BOM
+    detection all share the parse."""
+    bom_dir = _evidence_producers_dir(tmp_path)
+    reads = []
+    real_read = pipeline._read_report_text
+
+    def counting_read(path):
+        reads.append(os.path.basename(str(path)))
+        return real_read(path)
+
+    monkeypatch.setattr(pipeline, "_read_report_text", counting_read)
+    api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="SemanticReachability",
+            techniques=["binary-analysis"],
+        ),
+        render=False,
+    )
+    assert reads.count("sbom-python.cdx.json") == 1
+    assert reads.count("sbom-postbuild-binary.cdx.json") == 1

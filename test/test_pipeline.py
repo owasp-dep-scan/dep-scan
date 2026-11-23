@@ -516,7 +516,11 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
     )
     scan = pipeline.TypeScan(project_type="python")
     scan.bom_dir = str(ctx.reports_dir)
+    scan.bom_files = [str(Path(ctx.reports_dir) / "bom-evinse-java.json")]
 
+    # The inventory stage runs cdxgen's adapter over the BOM; its occurrence
+    # records are what the engine counts as direct purls.
+    pipeline._collect_inventory_evidence(ctx, scan, write_store=False)
     pipeline.stage_enrichment(ctx, scan)
 
     assert scan.reachability_analyzer == "SemanticReachability"
@@ -537,7 +541,7 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
         "the engine reads the store the enrichment stage wrote"
     )
     records = evidence_store.read(str(store))
-    assert {r.producer.name for r in records} == {"atom"}
+    assert {r.producer.name for r in records} == {"atom", "cdxgen"}
     assert evidence_store.write(str(store), records) == len(records), (
         "a second write of the same records is the same store"
     )
@@ -1014,10 +1018,13 @@ def test_a_source_scan_takes_the_atom_version_from_the_doctor(tmp_path, monkeypa
     )
     options = SimpleNamespace(bom_files=[str(bom)])
     source_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=None))
-    assert pipeline._atom_producer_version(source_scan, options) == "4.0.3"
+    type_scan = pipeline.TypeScan(project_type="python")
+    assert pipeline._atom_producer_version(source_scan, type_scan, options) == "4.0.3"
     bom_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=str(tmp_path)))
-    assert pipeline._atom_producer_version(bom_scan, options) == "4.0.1"
-    assert pipeline._atom_producer_version(bom_scan, SimpleNamespace(bom_files=[])) == ""
+    assert pipeline._atom_producer_version(bom_scan, type_scan, options) == "4.0.1"
+    assert (
+        pipeline._atom_producer_version(bom_scan, type_scan, SimpleNamespace(bom_files=[])) == ""
+    )
 
 
 def test_the_source_root_of_a_stored_scan_is_only_an_explicit_src(tmp_path, monkeypatch):

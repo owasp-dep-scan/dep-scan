@@ -386,6 +386,14 @@ def test_exit_status_mapping(fake_cdxgen, tmp_path, monkeypatch, exit_code, expe
 
 
 def test_exit_four_logs_the_introspection_tier(fake_cdxgen, tmp_path, monkeypatch, caplog):
+    """Exit status 4 keeps the BOM and names it as below the introspection
+    gate; the inventory stage then logs the fidelity tier and score from
+    the introspection record cdxgen's adapter built, not from its own read
+    of the report."""
+    from types import SimpleNamespace
+
+    from depscan.lib import pipeline
+
     monkeypatch.setenv("FAKE_CDXGEN_EXIT", "4")
     src, reports = _make_project(tmp_path)
     bom_file = reports / "sbom-python.cdx.json"
@@ -393,10 +401,44 @@ def test_exit_four_logs_the_introspection_tier(fake_cdxgen, tmp_path, monkeypatc
     with caplog.at_level("WARNING"):
         result = bom_mod.create_bom(str(bom_file), str(src), options)
     assert result.success
+    assert result.introspection_gate_missed == [str(bom_file)]
     message = " ".join(r.message for r in caplog.records)
     assert "exited 4" in message
-    assert "lockfile" in message
-    assert "72" in message
+    assert "lockfile" not in message, "the tier is logged from the adapter record, below"
+
+    scan = pipeline.TypeScan(project_type="python")
+    scan.bom_files = list(result.bom_files)
+    scan.introspection_gate_missed = list(result.introspection_gate_missed)
+    ctx = SimpleNamespace(reports_dir=str(reports), source_root=str(src))
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        read = pipeline._cdxgen_adapter_result(ctx, scan)
+    assert read is not None and read.status == "completed", read and read.reason
+    tier = [r.message for r in caplog.records if r.message.startswith("Introspection:")]
+    assert tier == [
+        f"Introspection: overall tier lockfile, score 72/100 (report: {bom_file}.introspection.json)."
+    ]
+
+
+def test_exit_zero_logs_no_introspection_tier(fake_cdxgen, tmp_path, caplog):
+    """A BOM above the introspection gate logs no tier line."""
+    from types import SimpleNamespace
+
+    from depscan.lib import pipeline
+
+    src, reports = _make_project(tmp_path)
+    bom_file = reports / "sbom-python.cdx.json"
+    result = bom_mod.create_bom(
+        str(bom_file), str(src), _options("research", ["python"], [], bom_file)
+    )
+    assert result.success and result.introspection_gate_missed == []
+    scan = pipeline.TypeScan(project_type="python")
+    scan.bom_files = list(result.bom_files)
+    with caplog.at_level("WARNING"):
+        pipeline._cdxgen_adapter_result(
+            SimpleNamespace(reports_dir=str(reports), source_root=str(src)), scan
+        )
+    assert not [r for r in caplog.records if "Introspection" in r.message]
 
 
 def test_exit_five_stops_and_names_each_extractor_failure(
