@@ -1121,6 +1121,30 @@ def test_a_scan_whose_every_inventory_failed_writes_no_findings_file(
     )
 
 
+def test_an_explanation_that_rendered_nothing_names_the_gate(scan_stubs, tmp_path):
+    """The explain stage says why nothing was explained instead of reading
+    as an explanation that ran and said nothing."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+    reports = tmp_path / "reports"
+    # The explanation runs in the rendering stages, so the scan renders; the
+    # fixture's stubs keep the report files off the disk.
+    result = api.scan(
+        api.scan_options(
+            bom=bom,
+            reports_dir=str(reports),
+            no_banner=True,
+            explain=True,
+            explanation_mode="EndpointsAndReachables",
+        ),
+    )
+    assert result.manifest is not None
+    explain = next(stage for stage in result.manifest["stages"] if stage["name"] == "explain")
+    assert explain["status"] == "completed"
+    assert explain["notAssessed"] == [
+        "the evidence store was read but holds no records; there is nothing to explain"
+    ]
+
+
 def test_a_license_scan_counts_the_packages_without_license_data(
     scan_stubs, tmp_path, monkeypatch
 ):

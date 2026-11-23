@@ -171,6 +171,10 @@ class TypeScan:
     #: the notAssessed line the licenses stage records; None when the stage
     #: did not run or every package carried license data.
     license_not_assessed: Optional[str] = None
+    #: Why the requested explanation rendered nothing, named by the
+    #: explainer (a missing input or the rendering gates); None when
+    #: something was rendered or no explanation was requested.
+    explain_not_assessed: Optional[str] = None
     # Why BOM generation failed for this type; the scan goes on to the next.
     inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
@@ -2480,7 +2484,7 @@ def stage_render_explain(ctx, scan):
     args = ctx.args
     # Explain the results
     if args.explain:
-        explainer.explain(
+        reason = explainer.explain(
             scan.project_type,
             ctx.src_dir,
             scan.bom_dir or ctx.reports_dir,
@@ -2494,6 +2498,11 @@ def stage_render_explain(ctx, scan):
             # wrote.
             evidence_file=os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE),
         )
+        if reason:
+            # An explanation that says nothing must say why: the reason goes
+            # to the console here and to the manifest's explain stage.
+            LOG.warning("The explanation was not rendered: %s", reason)
+            scan.explain_not_assessed = reason
     else:
         LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")
     # CSAF VEX export

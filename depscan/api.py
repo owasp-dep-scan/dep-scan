@@ -356,6 +356,11 @@ def _run_stages(
                     project_type=project_type,
                     skipped=bool(not options.explain),
                     skipped_reason="the explanation was not requested",
+                    record_extra=lambda: {
+                        "notAssessed": [tscan.explain_not_assessed]
+                        if tscan.explain_not_assessed
+                        else []
+                    },
                 )
         if render:
             _stage(ctx, "render", pipeline.stage_render_reports, ctx)
