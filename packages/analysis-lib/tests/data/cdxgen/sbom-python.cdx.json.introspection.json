@@ -1,0 +1,71 @@
+{
+ "schemaVersion": "1.1",
+ "runId": "8b90c45f-b754-4bd7-b971-68540d7b2740",
+ "inputsFingerprint": "sha256:14a5ad7d7cc51d0b9c8510b971f997c98fca9ebc63af91ca56dc45afaa0573d5",
+ "generatedAt": "2026-11-22T23:01:32.111Z",
+ "cdxgen": {
+  "version": "13.9.0",
+  "runtime": {
+   "name": "Node.js",
+   "version": "26.13.1"
+  }
+ },
+ "bom": {
+  "serialNumber": "urn:uuid:6aab5db0-f2f4-453d-97f2-03e069cd5449",
+  "componentCount": 12,
+  "path": "sbom-python.cdx.json"
+ },
+ "ledger": {
+  "source": "sidecar",
+  "complete": true,
+  "eventCount": 14,
+  "truncated": false
+ },
+ "overall": {
+  "score": 100,
+  "tier": "resolved",
+  "confidence": "medium"
+ },
+ "ecosystems": [
+  {
+   "ecosystem": "python",
+   "state": "graded",
+   "tier": "resolved",
+   "ceilingTier": "lockfile",
+   "score": 100,
+   "confidence": "medium",
+   "componentCount": 12,
+   "dependencyEdgeCount": 11,
+   "tierReasons": [
+    {
+     "source": "bom",
+     "id": "no-demoting-signal",
+     "detail": "No fidelity finding fired and no corroborated degradation was recorded for this ecosystem.",
+     "determining": true
+    }
+   ],
+   "tools": {
+    "expected": [],
+    "resolved": [
+     {
+      "tool": "python",
+      "source": "PATH",
+      "found": "3.15.2"
+     }
+    ],
+    "missing": [],
+    "mismatched": []
+   }
+  }
+ ],
+ "coverageGaps": [],
+ "remediation": [],
+ "observations": [
+  {
+   "kind": "evidence.degraded",
+   "ecosystem": "python",
+   "impact": "components",
+   "detail": "No active virtualenv or conda environment was detected; dependency resolution will use the system interpreter."
+  }
+ ]
+}

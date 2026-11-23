@@ -1,0 +1,349 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "serialNumber": "urn:uuid:5fc1115f-507b-41a1-ba56-088abff2d209",
+  "version": 2,
+  "metadata": {
+    "timestamp": "2026-11-23T02:24:28Z",
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "gradle",
+          "version": "9.6.1"
+        },
+        {
+          "group": "@cdxgen",
+          "name": "cdxgen",
+          "version": "13.9.0",
+          "purl": "pkg:npm/%40cdxgen/cdxgen@13.9.0",
+          "type": "application",
+          "bom-ref": "pkg:npm/@cdxgen/cdxgen@13.9.0",
+          "publisher": "OWASP Foundation",
+          "authors": [
+            {
+              "name": "OWASP Foundation"
+            }
+          ]
+        }
+      ]
+    },
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "component": {
+      "name": "kt2",
+      "type": "application",
+      "group": "",
+      "version": "latest",
+      "properties": [
+        {
+          "name": "cdx:kosi:dataFlowCategories",
+          "value": "untrusted-input->process-exec"
+        },
+        {
+          "name": "cdx:kosi:dataFlowCategories",
+          "value": "untrusted-input->ssrf"
+        },
+        {
+          "name": "cdx:kosi:dataFlowRuleName",
+          "value": "untrusted-input to process-exec"
+        },
+        {
+          "name": "cdx:kosi:dataFlowRuleName",
+          "value": "untrusted-input to ssrf"
+        },
+        {
+          "name": "cdx:kosi:dataFlowSliceCount",
+          "value": "2"
+        },
+        {
+          "name": "cdx:kosi:diagnostic:bytecode-unlowered",
+          "value": "12"
+        },
+        {
+          "name": "cdx:kosi:diagnostic:dataflow-convergence",
+          "value": "1"
+        },
+        {
+          "name": "cdx:kosi:diagnostic:dataflow-truncated",
+          "value": "1952814"
+        },
+        {
+          "name": "cdx:kosi:diagnostic:deps-bodyless",
+          "value": "60"
+        },
+        {
+          "name": "cdx:kosi:diagnostic:taint-unnameable-invoke",
+          "value": "1"
+        },
+        {
+          "name": "cdx:kosi:kotlinVersion",
+          "value": "2.4.20"
+        },
+        {
+          "name": "cdx:kosi:pathKind",
+          "value": "complete"
+        },
+        {
+          "name": "cdx:kosi:reachableFromRoots",
+          "value": "true"
+        },
+        {
+          "name": "cdx:kosi:schemaVersion",
+          "value": "kosi/1"
+        },
+        {
+          "name": "cdx:kosi:sliceCount",
+          "value": "2"
+        },
+        {
+          "name": "cdx:kosi:sourceCoverageDiscovered",
+          "value": "1"
+        },
+        {
+          "name": "cdx:kosi:sourceCoverageNonTestRatio",
+          "value": "1"
+        },
+        {
+          "name": "cdx:kosi:sourceCoveragePresent",
+          "value": "1"
+        },
+        {
+          "name": "cdx:kosi:sourceCoverageRatio",
+          "value": "1"
+        },
+        {
+          "name": "cdx:kosi:sourceCoverageTestPresent",
+          "value": "0"
+        },
+        {
+          "name": "cdx:kosi:toolVersion",
+          "value": "4.3.1"
+        },
+        {
+          "name": "internal:GradleModule",
+          "value": "kt2"
+        }
+      ],
+      "bom-ref": "application:kt2:latest",
+      "purl": "pkg:generic/kt2@unspecified",
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 10
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 11
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 12
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 13
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 18
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 19
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 23
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 24
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 6
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 9
+          }
+        ],
+        "callstack": {
+          "frames": [
+            {
+              "package": "",
+              "module": "source",
+              "function": "demo.readTarget",
+              "line": 6,
+              "fullFilename": "src/main/kotlin/demo/App.kt"
+            },
+            {
+              "package": "",
+              "module": "summary",
+              "function": "demo.fetch",
+              "line": 9,
+              "fullFilename": "src/main/kotlin/demo/App.kt"
+            },
+            {
+              "package": "",
+              "module": "move",
+              "function": "demo.fetch",
+              "line": 8,
+              "fullFilename": "src/main/kotlin/demo/App.kt"
+            },
+            {
+              "package": "",
+              "module": "sink",
+              "function": "demo.fetch",
+              "line": 11,
+              "fullFilename": "src/main/kotlin/demo/App.kt"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "group": "com.squareup.okhttp3",
+      "name": "okhttp",
+      "version": "4.12.0",
+      "description": "Square\u2019s meticulous HTTP client for Java and Kotlin.",
+      "scope": "required",
+      "hashes": [
+        {
+          "alg": "MD5",
+          "content": "6acba053af88fed87e710c6c29911d7c"
+        },
+        {
+          "alg": "SHA-1",
+          "content": "2f4525d4a200e97e1b87449c2cd9bd2e25b7e8cd"
+        },
+        {
+          "alg": "SHA-256",
+          "content": "b1050081b14bb7a3a7e55a4d3ef01b5dcfabc453b4573a4fc019767191d5f4e0"
+        },
+        {
+          "alg": "SHA-512",
+          "content": "da63f77c1cae377b40f6fd00cfbbe8177e760e4e622ae2c66860fffd3bbbdf605c8e8e415762e9263445b2289ee834100237c63949f2e01c30b6704315dd8f7b"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0",
+            "url": "https://opensource.org/licenses/Apache-2.0",
+            "properties": [
+              {
+                "name": "cdx:license:category",
+                "value": "Permissive"
+              },
+              {
+                "name": "cdx:license:foss",
+                "value": "true"
+              },
+              {
+                "name": "cdx:license:osiApproved",
+                "value": "true"
+              },
+              {
+                "name": "cdx:license:fsfLibre",
+                "value": "true"
+              },
+              {
+                "name": "cdx:license:deprecated",
+                "value": "false"
+              }
+            ]
+          }
+        }
+      ],
+      "purl": "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0?type=jar",
+      "type": "library",
+      "bom-ref": "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0?type=jar",
+      "properties": [
+        {
+          "name": "cdx:kosi:reachableFromRoots",
+          "value": "true"
+        },
+        {
+          "name": "cdx:license:category",
+          "value": "Permissive"
+        },
+        {
+          "name": "internal:GradleProfileName",
+          "value": "runtimeClasspath"
+        },
+        {
+          "name": "internal:Namespaces",
+          "value": "okhttp3.CipherSuite\nokhttp3.Headers$Builder\nokhttp3.Interceptor\nokhttp3.CertificatePinner\nokhttp3.MultipartReader\nokhttp3.EventListener$Companion\nokhttp3.HttpUrl$Builder$Companion\nokhttp3.Cache$RealCacheRequest$1\nokhttp3.internal.authenticator.JavaNetAuthenticator$WhenMappings\nokhttp3.internal.authenticator.JavaNetAuthenticator\nokhttp3.internal.proxy.NullProxySelector\nokhttp3.internal.http1.HeadersReader$Companion\nokhttp3.internal.http1.Http1ExchangeCodec$ChunkedSource\nokhttp3.internal.http1.HeadersReader\nokhttp3.internal.http1.Http1ExchangeCodec$AbstractSource\nokhttp3.internal.http1.Http1ExchangeCodec$ChunkedSink\nokhttp3.internal.http1.Http1ExchangeCodec\nokhttp3.internal.http1.Http1ExchangeCodec$FixedLengthSource\nokhttp3.internal.http1.Http1ExchangeCodec$Companion\nokhttp3.internal.http1.Http1ExchangeCodec$UnknownLengthSource\nokhttp3.internal.http1.Http1ExchangeCodec$KnownLengthSink\nokhttp3.internal.tls.CertificateChainCleaner\nokhttp3.internal.tls.BasicCertificateChainCleaner$Companion\nokhttp3.internal.tls.OkHostnameVerifier\nokhttp3.internal.tls.BasicCertificateChainCleaner\nokhttp3.internal.tls.BasicTrustRootIndex\nokhttp3.internal.tls.TrustRootIndex\nokhttp3.internal.tls.CertificateChainCleaner$Companion\nokhttp3.internal.SuppressSignatureCheck\nokhttp3.internal.connection.RealCall$AsyncCall\nokhttp3.internal.connection.RouteException\nokhttp3.internal.connection.RealCall$timeout$1\nokhttp3.internal.connection.RealConnection$newWebSocketStreams$1\nokhttp3.internal.connection.RealCall$CallReference\nokhttp3.internal.connection.RealConnection$connectTls$2\nokhttp3.internal.connection.Exchange$RequestBodySink\nokhttp3.internal.connection.RouteSelector\nokhttp3.internal.connection.ExchangeFinder\nokhttp3.internal.connection.RealConnection$WhenMappings\nokhttp3.internal.connection.RealConnection$Companion\nokhttp3.internal.connection.RealConnectionPool\nokhttp3.internal.connection.RealCall\nokhttp3.internal.connection.RealConnectionPool$cleanupTask$1\nokhttp3.internal.connection.ConnectionSpecSelector\nokhttp3.internal.connection.RouteSelector$Companion\nokhttp3.internal.connection.Exchange\nokhttp3.internal.connection.RouteDatabase\nokhttp3.internal.connection.Exchange$ResponseBodySource\nokhttp3.internal.connection.ConnectInterceptor\nokhttp3.internal.connection.RealConnection\nokhttp3.internal.connection.RealConnection$connectTls$1\nokhttp3.internal.connection.RealConnectionPool$Companion\nokhttp3.internal.connection.RouteSelector$Selection\nokhttp3.internal.publicsuffix.PublicSuffixDatabase$Companion\nokhttp3.internal.publicsuffix.PublicSuffixDatabase\nokhttp3.internal.cache.DiskLruCache$Entry$newSource$1\nokhttp3.internal.cache.DiskLruCache$Companion\nokhttp3.internal.cache.CacheInterceptor$Companion\nokhttp3.internal.cache.DiskLruCache$newJournalWriter$faultHidingSink$1\nokhttp3.internal.cache.DiskLruCache$snapshots$1\nokhttp3.internal.cache.CacheStrategy\nokhttp3.internal.cache.DiskLruCache$Editor$newSink$1$1\nokhttp3.internal.cache.CacheStrategy$Factory\nokhttp3.internal.cache.DiskLruCache$Entry\nokhttp3.internal.cache.CacheRequest\nokhttp3.internal.cache.DiskLruCache$Editor\nokhttp3.internal.cache.CacheInterceptor$cacheWritingResponse$cacheWritingSource$1\nokhttp3.internal.cache.DiskLruCache$cleanupTask$1\nokhttp3.internal.cache.FaultHidingSink\nokhttp3.internal.cache.CacheInterceptor\nokhttp3.internal.cache.DiskLruCache\nokhttp3.internal.cache.CacheStrategy$Companion\nokhttp3.internal.cache.DiskLruCache$Snapshot\nokhttp3.internal.ws.RealWebSocket$WriterTask\nokhttp3.internal.ws.RealWebSocket$connect$1\nokhttp3.internal.ws.MessageInflater\nokhttp3.internal.ws.MessageDeflaterKt\nokhttp3.internal.ws.MessageInflaterKt\nokhttp3.internal.ws.WebSocketReader\nokhttp3.internal.ws.WebSocketReader$FrameCallback\nokhttp3.internal.ws.RealWebSocket\nokhttp3.internal.ws.WebSocketWriter\nokhttp3.internal.ws.RealWebSocket$initReaderAndWriter$lambda$3$$inlined$schedule$1\nokhttp3.internal.ws.WebSocketProtocol\nokhttp3.internal.ws.WebSocketExtensions$Companion\nokhttp3.internal.ws.RealWebSocket$writeOneFrame$lambda$8$$inlined$execute$default$1\nokhttp3.internal.ws.RealWebSocket$Close\nokhttp3.internal.ws.RealWebSocket$Streams\nokhttp3.internal.ws.MessageDeflater\nokhttp3.internal.ws.RealWebSocket$Companion\nokhttp3.internal.ws.WebSocketExtensions\nokhttp3.internal.ws.RealWebSocket$Message\nokhttp3.internal.Internal\nokhttp3.internal.platform.OpenJSSEPlatform$Companion\nokhttp3.internal.platform.Android10Platform\nokhttp3.internal.platform.Android10Platform$Companion\nokhttp3.internal.platform.Platform$Companion\nokhttp3.internal.platform.BouncyCastlePlatform\nokhttp3.internal.platform.ConscryptPlatform$Companion\nokhttp3.internal.platform.ConscryptPlatform\nokhttp3.internal.platform.ConscryptPlatform$DisabledHostnameVerifier\nokhttp3.internal.platform.AndroidPlatform\nokhttp3.internal.platform.Jdk8WithJettyBootPlatform$AlpnProvider\nokhttp3.internal.platform.Jdk9Platform\nokhttp3.internal.platform.Jdk9Platform$Companion\nokhttp3.internal.platform.OpenJSSEPlatform\nokhttp3.internal.platform.Jdk8WithJettyBootPlatform\nokhttp3.internal.platform.Platform\nokhttp3.internal.platform.android.Android10SocketAdapter$Companion\nokhttp3.internal.platform.android.BouncyCastleSocketAdapter$Companion\nokhttp3.internal.platform.android.BouncyCastleSocketAdapter\nokhttp3.internal.platform.android.SocketAdapter\nokhttp3.internal.platform.android.SocketAdapter$DefaultImpls\nokhttp3.internal.platform.android.AndroidSocketAdapter\nokhttp3.internal.platform.android.AndroidCertificateChainCleaner$Companion\nokhttp3.internal.platform.android.BouncyCastleSocketAdapter$Companion$factory$1\nokhttp3.internal.platform.android.AndroidLog\nokhttp3.internal.platform.android.AndroidCertificateChainCleaner\nokhttp3.internal.platform.android.ConscryptSocketAdapter$Companion$factory$1\nokhttp3.internal.platform.android.AndroidLogHandler\nokhttp3.internal.platform.android.AndroidLogKt\nokhttp3.internal.platform.android.StandardAndroidSocketAdapter\nokhttp3.internal.platform.android.CloseGuard$Companion\nokhttp3.internal.platform.android.StandardAndroidSocketAdapter$Companion\nokhttp3.internal.platform.android.ConscryptSocketAdapter$Companion\nokhttp3.internal.platform.android.Android10SocketAdapter\nokhttp3.internal.platform.android.ConscryptSocketAdapter\nokhttp3.internal.platform.android.CloseGuard\nokhttp3.internal.platform.android.AndroidSocketAdapter$Companion\nokhttp3.internal.platform.android.DeferredSocketAdapter\nokhttp3.internal.platform.android.AndroidSocketAdapter$Companion$factory$1\nokhttp3.internal.platform.android.DeferredSocketAdapter$Factory\nokhttp3.internal.platform.AndroidPlatform$Companion\nokhttp3.internal.platform.Jdk8WithJettyBootPlatform$Companion\nokhttp3.internal.platform.BouncyCastlePlatform$Companion\nokhttp3.internal.platform.AndroidPlatform$CustomTrustRootIndex\nokhttp3.internal.HostnamesKt\nokhttp3.internal.http2.Http2Reader$ContinuationSource\nokhttp3.internal.http2.Http2Connection$Listener\nokhttp3.internal.http2.Http2Connection$writeSynResetLater$$inlined$execute$default$1\nokhttp3.internal.http2.Http2Connection$Builder\nokhttp3.internal.http2.Huffman$Node\nokhttp3.internal.http2.ErrorCode\nokhttp3.internal.http2.Hpack$Reader\nokhttp3.internal.http2.Http2Connection$Listener$Companion$REFUSE_INCOMING_STREAMS$1\nokhttp3.internal.http2.ConnectionShutdownException\nokhttp3.internal.http2.Http2\nokhttp3.internal.http2.PushObserver\nokhttp3.internal.http2.Http2Connection$ReaderRunnable$headers$lambda$2$$inlined$execute$default$1\nokhttp3.internal.http2.Http2ExchangeCodec$Companion\nokhttp3.internal.http2.Http2Connection$special$$inlined$schedule$1\nokhttp3.internal.http2.Http2Connection\nokhttp3.internal.http2.Http2Stream$StreamTimeout\nokhttp3.internal.http2.PushObserver$Companion$PushObserverCancel\nokhttp3.internal.http2.Hpack$Writer\nokhttp3.internal.http2.Http2Connection$ReaderRunnable$settings$$inlined$execute$default$1\nokhttp3.internal.http2.Http2ExchangeCodec\nokhttp3.internal.http2.Http2Connection$Companion\nokhttp3.internal.http2.PushObserver$Companion\nokhttp3.internal.http2.Header$Companion\nokhttp3.internal.http2.ErrorCode$Companion\nokhttp3.internal.http2.Http2Connection$ReaderRunnable\nokhttp3.internal.http2.Http2Connection$Listener$Companion\nokhttp3.internal.http2.Http2Writer$Companion\nokhttp3.internal.http2.Settings$Companion\nokhttp3.internal.http2.Http2Connection$ReaderRunnable$ping$$inlined$execute$default$1\nokhttp3.internal.http2.Http2Writer\nokhttp3.internal.http2.Http2Connection$sendDegradedPingLater$$inlined$execute$default$1\nokhttp3.internal.http2.Http2Stream$Companion\nokhttp3.internal.http2.StreamResetException\nokhttp3.internal.http2.Http2Connection$pushResetLater$$inlined$execute$default$1\nokhttp3.internal.http2.Http2Stream$FramingSource\nokhttp3.internal.http2.Http2Reader$Handler\nokhttp3.internal.http2.Http2Connection$pushHeadersLater$$inlined$execute$default$1\nokhttp3.internal.http2.Http2Connection$ReaderRunnable$applyAndAckSettings$lambda$7$lambda$6$$inlined$execute$default$1\nokhttp3.internal.http2.Http2Connection$pushRequestLater$$inlined$execute$default$1\nokhttp3.internal.http2.Header\nokhttp3.internal.http2.Http2Connection$pushDataLater$$inlined$execute$default$1\nokhttp3.internal.http2.Huffman\nokhttp3.internal.http2.Http2Stream$FramingSink\nokhttp3.internal.http2.Settings\nokhttp3.internal.http2.Http2Reader$Companion\nokhttp3.internal.http2.Http2Stream\nokhttp3.internal.http2.Hpack\nokhttp3.internal.http2.Http2Reader\nokhttp3.internal.http2.Http2Connection$writeWindowUpdateLater$$inlined$execute$default$1\nokhttp3.internal.http.RetryAndFollowUpInterceptor\nokhttp3.internal.http.HttpMethod\nokhttp3.internal.http.HttpHeaders\nokhttp3.internal.http.RealInterceptorChain\nokhttp3.internal.http.RetryAndFollowUpInterceptor$Companion\nokhttp3.internal.http.RequestLine\nokhttp3.internal.http.ExchangeCodec\nokhttp3.internal.http.BridgeInterceptor\nokhttp3.internal.http.DatesKt$STANDARD_DATE_FORMAT$1\nokhttp3.internal.http.ExchangeCodec$Companion\nokhttp3.internal.http.DatesKt\nokhttp3.internal.http.StatusLine\nokhttp3.internal.http.CallServerInterceptor\nokhttp3.internal.http.RealResponseBody\nokhttp3.internal.http.StatusLine$Companion\nokhttp3.internal.concurrent.TaskRunner$runnable$1\nokhttp3.internal.concurrent.TaskQueue$execute$1\nokhttp3.internal.concurrent.TaskRunner$RealBackend\nokhttp3.internal.concurrent.TaskLoggerKt\nokhttp3.internal.concurrent.TaskQueue$schedule$2\nokhttp3.internal.concurrent.TaskQueue$AwaitIdleTask\nokhttp3.internal.concurrent.TaskRunner$Backend\nokhttp3.internal.concurrent.Task\nokhttp3.internal.concurrent.TaskRunner$Companion\nokhttp3.internal.concurrent.TaskRunner\nokhttp3.internal.concurrent.TaskQueue\nokhttp3.internal.io.FileSystem\nokhttp3.internal.io.FileSystem$Companion$SystemFileSystem\nokhttp3.internal.io.FileSystem$Companion\nokhttp3.internal.cache2.Relay$Companion\nokhttp3.internal.cache2.Relay$RelaySource\nokhttp3.internal.cache2.Relay\nokhttp3.internal.cache2.FileOperator\nokhttp3.internal.Util\nokhttp3.CacheControl$Builder\nokhttp3.Authenticator$Companion$AuthenticatorNone\nokhttp3.Handshake$Companion\nokhttp3.Headers$Companion\nokhttp3.ResponseBody\nokhttp3.Cache$CacheResponseBody\nokhttp3.Handshake$Companion$handshake$1\nokhttp3.ConnectionSpec\nokhttp3.EventListener\nokhttp3.Cookie$Builder\nokhttp3.Headers\nokhttp3.Connection\nokhttp3.HttpUrl$Companion\nokhttp3.MediaType$Companion\nokhttp3.OkHttpClient$Builder\nokhttp3.MultipartBody$Part\nokhttp3.Authenticator$Companion\nokhttp3.EventListener$Factory\nokhttp3.Cache$urls$1\nokhttp3.Cache$Entry\nokhttp3.RequestBody\nokhttp3.OkHttp\nokhttp3.ConnectionSpec$Builder\nokhttp3.FormBody$Companion\nokhttp3.RequestBody$Companion$toRequestBody$1\nokhttp3.MultipartReader$Companion\nokhttp3.Cookie\nokhttp3.MultipartBody\nokhttp3.TlsVersion\nokhttp3.Interceptor$Companion\nokhttp3.ResponseBody$Companion\nokhttp3.MediaType\nokhttp3.Handshake$peerCertificates$2\nokhttp3.Dns\nokhttp3.OkHttpClient\nokhttp3.RequestBody$Companion$toRequestBody$2\nokhttp3.HttpUrl$Builder\nokhttp3.HttpUrl\nokhttp3.Cache$CacheResponseBody$1\nokhttp3.ConnectionSpec$Companion\nokhttp3.CookieJar$Companion\nokhttp3.WebSocket\nokhttp3.Address\nokhttp3.Dns$Companion\nokhttp3.CertificatePinner$check$1\nokhttp3.Handshake$Companion$get$1\nokhttp3.Credentials\nokhttp3.FormBody$Builder\nokhttp3.ConnectionPool\nokhttp3.Protocol$Companion\nokhttp3.CookieJar\nokhttp3.WebSocketListener\nokhttp3.Interceptor$Chain\nokhttp3.Cache$Companion\nokhttp3.Cookie$Companion\nokhttp3.Dns$Companion$DnsSystem\nokhttp3.Protocol\nokhttp3.CipherSuite$Companion\nokhttp3.Call\nokhttp3.CertificatePinner$Builder\nokhttp3.Request\nokhttp3.MultipartBody$Part$Companion\nokhttp3.CookieJar$Companion$NoCookies\nokhttp3.CipherSuite$Companion$ORDER_BY_NAME$1\nokhttp3.Dispatcher\nokhttp3.Handshake\nokhttp3.OkHttpClient$Builder$addInterceptor$2\nokhttp3.Call$Factory\nokhttp3.Request$Builder\nokhttp3.ResponseBody$Companion$asResponseBody$1\nokhttp3.OkHttpClient$Builder$addNetworkInterceptor$2\nokhttp3.CacheControl\nokhttp3.Cache\nokhttp3.ResponseBody$BomAwareReader\nokhttp3.OkHttpClient$Companion\nokhttp3.Challenge\nokhttp3.CacheControl$Companion\nokhttp3.Callback\nokhttp3.Route\nokhttp3.Response\nokhttp3.MultipartBody$Companion\nokhttp3.RequestBody$Companion$asRequestBody$1\nokhttp3.RequestBody$Companion\nokhttp3.Cache$Entry$Companion\nokhttp3.Interceptor$Companion$invoke$1\nokhttp3.CertificatePinner$Pin\nokhttp3.CertificatePinner$Companion\nokhttp3.Cache$RealCacheRequest\nokhttp3.FormBody\nokhttp3.MultipartReader$PartSource\nokhttp3.EventListener$Companion$NONE$1\nokhttp3.TlsVersion$Companion\nokhttp3.Response$Builder\nokhttp3.Authenticator\nokhttp3.MultipartBody$Builder\nokhttp3.WebSocket$Factory\nokhttp3.MultipartReader$Part"
+        }
+      ],
+      "evidence": {
+        "occurrences": [
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 3
+          },
+          {
+            "location": "src/main/kotlin/demo/App.kt",
+            "line": 4
+          }
+        ],
+        "callstack": {
+          "frames": [
+            {
+              "package": "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0",
+              "module": "import",
+              "function": "okhttp3.OkHttpClient",
+              "line": 3,
+              "column": 1,
+              "fullFilename": "src/main/kotlin/demo/App.kt"
+            },
+            {
+              "package": "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0",
+              "module": "import",
+              "function": "okhttp3.Request",
+              "line": 4,
+              "column": 1,
+              "fullFilename": "src/main/kotlin/demo/App.kt"
+            }
+          ]
+        }
+      },
+      "tags": [
+        "http"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "name": "<unresolved>",
+      "endpoints": [],
+      "properties": [
+        {
+          "name": "cdx:kosi:service:clientLibrary",
+          "value": "okhttp3"
+        },
+        {
+          "name": "cdx:kosi:service:location",
+          "value": "src/main/kotlin/demo/App.kt:11:8"
+        },
+        {
+          "name": "cdx:kosi:service:protocol",
+          "value": "https"
+        },
+        {
+          "name": "cdx:kosi:service:resolution",
+          "value": "unresolved"
+        }
+      ],
+      "bom-ref": "svc-000001"
+    }
+  ]
+}

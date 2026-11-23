@@ -23,6 +23,7 @@ from analysis_lib.evidence import Evidence
 from analysis_lib.findings.fingerprint import finding_fingerprint
 from analysis_lib.findings.model import (
     Coverage,
+    CoverageReason,
     Exploitability,
     Finding,
     FindingProperty,
@@ -31,6 +32,10 @@ from analysis_lib.findings.model import (
     Reference,
 )
 from analysis_lib.reachability import ATOM_SLICE_PURL_TYPES, counts_as_reached
+
+#: The capability a finding's coverage names when the usage evidence its
+#: presence axis reads was not assessed.
+PRESENCE_USAGE_CAPABILITY = "presence:usage"
 
 #: CycloneDX severity names, most severe first, with the score as the tie
 #: breaker of last resort.
@@ -298,6 +303,7 @@ def finding_from_vdr(
     producer_name: str = "dep-scan",
     producer_version: str,
     exploitability: Optional[Exploitability] = None,
+    usage_not_assessed: Optional[str] = None,
 ) -> Finding:
     """One finding for one advisory of a VDR entry hitting one component.
 
@@ -305,6 +311,11 @@ def finding_from_vdr(
     The finding carries the advisory id as its rule, the entry's most severe
     rating, the versions named as fixes and the dep-scan extension
     properties; its id is the line-free fingerprint of the pair.
+    ``usage_not_assessed`` is why the package's usage evidence was not
+    read (the BOM it came from was not assessed). When the presence axis
+    is graded and not ``proven``, the finding's coverage carries that
+    reason, so a ``likely`` or ``unlikely`` presence never reads as usage
+    measured and not found. The finding itself stays assessed: the database match ran.
 
     :raises ValueError: when ``component_ref`` is not a valid package URL.
     """
@@ -312,13 +323,26 @@ def finding_from_vdr(
     if not rule:
         raise ValueError("the VDR entry has no advisory id")
     finding_id = finding_fingerprint("vulnerability", rule, [component_ref])
+    coverage = Coverage(state="assessed")
+    if (
+        usage_not_assessed
+        and exploitability is not None
+        and exploitability.axes.presence not in ("proven", "not_assessed")
+    ):
+        coverage.reasons = [
+            CoverageReason(
+                capability=PRESENCE_USAGE_CAPABILITY,
+                reason="report-not-assessed",
+                detail=usage_not_assessed,
+            )
+        ]
     return Finding(
         id=finding_id,
         category="vulnerability",
         rule=rule,
         title=f"{rule} affects {component_ref}",
         severity=highest_severity(vuln),
-        coverage=Coverage(state="assessed"),
+        coverage=coverage,
         producer=Producer(name=producer_name, version=producer_version),
         cwes=_cwes(vuln),
         components=[component_ref],
@@ -335,6 +359,7 @@ def findings_from_vdr(
     producer_name: str = "dep-scan",
     producer_version: str,
     exploitability: Optional[Dict[Tuple[str, str], Exploitability]] = None,
+    usage_not_assessed: Optional[Dict[str, str]] = None,
 ) -> List[Finding]:
     """One finding per advisory and component of the given VDR entries.
 
@@ -349,6 +374,8 @@ def findings_from_vdr(
     assessment this scan graded for it (see
     :func:`analysis_lib.findings.exploitability.annotate_exploitability`);
     a pair the map does not carry records no exploitability.
+    ``usage_not_assessed`` maps a comparable purl to the reason its usage
+    evidence was not read (see :func:`finding_from_vdr`).
 
     :raises ValueError: when an entry has no advisory id or a ref that is
         not a valid package URL; a VDR the scan wrote always carries both.
@@ -373,6 +400,11 @@ def findings_from_vdr(
                 exploitability=(
                     exploitability.get((advisory, str(component_ref)))
                     if exploitability is not None
+                    else None
+                ),
+                usage_not_assessed=(
+                    usage_not_assessed.get(comparable_purl(str(component_ref)))
+                    if usage_not_assessed
                     else None
                 ),
             )

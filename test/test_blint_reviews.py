@@ -1,5 +1,8 @@
-"""blint's security review: when it runs, where its reports are kept and how
-its check findings reach ``depscan.findings.json``."""
+"""blint's security review: when it runs and where its reports are kept.
+
+How the review's check findings reach ``depscan.findings.json`` through the
+blint adapter's records needs no blint installed and is tested in
+``test_scan_directory.py``."""
 
 import json
 import os
@@ -71,7 +74,9 @@ def test_create_bom_asks_for_reviews_on_the_binary_check(monkeypatch, tmp_path):
         "create_blint_bom",
         lambda bom_file, src_dir, options=None, reviews=False: calls.append(reviews) or False,
     )
-    bom_mod.create_bom(str(tmp_path / "b.json"), str(tmp_path), {"techniques": ["binary-analysis"]})
+    bom_mod.create_bom(
+        str(tmp_path / "b.json"), str(tmp_path), {"techniques": ["binary-analysis"]}
+    )
     bom_mod.create_bom(str(tmp_path / "b.json"), str(tmp_path), {"lifecycles": ["post-build"]})
     assert calls == [True, False]
 
@@ -121,6 +126,27 @@ def test_review_writes_findings_and_reviews_and_drops_stale_reports(monkeypatch,
     assert (reports / blint_mod.BLINT_REVIEWS_FILE).is_file()
 
 
+def test_a_relative_review_path_is_walked_as_an_absolute_one(monkeypatch, tmp_path):
+    """blint names each binary by the path it walked. A relative source
+    directory is made absolute before the review starts, so the reports
+    name files under the scan root rather than relative to the working
+    directory, and the finding ids of a relative ``-i`` equal those of an
+    absolute one."""
+    seen = {}
+
+    class Recording(_FakeRunner):
+        def start(self, options, exe_files):
+            seen["dirs"] = list(options.src_dir_image)
+            return super().start(options, exe_files)
+
+    monkeypatch.setattr(blint_mod, "AnalysisRunner", Recording)
+    (tmp_path / "bins").mkdir()
+    monkeypatch.chdir(tmp_path)
+    result = blint_mod.run_blint_reviews(["bins"], str(tmp_path / "r"))
+    assert result.success
+    assert seen["dirs"] == [str(tmp_path / "bins")]
+
+
 def test_review_failure_is_returned_not_raised(monkeypatch, tmp_path):
     class Broken(_FakeRunner):
         def start(self, options, exe_files):
@@ -148,52 +174,6 @@ def test_generator_survives_a_review_failure_unless_fail_on_error(
         options={"blint_reviews_dir": str(tmp_path / "r"), "fail_on_error": fail_on_error},
     )
     assert generator.generate().success is expected
-
-
-def test_findings_file_carries_the_blint_check_findings(tmp_path):
-    reports = tmp_path / "reports"
-    (reports / "analysis" / "blint").mkdir(parents=True)
-    (reports / "analysis" / "blint" / "findings.json").write_text(
-        json.dumps(
-            {
-                "findings": [
-                    {
-                        "id": "CHECK_NX",
-                        "title": "Missing NX",
-                        "severity": "critical",
-                        "filename": str(tmp_path / "src" / "bin" / "app"),
-                    }
-                ]
-            }
-        )
-    )
-    document = scan_directory.write_findings(
-        str(reports), [], "7.0.0", scan_root=str(tmp_path / "src"), blint_reviews=True
-    )
-    (finding,) = document["findings"]
-    assert finding["category"] == "binary-hardening"
-    assert finding["locations"] == [{"binary": "bin/app"}]
-    on_disk = json.loads((reports / scan_directory.FINDINGS_FILE).read_text())
-    assert on_disk == document
-
-
-def test_damaged_blint_report_does_not_stop_the_findings_file(tmp_path):
-    reports = tmp_path / "reports"
-    (reports / "analysis" / "blint").mkdir(parents=True)
-    (reports / "analysis" / "blint" / "findings.json").write_text("{not json")
-    assert (
-        scan_directory.write_findings(str(reports), [], "7.0.0", blint_reviews=True)["findings"]
-        == []
-    )
-
-
-def test_blint_findings_of_an_earlier_scan_are_ignored_without_a_review_request(tmp_path):
-    reports = tmp_path / "reports"
-    (reports / "analysis" / "blint").mkdir(parents=True)
-    (reports / "analysis" / "blint" / "findings.json").write_text(
-        json.dumps({"findings": [{"id": "CHECK_NX", "title": "x", "severity": "high"}]})
-    )
-    assert scan_directory.write_findings(str(reports), [], "7.0.0")["findings"] == []
 
 
 def test_reviews_remove_the_reports_of_an_earlier_scan_before_they_start(tmp_path, monkeypatch):

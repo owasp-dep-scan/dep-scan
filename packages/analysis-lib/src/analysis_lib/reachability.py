@@ -6,9 +6,13 @@ executed path, a record's ``servicePurls`` attribute and an entry point's
 handler purls feed the reached-services set, and a reached purl typed
 ``framework`` in the BOM and not filterable is endpoint-reachable. The
 records come from the store the enrichment stage wrote; the engine reads no
-producer report itself. Occurrences in the BOMs, the ``x-atom-usages``
-usage targets of the OpenAPI documents and the post-build binary
-reachability support keep their role beside the records.
+producer report itself. The direct purls are counted from cdxgen's
+occurrence records of the top-level components of the BOM documents the
+analysis was given, one per occurrence entry, and an occurrence whose file
+is an ``x-atom-usages`` usage target of the OpenAPI documents makes its
+package endpoint-reachable. The
+BOMs are still read for their component types and lifecycles, which the
+post-build binary reachability support uses.
 """
 
 from analysis_lib import (
@@ -22,10 +26,11 @@ from analysis_lib.endpoints import (
     is_endpoint_filterable,
 )
 from analysis_lib.evidence import Evidence
+from analysis_lib.evidence.adapters import SourcePaths
 from analysis_lib.evidence.store import stream as stream_evidence
 from custom_json_diff.lib.utils import json_load
 from collections import defaultdict
-from typing import Dict, Iterator, Optional
+from typing import Dict, Iterable, Optional, Set
 import json
 import os
 
@@ -53,12 +58,56 @@ def counts_as_reached(record: Evidence) -> bool:
     return not (isinstance(confidence, str) and confidence.strip().lower() == UNCOUNTED_CONFIDENCE)
 
 
-def _reached_records(records: Iterator[Evidence]) -> Iterator[Evidence]:
-    """The records that count as reached evidence, per
-    :func:`counts_as_reached`."""
-    for record in records:
-        if counts_as_reached(record):
-            yield record
+def report_source(path: str, base: str) -> str:
+    """A report file's record source: its path relative to ``base`` with
+    forward slashes, or its base name when it sits outside ``base``, so no
+    source is ever absolute or climbs out. The adapters' callers name each
+    record's source this way, and the engine finds a document's records by
+    the same spelling."""
+    try:
+        relative = os.path.relpath(os.path.abspath(path), os.path.abspath(base))
+    except ValueError:
+        relative = ""
+    if relative and relative != "." and not relative.startswith(".."):
+        return relative.replace(os.sep, "/").replace("\\", "/")
+    return os.path.basename(path)
+
+
+def _document_sources(bom_files: Optional[Iterable[str]], base: Optional[str]) -> Set[str]:
+    """The record sources of the BOM documents the analysis was given."""
+    if not bom_files:
+        return set()
+    return {report_source(str(path), base or ".") for path in bom_files}
+
+
+def _is_direct_use(record: Evidence, sources: Set[str]) -> bool:
+    """Whether the record is one direct use of its package: a cdxgen
+    occurrence record of one of the documents whose record sources are
+    ``sources``, of a top-level component of that BOM. Occurrences of
+    nested components stay usage evidence for presence but are not direct
+    uses of the project."""
+    if not (
+        record.producer.name == "cdxgen"
+        and record.kind == "occurrence"
+        and record.source in sources
+    ):
+        return False
+    position = (record.attributes or {}).get("bomPosition", "top-level")
+    return position == "top-level"
+
+
+def _usage_target_files(usage_targets: Dict[str, bool], root: Optional[str]) -> Set[str]:
+    """The ``x-atom-usages`` file keys spelled the way cdxgen's adapter
+    spells an occurrence file: relative to the scan root with forward
+    slashes, ``./`` dropped. Both sides then follow the one rule, whatever
+    separator or prefix atom-tools and cdxgen wrote."""
+    paths = SourcePaths(roots=[root] if root else [])
+    files = set()
+    for key in usage_targets:
+        relative = paths.relative(key)
+        if relative:
+            files.add(relative)
+    return files
 
 
 def _iter_json_list(file_path: str):
@@ -154,18 +203,16 @@ class FrameworkReachability(ReachabilityAnalyzer):
         direct_purls = defaultdict(int)
         reached_purls = defaultdict(int)
         status = True
-        # Collect the direct purls based on the occurrences evidence in the BOMs
-        if analysis_options.bom_files:
-            for bom_file in analysis_options.bom_files:
-                data = json_load(bom_file)
-                # For now we will also include usability slice as well
-                for c in data.get("components", []):
-                    purl = c.get("purl", "")
-                    if c.get("evidence") and c["evidence"].get("occurrences"):
-                        direct_purls[purl] += len(c["evidence"].get("occurrences"))
-        # Count the reached purls from the evidence records
+        sources = _document_sources(analysis_options.bom_files, analysis_options.bom_dir)
+        # Count the direct purls from the BOMs' occurrence records and the
+        # reached purls from the reached-counted records.
         if analysis_options.evidence_file and os.path.isfile(analysis_options.evidence_file):
-            for record in _reached_records(stream_evidence(analysis_options.evidence_file)):
+            for record in stream_evidence(analysis_options.evidence_file):
+                if _is_direct_use(record, sources):
+                    for apurl in record.subject.purls:
+                        direct_purls[apurl] += 1
+                if not counts_as_reached(record):
+                    continue
                 for apurl in record.subject.purls:
                     reached_purls[apurl] += 1
         if not direct_purls and not reached_purls:
@@ -263,7 +310,7 @@ class SemanticReachability(FrameworkReachability):
                         # Ruby, Scala etc
                         if isinstance(v, dict) and v.get("x-atom-usages"):
                             self._track_usage_targets(usage_targets, v.get("x-atom-usages"))
-        # Collect the direct purls based on the occurrences evidence in the BOMs
+        # Collect the component types and lifecycles of the BOMs
         if analysis_options.bom_files:
             for bom_file in analysis_options.bom_files:
                 data = json_load(bom_file)
@@ -271,7 +318,6 @@ class SemanticReachability(FrameworkReachability):
                 is_post_build = any(
                     [aline for aline in lifecycles if aline.get("phase") == "post-build"]
                 )
-                # For now we will also include usability slice as well
                 for c in data.get("components", []):
                     purl = c.get("purl", "")
                     # Filter low confidence generic and file components
@@ -306,32 +352,38 @@ class SemanticReachability(FrameworkReachability):
                         # If this purl is also seen in a post-build SBOM, it is likely interesting
                         if postbuild_purls.get(purl):
                             interesting_postbuild_purls[purl] = True
-                    if c.get("evidence") and c["evidence"].get("occurrences"):
-                        direct_purls[purl] += len(c["evidence"].get("occurrences"))
-                        # A component is endpoint-reachable only when one of ITS
-                        # OWN occurrence locations is an atom usage target
-                        # (x-atom-usages). We do not mark every framework-typed
-                        # component with any occurrence as endpoint-reached just
-                        # because usage_targets is globally non-empty; that
-                        # over-attributes endpoints to components whose own
-                        # locations are never actually used.
-                        for occ in c["evidence"].get("occurrences"):
-                            if not occ.get("location"):
-                                continue
-                            if usage_targets.get(
-                                occ.get("location")
-                            ) and not is_endpoint_filterable(purl):
-                                endpoint_reached_purls[purl] += 1
-                                if postbuild_purls.get(purl):
-                                    interesting_postbuild_purls[purl] = True
-        # Count the reached purls, services and endpoint reachability from
-        # the evidence records. The adapters own service attribution: a
-        # record's ``servicePurls`` attribute holds exactly the purls the
-        # producer marked as services, so this walk never reads tags. An
-        # entry point's handler purls are its subject purls and count as
-        # services without an attribute.
+        # Count the direct purls, reached purls, services and endpoint
+        # reachability from the evidence records. Each occurrence record of
+        # a top-level component of the given BOMs is one direct use of its
+        # package. A package is endpoint-reachable from its occurrences only
+        # when one of ITS OWN occurrence files is an atom usage target
+        # (x-atom-usages, compared in the adapter's relative spelling), never
+        # because usage_targets is globally non-empty; that would attribute
+        # endpoints to packages whose own locations are never used. The
+        # adapters own service attribution: a record's ``servicePurls``
+        # attribute holds exactly the purls the producer marked as services,
+        # so this walk never reads tags. An entry point's handler purls are
+        # its subject purls and count as services without an attribute.
+        sources = _document_sources(analysis_options.bom_files, analysis_options.bom_dir)
+        target_files = _usage_target_files(
+            usage_targets, analysis_options.source_root or analysis_options.src_dir
+        )
         if analysis_options.evidence_file and os.path.isfile(analysis_options.evidence_file):
-            for record in _reached_records(stream_evidence(analysis_options.evidence_file)):
+            for record in stream_evidence(analysis_options.evidence_file):
+                if _is_direct_use(record, sources):
+                    location = record.locations[0].file if record.locations else None
+                    for purl in record.subject.purls:
+                        direct_purls[purl] += 1
+                        if (
+                            location
+                            and location in target_files
+                            and not is_endpoint_filterable(purl)
+                        ):
+                            endpoint_reached_purls[purl] += 1
+                            if postbuild_purls.get(purl):
+                                interesting_postbuild_purls[purl] = True
+                if not counts_as_reached(record):
+                    continue
                 service_purls = set((record.attributes or {}).get("servicePurls") or [])
                 for apurl in record.subject.purls:
                     reached_purls[apurl] += 1

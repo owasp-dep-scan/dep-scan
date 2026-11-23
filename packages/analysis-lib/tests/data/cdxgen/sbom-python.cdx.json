@@ -1,0 +1,1200 @@
+{
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.7",
+ "serialNumber": "urn:uuid:6aab5db0-f2f4-453d-97f2-03e069cd5449",
+ "version": 2,
+ "metadata": {
+  "timestamp": "2026-11-22T23:01:32Z",
+  "tools": {
+   "components": [
+    {
+     "type": "application",
+     "name": "python"
+    },
+    {
+     "group": "@cdxgen",
+     "name": "cdxgen",
+     "version": "13.9.0",
+     "purl": "pkg:npm/%40cdxgen/cdxgen@13.9.0",
+     "type": "application",
+     "bom-ref": "pkg:npm/@cdxgen/cdxgen@13.9.0",
+     "publisher": "OWASP Foundation",
+     "authors": [
+      {
+       "name": "OWASP Foundation"
+      }
+     ]
+    }
+   ]
+  },
+  "authors": [
+   {
+    "name": "OWASP Foundation"
+   }
+  ],
+  "lifecycles": [
+   {
+    "phase": "build"
+   }
+  ],
+  "component": {
+   "name": "recapp",
+   "version": "0.1.0",
+   "type": "application",
+   "bom-ref": "pkg:pypi/recapp@0.1.0",
+   "purl": "pkg:pypi/recapp@0.1.0",
+   "properties": [
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    }
+   ]
+  },
+  "properties": [
+   {
+    "name": "cdx:bom:componentSrcFiles",
+    "value": ".venv/lib/python3.15/site-packages/blinker-1.9.0.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/click-8.5.1.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/defusedxml-0.7.1.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/flask-3.1.3.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/itsdangerous-2.2.0.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/jinja2-3.1.6.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/markupsafe-3.0.4.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/pip-26.2.2.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/sqlparse-0.5.3.dist-info/METADATA\\n.venv/lib/python3.15/site-packages/werkzeug-3.1.9.dist-info/METADATA\\ncdxgen-venv-gLypnr\\npyproject.toml"
+   },
+   {
+    "name": "cdx:bom:componentTypes",
+    "value": "pypi"
+   },
+   {
+    "name": "cdx:introspection:confidence",
+    "value": "medium"
+   },
+   {
+    "name": "cdx:introspection:ecosystem:python:score",
+    "value": "100"
+   },
+   {
+    "name": "cdx:introspection:ecosystem:python:tier",
+    "value": "resolved"
+   },
+   {
+    "name": "cdx:introspection:ledgerComplete",
+    "value": "true"
+   },
+   {
+    "name": "cdx:introspection:remediationCount",
+    "value": "0"
+   },
+   {
+    "name": "cdx:introspection:schemaVersion",
+    "value": "1.1"
+   },
+   {
+    "name": "cdx:introspection:score",
+    "value": "100"
+   },
+   {
+    "name": "cdx:introspection:tier",
+    "value": "resolved"
+   }
+  ]
+ },
+ "components": [
+  {
+   "group": "",
+   "name": "Werkzeug",
+   "version": "3.1.9",
+   "description": "The comprehensive WSGI web application library.",
+   "scope": "optional",
+   "licenses": [
+    {
+     "expression": "BSD-3-Clause"
+    }
+   ],
+   "purl": "pkg:pypi/werkzeug@3.1.9",
+   "externalReferences": [
+    {
+     "type": "website",
+     "url": "https://discord.gg/pallets",
+     "comment": "Chat"
+    },
+    {
+     "type": "vcs",
+     "url": "https://github.com/pallets/werkzeug/",
+     "comment": "Source"
+    },
+    {
+     "type": "website",
+     "url": "https://palletsprojects.com/donate",
+     "comment": "Donate"
+    },
+    {
+     "type": "documentation",
+     "url": "https://werkzeug.palletsprojects.com/",
+     "comment": "Documentation"
+    },
+    {
+     "type": "release-notes",
+     "url": "https://werkzeug.palletsprojects.com/page/changes/",
+     "comment": "Changes"
+    }
+   ],
+   "type": "framework",
+   "bom-ref": "pkg:pypi/werkzeug@3.1.9",
+   "properties": [
+    {
+     "name": "cdx:python:requires_python",
+     "value": ">=3.9"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": ".venv/lib/python3.15/site-packages/werkzeug-3.1.9.dist-info/METADATA"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "instrumentation",
+        "confidence": 1,
+        "value": "cdxgen-venv-gLypnr"
+       }
+      ],
+      "concludedValue": "cdxgen-venv-gLypnr"
+     }
+    ]
+   },
+   "tags": [
+    "framework",
+    "web",
+    "wsgi"
+   ]
+  },
+  {
+   "group": "",
+   "name": "sqlparse",
+   "version": "0.5.3",
+   "description": "A non-validating SQL parser.",
+   "scope": "required",
+   "licenses": [],
+   "purl": "pkg:pypi/sqlparse@0.5.3",
+   "externalReferences": [
+    {
+     "type": "vcs",
+     "url": "https://github.com/andialbrecht/sqlparse",
+     "comment": "Source"
+    },
+    {
+     "type": "website",
+     "url": "https://github.com/andialbrecht/sqlparse",
+     "comment": "Home"
+    },
+    {
+     "type": "issue-tracker",
+     "url": "https://github.com/andialbrecht/sqlparse/issues",
+     "comment": "Tracker"
+    },
+    {
+     "type": "documentation",
+     "url": "https://sqlparse.readthedocs.io/",
+     "comment": "Documentation"
+    },
+    {
+     "type": "website",
+     "url": "https://sqlparse.readthedocs.io/en/latest/changes.html",
+     "comment": "Release Notes"
+    }
+   ],
+   "type": "library",
+   "bom-ref": "pkg:pypi/sqlparse@0.5.3",
+   "properties": [
+    {
+     "name": "cdx:python:requires_python",
+     "value": ">=3.8"
+    },
+    {
+     "name": "internal:ImportedModules",
+     "value": "sqlparse"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": ".venv/lib/python3.15/site-packages/sqlparse-0.5.3.dist-info/METADATA"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 0.5,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 0.5,
+        "value": ".venv/lib/python3.15/site-packages/sqlparse-0.5.3.dist-info/METADATA"
+       }
+      ],
+      "concludedValue": ".venv/lib/python3.15/site-packages/sqlparse-0.5.3.dist-info/METADATA"
+     }
+    ],
+    "occurrences": [
+     {
+      "location": "app.py",
+      "line": 15
+     },
+     {
+      "location": "app.py",
+      "line": 4
+     },
+     {
+      "location": "app.py",
+      "symbol": "sqlparse.split",
+      "line": 17,
+      "offset": 27
+     },
+     {
+      "location": "app.py",
+      "symbol": "sqlparse.format",
+      "line": 18,
+      "offset": 13
+     }
+    ],
+    "callstack": {
+     "frames": [
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 48,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 25,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 18,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 31,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 5,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 1,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 25,
+       "column": 28,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 15,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 42,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 27,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 62,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 13,
+       "fullFilename": "app.py"
+      }
+     ]
+    }
+   },
+   "tags": [
+    "sql"
+   ]
+  },
+  {
+   "group": "",
+   "name": "pip",
+   "version": "26.2.2",
+   "description": "The PyPA recommended tool for installing Python packages.",
+   "scope": "optional",
+   "licenses": [
+    {
+     "expression": "MIT"
+    }
+   ],
+   "purl": "pkg:pypi/pip@26.2.2",
+   "externalReferences": [
+    {
+     "type": "vcs",
+     "url": "https://github.com/pypa/pip",
+     "comment": "Source"
+    },
+    {
+     "type": "documentation",
+     "url": "https://pip.pypa.io",
+     "comment": "Documentation"
+    },
+    {
+     "type": "website",
+     "url": "https://pip.pypa.io/",
+     "comment": "Homepage"
+    },
+    {
+     "type": "release-notes",
+     "url": "https://pip.pypa.io/en/stable/news/",
+     "comment": "Changelog"
+    }
+   ],
+   "type": "library",
+   "bom-ref": "pkg:pypi/pip@26.2.2",
+   "properties": [
+    {
+     "name": "cdx:python:requires_python",
+     "value": ">=3.10"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": ".venv/lib/python3.15/site-packages/pip-26.2.2.dist-info/METADATA"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 0.5,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 0.5,
+        "value": ".venv/lib/python3.15/site-packages/pip-26.2.2.dist-info/METADATA"
+       }
+      ],
+      "concludedValue": ".venv/lib/python3.15/site-packages/pip-26.2.2.dist-info/METADATA"
+     }
+    ]
+   }
+  },
+  {
+   "group": "",
+   "name": "Flask",
+   "version": "3.1.3",
+   "description": "A simple framework for building complex web applications.",
+   "scope": "optional",
+   "licenses": [
+    {
+     "expression": "BSD-3-Clause"
+    }
+   ],
+   "purl": "pkg:pypi/flask@3.1.3",
+   "externalReferences": [
+    {
+     "type": "website",
+     "url": "https://discord.gg/pallets",
+     "comment": "Chat"
+    },
+    {
+     "type": "documentation",
+     "url": "https://flask.palletsprojects.com/",
+     "comment": "Documentation"
+    },
+    {
+     "type": "release-notes",
+     "url": "https://flask.palletsprojects.com/page/changes/",
+     "comment": "Changes"
+    },
+    {
+     "type": "vcs",
+     "url": "https://github.com/pallets/flask/",
+     "comment": "Source"
+    },
+    {
+     "type": "website",
+     "url": "https://palletsprojects.com/donate",
+     "comment": "Donate"
+    }
+   ],
+   "type": "framework",
+   "bom-ref": "pkg:pypi/flask@3.1.3",
+   "properties": [
+    {
+     "name": "cdx:python:requires_python",
+     "value": ">=3.9"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": ".venv/lib/python3.15/site-packages/flask-3.1.3.dist-info/METADATA"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 0.8,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 0.8,
+        "value": "pyproject.toml"
+       }
+      ],
+      "concludedValue": "pyproject.toml"
+     }
+    ],
+    "occurrences": [
+     {
+      "location": "app.py",
+      "symbol": "flask.Flask.post",
+      "line": 21,
+      "offset": 2
+     },
+     {
+      "location": "app.py",
+      "symbol": "flask.request.get_data",
+      "line": 24,
+      "offset": 25
+     },
+     {
+      "location": "app.py",
+      "symbol": "flask.Flask",
+      "line": 7,
+      "offset": 7
+     }
+    ],
+    "callstack": {
+     "frames": [
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 48,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 25,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 18,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 31,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 5,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 1,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 25,
+       "column": 28,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 15,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 42,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 27,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 62,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 13,
+       "fullFilename": "app.py"
+      }
+     ]
+    }
+   },
+   "tags": [
+    "framework",
+    "web"
+   ]
+  },
+  {
+   "authors": [
+    {
+     "name": "Christian Heimes"
+    }
+   ],
+   "publisher": "Christian Heimes",
+   "group": "",
+   "name": "defusedxml",
+   "version": "0.7.1",
+   "description": "XML bomb protection for Python stdlib modules",
+   "scope": "required",
+   "licenses": [
+    {
+     "license": {
+      "id": "PSF-2.0",
+      "url": "https://opensource.org/licenses/PSF-2.0",
+      "properties": [
+       {
+        "name": "cdx:license:category",
+        "value": "Permissive"
+       },
+       {
+        "name": "cdx:license:foss",
+        "value": "true"
+       },
+       {
+        "name": "cdx:license:osiApproved",
+        "value": "false"
+       },
+       {
+        "name": "cdx:license:fsfLibre",
+        "value": "false"
+       },
+       {
+        "name": "cdx:license:deprecated",
+        "value": "false"
+       }
+      ]
+     }
+    }
+   ],
+   "purl": "pkg:pypi/defusedxml@0.7.1",
+   "externalReferences": [
+    {
+     "type": "website",
+     "url": "https://github.com/tiran/defusedxml"
+    }
+   ],
+   "type": "library",
+   "bom-ref": "pkg:pypi/defusedxml@0.7.1",
+   "properties": [
+    {
+     "name": "cdx:license:category",
+     "value": "Permissive"
+    },
+    {
+     "name": "cdx:python:requires_python",
+     "value": ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+    },
+    {
+     "name": "internal:ImportedModules",
+     "value": "defusedxml.ElementTree"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": ".venv/lib/python3.15/site-packages/defusedxml-0.7.1.dist-info/METADATA"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 0.8,
+      "methods": [
+       {
+        "technique": "manifest-analysis",
+        "confidence": 0.8,
+        "value": "pyproject.toml"
+       }
+      ],
+      "concludedValue": "pyproject.toml"
+     }
+    ],
+    "occurrences": [
+     {
+      "location": "app.py",
+      "line": 10
+     },
+     {
+      "location": "app.py",
+      "line": 3
+     },
+     {
+      "location": "app.py",
+      "symbol": "defusedxml.fromstring",
+      "line": 12,
+      "offset": 12
+     }
+    ],
+    "callstack": {
+     "frames": [
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 48,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 25,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 18,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 31,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 5,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 1,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 25,
+       "column": 28,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 15,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 42,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 27,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 62,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 13,
+       "fullFilename": "app.py"
+      }
+     ]
+    }
+   },
+   "tags": [
+    "xml"
+   ]
+  },
+  {
+   "group": "",
+   "name": "recapp",
+   "version": "0.1.0",
+   "scope": "optional",
+   "purl": "pkg:pypi/recapp@0.1.0",
+   "type": "library",
+   "bom-ref": "pkg:pypi/recapp@0.1.0",
+   "properties": [
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "instrumentation",
+        "confidence": 1,
+        "value": "cdxgen-venv-gLypnr"
+       }
+      ],
+      "concludedValue": "cdxgen-venv-gLypnr"
+     }
+    ]
+   }
+  },
+  {
+   "group": "",
+   "name": "sqlparse",
+   "version": "0.6.1",
+   "scope": "required",
+   "purl": "pkg:pypi/sqlparse@0.6.1",
+   "type": "library",
+   "bom-ref": "pkg:pypi/sqlparse@0.6.1",
+   "properties": [
+    {
+     "name": "internal:ImportedModules",
+     "value": "sqlparse"
+    },
+    {
+     "name": "internal:SrcFile",
+     "value": "pyproject.toml"
+    }
+   ],
+   "evidence": {
+    "identity": [
+     {
+      "field": "purl",
+      "confidence": 1,
+      "methods": [
+       {
+        "technique": "instrumentation",
+        "confidence": 1,
+        "value": "cdxgen-venv-gLypnr"
+       }
+      ],
+      "concludedValue": "cdxgen-venv-gLypnr"
+     }
+    ],
+    "occurrences": [
+     {
+      "location": "app.py",
+      "line": 15
+     },
+     {
+      "location": "app.py",
+      "line": 17
+     },
+     {
+      "location": "app.py",
+      "line": 18
+     },
+     {
+      "location": "app.py",
+      "line": 4
+     }
+    ],
+    "callstack": {
+     "frames": [
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 48,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 25,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 18,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 31,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 12,
+       "column": 5,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "parse_config",
+       "line": 10,
+       "column": 1,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 24,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "load_settings",
+       "line": 25,
+       "column": 28,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 15,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 42,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 27,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 17,
+       "column": 15,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 62,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 12,
+       "fullFilename": "app.py"
+      },
+      {
+       "package": "",
+       "module": "",
+       "function": "normalize",
+       "line": 18,
+       "column": 13,
+       "fullFilename": "app.py"
+      }
+     ]
+    }
+   },
+   "tags": [
+    "sql"
+   ]
+  }
+ ],
+ "annotations": [
+  {
+   "bom-ref": "metadata-annotations",
+   "subjects": [
+    "pkg:pypi/recapp@0.1.0"
+   ],
+   "annotator": {
+    "component": {
+     "group": "@cdxgen",
+     "name": "cdxgen",
+     "version": "13.9.0",
+     "purl": "pkg:npm/%40cdxgen/cdxgen@13.9.0",
+     "type": "application",
+     "bom-ref": "pkg:npm/@cdxgen/cdxgen@13.9.0",
+     "publisher": "OWASP Foundation",
+     "authors": [
+      {
+       "name": "OWASP Foundation"
+      }
+     ]
+    }
+   },
+   "timestamp": "2026-11-22T23:01:32Z",
+   "text": "This Software-as-a-Service BOM (SaaSBOM) document was created on Sunday, November 22, 2026. The xBOM tools used are: python and cdxgen. The data was captured during the build lifecycle phase. The document describes an application named 'recapp' with version '0.1.0'. There are 12 components. 1 are described in this SaaSBOM under services. Further, there is a formulation section with components, workflows and steps for reproducibility. This SBOM contains 3 dynamically instrumented library components discovered during process execution tracing. These libraries were loaded at runtime and mapped back to system packages."
+  },
+  {
+   "subjects": [
+    "urn:uuid:6aab5db0-f2f4-453d-97f2-03e069cd5449"
+   ],
+   "annotator": {
+    "component": {
+     "group": "@cdxgen",
+     "name": "cdxgen",
+     "version": "13.9.0",
+     "purl": "pkg:npm/%40cdxgen/cdxgen@13.9.0",
+     "type": "application",
+     "bom-ref": "pkg:npm/@cdxgen/cdxgen@13.9.0",
+     "publisher": "OWASP Foundation",
+     "authors": [
+      {
+       "name": "OWASP Foundation"
+      }
+     ]
+    }
+   },
+   "timestamp": "2026-11-22T23:36:41Z",
+   "text": "The recording rule fired for this BOM.\n\n| Property | Value |\n| --- | --- |\n| cdx:audit:category | recording |\n| cdx:audit:name | Recording fixture rule |\n| cdx:audit:ruleId | REC-001 |\n| cdx:audit:severity | low |"
+  }
+ ]
+}

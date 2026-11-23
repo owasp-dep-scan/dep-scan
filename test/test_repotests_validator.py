@@ -552,3 +552,33 @@ def test_the_assert_check_uses_the_atom_version_the_lock_records(validator, tmp_
     validator.run_reachability(ATOM4_FIXTURE, "SemanticReachability", "4.0.2")
     validator.run_reachability(ATOM4_FIXTURE, "SemanticReachability")
     assert seen == ["4.0.2", ""]
+
+
+def test_assert_counts_direct_uses_from_cdxgen_occurrences(validator, tmp_path):
+    # A C project's slices name no purls, so nothing is reached; the engine
+    # still succeeds on the direct uses it counts from cdxgen's occurrence
+    # records, which the validator reads as a scan's inventory stage does.
+    bom_path = tmp_path / "sbom-c.cdx.json"
+    write_bom(bom_path)
+    bom = json.loads(bom_path.read_text(encoding="utf-8"))
+    bom["components"] = [
+        {
+            "type": "library",
+            "name": "zlib",
+            "version": "1.3.1",
+            "purl": "pkg:generic/zlib@1.3.1",
+            "bom-ref": "pkg:generic/zlib@1.3.1",
+            "evidence": {"occurrences": [{"location": "src/main.c", "line": 3}]},
+        }
+    ]
+    bom_path.write_text(json.dumps(bom), encoding="utf-8")
+    write_reachables(tmp_path / "c-reachables.slices.json", [flow(), flow()])
+    result = validator.run_reachability(tmp_path, "SemanticReachability")
+    assert dict(result.direct_purls) == {"pkg:generic/zlib@1.3.1": 1}
+    assert not result.reached_purls
+    # Without the occurrence the engine has nothing to count and reports
+    # failure, which is what the assertion catches.
+    del bom["components"][0]["evidence"]
+    bom_path.write_text(json.dumps(bom), encoding="utf-8")
+    with pytest.raises(validator.ValidationFailure, match="reported failure"):
+        validator.run_reachability(tmp_path, "SemanticReachability")

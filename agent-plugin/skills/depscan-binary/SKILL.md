@@ -22,9 +22,13 @@ depscan scan /absolute/path/to/binary --target-kind binary --checks binary --for
 blint's raw `findings.json` (only when a rule fired), `reviews.json` and
 `analysis-coverage.json` land under `analysis/blint/` in the reports
 directory, and the manifest lists them. Behaviour reviews stay in
-`reviews.json`; they are not findings. The steps below run blint directly
-for what the check does not cover: the deep SBOM, `capabilities`, `diff`
-and the link closure. The rules in
+`reviews.json`; they are not findings. The checks and the reviews are
+also `presence` records with `producer.name == "blint"` in the scan's
+`evidence.jsonl` (polarity `negative` for a check the binary fails,
+`positive` for a review), and the failed and skipped units of
+`analysis-coverage.json` become `coverage-gap` caveats on every one. The
+steps below run blint directly for what the check does not cover: the deep
+SBOM, `capabilities`, `diff` and the link closure. The rules in
 [reference/safety.md](../../reference/safety.md) apply: a binary from an
 untrusted source is still untrusted input; never execute it, and never
 run its installer.

@@ -327,7 +327,8 @@ def run_reachability(data_dir, analyzer, atom_version=None):
     from analysis_lib import ReachabilityAnalysisKV
     from analysis_lib.evidence import store as evidence_store
     from analysis_lib.evidence.adapters import atom as atom_adapter
-    from analysis_lib.reachability import get_reachability_impl
+    from analysis_lib.evidence.adapters import cdxgen as cdxgen_adapter
+    from analysis_lib.reachability import get_reachability_impl, report_source
     from depscan.lib import bom as bom_mod
 
     with tempfile.TemporaryDirectory() as scratch:
@@ -368,6 +369,23 @@ def run_reachability(data_dir, analyzer, atom_version=None):
         )
         if atom_result.status == "completed":
             results["atom"] = atom_result
+        # cdxgen's occurrence records of each BOM are where the engine counts
+        # direct uses and endpoint targets, as the inventory stage of a scan
+        # collects them.
+        for bom_file in options.bom_files or []:
+            if str(bom_file).endswith(".introspection.json"):
+                continue
+            try:
+                document = json.loads(Path(bom_file).read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, ValueError, RecursionError):
+                continue
+            cdxgen_result = cdxgen_adapter.extract(
+                document,
+                source=report_source(str(bom_file), str(data_dir)),
+                source_root=str(data_dir),
+            )
+            if cdxgen_result.status == "completed":
+                results[f"cdxgen:{bom_file}"] = cdxgen_result
         records = [
             record
             for result in results.values()

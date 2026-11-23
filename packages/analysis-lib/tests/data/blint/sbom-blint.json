@@ -1,0 +1,149 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "serialNumber": "urn:uuid:8b18a635-1eca-4891-b4f0-f9ac0db617ac",
+  "metadata": {
+    "timestamp": "2026-11-22T22:54:20Z",
+    "lifecycles": [
+      {
+        "phase": "post-build"
+      }
+    ],
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "author": "OWASP Foundation",
+          "publisher": "OWASP Foundation",
+          "group": "owasp-dep-scan",
+          "name": "blint",
+          "version": "4.0.1",
+          "purl": "pkg:pypi/blint@4.0.1"
+        }
+      ]
+    },
+    "component": {
+      "type": "application",
+      "bom-ref": "pkg:generic/plain-libc-demo.elf",
+      "name": "plain-libc-demo.elf",
+      "purl": "pkg:generic/plain-libc-demo.elf",
+      "properties": [
+        {
+          "name": "internal:binary_type",
+          "value": "ELF"
+        },
+        {
+          "name": "internal:magic",
+          "value": "7f 45 4c 46 20 10 10 00"
+        },
+        {
+          "name": "internal:class",
+          "value": "ELF64"
+        },
+        {
+          "name": "internal:interpreter",
+          "value": "/lib/ld-linux-aarch64.so.1"
+        },
+        {
+          "name": "internal:machine_type",
+          "value": "AARCH64"
+        },
+        {
+          "name": "internal:relro",
+          "value": "partial"
+        },
+        {
+          "name": "internal:is_pie",
+          "value": "true"
+        },
+        {
+          "name": "internal:has_nx",
+          "value": "true"
+        },
+        {
+          "name": "internal:static",
+          "value": "true"
+        },
+        {
+          "name": "internal:GNU_BUILD_ID",
+          "value": "5d912615ed979d88116ecaac294eef65b93665b6"
+        },
+        {
+          "name": "internal:GNU_ABI_TAG",
+          "value": "3.7.0"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "pkg:file/ld-linux-aarch64.so.1",
+      "name": "ld-linux-aarch64.so.1",
+      "scope": "required",
+      "purl": "pkg:file/ld-linux-aarch64.so.1",
+      "evidence": {
+        "identity": {
+          "field": "purl",
+          "confidence": 0.5,
+          "methods": [
+            {
+              "technique": "binary-analysis",
+              "confidence": 0.5,
+              "value": "corpus/plain-libc-demo.elf"
+            }
+          ]
+        }
+      },
+      "properties": [
+        {
+          "name": "internal:srcFile",
+          "value": "corpus/plain-libc-demo.elf"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "pkg:file/libc.so.6",
+      "name": "libc.so.6",
+      "scope": "required",
+      "purl": "pkg:file/libc.so.6",
+      "evidence": {
+        "identity": {
+          "field": "purl",
+          "confidence": 0.5,
+          "methods": [
+            {
+              "technique": "binary-analysis",
+              "confidence": 0.5,
+              "value": "corpus/plain-libc-demo.elf"
+            }
+          ]
+        }
+      },
+      "properties": [
+        {
+          "name": "internal:srcFile",
+          "value": "corpus/plain-libc-demo.elf"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:generic/plain-libc-demo.elf",
+      "dependsOn": [
+        "pkg:file/ld-linux-aarch64.so.1",
+        "pkg:file/libc.so.6"
+      ]
+    },
+    {
+      "ref": "pkg:file/libc.so.6",
+      "dependsOn": []
+    },
+    {
+      "ref": "pkg:file/ld-linux-aarch64.so.1",
+      "dependsOn": []
+    }
+  ]
+}

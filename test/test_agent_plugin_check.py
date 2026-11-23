@@ -164,7 +164,7 @@ def test_version_mismatch(tmp_path):
     problems = _problems(tree)
     assert any("release versions differ" in p["problem"] for p in problems)
     mismatch = next(p for p in problems if "release versions differ" in p["problem"])
-    assert "pyproject.toml=7.0.0-alpha.1" in mismatch["problem"]
+    assert "pyproject.toml=7.0.0-alpha.2" in mismatch["problem"]
     assert "9.9.9" in mismatch["problem"]
 
 

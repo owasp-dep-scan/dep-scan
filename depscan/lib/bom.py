@@ -1,4 +1,3 @@
-import json
 import glob
 import os
 import re
@@ -110,6 +109,9 @@ class BomResult:
     :param adapter_results: the evidence adapter result of every language tool
         this run produced or read a report for, keyed by tool name. The
         enrichment stage merges their records into the evidence store.
+    :param introspection_gate_missed: the documents cdxgen wrote with exit
+        status 4 (an introspection score below its gate). The inventory
+        stage logs their fidelity tier from the introspection records.
     """
 
     success: bool
@@ -118,6 +120,7 @@ class BomResult:
     extractor_failures: List[str] = field(default_factory=list)
     not_assessed: List[str] = field(default_factory=list)
     adapter_results: Dict[str, AdapterResult] = field(default_factory=dict)
+    introspection_gate_missed: List[str] = field(default_factory=list)
 
 
 # cdxgen exit statuses that still deliver a usable BOM. 4 means the
@@ -131,37 +134,6 @@ CDXGEN_PARTIAL_EXIT_CODES = (4,)
 # "fail-on-error: <detail> (tool: <tool>, exit <n>)." The closing summary
 # line has no "(tool: ...)" part.
 _EXTRACTOR_FAILURE_RE = re.compile(r"^fail-on-error: .* \(tool: [^)]*\)\.$")
-
-
-def _introspection_summary(bom_file: str) -> Optional[Dict]:
-    """The ``overall`` block of cdxgen's JSON introspection report, if any."""
-    path = f"{bom_file}.introspection.json"
-    if not os.path.exists(path):
-        return None
-    try:
-        with open(path, encoding="utf-8") as fp:
-            data = json.load(fp)
-    except (OSError, ValueError):
-        return None
-    overall = data.get("overall") if isinstance(data, dict) else None
-    return overall if isinstance(overall, dict) else None
-
-
-def _log_introspection_tier(bom_file: str) -> None:
-    """Log the fidelity tier and score recorded for ``bom_file``."""
-    overall = _introspection_summary(bom_file)
-    if overall:
-        LOG.warning(
-            "Introspection: overall tier %s, score %s/100 (report: %s).",
-            overall.get("tier"),
-            overall.get("score"),
-            f"{bom_file}.introspection.json",
-        )
-    else:
-        LOG.warning(
-            "Introspection report %s was missing or unreadable.",
-            f"{bom_file}.introspection.json",
-        )
 
 
 def _extractor_failures(command_output: Optional[str]) -> List[str]:
@@ -217,11 +189,13 @@ def _cdxgen_exit_verdict(bom_result, bom_file: str, stage: str) -> List[str]:
     if returncode in (None, 0):
         return []
     if returncode == 4:
+        # The fidelity tier is logged from the introspection record once
+        # cdxgen's adapter has read the report (BomResult's
+        # introspection_gate_missed names the BOM).
         LOG.warning(
             "cdxgen exited 4 for the %s BOM: the introspection score is below the gate.",
             stage,
         )
-        _log_introspection_tier(bom_file)
         return []
     if returncode == 5:
         failures = _extractor_failures(bom_result.command_output)
@@ -644,6 +618,9 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
             extractor_failures=extractor_failures,
             not_assessed=not_assessed,
             adapter_results=adapter_results,
+            introspection_gate_missed=(
+                [bom_file] if getattr(bom_result, "returncode", None) == 4 else []
+            ),
         )
 
 
@@ -1682,6 +1659,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     written_bom_files = []
     extractor_failures: List[str] = []
     not_assessed: List[str] = []
+    introspection_gate_missed: List[str] = []
     prebuild_bom_file = options.get("prebuild_bom_file")
     build_bom_file = options.get("build_bom_file")
     postbuild_bom_file = options.get("postbuild_bom_file")
@@ -1700,6 +1678,8 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         if not bom_result.success:
             return False
         extractor_failures.extend(_cdxgen_exit_verdict(bom_result, stage_file, stage))
+        if getattr(bom_result, "returncode", None) == 4:
+            introspection_gate_missed.append(stage_file)
         for reason in _atom_not_assessed(bom_result):
             if reason not in not_assessed:
                 not_assessed.append(reason)
@@ -1819,6 +1799,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         extractor_failures=extractor_failures,
         not_assessed=not_assessed,
         adapter_results=adapter_results,
+        introspection_gate_missed=introspection_gate_missed,
     )
 
 

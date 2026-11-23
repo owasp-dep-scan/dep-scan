@@ -258,13 +258,74 @@ def test_bom_usage_evidence_proves_presence_and_names_cdxgen():
     )
     inputs = _inputs(
         scope,
-        bom_components=[
-            {"purl": REF, "scope": "required", "evidence": {"occurrences": [{"location": "a.py"}]}}
+        bom_components=[{"purl": REF, "scope": "required"}],
+        # The occurrence record the evidence adapter built from the BOM's
+        # usage evidence; presence reads the records, not the components.
+        records=[
+            _evidence_record(
+                [REF], producer_name="cdxgen", kind="occurrence", source="sbom-python.cdx.json"
+            )
         ],
     )
     exploitability = exploitability_for(inputs.evidence_for(REF), RULES)
     assert exploitability.axes.presence == "proven"
     assert exploitability.sources == {"presence": ["vdb", "cdxgen"]}
+
+
+def test_a_component_evidence_block_without_records_proves_nothing():
+    """The component's own evidence block is never read: without a usage
+    record the package stays likely, whatever the component carries."""
+    scope = ReachScope(analyzers=["atom"], reached=set(), succeeded=True, analyzer_types=ATOM_PYPI)
+    inputs = _inputs(
+        scope,
+        bom_components=[
+            {"purl": REF, "scope": "required", "evidence": {"occurrences": [{"location": "a.py"}]}}
+        ],
+    )
+    assert exploitability_for(inputs.evidence_for(REF), RULES).axes.presence == "likely"
+
+
+@pytest.mark.parametrize(
+    "presence_reached, expected_reasons",
+    [
+        (False, 1),
+        # A reached package is proven by reach; its unread usage evidence
+        # changes nothing about the presence value, so no reason is named.
+        (True, 0),
+    ],
+)
+def test_unread_usage_evidence_is_named_in_the_finding_coverage(
+    presence_reached, expected_reasons
+):
+    """A package whose BOM's usage evidence was not assessed keeps the
+    presence the database match gives it, and the finding's coverage names
+    why usage could not prove more. The finding itself stays assessed."""
+    scope = ReachScope(
+        analyzers=["atom"],
+        reached={REF} if presence_reached else {OTHER},
+        succeeded=True,
+        analyzer_types=ATOM_PYPI,
+    )
+    inputs = _inputs(scope, bom_components=[{"purl": REF, "scope": "required"}])
+    graded = exploitability_for(inputs.evidence_for(REF), RULES)
+    reason = "cdxgen's usage evidence in sbom.json was not assessed: schema 2.0"
+    (finding,) = findings_from_vdr(
+        [_vuln_for(REF)],
+        producer_version="1",
+        exploitability={("CVE-2024-1111", REF): graded},
+        usage_not_assessed={REF: reason},
+    )
+    assert finding.coverage.state == "assessed"
+    reasons = finding.coverage.reasons or []
+    assert len(reasons) == expected_reasons
+    if expected_reasons:
+        assert _exploitability(finding).axes.presence == "likely"
+        assert reasons[0].to_dict() == {
+            "capability": "presence:usage",
+            "reason": "report-not-assessed",
+            "detail": reason,
+        }
+    validate("finding", finding.to_dict())
 
 
 def test_absent_from_a_non_empty_reached_set_is_unknown_never_refuted():
