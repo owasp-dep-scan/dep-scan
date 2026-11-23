@@ -394,9 +394,7 @@ def test_stage_analysis_licenses_writes_the_license_report(tmp_path, monkeypatch
     assert "CC-BY-NC-4.0" in rows[0]["License Id"]
 
 
-def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(
-    tmp_path, monkeypatch
-):
+def test_stage_analysis_licenses_writes_the_report_when_nothing_matched(tmp_path, monkeypatch):
     """A license scan that matched nothing still writes its report.
 
     The report file is the mark of a scan that ran: it is written with no
@@ -914,6 +912,7 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         # One produced result, so the findings file is written at all; a scan
         # whose every type failed writes none.
         scans=[object()],
+        blint_review_ran=False,
     )
     pipeline.finish_scan_directory(ctx)
     assert captured["blint_reviews"] is expected
@@ -921,6 +920,43 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         "the findings file receives the scan's evidence records, the blint ones included"
     )
     assert captured["usage_not_assessed"] is usage_not_assessed
+
+
+@pytest.mark.parametrize(
+    "review_ran, written",
+    [(False, False), (True, True)],
+)
+def test_a_scan_with_no_matched_type_writes_a_findings_file_only_for_a_review(
+    monkeypatch, tmp_path, review_ran, written
+):
+    """cdxgen's own evidence records do not make an empty findings array
+    mean anything: with no project type matched (an inventory that listed
+    no packages) only a completed blint review, whose findings are
+    findings, writes the file."""
+    calls = []
+    monkeypatch.setattr(
+        pipeline.scan_directory,
+        "write_findings",
+        lambda *a, **k: calls.append(k) or {"findings": []},
+    )
+    monkeypatch.setattr(pipeline.scan_directory, "write_manifest", lambda *a, **k: None)
+    ctx = SimpleNamespace(
+        scan_dir=SimpleNamespace(build=lambda **k: {}),
+        reports_dir=str(tmp_path),
+        all_pkg_vulnerabilities=[],
+        src_dir=str(tmp_path),
+        exploitability={},
+        depscan_options={},
+        project_types=["universal"],
+        vdb_flavor=None,
+        shards_connected=False,
+        evidence_records=[object()],
+        usage_not_assessed={},
+        scans=[],
+        blint_review_ran=review_ran,
+    )
+    pipeline.finish_scan_directory(ctx)
+    assert bool(calls) is written
 
 
 def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):

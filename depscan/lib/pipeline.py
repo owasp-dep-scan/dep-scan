@@ -875,12 +875,13 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     files that exist, the evidence files included. A scan that stopped
     partway still gets one, carrying the failed stage and its reason.
 
-    A scan where no project type produced a result and no evidence was
-    collected (every type's inventory failed) writes no findings file: an
-    empty findings array is the mark of a scan whose matching ran and found
-    nothing, and nothing here was assessed. Evidence records alone still
-    write the file, because a blint review's binary-hardening findings are
-    findings even when the BOM it reviewed lists no components to scan. The
+    A scan where no project type produced a result (every type's inventory
+    failed or listed no packages) and no blint review ran writes no findings
+    file: an empty findings array is the mark of a scan whose matching ran
+    and found nothing, and nothing here was matched. Cdxgen's own evidence
+    records do not change that. A completed blint review still writes the
+    file, because its binary-hardening findings are findings even when the
+    BOM it reviewed lists no components to scan. The
     manifest it still writes shows no matching stage completed, which is
     what refuses the directory at load time. Returns the manifest and the
     findings array, or None when this run writes no scan directory.
@@ -889,16 +890,13 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     if scan_dir is None:
         return None
     findings: List = []
-    if ctx.scans or ctx.evidence_records:
+    if ctx.scans or ctx.blint_review_ran:
         findings_document = scan_directory.write_findings(
             ctx.reports_dir,
             ctx.all_pkg_vulnerabilities,
             get_version(),
             exploitability=ctx.exploitability,
-            blint_reviews=any(
-                blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
-                for project_type in (ctx.project_types or [None])
-            ),
+            blint_reviews=_scan_requested_blint_reviews(ctx),
             evidence_records=ctx.evidence_records,
             usage_not_assessed=ctx.usage_not_assessed,
         )
@@ -2604,9 +2602,7 @@ def _render_binary_review(ctx) -> None:
             binary_review.read_coverage_units(path) for path in ctx.blint_coverage_files
         )
         console.print(
-            binary_review.coverage_summary(
-                len(rows), units, binary_review.COVERAGE_RELATIVE_PATH
-            )
+            binary_review.coverage_summary(len(rows), units, binary_review.COVERAGE_RELATIVE_PATH)
         )
 
 
