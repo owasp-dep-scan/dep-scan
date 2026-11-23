@@ -857,29 +857,36 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     written last, through a temporary file and a rename, so it lists only
     files that exist, the evidence files included. A scan that stopped
     partway still gets one, carrying the failed stage and its reason.
-    Returns the manifest and the findings array, or None when this run
-    writes no scan directory.
+
+    A scan where no project type produced a result (every type's inventory
+    failed or found no packages) writes no findings file: an empty findings
+    array is the mark of a scan whose matching ran and found nothing, and
+    nothing here was assessed. The manifest it still writes shows no
+    matching stage completed, which is what refuses the directory at load
+    time. Returns the manifest and the findings array, or None when this
+    run writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
         return None
-    findings_document = scan_directory.write_findings(
-        ctx.reports_dir,
-        ctx.all_pkg_vulnerabilities,
-        get_version(),
-        exploitability=ctx.exploitability,
-        blint_reviews=any(
-            blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
-            for project_type in (ctx.project_types or [None])
-        ),
-        evidence_records=ctx.evidence_records,
-        usage_not_assessed=ctx.usage_not_assessed,
-    )
+    findings: List = []
+    if ctx.scans:
+        findings_document = scan_directory.write_findings(
+            ctx.reports_dir,
+            ctx.all_pkg_vulnerabilities,
+            get_version(),
+            exploitability=ctx.exploitability,
+            blint_reviews=any(
+                blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
+                for project_type in (ctx.project_types or [None])
+            ),
+            evidence_records=ctx.evidence_records,
+            usage_not_assessed=ctx.usage_not_assessed,
+        )
+        findings = findings_document["findings"]
     evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
     if os.path.isfile(evidence_path):
-        index = evidence_store.build_index(
-            evidence_store.read(evidence_path), findings_document["findings"]
-        )
+        index = evidence_store.build_index(evidence_store.read(evidence_path), findings)
         evidence_store.write_index(
             os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_INDEX_FILE), index
         )
@@ -889,7 +896,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         shards_used=ctx.shards_connected,
     )
     scan_directory.write_manifest(scan_dir, manifest)
-    return {"manifest": manifest, "findings": findings_document["findings"]}
+    return {"manifest": manifest, "findings": findings}
 
 
 def stage_database(ctx):

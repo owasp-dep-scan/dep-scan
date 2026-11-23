@@ -1087,6 +1087,68 @@ def test_a_bom_that_was_not_created_is_a_failed_inventory(scan_stubs, monkeypatc
     assert "the BOM for the python type was not created" in inventory["reason"]
 
 
+def test_a_scan_whose_every_inventory_failed_writes_no_findings_file(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """A findings file with an empty array means a scan that found nothing,
+    so a scan where no type's inventory produced a BOM writes none at all.
+
+    Nothing was assessed: the manifest shows no matching stage completed,
+    and an assessed-empty file would read as a clean scan.
+    """
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=False, bom_files=[], primary=None, not_assessed=[]
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            project_type=["python"],
+            reports_dir=str(reports),
+            no_banner=True,
+        ),
+        render=False,
+    )
+    assert result.findings == []
+    assert not (reports / scan_directory.FINDINGS_FILE).exists(), (
+        "a scan whose inventory failed presents no assessed-empty findings file"
+    )
+
+
+def test_a_scan_that_assessed_and_found_nothing_writes_the_empty_findings_file(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """The assessed-empty findings file is the mark of a scan whose matching
+    ran and found nothing, and only of that."""
+    bom = _write_bom(tmp_path / "given.cdx.json")
+
+    class NothingFound:
+        def __init__(self, vdr_options):
+            # Record the run the way the fixture's stub does; this class
+            # replaces that stub, so it keeps the positive control alive.
+            scan_stubs["matching"].append(vdr_options)
+
+        def process(self):
+            return _StubVdrResult(None, success=False)
+
+    monkeypatch.setattr(pipeline, "VDRAnalyzer", NothingFound)
+    reports = tmp_path / "reports"
+    result = api.scan(
+        api.scan_options(bom=bom, reports_dir=str(reports), no_banner=True),
+        render=False,
+    )
+    # Positive control: the stubbed matching stage ran.
+    assert scan_stubs["matching"], "the matching stage never ran"
+    assert result.findings == []
+    assert (reports / scan_directory.FINDINGS_FILE).exists()
+
+
 def test_a_clean_scan_loads_as_empty_because_matching_completed(scan_stubs, tmp_path, monkeypatch):
     class NothingFound:
         def __init__(self, vdr_options):

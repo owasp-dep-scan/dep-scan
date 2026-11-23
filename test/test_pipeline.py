@@ -875,6 +875,9 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         shards_connected=False,
         evidence_records=records,
         usage_not_assessed=usage_not_assessed,
+        # One produced result, so the findings file is written at all; a scan
+        # whose every type failed writes none.
+        scans=[object()],
     )
     pipeline.finish_scan_directory(ctx)
     assert captured["blint_reviews"] is expected
