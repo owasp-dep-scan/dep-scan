@@ -17,7 +17,7 @@ from xbom_lib import blint as blint_mod
 
 pytestmark = pytest.mark.skipif(not blint_mod.BLINT_AVAILABLE, reason="blint is not installed")
 
-#: The blint recordings the adapter piece committed, the input the records
+#: The committed blint recordings, the input the records
 #: reader is proven against.
 BLINT_DATA = Path(__file__).resolve().parent.parent / "packages" / "analysis-lib" / "tests" / "data" / "blint"
 
