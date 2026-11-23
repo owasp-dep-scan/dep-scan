@@ -1,0 +1,25 @@
+depscan/lib/pipeline.py
+  s_896e432144b9f7::t_2094b6596ebb7f 2104-2114
+packages/analysis-lib/src/analysis_lib/evidence/adapters/cdxgen.py
+  s_896e432144b9f7::t_a046cd7183f0e3 231-243
+packages/analysis-lib/tests/data/tracebom/README.md
+  s_896e432144b9f7::t_535f08b065c66b 9,32,46
+packages/analysis-lib/tests/test_evidence_cdxgen.py
+  s_896e432144b9f7::t_16e8225e5da3f5 396-408
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7e398115a5cbe57472535148c6c4f7a542dbe10",
+  "prompts": {},
+  "sessions": {
+    "s_896e432144b9f7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_624e55f3-23a9-4d67-994e-ab49963740e1",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
