@@ -124,8 +124,9 @@ def test_records_under_a_scan_root_with_absolute_paths_keep_the_ids():
 
 def test_coverage_gaps_of_the_review_are_named_on_every_finding():
     """A review whose coverage report names failed and skipped units did
-    not cover the whole target: every finding built from its records reads
-    not_assessed and names each gap the adapter recorded, while the ids,
+    not cover the whole target: every finding built from its records stays
+    assessed, because blint reported it, and names each gap the adapter
+    recorded as a coverage reason, while the ids,
     severities and locations stay the recording's."""
     coverage = _recording("analysis-coverage.json")
     coverage["units"].update({"failed": 1, "skipped": 2})
@@ -139,7 +140,7 @@ def test_coverage_gaps_of_the_review_are_named_on_every_finding():
     for finding in findings:
         document = finding.to_dict()
         assert document["coverage"] == {
-            "state": "not_assessed",
+            "state": "assessed",
             "reasons": [
                 {
                     "capability": "binary",

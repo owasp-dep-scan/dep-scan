@@ -63,17 +63,16 @@ _COVERAGE_CAVEAT_KINDS = ("coverage-gap", "record-skipped")
 
 
 def _coverage(record: Evidence) -> Coverage:
-    """The finding's coverage from the record's caveats: ``assessed`` when
-    the review covered everything, else ``not_assessed`` with one reason per
-    coverage caveat, in the record's order."""
+    """The finding's coverage from the record's caveats. The state is always
+    ``assessed``, because blint ran and reported the finding; the units it
+    failed or skipped, and the entries the adapter could not read, follow as
+    one reason per coverage caveat, in the record's order."""
     reasons = [
         CoverageReason(capability=BINARY_CAPABILITY, reason=caveat.kind, detail=caveat.detail)
         for caveat in record.caveats or []
         if caveat.kind in _COVERAGE_CAVEAT_KINDS
     ]
-    if not reasons:
-        return Coverage(state="assessed")
-    return Coverage(state="not_assessed", reasons=reasons)
+    return Coverage(state="assessed", reasons=reasons or None)
 
 
 def findings_from_blint_records(records: Optional[Iterable[Evidence]]) -> List[Finding]:
