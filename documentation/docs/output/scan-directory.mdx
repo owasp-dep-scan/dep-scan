@@ -59,6 +59,10 @@ The manifest's `files` array carries one entry for every file at the top of the 
 
 `depscan.findings.json` holds `schemaVersion` and a `findings` array. Every entry in the array is one finding of the published `depscan-finding` schema: one per advisory and component, with the fingerprint as its `id`, the advisory id as its `rule`, the most severe rating, the versions named as fixes, and `producer` set to dep-scan and its version. A scan that requested blint's binary review also writes the review's binary-hardening findings, built from the blint evidence records the scan collected, with the blint version the blint-written BOM names as their producer version. When the review's coverage report counts failed or skipped units, each binary-hardening finding lists those `coverage-gap` caveats among the reasons of its `coverage` block, so a partial review never reads as a complete one. A scan that found no vulnerabilities writes the file with an empty array, so an assessed-empty scan is distinguishable from a directory nobody scanned.
 
+## The license and risk reports
+
+`license-<type>.json` and `depscan-risk-<type>.json` hold the license audit and the package risk audit as one JSON array of row objects with plain values. The license rows carry the package, its version, the SPDX license id and the license conditions; the risk rows carry the package, whether it is used, the numeric risk score and the identified risks as a list of strings, one per risk and its details, with a detail the producer states more than once (npm signs a version twice with one key id) appearing once. The console tables render the same rows with colour and icons; the files never carry that markup.
+
 ## The manifest
 
 The manifest records what the scan read and what ran, so a directory can be interpreted without re-running anything: the inputs with their digests, the tools and capabilities of the machine as `depscan doctor` saw them, the database flavor and shards the matching stage used, the stages with their status, and the options with secrets removed. Two properties are worth knowing before reading one:

@@ -388,7 +388,7 @@ def test_stage_analysis_licenses_writes_the_license_report(tmp_path, monkeypatch
     pipeline.stage_analysis_licenses(ctx, scan)
     license_report = Path(ctx.reports_dir) / "license-npm.json"
     assert license_report.is_file()
-    rows = [json.loads(line) for line in license_report.read_text().splitlines()]
+    rows = json.loads(license_report.read_text())
     assert rows[0]["Package"] == "demo"
     assert rows[0]["Version"] == "1.0.0"
     assert "CC-BY-NC-4.0" in rows[0]["License Id"]
@@ -424,7 +424,7 @@ def test_stage_analysis_risk_records_and_reports_the_audit(tmp_path, monkeypatch
     assert calls["audit"][1] == scan.pkg_list
     risk_report = Path(ctx.reports_dir) / "depscan-risk-npm.json"
     assert risk_report.is_file()
-    rows = [json.loads(line) for line in risk_report.read_text().splitlines()]
+    rows = json.loads(risk_report.read_text())
     assert rows[0]["Package"] == "fsevents"
     assert "Deprecated" in rows[0]["Identified Risks"]
 
@@ -465,7 +465,7 @@ def test_stage_analysis_risk_audits_each_ecosystem_of_a_universal_scan(tmp_path,
         ("pypi", ["pkg:pypi/requests@2.0.0"]),
     ]
     assert scan.risk_not_assessed is None
-    rows = [json.loads(line) for line in Path(scan.risk_report_file).read_text().splitlines()]
+    rows = json.loads(Path(scan.risk_report_file).read_text())
     assert [row["Package"] for row in rows] == ["left-pad", "requests"]
 
 

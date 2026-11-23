@@ -1556,8 +1556,8 @@ def stage_analysis_risk(ctx, scan) -> bool:
             if not args.no_vuln_table and report_data and rtable:
                 console.print(rtable)
         if report_rows and scan.risk_report_file:
-            # The risk audit findings are stored in jsonl format.
-            file_write(scan.risk_report_file, "\n".join(json.dumps(row) for row in report_rows))
+            # The risk audit findings are stored as one JSON array of rows.
+            file_write(scan.risk_report_file, json.dumps(report_rows, indent=2))
     except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
         LOG.error(e)
         LOG.error("Risk audit was not successful")

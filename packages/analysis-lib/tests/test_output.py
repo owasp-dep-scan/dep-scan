@@ -354,3 +354,75 @@ def test_each_merged_component_row_shows_its_own_grade():
     assert list(table.columns[-1].cells) == ["moderate\nreached", "moderate\nreached"]
     # The summary counts pairs, as the caption does.
     assert exploitability_grade_stats(graded) == {"moderate": 1, "low": 1}
+
+
+def test_license_report_file_holds_plain_json_rows(tmp_path):
+    """The license report file is one JSON array of plain rows: the license
+    id reaches it without the console colour markup the table cell carries."""
+    from analysis_lib.output import licenses_risk_table
+
+    report_file = tmp_path / "license-npm.json"
+    table = licenses_risk_table(
+        "npm",
+        {
+            "demo@1.0.0": [
+                {
+                    "spdx-id": "CC-BY-4.0",
+                    "condition_flag": True,
+                    "conditions": ["Include Copyright", "Document Changes"],
+                }
+            ]
+        },
+        str(report_file),
+    )
+    assert table is not None
+    rows = json.loads(report_file.read_text())
+    assert rows == [
+        {
+            "Package": "demo",
+            "Version": "1.0.0",
+            "License Id": "CC-BY-4.0",
+            "License conditions": "Include Copyright, Document Changes",
+        }
+    ]
+
+
+def test_risk_report_file_holds_plain_json_rows(tmp_path):
+    """The risk report file is one JSON array of plain values: the risk
+    score is a number, the identified risks are a list instead of strings
+    joined with a separator, and an attestation digest the producer states
+    twice (npm signs a version twice with one key id) appears once."""
+    from analysis_lib.output import pkg_risks_table
+
+    report_file = tmp_path / "depscan-risk-npm.json"
+    table, report_data = pkg_risks_table(
+        "npm",
+        {"required": ["npm:demo"]},
+        {
+            "demo": {
+                "scope": "required",
+                "risk_metrics": {
+                    "risk_score": 0.63,
+                    "pkg_includes_binary_risk": True,
+                    "pkg_attested_check": True,
+                    "pkg_attested_info": "SHA256:abc\nSHA256:abc",
+                },
+            }
+        },
+        risk_report_file=str(report_file),
+    )
+    assert table is not None
+    assert report_data[0]["Identified Risks"] == [
+        "Includes binary",
+        "Has attestation",
+        "SHA256:abc",
+    ]
+    rows = json.loads(report_file.read_text())
+    assert rows == [
+        {
+            "Package": "demo",
+            "Used?": "Yes",
+            "Risk Score": 0.63,
+            "Identified Risks": ["Includes binary", "Has attestation", "SHA256:abc"],
+        }
+    ]

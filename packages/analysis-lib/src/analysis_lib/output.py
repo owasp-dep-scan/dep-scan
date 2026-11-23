@@ -1044,10 +1044,10 @@ def pkg_risks_table(
             edata = [
                 pkg,
                 package_usage_simple,
-                risk_score,
+                round(risk_metrics.get("risk_score"), 2),
             ]
             risk_categories = []
-            risk_categories_simple = []
+            risk_categories_plain = []
             for rk, rv in risk_metrics.items():
                 if (rk.endswith("_risk") or rk.endswith("_check")) and rv is True:
                     rcat = rk.removesuffix("_risk").removesuffix("_check")
@@ -1068,15 +1068,21 @@ def pkg_risks_table(
                             risk_categories.append(f":white_heavy_check_mark: {help_text}")
                         else:
                             risk_categories.append(f":warning: {help_text}")
-                        risk_categories_simple.append(help_text)
+                        # The report file holds plain values, one risk per
+                        # entry, and a detail line the producer states more
+                        # than once (npm signs a version twice with one key
+                        # id) only once.
+                        for line in help_text.splitlines():
+                            if line and line not in risk_categories_plain:
+                                risk_categories_plain.append(line)
             data.append("\n".join(risk_categories))
-            edata.append("~~".join(risk_categories_simple))
+            edata.append(risk_categories_plain)
             table.add_row(*data)
             report_data.append(dict(zip(headers, edata)))
     if report_data:
-        # Store the risk audit findings in jsonl format
+        # Store the risk audit findings as one JSON array of plain rows
         if risk_report_file:
-            file_write(risk_report_file, "\n".join([json.dumps(row) for row in report_data]))
+            file_write(risk_report_file, json.dumps(report_data, indent=2))
     return table, report_data
 
 
@@ -1113,27 +1119,26 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
                     conditions_str = (
                         conditions_str.replace("--", " for ").replace("-", " ").title()
                     )
-                data = [
-                    *pkg_ver,
-                    "{}{}".format(
-                        (
-                            "[cyan]"
-                            if "GPL" in lic["spdx-id"]
-                            or "CC-BY-" in lic["spdx-id"]
-                            or "Facebook" in lic["spdx-id"]
-                            or "WTFPL" in lic["spdx-id"]
-                            else ""
-                        ),
-                        lic["spdx-id"],
+                license_id = lic["spdx-id"]
+                # The table cell colours the licenses that carry
+                # conditions; the report file holds the plain id.
+                display_id = "{}{}".format(
+                    (
+                        "[cyan]"
+                        if "GPL" in license_id
+                        or "CC-BY-" in license_id
+                        or "Facebook" in license_id
+                        or "WTFPL" in license_id
+                        else ""
                     ),
-                    conditions_str,
-                ]
-                table.add_row(*data)
-                report_data.append(dict(zip(headers, data)))
+                    license_id,
+                )
+                table.add_row(*pkg_ver, display_id, conditions_str)
+                report_data.append(dict(zip(headers, [*pkg_ver, license_id, conditions_str])))
     if report_data:
-        # Store the license scan findings in jsonl format
+        # Store the license scan findings as one JSON array of plain rows
         if license_report_file:
-            file_write(license_report_file, "\n".join([json.dumps(row) for row in report_data]))
+            file_write(license_report_file, json.dumps(report_data, indent=2))
     return table
 
 
