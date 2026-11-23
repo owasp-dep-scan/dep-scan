@@ -1,0 +1,14 @@
+agent-plugin/skills/depscan-triage/SKILL.md
+  h_0926447d100ad2 45-46,89-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6cc5d61d11aa85e8e84db3808bdae557809498b9",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
