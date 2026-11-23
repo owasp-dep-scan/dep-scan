@@ -106,6 +106,26 @@ def test_real_review_keeps_reports_and_the_manifest_lists_them(tmp_path):
     assert f"analysis/blint/{blint_mod.BLINT_COVERAGE_FILE}" in listed
 
 
+@pytest.mark.skipif(
+    not blint_mod._accepts_exclude(getattr(blint_mod, "gen_file_list", lambda s: s)),
+    reason="the installed blint has no exclude parameter",
+)
+def test_real_review_leaves_an_excluded_tree_out(tmp_path):
+    """With a blint that takes the patterns, the review attempts only the
+    binary outside the excluded tree."""
+    source = os.path.realpath(sys.executable)
+    for tree in ("kept", "test"):
+        (tmp_path / "src" / tree).mkdir(parents=True)
+        shutil.copy(source, tmp_path / "src" / tree / os.path.basename(source))
+    reports = tmp_path / "reports"
+    result = blint_mod.run_blint_reviews(
+        [str(tmp_path / "src")], str(reports), exclude=["test/**"]
+    )
+    assert result.success, result.command_output
+    coverage = json.loads((reports / blint_mod.BLINT_COVERAGE_FILE).read_text())
+    assert coverage["units"]["attempted"] == 1
+
+
 class _FakeRunner:
     def __init__(self, **kwargs):
         pass
