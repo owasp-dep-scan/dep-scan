@@ -1,0 +1,30 @@
+depscan/lib/binary_review.py
+  h_0926447d100ad2 1-65
+depscan/lib/pipeline.py
+  h_0926447d100ad2 70,2512-2543,2548
+depscan/lib/report.py
+  h_0926447d100ad2 26,201-213,279
+documentation/docs/output/scan-directory.mdx
+  h_0926447d100ad2 60,168
+test/data/report-binary/README.md
+  h_0926447d100ad2 1-34
+test/data/report-binary/analysis/blint/analysis-coverage.json
+  h_0926447d100ad2 1
+test/data/report-binary/depscan.findings.json
+  h_0926447d100ad2 1
+test/data/report-binary/depscan.manifest.json
+  h_0926447d100ad2 1-352
+test/test_binary_report.py
+  h_0926447d100ad2 1-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e9c407a5991a6171c38a724406ce4495ca702d0",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
