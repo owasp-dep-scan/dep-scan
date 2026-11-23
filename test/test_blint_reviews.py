@@ -19,7 +19,14 @@ pytestmark = pytest.mark.skipif(not blint_mod.BLINT_AVAILABLE, reason="blint is 
 
 #: The committed blint recordings, the input the records
 #: reader is proven against.
-BLINT_DATA = Path(__file__).resolve().parent.parent / "packages" / "analysis-lib" / "tests" / "data" / "blint"
+BLINT_DATA = (
+    Path(__file__).resolve().parent.parent
+    / "packages"
+    / "analysis-lib"
+    / "tests"
+    / "data"
+    / "blint"
+)
 
 
 @pytest.mark.parametrize(
@@ -77,7 +84,9 @@ def test_create_bom_asks_for_reviews_on_the_binary_check(monkeypatch, tmp_path):
         "create_blint_bom",
         lambda bom_file, src_dir, options=None, reviews=False: calls.append(reviews) or False,
     )
-    bom_mod.create_bom(str(tmp_path / "b.json"), str(tmp_path), {"techniques": ["binary-analysis"]})
+    bom_mod.create_bom(
+        str(tmp_path / "b.json"), str(tmp_path), {"techniques": ["binary-analysis"]}
+    )
     bom_mod.create_bom(str(tmp_path / "b.json"), str(tmp_path), {"lifecycles": ["post-build"]})
     assert calls == [True, False]
 

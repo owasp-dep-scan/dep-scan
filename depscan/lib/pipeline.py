@@ -1740,8 +1740,7 @@ def _merge_adapter_results(reads: List[Tuple[str, Any]]):
         records.extend(result.records)
     for source, result in refused:
         detail = (
-            f"the report {source} was not assessed and its records were "
-            f"skipped: {result.reason}"
+            f"the report {source} was not assessed and its records were skipped: {result.reason}"
         )
         caveats.append(EvidenceCaveat(kind="record-skipped", detail=detail))
         for record in records:
@@ -1973,9 +1972,7 @@ def _tracebom_adapter_result(ctx, scan):
         reads.append(
             (
                 source,
-                tracebom_adapter.extract(
-                    text, source=source, source_root=ctx.source_root
-                ),
+                tracebom_adapter.extract(text, source=source, source_root=ctx.source_root),
             )
         )
     if not reads:

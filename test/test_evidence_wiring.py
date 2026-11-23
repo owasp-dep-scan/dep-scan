@@ -33,7 +33,9 @@ FIXTURES = DATA_DIR / "repotests"
 # files of the evidence producers: the blint review reports and the SBOM its
 # sbom mode writes, the cdxgen BOM with the introspection report beside it,
 # and the tracebom trace BOM.
-BLINT_DATA = Path(__file__).parent.parent / "packages" / "analysis-lib" / "tests" / "data" / "blint"
+BLINT_DATA = (
+    Path(__file__).parent.parent / "packages" / "analysis-lib" / "tests" / "data" / "blint"
+)
 CDXGEN_DATA = (
     Path(__file__).parent.parent / "packages" / "analysis-lib" / "tests" / "data" / "cdxgen"
 )
@@ -433,7 +435,9 @@ def _evidence_producers_dir(tmp_path):
     shutil.copy2(BLINT_DATA / "sbom-blint.json", bom_dir / "sbom-postbuild-binary.cdx.json")
     for name in ("findings.json", "reviews.json", "analysis-coverage.json"):
         shutil.copy2(BLINT_DATA / name, bom_dir / "analysis" / "blint" / name)
-    shutil.copy2(TRACEBOM_DATA / "tracebom.json", bom_dir / "analysis" / "tracebom" / "tracebom.json")
+    shutil.copy2(
+        TRACEBOM_DATA / "tracebom.json", bom_dir / "analysis" / "tracebom" / "tracebom.json"
+    )
     return bom_dir
 
 
@@ -1053,9 +1057,7 @@ def test_the_index_joins_a_finding_to_its_cdxgen_occurrence_record(scan_stubs, t
     )
 
 
-def test_bom_dir_presence_equals_the_recorded_stripped_values(
-    scan_stubs, tmp_path, monkeypatch
-):
+def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_path, monkeypatch):
     """A BOM-directory scan of the dejacode fixture with usage evidence
     attached gives every component the values master gave it, recorded in
     BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF: the aggregated package list
@@ -1084,7 +1086,9 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(
     assert values == BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF
     records = _store_records(bom_dir)
     assert any(
-        record["kind"] == "occurrence" for record in records if record["producer"]["name"] == "cdxgen"
+        record["kind"] == "occurrence"
+        for record in records
+        if record["producer"]["name"] == "cdxgen"
     ), "the usage records are still written to the store"
 
     # With reachability on, every component of this fixture is reached, and
@@ -1106,9 +1110,7 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(
     assert set(values.values()) == {"proven"}
 
 
-def test_source_scan_presence_proves_usage_from_the_records(
-    scan_stubs, tmp_path, monkeypatch
-):
+def test_source_scan_presence_proves_usage_from_the_records(scan_stubs, tmp_path, monkeypatch):
     """A source scan's package list keeps the components' evidence blocks,
     so its usage records grade: the component with occurrences is proven
     with reachability off, the optional component without evidence is
@@ -1230,9 +1232,9 @@ def test_a_rescan_drops_the_records_of_reports_that_are_gone(scan_stubs, tmp_pat
     shutil.rmtree(bom_dir / "analysis" / "tracebom")
     second = api.scan(api.scan_options(**options), render=False)
     records = _store_records(bom_dir)
-    assert not any(
-        record["producer"]["name"] in ("blint", "tracebom") for record in records
-    ), "a removed report's records must not survive the rescan"
+    assert not any(record["producer"]["name"] in ("blint", "tracebom") for record in records), (
+        "a removed report's records must not survive the rescan"
+    )
     assert any(record["producer"]["name"] == "cdxgen" for record in records), (
         "the BOM documents are still read"
     )
@@ -1272,9 +1274,7 @@ def test_a_two_type_scan_keeps_each_types_records_and_caveats(scan_stubs, tmp_pa
                     "purl": purl,
                     "bom-ref": purl,
                     "evidence": {
-                        "occurrences": [
-                            {"location": f"src/{project_type}/Main.java", "line": 3}
-                        ]
+                        "occurrences": [{"location": f"src/{project_type}/Main.java", "line": 3}]
                     },
                 }
             ],
@@ -1331,9 +1331,9 @@ def test_a_damaged_blint_report_is_reported_and_costs_its_records(scan_stubs, tm
         )
     messages = [record.getMessage() for record in caplog.records]
     assert any("blint" in message and "not assessed" in message for message in messages), messages
-    assert not any(
-        record["producer"]["name"] == "blint" for record in _store_records(bom_dir)
-    ), "a report the adapter refused leaves no records"
+    assert not any(record["producer"]["name"] == "blint" for record in _store_records(bom_dir)), (
+        "a report the adapter refused leaves no records"
+    )
     assert not any(f["category"] == "binary-hardening" for f in result.findings)
     assert (bom_dir / "depscan.findings.json").is_file()
 
@@ -1367,7 +1367,7 @@ def test_a_non_utf8_json_in_a_bom_dir_does_not_stop_the_scan(scan_stubs, tmp_pat
     bom_dir = tmp_path / "boms"
     bom_dir.mkdir()
     shutil.copy2(CDXGEN_DATA / "sbom-python.cdx.json", bom_dir / "sbom-python.cdx.json")
-    (bom_dir / "notes.json").write_bytes(b"\xff\xfe{\"not\": \"utf-8 text\"}")
+    (bom_dir / "notes.json").write_bytes(b'\xff\xfe{"not": "utf-8 text"}')
     result = api.scan(
         api.scan_options(
             bom_dir=str(bom_dir),
@@ -1378,9 +1378,9 @@ def test_a_non_utf8_json_in_a_bom_dir_does_not_stop_the_scan(scan_stubs, tmp_pat
         render=False,
     )
     assert result.manifest is not None, "the scan completed"
-    assert any(
-        record["producer"]["name"] == "cdxgen" for record in _store_records(bom_dir)
-    ), "the healthy BOM's records are still collected"
+    assert any(record["producer"]["name"] == "cdxgen" for record in _store_records(bom_dir)), (
+        "the healthy BOM's records are still collected"
+    )
 
 
 def test_one_damaged_bom_does_not_cost_the_healthy_boms_records(scan_stubs, tmp_path):
@@ -1467,8 +1467,8 @@ def test_a_source_scan_without_a_review_request_ignores_stale_blint_reports(
         ),
         render=False,
     )
-    assert not any(
-        record["producer"]["name"] == "blint" for record in _store_records(reports)
-    ), "an earlier scan's review reports must not become this scan's evidence"
+    assert not any(record["producer"]["name"] == "blint" for record in _store_records(reports)), (
+        "an earlier scan's review reports must not become this scan's evidence"
+    )
     assert not any(f["category"] == "binary-hardening" for f in result.findings)
     assert (reports / "analysis" / "blint" / "findings.json").is_file(), "the files stay put"
