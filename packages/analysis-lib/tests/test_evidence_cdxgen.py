@@ -302,14 +302,16 @@ def test_the_bom_audit_annotation_record_keeps_the_real_shape():
     """The recorded bom-audit annotation from a firing custom rule: cdxgen
     subjects the BOM serial number, which is not a purl, and renders its
     cdx:audit facts into the text as a markdown table instead of a
-    properties array. The record keeps the text and the subjects as given,
-    with empty subject purls and no invented properties key."""
+    properties array. The record keeps the text and the annotator as given
+    and spells the serial-number subject <bom>, with empty subject purls
+    and no invented properties key."""
     result = _extract()
     bom = _bom()
     serial = bom["serialNumber"]
     record = next(r for r in result.records if r.kind == "annotation" and not r.subject.purls)
     attributes = record.attributes or {}
-    assert attributes["subjects"] == [serial]
+    assert attributes["subjects"] == ["<bom>"]
+    assert serial not in json.dumps(record.to_dict())
     assert attributes["annotator"]["component"]["version"] == "13.9.0"
     assert "REC-001" in attributes["text"]
     assert "cdx:audit:ruleId" in attributes["text"]
@@ -1009,6 +1011,50 @@ def test_annotation_ids_survive_a_regenerated_serial_number_and_date():
     original = _extract()
     regenerated = _extract(_regenerated(_bom()))
     assert sorted(r.id for r in original.records) == sorted(r.id for r in regenerated.records)
+
+
+def test_annotation_records_survive_a_regenerated_serial_number():
+    """A regenerated BOM writes a fresh urn:uuid serial, and the bom-audit
+    annotation subjects that serial. The record's attributes spell the
+    subject <bom>, the way its id already does, so the whole record is the
+    same across the two serials and neither uuid reaches a record."""
+    original = _extract()
+    regenerated_bom = _regenerated(_bom())
+    regenerated = _extract(regenerated_bom)
+    first = next(r for r in original.records if r.kind == "annotation" and not r.subject.purls)
+    second = next(r for r in regenerated.records if r.kind == "annotation" and not r.subject.purls)
+    assert (first.attributes or {})["subjects"] == ["<bom>"]
+    assert (second.attributes or {})["subjects"] == ["<bom>"]
+    assert second.to_dict() == first.to_dict()
+    for bom, result in ((_bom(), original), (regenerated_bom, regenerated)):
+        assert bom["serialNumber"] not in json.dumps([r.to_dict() for r in result.records])
+
+
+def test_an_annotation_subjecting_a_foreign_serial_keeps_it_as_given():
+    """A subject that names another document's serial number is evidence
+    about that document, not a per-run value of this BOM, so it is kept
+    verbatim; only this BOM's own serial is spelled <bom>."""
+    bom = _bom()
+    foreign = "urn:uuid:99999999-8888-4777-8666-555555555555"
+    bom["annotations"].append(
+        {
+            "bom-ref": "audit-foreign",
+            "subjects": [foreign],
+            "annotator": {"component": {"name": "cdxgen", "version": "13.9.0"}},
+            "timestamp": "2026-11-22T23:40:00Z",
+            "text": "An annotation about another document.",
+        }
+    )
+    result = _extract(bom)
+    own = next(r for r in result.records if r.kind == "annotation" and not r.subject.purls)
+    assert (own.attributes or {})["subjects"] == ["<bom>"]
+    foreign_record = next(
+        r
+        for r in result.records
+        if r.kind == "annotation" and r.attributes and r.attributes.get("subjects") == [foreign]
+    )
+    assert foreign_record.subject.purls == []
+    assert foreign != bom["serialNumber"]
 
 
 def test_a_different_audit_rule_or_text_gives_a_different_annotation_id():
