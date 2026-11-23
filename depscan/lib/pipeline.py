@@ -866,19 +866,21 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     files that exist, the evidence files included. A scan that stopped
     partway still gets one, carrying the failed stage and its reason.
 
-    A scan where no project type produced a result (every type's inventory
-    failed or found no packages) writes no findings file: an empty findings
-    array is the mark of a scan whose matching ran and found nothing, and
-    nothing here was assessed. The manifest it still writes shows no
-    matching stage completed, which is what refuses the directory at load
-    time. Returns the manifest and the findings array, or None when this
-    run writes no scan directory.
+    A scan where no project type produced a result and no evidence was
+    collected (every type's inventory failed) writes no findings file: an
+    empty findings array is the mark of a scan whose matching ran and found
+    nothing, and nothing here was assessed. Evidence records alone still
+    write the file, because a blint review's binary-hardening findings are
+    findings even when the BOM it reviewed lists no components to scan. The
+    manifest it still writes shows no matching stage completed, which is
+    what refuses the directory at load time. Returns the manifest and the
+    findings array, or None when this run writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
         return None
     findings: List = []
-    if ctx.scans:
+    if ctx.scans or ctx.evidence_records:
         findings_document = scan_directory.write_findings(
             ctx.reports_dir,
             ctx.all_pkg_vulnerabilities,

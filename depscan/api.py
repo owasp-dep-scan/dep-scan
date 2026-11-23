@@ -541,8 +541,24 @@ def _relative_output(ctx, path):
 
 
 def _inventory_outputs(ctx, tscan):
-    """The BOM document a type's inventory stage settled on, as a stage
-    output, when it lives in the scan directory."""
+    """The BOM documents a type's inventory stage produced, as stage outputs.
+
+    A scan that generated its documents lists every one the generator wrote
+    inside the scan directory, a lifecycle run's per-stage documents
+    included, so the outputs name what actually landed on disk. A scan
+    handed its BOMs as input (a BOM file or BOM directory target) names only
+    the single document it settled on, and only when that lives in the scan
+    directory: its other documents are inputs, not outputs.
+    """
+    args = ctx.args
+    generated = not (
+        getattr(args, "search_purl", None) or getattr(args, "bom", None) or ctx.bom_dir_mode
+    )
+    if generated:
+        outputs = []
+        for path in tscan.bom_files or []:
+            outputs.extend(_relative_output(ctx, path))
+        return outputs
     return _relative_output(ctx, tscan.bom_file)
 
 

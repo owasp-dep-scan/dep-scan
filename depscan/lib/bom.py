@@ -1716,6 +1716,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
         (an atom timeout) are kept in ``not_assessed``.
         """
         if not bom_result.success:
+            _record_stage_failure(bom_result, stage_file, stage)
             return False
         extractor_failures.extend(_cdxgen_exit_verdict(bom_result, stage_file, stage))
         if getattr(bom_result, "returncode", None) == 4:
@@ -1729,8 +1730,28 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             0,
             *CDXGEN_PARTIAL_EXIT_CODES,
         ):
+            _record_stage_failure(bom_result, stage_file, stage)
             return False
-        return os.path.exists(stage_file)
+        if not os.path.exists(stage_file):
+            reason = (
+                f"cdxgen reported success but the {stage} lifecycle BOM was not written"
+            )
+            not_assessed.append(reason)
+            LOG.warning("Not assessed: %s", reason)
+            return False
+        return True
+
+    def _record_stage_failure(bom_result, stage_file, stage) -> None:
+        """Keep why one lifecycle stage's document is missing.
+
+        A stage that falls away (the scan continues on the other stages'
+        documents) must leave a named trace, or the inventory reads as a
+        whole: the reason carries the cdxgen exit status and the time budget
+        that was in effect, like the single-document path's failure reason.
+        """
+        reason = _cdxgen_failure_reason(bom_result, f"{stage} lifecycle")
+        not_assessed.append(reason)
+        LOG.warning("Not assessed: %s", reason)
 
     with console_status(
         f"Generating lifecycle-specific BOMs for {src_dir}.", spinner=SPINNER
@@ -1816,6 +1837,12 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
     build_dir = os.getenv("DEPSCAN_BUILD_DIR") or options.get("build_dir") or src_dir
     res = create_blint_bom(postbuild_bom_file, build_dir, options=coptions)
     if not res or not os.path.exists(postbuild_bom_file):
+        reason = (
+            "the post-build lifecycle BOM was not generated; the blint invocation "
+            "was unsuccessful. Try building this project prior to invoking depscan, "
+            "or check that it generates binary artefacts"
+        )
+        not_assessed.append(reason)
         LOG.debug(
             "The blint invocation was unsuccessful. Try building this project prior to invoking depscan. Alternatively, check if this project generates binary artefacts."
         )

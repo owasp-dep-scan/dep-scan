@@ -1121,6 +1121,74 @@ def test_a_scan_whose_every_inventory_failed_writes_no_findings_file(
     )
 
 
+def test_a_failed_lifecycle_sub_run_is_named_and_the_written_documents_listed(
+    scan_stubs, monkeypatch, tmp_path
+):
+    """A lifecycle scan whose build stage failed records the sub-run and
+    lists the documents it did write.
+
+    The inventory stage used to read completed with empty outputs while the
+    surviving BOM files sat on disk unlisted and the failed build run left
+    no trace.
+    """
+    reports = tmp_path / "reports"
+    prebuild = reports / "sbom-prebuild-universal.cdx.json"
+    postbuild = reports / "sbom-postbuild-universal.cdx.json"
+    reports.mkdir()
+    for path in (prebuild, postbuild):
+        path.write_text(
+            json.dumps(
+                {
+                    "bomFormat": "CycloneDX",
+                    "specVersion": "1.6",
+                    "components": [
+                        {
+                            "name": "requests",
+                            "version": "2.32.1",
+                            "purl": "pkg:pypi/requests@2.32.1",
+                            "bom-ref": "pkg:pypi/requests@2.32.1",
+                            "type": "library",
+                        }
+                    ],
+                }
+            )
+        )
+    monkeypatch.setattr(
+        pipeline,
+        "_generate_boms",
+        lambda ctx, scan: SimpleNamespace(
+            success=True,
+            bom_files=[str(prebuild), str(postbuild)],
+            primary=None,
+            not_assessed=[
+                "cdxgen exited with status 1 while generating the build lifecycle "
+                "BOM, so no document was written"
+            ],
+        ),
+    )
+    src = tmp_path / "app"
+    src.mkdir()
+    result = api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            no_banner=True,
+            vuln_analyzer="LifecycleAnalyzer",
+        ),
+        render=False,
+    )
+    assert result.manifest is not None
+    inventory = next(stage for stage in result.manifest["stages"] if stage["name"] == "inventory")
+    assert inventory["status"] == "completed"
+    assert inventory["outputs"] == [
+        {"file": "sbom-postbuild-universal.cdx.json", "status": "completed"},
+        {"file": "sbom-prebuild-universal.cdx.json", "status": "completed"},
+    ]
+    assert any(
+        "build lifecycle" in reason for reason in inventory["notAssessed"]
+    ), "the failed sub-run is named"
+
+
 def test_an_explanation_that_rendered_nothing_names_the_gate(scan_stubs, tmp_path):
     """The explain stage says why nothing was explained instead of reading
     as an explanation that ran and said nothing."""

@@ -456,6 +456,55 @@ def test_lifecycle_boms_report_failure_when_every_stage_fails(tmp_path, monkeypa
     assert result.primary is None
 
 
+def test_lifecycle_boms_record_a_failed_sub_run_with_its_budget(tmp_path, monkeypatch):
+    """A lifecycle stage that fails and falls back leaves a named trace.
+
+    The build stage's cdxgen run failing used to leave only a debug log; the
+    scan continued on the pre-build document and the manifest read as a
+    complete inventory. The failed sub-run is now kept as a not-assessed
+    reason, with the cdxgen exit status and the time budget that was in
+    effect.
+    """
+    from types import SimpleNamespace
+
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+    monkeypatch.delenv("DEPSCAN_SOURCE_IMAGE", raising=False)
+
+    class BuildFails:
+        def __init__(self, src_dir, bom_file, logger=None, options=None):
+            self.bom_file = bom_file
+            self.options = options or {}
+
+        def generate(self):
+            if self.options.get("lifecycles") == ["build"]:
+                return SimpleNamespace(success=False, returncode=1, command_output="boom")
+            with open(self.bom_file, "w") as fh:
+                json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+            return SimpleNamespace(success=True, returncode=0, command_output="")
+
+    prebuild = str(tmp_path / "sbom-prebuild-rust.cdx.json")
+    options = {
+        "prebuild_bom_file": prebuild,
+        "build_bom_file": str(tmp_path / "sbom-build-rust.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild-rust.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container-rust.cdx.json"),
+        "reachability_analyzer": "off",
+    }
+    result = bom_mod.create_lifecycle_boms(BuildFails, str(tmp_path), options)
+
+    assert result.success is True
+    assert result.bom_files == [prebuild]
+    # The stubbed blint run adds the post-build reason beside the build one.
+    build_reasons = [r for r in result.not_assessed if "the build lifecycle" in r]
+    assert len(build_reasons) == 1
+    reason = build_reasons[0]
+    assert "exited with status 1" in reason
+    assert "CDXGEN_TIMEOUT_MS" in reason
+    assert any("post-build" in r for r in result.not_assessed)
+
+
 def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():
     """CycloneDX makes metadata optional; a source BOM without it must not
     crash the VDR export."""
