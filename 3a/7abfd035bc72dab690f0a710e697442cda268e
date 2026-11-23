@@ -1,0 +1,27 @@
+documentation/docs/adv-usage.mdx
+  s_521ad8e421d1a2::t_f96773463654d0 93
+documentation/docs/analyzers/framework-reachability.mdx
+  s_521ad8e421d1a2::t_ad1aaa9e868006 19
+documentation/docs/concepts/prioritization.mdx
+  s_521ad8e421d1a2::t_228edab580d8b9 21,61
+documentation/docs/output/scan-directory.mdx
+  s_521ad8e421d1a2::t_e784db925e8df1 65,175
+documentation/docs/output/vdr-guide.mdx
+  s_521ad8e421d1a2::t_61840e1f34efb8 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3a7abfd035bc72dab690f0a710e697442cda268e",
+  "prompts": {},
+  "sessions": {
+    "s_521ad8e421d1a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d879692-e9c2-4325-bd9c-f554823f9e9a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
