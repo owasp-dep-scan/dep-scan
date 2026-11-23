@@ -2078,13 +2078,13 @@ def _exploitability_inputs(ctx, scan):
 
     A scan that aggregates a BOM directory (``scan.bom_dir`` set, the
     BOM-directory and lifecycle modes) grades presence without the BOM's
-    usage records. The package loader for those scans rewrites every
-    component's evidence block to the identity evidences alone, so the
-    components the axis sees never carried occurrences or callstacks and
-    usage was never proven from them; feeding the records the adapter read
-    from the same BOMs would prove what the components themselves do not
-    say. The records still reach the evidence store, which is additive;
-    only the grading skips them.
+    usage records: the aggregated loader rewrites every component it loads
+    to the identity evidences alone, so usage was never proven from those
+    components and the grading inputs drop the usage records to match. A
+    user BOM appended to such a scan keeps its evidence in the package
+    list, so its packages grade one step lower here than the
+    component-reading rule graded them. The records still reach the
+    evidence store, which is additive; only the grading skips them.
     """
     from analysis_lib.findings.exploitability import ExploitabilityInputs, USAGE_KINDS
     from analysis_lib.findings.vdr_convert import ReachScope, reached_by_analyzer
