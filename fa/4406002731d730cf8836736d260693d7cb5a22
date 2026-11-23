@@ -1,0 +1,29 @@
+test/test_exclusions.py
+  s_fe578a6c9c51d0::t_4c1a1fdbfc124b 1-335
+  s_fe578a6c9c51d0::t_d8d83141a5308b 336-339
+depscan/lib/exclusions.py
+  s_fe578a6c9c51d0::t_f4c951df1214bd 1-261
+  s_fe578a6c9c51d0::t_409c94a62627f2 262-267
+depscan/lib/bom.py
+  s_fe578a6c9c51d0::t_50e35d4d490610 2,41,44,205,555-564,644-646,935-936,943,1090-1095,1223,1249-1252,1255,1301-1307,1338-1388,1401,1417,1438-1444,1824-1827,1830-1833,1841-1872,1877,1885-1887,1897-1908,1970
+depscan/lib/config.py
+  s_fe578a6c9c51d0::t_8f74a7789211e9 405-407
+test/test_bom.py
+  s_fe578a6c9c51d0::t_fa9dc6372a210e 373-404,432,452-455,467-469,483,541,570,576,613-615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa4406002731d730cf8836736d260693d7cb5a22",
+  "prompts": {},
+  "sessions": {
+    "s_fe578a6c9c51d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1263418f-f4b0-4e74-91c8-18f9057618b4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
