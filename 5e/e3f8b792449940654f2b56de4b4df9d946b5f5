@@ -1,0 +1,19 @@
+documentation/docs/output/scan-directory.mdx
+  s_4d0a36fc9d7809::t_a84ec009e5aee8 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ee3f8b792449940654f2b56de4b4df9d946b5f5",
+  "prompts": {},
+  "sessions": {
+    "s_4d0a36fc9d7809": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "539011cf-a214-4b55-997c-dcd750a6c350",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
