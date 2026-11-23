@@ -163,6 +163,36 @@ SERVICE_ENDPOINTS = """
 </div>
 """
 
+BINARY_HARDENING_RESULTS = """
+<h3 class="light-text"><code class="code-title">Binary Hardening Results</code></h3>
+<div class="box-container">
+    <br>
+   <span class="badge border border-dark text-dark fs-6">Binary hardening findings count: <BINARY_HARDENING_FINDINGS_COUNT_PLACEHOLDER></span>
+   <br><br>
+   <span><SUMMARY_PLACEHOLDER></span>
+    <div>
+        <table id="<TABLE_ID_PLACEHOLDER>" class="table table-striped table-bordered"><thead>
+            <tr>
+                <th>Binary</th>
+                <th>Check</th>
+                <th>Severity</th>
+                <th>Title</th>
+            </tr>
+            <tr>
+                <th><input type="text" placeholder="Search Binary" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Check" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Severity" class="form-control search-in-table-comp"></th>
+                <th><input type="text" placeholder="Search Title" class="form-control search-in-table-comp"></th>
+            </tr>
+        </thead>
+            <tbody>
+                <TABLE_PLACEHOLDER>
+            </tbody>
+        </table>
+    </div>
+</div>
+"""
+
 VDR = """
 <h3  class="light-text"><code class="code-title"><PIECE_ID_PLACEHOLDER>Vulnerability Disclosure Report</code></h3>
 <div class="box-container">

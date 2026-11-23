@@ -15,6 +15,7 @@ from reporting_lib.template import (
     MALWARE_ALERT,
     RECOMMENDATION,
     INFO,
+    BINARY_HARDENING_RESULTS,
 )
 
 NEWLINE = "\n"
@@ -104,6 +105,11 @@ class ReportGenerator:
 
     SECURE_DESIGN_TIPS = "Secure Design Tips"
     MALWARE_ALERT = "Malware Alert"
+
+    BINARY_HARDENING_RESULTS = "Binary Hardening Results"
+    BINARY_HARDENING_RESULTS_DATA_COLUMNS = ["Binary", "Check", "Severity", "Title"]
+    BINARY_HARDENING_RESULTS_DATA = BINARY_HARDENING_RESULTS + " " + DATA
+    BINARY_HARDENING_FINDINGS_COUNT = "Binary hardening findings count"
 
     @staticmethod
     def normalize_rich_text(text):
@@ -342,6 +348,12 @@ class ReportGenerator:
             self.MALWARE_ALERT: {self.SUMMARY: ""},
             self.RECOMMENDATION: {self.SUMMARY: ""},
             self.INFO: {self.SUMMARY: ""},
+            self.BINARY_HARDENING_RESULTS: {
+                self.BINARY_HARDENING_FINDINGS_COUNT: "-1",
+                self.SUMMARY: "",
+                self.TABLE_HEADERS: [],
+                self.DATA: [],
+            },
         }
 
         previous_line = None
@@ -1205,6 +1217,105 @@ class ReportGenerator:
                 current_location = None
                 continue
 
+            # ---- Location identification: Binary Hardening Results ----
+
+            if self.normalized_text_equals(line, self.BINARY_HARDENING_RESULTS):
+                current_location = self.BINARY_HARDENING_RESULTS
+                continue
+
+            if (
+                current_location == self.BINARY_HARDENING_RESULTS
+                and line.startswith("╔")
+                and line.endswith("╗")
+            ):
+                current_location = self.BINARY_HARDENING_RESULTS_DATA
+                current_columns_count = len(line[1:-1].split("╤"))
+                continue
+
+            if (
+                current_location == self.BINARY_HARDENING_RESULTS_DATA
+                and line.startswith("╚")
+                and line.endswith("╝")
+            ):
+                current_location = self.BINARY_HARDENING_RESULTS
+                if len(current_table_row) == 0:  # should never happen:
+                    continue
+
+                cells = ["" for index in range(0, len(current_table_row[0]))]
+
+                for row_piece in current_table_row:
+                    for index, row_piece_column in enumerate(row_piece):
+                        cells[index] += row_piece_column + "\n"
+                for index, cell in enumerate(cells):
+                    cells[index] = cell[:-1]
+
+                sections_tree[self.BINARY_HARDENING_RESULTS][self.DATA].append(cells)
+                current_table_row = []
+
+                continue
+
+            # ---- Data population: Binary Hardening Results ----
+
+            if current_location == self.BINARY_HARDENING_RESULTS_DATA:
+                if line.startswith("║") and line.endswith("║"):  # in table row
+                    columns = line[1:-1].rsplit("│", maxsplit=current_columns_count - 1)
+
+                    normalized_columns = [self.normalize_rich_text(column) for column in columns]
+                    if normalized_columns == self.BINARY_HARDENING_RESULTS_DATA_COLUMNS:
+                        sections_tree[self.BINARY_HARDENING_RESULTS][
+                            self.TABLE_HEADERS
+                        ] = normalized_columns
+                        current_table_row = []
+                        continue
+                    else:
+                        current_table_row.append(columns)
+
+                elif line.startswith("╟") and line.endswith("╢"):  # row separator
+                    if len(current_table_row) == 0:  # should never happen:
+                        continue
+
+                    cells = ["" for index in range(0, len(current_table_row[0]))]
+
+                    for row_piece in current_table_row:
+                        for index, row_piece_column in enumerate(row_piece):
+                            cells[index] += row_piece_column + "\n"
+                    for index, cell in enumerate(cells):
+                        cells[index] = cell[:-1]
+
+                    sections_tree[self.BINARY_HARDENING_RESULTS][self.DATA].append(cells)
+                    current_table_row = []
+
+                continue
+
+            if current_location == self.BINARY_HARDENING_RESULTS and (
+                line.startswith(self.BINARY_HARDENING_FINDINGS_COUNT)
+                or self.string_matches_span_pattern(
+                    line, self.BINARY_HARDENING_FINDINGS_COUNT + r": \d+"
+                )
+            ):
+                sections_tree[self.BINARY_HARDENING_RESULTS][
+                    self.BINARY_HARDENING_FINDINGS_COUNT
+                ] = (
+                    self.normalize_rich_text(line)
+                    .split(self.BINARY_HARDENING_FINDINGS_COUNT + ":", 1)[1]
+                    .strip()
+                )
+                continue
+
+            if current_location == self.BINARY_HARDENING_RESULTS and (
+                line.startswith("Binary hardening checks")
+                or self.string_matches_span_pattern(line, r"Binary hardening checks .*")
+            ):
+                if sections_tree[self.BINARY_HARDENING_RESULTS][self.SUMMARY] != "":
+                    sections_tree[self.BINARY_HARDENING_RESULTS][self.SUMMARY] += "\n"
+                sections_tree[self.BINARY_HARDENING_RESULTS][self.SUMMARY] += (
+                    self.normalize_rich_text(line)
+                )
+                # The coverage line is the section's last line, so a section
+                # that follows is identified from a clean state.
+                current_location = None
+                continue
+
         return sections_tree
 
     def format_as_html_ul(self, input_string):
@@ -1867,6 +1978,62 @@ class ReportGenerator:
 
         report_content.append(service_endpoints)
 
+    def generate_section_binary_hardening(
+        self, sections_tree, report_content, table_inits, tree_is_from_html
+    ):
+        binary_hardening_results = BINARY_HARDENING_RESULTS
+
+        current_content = sections_tree[self.BINARY_HARDENING_RESULTS][
+            self.BINARY_HARDENING_FINDINGS_COUNT
+        ]
+        if tree_is_from_html is False:
+            current_content = html.escape(current_content)
+
+        try:
+            findings_count = int(current_content)
+        except ValueError:
+            findings_count = -1
+            pass
+        if findings_count == -1:
+            current_content = f"{len(sections_tree[self.BINARY_HARDENING_RESULTS][self.DATA])}"
+
+        binary_hardening_results = binary_hardening_results.replace(
+            "<BINARY_HARDENING_FINDINGS_COUNT_PLACEHOLDER>", current_content, 1
+        )
+
+        current_content = sections_tree[self.BINARY_HARDENING_RESULTS][self.SUMMARY]
+        if tree_is_from_html is False:
+            current_content = html.escape(current_content)
+        binary_hardening_results = binary_hardening_results.replace(
+            "<SUMMARY_PLACEHOLDER>", current_content, 1
+        )
+
+        html_table = []
+        for row_data in sections_tree[self.BINARY_HARDENING_RESULTS][self.DATA]:
+            html_row = ["<tr>"]
+            for index, column in enumerate(self.BINARY_HARDENING_RESULTS_DATA_COLUMNS):
+                current_content = row_data[index] if len(row_data) >= index + 1 else "-"
+                if tree_is_from_html is False:
+                    current_content = html.escape(current_content)
+                if self.raw_content:
+                    html_row.append(f"<td><pre>{current_content}</pre></td>")
+                else:
+                    html_row.append(f"<td>{current_content}</td>")
+            html_row.append("</tr>")
+            html_table.append("\n".join(html_row))
+
+        binary_hardening_results = binary_hardening_results.replace(
+            "<TABLE_PLACEHOLDER>", "\n".join(html_table), 1
+        )
+
+        table_id = self.identify_table_id(table_inits, "binary-hardening-table")
+        table_inits.append(f'initTable("#{table_id}");')
+        binary_hardening_results = binary_hardening_results.replace(
+            "<TABLE_ID_PLACEHOLDER>", table_id, 1
+        )
+
+        report_content.append(binary_hardening_results)
+
     def generate_section_reachable_flows(
         self, sections_tree, report_content, table_inits, tree_is_from_html, piece_id
     ):
@@ -2327,6 +2494,14 @@ class ReportGenerator:
                     table_inits,
                     tree_is_from_html,
                     piece_id,
+                )
+
+            if (
+                sections_tree[self.BINARY_HARDENING_RESULTS][self.SUMMARY] != ""
+                or len(sections_tree[self.BINARY_HARDENING_RESULTS][self.DATA]) > 0
+            ):
+                self.generate_section_binary_hardening(
+                    sections_tree, report_content, table_inits, tree_is_from_html
                 )
 
             if sections_tree[self.SERVICE_ENDPOINTS][self.ENDPOINTS][self.SUMMARY] != "":

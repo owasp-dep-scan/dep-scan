@@ -314,6 +314,11 @@ class SemanticReachability(FrameworkReachability):
         if analysis_options.bom_files:
             for bom_file in analysis_options.bom_files:
                 data = json_load(bom_file)
+                # The BOM file list is a name glob, so a report that is not a
+                # BOM (a license or risk report whose name contains "bom")
+                # reaches here as a list or string and is skipped.
+                if not isinstance(data, dict):
+                    continue
                 lifecycles = data.get("metadata", {}).get("lifecycles", []) or []
                 is_post_build = any(
                     [aline for aline in lifecycles if aline.get("phase") == "post-build"]

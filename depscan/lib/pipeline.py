@@ -67,7 +67,7 @@ from vdb.lib.utils import parse_purl
 from xbom_lib.cdxgen import remove_stale_slices
 
 from depscan import get_version
-from depscan.lib import explainer, utils
+from depscan.lib import binary_review, explainer, utils
 from depscan.lib import doctor as doctor_lib
 from depscan.lib import logger as logger_lib
 from depscan.lib import scan_directory, vdb_setup
@@ -276,6 +276,11 @@ class ScanContext:
     #: A record that arrives again is kept again; the store's write rules
     #: fold the copies (and merge their caveats) at write time.
     evidence_records: List = field(default_factory=list)
+    #: Whether a blint review of this scan completed, and the coverage
+    #: reports it wrote, so the rendering states the review's coverage
+    #: whatever the inventory outcome of the type that ran it was.
+    blint_review_ran: bool = False
+    blint_coverage_files: List[str] = field(default_factory=list)
     #: The Python object ids of the records already in ``evidence_records``,
     #: so a result shared by several types is added once.
     evidence_record_objects: Set[int] = field(default_factory=set)
@@ -1556,8 +1561,8 @@ def stage_analysis_risk(ctx, scan) -> bool:
             if not args.no_vuln_table and report_data and rtable:
                 console.print(rtable)
         if report_rows and scan.risk_report_file:
-            # The risk audit findings are stored in jsonl format.
-            file_write(scan.risk_report_file, "\n".join(json.dumps(row) for row in report_rows))
+            # The risk audit findings are stored as one JSON array of rows.
+            file_write(scan.risk_report_file, json.dumps(report_rows, indent=2))
     except Exception as e:  # noqa: BLE001 - the audit degrades, the scan continues
         LOG.error(e)
         LOG.error("Risk audit was not successful")
@@ -2010,6 +2015,13 @@ def _blint_adapter_result(ctx, scan):
         LOG.debug(
             "blint evidence: the adapter built %d records from %s", len(result.records), directory
         )
+        # The rendering states the review's coverage from blint's own
+        # report, whatever the inventory outcome of this type turns out to
+        # be, so a type that loads no packages still gets its statement.
+        ctx.blint_review_ran = True
+        coverage_file = binary_review.coverage_path(base)
+        if os.path.isfile(coverage_file) and coverage_file not in ctx.blint_coverage_files:
+            ctx.blint_coverage_files.append(coverage_file)
     return result
 
 
@@ -2509,10 +2521,55 @@ def stage_render_explain(ctx, scan):
         )
 
 
+def _scan_requested_blint_reviews(ctx) -> bool:
+    """Whether any project type of this scan asked for blint's review.
+
+    This is the gate :func:`finish_scan_directory` applies to the review's
+    findings, so a table rendered under it counts the same findings the
+    findings file holds.
+    """
+    return any(
+        blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
+        for project_type in (ctx.project_types or [None])
+    )
+
+
+def _render_binary_review(ctx) -> None:
+    """Print the blint review's binary-hardening findings on the console.
+
+    The rows are the findings :func:`finish_scan_directory` writes to
+    ``depscan.findings.json``, built from the same records under the same
+    review gate, so the table's count agrees with the file. A review that
+    completed is followed by one line stating its coverage from blint's own
+    report, so a clean review never reads as a scan that found nothing to
+    check; the line is printed even when the tables are off. The printing
+    happens before the console is saved, so ``depscan.txt`` and
+    ``depscan.html`` carry it. A scan that did not ask for the review
+    prints nothing here.
+    """
+    if not _scan_requested_blint_reviews(ctx):
+        return
+    from analysis_lib.findings.blint_convert import findings_from_blint_records
+
+    rows = [finding.to_dict() for finding in findings_from_blint_records(ctx.evidence_records)]
+    if rows and not ctx.args.no_vuln_table:
+        console.print(binary_review.binary_hardening_table(rows))
+    if ctx.blint_review_ran:
+        units = binary_review.sum_coverage_units(
+            binary_review.read_coverage_units(path) for path in ctx.blint_coverage_files
+        )
+        console.print(
+            binary_review.coverage_summary(
+                len(rows), units, binary_review.COVERAGE_RELATIVE_PATH
+            )
+        )
+
+
 def stage_render_reports(ctx):
     """Export the console output and render every report file."""
     args = ctx.args
     console.record = True
+    _render_binary_review(ctx)
     # Export the console output
     console.save_html(
         ctx.html_report_file,

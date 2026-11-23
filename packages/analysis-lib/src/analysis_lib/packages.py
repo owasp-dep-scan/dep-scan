@@ -34,7 +34,9 @@ def retrieve_bom_dependency_tree(bom_file, bom_dir):
     else:
         bom_files = [bom_file]
     for file_path in bom_files:
-        if bom_data := json_load(file_path):
+        bom_data = json_load(file_path)
+        # The file list is a name glob; a non-object document is not a BOM.
+        if isinstance(bom_data, dict):
             dependencies += bom_data.get("dependencies", [])
     return dependencies
 
@@ -57,8 +59,11 @@ def retrieve_oci_properties(bom_file, bom_dir):
     else:
         bom_files = [bom_file]
     for file_path in bom_files:
-        if bom_data := json_load(file_path):
-            for p in bom_data.get("metadata", {}).get("properties", []):
+        bom_data = json_load(file_path)
+        # The file list is a name glob; a non-object document is not a BOM.
+        if not isinstance(bom_data, dict):
+            continue
+        for p in bom_data.get("metadata", {}).get("properties", []):
                 if p.get("name", "").startswith("oci:image:"):
                     props[p.get("name")] = p.get("value")
     return props
@@ -119,6 +124,11 @@ def get_pkg_list(jsonfile):
     pkgs = []
     lifecycles = []
     if bom_data := json_load(jsonfile):
+        # The BOM file list is a name glob, so a report that is not a BOM (a
+        # license or risk report whose name contains "bom") reaches here as
+        # a list or string and reads as a document with no packages.
+        if not isinstance(bom_data, dict):
+            return pkgs, lifecycles
         # Collect the lifecycles listed in the BOM
         if isinstance(bom_data.get("metadata"), dict):
             lifecycles = bom_data["metadata"].get("lifecycles") or []
