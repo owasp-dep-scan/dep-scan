@@ -311,11 +311,13 @@ def finding_from_vdr(
     The finding carries the advisory id as its rule, the entry's most severe
     rating, the versions named as fixes and the dep-scan extension
     properties; its id is the line-free fingerprint of the pair.
-    ``usage_not_assessed`` is why the package's usage evidence was not
-    read (the BOM it came from was not assessed). When the presence axis
-    is graded and not ``proven``, the finding's coverage carries that
-    reason, so a ``likely`` or ``unlikely`` presence never reads as usage
-    measured and not found. The finding itself stays assessed: the database match ran.
+    ``usage_not_assessed`` is why usage evidence of the package in a BOM of
+    the scan was not assessed. Whenever the map has an entry for the
+    finding's purl, the coverage carries it, proven presence included: a
+    finding that graded on another BOM's records still names the BOM that
+    was not read, and a ``likely`` or ``unlikely`` presence never reads as
+    usage measured and not found. The finding itself stays assessed: the
+    database match ran.
 
     :raises ValueError: when ``component_ref`` is not a valid package URL.
     """
@@ -324,11 +326,7 @@ def finding_from_vdr(
         raise ValueError("the VDR entry has no advisory id")
     finding_id = finding_fingerprint("vulnerability", rule, [component_ref])
     coverage = Coverage(state="assessed")
-    if (
-        usage_not_assessed
-        and exploitability is not None
-        and exploitability.axes.presence not in ("proven", "not_assessed")
-    ):
+    if usage_not_assessed and exploitability is not None:
         coverage.reasons = [
             CoverageReason(
                 capability=PRESENCE_USAGE_CAPABILITY,
@@ -374,8 +372,9 @@ def findings_from_vdr(
     assessment this scan graded for it (see
     :func:`analysis_lib.findings.exploitability.annotate_exploitability`);
     a pair the map does not carry records no exploitability.
-    ``usage_not_assessed`` maps a comparable purl to the reason its usage
-    evidence was not read (see :func:`finding_from_vdr`).
+    ``usage_not_assessed`` maps a comparable purl to the reason usage
+    evidence of it in a BOM of the scan was not assessed (see
+    :func:`finding_from_vdr`).
 
     :raises ValueError: when an entry has no advisory id or a ref that is
         not a valid package URL; a VDR the scan wrote always carries both.

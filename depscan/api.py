@@ -330,6 +330,7 @@ def _run_stages(
                 tscan,
                 project_type=project_type,
                 capabilities=["vulnerabilities"],
+                record_extra=lambda: {"notAssessed": _matching_not_assessed(tscan)},
             )
             _stage(
                 ctx,
@@ -472,6 +473,20 @@ def _analyzer_entries(ctx, tscan):
     return scan_directory.analyzer_entries(
         ctx.doctor_report, [tscan.project_type], tscan.adapter_results
     )
+
+
+def _matching_not_assessed(tscan):
+    """The not-assessed line the matching stage's manifest entry carries.
+
+    The usage records whose components the scan did not load graded
+    nothing; the count says so on the entry, so the skipped records are
+    never dropped silently."""
+    if not tscan.ungraded_usage_records:
+        return []
+    return [
+        f"{tscan.ungraded_usage_records} cdxgen usage records grade nothing: "
+        "their components are not in the loaded package list"
+    ]
 
 
 def _inventory_capabilities(options, project_type: str) -> List[str]:

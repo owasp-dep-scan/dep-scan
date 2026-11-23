@@ -132,24 +132,26 @@ DEJACODE_USAGE_EVIDENCE = {
 }
 
 # The presence values a BOM-directory scan of the dejacode fixture gives with
-# the usage evidence above attached and reachability off. The aggregated
-# loader keeps only the identity evidences of each component, so usage
-# never proves presence on such a scan: the values are likely or unlikely
-# only, and proven comes from reach alone. They are pinned as literals, not
-# recomputed by the code under test, so a regression in what the wiring
-# feeds the axis cannot redefine them.
+# the usage evidence above attached and reachability off. The scan reads the
+# BOM's usage records and grades presence from them on this scan type too:
+# the four components with evidence attached (occurrences or a callstack)
+# are proven, and the components without evidence keep the value their
+# scope gives, likely or unlikely. The map was recorded from a run of this
+# scan and then checked by hand against those rules; it is pinned as
+# literals, not recomputed by the code under test, so a regression in what
+# the wiring feeds the axis cannot redefine it.
 BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF = {
-    "pkg:pypi/defusedxml@0.7.1": "likely",
-    "pkg:pypi/django-axes@8.3.1": "unlikely",
+    "pkg:pypi/defusedxml@0.7.1": "proven",
+    "pkg:pypi/django-axes@8.3.1": "proven",
     "pkg:pypi/django-crispy-forms@2.7": "unlikely",
     "pkg:pypi/django-guardian@3.5.2": "unlikely",
     "pkg:pypi/django-otp@1.7.5": "likely",
-    "pkg:pypi/django-registration@5.2.1": "likely",
+    "pkg:pypi/django-registration@5.2.1": "proven",
     "pkg:pypi/django@6.1.2": "likely",
     "pkg:pypi/license-expression@30.4.4": "likely",
     "pkg:pypi/odfdo@3.27.3": "likely",
     "pkg:pypi/qrcode@8.2": "likely",
-    "pkg:pypi/requests@2.34.2": "likely",
+    "pkg:pypi/requests@2.34.2": "proven",
 }
 
 # The three binary-hardening findings the committed blint recording's checks
@@ -1061,15 +1063,15 @@ def test_the_index_joins_a_finding_to_its_cdxgen_occurrence_record(scan_stubs, t
     )
 
 
-def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_path, monkeypatch):
+def test_bom_dir_presence_grades_the_read_boms_usage_records(scan_stubs, tmp_path, monkeypatch):
     """A BOM-directory scan of the dejacode fixture with usage evidence
     attached gives every component the values pinned in
-    BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF: the aggregated package list
-    keeps only the identity evidences, so usage proves nothing there and
-    presence is likely or unlikely, with proven reserved for reach. The
-    BOM's usage records still reach the store (they are additive); only the
-    grading skips them, so a wiring that fed them to the axis cannot pass
-    this test, and neither can one that skipped the cdxgen adapter."""
+    BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF, which were recorded under this
+    rule: the scan reads the BOM's usage records, and the components with
+    occurrences or a callstack are proven on the aggregated load too, while
+    the components without evidence keep the value their scope gives. A
+    wiring that still skipped the aggregated documents' records, or one
+    that skipped the cdxgen adapter, cannot pass this test."""
     monkeypatch.setattr(
         sys.modules[__name__], "STUB_FINDING_PURLS", tuple(BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF)
     )
@@ -1083,10 +1085,7 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_pa
         ),
         render=False,
     )
-    values = {
-        finding["components"][0]: finding["exploitability"]["axes"]["presence"]
-        for finding in result.findings
-    }
+    values = _presence(result)
     assert values == BOM_DIR_PRESENCE_WITH_REACHABILITY_OFF
     records = _store_records(bom_dir)
     assert any(
@@ -1094,10 +1093,15 @@ def test_bom_dir_presence_equals_the_recorded_stripped_values(scan_stubs, tmp_pa
         for record in records
         if record["producer"]["name"] == "cdxgen"
     ), "the usage records are still written to the store"
+    matching = next(
+        stage
+        for stage in result.manifest["stages"]
+        if stage["name"] == "matching" and stage.get("projectType") == "bom"
+    )
+    assert not matching.get("notAssessed"), "every dejacode usage record matched a component"
 
     # With reachability on, every component of this fixture is reached, and
-    # presence is proven by reach alone: the stripped usage view costs
-    # nothing there.
+    # presence is proven by reach alone there.
     reach_result = api.scan(
         api.scan_options(
             bom_dir=str(bom_dir),
