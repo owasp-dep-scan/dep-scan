@@ -4,8 +4,9 @@ This module is the only code that knows the blint review report formats:
 the ``findings.json``, ``reviews.json`` and ``analysis-coverage.json``
 documents a blint review writes beside the BOM. The reports name no schema
 version of their own, so the version gate runs on the blint tool version
-the caller passes (the blint-written BOM's ``metadata.tools`` names it);
-the locally installed blint package is never asked.
+the caller passes (the blint-written BOM's ``metadata.tools`` names it),
+and the gate's caveats say so; the locally installed blint package is
+never asked.
 
 Two kinds of output become records, both ``presence`` records about the
 binary the report names:
@@ -19,18 +20,25 @@ binary the report names:
    evidence symbol so symbol presence is per symbol. A review whose
    evidence is empty keeps one location for the file.
 
-Subject purls come from the BOM component the binary reconciles to by
-basename match against component names and the name-bearing parts of
-component purls; no reconciliation means the record is still written with
+Subject purls come from the BOM component the binary reconciles to. A
+component matches when its name, or the name in its purl (version,
+qualifiers and subpath removed, percent-decoding applied, the subpath's
+last segment included), is the binary's file name or the name blint's own
+SBOM gives that file: a ``.dll`` loses its suffix and a ``.rlib`` is named
+by its crate. No reconciliation means the record is still written with
 empty purls and its location carries it. Every non-path value an entry
 carries is kept in the record's attributes as given, with the ``evidence``
-object's paths neutralized.
+object's paths neutralized and home directories taken out of every
+string.
 
-The coverage document's failed and skipped unit counts become
-``coverage-gap`` caveats on the producer result and on every record. Every
-report object that cannot become a record (an entry that is not a JSON
-object, an evidence list that is not a list, a coverage document of the
-wrong shape) is counted in one ``record-skipped`` caveat per reason. A
+The coverage document's failed and skipped unit counts (a number, or a
+string of digits) become ``coverage-gap`` caveats on the producer result
+and on every record. Every report object that cannot become a record or
+a part of one (an entry that is not a JSON object, an evidence list that
+is not a list, a ``filename`` that is not a string, a unit count that is
+not a number, a coverage document of the wrong shape, an entry nested
+deeper than the adapter reads) is counted in one ``record-skipped``
+caveat per reason. A
 malformed required findings document instead yields a not-assessed result
 with the reason, never a partial read.
 
@@ -43,16 +51,19 @@ Binary paths are stored relative to the source root through
 with no matching root) reaches no location and no id, is counted in a
 ``location-outside-root`` caveat, and leaves its basename behind in the
 record's attributes (``fileName``), so a finding built from the record
-still names its binary the way the document reader's basename fallback
-does. Record ids hash the path fields in their relative spelling rather
-than as written, so the same report produced in another directory gives
-the same ids.
+still names its binary. Record ids hash the path fields in their relative
+spelling rather than as written (a path no root holds is left out), and
+keep the rule ``id`` and blint's own ``finding_id``, a content hash of the
+rule, the binary's digest and the evidence locator that tells apart the
+repeats blint numbers itself; the same report produced in another
+directory gives the same ids.
 """
 
 from __future__ import annotations
 
 import json
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from urllib.parse import unquote
 
 from analysis_lib.evidence import (
     Evidence,
@@ -65,12 +76,13 @@ from analysis_lib.evidence.adapters import (
     STATUS_COMPLETED,
     SkipTally,
     SourcePaths,
+    TOO_DEEP_REASON,
     as_str,
     build_record,
     gate_report_version,
     guard_extract,
-    neutral_discriminator,
     not_assessed,
+    stable_discriminator,
 )
 
 #: The blint tool major this adapter reads, and the newest minor it knows.
@@ -93,6 +105,8 @@ def _parse_document(document: Any) -> Tuple[Optional[Any], Optional[str]]:
     if isinstance(document, (str, bytes)):
         try:
             return json.loads(document), None
+        except RecursionError:
+            return None, "the report nests its values deeper than this adapter reads"
         except ValueError as e:
             return None, f"the report is not valid JSON: {e}"
     return document, None
@@ -105,21 +119,40 @@ def _basename(path: Any) -> str:
 
 
 def _purl_names(purl: str) -> List[str]:
-    """The name-bearing parts of a purl: the last segment of its path and
-    of its subpath, the two places a binary's file name can sit in a purl
-    a binary SBOM writes (``pkg:generic/plain-libc-demo.elf``)."""
-    stripped = purl.split("?", 1)[0]
-    path, _, subpath = stripped.partition("#")
+    """The name-bearing parts of a purl, percent-decoded: the name (the
+    last segment of its path, without the ``@version``) and the last
+    segment of its subpath, the two places a binary's file name can sit in
+    a purl a binary SBOM writes (``pkg:generic/plain-libc-demo.elf``,
+    ``pkg:generic/libfoo%2B%2B.so``, ``pkg:nuget/MyApp@1.2.0``)."""
+    head, _, subpath = purl.partition("#")
+    path = head.split("?", 1)[0].partition(":")[2].lstrip("/")
     names = []
-    for part in (path.partition("/")[2], subpath):
-        if part:
-            names.append(part.rsplit("/", 1)[-1])
+    if "/" in path:
+        last = path.rsplit("/", 1)[-1]
+        name = last.rsplit("@", 1)[0] if "@" in last else last
+        if name:
+            names.append(unquote(name))
+    subpath = subpath.strip("/")
+    if subpath:
+        names.append(unquote(subpath.rsplit("/", 1)[-1]))
     return names
 
 
-def _binary_subject(
-    filename: Any, components: List[dict]
-) -> Tuple[List[str], Optional[str]]:
+def _binary_names(basename: str) -> List[str]:
+    """The names a binary's file can carry in a BOM: the file name itself,
+    and the name blint's own SBOM gives it (a ``.dll`` without the suffix,
+    compared without case as Windows names are; a ``.rlib`` as its crate
+    name, ``libfoo-1a2b.rlib`` reading ``foo``)."""
+    names = [basename]
+    lowered = basename.lower()
+    if lowered.endswith(".dll") and len(basename) > 4:
+        names.append(basename[:-4])
+    if lowered.endswith(".rlib"):
+        names.append(basename.split("-")[0].removeprefix("lib").removesuffix(".rlib"))
+    return names
+
+
+def _binary_subject(filename: Any, components: List[dict]) -> Tuple[List[str], Optional[str]]:
     """The subject of a binary's records: the purls of every component its
     basename matches, and the first match's ``bom-ref``.
 
@@ -132,12 +165,18 @@ def _binary_subject(
     purls: List[str] = []
     component_ref: Optional[str] = None
     if basename:
+        exact = basename
+        folded = {name.casefold() for name in _binary_names(basename)[1:]}
+
+        def matches(name: str) -> bool:
+            return bool(name) and (name == exact or name.casefold() in folded)
+
         for component in components:
             if not isinstance(component, dict):
                 continue
             purl = as_str(component.get("purl"))
-            if as_str(component.get("name")) != basename and not (
-                purl and basename in _purl_names(purl)
+            if not matches(as_str(component.get("name"))) and not (
+                purl and any(matches(name) for name in _purl_names(purl))
             ):
                 continue
             if purl and purl not in purls:
@@ -163,8 +202,7 @@ def _coverage_caveats(
     document, error = _parse_document(coverage_document)
     if error is not None or not isinstance(document, dict):
         shape = error or (
-            f"the coverage document is a {type(document).__name__}, "
-            "not the coverage report object"
+            f"the coverage document is a {type(document).__name__}, not the coverage report object"
         )
         skipped.add(f"{shape}; its failure and skip counts were not read")
         return []
@@ -181,7 +219,14 @@ def _coverage_caveats(
     caveats = []
     for key in ("failed", "skipped"):
         value = units.get(key)
-        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+        if isinstance(value, str) and value.strip().isdigit():
+            value = int(value.strip())
+        elif value is not None and (not isinstance(value, int) or isinstance(value, bool)):
+            skipped.add(
+                f"coverage units {key} counts are not numbers and were not read as a coverage gap"
+            )
+            continue
+        if isinstance(value, int) and value > 0:
             caveats.append(
                 EvidenceCaveat(
                     kind="coverage-gap",
@@ -258,7 +303,9 @@ def extract(
             )
         finding_entries = entries or []
 
-    gate = gate_report_version(producer_version, SUPPORTED_MAJOR, KNOWN_MINOR)
+    gate = gate_report_version(
+        producer_version, SUPPORTED_MAJOR, KNOWN_MINOR, holder="BOM", noun="blint version"
+    )
     if not gate.accepted:
         return not_assessed(
             f"the blint tool version {producer_version!r} is not supported; "
@@ -294,7 +341,7 @@ def extract(
         producer's non-path values kept as given and the path fields stored
         in their relative spelling."""
         attributes: Dict[str, Any] = {
-            key: value for key, value in entry.items() if key not in _PATH_FIELDS
+            key: paths.redact(value) for key, value in entry.items() if key not in _PATH_FIELDS
         }
         exe_name = paths.relative(entry.get("exe_name"))
         if exe_name is not None:
@@ -310,11 +357,17 @@ def extract(
             # root; the basename keeps the record usable without carrying
             # an absolute path anywhere.
             attributes["fileName"] = _basename(filename)
-        if attributes.get("evidence") is not None:
-            attributes["evidence"] = paths.neutral(attributes["evidence"])
+        if entry.get("evidence") is not None:
+            attributes["evidence"] = paths.redact(paths.neutral(entry["evidence"]))
+        if filename is not None and not isinstance(filename, str):
+            skipped.add(
+                "entries name a filename that is not a string and carry no location or file name"
+            )
         # The discriminator hashes the path fields relativized (or left out
         # when no relative form exists), so a report produced in another
-        # directory gives the same id.
+        # directory gives the same id. The rule id and blint's finding_id
+        # stay in it: neither depends on the directory, and finding_id is
+        # what tells apart the repeats blint numbers itself.
         discriminator_object = dict(entry)
         left_out = 0
         for key in _PATH_FIELDS:
@@ -336,7 +389,7 @@ def extract(
                 producer=producer,
                 kind="presence",
                 polarity=polarity,
-                discriminator=neutral_discriminator(discriminator_object, paths),
+                discriminator=stable_discriminator(discriminator_object, paths),
                 purls=tuple(purls),
                 component_ref=component_ref,
                 locations=tuple(locations),
@@ -352,7 +405,10 @@ def extract(
             continue
         binary = paths.relative(entry.get("filename"))
         locations = [EvidenceLocation(file=binary)] if binary else []
-        entry_record(entry, "negative", locations, source)
+        try:
+            entry_record(entry, "negative", locations, source)
+        except RecursionError:
+            skipped.add(TOO_DEEP_REASON)
 
     if reviews_document is not None:
         if reviews_source is None:
@@ -401,7 +457,10 @@ def extract(
                     locations = [EvidenceLocation(file=binary, method=s) for s in symbols]
                 else:
                     locations = [EvidenceLocation(file=binary)]
-                entry_record(entry, "positive", locations, reviews_source or source)
+                try:
+                    entry_record(entry, "positive", locations, reviews_source or source)
+                except RecursionError:
+                    skipped.add(TOO_DEEP_REASON)
 
     outside = paths.producer_caveat()
     caveats = _dedupe_caveats(base_caveats + skipped.caveats() + ([outside] if outside else []))
