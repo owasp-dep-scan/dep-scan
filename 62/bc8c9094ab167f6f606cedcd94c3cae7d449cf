@@ -1,0 +1,19 @@
+test/test_bom.py
+  s_486b0f791e3b4d::t_d6338cc3c52c39 459-507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62bc8c9094ab167f6f606cedcd94c3cae7d449cf",
+  "prompts": {},
+  "sessions": {
+    "s_486b0f791e3b4d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_ce10c82f-32f3-4088-8bdd-fc8560f722e4",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
