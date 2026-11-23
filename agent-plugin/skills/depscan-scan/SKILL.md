@@ -68,7 +68,16 @@ source scan also lets golem fetch Go modules unless
 `--go-analyzer-network offline` is passed, and when no usable local cdxgen
 exists (neither `CDXGEN_CMD` nor a cdxgen on `PATH` at the minimum version)
 and `docker` is on `PATH`, the `auto` engine pulls the
-`ghcr.io/cdxgen/cdxgen` image; say which applies.
+`ghcr.io/cdxgen/cdxgen` image; say which applies. A source scan of a tree
+that carries Dockerfiles or compose files reads every image they name: it
+pulls the ones the daemon lacks and extracts their layers, which on a
+container-heavy tree can consume the whole cdxgen time budget (30 minutes
+by default, `CDXGEN_TIMEOUT_MS` to raise it). When those files are build or
+CI material rather than the product, exclude their trees before scanning,
+for example
+`--cdxgen-args "--exclude 'ci/**' --exclude 'test/**'"`, one `--exclude`
+per tree with the pattern anchored at the scanned root (see
+[reference/safety.md](../../reference/safety.md)).
 
 ```bash
 CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --format json -o /absolute/path/to/reports

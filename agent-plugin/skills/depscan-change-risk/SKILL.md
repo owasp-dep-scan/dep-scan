@@ -32,9 +32,18 @@ diff_scans(old_scan_dir=<old>, new_scan_dir=<new>)
 Without the MCP server, produce two scans and compare the documents:
 
 ```bash
-depscan scan /absolute/path/to/old-revision --format json -o /tmp/old-reports
-depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/old-revision --format json -o /tmp/old-reports
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
 ```
+
+Bound each side before launching: look at what the tree carries, and when a
+side holds container files, fixture corpora or other non-product trees,
+pass the same `--cdxgen-args "--exclude ..."` set on both sides (the
+patterns anchor at each scanned root), or the two inventories cover
+different material and the delta answers a different question than the one
+asked. Two universal scans of container-heavy trees also pull every image
+the Dockerfiles name, so the unbounded pair can spend most of an hour per
+side; name the scope the diff will rest on before the first command runs.
 
 Read both manifests' `stages` first: a stage that is anything but
 `completed` on one side makes the delta for its categories not assessed.

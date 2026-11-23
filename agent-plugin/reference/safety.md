@@ -113,10 +113,22 @@ entry, give the purl without the credential, or the account name and host.
   exists and `docker` is on `PATH` (outside Windows) does it pull the
   `ghcr.io/cdxgen/cdxgen` image. Say which one ran.
 - A container scan of an image reference the daemon does not have pulls
-  the image from its registry by itself (cdxgen pulls when its check of
-  the local daemon finds nothing, and the layers can be large). Check the
+  the image from its registry by itself (cdxgen pulls when its check of the
+  local daemon finds nothing, and the layers can be large). Check the
   daemon first and ask before scanning, or have the user pull the
   reference or export a rootfs.
+- A source scan of a tree with Dockerfiles or compose files reads every
+  image they name the same way: the ones the daemon lacks are pulled and
+  their layers extracted, whatever the scan type, so a tree whose container
+  files are build or CI material rather than the product turns a scan into
+  a long image-pulling run whose result depends on the daemon's state.
+  Look for container files before scanning a large tree; when they are not
+  product content, exclude their trees with
+  `--cdxgen-args "--exclude 'ci/**'"` (one `--exclude` per tree, the
+  pattern anchored at the scanned root, a leading `**/` only for same-named
+  nested directories), and say which trees were excluded. cdxgen stops at
+  its time budget (`CDXGEN_TIMEOUT_MS`, 30 minutes by default) when a scan
+  outruns it; the failure reason names the budget.
 - golem fetches Go modules for a source scan unless
   `--go-analyzer-network offline` is passed.
 - `depscan-vdb` and `depscan-coverage-loop` change state and run only when

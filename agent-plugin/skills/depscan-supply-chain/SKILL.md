@@ -26,8 +26,14 @@ user's consent, and the step says so before it runs.
 ## Step 1: dep-scan's own supply-chain view
 
 ```bash
-depscan scan /absolute/path/to/project --checks supply-chain --format json -o /absolute/path/to/reports
+CDXGEN_SECURE_MODE=true depscan scan /absolute/path/to/project --checks supply-chain --format json -o /absolute/path/to/reports
 ```
+
+`CDXGEN_SECURE_MODE=true` stays on every scan of a local project the user
+has not vouched for (the same rule as the scan skill), and a tree whose
+container files or fixture corpora are not product content carries their
+`--cdxgen-args --exclude` trees, or the inventory spends its budget reading
+them.
 
 The risk audit reads the npm, PyPI and Cargo packages of the scan,
 whatever the project type, and looks each one up in its public registry,
