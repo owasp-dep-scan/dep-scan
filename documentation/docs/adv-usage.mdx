@@ -90,6 +90,8 @@ export FETCH_LICENSE=true
 
 The license data is sourced from choosealicense.com and is quite limited. If the license of a given package cannot be reliably matched against this list it will get silently ignored to reduce any noise. This behavior could change in the future once the detection logic gets improved.
 
+The license report file (`license-<type>.json` in the reports directory) is written whenever the license scan runs, with no rows when every license was clean, so a clean scan stays distinguishable from one that matched nothing. Packages whose BOM entries state no license at all are counted on the scan directory manifest's licenses stage as a notAssessed line, so they read as never assessed rather than clean.
+
 [//]: # "![License scan](docs/license-scan.png)"
 
 ## Kubernetes and Cloud apps

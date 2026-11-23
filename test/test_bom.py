@@ -370,6 +370,217 @@ def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
     assert result.primary is None
 
 
+def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path):
+    """A universal-typed scan names no language, but its BOM's components do.
+
+    dep-scan scans every source tree with the universal type, so the
+    language tools are selected by the purl types the BOM carries: golem on
+    golang, rusi on cargo, dosai on nuget. kosi keeps the project-type gate
+    alone, because a maven purl cannot tell Kotlin from plain Java.
+    """
+    from depscan.lib import bom as bom_mod
+
+    fixture = Path(__file__).parent / "data" / "universal-bom" / "sbom-universal-go.cdx.json"
+    bom_file = tmp_path / "sbom-universal.cdx.json"
+    bom_file.write_text(fixture.read_text(encoding="utf-8"))
+
+    calls = []
+
+    def recording(tool):
+        def run_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
+            calls.append(tool.name)
+            return None
+
+        return run_fallback
+
+    tools = {
+        tool.name: dataclasses.replace(tool, run_fallback=recording(tool))
+        for tool in (bom_mod.RUSI_TOOL, bom_mod.GOLEM_TOOL, bom_mod.KOSI_TOOL, bom_mod.DOSAI_TOOL)
+    }
+    options = {"project_type": ["universal"], "reachability_analyzer": "FrameworkReachability"}
+
+    # The fixture's golang component selects golem on the universal scan.
+    golem_result = bom_mod._run_reachability_tool(
+        str(bom_file), str(tmp_path), options, tools["golem"]
+    )
+    assert calls == ["golem"], "the golem fallback ran for the golang purl the BOM carries"
+    assert golem_result is not None, "the tool applied to the universal scan"
+
+    # A BOM with no golang purl leaves golem out, whatever the type says.
+    npm_bom = tmp_path / "sbom-npm.cdx.json"
+    npm_bom.write_text(json.dumps({"components": [{"purl": "pkg:npm/yarn@1.22.22"}]}))
+    calls.clear()
+    assert (
+        bom_mod._run_reachability_tool(str(npm_bom), str(tmp_path), options, tools["golem"])
+        is None
+    )
+    assert calls == []
+
+    # rusi and dosai are keyed the same way, on cargo and nuget purls.
+    for tool_name, purl in (("rusi", "pkg:cargo/sqlx@0.6.2"), ("dosai", "pkg:nuget/Serilog@4.0.0")):
+        bom = tmp_path / f"sbom-{tool_name}.cdx.json"
+        bom.write_text(json.dumps({"components": [{"purl": purl}]}))
+        calls.clear()
+        assert (
+            bom_mod._run_reachability_tool(str(bom), str(tmp_path), options, tools[tool_name])
+            is not None
+        )
+        assert calls == [tool_name]
+
+    # kosi keeps the project-type gate alone: a maven purl is not Kotlin's.
+    maven_bom = tmp_path / "sbom-maven.cdx.json"
+    maven_bom.write_text(json.dumps({"components": [{"purl": "pkg:maven/org.jetbrains/kotlin@2.0"}]}))
+    calls.clear()
+    assert (
+        bom_mod._run_reachability_tool(str(maven_bom), str(tmp_path), options, tools["kosi"])
+        is None
+    )
+    assert calls == []
+
+    # A typed scan keeps its own gate: a python scan runs no language tool.
+    calls.clear()
+    assert (
+        bom_mod._run_reachability_tool(
+            str(bom_file),
+            str(tmp_path),
+            {"project_type": ["python"], "reachability_analyzer": "FrameworkReachability"},
+            tools["golem"],
+        )
+        is None
+    )
+    assert calls == []
+
+
+def test_the_binary_check_keeps_the_cdxgen_bom_on_a_source_scan(tmp_path, monkeypatch):
+    """`--checks binary` on a source scan reviews binaries beside the cdxgen
+    inventory instead of replacing it with a blint BOM.
+
+    Routing the whole BOM through blint for the technique's sake lost the
+    cdxgen components and every vulnerability finding; the blint BOM path is
+    for binary targets.
+    """
+    from depscan.lib import bom as bom_mod
+
+    seen = {"blint_bom": 0, "review": []}
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator())
+    monkeypatch.setattr(
+        bom_mod,
+        "create_blint_bom",
+        lambda *a, **k: seen.__setitem__("blint_bom", seen["blint_bom"] + 1) or True,
+    )
+    for name in (
+        "run_rusi_reachability",
+        "run_golem_reachability",
+        "run_kosi_reachability",
+        "run_dosai_reachability",
+    ):
+        monkeypatch.setattr(bom_mod, name, lambda *a, **k: None)
+    monkeypatch.setattr(
+        bom_mod,
+        "_run_blint_review",
+        lambda bom_file, src_dir, options: seen["review"].append(bom_file) or [],
+    )
+
+    target = str(tmp_path / "sbom-universal.cdx.json")
+    result = bom_mod.create_bom(
+        target, str(tmp_path), {"project_type": ["universal"], "techniques": ["binary-analysis"]}
+    )
+
+    assert result.success is True
+    assert result.primary == target
+    assert seen["blint_bom"] == 0, "a source scan does not replace the cdxgen BOM with a blint one"
+    assert seen["review"] == [target], "the binary check runs blint's review beside the cdxgen BOM"
+    assert result.review_not_assessed == []
+
+
+def test_a_binary_target_keeps_the_blint_bom_path_with_the_review(tmp_path, monkeypatch):
+    """A binary target still scans through blint's own BOM, with the review
+    driven by dep-scan beside it."""
+    from depscan.lib import bom as bom_mod
+
+    seen = {"review": [], "reviews_flag": None}
+
+    def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
+        with open(bom_file, "w") as fh:
+            json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+        seen["reviews_flag"] = reviews
+        return True
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
+    monkeypatch.setattr(
+        bom_mod,
+        "_run_blint_review",
+        lambda bom_file, src_dir, options: seen["review"].append(bom_file) or [],
+    )
+
+    target = str(tmp_path / "sbom-binary.cdx.json")
+    result = bom_mod.create_bom(
+        target, str(tmp_path), {"project_type": ["binary"], "techniques": ["binary-analysis"]}
+    )
+
+    assert result.success is True
+    assert result.primary == target
+    assert seen["reviews_flag"] is False, "dep-scan drives the review; the generator writes the BOM"
+    assert seen["review"] == [target]
+
+
+def test_a_failed_blint_review_is_kept_for_the_manifest(tmp_path, monkeypatch):
+    """A review that fails leaves its reason on the BOM result, so a stage
+    can record it instead of only warning on the console."""
+    from depscan.lib import bom as bom_mod
+
+    reason = "blint review failed: [Errno 2] No such file or directory"
+
+    def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
+        with open(bom_file, "w") as fh:
+            json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+        return True
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
+    monkeypatch.setattr(
+        bom_mod, "_run_blint_review", lambda bom_file, src_dir, options: [reason]
+    )
+
+    result = bom_mod.create_bom(
+        str(tmp_path / "sbom-binary.cdx.json"),
+        str(tmp_path),
+        {"project_type": ["binary"], "techniques": ["binary-analysis"]},
+    )
+
+    assert result.success is True, "the BOM was written; the review failure is not the BOM's"
+    assert result.review_not_assessed == [reason]
+
+
+def test_a_failed_cdxgen_run_names_its_time_budget(tmp_path, monkeypatch, caplog):
+    """A failed cdxgen invocation says what time budget was in effect.
+
+    dep-scan itself sets CDXGEN_TIMEOUT_MS (30 minutes by default) and kills
+    cdxgen at it, so the failure reason names the budget and how to raise it
+    on the console and for the manifest, without claiming the budget was
+    necessarily the cause.
+    """
+    from depscan.lib import bom as bom_mod
+    from xbom_lib.cdxgen import CDXGEN_TIMEOUT_MS
+
+    monkeypatch.setattr(bom_mod, "_refuse_old_cdxgen", lambda logger=None: True)
+    monkeypatch.setattr(bom_mod, "CdxgenGenerator", _fake_generator(success=False, writes=False))
+    monkeypatch.setattr(bom_mod, "run_rusi_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_golem_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_kosi_reachability", lambda *a, **k: None)
+    monkeypatch.setattr(bom_mod, "run_dosai_reachability", lambda *a, **k: None)
+
+    result = bom_mod.create_bom(str(tmp_path / "sbom.cdx.json"), str(tmp_path), {})
+
+    assert result.success is False
+    assert "CDXGEN_TIMEOUT_MS" in result.failure_reason
+    assert CDXGEN_TIMEOUT_MS in result.failure_reason, "the reason names the budget in effect"
+    assert "raise CDXGEN_TIMEOUT_MS" in result.failure_reason
+    assert any(
+        "CDXGEN_TIMEOUT_MS" in message for message in caplog.messages
+    ), "the console names the budget too"
+
+
 def test_create_bom_requires_cdxgen_server_url(tmp_path):
     from depscan.lib import bom as bom_mod
 
@@ -425,6 +636,55 @@ def test_lifecycle_boms_report_failure_when_every_stage_fails(tmp_path, monkeypa
     assert result.success is False
     assert result.bom_files == []
     assert result.primary is None
+
+
+def test_lifecycle_boms_record_a_failed_sub_run_with_its_budget(tmp_path, monkeypatch):
+    """A lifecycle stage that fails and falls back leaves a named trace.
+
+    The build stage's cdxgen run failing used to leave only a debug log; the
+    scan continued on the pre-build document and the manifest read as a
+    complete inventory. The failed sub-run is now kept as a not-assessed
+    reason, with the cdxgen exit status and the time budget that was in
+    effect.
+    """
+    from types import SimpleNamespace
+
+    from depscan.lib import bom as bom_mod
+
+    monkeypatch.setattr(bom_mod, "create_blint_bom", lambda *a, **k: False)
+    monkeypatch.delenv("DEPSCAN_SOURCE_IMAGE", raising=False)
+
+    class BuildFails:
+        def __init__(self, src_dir, bom_file, logger=None, options=None):
+            self.bom_file = bom_file
+            self.options = options or {}
+
+        def generate(self):
+            if self.options.get("lifecycles") == ["build"]:
+                return SimpleNamespace(success=False, returncode=1, command_output="boom")
+            with open(self.bom_file, "w") as fh:
+                json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
+            return SimpleNamespace(success=True, returncode=0, command_output="")
+
+    prebuild = str(tmp_path / "sbom-prebuild-rust.cdx.json")
+    options = {
+        "prebuild_bom_file": prebuild,
+        "build_bom_file": str(tmp_path / "sbom-build-rust.cdx.json"),
+        "postbuild_bom_file": str(tmp_path / "sbom-postbuild-rust.cdx.json"),
+        "container_bom_file": str(tmp_path / "sbom-container-rust.cdx.json"),
+        "reachability_analyzer": "off",
+    }
+    result = bom_mod.create_lifecycle_boms(BuildFails, str(tmp_path), options)
+
+    assert result.success is True
+    assert result.bom_files == [prebuild]
+    # The stubbed blint run adds the post-build reason beside the build one.
+    build_reasons = [r for r in result.not_assessed if "the build lifecycle" in r]
+    assert len(build_reasons) == 1
+    reason = build_reasons[0]
+    assert "exited with status 1" in reason
+    assert "CDXGEN_TIMEOUT_MS" in reason
+    assert any("post-build" in r for r in result.not_assessed)
 
 
 def test_update_tools_metadata_adds_metadata_to_a_bom_without_one():

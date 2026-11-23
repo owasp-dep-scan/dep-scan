@@ -1092,11 +1092,19 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
     """
     Analyze package licenses
 
+    The report file, when one is given, is written whenever the analysis
+    ran, holding no rows when every license was clean or no package carried
+    license data at all; the empty file is how an assessed-clean license
+    scan stays distinguishable from one that never ran.
+
     :param project_type: Project type
     :param licenses_results: A dict with the license results for each package.
     :param license_report_file: Output filename for the license report.
+    :return: The summary table, or None when there is nothing to show in it.
     """
     if not licenses_results:
+        if license_report_file:
+            file_write(license_report_file, "")
         return None
     table = Table(
         title=f"License Scan Summary ({project_type})",
@@ -1137,10 +1145,11 @@ def licenses_risk_table(project_type, licenses_results, license_report_file=None
                 )
                 table.add_row(*pkg_ver, display_id, conditions_str)
                 report_data.append(dict(zip(headers, [*pkg_ver, license_id, conditions_str])))
-    if report_data:
-        # Store the license scan findings as one JSON array of plain rows
-        if license_report_file:
-            file_write(license_report_file, json.dumps(report_data, indent=2))
+    # Write the report whenever the analysis ran: empty when no package
+    # matched, so an assessed-clean license scan is distinguishable from one
+    # that matched nothing.
+    if license_report_file:
+        file_write(license_report_file, json.dumps(report_data, indent=2))
     return table
 
 

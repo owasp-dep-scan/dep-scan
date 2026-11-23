@@ -27,7 +27,7 @@ mode are the ones the explanation rendering has always had.
 import glob
 import os
 from collections import defaultdict
-from typing import List
+from typing import List, Optional
 
 from custom_json_diff.lib.utils import json_load
 from rich import box
@@ -102,7 +102,7 @@ def explain(
     explanation_mode,
     prompts_file=None,
     evidence_file=None,
-):
+) -> Optional[str]:
     """
     Explain the analysis and findings based on the explanation mode.
 
@@ -115,9 +115,14 @@ def explain(
     :param prompts_file: File path to save LLM prompts
     :param evidence_file: The evidence store to render; the store at the top
         of the BOM directory when not given
+    :return: None when something was rendered; otherwise the reason nothing
+        was, naming the input or the rendering gate that stopped it. The
+        explain stage records that reason instead of reading as an
+        explanation that ran and said nothing.
     """
     pattern_methods = {}
     openapi_spec_files = None
+    endpoints_shown = False
 
     purl_vuln_map = defaultdict(list)
     if vdr_result and vdr_result.pkg_vulnerabilities:
@@ -140,14 +145,30 @@ The following endpoints and code hotspots were identified by depscan. Verify tha
             pattern_methods = print_endpoints(ospec, rsection if not any_endpoints_shown else None)
             if not any_endpoints_shown and pattern_methods:
                 any_endpoints_shown = True
+        endpoints_shown = any_endpoints_shown
 
     # Return early for endpoints only explanations
     if explanation_mode in ("Endpoints",):
-        return
+        if endpoints_shown:
+            return None
+        if openapi_spec_files:
+            return (
+                "the OpenAPI specifications were read but name no endpoint; "
+                "there is nothing to explain"
+            )
+        return (
+            "no OpenAPI specification (*openapi*.json) was found under the reports "
+            "directory or the source directory"
+        )
     store = evidence_file or os.path.join(str(bom_dir), EVIDENCE_FILE)
+    if not os.path.isfile(store):
+        return (
+            "no evidence store (evidence.jsonl) was found under the reports directory; "
+            "run a reachability analysis with this version, which writes the store"
+        )
     records = _store_records(store)
     if not records:
-        return
+        return "the evidence store was read but holds no records; there is nothing to explain"
     section_title = (
         "Non-Reachable Flows" if explanation_mode in ("NonReachables",) else "Reachable Flows"
     )
@@ -199,7 +220,13 @@ Below are several data flows identified by depscan, including reachable ones. Us
         ):
             has_any_explanation = True
     if not has_any_explanation:
-        return
+        if endpoints_shown:
+            # The endpoint table above is the explanation for this run.
+            return None
+        return (
+            f"the evidence store's {len(records)} records were read but no record met "
+            "the rendering gates; there is nothing to explain at this fidelity"
+        )
     # The blank line closes the last flow table. The HTML report's parser
     # only carries a table's packages column into the report once a blank
     # line follows the table, so the section must not end on the caption.
@@ -207,6 +234,7 @@ Below are several data flows identified by depscan, including reachable ones. Us
     console.print(Markdown(_design_tips(explanation_mode, flags)))
     if purl_grouped_records:
         save_llm_prompts(purl_grouped_records, purl_vuln_map, project_type, prompts_file)
+    return None
 
 
 def _track_usage_targets(usage_targets, usages_object):

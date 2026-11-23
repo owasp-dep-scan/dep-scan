@@ -251,7 +251,7 @@ def test_explain_llm_prompts_mode_writes_prompts_for_endpoint_reaches(tmp_path, 
 
 def test_explain_without_a_store_renders_nothing(tmp_path, monkeypatch):
     rec_console = _capture(monkeypatch)
-    explainer.explain(
+    reason = explainer.explain(
         "python",
         str(tmp_path),
         str(tmp_path),
@@ -261,6 +261,62 @@ def test_explain_without_a_store_renders_nothing(tmp_path, monkeypatch):
         None,
     )
     assert rec_console.export_text().strip() == ""
+    assert reason == (
+        "no evidence store (evidence.jsonl) was found under the reports directory; "
+        "run a reachability analysis with this version, which writes the store"
+    )
+
+
+def test_explain_names_the_gate_that_stopped_the_rendering(tmp_path, monkeypatch):
+    """A store that renders nothing still says why, naming the gate.
+
+    An empty store, a store whose records name no followable flow, and the
+    endpoints mode without an OpenAPI specification each return their own
+    reason, so the explain stage never silently does nothing.
+    """
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    _write_store(empty, [])
+    assert explainer.explain(
+        "python", str(empty), str(empty), None, _vdr_result(), "EndpointsAndReachables", None
+    ) == ("the evidence store was read but holds no records; there is nothing to explain")
+
+    # Usage records name no package and walk no path, so they meet no gate.
+    gated = tmp_path / "gated"
+    usage = _flow_record("usage-1", [], _path("app/usage.py", 6), kind="usage")
+    _write_store(gated, [usage])
+    assert explainer.explain(
+        "python", str(gated), str(gated), None, _vdr_result(), "EndpointsAndReachables", None
+    ) == (
+        "the evidence store's 1 records were read but no record met the rendering "
+        "gates; there is nothing to explain at this fidelity"
+    )
+
+    nospec = tmp_path / "nospec"
+    nospec.mkdir()
+    assert explainer.explain(
+        "python", str(nospec), str(nospec), None, _vdr_result(), "Endpoints", None
+    ) == (
+        "no OpenAPI specification (*openapi*.json) was found under the reports "
+        "directory or the source directory"
+    )
+
+
+def test_explain_returns_none_when_something_rendered(tmp_path, monkeypatch):
+    _write_store(tmp_path, _atom_records(tmp_path))
+    _capture(monkeypatch)
+    assert (
+        explainer.explain(
+            "python",
+            str(tmp_path),
+            str(tmp_path),
+            None,
+            _vdr_result(),
+            "EndpointsAndReachables",
+            None,
+        )
+        is None
+    )
 
 
 def test_get_vulns_for_purls_picks_the_most_severe():

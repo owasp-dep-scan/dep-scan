@@ -244,7 +244,7 @@ When the user passed no `-t`, the kind names the project type too: a `container`
 | `reachability` | keeps the reachability analyzers on | `reachability` |
 | `license` | appends the `license` pseudo type, which triggers the license analysis | `license` |
 | `supply-chain` | the package risk audit | `supply-chain` |
-| `binary` | adds the `binary-analysis` technique, which scans through blint | `binary` (needs the blint package) |
+| `binary` | adds the `binary-analysis` technique: a binary or apk target is scanned through blint's own BOM, and any other target keeps its cdxgen inventory with blint's security review running beside it | `binary` (needs the blint package) |
 | `memory-safety` | not implemented in this version | exits 4 when named explicitly |
 | `mobile` | not implemented in this version | exits 4 when named explicitly |
 | `code` | not implemented in this version | exits 4 when named explicitly |
@@ -253,6 +253,8 @@ When the user passed no `-t`, the kind names the project type too: a `container`
 An explicit `--checks` list defines the whole optional set: checks not named are off, so `--checks vulnerabilities` turns reachability off (the v6 equivalent was `--reachability-analyzer off`). The `vulnerabilities` check always runs, named or not. A check named explicitly whose capability cannot run on the machine stops the scan with exit 4 before any work, printing the doctor's reason on stderr. `--checks all` selects every check whose capability is available, turns the unavailable ones off, and records each of them in the manifest as a `check-<name>` stage with status `not-assessed` and the doctor's reason. A scan whose every target is a BOM file or BOM directory produces no BOM, so neither the gate nor `all` holds a missing cdxgen or language plugin (golem, rusi, dosai, kosi, and the Go and .NET runtimes) against it: reachability reads the slices beside the BOMs, and an analyzer with no slices there is recorded as not assessed.
 
 Without `--checks` and without `--profile` the set is `vulnerabilities,reachability`, the v6 default, and it is never gated.
+
+The binary check on a source scan never replaces the scan's own inventory: the cdxgen BOM keeps every source component and its vulnerability findings, and blint's review reports land under `analysis/blint/` with each review result in `depscan.findings.json` as a `binary-hardening` finding. A review that fails is recorded as a failed `binary-review` stage on the manifest, with blint's reason.
 
 ## The profiles
 

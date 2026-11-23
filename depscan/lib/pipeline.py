@@ -94,7 +94,7 @@ from depscan.lib.config import (
     spdx_license_list,
     write_vdb_image_marker,
 )
-from depscan.lib.license import build_license_data, bulk_lookup
+from depscan.lib.license import build_license_data, bulk_lookup, packages_without_license_data
 from depscan.lib.logger import DEBUG, IS_CI, LOG, SPINNER, console, log_console
 
 LOGO = """
@@ -167,6 +167,18 @@ class TypeScan:
     risk_error: Optional[str] = None
     # Why a requested risk audit had nothing it could audit for this type.
     risk_not_assessed: Optional[str] = None
+    #: How many of this type's packages carried no license data at all, as
+    #: the notAssessed line the licenses stage records; None when the stage
+    #: did not run or every package carried license data.
+    license_not_assessed: Optional[str] = None
+    #: Why the requested explanation rendered nothing, named by the
+    #: explainer (a missing input or the rendering gates); None when
+    #: something was rendered or no explanation was requested.
+    explain_not_assessed: Optional[str] = None
+    #: Why a requested blint binary review did not assess, recorded as the
+    #: scan's binary-review stage; empty when the review ran or none was
+    #: requested.
+    review_not_assessed: List[str] = field(default_factory=list)
     # Why BOM generation failed for this type; the scan goes on to the next.
     inventory_error: Optional[str] = None
     bom_files: List[str] = field(default_factory=list)
@@ -862,29 +874,38 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
     written last, through a temporary file and a rename, so it lists only
     files that exist, the evidence files included. A scan that stopped
     partway still gets one, carrying the failed stage and its reason.
-    Returns the manifest and the findings array, or None when this run
-    writes no scan directory.
+
+    A scan where no project type produced a result and no evidence was
+    collected (every type's inventory failed) writes no findings file: an
+    empty findings array is the mark of a scan whose matching ran and found
+    nothing, and nothing here was assessed. Evidence records alone still
+    write the file, because a blint review's binary-hardening findings are
+    findings even when the BOM it reviewed lists no components to scan. The
+    manifest it still writes shows no matching stage completed, which is
+    what refuses the directory at load time. Returns the manifest and the
+    findings array, or None when this run writes no scan directory.
     """
     scan_dir = ctx.scan_dir
     if scan_dir is None:
         return None
-    findings_document = scan_directory.write_findings(
-        ctx.reports_dir,
-        ctx.all_pkg_vulnerabilities,
-        get_version(),
-        exploitability=ctx.exploitability,
-        blint_reviews=any(
-            blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
-            for project_type in (ctx.project_types or [None])
-        ),
-        evidence_records=ctx.evidence_records,
-        usage_not_assessed=ctx.usage_not_assessed,
-    )
+    findings: List = []
+    if ctx.scans or ctx.evidence_records:
+        findings_document = scan_directory.write_findings(
+            ctx.reports_dir,
+            ctx.all_pkg_vulnerabilities,
+            get_version(),
+            exploitability=ctx.exploitability,
+            blint_reviews=any(
+                blint_reviews_requested({**ctx.depscan_options, "project_type": [project_type]})
+                for project_type in (ctx.project_types or [None])
+            ),
+            evidence_records=ctx.evidence_records,
+            usage_not_assessed=ctx.usage_not_assessed,
+        )
+        findings = findings_document["findings"]
     evidence_path = os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_FILE)
     if os.path.isfile(evidence_path):
-        index = evidence_store.build_index(
-            evidence_store.read(evidence_path), findings_document["findings"]
-        )
+        index = evidence_store.build_index(evidence_store.read(evidence_path), findings)
         evidence_store.write_index(
             os.path.join(str(ctx.reports_dir), scan_directory.EVIDENCE_INDEX_FILE), index
         )
@@ -894,7 +915,7 @@ def finish_scan_directory(ctx) -> Optional[Dict[str, Any]]:
         shards_used=ctx.shards_connected,
     )
     scan_directory.write_manifest(scan_dir, manifest)
-    return {"manifest": manifest, "findings": findings_document["findings"]}
+    return {"manifest": manifest, "findings": findings}
 
 
 def stage_database(ctx):
@@ -1304,13 +1325,18 @@ def _produce_boms(ctx, scan):
             getattr(bom_result, "introspection_gate_missed", None) or []
         )
         scan.adapter_results = dict(getattr(bom_result, "adapter_results", None) or {})
+        scan.review_not_assessed = list(getattr(bom_result, "review_not_assessed", None) or [])
     if not creation_status:
         LOG.warning(
             "The BOM file `%s` was not created successfully. Set the `SCAN_DEBUG_MODE=debug` environment variable to troubleshoot.",
             scan.target_bom_file,
         )
+        # The generator's own reason, when it gave one, says more than the
+        # generic line: a cdxgen failure names its exit status and the
+        # CDXGEN_TIMEOUT_MS budget that was in effect.
         scan.inventory_error = (
-            f"the BOM for the {scan.project_type} type was not created; the type's "
+            getattr(bom_result, "failure_reason", None)
+            or f"the BOM for the {scan.project_type} type was not created; the type's "
             "packages were not scanned"
         )
         if ctx.args.fail_on_error:
@@ -1479,7 +1505,11 @@ def stage_analysis_licenses(ctx, scan) -> bool:
     """Look up license risks, before any security-related analysis.
 
     Returns False when license analysis was not requested, so the scan's
-    manifest can record the stage as skipped rather than silent.
+    manifest can record the stage as skipped rather than silent. When it
+    ran, the report file is written whatever the lookup matched (see
+    :func:`licenses_risk_table`), and the packages whose BOM entries stated
+    no license are counted in ``scan.license_not_assessed`` so the manifest
+    can say they were never assessed rather than clean.
     """
     args = ctx.args
     # Is the user interested in seeing license risks? Handle that first before any security-related analysis.
@@ -1489,6 +1519,12 @@ def stage_analysis_licenses(ctx, scan) -> bool:
         build_license_data(license_data_dir, spdx_license_list),
         pkg_list=scan.pkg_list,
     )
+    without, total = packages_without_license_data(scan.pkg_list, licenses_results)
+    if without:
+        scan.license_not_assessed = (
+            f"{without} of {total} packages carry no license data at all; "
+            "their licenses were not assessed"
+        )
     license_report_file = os.path.join(ctx.reports_dir, f"license-{scan.project_type}.json")
     ltable = licenses_risk_table(scan.project_type, licenses_results, license_report_file)
     if ltable and not args.no_vuln_table:
@@ -1970,8 +2006,9 @@ def _blint_adapter_result(ctx, scan):
     tools' raw reports; a source scan that did not ask for the review reads
     nothing, so an earlier run's reports never stand in for this scan's. The
     producer version is the one the blint-written BOM's ``metadata.tools``
-    names; the locally installed blint is never asked. ``source_root`` is
-    the source directory blint reviewed.
+    names; on a source scan, whose BOM cdxgen wrote, no document names
+    blint, so the doctor report's installed blint version stands in.
+    ``source_root`` is the source directory blint reviewed.
     """
     from analysis_lib.evidence.adapters import blint as blint_adapter
 
@@ -2000,7 +2037,7 @@ def _blint_adapter_result(ctx, scan):
     result = blint_adapter.extract(
         documents.get("findings"),
         source=source_of("findings.json") if "findings" in documents else "",
-        producer_version=_blint_bom_version(scan),
+        producer_version=_blint_bom_version(scan) or _doctor_analyzer_version("blint", ctx),
         reviews_document=documents.get("reviews"),
         reviews_source=source_of("reviews.json") if "reviews" in documents else None,
         coverage_document=documents.get("coverage"),
@@ -2471,7 +2508,7 @@ def stage_render_explain(ctx, scan):
     args = ctx.args
     # Explain the results
     if args.explain:
-        explainer.explain(
+        reason = explainer.explain(
             scan.project_type,
             ctx.src_dir,
             scan.bom_dir or ctx.reports_dir,
@@ -2485,6 +2522,11 @@ def stage_render_explain(ctx, scan):
             # wrote.
             evidence_file=os.path.join(ctx.reports_dir, scan_directory.EVIDENCE_FILE),
         )
+        if reason:
+            # An explanation that says nothing must say why: the reason goes
+            # to the console here and to the manifest's explain stage.
+            LOG.warning("The explanation was not rendered: %s", reason)
+            scan.explain_not_assessed = reason
     else:
         LOG.debug("Pass the `--explain` argument to get a detailed explanation of the analysis.")
     # CSAF VEX export
