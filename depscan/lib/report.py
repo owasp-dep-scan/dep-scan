@@ -9,6 +9,7 @@ non-zero rather than printing something the scan did not produce.
 """
 
 import argparse
+import os
 import sys
 from typing import List
 
@@ -199,16 +200,27 @@ def _render_results(tscan, findings=None) -> None:
 
 
 def _render_binary_review(result) -> None:
-    """Print the binary review's findings of a saved scan directory.
+    """Print the binary review's findings and coverage of a saved directory.
 
     The rows come from the binary-hardening findings of the directory's
     ``depscan.findings.json``, so the table's count agrees with that file,
-    the way the scan's own rendering counts them. A directory that holds
-    none, because no review ran, prints nothing here.
+    the way the scan's own rendering counts them, and the coverage line
+    from blint's ``analysis-coverage.json`` under ``analysis/blint/``. A
+    directory that holds neither, because no review ran, prints nothing
+    here; a review that ran states its coverage, clean or not, so a clean
+    one never reads as a scan that found nothing to check.
     """
     rows = binary_review.hardening_rows(result.findings)
+    coverage_file = binary_review.coverage_path(result.reports_dir)
+    has_coverage = os.path.isfile(coverage_file)
+    if not rows and not has_coverage:
+        return
     if rows:
         console.print(binary_review.binary_hardening_table(rows))
+    units = binary_review.read_coverage_units(coverage_file) if has_coverage else None
+    console.print(
+        binary_review.coverage_summary(len(rows), units, binary_review.COVERAGE_RELATIVE_PATH)
+    )
 
 
 def _run_json_report(result) -> int:

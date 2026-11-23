@@ -276,6 +276,11 @@ class ScanContext:
     #: A record that arrives again is kept again; the store's write rules
     #: fold the copies (and merge their caveats) at write time.
     evidence_records: List = field(default_factory=list)
+    #: Whether a blint review of this scan completed, and the coverage
+    #: reports it wrote, so the rendering states the review's coverage
+    #: whatever the inventory outcome of the type that ran it was.
+    blint_review_ran: bool = False
+    blint_coverage_files: List[str] = field(default_factory=list)
     #: The Python object ids of the records already in ``evidence_records``,
     #: so a result shared by several types is added once.
     evidence_record_objects: Set[int] = field(default_factory=set)
@@ -2010,6 +2015,13 @@ def _blint_adapter_result(ctx, scan):
         LOG.debug(
             "blint evidence: the adapter built %d records from %s", len(result.records), directory
         )
+        # The rendering states the review's coverage from blint's own
+        # report, whatever the inventory outcome of this type turns out to
+        # be, so a type that loads no packages still gets its statement.
+        ctx.blint_review_ran = True
+        coverage_file = binary_review.coverage_path(base)
+        if os.path.isfile(coverage_file) and coverage_file not in ctx.blint_coverage_files:
+            ctx.blint_coverage_files.append(coverage_file)
     return result
 
 
@@ -2527,7 +2539,10 @@ def _render_binary_review(ctx) -> None:
 
     The rows are the findings :func:`finish_scan_directory` writes to
     ``depscan.findings.json``, built from the same records under the same
-    review gate, so the table's count agrees with the file. The printing
+    review gate, so the table's count agrees with the file. A review that
+    completed is followed by one line stating its coverage from blint's own
+    report, so a clean review never reads as a scan that found nothing to
+    check; the line is printed even when the tables are off. The printing
     happens before the console is saved, so ``depscan.txt`` and
     ``depscan.html`` carry it. A scan that did not ask for the review
     prints nothing here.
@@ -2539,6 +2554,15 @@ def _render_binary_review(ctx) -> None:
     rows = [finding.to_dict() for finding in findings_from_blint_records(ctx.evidence_records)]
     if rows and not ctx.args.no_vuln_table:
         console.print(binary_review.binary_hardening_table(rows))
+    if ctx.blint_review_ran:
+        units = binary_review.sum_coverage_units(
+            binary_review.read_coverage_units(path) for path in ctx.blint_coverage_files
+        )
+        console.print(
+            binary_review.coverage_summary(
+                len(rows), units, binary_review.COVERAGE_RELATIVE_PATH
+            )
+        )
 
 
 def stage_render_reports(ctx):

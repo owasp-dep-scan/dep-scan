@@ -30,6 +30,7 @@ from test.test_scan_directory import _FULL_VDB_DATA
 
 DATA_DIR = Path(__file__).parent / "data"
 BINARY_FIXTURE_DIR = DATA_DIR / "report-binary"
+CLEAN_FIXTURE_DIR = DATA_DIR / "report-binary-clean"
 
 
 class _StubVdrResult:
@@ -114,12 +115,14 @@ def _finding_entry(binary_name="demo-tool"):
     }
 
 
-def _stub_create_bom(calls, *, findings_entries):
+def _stub_create_bom(calls, *, findings_entries, coverage_units):
     """A ``create_bom`` stand-in that writes what a blint review writes.
 
     The review's findings report lands under ``analysis/blint/`` next to
-    the BOM, the place the scan's own blint adapter reads it from. Every
-    call is recorded so a test can prove the stub ran.
+    the BOM, the place the scan's own blint adapter reads it from, and the
+    coverage report with it; ``coverage_units`` of None writes no coverage
+    report, the case of a review that left none behind. Every call is
+    recorded so a test can prove the stub ran.
     """
 
     def create_bom(bom_file, src_dir, options=None, **kwargs):
@@ -130,9 +133,53 @@ def _stub_create_bom(calls, *, findings_entries):
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, "findings.json"), "w", encoding="utf-8") as fp:
             json.dump({"findings": findings_entries}, fp)
+        if coverage_units is not None:
+            with open(os.path.join(directory, "analysis-coverage.json"), "w", encoding="utf-8") as fp:
+                json.dump({"units": coverage_units}, fp)
         return BomResult(success=True, bom_files=[bom_file], primary=bom_file)
 
     return create_bom
+
+
+def _run_binary_scan(scan_stubs, monkeypatch, tmp_path, *, findings_entries, coverage_units):
+    """Run a binary scan with the stubbed review; (depscan.txt, reports dir).
+
+    Only the BOM generation step is stubbed, so the review's reports go
+    through the real adapters, findings conversion and rendering stages.
+    """
+    monkeypatch.setenv("COLUMNS", "200")
+    calls = []
+    monkeypatch.setattr(
+        pipeline,
+        "create_bom",
+        _stub_create_bom(calls, findings_entries=findings_entries, coverage_units=coverage_units),
+    )
+    saved = {}
+
+    def save_text(path, clear=False, styles=False):
+        saved[str(path)] = pipeline.console.export_text(clear=False)
+
+    monkeypatch.setattr(pipeline.console, "save_text", save_text)
+    # The console is module-global; drop whatever an earlier test recorded
+    # so each scan's export holds only its own output.
+    was_recording = pipeline.console.record
+    pipeline.console.record = True
+    pipeline.console.export_text(clear=True)
+    pipeline.console.record = was_recording
+    src = tmp_path / "src"
+    src.mkdir()
+    reports = tmp_path / "reports"
+    api.scan(
+        api.scan_options(
+            src_dir_image=str(src),
+            reports_dir=str(reports),
+            project_type="binary",
+            reachability_analyzer="off",
+            no_banner=True,
+        )
+    )
+    assert calls, "the BOM generation step never ran"
+    return saved[str(reports / "depscan.txt")], reports
 
 
 def test_hardening_rows_keeps_only_the_review_category():
@@ -169,33 +216,13 @@ def test_a_binary_scan_writes_the_hardening_table_into_its_reports(
     """The scan's console carries the review's table, so depscan.txt and
     depscan.html carry it too, with a count that agrees with the findings
     file the same scan writes."""
-    calls = []
-    monkeypatch.setattr(
-        pipeline,
-        "create_bom",
-        _stub_create_bom(calls, findings_entries=[_finding_entry()]),
+    text, reports = _run_binary_scan(
+        scan_stubs,
+        monkeypatch,
+        tmp_path,
+        findings_entries=[_finding_entry()],
+        coverage_units={"attempted": 1, "succeeded": 1, "failed": 0, "skipped": 0},
     )
-    saved = {}
-
-    def save_text(path, clear=False, styles=False):
-        saved[str(path)] = pipeline.console.export_text(clear=False)
-
-    monkeypatch.setattr(pipeline.console, "save_text", save_text)
-    src = tmp_path / "src"
-    src.mkdir()
-    reports = tmp_path / "reports"
-    api.scan(
-        api.scan_options(
-            src_dir_image=str(src),
-            reports_dir=str(reports),
-            project_type="binary",
-            reachability_analyzer="off",
-            no_banner=True,
-        )
-    )
-    # Positive control: the stubbed generator wrote the review's documents.
-    assert calls, "the BOM generation step never ran"
-    text = saved[str(reports / "depscan.txt")]
     assert "Binary Hardening Results" in text
     assert "CHECK_CANARY" in text
     assert "Missing Canary Protection" in text
@@ -203,3 +230,70 @@ def test_a_binary_scan_writes_the_hardening_table_into_its_reports(
     count = len(binary_review.hardening_rows(findings_doc["findings"]))
     assert count == 1
     assert f"Binary hardening findings count: {count}" in text
+
+
+def test_a_clean_binary_review_states_its_coverage_in_the_reports(
+    scan_stubs, tmp_path, monkeypatch
+):
+    """A review that ran and completed with no findings says so, with the
+    unit counts of blint's coverage report, instead of leaving only a
+    "No vulnerabilities found" line."""
+    text, _reports = _run_binary_scan(
+        scan_stubs,
+        monkeypatch,
+        tmp_path,
+        findings_entries=[],
+        coverage_units={"attempted": 1, "succeeded": 1, "failed": 0, "skipped": 0},
+    )
+    assert (
+        "Binary hardening checks completed with no findings: "
+        "1 attempted, 1 succeeded, 0 failed, 0 skipped units." in text
+    )
+
+
+def test_a_binary_review_with_gaps_names_them(scan_stubs, tmp_path, monkeypatch):
+    """A coverage report with failed or skipped units is stated as a gap,
+    never folded into a clean statement."""
+    text, _reports = _run_binary_scan(
+        scan_stubs,
+        monkeypatch,
+        tmp_path,
+        findings_entries=[_finding_entry()],
+        coverage_units={"attempted": 2, "succeeded": 1, "failed": 1, "skipped": 0},
+    )
+    assert (
+        "Binary hardening checks completed with gaps: "
+        "2 attempted, 1 succeeded, 1 failed, 0 skipped units." in text
+    )
+    assert "with no findings" not in text
+
+
+def test_a_binary_review_without_a_coverage_report_says_so(scan_stubs, tmp_path, monkeypatch):
+    """A review that completed but left no coverage report behind is named
+    as not assessed, so its silence never reads as a clean run."""
+    text, _reports = _run_binary_scan(
+        scan_stubs,
+        monkeypatch,
+        tmp_path,
+        findings_entries=[],
+        coverage_units=None,
+    )
+    assert (
+        "Binary hardening checks ran, but the coverage report "
+        "analysis/blint/analysis-coverage.json is missing or unreadable, "
+        "so their coverage was not assessed." in text
+    )
+    assert "with no findings:" not in text
+
+
+def test_report_states_the_coverage_of_a_saved_clean_scan(capsys, monkeypatch):
+    """The report verb states a saved clean review's coverage from blint's
+    coverage report, with the unit counts it carries."""
+    monkeypatch.setenv("COLUMNS", "200")
+    exit_code = report_lib.run_report_command([str(CLEAN_FIXTURE_DIR)])
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert (
+        "Binary hardening checks completed with no findings: "
+        "1 attempted, 1 succeeded, 0 failed, 0 skipped units." in out
+    )

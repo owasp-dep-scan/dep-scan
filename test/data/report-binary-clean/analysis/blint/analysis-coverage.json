@@ -1,0 +1,1 @@
+{"scan_id":"0200c50b-72ca-47be-a827-7db4e1eb995a","created":"2026-11-23 11:43:06+0000","scope":"run","units":{"attempted":1,"succeeded":1,"failed":0,"skipped":0},"units_by_role":{"top-level":{"attempted":1,"succeeded":1,"failed":0,"skipped":0}},"cache":{"enabled":false,"hits":0,"misses":0,"stored":0,"caches_failures":false,"by_role":{}},"failures":[],"skipped":[]}
