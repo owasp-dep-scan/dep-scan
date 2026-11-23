@@ -14,6 +14,7 @@ component) and the insight the occurrence builder renders for its fail-safe
 path (a direct dependency with known exploits, reach not assessed).
 """
 
+import logging
 import json
 import os
 from types import SimpleNamespace
@@ -212,16 +213,17 @@ def test_fuzzy_search_surfaces_all_components(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-class _RecordingLogger:
+class _RecordingLogger(logging.Logger):
     """A stand-in logger that collects the formatted info lines."""
 
     def __init__(self):
+        super().__init__("recording")
         self.lines = []
 
-    def info(self, msg, *args):
+    def info(self, msg, *args, **kwargs):
         self.lines.append(msg % args if args else msg)
 
-    def debug(self, msg, *args):
+    def debug(self, msg, *args, **kwargs):
         pass
 
 

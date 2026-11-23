@@ -1279,6 +1279,9 @@ def _produce_boms(ctx, scan):
     # Lifecycle runs nominate nothing: no one of their per-stage documents
     # represents the project.
     scan.nominated_bom_file = None
+    # Only the source-scan branch below fills this in; the failure path
+    # after the chain reads it through getattr, which tolerates None.
+    bom_result = None
     # Are we scanning a single purl
     if args.search_purl:
         creation_status = True

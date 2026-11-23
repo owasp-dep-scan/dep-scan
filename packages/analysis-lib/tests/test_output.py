@@ -436,6 +436,7 @@ def test_risk_report_file_holds_plain_json_rows(tmp_path):
         risk_report_file=str(report_file),
     )
     assert table is not None
+    assert report_data is not None
     assert report_data[0]["Identified Risks"] == [
         "Includes binary",
         "Has attestation",

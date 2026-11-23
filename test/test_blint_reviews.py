@@ -85,7 +85,7 @@ def test_the_review_step_keeps_its_reports_under_analysis_blint(monkeypatch, tmp
     """dep-scan's own review step hands blint the analysis/blint directory
     beside the BOM, absolute source paths and the deep setting, and reports
     success by writing nothing."""
-    seen = {}
+    seen: dict[str, object] = {}
 
     def fake_run(src_dirs, reports_dir, deep=False):
         seen["src_dirs"] = list(src_dirs)

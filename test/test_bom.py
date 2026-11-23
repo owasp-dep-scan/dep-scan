@@ -499,19 +499,20 @@ def test_a_binary_target_keeps_the_blint_bom_path_with_the_review(tmp_path, monk
     driven by dep-scan beside it."""
     from depscan.lib import bom as bom_mod
 
-    seen = {"review": [], "reviews_flag": None}
+    review_targets: list[str] = []
+    reviews_flag: dict[str, bool] = {}
 
     def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
         with open(bom_file, "w") as fh:
             json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
-        seen["reviews_flag"] = reviews
+        reviews_flag["asked"] = reviews
         return True
 
     monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
     monkeypatch.setattr(
         bom_mod,
         "_run_blint_review",
-        lambda bom_file, src_dir, options: seen["review"].append(bom_file) or [],
+        lambda bom_file, src_dir, options: review_targets.append(bom_file) or [],
     )
 
     target = str(tmp_path / "sbom-binary.cdx.json")
@@ -521,8 +522,8 @@ def test_a_binary_target_keeps_the_blint_bom_path_with_the_review(tmp_path, monk
 
     assert result.success is True
     assert result.primary == target
-    assert seen["reviews_flag"] is False, "dep-scan drives the review; the generator writes the BOM"
-    assert seen["review"] == [target]
+    assert reviews_flag["asked"] is False, "dep-scan drives the review; the generator writes the BOM"
+    assert review_targets == [target]
 
 
 def test_a_failed_blint_review_is_kept_for_the_manifest(tmp_path, monkeypatch):
@@ -573,6 +574,7 @@ def test_a_failed_cdxgen_run_names_its_time_budget(tmp_path, monkeypatch, caplog
     result = bom_mod.create_bom(str(tmp_path / "sbom.cdx.json"), str(tmp_path), {})
 
     assert result.success is False
+    assert result.failure_reason is not None
     assert "CDXGEN_TIMEOUT_MS" in result.failure_reason
     assert CDXGEN_TIMEOUT_MS in result.failure_reason, "the reason names the budget in effect"
     assert "raise CDXGEN_TIMEOUT_MS" in result.failure_reason
@@ -924,9 +926,11 @@ def test_a_check_appended_technique_never_narrows_the_cdxgen_inventory(tmp_path,
     assert seen["review"], "the binary review did not run beside the inventory"
     # A technique the user passed explicitly narrows cdxgen, as asked.
     seen["techniques"].clear()
-    user_only = dict(check_added)
-    user_only["techniques"] = ["binary-analysis", "filename"]
-    user_only["check_appended_techniques"] = None
+    user_only = {
+        **check_added,
+        "techniques": ["binary-analysis", "filename"],
+        "check_appended_techniques": None,
+    }
     result = bom_mod.create_bom(str(tmp_path / "b2.json"), str(tmp_path), options=user_only)
     assert result.success, result.failure_reason
     assert seen["techniques"] == [["binary-analysis", "filename"]]
