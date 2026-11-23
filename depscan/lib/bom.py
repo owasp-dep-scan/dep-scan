@@ -1,4 +1,5 @@
 import glob
+import inspect
 import os
 import re
 import shutil
@@ -37,8 +38,10 @@ from depscan.lib.config import (
     RUSI_DEFAULT_CALLGRAPH_MODE,
     RUSI_DEFAULT_DATAFLOW_MODE,
     RUSI_REACHABLES_SLICE_FILE,
+    SEMANTIC_REACHABILITY_ANALYZER,
     UNIVERSAL_SCAN_TYPE,
 )
+from depscan.lib.exclusions import ExclusionSet, kept_targets, project_roots
 from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
@@ -199,9 +202,7 @@ def _cdxgen_failure_reason(bom_result, stage: str) -> str:
     text says what was in effect without claiming the cause.
     """
     returncode = getattr(bom_result, "returncode", None)
-    status = (
-        f"exited with status {returncode}" if returncode is not None else "did not finish"
-    )
+    status = f"exited with status {returncode}" if returncode is not None else "did not finish"
     return (
         f"cdxgen {status} while generating the {stage} BOM, so no document was written. "
         f"{cdxgen_timeout_hint()}. Set the SCAN_DEBUG_MODE=debug environment variable to see the cdxgen output."
@@ -551,7 +552,16 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
         or any([t in ("binary", "apk") for t in project_type_list])
     )
     if blint_bom:
-        blint_ok = create_blint_bom(bom_file, src_dir, options=options)
+        targets = blint_targets(src_dir, options)
+        if not targets:
+            return BomResult(
+                success=False,
+                failure_reason=(
+                    "every path below the scan path matches an --exclude pattern, "
+                    "so blint had nothing to inventory"
+                ),
+            )
+        blint_ok = create_blint_bom(bom_file, src_dir, options=options, targets=targets)
         review_not_assessed = (
             _run_blint_review(bom_file, src_dir, options)
             if blint_ok and blint_reviews_requested(options)
@@ -631,7 +641,9 @@ def create_bom(bom_file, src_dir=".", options=None) -> BomResult:
     with console_status(
         f"Generating BOM for the source '{src_dir}' with cdxgen.", spinner=SPINNER
     ):
-        bom_result = cdxgen_lib(src_dir, bom_file, logger=LOG, options=generator_options).generate()
+        bom_result = cdxgen_lib(
+            src_dir, bom_file, logger=LOG, options=generator_options
+        ).generate()
         extractor_failures: List[str] = []
         not_assessed: List[str] = []
         if bom_result.success:
@@ -920,12 +932,15 @@ def _run_dosai_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
         LOG.debug("dosai runner unavailable: %s", e)
         return None
     pattern_packs = options.get("dotnet_pattern_packs") or DOSAI_PATTERN_PACKS_DEFAULT
+    # dosai takes the patterns itself (``--exclude``, relative to its path).
+    exclusion_args = _accepted_exclude_argument(run_dosai, options)
     with console_status(f"Running dosai .NET reachability on '{src_dir}'.", spinner=SPINNER):
         res = run_dosai(
             src_dir,
             analysis_report_dir(bom_dir, "dosai"),
             pattern_packs=pattern_packs,
             logger=LOG,
+            **exclusion_args,
         )
     if res.skipped or not res.success:
         if fail_on_error:
@@ -1072,6 +1087,12 @@ class ReachabilityTool:
     #: type token names no language. Empty for a tool the purl of a
     #: component cannot select.
     purl_type: str = ""
+    #: File names (or ``*.ext`` suffixes) that mark a directory as a project
+    #: of this tool's language. A tool with no exclusion argument of its own
+    #: is started on a project root that survives the ``--exclude``
+    #: patterns instead of the scan root; empty for a tool that takes the
+    #: patterns itself.
+    project_markers: tuple = ()
 
 
 def _remove_tool_slice(path: str) -> None:
@@ -1199,8 +1220,7 @@ def _bom_carries_purl_type(bom_file: Optional[str], purl_type: str) -> bool:
     prefix = f"pkg:{purl_type}/"
     return any(
         isinstance(component.get("purl"), str) and component["purl"].startswith(prefix)
-        for component in bom_data.get("components", [])
-        or []
+        for component in bom_data.get("components", []) or []
     )
 
 
@@ -1226,9 +1246,13 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
         # A universal scan names no language, but its BOM's components do:
         # the tool applies when they carry its purl type. cdxgen is invoked
         # with the universal type too, so its own dispatch never reaches the
-        # language analysis either; this gate is what runs it at all.
+        # language analysis either; this gate is what runs it at all. Only
+        # semantic reachability starts a language tool this way: the
+        # default analyzer reads cdxgen's usage records and must not turn
+        # a universal scan of a large tree into a multi-minute analysis.
         if not (
             tool.purl_type
+            and options.get("reachability_analyzer") == SEMANTIC_REACHABILITY_ANALYZER
             and UNIVERSAL_SCAN_TYPE in project_type_list
             and _bom_carries_purl_type(bom_file, tool.purl_type)
         ):
@@ -1274,7 +1298,13 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
         # FALLBACK: cdxgen did not produce a report (plugins unavailable, or
         # reachability invoked without cdxgen). Run the tool directly; it
         # writes its raw report under analysis/<producer>/.
-        report = tool.run_fallback(src_dir, bom_dir, options, _is_report_ok(tool), _json_load)
+        target, skipped_reason = _fallback_target(tool, src_dir, options)
+        if skipped_reason:
+            LOG.warning("%s reachability was not assessed: %s", tool.name, skipped_reason)
+            if fail_on_error:
+                raise ScanFailureError(skipped_reason)
+            return not_assessed(skipped_reason)
+        report = tool.run_fallback(target, bom_dir, options, _is_report_ok(tool), _json_load)
         source = tool.fallback_source
     if report is None:
         if fail_on_error:
@@ -1305,6 +1335,57 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
     return result
 
 
+def _accepted_exclude_argument(runner: Callable, options) -> Dict[str, List[str]]:
+    """``{"exclude": patterns}`` when the scan has ``--exclude`` patterns and
+    ``runner`` accepts an ``exclude`` parameter, else nothing. The check is
+    on the installed signature, so a runner or tool without the parameter
+    still works and the caller's own target filtering stays the guard."""
+    exclusions = ExclusionSet.from_options(options)
+    if exclusions and "exclude" in inspect.signature(runner).parameters:
+        return {"exclude": list(exclusions.patterns)}
+    return {}
+
+
+def _fallback_target(tool: "ReachabilityTool", src_dir, options) -> Tuple[str, Optional[str]]:
+    """The directory a fallback run of ``tool`` starts on, and the reason no
+    run can start.
+
+    Without ``--exclude`` patterns (or for a tool that takes them itself)
+    this is the scan root. A tool that has no exclusion argument analyses
+    whatever sits below the directory it is given, so with patterns it is
+    given the one project root the patterns leave, and a scan root that is a
+    project itself stays the target. No surviving root, or several of them
+    after a pattern removed one (one run covers one directory), gives a
+    reason instead of a run that would read excluded trees.
+    """
+    exclusions = ExclusionSet.from_options(options)
+    if not exclusions or not tool.project_markers or not os.path.isdir(src_dir):
+        return src_dir, None
+    everything = ExclusionSet()
+    all_roots = project_roots(src_dir, everything, tool.project_markers, _skipped_dirs())
+    kept = project_roots(src_dir, exclusions, tool.project_markers, _skipped_dirs())
+    if kept == all_roots:
+        return src_dir, None
+    if not kept:
+        return src_dir, (
+            f"every {tool.name} project below the scan path matches an --exclude pattern, "
+            "so there is nothing to analyse"
+        )
+    if len(kept) == 1:
+        return kept[0], None
+    return src_dir, (
+        f"the --exclude patterns remove some of the {len(all_roots)} {tool.name} projects "
+        f"below the scan path and {len(kept)} remain; {tool.name} analyses one directory "
+        "per run, so scan one project directory or exclude none of them"
+    )
+
+
+def _skipped_dirs() -> Tuple[str, ...]:
+    """Directory names no walk of dep-scan's own enters (VCS data and
+    dependency caches)."""
+    return (".git", "node_modules", ".hg", ".svn")
+
+
 def _is_report_ok(tool: "ReachabilityTool") -> Callable:
     """The report-shape check of ``tool``'s adapter, used to tell the report
     cdxgen persisted apart from any other file that shares the path. Every
@@ -1317,6 +1398,7 @@ RUSI_TOOL = ReachabilityTool(
     # cdxgen labels Cargo projects "rust"; accept "cargo"/"crates" aliases.
     project_types=("rust", "cargo", "crates"),
     purl_type="cargo",
+    project_markers=("Cargo.toml",),
     default_prefix="rust",
     slice_file=RUSI_REACHABLES_SLICE_FILE,
     import_adapter=_import_rusi_adapter,
@@ -1332,6 +1414,7 @@ GOLEM_TOOL = ReachabilityTool(
     name="golem",
     project_types=("go", "golang"),
     purl_type="golang",
+    project_markers=("go.mod", "go.work"),
     default_prefix="go",
     slice_file=GOLEM_REACHABLES_SLICE_FILE,
     import_adapter=_import_golem_adapter,
@@ -1352,6 +1435,13 @@ KOSI_TOOL = ReachabilityTool(
     # plain Java components share the maven purl type, so a purl cannot tell
     # them apart, and a wrong kosi run over a Java build costs more than the
     # run a universal scan of a Kotlin project misses.
+    project_markers=(
+        "build.gradle",
+        "build.gradle.kts",
+        "settings.gradle",
+        "settings.gradle.kts",
+        "pom.xml",
+    ),
     default_prefix="kotlin",
     slice_file=KOSI_REACHABLES_SLICE_FILE,
     import_adapter=_import_kosi_adapter,
@@ -1731,9 +1821,16 @@ def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> L
     from xbom_lib.blint import run_blint_reviews
 
     review_dir = analysis_report_dir(os.path.dirname(os.path.abspath(bom_file)), "blint")
+    targets = blint_targets(src_dir, options)
+    if not targets:
+        LOG.info("The blint review has no target: every path matches an --exclude pattern.")
+        return []
     with console_status(f"Running blint's binary review on '{src_dir}'.", spinner=SPINNER):
         review = run_blint_reviews(
-            src_dir.split(","), review_dir, deep=deep_enabled(options or {})
+            targets,
+            review_dir,
+            deep=deep_enabled(options or {}),
+            **_accepted_exclude_argument(run_blint_reviews, options),
         )
     if review.success:
         return []
@@ -1741,11 +1838,43 @@ def _run_blint_review(bom_file: str, src_dir: str, options: Optional[Dict]) -> L
     return [review.command_output or "the blint review failed without a reason"]
 
 
+def blint_targets(src_dir: str, options: Optional[Dict]) -> List[str]:
+    """The paths dep-scan hands blint for a comma-separated ``src_dir``.
+
+    With ``--exclude`` patterns in the cdxgen arguments, each directory is
+    replaced by the directories and files that together cover everything
+    the patterns keep, so blint's own walk never reaches an excluded tree
+    (see :func:`depscan.lib.exclusions.kept_targets`). Without patterns the
+    entries come back unchanged. An empty list means nothing is left.
+    """
+    entries = [entry for entry in src_dir.split(",") if entry]
+    exclusions = ExclusionSet.from_options(options)
+    if not exclusions:
+        return entries
+    targets: List[str] = []
+    for entry in entries:
+        if os.path.isdir(entry):
+            targets.extend(kept_targets(entry, exclusions, _blint_ignored_dirs()))
+        else:
+            targets.append(entry)
+    return targets
+
+
+def _blint_ignored_dirs() -> Tuple[str, ...]:
+    """The directory names blint never enters, lower-cased as blint compares
+    them; empty when blint is not installed."""
+    try:
+        from blint.config import ignore_directories
+    except ImportError:
+        return ()
+    return tuple(ignore_directories)
+
+
 def create_blint_bom(
     bom_file: str,
     src_dir: str = ".",
     options: Optional[Dict] = None,
-    reviews: bool = False,
+    targets: Optional[List[str]] = None,
 ) -> bool:
     """
     Method to create BOM file by using blint
@@ -1753,8 +1882,9 @@ def create_blint_bom(
     :param bom_file: BOM file
     :param src_dir: Source directory
     :param options: Additional options for generating the BOM file.
-    :param reviews: Also run blint's security checks and capability reviews
-        and keep their reports under ``analysis/blint/`` next to the BOM.
+    :param targets: The paths to inventory, as :func:`blint_targets` returns
+        them; computed from ``src_dir`` and the ``--exclude`` patterns when
+        not given.
     :returns: True if the bom was generated successfully. False otherwise.
     """
     if options is None:
@@ -1764,11 +1894,18 @@ def create_blint_bom(
     if reachability_analyzer != "off" and not options.get("deep"):
         options["deep"] = True
     generator_options = dict(options)
-    if reviews:
-        generator_options["blint_reviews_dir"] = analysis_report_dir(
-            os.path.dirname(os.path.abspath(bom_file)), "blint"
-        )
-    blint_lib = _blint_generator_class()(src_dir, bom_file, logger=LOG, options=generator_options)
+    if targets is None:
+        targets = blint_targets(src_dir, options)
+    if not targets:
+        LOG.warning("The blint BOM has no target: every path matches an --exclude pattern.")
+        return False
+    # The target list rides along as a list too, so a path with a comma in
+    # it survives; the patterns are for a blint that filters its own walk.
+    generator_options["blint_targets"] = list(targets)
+    generator_options["exclude_patterns"] = list(ExclusionSet.from_options(options).patterns)
+    blint_lib = _blint_generator_class()(
+        ",".join(targets), bom_file, logger=LOG, options=generator_options
+    )
     with console_status(f"Generating BOM for the source '{src_dir}' with blint.", spinner=SPINNER):
         bom_result = blint_lib.generate()
         if not bom_result.success:
@@ -1830,9 +1967,7 @@ def create_lifecycle_boms(cdxgen_lib, src_dir, options) -> BomResult:
             _record_stage_failure(bom_result, stage_file, stage)
             return False
         if not os.path.exists(stage_file):
-            reason = (
-                f"cdxgen reported success but the {stage} lifecycle BOM was not written"
-            )
+            reason = f"cdxgen reported success but the {stage} lifecycle BOM was not written"
             not_assessed.append(reason)
             LOG.warning("Not assessed: %s", reason)
             return False

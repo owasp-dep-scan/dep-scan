@@ -402,6 +402,9 @@ max_request_failures = get_int_from_env("max_request_failures", 5)
 
 # Universal scan
 UNIVERSAL_SCAN_TYPE = "universal"
+#: The reachability analyzer that runs the language tools (golem, rusi, kosi,
+#: dosai) on a scan whose project type names no language.
+SEMANTIC_REACHABILITY_ANALYZER = "SemanticReachability"
 
 # How many records the explanation renders per record source (each slices
 # file or raw report the evidence store's records came from).

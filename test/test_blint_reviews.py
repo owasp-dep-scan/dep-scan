@@ -50,37 +50,6 @@ class _StubGenerator:
         return SimpleNamespace(success=True)
 
 
-def test_review_reports_go_under_analysis_blint_next_to_the_bom(monkeypatch, tmp_path):
-    monkeypatch.setattr(bom_mod, "BlintGenerator", _StubGenerator)
-    bom_file = str(tmp_path / "sbom-binary.cdx.json")
-    assert bom_mod.create_blint_bom(bom_file, str(tmp_path), options={}, reviews=True)
-    expected = str(tmp_path / "analysis" / "blint")
-    assert _StubGenerator.seen_options["blint_reviews_dir"] == expected
-    assert os.path.isdir(expected)
-
-
-def test_no_review_directory_without_a_review_request(monkeypatch, tmp_path):
-    monkeypatch.setattr(bom_mod, "BlintGenerator", _StubGenerator)
-    bom_file = str(tmp_path / "sbom-binary.cdx.json")
-    assert bom_mod.create_blint_bom(bom_file, str(tmp_path), options={})
-    assert "blint_reviews_dir" not in _StubGenerator.seen_options
-    assert not (tmp_path / "analysis").exists()
-
-
-def test_create_bom_asks_for_reviews_on_the_binary_check(monkeypatch, tmp_path):
-    calls = []
-    monkeypatch.setattr(
-        bom_mod,
-        "create_blint_bom",
-        lambda bom_file, src_dir, options=None, reviews=False: calls.append(reviews) or False,
-    )
-    bom_mod.create_bom(
-        str(tmp_path / "b.json"), str(tmp_path), {"project_type": ["binary"]}
-    )
-    bom_mod.create_bom(str(tmp_path / "b.json"), str(tmp_path), {"lifecycles": ["post-build"]})
-    assert calls == [False, False]
-
-
 def test_the_review_step_keeps_its_reports_under_analysis_blint(monkeypatch, tmp_path):
     """dep-scan's own review step hands blint the analysis/blint directory
     beside the BOM, absolute source paths and the deep setting, and reports

@@ -370,6 +370,38 @@ def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
     assert result.primary is None
 
 
+@pytest.mark.parametrize("analyzer", [None, "FrameworkReachability", "off", "AnyOtherAnalyzer"])
+def test_a_universal_scan_starts_no_language_tool_without_semantic_reachability(
+    tmp_path, analyzer
+):
+    """The purl-type route runs golem, rusi and dosai only under
+    SemanticReachability. The default profile's analyzer reads cdxgen's usage
+    records, and a tool run over a large tree there cost far more than the
+    scan it served (a default scan of a Go and Rust monorepo took close to an
+    hour instead of seconds)."""
+    from depscan.lib import bom as bom_mod
+
+    fixture = Path(__file__).parent / "data" / "universal-bom" / "sbom-universal-go.cdx.json"
+    bom_file = tmp_path / "sbom-universal.cdx.json"
+    bom_file.write_text(fixture.read_text(encoding="utf-8"))
+    calls = []
+    tool = dataclasses.replace(
+        bom_mod.GOLEM_TOOL, run_fallback=lambda *a, **k: calls.append("golem") or None
+    )
+    options = {"project_type": ["universal"]}
+    if analyzer is not None:
+        options["reachability_analyzer"] = analyzer
+    assert bom_mod._run_reachability_tool(str(bom_file), str(tmp_path), options, tool) is None
+    assert calls == []
+    # A scan typed for the language is not behind the analyzer gate.
+    typed = {**options, "project_type": ["go"]}
+    if analyzer != "off":
+        assert (
+            bom_mod._run_reachability_tool(str(bom_file), str(tmp_path), typed, tool) is not None
+        )
+        assert calls == ["golem"]
+
+
 def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path):
     """A universal-typed scan names no language, but its BOM's components do.
 
@@ -397,7 +429,7 @@ def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path
         tool.name: dataclasses.replace(tool, run_fallback=recording(tool))
         for tool in (bom_mod.RUSI_TOOL, bom_mod.GOLEM_TOOL, bom_mod.KOSI_TOOL, bom_mod.DOSAI_TOOL)
     }
-    options = {"project_type": ["universal"], "reachability_analyzer": "FrameworkReachability"}
+    options = {"project_type": ["universal"], "reachability_analyzer": "SemanticReachability"}
 
     # The fixture's golang component selects golem on the universal scan.
     golem_result = bom_mod._run_reachability_tool(
@@ -417,7 +449,10 @@ def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path
     assert calls == []
 
     # rusi and dosai are keyed the same way, on cargo and nuget purls.
-    for tool_name, purl in (("rusi", "pkg:cargo/sqlx@0.6.2"), ("dosai", "pkg:nuget/Serilog@4.0.0")):
+    for tool_name, purl in (
+        ("rusi", "pkg:cargo/sqlx@0.6.2"),
+        ("dosai", "pkg:nuget/Serilog@4.0.0"),
+    ):
         bom = tmp_path / f"sbom-{tool_name}.cdx.json"
         bom.write_text(json.dumps({"components": [{"purl": purl}]}))
         calls.clear()
@@ -429,7 +464,9 @@ def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path
 
     # kosi keeps the project-type gate alone: a maven purl is not Kotlin's.
     maven_bom = tmp_path / "sbom-maven.cdx.json"
-    maven_bom.write_text(json.dumps({"components": [{"purl": "pkg:maven/org.jetbrains/kotlin@2.0"}]}))
+    maven_bom.write_text(
+        json.dumps({"components": [{"purl": "pkg:maven/org.jetbrains/kotlin@2.0"}]})
+    )
     calls.clear()
     assert (
         bom_mod._run_reachability_tool(str(maven_bom), str(tmp_path), options, tools["kosi"])
@@ -443,7 +480,7 @@ def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path
         bom_mod._run_reachability_tool(
             str(bom_file),
             str(tmp_path),
-            {"project_type": ["python"], "reachability_analyzer": "FrameworkReachability"},
+            {"project_type": ["python"], "reachability_analyzer": "SemanticReachability"},
             tools["golem"],
         )
         is None
@@ -500,12 +537,10 @@ def test_a_binary_target_keeps_the_blint_bom_path_with_the_review(tmp_path, monk
     from depscan.lib import bom as bom_mod
 
     review_targets: list[str] = []
-    reviews_flag: dict[str, bool] = {}
 
-    def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
+    def fake_blint_bom(bom_file, src_dir, options=None, targets=None):
         with open(bom_file, "w") as fh:
             json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
-        reviews_flag["asked"] = reviews
         return True
 
     monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
@@ -522,7 +557,6 @@ def test_a_binary_target_keeps_the_blint_bom_path_with_the_review(tmp_path, monk
 
     assert result.success is True
     assert result.primary == target
-    assert reviews_flag["asked"] is False, "dep-scan drives the review; the generator writes the BOM"
     assert review_targets == [target]
 
 
@@ -533,15 +567,13 @@ def test_a_failed_blint_review_is_kept_for_the_manifest(tmp_path, monkeypatch):
 
     reason = "blint review failed: [Errno 2] No such file or directory"
 
-    def fake_blint_bom(bom_file, src_dir, options=None, reviews=False):
+    def fake_blint_bom(bom_file, src_dir, options=None, targets=None):
         with open(bom_file, "w") as fh:
             json.dump({"bomFormat": "CycloneDX", "specVersion": "1.6"}, fh)
         return True
 
     monkeypatch.setattr(bom_mod, "create_blint_bom", fake_blint_bom)
-    monkeypatch.setattr(
-        bom_mod, "_run_blint_review", lambda bom_file, src_dir, options: [reason]
-    )
+    monkeypatch.setattr(bom_mod, "_run_blint_review", lambda bom_file, src_dir, options: [reason])
 
     result = bom_mod.create_bom(
         str(tmp_path / "sbom-binary.cdx.json"),
@@ -578,9 +610,9 @@ def test_a_failed_cdxgen_run_names_its_time_budget(tmp_path, monkeypatch, caplog
     assert "CDXGEN_TIMEOUT_MS" in result.failure_reason
     assert CDXGEN_TIMEOUT_MS in result.failure_reason, "the reason names the budget in effect"
     assert "raise CDXGEN_TIMEOUT_MS" in result.failure_reason
-    assert any(
-        "CDXGEN_TIMEOUT_MS" in message for message in caplog.messages
-    ), "the console names the budget too"
+    assert any("CDXGEN_TIMEOUT_MS" in message for message in caplog.messages), (
+        "the console names the budget too"
+    )
 
 
 def test_create_bom_requires_cdxgen_server_url(tmp_path):
