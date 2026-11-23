@@ -1772,6 +1772,69 @@ def test_an_aggregated_directory_grades_usage_from_every_bom(scan_stubs, tmp_pat
     assert not _matching_stage(result.manifest, "bom").get("notAssessed")
 
 
+@pytest.mark.parametrize("evidence_first", [True, False], ids=["evidence-first", "plain-first"])
+def test_a_case_differing_purl_still_names_the_loaded_component(
+    scan_stubs, tmp_path, monkeypatch, evidence_first
+):
+    """A directory where the document carrying the usage evidence spells
+    the purl in lowercase and the loaded component spells it capitalized:
+    nuget purls compare without case, so the record belongs to the
+    component and proves the finding, whose ref spells the loaded
+    component's purl exactly, whichever document the aggregate read
+    first."""
+    purl = "pkg:nuget/NodaTime@3.1.9"
+    monkeypatch.setattr(sys.modules[__name__], "STUB_FINDING_PURLS", (purl,))
+
+    def document(component):
+        return {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "metadata": {"tools": {"components": [{"name": "cdxgen", "version": "13.9.0"}]}},
+            "components": [component],
+        }
+
+    plain = document(
+        {
+            "type": "library",
+            "name": "NodaTime",
+            "version": "3.1.9",
+            "scope": "required",
+            "purl": purl,
+            "bom-ref": purl,
+        }
+    )
+    evidence = document(
+        {
+            "type": "library",
+            "name": "nodatime",
+            "version": "3.1.9",
+            "scope": "required",
+            "purl": "pkg:nuget/nodatime@3.1.9",
+            "evidence": {"occurrences": [{"location": "Program.cs", "line": 3}]},
+        }
+    )
+    bom_dir = tmp_path / "boms"
+    bom_dir.mkdir()
+    documents = {"a-first.cdx.json": evidence if evidence_first else plain}
+    documents["b-second.cdx.json"] = plain if evidence_first else evidence
+    for name, body in documents.items():
+        (bom_dir / name).write_text(json.dumps(body), encoding="utf-8")
+    result = api.scan(
+        api.scan_options(
+            bom_dir=str(bom_dir),
+            reports_dir=str(bom_dir),
+            no_banner=True,
+            reachability_analyzer="off",
+        ),
+        render=False,
+    )
+    (finding,) = result.findings
+    assert finding["components"] == [purl]
+    assert finding["exploitability"]["axes"]["presence"] == "proven", (
+        "the lowercase record names the loaded component"
+    )
+
+
 def test_a_refused_bom_still_names_itself_on_a_finding_graded_from_another(
     scan_stubs, tmp_path, monkeypatch
 ):

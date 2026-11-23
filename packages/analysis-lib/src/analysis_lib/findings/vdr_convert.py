@@ -149,13 +149,24 @@ REACH_NOT_OBSERVED = "unknown"
 REACH_NOT_ASSESSED = "not_assessed"
 
 
+def decoded_purl(purl: str) -> str:
+    """A purl without percent-encoding, with the qualifiers and subpath
+    kept and a nuget purl lowercased, the case-insensitive ecosystem.
+
+    This is the form that tells a case-different spelling of one package
+    (a nuget purl another document of the scan spelled differently) from a
+    sibling component whose purl differs in qualifiers: the first pair
+    compares equal, the second stays different."""
+    plain = unquote(str(purl))
+    return plain.lower() if plain[:10].lower() == "pkg:nuget/" else plain
+
+
 def comparable_purl(purl: str) -> str:
     """A purl without percent-encoding, qualifiers or subpath, so a reached
     key and an ``affects`` ref spelled differently still compare equal.
     NuGet package ids and versions are case-insensitive, so a nuget purl is
     also lowercased."""
-    plain = unquote(str(purl)).split("?", 1)[0].split("#", 1)[0]
-    return plain.lower() if plain[:10].lower() == "pkg:nuget/" else plain
+    return decoded_purl(purl).split("?", 1)[0].split("#", 1)[0]
 
 
 #: The purl type each language tool's reachables slice covers. atom's depend
