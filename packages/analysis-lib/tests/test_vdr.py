@@ -267,6 +267,9 @@ def test_a_row_without_matched_by_is_skipped_not_exported_with_an_empty_ref(monk
     assert all(a.get("ref") for vdr in vdrs for a in vdr["affects"]), (
         "no affects ref may be the empty string"
     )
+    assert result.rows_without_component == 1, (
+        "the caller states the skipped count on the scan's coverage"
+    )
     assert any("1" in line and "matched_by" in line for line in logger.lines), (
         f"the skipped row must be counted in a log line; got {logger.lines}"
     )
