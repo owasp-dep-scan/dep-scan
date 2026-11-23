@@ -213,9 +213,12 @@ from an entry point.
 A witness path from a named root set proves reach from that root set under
 that analyzer's call-graph approximation (rta and cha are approximations,
 not concrete traces). Sanitizers, authentication and binary hardening are
-barriers, not refutations. A summary states, per finding: presence (the
-package is in the BOM), reach (the witness, which names the id of the
-evidence record that carries the path, or not assessed), exposure
+barriers, not refutations. A summary states, per finding: presence (`likely`
+when the package is in the BOM, `proven` on a cdxgen occurrence or callstack
+record in `evidence.jsonl` or a reached value; BOM directory and lifecycle
+scans grade presence without those records), reach (the witness, which
+names the id of the evidence record that carries the path, or not
+assessed), exposure
 (the entry point and its tier), and barrier (sanitizers or authentication
 seen). Every axis you did not measure is `not_assessed`, and an
 unmeasured axis caps the claim.
