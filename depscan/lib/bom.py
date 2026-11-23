@@ -45,7 +45,7 @@ from depscan.lib.exclusions import ExclusionSet, kept_targets, project_roots
 from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 def _blint_generator_class() -> type:
@@ -1335,7 +1335,7 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
     return result
 
 
-def _accepted_exclude_argument(runner: Callable, options) -> Dict[str, List[str]]:
+def _accepted_exclude_argument(runner: Callable, options) -> Dict[str, Any]:
     """``{"exclude": patterns}`` when the scan has ``--exclude`` patterns and
     ``runner`` accepts an ``exclude`` parameter, else nothing. The check is
     on the installed signature, so a runner or tool without the parameter

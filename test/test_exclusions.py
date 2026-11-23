@@ -271,8 +271,9 @@ def test_a_tool_is_not_started_when_every_project_is_excluded(tmp_path):
     calls = []
     result = _typed_run(_tool("rusi", calls), tmp_path, src, "--exclude 'test/**'", "rust")
     assert calls == []
+    assert result is not None
     assert result.status == "not-assessed"
-    assert "--exclude" in result.reason
+    assert "--exclude" in (result.reason or "")
 
 
 def test_a_tool_is_not_started_on_several_roots_after_a_pattern_removed_one(tmp_path):
@@ -282,6 +283,7 @@ def test_a_tool_is_not_started_on_several_roots_after_a_pattern_removed_one(tmp_
     calls = []
     result = _typed_run(_tool("golem", calls), tmp_path, src, "--exclude 'test/**'", "go")
     assert calls == []
+    assert result is not None
     assert result.status == "not-assessed"
 
 
