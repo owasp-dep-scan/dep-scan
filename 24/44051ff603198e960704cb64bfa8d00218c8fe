@@ -1,0 +1,23 @@
+packages/analysis-lib/src/analysis_lib/__init__.py
+  s_48e06faba5a13f::t_9bb7d6852964ee 87-90
+packages/analysis-lib/src/analysis_lib/vdr.py
+  s_48e06faba5a13f::t_460cf64dd0c8ac 241
+packages/analysis-lib/tests/test_vdr.py
+  s_48e06faba5a13f::t_d4d66a51f3a111 270-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2444051ff603198e960704cb64bfa8d00218c8fe",
+  "prompts": {},
+  "sessions": {
+    "s_48e06faba5a13f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b27e440-d09a-44b4-84ed-1c3f593516e9",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
