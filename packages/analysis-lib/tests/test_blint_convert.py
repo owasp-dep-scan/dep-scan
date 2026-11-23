@@ -122,6 +122,59 @@ def test_records_under_a_scan_root_with_absolute_paths_keep_the_ids():
     assert [finding.to_dict() for finding in findings] == EXPECTED_FINDINGS
 
 
+def test_coverage_gaps_of_the_review_are_named_on_every_finding():
+    """A review whose coverage report names failed and skipped units did
+    not cover the whole target: every finding built from its records reads
+    not_assessed and names each gap the adapter recorded, while the ids,
+    severities and locations stay the recording's."""
+    coverage = _recording("analysis-coverage.json")
+    coverage["units"].update({"failed": 1, "skipped": 2})
+    records = _records(
+        _recording("findings.json"),
+        coverage_document=coverage,
+        coverage_source="analysis/blint/analysis-coverage.json",
+    )
+    findings = findings_from_blint_records(records)
+    assert [finding.id for finding in findings] == [f["id"] for f in EXPECTED_FINDINGS]
+    for finding in findings:
+        document = finding.to_dict()
+        assert document["coverage"] == {
+            "state": "not_assessed",
+            "reasons": [
+                {
+                    "capability": "binary",
+                    "reason": "coverage-gap",
+                    "detail": "blint's coverage report analysis/blint/analysis-coverage.json "
+                    "names 1 failed analysis unit(s)",
+                },
+                {
+                    "capability": "binary",
+                    "reason": "coverage-gap",
+                    "detail": "blint's coverage report analysis/blint/analysis-coverage.json "
+                    "names 2 skipped analysis unit(s)",
+                },
+            ],
+        }
+        validate("finding", document)
+
+
+def test_the_finding_names_the_component_its_binary_reconciled_to():
+    """The record's subject purls, the component the binary reconciled to,
+    become the finding's components; the id does not depend on them."""
+    sbom = _recording("sbom-blint.json")
+    records = _records(
+        _recording("findings.json"), extra_components=[sbom["metadata"]["component"]]
+    )
+    by_binary = {}
+    for finding in findings_from_blint_records(records):
+        assert finding.locations
+        by_binary[finding.locations[0].binary] = finding
+    plain = by_binary["corpus/plain-libc-demo.elf"]
+    assert plain.components == ["pkg:generic/plain-libc-demo.elf"]
+    assert by_binary["corpus/fortified-libc-demo.elf"].components is None
+    assert {finding.id for finding in by_binary.values()} <= {f["id"] for f in EXPECTED_FINDINGS}
+
+
 def test_findings_read_only_blint_negative_presence_records():
     records = _records(_recording("findings.json"))
     # the recording's review record is positive presence and no finding

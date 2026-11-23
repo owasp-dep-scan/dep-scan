@@ -516,7 +516,11 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
     )
     scan = pipeline.TypeScan(project_type="python")
     scan.bom_dir = str(ctx.reports_dir)
+    scan.bom_files = [str(Path(ctx.reports_dir) / "bom-evinse-java.json")]
 
+    # The inventory stage runs cdxgen's adapter over the BOM; its occurrence
+    # records are what the engine counts as direct purls.
+    pipeline._collect_inventory_evidence(ctx, scan, write_store=False)
     pipeline.stage_enrichment(ctx, scan)
 
     assert scan.reachability_analyzer == "SemanticReachability"
@@ -537,7 +541,7 @@ def test_stage_enrichment_runs_reachability_on_the_evidence_fixtures(tmp_path):
         "the engine reads the store the enrichment stage wrote"
     )
     records = evidence_store.read(str(store))
-    assert {r.producer.name for r in records} == {"atom"}
+    assert {r.producer.name for r in records} == {"atom", "cdxgen"}
     assert evidence_store.write(str(store), records) == len(records), (
         "a second write of the same records is the same store"
     )
@@ -616,8 +620,10 @@ def test_an_analyzer_without_reached_records_observed_nothing(tmp_path):
         adapter_results={"atom": AdapterResult(status="completed")},
         pkg_list=[{"purl": "pkg:pypi/requests@2.32.1"}],
         bom_dir=str(tmp_path),
+        usage_documents={},
+        cdxgen_reads={},
     )
-    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
     inputs = pipeline._exploitability_inputs(ctx, scan)
     assert inputs.scope is not None
     assert inputs.scope.reached_by == {"atom": set()}
@@ -856,6 +862,8 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
     )
     scan_dir = SimpleNamespace(build=lambda **k: {})
     monkeypatch.setattr(pipeline.scan_directory, "write_manifest", lambda *a, **k: None)
+    records = [object()]
+    usage_not_assessed = {"pkg:pypi/a@1": "the BOM was not assessed"}
     ctx = SimpleNamespace(
         scan_dir=scan_dir,
         reports_dir=str(tmp_path),
@@ -866,13 +874,15 @@ def test_finish_scan_directory_passes_whether_blint_reviews_were_requested(
         project_types=types,
         vdb_flavor=None,
         shards_connected=False,
-        evidence_records=[],
+        evidence_records=records,
+        usage_not_assessed=usage_not_assessed,
     )
     pipeline.finish_scan_directory(ctx)
     assert captured["blint_reviews"] is expected
-    assert captured["evidence_records"] == [], (
+    assert captured["evidence_records"] is records, (
         "the findings file receives the scan's evidence records, the blint ones included"
     )
+    assert captured["usage_not_assessed"] is usage_not_assessed
 
 
 def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypatch):
@@ -901,8 +911,10 @@ def test_exploitability_inputs_come_from_the_adapter_records(tmp_path, monkeypat
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
+        usage_documents={},
+        cdxgen_reads={},
     )
-    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
 
     def refuse_to_read(*args, **kwargs):
         raise AssertionError("the slices were parsed again")
@@ -936,8 +948,10 @@ def test_exploitability_inputs_grade_only_the_ecosystems_the_analyzers_covered(t
         adapter_results={"atom": atom_adapter.extract([str(slice_file)])},
         pkg_list=[{"purl": "pkg:maven/a/b@1", "scope": "required"}],
         bom_dir=str(tmp_path),
+        usage_documents={},
+        cdxgen_reads={},
     )
-    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules())
+    ctx = SimpleNamespace(doctor_report=None, grading_rules=load_rules(), usage_not_assessed={})
     inputs = pipeline._exploitability_inputs(ctx, scan)
     assert reach_axis(inputs.scope, "pkg:maven/a/b@1") == "likely"
     assert reach_axis(inputs.scope, "pkg:npm/left-pad@1.0.0") == "not_assessed"
@@ -1014,10 +1028,13 @@ def test_a_source_scan_takes_the_atom_version_from_the_doctor(tmp_path, monkeypa
     )
     options = SimpleNamespace(bom_files=[str(bom)])
     source_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=None))
-    assert pipeline._atom_producer_version(source_scan, options) == "4.0.3"
+    type_scan = pipeline.TypeScan(project_type="python")
+    assert pipeline._atom_producer_version(source_scan, type_scan, options) == "4.0.3"
     bom_scan = SimpleNamespace(args=SimpleNamespace(bom=None, bom_dir=str(tmp_path)))
-    assert pipeline._atom_producer_version(bom_scan, options) == "4.0.1"
-    assert pipeline._atom_producer_version(bom_scan, SimpleNamespace(bom_files=[])) == ""
+    assert pipeline._atom_producer_version(bom_scan, type_scan, options) == "4.0.1"
+    assert (
+        pipeline._atom_producer_version(bom_scan, type_scan, SimpleNamespace(bom_files=[])) == ""
+    )
 
 
 def test_the_source_root_of_a_stored_scan_is_only_an_explicit_src(tmp_path, monkeypatch):

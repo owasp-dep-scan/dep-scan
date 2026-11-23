@@ -65,7 +65,13 @@ def run_blint_reviews(
 
     A failure never raises: it is returned as ``success=False`` with the
     reason, so a review problem cannot take the SBOM down with it.
+
+    The paths are made absolute first. blint names each binary by the path
+    it walked, so a relative path would leave the reports naming files
+    relative to the working directory, which no reader of the reports can
+    place under the scan root.
     """
+    src_dirs = [os.path.abspath(src) for src in src_dirs]
     # A reports directory reused by an earlier scan can hold reports from it.
     # They go before the review starts, so a review that fails or does not run
     # leaves nothing that reads as this scan's result.
