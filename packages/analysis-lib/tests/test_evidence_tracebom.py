@@ -576,8 +576,13 @@ def test_a_deep_component_chain_is_counted_and_never_raises():
     assert len(result.records) == 6
     details = [c.detail for c in result.caveats if c.kind == "record-skipped"]
     assert any("nested deeper than 64 levels" in d for d in details)
-    text = extract(json.dumps(report), source=SOURCE, source_root=ROOT)
-    assert [r.id for r in text.records] == [r.id for r in result.records]
+    # The text form reads like the parsed form. The chain for it stays under
+    # the interpreter's recursion limit, which json.dumps needs, and still
+    # crosses the adapter's depth cap.
+    shallower = _report()
+    shallower["components"].append(_nested_chain(200))
+    text = extract(json.dumps(shallower), source=SOURCE, source_root=ROOT)
+    assert [r.id for r in text.records] == [r.id for r in _extract(shallower).records]
 
 
 def test_a_deep_property_value_costs_its_own_record_alone():
@@ -784,7 +789,15 @@ def test_a_trace_that_saw_only_cryptography_is_a_trace_bom():
     assert is_tracebom_report(report) is False
 
 
-def test_a_trace_bom_text_nested_too_deep_to_parse_is_not_assessed():
-    result = extract("[" * 100000 + "]" * 100000, source=SOURCE, source_root=ROOT)
+def _parser_out_of_depth(*_args, **_kwargs):
+    raise RecursionError("maximum recursion depth exceeded while decoding a JSON array")
+
+
+def test_a_trace_bom_text_nested_too_deep_to_parse_is_not_assessed(monkeypatch):
+    # How deep the json parser goes before it raises depends on the Python
+    # version and the thread's stack size, so the parser's failure is
+    # simulated rather than provoked.
+    monkeypatch.setattr(json, "loads", _parser_out_of_depth)
+    result = extract("[[[]]]", source=SOURCE, source_root=ROOT)
     assert result.status == STATUS_NOT_ASSESSED
     assert "deeper than this adapter reads" in result.reason

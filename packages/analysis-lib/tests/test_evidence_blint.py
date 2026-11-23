@@ -545,9 +545,29 @@ def test_home_directories_never_reach_the_attributes():
     assert result.records[0].attributes["title"] == "Missing Canary Protection (RUNPATH ~/lib)"
 
 
-def test_a_companion_document_nested_too_deep_to_parse_costs_itself_alone():
-    deep = "[" * 100000 + "]" * 100000
-    result = _extract(_load("findings.json"), reviews_document=deep)
+def test_a_companion_document_nested_too_deep_to_parse_costs_itself_alone(monkeypatch):
+    # How deep the json parser goes before it raises depends on the Python
+    # version and the thread's stack size, so the parser's failure is
+    # simulated rather than provoked. Only the text companion is parsed.
+    def parser_out_of_depth(*_args, **_kwargs):
+        raise RecursionError("maximum recursion depth exceeded while decoding a JSON array")
+
+    findings = _load("findings.json")
+    coverage = _load("analysis-coverage.json")
+    sbom = _sbom()
+    blint_version = _bom_blint_version()
+    monkeypatch.setattr(json, "loads", parser_out_of_depth)
+    result = extract(
+        findings,
+        source=FINDINGS_SOURCE,
+        reviews_document="[[[]]]",
+        reviews_source=REVIEWS_SOURCE,
+        coverage_document=coverage,
+        coverage_source=COVERAGE_SOURCE,
+        producer_version=blint_version,
+        bom_components=sbom.get("components") or [],
+        extra_components=[(sbom.get("metadata") or {}).get("component")],
+    )
     assert result.status == STATUS_COMPLETED
-    assert len(result.records) == len(_load("findings.json")["findings"])
+    assert len(result.records) == len(findings["findings"])
     assert any("nests its values deeper" in c.detail for c in result.caveats)
