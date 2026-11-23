@@ -38,7 +38,14 @@ depscan scan /absolute/path/to/new-revision --format json -o /tmp/new-reports
 
 Read both manifests' `stages` first: a stage that is anything but
 `completed` on one side makes the delta for its categories not assessed.
-Then diff the findings by id: added ids are new findings, missing ids are
+Then check what each side's inventory actually covered before reading any
+delta: compare the two BOMs' component counts and purl-type mix (and the
+introspection summary beside each BOM, whose `overall` names the tier the
+scan reached), and name the scope the diff rests on. Two scans of the same
+tree with different image or fixture coverage are not a like-for-like
+pair, and a verdict such as "better" or "unchanged" must say which
+components it covers, not only which directories were excluded. Then
+diff the findings by id: added ids are new findings, missing ids are
 fixed ones, and shared ids with a changed severity or coverage changed
 state.
 
