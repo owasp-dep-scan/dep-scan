@@ -2101,8 +2101,17 @@ def _exploitability_inputs(ctx, scan):
         if result is not None:
             records.extend(result.records)
     if scan.bom_dir:
-        # The BOM's own usage records are the ones the aggregated components
-        # no longer carry; every other record grades as it did.
+        # A scan that aggregates a BOM directory builds its package list
+        # through the aggregated loader, which rewrites every loaded
+        # component's evidence block to the identity evidences alone, so such
+        # a scan never proved a package used from its occurrences or
+        # callstacks. The usage records are dropped from the grading inputs
+        # to grade those scans the same way; the store keeps them. A user
+        # BOM appended to an aggregating scan keeps its evidence in the
+        # package list, so its packages grade one step lower here than the
+        # component-reading rule graded them; that corner is accepted for
+        # now because matching it needs per-document provenance through the
+        # loader.
         records = [
             record
             for record in records

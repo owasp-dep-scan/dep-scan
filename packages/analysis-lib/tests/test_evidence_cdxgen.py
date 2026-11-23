@@ -393,6 +393,19 @@ def test_an_introspection_report_of_the_wrong_shape_is_a_caveat():
     assert len(_skipped_details(result)) == 1
 
 
+def test_non_object_introspection_blocks_are_counted_not_dropped():
+    introspection = _introspection()
+    introspection["overall"] = "high"
+    introspection["ledger"] = 3
+    result = _extract(introspection=introspection)
+    record = next(r for r in result.records if r.kind == "introspection")
+    attributes = record.attributes or {}
+    assert "overall" not in attributes and "ledger" not in attributes
+    details = " ".join(_skipped_details(result))
+    assert "overall block is a str" in details
+    assert "ledger block is a int" in details
+
+
 def test_a_refused_introspection_version_is_a_caveat_naming_the_version():
     introspection = _introspection()
     introspection["schemaVersion"] = "2.0"

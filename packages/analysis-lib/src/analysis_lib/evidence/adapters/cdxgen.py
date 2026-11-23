@@ -228,6 +228,19 @@ def _introspection_record(
             )
         ]
     caveats = list(gate.caveats)
+    for block in ("ledger", "overall"):
+        value = parsed.get(block)
+        if value is not None and not isinstance(value, dict):
+            caveats.append(
+                EvidenceCaveat(
+                    kind="record-skipped",
+                    detail=(
+                        f"the introspection report's {block} block is a "
+                        f"{type(value).__name__}, not the object expected; "
+                        "it became no attribute"
+                    ),
+                )
+            )
     ledger = as_dict(parsed.get("ledger"))
     if ledger.get("truncated"):
         caveats.append(

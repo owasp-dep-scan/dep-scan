@@ -6,7 +6,7 @@ Trace BOMs recorded as adapter test input. The tests in
 ## How they were made
 
 `tracebom` is the one shipped inside the cdxgen package
-(`~/.local/bin/tracebom`); it prints `CycloneDX Generator 13.9.0`
+(`tracebom` (from the cdxgen install)); it prints `CycloneDX Generator 13.9.0`
 (cdxgen master `af131a30`).
 
 Both recordings ran in a temporary directory (deleted afterwards, spelled
@@ -29,7 +29,7 @@ endpoints with curl (`fetch-demo.py` was
 `trace_demo_add`):
 
 ```bash
-~/.local/bin/tracebom -d <recording-dir> \
+tracebom -d <recording-dir> \
   --cmd "sh -c 'python3 <recording-dir>/fetch-demo.py; \
 curl -s --noproxy \"\" http://localhost:8471/; \
 curl -sk --noproxy \"\" https://localhost:8472/'" \
@@ -43,7 +43,7 @@ dry-run recording used one command that wrote a file and fetched two
 localhost URLs, with every side effect denied:
 
 ```bash
-~/.local/bin/tracebom --sandbox-dry-run \
+tracebom --sandbox-dry-run \
   --cmd "sh -c 'echo traced > out.txt; curl -s http://localhost:8473/; \
 curl -sk https://localhost:8474/'" \
   -d <recording-dir> --timeout 30000 -o tracebom-dry-run.json
