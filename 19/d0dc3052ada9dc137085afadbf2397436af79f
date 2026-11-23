@@ -1,0 +1,16 @@
+agent-plugin/reference/safety.md
+  h_0926447d100ad2 36-42
+agent-plugin/skills/depscan-vex-compliance/SKILL.md
+  h_0926447d100ad2 28-32,53-59,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "19d0dc3052ada9dc137085afadbf2397436af79f",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
