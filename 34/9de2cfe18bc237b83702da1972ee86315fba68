@@ -1,0 +1,18 @@
+depscan/lib/pipeline.py
+  h_0926447d100ad2 2360
+packages/analysis-lib/tests/test_vdr_convert.py
+  h_0926447d100ad2 321-323
+test/test_evidence_wiring.py
+  h_0926447d100ad2 1810,1886
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "349de2cfe18bc237b83702da1972ee86315fba68",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
