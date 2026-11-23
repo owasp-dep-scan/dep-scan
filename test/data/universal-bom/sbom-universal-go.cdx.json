@@ -1,0 +1,27 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "components": [
+    {
+      "type": "library",
+      "name": "golang.org/x/net",
+      "version": "v0.55.0",
+      "purl": "pkg:golang/golang.org/x/net@v0.55.0",
+      "bom-ref": "pkg:golang/golang.org/x/net@v0.55.0"
+    },
+    {
+      "type": "library",
+      "name": "yarn",
+      "version": "1.22.22",
+      "purl": "pkg:npm/yarn@1.22.22",
+      "bom-ref": "pkg:npm/yarn@1.22.22"
+    },
+    {
+      "type": "library",
+      "name": "adduser",
+      "version": "3.134",
+      "purl": "pkg:deb/debian/adduser@3.134?arch=all&distro=debian-12&distro_name=bookworm",
+      "bom-ref": "pkg:deb/debian/adduser@3.134?arch=all&distro=debian-12&distro_name=bookworm"
+    }
+  ]
+}

@@ -370,6 +370,87 @@ def test_create_bom_reports_failure_when_generator_fails(tmp_path, monkeypatch):
     assert result.primary is None
 
 
+def test_a_universal_scan_runs_the_tool_whose_purl_type_the_bom_carries(tmp_path):
+    """A universal-typed scan names no language, but its BOM's components do.
+
+    dep-scan scans every source tree with the universal type, so the
+    language tools are selected by the purl types the BOM carries: golem on
+    golang, rusi on cargo, dosai on nuget. kosi keeps the project-type gate
+    alone, because a maven purl cannot tell Kotlin from plain Java.
+    """
+    from depscan.lib import bom as bom_mod
+
+    fixture = Path(__file__).parent / "data" / "universal-bom" / "sbom-universal-go.cdx.json"
+    bom_file = tmp_path / "sbom-universal.cdx.json"
+    bom_file.write_text(fixture.read_text(encoding="utf-8"))
+
+    calls = []
+
+    def recording(tool):
+        def run_fallback(src_dir, bom_dir, options, is_report_ok, json_load):
+            calls.append(tool.name)
+            return None
+
+        return run_fallback
+
+    tools = {
+        tool.name: dataclasses.replace(tool, run_fallback=recording(tool))
+        for tool in (bom_mod.RUSI_TOOL, bom_mod.GOLEM_TOOL, bom_mod.KOSI_TOOL, bom_mod.DOSAI_TOOL)
+    }
+    options = {"project_type": ["universal"], "reachability_analyzer": "FrameworkReachability"}
+
+    # The fixture's golang component selects golem on the universal scan.
+    golem_result = bom_mod._run_reachability_tool(
+        str(bom_file), str(tmp_path), options, tools["golem"]
+    )
+    assert calls == ["golem"], "the golem fallback ran for the golang purl the BOM carries"
+    assert golem_result is not None, "the tool applied to the universal scan"
+
+    # A BOM with no golang purl leaves golem out, whatever the type says.
+    npm_bom = tmp_path / "sbom-npm.cdx.json"
+    npm_bom.write_text(json.dumps({"components": [{"purl": "pkg:npm/yarn@1.22.22"}]}))
+    calls.clear()
+    assert (
+        bom_mod._run_reachability_tool(str(npm_bom), str(tmp_path), options, tools["golem"])
+        is None
+    )
+    assert calls == []
+
+    # rusi and dosai are keyed the same way, on cargo and nuget purls.
+    for tool_name, purl in (("rusi", "pkg:cargo/sqlx@0.6.2"), ("dosai", "pkg:nuget/Serilog@4.0.0")):
+        bom = tmp_path / f"sbom-{tool_name}.cdx.json"
+        bom.write_text(json.dumps({"components": [{"purl": purl}]}))
+        calls.clear()
+        assert (
+            bom_mod._run_reachability_tool(str(bom), str(tmp_path), options, tools[tool_name])
+            is not None
+        )
+        assert calls == [tool_name]
+
+    # kosi keeps the project-type gate alone: a maven purl is not Kotlin's.
+    maven_bom = tmp_path / "sbom-maven.cdx.json"
+    maven_bom.write_text(json.dumps({"components": [{"purl": "pkg:maven/org.jetbrains/kotlin@2.0"}]}))
+    calls.clear()
+    assert (
+        bom_mod._run_reachability_tool(str(maven_bom), str(tmp_path), options, tools["kosi"])
+        is None
+    )
+    assert calls == []
+
+    # A typed scan keeps its own gate: a python scan runs no language tool.
+    calls.clear()
+    assert (
+        bom_mod._run_reachability_tool(
+            str(bom_file),
+            str(tmp_path),
+            {"project_type": ["python"], "reachability_analyzer": "FrameworkReachability"},
+            tools["golem"],
+        )
+        is None
+    )
+    assert calls == []
+
+
 def test_the_binary_check_keeps_the_cdxgen_bom_on_a_source_scan(tmp_path, monkeypatch):
     """`--checks binary` on a source scan reviews binaries beside the cdxgen
     inventory instead of replacing it with a blint BOM.

@@ -37,6 +37,7 @@ from depscan.lib.config import (
     RUSI_DEFAULT_CALLGRAPH_MODE,
     RUSI_DEFAULT_DATAFLOW_MODE,
     RUSI_REACHABLES_SLICE_FILE,
+    UNIVERSAL_SCAN_TYPE,
 )
 from depscan.lib.logger import LOG, SPINNER, console_status
 from depscan.lib.utils import cleanup_license_string
@@ -1057,6 +1058,10 @@ class ReachabilityTool:
     #: directory-relative forward-slash path. It names the records' source
     #: when the scan ran the tool itself.
     fallback_source: str = ""
+    #: The purl type that selects this tool on a universal-typed scan, whose
+    #: type token names no language. Empty for a tool the purl of a
+    #: component cannot select.
+    purl_type: str = ""
 
 
 def _remove_tool_slice(path: str) -> None:
@@ -1173,6 +1178,22 @@ def _extract_report_records(
     return result
 
 
+def _bom_carries_purl_type(bom_file: Optional[str], purl_type: str) -> bool:
+    """Whether a BOM's components carry a purl of the given type.
+
+    An unreadable or missing BOM selects nothing. Only the purl prefix is
+    read, so a component with no purl at all never selects a tool."""
+    if not bom_file or not os.path.isfile(bom_file):
+        return False
+    bom_data = json_load(bom_file, log=LOG) or {}
+    prefix = f"pkg:{purl_type}/"
+    return any(
+        isinstance(component.get("purl"), str) and component["purl"].startswith(prefix)
+        for component in bom_data.get("components", [])
+        or []
+    )
+
+
 def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[AdapterResult]:
     """Run one reachability tool and hand its raw report to its adapter.
 
@@ -1192,7 +1213,16 @@ def _run_reachability_tool(bom_file, src_dir, options, tool) -> Optional[Adapter
         return None
     project_type_list: List[str] = options.get("project_type") or []
     if not any(pt in tool.project_types for pt in project_type_list):
-        return None
+        # A universal scan names no language, but its BOM's components do:
+        # the tool applies when they carry its purl type. cdxgen is invoked
+        # with the universal type too, so its own dispatch never reaches the
+        # language analysis either; this gate is what runs it at all.
+        if not (
+            tool.purl_type
+            and UNIVERSAL_SCAN_TYPE in project_type_list
+            and _bom_carries_purl_type(bom_file, tool.purl_type)
+        ):
+            return None
     if bom_file:
         # A slice left by an earlier scan must not outlive a run where this
         # tool does not produce one, or the analyzer would read as completed.
@@ -1276,6 +1306,7 @@ RUSI_TOOL = ReachabilityTool(
     name="rusi",
     # cdxgen labels Cargo projects "rust"; accept "cargo"/"crates" aliases.
     project_types=("rust", "cargo", "crates"),
+    purl_type="cargo",
     default_prefix="rust",
     slice_file=RUSI_REACHABLES_SLICE_FILE,
     import_adapter=_import_rusi_adapter,
@@ -1290,6 +1321,7 @@ RUSI_TOOL = ReachabilityTool(
 GOLEM_TOOL = ReachabilityTool(
     name="golem",
     project_types=("go", "golang"),
+    purl_type="golang",
     default_prefix="go",
     slice_file=GOLEM_REACHABLES_SLICE_FILE,
     import_adapter=_import_golem_adapter,
@@ -1306,6 +1338,10 @@ KOSI_TOOL = ReachabilityTool(
     # cdxgen labels Kotlin projects "kotlin" (alias "kt") and Android ones
     # "android". Pure-Java Gradle builds are left to atom.
     project_types=("kotlin", "kt", "android"),
+    # kosi keeps the project-type gate alone, with no purl type: Kotlin and
+    # plain Java components share the maven purl type, so a purl cannot tell
+    # them apart, and a wrong kosi run over a Java build costs more than the
+    # run a universal scan of a Kotlin project misses.
     default_prefix="kotlin",
     slice_file=KOSI_REACHABLES_SLICE_FILE,
     import_adapter=_import_kosi_adapter,
@@ -1321,6 +1357,7 @@ DOSAI_TOOL = ReachabilityTool(
     name="dosai",
     # cdxgen labels .csproj projects "dotnet"; accept csharp/nuget aliases.
     project_types=("dotnet", "csharp", "nuget"),
+    purl_type="nuget",
     default_prefix="dotnet",
     slice_file=DOSAI_REACHABLES_SLICE_FILE,
     import_adapter=_import_dosai_adapter,
