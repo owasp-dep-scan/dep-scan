@@ -1,0 +1,27 @@
+contrib/repotests/validate.py
+  s_176e793652cadb::t_58bc90a49d9ffe 223-229,231-232,234,236-280
+depscan/api.py
+  s_176e793652cadb::t_fcec03a3938095 996,1005,1008-1010,1014-1015
+test/test_api.py
+  s_176e793652cadb::t_218fa42c69c83b 326,329-344,354,367,377-379
+test/test_fail_on_error.py
+  s_176e793652cadb::t_19d21e7c304823 197-198,224-225
+test/test_mcp_tools.py
+  s_176e793652cadb::t_265f5ae00158e9 413,979-998,1010-1012,1041-1043,1054
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e037f9f7385de0644441acee3e4ec322c271ed8b",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

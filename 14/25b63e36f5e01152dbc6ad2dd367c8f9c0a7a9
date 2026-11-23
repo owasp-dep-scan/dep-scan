@@ -1,0 +1,25 @@
+test/test_evidence_wiring.py
+  s_176e793652cadb::t_8710d9983f6741 126,220
+test/test_explainer.py
+  s_176e793652cadb::t_9ce1f6c3f3f40b 125-126
+test/test_fail_on_error.py
+  s_176e793652cadb::t_487c706abaa83a 198,225
+test/test_pipeline.py
+  s_176e793652cadb::t_d2d9138e62ab9d 830
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1425b63e36f5e01152dbc6ad2dd367c8f9c0a7a9",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

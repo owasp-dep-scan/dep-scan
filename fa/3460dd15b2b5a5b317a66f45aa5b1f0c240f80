@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_reachability.py
+  s_99830a88a8b461::t_05bdbcaeb0c6b2 589
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa3460dd15b2b5a5b317a66f45aa5b1f0c240f80",
+  "prompts": {},
+  "sessions": {
+    "s_99830a88a8b461": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_360957ee-8f02-4b10-9050-a97d948387d8",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

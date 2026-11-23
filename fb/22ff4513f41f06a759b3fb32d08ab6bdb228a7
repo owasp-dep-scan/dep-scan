@@ -1,0 +1,52 @@
+packages/analysis-lib/tests/data/rusi/README.md
+  s_83242f37f43385::t_992e3af9925726 1-52
+packages/analysis-lib/tests/test_evidence_rusi.py
+  s_83242f37f43385::t_2e7644a540b91f 1-349,352,355-359,362,364-365,385-394
+  s_83242f37f43385::t_874bc6d7aae681 350-351,353-354,360-361,363,366-384
+packages/analysis-lib/tests/test_evidence_kosi.py
+  s_83242f37f43385::t_6b234c5d01ee5e 134,137-141
+  s_83242f37f43385::t_634f6ca502a749 133,135-136
+  s_83242f37f43385::t_45f6e0283f00bf 1-132,142-503
+packages/analysis-lib/tests/data/golem/README.md
+  s_83242f37f43385::t_30a1bb6e3ebeae 1-64
+packages/analysis-lib/tests/test_evidence_golem.py
+  s_83242f37f43385::t_1448177e724cac 9-11,30-64,71-79,103,109,119-139,142,150-159,161-162,180,212,255,273,277-291,326,330-331,345,367,373-391,413-422
+  s_539967712ee634::t_3f89c547c82247 1-2,12-18,20-29,65-70,80-102,104-108,110-118,140-141,143-147,163-166,168-173,175-179,181,183-187,191,193-194,196-211,213,218-254,256-272,274-276,292-325,327-329,332-344,346-347,349-366,368-369,371,392-403,408-412
+  s_539967712ee634::t_6a3cfb90ba05b4 3-8,19,148-149,160,167,174,182,188-190,192,195,214-217,348,370,372,404-407
+packages/analysis-lib/tests/data/golem/golem-reachable-app.json
+  s_83242f37f43385::t_6a5f63afc5bbdf 1-1567
+packages/analysis-lib/tests/data/golem/golem-real-cve-app.json
+  s_83242f37f43385::t_b65fb5d14cc64e 1-1380
+packages/analysis-lib/tests/data/golem/golem-unreachable-app.json
+  s_83242f37f43385::t_aa2125fe275b7c 1-790
+packages/analysis-lib/tests/data/rusi/rusi-reachable-app.json
+  s_83242f37f43385::t_505e8f885c1ab6 1-687
+packages/analysis-lib/tests/data/rusi/rusi-rustsec-app.json
+  s_83242f37f43385::t_f3d46538d13674 1-603
+packages/analysis-lib/tests/data/rusi/rusi-unreachable-app.json
+  s_83242f37f43385::t_13645b7ae6c354 1-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb22ff4513f41f06a759b3fb32d08ab6bdb228a7",
+  "prompts": {},
+  "sessions": {
+    "s_539967712ee634": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_83242f37f43385": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

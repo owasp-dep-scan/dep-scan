@@ -1,0 +1,51 @@
+packages/analysis-lib/src/analysis_lib/evidence/schemas/depscan-evidence.schema.json
+  s_17332abccfca86::t_cbe164c9e4c937 1-281
+packages/analysis-lib/pyproject.toml
+  s_17332abccfca86::t_c87994d5e7f946 50
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_17332abccfca86::t_a88a8e7c5d9037 26
+  s_17332abccfca86::t_5ae7080a139d50 234-241
+  s_17332abccfca86::t_9d032bd386fcda 278-289
+  s_17332abccfca86::t_cd240563ad968a 3
+packages/analysis-lib/src/analysis_lib/evidence/adapters/__init__.py
+  s_17332abccfca86::t_1d03be0d6b8e7d 18
+  s_17332abccfca86::t_f3748e49db2559 95
+  s_17332abccfca86::t_56b9b61d7c29e1 1-17,19-94,96-232
+packages/analysis-lib/src/analysis_lib/findings/schemas.py
+  s_17332abccfca86::t_08ec0b3c1d5088 37-41,48-50
+  s_17332abccfca86::t_150259033a215a 139,141-143
+  s_17332abccfca86::t_3e1d090dc2a114 13-17,19-23
+  s_17332abccfca86::t_1e166d821d8143 96-97,100
+  s_17332abccfca86::t_7775ba20cd0724 172-173
+packages/analysis-lib/src/analysis_lib/evidence/store.py
+  s_17332abccfca86::t_2dd8e5443b040a 1-30,32-207
+  s_17332abccfca86::t_6faf3cfd577c3b 31
+packages/analysis-lib/src/analysis_lib/evidence/__init__.py
+  s_17332abccfca86::t_55c3c83621f806 1-141,143-188,196-290,292-334
+  s_17332abccfca86::t_ab69335e75a684 189-195
+  s_17332abccfca86::t_65e5bf2b9d76f2 291
+  s_17332abccfca86::t_c059260f687e05 142
+depscan/lib/scan_directory.py
+  s_17332abccfca86::t_e49d36d35c2b86 39-42,45,54
+  s_17332abccfca86::t_0cc749d8fd51ce 300-301
+  s_17332abccfca86::t_a720a9e96bd714 50-52
+  s_17332abccfca86::t_d8591e064c3b10 302
+documentation/docs/output/scan-directory.mdx
+  s_17332abccfca86::t_f1cd0b737853ae 70,121,136,143
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f6a24c1618638a8f7b1497cb66036c34d2223c97",
+  "prompts": {},
+  "sessions": {
+    "s_17332abccfca86": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_1_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}

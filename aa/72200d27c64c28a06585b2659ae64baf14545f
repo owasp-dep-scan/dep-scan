@@ -1,0 +1,23 @@
+documentation/docs/languages/dotnet-reachability.mdx
+  s_7318da1b9edd46::t_3de63fb7a67205 139-140
+  s_7318da1b9edd46::t_77a7bcad60674f 138
+documentation/docs/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_77a7bcad60674f 124
+  s_7318da1b9edd46::t_3de63fb7a67205 125,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa72200d27c64c28a06585b2659ae64baf14545f",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

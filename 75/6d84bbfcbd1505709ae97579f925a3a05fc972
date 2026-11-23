@@ -1,0 +1,48 @@
+packages/analysis-lib/tests/data/atom/java-callsites.slices.json
+  s_df8c89c65d2ddf::t_9bc6b87f9241c2 1-227
+packages/analysis-lib/tests/test_evidence_atom.py
+  s_c9308cc8b35e5f::t_8963111eb51ebc 447
+  s_c9308cc8b35e5f::t_8b0b7e55b12447 454
+  s_c9308cc8b35e5f::t_9104521da88dd3 317
+  s_c9308cc8b35e5f::t_b2c401d3c8695d 22-23
+  s_df8c89c65d2ddf::t_a0f423e2503ead 1-2,7-9,12-13,16-21,25-27,29-60,66-102,105-118,145-146,150-165,167-175,177-179,181,183-210,212-218,221-226,228-282,286-316,318-339,341-389,424-435,457-469,475-490,503-509,511-524,532-550,552-558,562-600,602-611
+  s_c9308cc8b35e5f::t_d5aafef1b66552 3-6,10-11,14-15,103-104,119-144,147-149,176,283-285,390-401,406,408-423,436-446,448-453,455-456,472,491-502,510,525-531,559-561
+  s_c9308cc8b35e5f::t_d3172866663bf8 402-405,407
+  s_c9308cc8b35e5f::t_636ecca6612b65 61-65
+  s_c9308cc8b35e5f::t_9f32ff58faccc6 28
+  s_df8c89c65d2ddf::t_be27d0efec20f3 24,166,180,182,211,219-220,227,340,470-471,473-474,551,601
+packages/analysis-lib/tests/data/atom/README.md
+  s_c9308cc8b35e5f::t_a8afa3ee64a105 3-18,28-29,36-37
+  s_df8c89c65d2ddf::t_0b202d14c8b89a 1-2,21
+  s_df8c89c65d2ddf::t_56301361573304 19-20,22-27,30-35,38-42
+packages/analysis-lib/tests/data/atom/java-usages.slices.json
+  s_df8c89c65d2ddf::t_4fa7fe1ca8673a 1-1883
+packages/analysis-lib/tests/data/atom/java-reachables.slices.json
+  s_df8c89c65d2ddf::t_57ece7a10d62eb 1-1444
+.gitignore
+  s_c9308cc8b35e5f::t_d80039173d3243 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "756d84bbfcbd1505709ae97579f925a3a05fc972",
+  "prompts": {},
+  "sessions": {
+    "s_c9308cc8b35e5f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_5_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    },
+    "s_df8c89c65d2ddf": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_5_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

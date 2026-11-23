@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_exploitability.py
+  s_20fa93b43b79bb::t_2b818caf3f7aff 512-527
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73e303bcc1061d164ee5dd77cf2438a4dae3b05d",
+  "prompts": {},
+  "sessions": {
+    "s_20fa93b43b79bb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_12_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

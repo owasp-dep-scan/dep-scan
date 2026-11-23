@@ -1,0 +1,25 @@
+depscan/lib/scan_directory.py
+  s_7318da1b9edd46::t_3be9fbe8e423d3 24,94-101,324,405-410,433,435
+documentation/docs/output/scan-directory.mdx
+  s_7318da1b9edd46::t_41d11bcde028b5 64,124-125
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-manifest.schema.json
+  s_7318da1b9edd46::t_699f51b60d0417 229,233
+test/test_scan_directory.py
+  s_7318da1b9edd46::t_c888990e169353 685-716,1151-1156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e67586595c108d3f52aac7d22cdde934b56011db",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

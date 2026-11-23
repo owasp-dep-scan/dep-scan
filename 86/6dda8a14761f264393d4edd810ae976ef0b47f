@@ -1,0 +1,26 @@
+test/test_dosai_integration.py
+  s_7318da1b9edd46::t_76f5e9a10ee294 330
+packages/analysis-lib/src/analysis_lib/dosai_slices.py
+  s_7318da1b9edd46::t_2b48ba99e14d27 113-114,119-128,359-362,604-606,625-626,628-630,740-742
+packages/analysis-lib/tests/test_dosai_slices.py
+  s_7318da1b9edd46::t_76f5e9a10ee294 392-419,423-457
+  s_7318da1b9edd46::t_6df13c48939204 420-422
+documentation/docs/languages/dotnet-reachability.mdx
+  s_7318da1b9edd46::t_662833ea871acd 98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "866dda8a14761f264393d4edd810ae976ef0b47f",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+depscan/api.py
+  s_176e793652cadb::t_9907758907412a 938-940
+depscan/lib/pipeline.py
+  s_176e793652cadb::t_e5aa1ad254f639 230-233,1435-1441,1502-1503,1505-1512,1519-1521
+depscan/lib/scan_directory.py
+  s_176e793652cadb::t_61b3557b15496f 90-91
+packages/analysis-lib/src/analysis_lib/evidence/adapters/golem.py
+  s_176e793652cadb::t_71ec7ad019a60b 787-796
+packages/analysis-lib/src/analysis_lib/evidence/adapters/rusi.py
+  s_176e793652cadb::t_409b57a49bd526 619-628
+packages/analysis-lib/src/analysis_lib/evidence/store.py
+  s_176e793652cadb::t_332af25502c71f 182
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_176e793652cadb::t_a95c492defb18e 27,84-86
+packages/analysis-lib/tests/test_evidence_golem.py
+  s_176e793652cadb::t_bdf35d7df392d6 254-273
+test/data/scan-directory/depscan.manifest.json
+  s_176e793652cadb::t_159525b8454b9e 184
+test/data/scan-directory/depscan.toml.sample
+  s_176e793652cadb::t_396ef6eafdf264 1-3,19,36,38-40
+test/test_evidence_wiring.py
+  s_176e793652cadb::t_934f9d05c9f3d2 268-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55acde019484f51546d9009a829077bc43b77e31",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/__init__.py
+  s_7318da1b9edd46::t_09d5929a6e7b37 9-11,14-17,20-22,24
+  s_7318da1b9edd46::t_4c29789ece09fe 94-102,104-115,126-130
+  s_7318da1b9edd46::t_3b5d5b2713c1e9 90,189-507,560-569
+packages/analysis-lib/tests/test_evidence_schema.py
+  s_7318da1b9edd46::t_150c0cfa122c3f 162-173
+packages/analysis-lib/src/analysis_lib/evidence/__init__.py
+  s_7318da1b9edd46::t_20780b44872811 92-95,107
+packages/analysis-lib/src/analysis_lib/evidence/adapters/golem.py
+  s_7318da1b9edd46::t_2c7974fca003a7 11-13,18-21,31-44,66-72,75-76,247,263-265,268-269,271,295,340-341,344-347,349-351,353-359,361-365,367-370,372-373,404-427,435,444-450,463-465,467,471,476-477,486-488,493,495,504-517,519,521-523,529,532,543,553,555,560-561,563-566,571-573,575,580,584,588,592-593,597,599,606,609-610,613,615-616,619-621,623-625,628-633,639,641,643,645,650,652-659,665,667-670,676,678-681,683-689,691-699,705,707-708,710,715-719,722-723,726,736,740-741,744,751-754,756,765-767,771,776,778,780-783,785-786,789,791-794,800,802-804,809,811,813,815,817-821,827,829,833,837-838,842-883
+packages/analysis-lib/src/analysis_lib/evidence/schemas/depscan-evidence.schema.json
+  s_7318da1b9edd46::t_64b24129483719 213-214,216
+packages/analysis-lib/tests/data/golem/README.md
+  s_7318da1b9edd46::t_5b772d10d44284 9-23
+packages/analysis-lib/tests/test_evidence_golem.py
+  s_7318da1b9edd46::t_80863738c3f776 6-10,29-38,101,108,129-139,160,195,275-277,293,363,380,399,416,421,447-632
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c37463d19b3b60e8add9068d77f607380217c431",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

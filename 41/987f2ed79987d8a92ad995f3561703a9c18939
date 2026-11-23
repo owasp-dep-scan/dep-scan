@@ -1,0 +1,35 @@
+packages/analysis-lib/tests/data/dosai/dosai-v5.0.0-reachable-combined.json
+  s_abc8e4860788e7::t_df6daa49f3e791 1-2162
+packages/analysis-lib/tests/test_evidence_dosai.py
+  s_abc8e4860788e7::t_a0a36ad7f3f9dc 336-340,345-346
+  s_abc8e4860788e7::t_6dd65b137ea4ee 799-808,810-819,826,831-835,837-844
+  s_abc8e4860788e7::t_91439e81c870ba 607-609
+  s_abc8e4860788e7::t_5bb8e84cb092a8 195-222
+  s_abc8e4860788e7::t_d5a98a565a545b 809,820-825,827-830,836
+  s_abc8e4860788e7::t_6c22903730362a 1-138,143-155,158-194,223-275,277-283,288-289,308-313,315-335,341-344,347-473,478-503,505,509-606,610-796,845-863
+  s_abc8e4860788e7::t_a488bfa1f00dec 139-142,156-157
+  s_abc8e4860788e7::t_66af176a75f403 276,284-287,290-307,314
+  s_abc8e4860788e7::t_1ca4483649c347 474-477
+  s_abc8e4860788e7::t_ab48565888a2f4 504,506-508
+  s_abc8e4860788e7::t_ec36ea52220cfa 797-798
+packages/analysis-lib/tests/data/dosai/README.md
+  s_abc8e4860788e7::t_c624c94e43d437 1-106
+packages/analysis-lib/tests/data/dosai/dosai-main-unreachable-combined.json
+  s_abc8e4860788e7::t_ca9ad31d68817f 1-1314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41987f2ed79987d8a92ad995f3561703a9c18939",
+  "prompts": {},
+  "sessions": {
+    "s_abc8e4860788e7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_7_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,25 @@
+depscan/lib/bom.py
+  s_7318da1b9edd46::t_c3129d3fadcfeb 1050-1051,1057-1061,1071-1072,1139-1141,1318-1324,1561,1563-1566
+packages/xbom-lib/src/xbom_lib/kosi.py
+  s_7318da1b9edd46::t_4c1ec9cd9ca15f 54-55
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_7318da1b9edd46::t_9375eada26436d 48-50,254-256,260
+test/test_bom.py
+  s_7318da1b9edd46::t_5d034871119989 529-552
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9236ef438d45d9abd5828eae56b93e5dbbd67508",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

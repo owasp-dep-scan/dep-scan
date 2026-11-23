@@ -1,0 +1,36 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/kosi.py
+  s_83242f37f43385::t_7337f491ff3159 1-116,122-125,132-704
+  s_83242f37f43385::t_3cecd4f9f223e6 117-121,126-131
+packages/analysis-lib/src/analysis_lib/evidence/adapters/golem.py
+  s_83242f37f43385::t_efd8c671cdfc9f 1-801,805-832
+  s_83242f37f43385::t_4c7c2c16021440 802-804
+packages/analysis-lib/tests/test_evidence_kosi.py
+  s_83242f37f43385::t_8da88236eccc51 139-141
+packages/analysis-lib/src/analysis_lib/evidence/adapters/rusi.py
+  s_83242f37f43385::t_0df74c3c2ae6cc 310,312
+  s_83242f37f43385::t_fb74890bb306e6 1-309,311,313-624,626-650
+  s_83242f37f43385::t_5ba3119fefc618 625
+packages/analysis-lib/tests/test_evidence_golem.py
+  s_83242f37f43385::t_785ffb9c138bb6 132
+  s_83242f37f43385::t_8ff5a33b14733f 278
+  s_83242f37f43385::t_88db6a9da12b42 284
+packages/analysis-lib/tests/test_evidence_rusi.py
+  s_83242f37f43385::t_3479769cc947c3 143
+  s_83242f37f43385::t_b91b8e83e5de19 226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e7ff92a8008fd3e1d31e33c2c68b8ec7556ab91",
+  "prompts": {},
+  "sessions": {
+    "s_83242f37f43385": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_6_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

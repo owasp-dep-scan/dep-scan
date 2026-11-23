@@ -1,0 +1,22 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-finding.schema.json
+  s_20fa93b43b79bb::t_104f99d06565d6 254
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_20fa93b43b79bb::t_cbe18ff19c5c87 301-307,324,332
+  s_20fa93b43b79bb::t_ad44ba37294a5f 242-253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d20a2de88b429daa30a4d04e68b63efb688b4dd9",
+  "prompts": {},
+  "sessions": {
+    "s_20fa93b43b79bb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_12_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

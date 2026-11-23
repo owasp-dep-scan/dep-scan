@@ -1,0 +1,20 @@
+packages/analysis-lib/tests/test_dosai_slices.py
+  s_9765ad1a7fbb0a::t_a9eaf582b11a21 385
+  s_9765ad1a7fbb0a::t_8c70e5862feefd 355-384,386-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7ef0d5679f72c14e42f0cf8987db34d0ac65a7d2",
+  "prompts": {},
+  "sessions": {
+    "s_9765ad1a7fbb0a": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-80d88e1b-61a1-4fe1-a5e8-e010ba999e91-actor_2_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

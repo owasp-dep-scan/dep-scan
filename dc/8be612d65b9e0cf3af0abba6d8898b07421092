@@ -1,0 +1,19 @@
+uv.lock
+  s_99830a88a8b461::t_ec99d8a3cd3802 2535,2537,2539
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc8be612d65b9e0cf3af0abba6d8898b07421092",
+  "prompts": {},
+  "sessions": {
+    "s_99830a88a8b461": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_360957ee-8f02-4b10-9050-a97d948387d8",
+        "model": "unknown"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

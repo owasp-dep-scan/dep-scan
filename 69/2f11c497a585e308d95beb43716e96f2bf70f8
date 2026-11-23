@@ -1,0 +1,54 @@
+test/test_dosai_integration.py
+  s_d31d2d9b47cffa::t_4a0d8261ba9be8 17-20,32-33,69-76,85-95,104,109,116,121,132,140,145,147-151,153,162-163,180,185-186,196-198,227,232-235,241,251,256-257,326-327,333,338,341,347-356,369,374,376,387-388,420,425-428
+test/data/repotests/README.md
+  s_d31d2d9b47cffa::t_7648b734a37077 1-36
+test/test_evidence_wiring.py
+  s_d31d2d9b47cffa::t_fb297640af57db 1-51,59-73,75-242
+  s_d31d2d9b47cffa::t_0bab9dbcc93784 52-58,74
+test/test_kosi_reachability.py
+  s_d31d2d9b47cffa::t_4212efa9920efe 1,5-8,63,69,72-73,77-79,83-116
+.gitignore
+  s_d31d2d9b47cffa::t_f3632cc5f92104 167
+test/data/repotests/dejacode/python-callsites.slices.json
+  s_d31d2d9b47cffa::t_c4feacbc14819c 1
+test/data/repotests/dejacode/python-reachables.slices.json
+  s_d31d2d9b47cffa::t_a8f909a4b619be 1
+test/data/repotests/dejacode/python-reachables.slices_1.json
+  s_d31d2d9b47cffa::t_e9128f43ef4c56 1
+test/data/repotests/dejacode/python-reachables.slices_2.json
+  s_d31d2d9b47cffa::t_877d540a22ead2 1
+test/data/repotests/dejacode/python-usages.slices.json
+  s_d31d2d9b47cffa::t_0d66006b5277f9 1
+test/data/repotests/dejacode/sbom-python.cdx.json
+  s_d31d2d9b47cffa::t_27f64619c621d5 1
+test/data/repotests/dotnet-podcasts/csharp-data-flow.slices.json
+  s_d31d2d9b47cffa::t_dff17398f6a5d1 1
+test/data/repotests/dotnet-podcasts/sbom-dotnet.cdx.json
+  s_d31d2d9b47cffa::t_9e27c6e60b7ca2 1
+test/test_bom.py
+  s_d31d2d9b47cffa::t_4b3dccbdf20d2b 474,478,494,497-498,502-522
+test/test_golem_integration.py
+  s_d31d2d9b47cffa::t_24435cd6aa9eb4 4-5,27-29,108-115,134,142,147,149,168,176,179,191-193,196,199,207-210,218,226-229,243-244,269,283,291,299-301,335,343-345,347,408,416,418,435
+test/test_pipeline.py
+  s_d31d2d9b47cffa::t_8e7d8623c4518d 503-507,532-543,547-548,558-559,796-799,801,807,819,830,836,853,861
+test/test_rusi_integration.py
+  s_d31d2d9b47cffa::t_5918d24974416c 34-35,140-147,178,186-188,190,208,216-219,221,241,249-253,255,267-269,271-272,276,279,287-290,298,306-309,324-325,350,364,374,382-384,433,441,443,527,535,540,724-725,782,790-792,800-803
+test/test_scan_directory.py
+  s_d31d2d9b47cffa::t_926f519669fddb 481,492,505-506,508-509,601-614,618-620,624-631,656-658,660,662,671,674-676,681-683,1153-1159,1163-1169,1171,1177-1182,1186-1200,1222-1223,1226-1233,1235-1249,1260,1268-1269,1271,1275-1276,1285-1286,1288-1291,1296,1308-1309,1312-1316,1328-1329,1338-1341,1344-1345,1356
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "692f11c497a585e308d95beb43716e96f2bf70f8",
+  "prompts": {},
+  "sessions": {
+    "s_d31d2d9b47cffa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_15_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+packages/analysis-lib/tests/test_evidence_dosai.py
+  s_abc8e4860788e7::t_a0a36ad7f3f9dc 331-335,340-341
+  s_abc8e4860788e7::t_1ca4483649c347 469-472
+  s_abc8e4860788e7::t_ab48565888a2f4 499,501-503
+  s_abc8e4860788e7::t_5bb8e84cb092a8 190-217
+  s_abc8e4860788e7::t_6c22903730362a 1-133,138-150,153-189,218-270,272-278,283-284,303-308,310-330,336-339,342-468,473-498,500,504-810
+  s_abc8e4860788e7::t_66af176a75f403 271,279-282,285-302,309
+  s_abc8e4860788e7::t_a488bfa1f00dec 134-137,151-152
+packages/analysis-lib/tests/data/dosai/README.md
+  s_abc8e4860788e7::t_c624c94e43d437 1-106
+packages/analysis-lib/tests/data/dosai/dosai-main-unreachable-combined.json
+  s_abc8e4860788e7::t_ca9ad31d68817f 1-1314
+packages/analysis-lib/tests/data/dosai/dosai-v5.0.0-reachable-combined.json
+  s_abc8e4860788e7::t_df6daa49f3e791 1-2162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b19808bb73a2b6fe8baea06019d5046463eb9ba",
+  "prompts": {},
+  "sessions": {
+    "s_abc8e4860788e7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_7_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

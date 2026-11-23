@@ -1,0 +1,45 @@
+packages/xbom-lib/src/xbom_lib/kosi.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 16-17,38,81,86-87,100
+packages/analysis-lib/tests/test_plugins_discovery.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 1-154
+packages/xbom-lib/src/xbom_lib/rusi.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 15-16,40,100,110-112,136
+packages/xbom-lib/src/xbom_lib/plugins.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 3-4,12-13,17-19,82-285
+documentation/docs/languages/go-reachability.mdx
+  s_7318da1b9edd46::t_47a73aa0f910c0 39
+test/test_doctor.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 851,963-966,982-1124
+packages/analysis-lib/tests/conftest.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 1-14
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 27-28,59,65,155,165-167,194-195,197-229,256-260
+depscan/lib/doctor.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 49-54,196-198,214-231,233,344-345,357-358,365,369-380,382,567-570,617,625
+documentation/docs/languages/dotnet-reachability.mdx
+  s_7318da1b9edd46::t_47a73aa0f910c0 30
+documentation/docs/languages/jvm-js-python-php-reachability.mdx
+  s_7318da1b9edd46::t_47a73aa0f910c0 15
+documentation/docs/languages/rust-reachability.mdx
+  s_7318da1b9edd46::t_47a73aa0f910c0 38
+packages/analysis-lib/tests/test_dosai_runner.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 128-130,140-142,426-462
+packages/xbom-lib/src/xbom_lib/golem.py
+  s_7318da1b9edd46::t_47a73aa0f910c0 16-17,60,161,171-173,193,334-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac9ead8c1eb4e42c82fc4f438d45bf1c62080b6e",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

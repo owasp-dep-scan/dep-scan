@@ -1,0 +1,24 @@
+packages/analysis-lib/src/analysis_lib/evidence/adapters/dosai.py
+  s_abc8e4860788e7::t_6682f30fc189c6 906-909
+  s_abc8e4860788e7::t_5a54a417399352 537
+  s_abc8e4860788e7::t_d47f9e842b75c6 912
+  s_abc8e4860788e7::t_17094c00b4a516 1186-1187
+  s_abc8e4860788e7::t_f064e084981621 1160-1162,1164-1165,1167-1168
+  s_abc8e4860788e7::t_e4484570760e4a 1-536,538-905,910-911,913-1159,1163,1166,1169-1185,1188-1328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "87644ed5c3fd821d594a8b29fc97d512a04d32d6",
+  "prompts": {},
+  "sessions": {
+    "s_abc8e4860788e7": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_7_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": null
+    }
+  }
+}

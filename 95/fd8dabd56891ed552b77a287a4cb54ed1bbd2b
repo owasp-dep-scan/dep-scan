@@ -1,0 +1,25 @@
+test/test_doctor.py
+  s_7318da1b9edd46::t_28d00ad4c9cafd 1068-1124
+packages/analysis-lib/tests/test_dosai_runner.py
+  s_7318da1b9edd46::t_28d00ad4c9cafd 128-130,140-142,426-462
+packages/xbom-lib/src/xbom_lib/dosai.py
+  s_7318da1b9edd46::t_42c3de9a0babf6 61,199-233,258-262
+depscan/lib/doctor.py
+  s_7318da1b9edd46::t_42c3de9a0babf6 196-198,214-228,230-233,369-380,382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95fd8dabd56891ed552b77a287a4cb54ed1bbd2b",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

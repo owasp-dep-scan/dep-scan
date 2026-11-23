@@ -1,0 +1,19 @@
+packages/analysis-lib/tests/test_reachability.py
+  s_e6c504b2c352c9::t_a51e3bc5c96501 368-380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "974d9fbed2a920b7876b32d2a4d2a1303f4a6b25",
+  "prompts": {},
+  "sessions": {
+    "s_e6c504b2c352c9": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_11_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

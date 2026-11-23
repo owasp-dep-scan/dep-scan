@@ -1,0 +1,27 @@
+packages/analysis-lib/src/analysis_lib/findings/schemas/depscan-mcp-list_findings-output.schema.json
+  s_20fa93b43b79bb::t_fddd8116a5d6ce 17
+packages/analysis-lib/src/analysis_lib/findings/exploitability.py
+  s_20fa93b43b79bb::t_184b8bb2a1e423 5,8-10,25-26,82-90,219-238,241-250,259-264,266-269,273-274,279-280,282-285,288,297-304,311,318,328-339,341,354,370-371,448-461,463-469,472,480
+packages/analysis-lib/tests/test_exploitability.py
+  s_20fa93b43b79bb::t_d84c14e71eb377 583
+depscan/mcp_server/tools.py
+  s_20fa93b43b79bb::t_de932310c5e5d5 807-809
+agent-plugin/skills/depscan-reachability-proof/SKILL.md
+  s_20fa93b43b79bb::t_ca5fe98b8b6736 206-207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "611ba293ae6c7b4f478909617609766c7da03646",
+  "prompts": {},
+  "sessions": {
+    "s_20fa93b43b79bb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_12_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}

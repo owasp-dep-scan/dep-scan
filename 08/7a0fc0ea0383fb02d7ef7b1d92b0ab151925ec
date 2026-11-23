@@ -1,0 +1,38 @@
+depscan/lib/explainer.py
+  s_d31d2d9b47cffa::t_60459a83af2778 1-14,25-26,43-70,80,92-93,97,125-128,132-134,137-148,151-161,167-168,243,245-299,301-370,373,380-381,383-395,398-401,403,410-417,422-425,427-434,436,439-442,444-448,450-452,456-458,462,464-467,473,480,482,485-493,496,503,517-519,531,533,540,543,545,548-550,552-556,558-561,563,565-566,574,576,582,584
+  s_176e793652cadb::t_367415b4f2d538 162-166
+  s_d31d2d9b47cffa::t_d88e108fea8dbb 374-379
+  s_d31d2d9b47cffa::t_f2de68bae2950b 382
+  s_d31d2d9b47cffa::t_ce306adbf7999d 396-397
+  s_d31d2d9b47cffa::t_c8b8c914a9db0b 435
+  s_d31d2d9b47cffa::t_21274976f5722d 437-438
+test/test_explainer.py
+  s_d31d2d9b47cffa::t_085f793acc2143 1-7,14-16,21,24-26,29-30,33-38,40-41,44-45,47-50,54-57,60-61,63,65-69,72-92,95-116,118-131,135-152,154-178,181-191,194-219,222-231,233
+  s_176e793652cadb::t_915021d2bc929d 235-242
+test/test_htmlgen.py
+  s_176e793652cadb::t_a3ff97b3dd9397 155-169,174-184,194-212,216-218,223,245-249,256
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "087a0fc0ea0383fb02d7ef7b1d92b0ab151925ec",
+  "prompts": {},
+  "sessions": {
+    "s_176e793652cadb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_fd474a86-6a93-4254-931d-1cbc54ea0216",
+        "model": "GLM-5.3"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    },
+    "s_d31d2d9b47cffa": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "sess_dwf-dwfrun-606516bc-3987-4503-bc75-708d95a28cb8-actor_15_1",
+        "model": "GLM-5.3-Flash"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
