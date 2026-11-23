@@ -1,0 +1,23 @@
+depscan/lib/exclusions.py
+  s_fe578a6c9c51d0::t_d0688d67fa738b 11-16,20-22,25,73-101,136-179,185-186,192-193,195,201,204-212,220-235
+depscan/lib/pipeline.py
+  s_fe578a6c9c51d0::t_fc85063f56d71e 71,1075-1079
+test/test_exclusions.py
+  s_fe578a6c9c51d0::t_8269779532ae43 42-45,343-469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "340d05ade5345840aa023bcb3eaefe291039e042",
+  "prompts": {},
+  "sessions": {
+    "s_fe578a6c9c51d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1263418f-f4b0-4e74-91c8-18f9057618b4",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
