@@ -1,0 +1,18 @@
+packages/analysis-lib/src/analysis_lib/packages.py
+  h_0926447d100ad2 37-39,62-66,127-131
+packages/analysis-lib/src/analysis_lib/reachability.py
+  h_0926447d100ad2 317-321
+packages/analysis-lib/tests/test_packages.py
+  h_0926447d100ad2 114-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c173fb94297ff6c93109d3090a56aa80d38e31d",
+  "prompts": {},
+  "humans": {
+    "h_0926447d100ad2": {
+      "author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
