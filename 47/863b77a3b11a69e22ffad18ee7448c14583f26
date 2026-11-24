@@ -1,0 +1,20 @@
+.github/workflows/pythonpublish.yml
+  s_7318da1b9edd46::t_50830ea59bd79b 68-75,85-90,93-94
+  s_7318da1b9edd46::t_90095a0b0738f7 76-84,91-92,265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "47863b77a3b11a69e22ffad18ee7448c14583f26",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
