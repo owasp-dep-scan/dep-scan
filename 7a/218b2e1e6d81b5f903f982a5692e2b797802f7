@@ -1,0 +1,29 @@
+packages/server-lib/pyproject.toml
+  s_7318da1b9edd46::t_1c9462c8504990 9
+packages/analysis-lib/pyproject.toml
+  s_7318da1b9edd46::t_1c9462c8504990 9
+documentation/docs/migrate-v6-to-v7.mdx
+  s_7318da1b9edd46::t_1c9462c8504990 104
+pyproject.toml
+  s_7318da1b9edd46::t_1c9462c8504990 9,55,59
+packages/xbom-lib/src/xbom_lib/blint.py
+  s_7318da1b9edd46::t_1c9462c8504990 41
+uv.lock
+  s_7318da1b9edd46::t_6b3d294fe936b7 84,97,99,249,268,270,823,861,1574,1577-1578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a218b2e1e6d81b5f903f982a5692e2b797802f7",
+  "prompts": {},
+  "sessions": {
+    "s_7318da1b9edd46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec4cd02e-10f8-411b-a4d1-40ff6af5049b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Prabhu Subramanian <prabhu@appthreat.com>"
+    }
+  }
+}
